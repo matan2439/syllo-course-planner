@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest *)",
+      "Bash(uvicorn app.main:app *)",
+      "Bash(python *)",
+      "Bash(dir dataraw_html *)",
+      "PowerShell(pip install *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Start-Process \"http://localhost:8000/app/web/semester_board_viewer.html\")",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\matan\\\\tau-course-planner\" -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)"
+    ]
+  }
+}

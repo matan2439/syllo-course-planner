@@ -1,28 +1,98 @@
 {
   "program_id": "mechanical_engineering_2025",
+  "program_name_he": "הנדסה מכנית",
   "program_name": "Mechanical Engineering",
-  "university": "Tel Aviv University",
-  "year": 2025,
+  "academic_year": 2025,
+  "source_urls": [
+    "https://www.tau.ac.il/study-program?safa=1&shana=2025&tab=programStudy&tcid=8715"
+  ],
+  "total_required_hours": 185,
   "semesters": [
     {
       "semester_id": "year_3_semester_a",
-      "display_name": "Year 3 — Semester A",
+      "display_name_he": "שנה ג׳ — סמסטר א׳",
       "mandatory_courses": []
     },
     {
       "semester_id": "year_3_semester_b",
-      "display_name": "Year 3 — Semester B",
+      "display_name_he": "שנה ג׳ — סמסטר ב׳",
       "mandatory_courses": []
     },
     {
       "semester_id": "year_4_semester_a",
-      "display_name": "Year 4 — Semester A",
+      "display_name_he": "שנה ד׳ — סמסטר א׳",
       "mandatory_courses": []
     },
     {
       "semester_id": "year_4_semester_b",
-      "display_name": "Year 4 — Semester B",
+      "display_name_he": "שנה ד׳ — סמסטר ב׳",
       "mandatory_courses": []
     }
-  ]
+  ],
+  "course_categories": [
+    {
+      "category_id": "mandatory",
+      "name_he": "קורסי חובה",
+      "course_ids": []
+    },
+    {
+      "category_id": "mechanical_electives",
+      "name_he": "קורסי בחירה בהנדסה מכנית",
+      "course_ids_file": "data/course_lists/mechanical_electives_2025.txt"
+    }
+  ],
+  "requirements": {
+    "mandatory_courses": {
+      "name_he": "קורסי חובה",
+      "course_ids": []
+    },
+    "elective_categories": [
+      {
+        "category_id": "fluids",
+        "name_he": "זורמים",
+        "min_courses": 1,
+        "course_ids": []
+      },
+      {
+        "category_id": "solids",
+        "name_he": "מוצקים",
+        "min_courses": 1,
+        "course_ids": []
+      },
+      {
+        "category_id": "systems",
+        "name_he": "מערכות",
+        "min_courses": 1,
+        "course_ids": []
+      },
+      {
+        "category_id": "advanced_labs",
+        "name_he": "מעבדות מתקדמות",
+        "min_courses": 1,
+        "course_ids": []
+      },
+      {
+        "category_id": "uncategorized",
+        "name_he": "בחירה נוספת",
+        "min_courses": 0,
+        "needs_review": true,
+        "course_ids": [
+          "0542-4221", "0542-4222", "0542-4223", "0542-4224",
+          "0542-4120", "0542-4122", "0542-4123", "0542-4125",
+          "0542-4352", "0542-4522", "0542-4523", "0542-4163",
+          "0542-4322", "0542-4424", "0542-3360", "0542-4134",
+          "0542-4220", "0542-4722", "0581-4131", "0512-1203",
+          "0512-2508", "0512-4200", "0512-4362", "0512-4700",
+          "0512-4702", "0542-4423", "0542-4425", "0542-4520",
+          "0542-4525", "0542-4521", "0545-5101", "0555-3140",
+          "0571-1818", "0571-3802", "0509-4010", "0542-4011",
+          "0542-4012", "0542-4524", "0571-4174"
+        ]
+      }
+    ],
+    "additional_electives": {
+      "name_he": "קורסי בחירה נוספים להשלמת מכסת השעות",
+      "course_ids_file": "data/course_lists/mechanical_electives_2025.txt"
+    }
+  }
 }

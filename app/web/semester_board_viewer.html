@@ -295,12 +295,152 @@ body.prog-modal-open .workspace {
   direction: ltr; unicode-bidi: isolate;
 }
 .detail-chip.missing { border-color: var(--danger); color: var(--danger); }
+.detail-chip { direction: rtl; unicode-bidi: normal; font-family: system-ui, sans-serif; }
+.prereq-id { font-family: ui-monospace, monospace; font-size: .6rem; color: var(--text-faint); direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.prereq-no-name { color: var(--text-muted); }
 .detail-warn {
   font-size: .74rem; color: var(--miss-accent);
   background: var(--miss-bg); border-radius: 7px;
   padding: 7px 10px; margin-top: 3px; line-height: 1.45;
 }
 .detail-none { font-size: .74rem; color: var(--text-faint); font-style: italic; }
+
+/* Difficulty breakdown bars */
+.diff-brow {
+  display: grid;
+  grid-template-columns: 7rem 1fr 2.4rem;
+  align-items: center; gap: 7px;
+  margin-bottom: 6px;
+  font-size: .73rem; color: var(--text-muted);
+}
+.diff-blbl { text-align: end; color: var(--text-faint); font-size: .68rem; }
+.diff-btrack {
+  height: 6px; border-radius: 3px;
+  background: var(--border); overflow: hidden;
+}
+.diff-bfill { height: 100%; border-radius: 3px; transition: width .3s ease; }
+.diff-bval { font-size: .68rem; color: var(--text-muted); direction: ltr; text-align: start; }
+.diff-conf { font-size: .68rem; color: var(--text-faint); margin-top: 8px; }
+
+/* ── Instructor uncertainty section ─────────────────────────────────────── */
+.iu-score-row {
+  display: grid;
+  grid-template-columns: 1fr 2.4rem;
+  align-items: center; gap: 7px; margin-bottom: 8px;
+}
+.iu-track {
+  height: 6px; border-radius: 3px;
+  background: var(--border); overflow: hidden;
+}
+.iu-fill { height: 100%; border-radius: 3px; transition: width .3s ease; }
+.iu-val  { font-size: .68rem; color: var(--text-muted); direction: ltr; text-align: start; }
+.iu-lecturers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.iu-lecturer-tag {
+  font-size: .68rem; padding: 2px 7px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted);
+}
+.iu-user-note {
+  font-size: .72rem; color: var(--text-muted); background: var(--warn-soft);
+  border: 1px solid var(--warning); border-radius: 7px;
+  padding: 6px 10px; margin-top: 6px; line-height: 1.45;
+}
+[data-theme="dark"] .iu-user-note { background: #451A03; border-color: #92400E; color: var(--warning); }
+
+/* ── Override panel ─────────────────────────────────────────────────────── */
+.override-panel {
+  border-top: 1px solid var(--border);
+  padding: 12px 0 4px; margin-top: 8px;
+}
+.override-panel-hdr {
+  font-size: .74rem; font-weight: 600; color: var(--text-muted);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.override-badge {
+  display: inline-block; font-size: .6rem; font-weight: 600;
+  background: var(--warn-soft); color: #92400E;
+  border: 1px solid var(--warning); border-radius: 99px;
+  padding: 1px 8px; white-space: nowrap;
+}
+[data-theme="dark"] .override-badge { background: #451A03; color: var(--warning); border-color: #92400E; }
+.override-field { margin-bottom: 8px; }
+.override-label { display: block; font-size: .68rem; color: var(--text-faint); margin-bottom: 3px; }
+.override-input {
+  width: 100%; font-size: .74rem;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px 8px; background: var(--surface); color: var(--text);
+  font-family: inherit; resize: vertical; direction: rtl;
+  transition: border-color var(--t);
+}
+.override-input:focus { outline: none; border-color: var(--warning); box-shadow: 0 0 0 2px rgba(245,158,11,.18); }
+.override-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* ── Detail modal tabs ──────────────────────────────────────────────────── */
+.detail-tabs {
+  display: flex; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.detail-tab {
+  flex: 1; padding: 9px 14px;
+  font-size: .75rem; font-weight: 600; text-align: center;
+  color: var(--text-muted); cursor: pointer;
+  border: none; border-bottom: 2px solid transparent;
+  background: none; outline: none; font-family: inherit;
+  transition: color var(--t), border-color var(--t), background var(--t);
+  white-space: nowrap;
+}
+.detail-tab:hover { color: var(--text); background: var(--surface2); }
+.detail-tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* Override detail-body when tabs are present */
+.detail-body.tabbed { padding: 0; overflow: hidden; }
+.detail-tab-panel { display: none; height: 100%; overflow-y: auto; padding: 16px 20px; }
+.detail-tab-panel.active { display: block; }
+
+/* ── AI chat panel ──────────────────────────────────────────────────────── */
+.ai-chat-wrap { display: flex; flex-direction: column; gap: 14px; }
+.ai-suggested-label {
+  font-size: .63rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px;
+}
+.ai-suggested-prompts { display: flex; flex-direction: column; gap: 5px; }
+.ai-prompt-btn {
+  font-size: .72rem; text-align: start; padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted);
+  cursor: pointer; font-family: inherit; line-height: 1.4;
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+.ai-prompt-btn:hover { background: var(--purple-soft); border-color: var(--purple); color: var(--purple); }
+.ai-input-area { display: flex; flex-direction: column; gap: 6px; }
+.ai-textarea-chat {
+  width: 100%; font-size: .77rem; font-family: inherit; direction: rtl;
+  border: 1px solid var(--border2); border-radius: 8px;
+  padding: 8px 10px; background: var(--surface); color: var(--text);
+  resize: vertical; min-height: 64px;
+  transition: border-color var(--t);
+}
+.ai-textarea-chat:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(124,58,237,.15); }
+.ai-send-row { display: flex; justify-content: flex-end; }
+.ai-send-btn {
+  font-size: .74rem; font-weight: 600; padding: 6px 18px; border-radius: 7px;
+  background: var(--purple); color: #fff; border: none; cursor: pointer; font-family: inherit;
+  transition: opacity var(--t);
+}
+.ai-send-btn:hover { opacity: .88; }
+.ai-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ai-response-area {
+  min-height: 72px; border-radius: 8px; border: 1px dashed var(--border2);
+  padding: 10px 12px; font-size: .76rem; color: var(--text-muted); line-height: 1.65;
+  background: var(--surface2); white-space: pre-wrap;
+}
+.ai-response-area.ai-empty::before { content: 'תשובת ה-AI תופיע כאן…'; color: var(--text-faint); font-style: italic; }
+.ai-response-area.ai-loading { font-style: italic; color: var(--text-faint); }
+.ai-no-api-note {
+  font-size: .7rem; color: var(--text-faint); line-height: 1.5;
+  background: var(--surface2); border-radius: 7px; padding: 7px 10px;
+  border: 1px solid var(--border);
+}
+.ai-context-note { font-size: .66rem; color: var(--text-faint); line-height: 1.5; }
 
 .detail-foot {
   padding: 13px 20px 16px;
@@ -461,6 +601,30 @@ body.prog-modal-open .workspace {
   background: var(--surface2); border-radius: 7px; padding: 9px 10px; line-height: 1.5;
 }
 
+/* ── Program requirements progress panel ────────────────────────────────── */
+.prog-requirements {
+  padding: 10px 14px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.prog-req-title {
+  font-size: .66rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-faint); margin-bottom: 8px;
+}
+.prog-hours-bar { margin-bottom: 8px; }
+.prog-hours-track { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; margin-bottom: 3px; }
+.prog-hours-fill  { height: 100%; border-radius: 3px; transition: width .3s ease; }
+.prog-hours-labels {
+  display: flex; justify-content: space-between; font-size: .63rem; color: var(--text-faint);
+}
+.prog-cat-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .68rem; padding: 3px 0;
+  color: var(--text-muted);
+}
+.prog-cat-row.ok  { color: var(--success); }
+.prog-cat-row.warn { color: var(--warning); }
+.prog-cat-count { font-size: .63rem; font-weight: 600; opacity: .85; }
+.prog-req-note { font-size: .62rem; color: var(--text-faint); margin-top: 5px; font-style: italic; }
+
 /* ── Legend ──────────────────────────────────────────────────────────────── */
 .sb-legend { padding: 10px 14px 13px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .legend-ttl {
@@ -471,12 +635,21 @@ body.prog-modal-open .workspace {
 .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
 /* ── Board area ──────────────────────────────────────────────────────────── */
-.board-area { flex: 1; overflow: auto; padding: 14px; direction: ltr; transition: filter 250ms ease; }
+.board-area { flex: 1; overflow: auto; padding: 14px; transition: filter 250ms ease; }
 .board-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(200px, 1fr));
-  gap: 12px; align-items: start; min-width: 820px; direction: ltr;
+  display: flex; direction: rtl; /* earliest semester on far right */
+  gap: 16px; align-items: start; min-width: 860px;
 }
+
+/* Year groups */
+.year-group { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-width: 420px; }
+.year-hdr {
+  font-size: .78rem; font-weight: 700; color: var(--text-muted);
+  text-align: center; padding: 5px 10px; border-radius: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  letter-spacing: .03em;
+}
+.year-sems { display: flex; direction: rtl; gap: 12px; align-items: start; }
 
 /* ── Semester column ────────────────────────────────────────────────────── */
 .semester-col { display: flex; flex-direction: column; gap: 8px; }
@@ -509,6 +682,24 @@ body.prog-modal-open .workspace {
   border: 1.5px dashed var(--blue);
   box-shadow: inset 0 0 0 1px rgba(37,99,235,.1);
 }
+/* Drag-validation highlight classes */
+.sem-zone.drag-valid {
+  background: rgba(16,185,129,.06);
+  border: 1.5px dashed var(--success);
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,.1);
+}
+.sem-zone.drag-invalid {
+  background: rgba(239,68,68,.06);
+  border: 1.5px dashed var(--danger);
+}
+.sem-zone.drag-invalid::before {
+  content: attr(data-drag-err);
+  display: block; padding: 5px 8px; border-radius: 6px;
+  font-size: .67rem; color: var(--danger);
+  background: rgba(239,68,68,.08); margin-bottom: 4px;
+  text-align: center; line-height: 1.4;
+  white-space: pre-wrap;
+}
 .sem-zone:empty::after {
   content: 'גרור קורס לכאן';
   display: flex; align-items: center; justify-content: center;
@@ -516,9 +707,39 @@ body.prog-modal-open .workspace {
   border: 1px dashed var(--border2); border-radius: 7px;
   transition: border-color 160ms ease, color 160ms ease;
 }
-.sem-zone.drag-over:empty::after {
-  border-color: var(--blue); color: var(--blue);
+.sem-zone.drag-over:empty::after { border-color: var(--blue);    color: var(--blue);    }
+.sem-zone.drag-valid:empty::after  { border-color: var(--success); color: var(--success); }
+.sem-zone.drag-invalid:empty::after { border-color: var(--danger);  color: var(--danger);  }
+
+/* Board notification toast */
+#board-notify {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1F2937; color: #FCA5A5; padding: 9px 20px; border-radius: 9px;
+  font-size: .78rem; font-weight: 600; z-index: 300;
+  box-shadow: var(--shadow-md); pointer-events: none;
+  animation: fadeIn 150ms ease;
 }
+
+/* Invalid-placement override toggle */
+.invalid-toggle {
+  margin: 4px 6px 4px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px; border-radius: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: .7rem; color: var(--text-muted); cursor: pointer;
+  transition: background var(--t), border-color var(--t);
+}
+.invalid-toggle:hover { background: var(--bg2); }
+.invalid-toggle.active { border-color: var(--danger); background: rgba(239,68,68,.08); color: var(--danger); }
+
+/* Validation badge on course cards */
+.bdg-prereq-warn {
+  background: rgba(239,68,68,.12); color: var(--danger);
+  border: 1px solid rgba(239,68,68,.3);
+}
+
+/* Validation section in modal */
+.val-prereq-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 
 /* ── Course cards ───────────────────────────────────────────────────────── */
 .course-card {
@@ -695,6 +916,9 @@ body.prog-modal-open .workspace {
   </div>
 </div>
 
+<!-- ── Board notification toast ───────────────────────────────────────────── -->
+<!-- hidden by default; shown by showBoardNotify() -->
+
 <!-- ── Course details modal ────────────────────────────────────────────────── -->
 <div id="detail-overlay" class="detail-overlay" hidden aria-modal="true" role="dialog" aria-label="פרטי קורס">
   <div id="detail-panel" class="detail-panel"></div>
@@ -816,7 +1040,8 @@ const SEMESTERS = [
 const MAX_HOURS = 20;
 const LS_STATE  = 'tau_board_v3';
 const LS_THEME  = 'tau_theme';
-const LS_PROG   = 'tau_program';  /* localStorage.selectedProgramId equivalent */
+const LS_PROG      = 'tau_program';
+const LS_OVERRIDES = 'tau_course_overrides';
 
 /* ── App state ──────────────────────────────────────────────────────────── */
 let courseMap     = {};
@@ -825,9 +1050,14 @@ let originalState = null;
 let selectedProg  = null;
 
 /* UI-only state */
-let dragId           = null;
-let dragFromSem      = null;
-let allowBlockedDrag = false;
+let dragId              = null;
+let dragFromSem         = null;
+let allowBlockedDrag    = false;
+let allowInvalidPlacement = false;   // override toggle: allow invalid drops with warning
+let boardValidation     = {};        // {courseId: validatePlacement result}; refreshed on render
+let completedCourseIds  = [];        // loaded from board metadata or derived from audit
+let programRequirements = null;      // {total_required_hours, categories:[]} from board metadata
+let _notifyTimer        = null;
 const openGroups     = new Set(
   Object.entries(REPO_GROUPS).filter(([,v])=>v.open).map(([k])=>k)
 );
@@ -1055,30 +1285,53 @@ function init(board, audit) {
     for (const ac of audit) {
       if (!courseMap[ac.course_id]) {
         courseMap[ac.course_id] = {
-          course_id:             ac.course_id,
-          name_he:               ac.name_he    || null,
-          weekly_hours:          ac.weekly_hours,
-          difficulty_score:      ac.difficulty_score,
-          difficulty_level:      ac.difficulty_level || null,
-          course_type:           'elective',
-          status:                ac.status     || 'eligible',
-          locked_by_user:        false,
-          source:                'audit',
-          missing_prerequisites: ac.missing_prerequisites || [],
-          prerequisites:         ac.prerequisites         || [],
-          warnings:              ac.weekly_hours == null ? ['שעות שבועיות חסרות.'] : [],
-          data_quality:          { has_weekly_hours: ac.weekly_hours != null },
-          syllabus_url:          ac.syllabus_url   || null,
-          syllabus_links:        ac.syllabus_links  || [],
-          source_urls:           ac.source_urls     || [],
-          semester_availability: ac.semester_availability || null,
+          course_id:                   ac.course_id,
+          name_he:                     ac.name_he    || null,
+          weekly_hours:                ac.weekly_hours,
+          difficulty_score:            ac.difficulty_score,
+          difficulty_level:            ac.difficulty_level || null,
+          workload_score:              ac.workload_score              ?? null,
+          conceptual_complexity_score: ac.conceptual_complexity_score ?? null,
+          prerequisite_depth_score:    ac.prerequisite_depth_score    ?? null,
+          assessment_intensity_score:  ac.assessment_intensity_score  ?? null,
+          difficulty_confidence:       ac.difficulty_confidence        ?? null,
+          difficulty_warnings:         ac.difficulty_warnings          || [],
+          course_type:                 'elective',
+          status:                      ac.status     || 'eligible',
+          locked_by_user:              false,
+          source:                      'audit',
+          missing_prerequisites:        ac.missing_prerequisites         || [],
+          missing_prerequisite_details: ac.missing_prerequisite_details  || [],
+          prerequisites:                ac.prerequisites                 || [],
+          prerequisite_details:         ac.prerequisite_details          || [],
+          warnings:                    ac.weekly_hours == null ? ['שעות שבועיות חסרות.'] : [],
+          data_quality:                { has_weekly_hours: ac.weekly_hours != null },
+          syllabus_url:                ac.syllabus_url   || null,
+          syllabus_links:              ac.syllabus_links  || [],
+          source_urls:                 ac.source_urls     || [],
+          semester_availability:       ac.semester_availability || null,
+          grade_signal:                ac.grade_signal          || null,
         };
       } else {
-        /* Enrich board entry with audit's syllabus links if missing */
+        /* Enrich board entry with audit data if missing */
         const entry = courseMap[ac.course_id];
         if (!entry.syllabus_url  && ac.syllabus_url)  entry.syllabus_url  = ac.syllabus_url;
         if (!entry.syllabus_links?.length && ac.syllabus_links?.length)
           entry.syllabus_links = ac.syllabus_links;
+        if (entry.workload_score              == null) entry.workload_score              = ac.workload_score              ?? null;
+        if (entry.conceptual_complexity_score == null) entry.conceptual_complexity_score = ac.conceptual_complexity_score ?? null;
+        if (entry.prerequisite_depth_score    == null) entry.prerequisite_depth_score    = ac.prerequisite_depth_score    ?? null;
+        if (entry.assessment_intensity_score  == null) entry.assessment_intensity_score  = ac.assessment_intensity_score  ?? null;
+        if (entry.difficulty_confidence       == null) entry.difficulty_confidence       = ac.difficulty_confidence        ?? null;
+        if (!entry.difficulty_warnings?.length)        entry.difficulty_warnings         = ac.difficulty_warnings          || [];
+        if (!entry.prerequisite_details?.length)       entry.prerequisite_details        = ac.prerequisite_details         || [];
+        if (!entry.missing_prerequisite_details?.length) entry.missing_prerequisite_details = ac.missing_prerequisite_details || [];
+        if (!entry.grade_signal && ac.grade_signal)    entry.grade_signal                = ac.grade_signal;
+        if (!entry.program_category_id && ac.program_category_id) {
+          entry.program_category_id      = ac.program_category_id;
+          entry.program_category_name_he = ac.program_category_name_he || null;
+          entry.needs_category_review    = ac.needs_category_review    || false;
+        }
       }
     }
   }
@@ -1101,42 +1354,76 @@ function init(board, audit) {
   } else {
     state = clone(originalState);
   }
+
+  // Extract completed course IDs for drag validation
+  completedCourseIds = board.metadata?.completed_course_ids || [];
+  if (!completedCourseIds.length && audit) {
+    // Derive from audit: prereqs satisfied by profile courses (not in plan)
+    const derived = new Set();
+    for (const ac of audit) {
+      for (const p of (ac.satisfied_prerequisites || [])) {
+        if (!courseMap[p]) derived.add(p);
+      }
+    }
+    completedCourseIds = [...derived];
+  }
 }
 
 function normalizeCourse(c, status) {
   return {
-    course_id:             c.course_id,
-    name_he:               c.name_he               || null,
-    weekly_hours:          c.weekly_hours,
-    difficulty_score:      c.difficulty_score,
-    difficulty_level:      c.difficulty_level       || null,
-    course_type:           c.course_type            || 'elective',
+    course_id:                   c.course_id,
+    name_he:                     c.name_he               || null,
+    weekly_hours:                c.weekly_hours,
+    difficulty_score:            c.difficulty_score,
+    difficulty_level:            c.difficulty_level       || null,
+    workload_score:              c.workload_score           ?? null,
+    conceptual_complexity_score: c.conceptual_complexity_score ?? null,
+    prerequisite_depth_score:    c.prerequisite_depth_score    ?? null,
+    assessment_intensity_score:  c.assessment_intensity_score  ?? null,
+    difficulty_confidence:       c.difficulty_confidence        ?? null,
+    difficulty_warnings:         c.difficulty_warnings          || [],
+    course_type:                 c.course_type            || 'elective',
     status,
-    locked_by_user:        !!c.locked_by_user,
-    source:                c.source                 || 'auto',
-    missing_prerequisites: c.missing_prerequisites  || [],
-    prerequisites:         c.prerequisites          || [],
-    warnings:              c.warnings               || [],
-    data_quality:          c.data_quality           || {},
-    syllabus_url:          c.syllabus_url           || null,
-    syllabus_links:        c.syllabus_links         || [],
-    source_urls:           c.source_urls            || [],
-    semester_availability: c.semester_availability  || null,
+    locked_by_user:              !!c.locked_by_user,
+    source:                      c.source                 || 'auto',
+    missing_prerequisites:        c.missing_prerequisites         || [],
+    missing_prerequisite_details: c.missing_prerequisite_details  || [],
+    prerequisites:                c.prerequisites                 || [],
+    prerequisite_details:         c.prerequisite_details          || [],
+    warnings:                     c.warnings                      || [],
+    data_quality:                c.data_quality           || {},
+    syllabus_url:                c.syllabus_url           || null,
+    syllabus_links:              c.syllabus_links         || [],
+    source_urls:                 c.source_urls            || [],
+    semester_availability:       c.semester_availability  || null,
+    grade_signal:                c.grade_signal           || null,
+    instructor_uncertainty:      c.instructor_uncertainty || null,
+    program_category_id:         c.program_category_id         || null,
+    program_category_name_he:    c.program_category_name_he    || null,
+    needs_category_review:       c.needs_category_review       || false,
+    selection_reason:            c.selection_reason            || null,
   };
 }
 
 /* ── Render ─────────────────────────────────────────────────────────────── */
-function renderAll() { renderChips(); renderSidebar(); renderBoard(); }
+function renderAll() { revalidateBoard(); renderChips(); renderSidebar(); renderBoard(); }
 
 function renderChips() {
   const placed  = allPlacedIds().size;
   const noHours = Object.values(courseMap).filter(c => c.weekly_hours == null).length;
+  const invalidCt = Object.values(boardValidation).filter(r => !r.valid).length;
+  const planChip = placed > 0
+    ? (invalidCt > 0
+        ? mkChip('בעיות דרישות', invalidCt, true)
+        : mkChip('תוכנית תקינה', '✓', false))
+    : '';
   document.getElementById('hdr-chips').innerHTML = [
     mkChip('סה״כ', Object.keys(courseMap).length, false),
     mkChip('מוצבים', placed, false),
     mkChip('במאגר', state.repo.length, false),
     mkChip('חסרות שעות', noHours, noHours > 0),
-  ].join('');
+    planChip,
+  ].filter(Boolean).join('');
 }
 function mkChip(lbl, val, warn) {
   return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
@@ -1163,6 +1450,11 @@ function renderSidebar() {
         ${allowBlockedDrag ? 'הסתר גרירת חסומים' : 'הצג חסומים לגרירה ניסיונית'}
        </button>` : '';
 
+  const invalToggle = `<button class="invalid-toggle${allowInvalidPlacement?' active':''}" id="invalid-toggle-btn"
+    title="כאשר פעיל: מאפשר שיבוץ גם אם דרישות קדם לא הושלמו, עם סימון אזהרה">
+    ⚠ ${allowInvalidPlacement ? 'אפשר שיבוץ לא תקין (פעיל)' : 'אפשר שיבוץ לא תקין עם אזהרה'}
+  </button>`;
+
   const sections = Object.entries(REPO_GROUPS).map(([gid, meta]) => {
     const ids   = groups[gid] || [];
     const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
@@ -1176,7 +1468,11 @@ function renderSidebar() {
     </details>`;
   }).join('');
 
-  document.getElementById('repo-body').innerHTML = blkToggle + sections;
+  document.getElementById('repo-body').innerHTML = invalToggle + blkToggle + sections;
+  document.getElementById('invalid-toggle-btn')?.addEventListener('click', () => {
+    allowInvalidPlacement = !allowInvalidPlacement;
+    renderSidebar();
+  });
   document.getElementById('blk-toggle-btn')?.addEventListener('click', () => {
     allowBlockedDrag = !allowBlockedDrag;
     renderSidebar();
@@ -1255,6 +1551,11 @@ function cardHtml(c, placed) {
     ? `<span class="badge bdg-${esc(level)}">${esc(DIFF_HE[level]||level)}${c.difficulty_score!=null?' '+c.difficulty_score:''}</span>`
     : '';
 
+  const prereqVr      = placed ? boardValidation[c.course_id] : null;
+  const prereqWarnBdg = prereqVr && !prereqVr.valid
+    ? `<span class="badge bdg-prereq-warn" title="${esc('דרישות קדם: ' + prereqVr.errors.map(_prereqName).join(', '))}">⚠ דרישות קדם</span>`
+    : '';
+
   const hoursHtml = c.weekly_hours != null
     ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
     : `<span class="hrs-unk">שעות לא ידועות</span>`;
@@ -1280,12 +1581,239 @@ function cardHtml(c, placed) {
       ${warnIcon}${actionBtn}
     </div>
     <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
-    <div class="card-row">${typeBdg} ${diffBdg} ${hoursHtml}</div>
+    <div class="card-row">${typeBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml}</div>
   </div>${dragHint}
 </div>`;
 }
 
+/* ── Override localStorage helpers ─────────────────────────────────────── */
+function getOverride(cid) {
+  try {
+    const raw = localStorage.getItem(LS_OVERRIDES);
+    if (!raw) return null;
+    return JSON.parse(raw)?.courses?.[cid] || null;
+  } catch { return null; }
+}
+
+function saveOverride(cid) {
+  const form = document.getElementById('override-form');
+  if (!form) return;
+  const hoursRaw = form.querySelector('[name=manual_weekly_hours]')?.value;
+  const hours    = hoursRaw !== '' && hoursRaw != null ? parseFloat(hoursRaw) : null;
+  const entry = {
+    user_notes:                        form.querySelector('[name=user_notes]')?.value                       || '',
+    manual_weekly_hours:               isNaN(hours) ? null : hours,
+    manual_conceptual_complexity_note: form.querySelector('[name=manual_conceptual_complexity_note]')?.value || '',
+    expected_instructor:               form.querySelector('[name=expected_instructor]')?.value               || '',
+    known_instructor_notes:            form.querySelector('[name=known_instructor_notes]')?.value            || '',
+    confidence_adjustment:             0,
+    updated_at:                        new Date().toISOString(),
+  };
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(LS_OVERRIDES) || '{}'); } catch {}
+  if (!stored.courses) stored.courses = {};
+  stored.courses[cid] = entry;
+  localStorage.setItem(LS_OVERRIDES, JSON.stringify(stored));
+}
+
+function exportOverrides() {
+  try {
+    const raw  = localStorage.getItem(LS_OVERRIDES) || '{"courses":{}}';
+    const blob = new Blob([raw], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'course_overrides.json';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch (e) { console.error('[exportOverrides]', e); }
+}
+
+function _overrideHasData(ov) {
+  return !!(ov?.user_notes?.trim() || ov?.manual_weekly_hours != null
+            || ov?.manual_conceptual_complexity_note?.trim()
+            || ov?.expected_instructor?.trim() || ov?.known_instructor_notes?.trim());
+}
+
+function buildOverrideDisplaySection(ov, mkSection, mkRow) {
+  if (!_overrideHasData(ov)) return '';
+  const rows = [
+    ov.user_notes?.trim()                        ? mkRow('הערות:', esc(ov.user_notes))                                   : '',
+    ov.manual_weekly_hours != null               ? mkRow('שעות (ידנית):', `${ov.manual_weekly_hours} ש׳׳ש`)              : '',
+    ov.manual_conceptual_complexity_note?.trim() ? mkRow('מורכבות:', esc(ov.manual_conceptual_complexity_note))          : '',
+    ov.expected_instructor?.trim()               ? mkRow('מרצה צפוי:', esc(ov.expected_instructor))                      : '',
+    ov.known_instructor_notes?.trim()            ? mkRow('הערות מרצה:', esc(ov.known_instructor_notes))                  : '',
+  ].filter(Boolean).join('');
+  return mkSection(`<span class="override-badge" style="vertical-align:middle">מידע שהוזן ידנית</span>`, rows);
+}
+
+function buildOverridePanel(cid, ov) {
+  const v = (k) => ov?.[k] != null ? esc(String(ov[k])) : '';
+  return `<div class="override-panel" id="override-panel" hidden>
+  <div class="override-panel-hdr">✏ עריכת מידע חסר <span class="override-badge">מידע שהוזן ידנית</span></div>
+  <div id="override-form">
+    <div class="override-field">
+      <label class="override-label">הערות על הקורס</label>
+      <textarea class="override-input" name="user_notes" rows="2">${v('user_notes')}</textarea>
+    </div>
+    <div class="override-field">
+      <label class="override-label">שעות שבועיות משוערות</label>
+      <input class="override-input" type="number" name="manual_weekly_hours" min="0" max="20" step="0.5" value="${v('manual_weekly_hours')}">
+    </div>
+    <div class="override-field">
+      <label class="override-label">הערה על מורכבות החומר</label>
+      <textarea class="override-input" name="manual_conceptual_complexity_note" rows="2">${v('manual_conceptual_complexity_note')}</textarea>
+    </div>
+    <div class="override-field">
+      <label class="override-label">מרצה צפוי</label>
+      <input class="override-input" type="text" name="expected_instructor" value="${v('expected_instructor')}">
+    </div>
+    <div class="override-field">
+      <label class="override-label">הערה על שינוי מרצה</label>
+      <textarea class="override-input" name="known_instructor_notes" rows="2">${v('known_instructor_notes')}</textarea>
+    </div>
+  </div>
+  <div class="override-actions">
+    <button class="btn btn-primary" id="override-save-btn">שמירה מקומית 💾</button>
+    <button class="btn btn-ghost"   id="override-export-btn">ייצוא JSON 📤</button>
+    <span id="override-save-msg" style="display:none;font-size:.75rem;color:var(--success);font-weight:600">✓ נשמר!</span>
+  </div>
+</div>`;
+}
+
 /* ── Course details modal ───────────────────────────────────────────────── */
+
+/**
+ * Assemble a structured text summary of all grounded data available for a
+ * course. This is the context that will be injected into the AI prompt when
+ * the API is connected.
+ *
+ * TODO: Pass this string to POST /api/ai/course-chat alongside the question
+ *       when implementing the real API call in handleAiSend().
+ */
+function buildCourseContext(c) {
+  const ov = getOverride(c.course_id);
+  const lines = [];
+
+  if (c.name_he)         lines.push(`שם קורס: ${c.name_he} (${c.course_id})`);
+  if (c.weekly_hours != null)
+                         lines.push(`שעות שבועיות: ${c.weekly_hours}`);
+  if (c.difficulty_level)
+                         lines.push(`רמת קושי: ${DIFF_HE[c.difficulty_level] || c.difficulty_level} (ציון ${c.difficulty_score})`);
+
+  const prereqs = (c.prerequisite_details || []).map(d => d.name_he ? `${d.name_he} (${d.course_id})` : d.course_id);
+  if (prereqs.length)    lines.push(`דרישות קדם: ${prereqs.join(', ')}`);
+  if (c.missing_prerequisites?.length)
+                         lines.push(`דרישות קדם חסרות: ${c.missing_prerequisites.join(', ')}`);
+
+  const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
+  lines.push(`סילבוס: ${hasSyllabus ? 'זמין' : 'לא זמין'}`);
+  if (hasSyllabus && c.syllabus_url) lines.push(`קישור סילבוס: ${c.syllabus_url}`);
+
+  const gs = c.grade_signal;
+  if (gs) {
+    if (gs.average_grade      != null) lines.push(`ממוצע היסטורי: ${gs.average_grade}`);
+    if (gs.median_grade       != null) lines.push(`חציון היסטורי: ${gs.median_grade}`);
+    if (gs.standard_deviation != null) lines.push(`סטיית תקן: ${gs.standard_deviation}`);
+    if (gs.pass_rate          != null) lines.push(`שיעור עוברים: ${Math.round(gs.pass_rate * 100)}%`);
+    if (gs.num_students_total != null) lines.push(`סה״כ סטודנטים: ${gs.num_students_total}`);
+    if (gs.years_available?.length)    lines.push(`שנים: ${gs.years_available.join(', ')}`);
+    lines.push(`מקור ציונים: ${gs.source_name || 'TAU Refactor'} (לא רשמי)`);
+  }
+
+  const iu = c.instructor_uncertainty;
+  if (iu) {
+    if (iu.current_lecturers?.length)    lines.push(`מרצה נוכחי: ${iu.current_lecturers.join(', ')}`);
+    if (iu.historical_lecturers?.length) lines.push(`מרצים היסטוריים: ${iu.historical_lecturers.join(', ')}`);
+    if (iu.instructor_uncertainty_score != null)
+                                         lines.push(`אי-ודאות מרצה: ${Math.round(iu.instructor_uncertainty_score * 100)}%`);
+    if (iu.instructor_changed_warning)   lines.push('אזהרה: מרצה שונה מהנתונים ההיסטוריים');
+  }
+  if (ov?.expected_instructor)         lines.push(`מרצה צפוי (משתמש): ${ov.expected_instructor}`);
+  if (ov?.known_instructor_notes)      lines.push(`הערות מרצה (משתמש): ${ov.known_instructor_notes}`);
+
+  if (ov?.user_notes)                  lines.push(`הערות משתמש: ${ov.user_notes}`);
+  if (ov?.manual_weekly_hours != null) lines.push(`שעות ידניות: ${ov.manual_weekly_hours}`);
+  if (ov?.manual_conceptual_complexity_note)
+                                       lines.push(`הערת מורכבות: ${ov.manual_conceptual_complexity_note}`);
+
+  return lines.join('\n');
+}
+
+const _AI_SUGGESTED_PROMPTS = [
+  'הסבר לי מה לומדים בקורס לפי הסילבוס',
+  'האם הקורס מתאים למי שמעדיף עומס קל?',
+  'אילו קורסים כדאי לקחת לפניו?',
+  'מה חסר במידע על הקורס?',
+];
+
+function buildAiChatPanel(c) {
+  const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
+  const ctxNote = hasSyllabus
+    ? 'כשה-API יחובר, הניתוח יתבסס על: סילבוס, נתוני קורס, ציונים היסטוריים, והערות שהזנת.'
+    : 'אין סילבוס שמור — הניתוח יוגבל למידע הקורס הבסיסי.';
+
+  const promptBtns = _AI_SUGGESTED_PROMPTS.map(p =>
+    `<button class="ai-prompt-btn" data-prompt="${esc(p)}">💬 ${esc(p)}</button>`
+  ).join('');
+
+  // TODO: Wire up to POST /api/ai/course-chat when backend AI provider is ready.
+  //       Expected payload: { course_id, question, context: buildCourseContext(c) }
+  //       Expected response: { answer: string }
+  return `<div class="ai-chat-wrap">
+    <div>
+      <div class="ai-suggested-label">שאלות מוצעות</div>
+      <div class="ai-suggested-prompts" id="ai-prompt-list">${promptBtns}</div>
+    </div>
+    <div class="ai-input-area">
+      <textarea id="ai-chat-input" class="ai-textarea-chat" rows="3"
+        placeholder="שאל שאלה על הקורס…" dir="rtl"></textarea>
+      <div class="ai-send-row">
+        <button id="ai-chat-send" class="ai-send-btn">שלח ›</button>
+      </div>
+    </div>
+    <div id="ai-chat-response" class="ai-response-area ai-empty"></div>
+    <div class="ai-no-api-note">
+      🔗 ממשק AI טרם חובר. לחיצה על "שלח" תציג תצוגה מקדימה של ההקשר שיישלח ל-AI.
+    </div>
+    <div class="ai-context-note">ℹ ${esc(ctxNote)}</div>
+  </div>`;
+}
+
+/**
+ * Handle the AI send button.
+ * TODO: Replace the placeholder logic below with a real fetch() call once
+ *       the backend exposes POST /api/ai/course-chat.
+ */
+function handleAiSend(c) {
+  const input    = document.getElementById('ai-chat-input');
+  const respEl   = document.getElementById('ai-chat-response');
+  const sendBtn  = document.getElementById('ai-chat-send');
+  const question = input.value.trim();
+  if (!question) return;
+
+  sendBtn.disabled = true;
+  respEl.className = 'ai-response-area ai-loading';
+  respEl.textContent = 'מכין תשובה…';
+
+  // TODO: Replace setTimeout below with a real API call:
+  //   const payload = { course_id: c.course_id, question, context: buildCourseContext(c) };
+  //   const res = await fetch('/api/ai/course-chat', { method:'POST',
+  //     headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  //   const { answer } = await res.json();
+  //   respEl.textContent = answer;
+  setTimeout(() => {
+    const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
+    const ctx = buildCourseContext(c);
+    respEl.className = 'ai-response-area';
+
+    let text = '';
+    if (!hasSyllabus) text += '⚠ אין סילבוס שמור, ולכן הניתוח מוגבל.\n\n';
+    text += `[UI בלבד — API טרם חובר]\n\nשאלה: ${question}\n\nהקשר שיישלח ל-AI:\n${ctx}`;
+    respEl.textContent = text;
+    sendBtn.disabled = false;
+  }, 400);
+}
+
 function syllabusLink(c) {
   if (c.syllabus_url) return c.syllabus_url;
   if (c.syllabus_links?.length) return c.syllabus_links[0];
@@ -1295,6 +1823,8 @@ function syllabusLink(c) {
 function openCourseDetails(cid) {
   const c = courseMap[cid];
   if (!c) return;
+
+  const existingOverride = getOverride(cid);
 
   const type   = c.course_type      || 'elective';
   const status = c.status           || 'eligible';
@@ -1342,17 +1872,177 @@ function openCourseDetails(cid) {
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
   ].filter(Boolean).join('');
 
+  /* Difficulty breakdown section */
+  const hasDiffData = c.workload_score != null || c.conceptual_complexity_score != null
+                      || c.prerequisite_depth_score != null || c.assessment_intensity_score != null;
+  const diffSection = (() => {
+    if (!hasDiffData) return '';
+    const conf = c.difficulty_confidence;
+    const pct  = score => score != null ? Math.round((score - 1) / 4 * 100) : null;
+
+    const bar  = (label, score, color) => {
+      if (score == null) return '';
+      const p = pct(score);
+      return `<div class="diff-brow">
+        <span class="diff-blbl">${label}</span>
+        <div class="diff-btrack"><div class="diff-bfill" style="width:${p}%;background:${color}"></div></div>
+        <span class="diff-bval">${score.toFixed(1)}</span>
+      </div>`;
+    };
+
+    const bars = [
+      bar('מורכבות מושגית',  c.conceptual_complexity_score, 'var(--purple)'),
+      bar('עומס לימודי',       c.workload_score,              '#3B82F6'),
+      bar('עומק דרישות קדם',  c.prerequisite_depth_score,    'var(--success)'),
+      bar('עצימות הערכה',     c.assessment_intensity_score,  'var(--warning)'),
+    ].filter(Boolean).join('');
+
+    const confHtml = conf != null
+      ? `<div class="diff-conf">ביטחון: <strong>${Math.round(conf*100)}%</strong></div>`
+      : '';
+
+    const lowConfWarn = conf != null && conf < 0.6
+      ? `<div class="detail-warn" style="margin-top:6px">⚠ מדד הקושי אינו ודאי כי חסר סילבוס או מידע שעות.</div>`
+      : '';
+
+    const diffWarns = (c.difficulty_warnings || []).map(w =>
+      `<div class="detail-warn">⚠ ${esc(w)}</div>`).join('');
+
+    return mkSection('פירוט מדד הקושי', bars + confHtml + lowConfWarn + diffWarns);
+  })();
+
+  /* Grade statistics section (secondary / unofficial) */
+  const gradeSection = (() => {
+    const gs = c.grade_signal;
+    if (!gs) return '';
+    const pct = gs.pass_rate != null ? `${Math.round(gs.pass_rate * 100)}%` : null;
+    const rows = [
+      gs.average_grade      != null ? mkRow('ממוצע:',           `${gs.average_grade}`)    : '',
+      gs.median_grade       != null ? mkRow('חציון:',           `${gs.median_grade}`)      : '',
+      gs.standard_deviation != null ? mkRow('סטיית תקן:',      `${gs.standard_deviation}`) : '',
+      pct                           ? mkRow('שיעור עוברים:',   pct)                        : '',
+      gs.num_students_total != null ? mkRow('סה״כ סטודנטים:', `${gs.num_students_total}`)  : '',
+      gs.years_available?.length    ? mkRow('שנים זמינות:',    gs.years_available.join(', ')) : '',
+      mkRow('מקור:', `<span style="color:var(--text-muted);font-size:.68rem">${esc(gs.source_name || 'TAU Refactor')}</span>`),
+    ].filter(Boolean).join('');
+    const unofficialWarn = `<div class="detail-warn" style="margin-top:6px">⚠ מקור לא רשמי; לא בהכרח משקף את הסמסטר הקרוב.</div>`;
+    return mkSection('נתוני ציונים היסטוריים', rows + unofficialWarn);
+  })();
+
+  /* Instructor uncertainty section */
+  const instructorSection = (() => {
+    const iu = c.instructor_uncertainty;
+
+    // Merge backend instructor_notes with user's localStorage override fields
+    const ov = getOverride(cid);
+    const userExpected = ov?.expected_instructor?.trim()        || null;
+    const userNotes    = ov?.known_instructor_notes?.trim()     || null;
+
+    // If nothing at all, render a minimal note only when current lecturer is unknown
+    const hasBacked = iu && (iu.current_lecturers?.length || iu.historical_lecturers?.length
+                             || iu.instructor_uncertainty_score > 0 || iu.warnings?.length);
+    const hasUserData = userExpected || userNotes;
+    if (!hasBacked && !hasUserData) return '';
+
+    const score = iu?.instructor_uncertainty_score ?? null;
+    const scoreColor = score == null ? '#9CA3AF'
+      : score < 0.30 ? 'var(--success)'
+      : score < 0.60 ? 'var(--warning)'
+      : 'var(--danger)';
+
+    let html = '';
+
+    // Score bar
+    if (score != null) {
+      const pct = Math.round(score * 100);
+      html += `<div class="iu-score-row">
+        <div class="iu-track"><div class="iu-fill" style="width:${pct}%;background:${scoreColor}"></div></div>
+        <span class="iu-val">${pct}%</span>
+      </div>`;
+    }
+
+    // Current lecturers (backend data + user override)
+    const currentAll = [...(iu?.current_lecturers || [])];
+    if (userExpected && !currentAll.includes(userExpected)) currentAll.push(userExpected);
+    if (currentAll.length) {
+      html += mkRow('מרצה נוכחי:', '');
+      html += `<div class="iu-lecturers">${currentAll.map(n => `<span class="iu-lecturer-tag">${esc(n)}</span>`).join('')}</div>`;
+    }
+
+    // Historical lecturers
+    const hist = iu?.historical_lecturers || [];
+    if (hist.length) {
+      html += mkRow('מרצים היסטוריים:', '');
+      html += `<div class="iu-lecturers">${hist.map(n => `<span class="iu-lecturer-tag" style="opacity:.7">${esc(n)}</span>`).join('')}</div>`;
+    }
+
+    // Warnings from backend
+    const iuWarns = (iu?.warnings || []).map(w =>
+      `<div class="detail-warn" style="margin-top:5px">⚠ ${esc(w)}</div>`
+    ).join('');
+    html += iuWarns;
+
+    // User-provided instructor notes (from localStorage)
+    if (userNotes) {
+      html += `<div class="iu-user-note">✏ <strong>הערת משתמש:</strong> ${esc(userNotes)}</div>`;
+    }
+
+    return mkSection('אי־ודאות מרצה', html || '<div class="detail-none">אין מידע מרצה</div>');
+  })();
+
   /* Prerequisites section */
-  const prereqSection = (prereqs.length || missing.length) ? mkSection('דרישות קדם',
-    (prereqs.length
-      ? `<div class="detail-chips">${prereqs.map(p=>`<span class="detail-chip">${esc(p)}</span>`).join('')}</div>`
-      : '<div class="detail-none">אין דרישות קדם</div>'
-    ) +
-    (missing.length
-      ? `<div style="margin-top:6px"><div class="detail-section-title" style="color:var(--danger)">דרישות קדם חסרות</div>
-           <div class="detail-chips">${missing.map(p=>`<span class="detail-chip missing">${esc(p)}</span>`).join('')}</div></div>`
-      : '')
-  ) : '';
+  const prereqDetails  = (c.prerequisite_details         || []);
+  const missingDetails = (c.missing_prerequisite_details || []);
+
+  const mkPrereqChip = (detail, isMissing) => {
+    const cls = isMissing ? 'detail-chip missing' : 'detail-chip';
+    if (detail.name_he) {
+      return `<span class="${cls}">${esc(detail.name_he)} <span class="prereq-id">(${esc(detail.course_id)})</span></span>`;
+    }
+    return `<span class="${cls} prereq-no-name">${esc(detail.course_id)} <span class="prereq-id">— שם לא נמצא</span></span>`;
+  };
+
+  const prereqChipsHtml = prereqDetails.length
+    ? `<div class="detail-chips">${prereqDetails.map(d => mkPrereqChip(d, false)).join('')}</div>`
+    : (prereqs.length
+        ? `<div class="detail-chips">${prereqs.map(p=>`<span class="detail-chip">${esc(p)}</span>`).join('')}</div>`
+        : '<div class="detail-none">אין דרישות קדם</div>');
+
+  const missingChipsHtml = missingDetails.length
+    ? `<div style="margin-top:6px"><div class="detail-section-title" style="color:var(--danger)">דרישות קדם חסרות</div>
+         <div class="detail-chips">${missingDetails.map(d => mkPrereqChip(d, true)).join('')}</div></div>`
+    : (missing.length
+        ? `<div style="margin-top:6px"><div class="detail-section-title" style="color:var(--danger)">דרישות קדם חסרות</div>
+             <div class="detail-chips">${missing.map(p=>`<span class="detail-chip missing">${esc(p)}</span>`).join('')}</div></div>`
+        : '');
+
+  const prereqSection = (prereqs.length || missing.length || prereqDetails.length || missingDetails.length)
+    ? mkSection('דרישות קדם', prereqChipsHtml + missingChipsHtml)
+    : '';
+
+  /* Prerequisite validation status section (only for placed courses) */
+  const validationSection = (() => {
+    const vr = boardValidation[cid];
+    if (!vr) return '';
+
+    const statusColor = vr.valid ? 'var(--success)' : 'var(--danger)';
+    const statusIcon  = vr.valid ? '✅' : '❌';
+    const statusText  = vr.valid ? 'כל דרישות הקדם מסופקות' : 'דרישות קדם לא מסופקות';
+    const header = `<div style="margin-bottom:8px;font-weight:600;color:${statusColor}">${statusIcon} ${statusText}</div>`;
+
+    const chips = (ids, cls) =>
+      `<div class="detail-chips">${ids.map(p => `<span class="detail-chip ${cls}">${esc(_prereqName(p))} <span class="prereq-id">(${esc(p)})</span></span>`).join('')}</div>`;
+
+    const rows = [
+      vr.ok_completed.length ? mkRow('הושלמו לפני:',   chips(vr.ok_completed, ''))        : '',
+      vr.ok_earlier.length   ? mkRow('סמסטר קודם:',    chips(vr.ok_earlier,   ''))        : '',
+      vr.same_sem.length     ? mkRow('אותו סמסטר:',    chips(vr.same_sem,     'missing')) : '',
+      vr.too_late.length     ? mkRow('סמסטר מאוחר:',   chips(vr.too_late,     'missing')) : '',
+      vr.missing.length      ? mkRow('לא שובצו כלל:',  chips(vr.missing,      'missing')) : '',
+    ].filter(Boolean).join('');
+
+    return mkSection('בדיקת דרישות קדם', header + rows);
+  })();
 
   /* Warnings section */
   const warnSection = warns.length
@@ -1375,6 +2065,13 @@ function openCourseDetails(cid) {
     ? '<span class="detail-syl-note">סילבוס לא זמין במידע שנשמר</span>'
     : '';
 
+  /* Override sections */
+  const overrideDisplaySection = buildOverrideDisplaySection(existingOverride, mkSection, mkRow);
+  const overrideEditPanel      = buildOverridePanel(cid, existingOverride);
+
+  /* AI chat panel */
+  const aiPanelHtml = buildAiChatPanel(c);
+
   /* Assemble panel */
   document.getElementById('detail-panel').innerHTML = `
     <div class="detail-head">
@@ -1385,15 +2082,31 @@ function openCourseDetails(cid) {
       <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
       <div class="detail-badges">${typeBdg} ${diffBdg} ${hoursHtml}</div>
     </div>
-    <div class="detail-body">
-      ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
-      ${prereqSection}
-      ${warnSection}
-      ${qualSection}
+    <div class="detail-tabs">
+      <button class="detail-tab active" data-tab="info">פרטי קורס</button>
+      <button class="detail-tab" data-tab="ai">🤖 שיחה עם AI</button>
+    </div>
+    <div class="detail-body tabbed">
+      <div class="detail-tab-panel active" id="dtab-info">
+        ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
+        ${diffSection}
+        ${gradeSection}
+        ${instructorSection}
+        ${validationSection}
+        ${prereqSection}
+        ${warnSection}
+        ${qualSection}
+        ${overrideDisplaySection}
+        ${overrideEditPanel}
+      </div>
+      <div class="detail-tab-panel" id="dtab-ai">
+        ${aiPanelHtml}
+      </div>
     </div>
     <div class="detail-foot">
       ${sylBtn}
       ${sylNote}
+      <button class="btn btn-ghost" id="override-edit-btn">✏ עריכת מידע חסר</button>
       <button class="btn btn-ghost" id="detail-close-btn" style="margin-inline-start:auto">סגור</button>
     </div>`;
 
@@ -1403,6 +2116,45 @@ function openCourseDetails(cid) {
 
   document.getElementById('detail-close-x').addEventListener('click', closeDetails);
   document.getElementById('detail-close-btn').addEventListener('click', closeDetails);
+  document.getElementById('override-edit-btn').addEventListener('click', () => {
+    const panel = document.getElementById('override-panel');
+    if (panel.hasAttribute('hidden')) panel.removeAttribute('hidden');
+    else panel.setAttribute('hidden', '');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  document.getElementById('override-save-btn').addEventListener('click', () => {
+    saveOverride(cid);
+    const msg = document.getElementById('override-save-msg');
+    msg.style.display = 'inline';
+    setTimeout(() => { msg.style.display = 'none'; }, 1800);
+  });
+  document.getElementById('override-export-btn').addEventListener('click', exportOverrides);
+
+  /* Tab switching */
+  document.querySelectorAll('.detail-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.detail-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.detail-tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`dtab-${tab}`).classList.add('active');
+    });
+  });
+
+  /* AI suggested prompts → populate textarea */
+  document.getElementById('ai-prompt-list').addEventListener('click', e => {
+    const btn = e.target.closest('.ai-prompt-btn');
+    if (!btn) return;
+    const input = document.getElementById('ai-chat-input');
+    input.value = btn.dataset.prompt;
+    input.focus();
+  });
+
+  /* AI send */
+  document.getElementById('ai-chat-send').addEventListener('click', () => handleAiSend(c));
+  document.getElementById('ai-chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAiSend(c);
+  });
 }
 
 function closeDetails() {
@@ -1443,6 +2195,76 @@ function isLocked(c) {
          !(state?.unlockedIds||[]).includes(c.course_id);
 }
 
+/* ── Prerequisite validation (client-side mirror of plan_validator.py) ──── */
+function _prereqName(cid) {
+  return courseMap[cid]?.name_he || cid;
+}
+
+function validatePlacement(courseId, targetSemId) {
+  const semIds   = SEMESTERS.map(s => s.id);
+  const targetIdx = semIds.indexOf(targetSemId);
+  if (targetIdx === -1) {
+    return { valid: false, missing: [], too_late: [], same_sem: [], ok_completed: [], ok_earlier: [], errors: [] };
+  }
+
+  // Build index: courseId → semesterIndex, excluding the course being validated
+  const courseSemIdx = {};
+  for (let i = 0; i < semIds.length; i++) {
+    for (const cid of (state.semesters[semIds[i]] || [])) {
+      if (cid !== courseId) courseSemIdx[cid] = i;
+    }
+  }
+
+  const prereqs      = courseMap[courseId]?.prerequisites || [];
+  const completedSet = new Set(completedCourseIds);
+  const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [];
+
+  for (const prereq of prereqs) {
+    if (completedSet.has(prereq)) {
+      ok_completed.push(prereq);
+    } else if (prereq in courseSemIdx) {
+      const idx = courseSemIdx[prereq];
+      if (idx < targetIdx)      ok_earlier.push(prereq);
+      else if (idx === targetIdx) same_sem.push(prereq);
+      else                       too_late.push(prereq);
+    } else {
+      missing.push(prereq);
+    }
+  }
+
+  const valid  = missing.length === 0 && too_late.length === 0 && same_sem.length === 0;
+  const errors = [...missing, ...too_late, ...same_sem];
+  return { valid, missing, too_late, same_sem, ok_completed, ok_earlier, errors };
+}
+
+function revalidateBoard() {
+  boardValidation = {};
+  for (const [semId, ids] of Object.entries(state.semesters)) {
+    for (const cid of (ids || [])) {
+      boardValidation[cid] = validatePlacement(cid, semId);
+    }
+  }
+}
+
+/* ── Board notification toast ───────────────────────────────────────────── */
+function showBoardNotify(msg) {
+  let el = document.getElementById('board-notify');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'board-notify';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.removeAttribute('hidden');
+  clearTimeout(_notifyTimer);
+  _notifyTimer = setTimeout(hideBoardNotify, 3500);
+}
+
+function hideBoardNotify() {
+  const el = document.getElementById('board-notify');
+  if (el) el.setAttribute('hidden', '');
+}
+
 /* ── Drag & Drop ────────────────────────────────────────────────────────── */
 function setupDragDelegation() {
   document.addEventListener('dragstart', e => {
@@ -1463,7 +2285,10 @@ function setupDragDelegation() {
   document.addEventListener('dragend', e => {
     const card = e.target.closest('.course-card');
     if (card) card.classList.remove('dragging');
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    document.querySelectorAll('.drag-over,.drag-valid,.drag-invalid').forEach(el => {
+      el.classList.remove('drag-over', 'drag-valid', 'drag-invalid');
+      delete el.dataset.dragErr;
+    });
     dragId = null; dragFromSem = null;
   });
 
@@ -1471,23 +2296,50 @@ function setupDragDelegation() {
     const zone = e.target.closest('[data-zone]');
     if (!zone) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
     zone.classList.add('drag-over');
+
+    if (dragId && zone.dataset.zone === 'semester') {
+      const vr = validatePlacement(dragId, zone.dataset.sem);
+      zone.classList.toggle('drag-valid',   vr.valid);
+      zone.classList.toggle('drag-invalid', !vr.valid);
+      if (!vr.valid) {
+        zone.dataset.dragErr = `חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`;
+        e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
+      } else {
+        delete zone.dataset.dragErr;
+        e.dataTransfer.dropEffect = 'move';
+      }
+    } else {
+      e.dataTransfer.dropEffect = 'move';
+    }
   });
 
   document.addEventListener('dragleave', e => {
     const zone = e.target.closest('[data-zone]');
     if (!zone) return;
-    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+    if (!zone.contains(e.relatedTarget)) {
+      zone.classList.remove('drag-over', 'drag-valid', 'drag-invalid');
+      delete zone.dataset.dragErr;
+    }
   });
 
   document.addEventListener('drop', e => {
     const zone = e.target.closest('[data-zone]');
     if (!zone) return;
     e.preventDefault();
-    zone.classList.remove('drag-over');
+    zone.classList.remove('drag-over', 'drag-valid', 'drag-invalid');
+    delete zone.dataset.dragErr;
+
     const id    = e.dataTransfer.getData('text/plain') || dragId;
     const toSem = zone.dataset.zone === 'semester' ? zone.dataset.sem : null;
+
+    if (id && toSem) {
+      const vr = validatePlacement(id, toSem);
+      if (!vr.valid && !allowInvalidPlacement) {
+        showBoardNotify(`לא ניתן לשבץ: חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`);
+        return;
+      }
+    }
     moveCourse(id, dragFromSem, toSem);
   });
 

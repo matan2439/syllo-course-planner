@@ -6,6 +6,8 @@ from app.database.db import (
     init_db,
     save_merged_course,
     get_course_by_id,
+    get_course_display_name,
+    get_course_display_names,
     list_courses,
     get_prerequisites,
     _split_time_slot,
@@ -205,6 +207,71 @@ def test_reimport_replaces_prerequisites(tmp_db):
     save_merged_course(no_prereqs, tmp_db)
     record = get_course_by_id("0368-2157", tmp_db)
     assert record["prerequisite_course_ids"] == []
+
+
+# ---------------------------------------------------------------------------
+# get_course_display_name
+# ---------------------------------------------------------------------------
+
+def test_display_name_returns_name_he(tmp_db):
+    save_merged_course(MERGED, tmp_db)
+    name = get_course_display_name("0368-2157", tmp_db)
+    assert name == "תוכנה 1"
+
+
+def test_display_name_fallback_to_name_en(tmp_db):
+    course = {**MERGED, "name_he": None, "name_en": "Software 1"}
+    save_merged_course(course, tmp_db)
+    name = get_course_display_name("0368-2157", tmp_db)
+    assert name == "Software 1"
+
+
+def test_display_name_none_when_not_found(tmp_db):
+    assert get_course_display_name("9999-9999", tmp_db) is None
+
+
+def test_display_name_none_when_no_db(tmp_path):
+    absent_db = tmp_path / "absent.sqlite"
+    assert get_course_display_name("0368-2157", absent_db) is None
+
+
+def test_display_name_normalizes_digits(tmp_db):
+    save_merged_course(MERGED, tmp_db)
+    assert get_course_display_name("03682157", tmp_db) == "תוכנה 1"
+
+
+# ---------------------------------------------------------------------------
+# get_course_display_names (batch)
+# ---------------------------------------------------------------------------
+
+def test_display_names_batch_known(tmp_db):
+    save_merged_course(MERGED, tmp_db)
+    result = get_course_display_names(["0368-2157"], tmp_db)
+    assert result["0368-2157"] == "תוכנה 1"
+
+
+def test_display_names_batch_unknown_maps_to_none(tmp_db):
+    save_merged_course(MERGED, tmp_db)
+    result = get_course_display_names(["0368-2157", "9999-9999"], tmp_db)
+    assert result["9999-9999"] is None
+
+
+def test_display_names_batch_empty_input(tmp_db):
+    assert get_course_display_names([], tmp_db) == {}
+
+
+def test_display_names_batch_no_db(tmp_path):
+    absent_db = tmp_path / "absent.sqlite"
+    result = get_course_display_names(["0368-2157"], absent_db)
+    assert result == {"0368-2157": None}
+
+
+def test_display_names_batch_preserves_original_keys(tmp_db):
+    save_merged_course(MERGED, tmp_db)
+    # Pass un-normalized key; result should map the original key
+    result = get_course_display_names(["03682157"], tmp_db)
+    assert "03682157" in result
+    assert result["03682157"] == "תוכנה 1"
 
 
 # ---------------------------------------------------------------------------

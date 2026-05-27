@@ -22,6 +22,7 @@ def build_course_plan(
     max_total_weekly_hours: float | None = None,
     max_difficulty: float | None = None,
     limit: int = 5,
+    program_requirements: dict[str, Any] | None = None,
     db_path: Path = _DB_PATH,
 ) -> dict[str, Any]:
     """
@@ -52,21 +53,26 @@ def build_course_plan(
 
     total_eligible = len(eligible) + len(over_difficulty)
 
+    # Required categories from program requirements
+    required_cat_ids = _get_required_category_ids(program_requirements)
+
     # Unlocked counts from DB (best-effort; returns {} if DB absent)
     unlocked = _get_unlocked_counts([c["course_id"] for c in eligible], db_path)
 
     # Rank and sort (descending — best first)
+    # Courses from unsatisfied required categories get a large bonus
     ranked = sorted(
         eligible,
-        key=lambda c: _rank_score(c, unlocked.get(c["course_id"], 0)),
+        key=lambda c: _rank_score(c, unlocked.get(c["course_id"], 0), required_cat_ids),
         reverse=True,
     )
 
-    # Greedy selection
-    selected: list[dict] = []
-    over_budget: list[dict] = []
+    # Greedy selection with dynamic category tracking
+    selected:      list[dict] = []
+    over_budget:   list[dict] = []
     limit_reached: list[dict] = []
-    used_hours = 0.0
+    used_hours     = 0.0
+    satisfied_cats: set[str]  = set()
 
     for c in ranked:
         if len(selected) >= limit:
@@ -78,6 +84,9 @@ def build_course_plan(
             continue
         selected.append(c)
         used_hours += hours
+        cat_id = c.get("program_category_id")
+        if cat_id:
+            satisfied_cats.add(cat_id)
 
     # Output metrics
     known_hours = [c["weekly_hours"] for c in selected if c.get("weekly_hours") is not None]
@@ -92,7 +101,10 @@ def build_course_plan(
     )
 
     return {
-        "selected_courses": [_format_course(c, unlocked.get(c["course_id"], 0)) for c in selected],
+        "selected_courses": [
+            _format_course(c, unlocked.get(c["course_id"], 0), required_cat_ids)
+            for c in selected
+        ],
         "total_weekly_hours": total_hours,
         "average_difficulty": avg_diff,
         "explanation": explanation,
@@ -100,9 +112,9 @@ def build_course_plan(
             "total_eligible": total_eligible,
             "not_selected": len(over_difficulty) + len(over_budget) + len(limit_reached),
             "rejection_reasons": {
-                "over_difficulty":  len(over_difficulty),
+                "over_difficulty":   len(over_difficulty),
                 "over_hours_budget": len(over_budget),
-                "limit_reached":    len(limit_reached),
+                "limit_reached":     len(limit_reached),
             },
         },
     }
@@ -112,8 +124,15 @@ def build_course_plan(
 # Ranking
 # ---------------------------------------------------------------------------
 
-def _rank_score(course: dict[str, Any], unlocked_count: int) -> float:
+def _rank_score(
+    course: dict[str, Any],
+    unlocked_count: int,
+    required_cat_ids: set[str] | None = None,
+) -> float:
     score = 0.0
+    cat_id = course.get("program_category_id")
+    if required_cat_ids and cat_id in required_cat_ids:
+        score += 10.0                  # strong bonus for filling a required category (beats max difficulty bonus of 8.0)
     diff = course.get("difficulty_score")
     if diff is not None:
         score += (5.0 - diff) * 2.0   # lower difficulty → higher score
@@ -126,6 +145,33 @@ def _rank_score(course: dict[str, Any], unlocked_count: int) -> float:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _get_required_category_ids(
+    program_requirements: dict[str, Any] | None,
+) -> set[str]:
+    """Return the set of elective_category IDs that have min_courses > 0 and no needs_review flag."""
+    if not program_requirements:
+        return set()
+    reqs = program_requirements.get("requirements", {})
+    return {
+        cat["category_id"]
+        for cat in reqs.get("elective_categories", [])
+        if cat.get("min_courses", 1) > 0 and not cat.get("needs_review")
+    }
+
+
+def _selection_reason(
+    course: dict[str, Any],
+    required_cat_ids: set[str] | None,
+) -> str:
+    cat_id   = course.get("program_category_id")
+    cat_name = course.get("program_category_name_he")
+    if required_cat_ids and cat_id and cat_id in required_cat_ids:
+        return f"הקורס נבחר כדי להשלים את קטגוריית {cat_name or cat_id}"
+    if not cat_id or cat_id == "uncategorized":
+        return "הקורס נבחר כבחירה נוספת להשלמת מכסת השעות"
+    return f"הקורס נבחר כבחירה נוספת מקטגוריית {cat_name or cat_id}"
+
 
 def _get_unlocked_counts(course_ids: list[str], db_path: Path) -> dict[str, int]:
     if not db_path.exists():
@@ -140,14 +186,22 @@ def _get_unlocked_counts(course_ids: list[str], db_path: Path) -> dict[str, int]
     return result
 
 
-def _format_course(course: dict[str, Any], unlocked_count: int) -> dict[str, Any]:
+def _format_course(
+    course: dict[str, Any],
+    unlocked_count: int,
+    required_cat_ids: set[str] | None = None,
+) -> dict[str, Any]:
     return {
-        "course_id":              course["course_id"],
-        "name_he":                course.get("name_he"),
-        "difficulty_score":       course.get("difficulty_score"),
-        "difficulty_level":       course.get("difficulty_level"),
-        "weekly_hours":           course.get("weekly_hours"),
-        "unlocked_courses_count": unlocked_count,
+        "course_id":                  course["course_id"],
+        "name_he":                    course.get("name_he"),
+        "difficulty_score":           course.get("difficulty_score"),
+        "difficulty_level":           course.get("difficulty_level"),
+        "weekly_hours":               course.get("weekly_hours"),
+        "unlocked_courses_count":     unlocked_count,
+        "program_category_id":        course.get("program_category_id"),
+        "program_category_name_he":   course.get("program_category_name_he"),
+        "needs_category_review":      course.get("needs_category_review", False),
+        "selection_reason":           _selection_reason(course, required_cat_ids),
     }
 
 
@@ -183,6 +237,8 @@ if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="TAU course plan builder")
     cli.add_argument("--audit-json",             required=True,  metavar="PATH",
                      help="Path to elective audit JSON")
+    cli.add_argument("--program-json",           default=None,   metavar="PATH",
+                     help="Path to program JSON — enables category-aware selection")
     cli.add_argument("--profile",                default=None,   metavar="PATH",
                      help="Path to user profile JSON")
     cli.add_argument("--max-total-weekly-hours", type=float,     default=None, metavar="FLOAT",
@@ -204,6 +260,16 @@ if __name__ == "__main__":
 
     audit_results = json.loads(audit_path.read_text(encoding="utf-8"))
 
+    prog_reqs = None
+    if args.program_json:
+        from app.analysis.program_requirements import load_program_requirements
+        prog_path = Path(args.program_json)
+        if prog_path.exists():
+            prog_reqs = load_program_requirements(prog_path)
+            print(f"[plan] Program: {prog_reqs.get('program_name_he') or prog_path.name}")
+        else:
+            print(f"[warn] Program JSON not found: {prog_path}")
+
     profile = None
     if args.profile:
         from app.models.user_profile import load_user_profile
@@ -220,6 +286,7 @@ if __name__ == "__main__":
         max_total_weekly_hours = args.max_total_weekly_hours,
         max_difficulty         = max_difficulty,
         limit                  = args.limit,
+        program_requirements   = prog_reqs,
         db_path                = Path(args.db),
     )
 

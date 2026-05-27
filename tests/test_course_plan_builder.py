@@ -233,6 +233,8 @@ def test_selected_course_has_expected_fields(tmp_path):
     assert {
         "course_id", "name_he", "difficulty_score", "difficulty_level",
         "weekly_hours", "unlocked_courses_count",
+        "program_category_id", "program_category_name_he",
+        "needs_category_review", "selection_reason",
     } == set(c.keys())
 
 

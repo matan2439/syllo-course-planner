@@ -13,8 +13,16 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
-from app.database.db import _DB_PATH, get_course_by_id, get_prerequisites
+from app.database.db import _DB_PATH, get_course_by_id, get_prerequisites, get_course_display_names, get_grade_stats
 from app.analysis.eligibility_engine import normalize_course_id
+from app.analysis.instructor_uncertainty import estimate_instructor_uncertainty
+from app.analysis.plan_validator import validate_entire_board
+from app.analysis.program_requirements import (
+    build_course_category_map,
+    get_program_categories_for_frontend,
+    validate_program_plan,
+)
+from app.pipeline.bulk_import_courses import load_course_ids
 
 # Maps Hebrew semester strings stored in the DB to season codes
 _HEBREW_SEASON = {"א'": "a", "ב'": "b"}
@@ -29,6 +37,7 @@ def build_semester_board(
     program: dict[str, Any] | None = None,
     max_weekly_hours_per_semester: float | None = None,
     start_year: int = 3,
+    completed_course_ids: list[str] | None = None,
     db_path: Path = _DB_PATH,
 ) -> dict[str, Any]:
     """
@@ -48,6 +57,11 @@ def build_semester_board(
     semesters = _make_semesters(start_year)
     global_warnings: list[str] = []
 
+    # Build course→category map from program requirements (if present)
+    cat_map: dict[str, dict] = {}
+    if program and program.get("requirements"):
+        cat_map = build_course_category_map(program)
+
     # ── Mandatory courses from program JSON ──────────────────────────────────
     mandatory_by_sem: dict[str, list[dict]] = {s["id"]: [] for s in semesters}
     mandatory_hours:  dict[str, float]      = {s["id"]: 0.0 for s in semesters}
@@ -66,14 +80,24 @@ def build_semester_board(
                 if mc.get("weekly_hours") is not None:
                     mandatory_hours[sem_id] += mc["weekly_hours"]
 
+    # Filter electives to only courses allowed by program categories
+    allowed_ids = _build_allowed_course_ids(program) if program else None
+    if allowed_ids is not None:
+        courses = [c for c in courses if c["course_id"] in allowed_ids]
+
     # Electives must not duplicate a mandatory course
     courses = [c for c in courses if c["course_id"] not in mandatory_ids]
 
     if not courses:
-        return _build_output(
+        board = _build_output(
             semesters, {s["id"]: [] for s in semesters}, mandatory_by_sem,
-            global_warnings, start_year, {}, {}, {},
+            global_warnings, start_year, {}, {}, {}, db_path,
+            cat_map=cat_map,
         )
+        board = _annotate_validation(board, completed_course_ids or [])
+        if program and program.get("requirements"):
+            _annotate_program_requirements(board, program, completed_course_ids or [])
+        return board
 
     course_ids = [c["course_id"] for c in courses]
 
@@ -94,11 +118,16 @@ def build_semester_board(
     )
     global_warnings.extend(assign_warnings)
 
-    return _build_output(
+    board = _build_output(
         semesters, assignments, mandatory_by_sem,
         global_warnings, start_year,
-        all_prereqs, season_prefs, placement_confidence,
+        all_prereqs, season_prefs, placement_confidence, db_path,
+        cat_map=cat_map,
     )
+    board = _annotate_validation(board, completed_course_ids or [])
+    if program and program.get("requirements"):
+        _annotate_program_requirements(board, program, completed_course_ids or [])
+    return board
 
 
 # ---------------------------------------------------------------------------
@@ -122,27 +151,44 @@ def _load_mandatory_course(
         except Exception:
             pass
 
+    grade_stats = []
+    if db_path.exists():
+        try:
+            grade_stats = get_grade_stats(course_id, db_path)
+        except Exception:
+            pass
+
     if record is None:
         global_warns.append(
             f"Mandatory course {course_id} not found in database."
         )
         return {
-            "course_id":        course_id,
-            "name_he":          None,
-            "weekly_hours":     None,
-            "difficulty_score": None,
-            "difficulty_level": None,
-            "course_type":      "mandatory",
-            "prerequisites":    [],
-            "locked_by_user":   True,
-            "source":           "program",
+            "course_id":                   course_id,
+            "name_he":                     None,
+            "weekly_hours":                None,
+            "difficulty_score":            None,
+            "difficulty_level":            None,
+            "workload_score":              None,
+            "conceptual_complexity_score": None,
+            "prerequisite_depth_score":    None,
+            "assessment_intensity_score":  None,
+            "difficulty_confidence":       None,
+            "course_type":                 "mandatory",
+            "prerequisites":               [],
+            "prerequisite_details":        [],
+            "instructor_uncertainty":      estimate_instructor_uncertainty(None, grade_stats),
+            "locked_by_user":              True,
+            "source":                      "program",
             "data_quality": {
                 "has_weekly_hours":     False,
                 "has_semester_data":    True,
                 "has_difficulty_score": False,
                 "placement_confidence": "high",
             },
-            "warnings": ["Course not found in database."],
+            "warnings":      ["Course not found in database."],
+            "syllabus_url":  None,
+            "syllabus_links": [],
+            "source_urls":   [],
         }, global_warns
 
     hours   = _weekly_hours_from_record(record)
@@ -154,23 +200,54 @@ def _load_mandatory_course(
     if hours is None:
         course_warns.append("Missing weekly hours.")
 
+    # Syllabus URL from DB record
+    syllabus_links: list[str] = record.get("syllabus_links") or []
+    syllabus_url: str | None = None
+    for g in record.get("groups") or []:
+        if g.get("syllabus_url"):
+            syllabus_url = g["syllabus_url"]
+            break
+    if not syllabus_url and syllabus_links:
+        syllabus_url = syllabus_links[0]
+
+    # Prerequisite details with display names
+    prereq_name_map = get_course_display_names(prereqs, db_path) if prereqs else {}
+    prerequisite_details = [
+        {
+            "course_id":   p,
+            "name_he":     prereq_name_map.get(p),
+            "known_in_db": prereq_name_map.get(p) is not None,
+        }
+        for p in prereqs
+    ]
+
     return {
-        "course_id":        course_id,
-        "name_he":          record.get("name_he"),
-        "weekly_hours":     hours,
-        "difficulty_score": None,
-        "difficulty_level": None,
-        "course_type":      "mandatory",
-        "prerequisites":    prereqs,
-        "locked_by_user":   True,
-        "source":           "program",
+        "course_id":                   course_id,
+        "name_he":                     record.get("name_he"),
+        "weekly_hours":                hours,
+        "difficulty_score":            None,
+        "difficulty_level":            None,
+        "workload_score":              None,
+        "conceptual_complexity_score": None,
+        "prerequisite_depth_score":    None,
+        "assessment_intensity_score":  None,
+        "difficulty_confidence":       None,
+        "course_type":                 "mandatory",
+        "prerequisites":               prereqs,
+        "prerequisite_details":        prerequisite_details,
+        "instructor_uncertainty":      estimate_instructor_uncertainty(record, grade_stats),
+        "locked_by_user":              True,
+        "source":                      "program",
         "data_quality": {
             "has_weekly_hours":     hours is not None,
             "has_semester_data":    True,
             "has_difficulty_score": False,
             "placement_confidence": "high",
         },
-        "warnings": course_warns,
+        "warnings":      course_warns,
+        "syllabus_url":  syllabus_url,
+        "syllabus_links": syllabus_links,
+        "source_urls":   [],
     }, global_warns
 
 
@@ -183,6 +260,34 @@ def _weekly_hours_from_record(record: dict) -> float | None:
             total += float(val)
             found  = True
     return round(total, 1) if found else None
+
+
+# ---------------------------------------------------------------------------
+# Program filtering helpers
+# ---------------------------------------------------------------------------
+
+def _build_allowed_course_ids(program: dict) -> set[str] | None:
+    """
+    Return the set of normalized course IDs allowed by a program's course_categories.
+
+    Returns None when the program has no course_categories (no filtering applied).
+    For category entries with course_ids_file, loads the file relative to CWD.
+    Missing files are silently skipped so the board still renders.
+    """
+    categories = program.get("course_categories")
+    if categories is None:
+        return None
+    allowed: set[str] = set()
+    for cat in categories:
+        for cid in cat.get("course_ids", []):
+            allowed.add(normalize_course_id(cid))
+        fpath_str = cat.get("course_ids_file")
+        if fpath_str:
+            fpath = Path(fpath_str)
+            if fpath.exists():
+                for cid in load_course_ids(fpath):
+                    allowed.add(normalize_course_id(cid))
+    return allowed
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +514,18 @@ def _build_output(
     all_prereqs: dict[str, list[str]],
     season_prefs: dict[str, str | None],
     placement_confidence: dict[str, str],
+    db_path: Path = _DB_PATH,
+    cat_map: dict[str, dict] | None = None,
 ) -> dict[str, Any]:
+    # Batch-resolve prerequisite display names in one DB round-trip
+    all_prereq_ids: set[str] = set()
+    for pid_list in all_prereqs.values():
+        all_prereq_ids.update(pid_list)
+    prereq_name_map: dict[str, str | None] = (
+        get_course_display_names(list(all_prereq_ids), db_path)
+        if all_prereq_ids else {}
+    )
+
     courses_missing_hours     = 0
     courses_unknown_semester  = 0
     low_confidence_placements = 0
@@ -430,10 +546,15 @@ def _build_output(
 
         courses_out: list[dict] = []
 
-        # Mandatory courses — already fully formatted by _load_mandatory_course
+        # Mandatory courses — already fully formatted; add category info if available
         for mc in mandatory:
             if not mc["data_quality"]["has_weekly_hours"]:
                 courses_missing_hours += 1
+            if cat_map:
+                ci = cat_map.get(mc["course_id"])
+                mc.setdefault("program_category_id",      ci["category_id"]   if ci else None)
+                mc.setdefault("program_category_name_he", ci["name_he"]       if ci else None)
+                mc.setdefault("needs_category_review",    ci["needs_review"]  if ci else False)
             courses_out.append(mc)
 
         # Elective courses — format now
@@ -463,8 +584,12 @@ def _build_output(
                 "has_difficulty_score": has_difficulty,
                 "placement_confidence": confidence,
             }
+            cat_info = (cat_map or {}).get(cid)
             courses_out.append(
-                _format_course(c, all_prereqs.get(cid, []), data_quality, course_warnings)
+                _format_course(
+                    c, all_prereqs.get(cid, []), data_quality, course_warnings,
+                    prereq_name_map, cat_info,
+                )
             )
 
         semester_out.append({
@@ -495,20 +620,133 @@ def _format_course(
     prereqs: list[str],
     data_quality: dict[str, Any],
     course_warnings: list[str],
+    prereq_name_map: dict[str, str | None] | None = None,
+    cat_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # Syllabus URL fallback chain
+    syllabus_links = course.get("syllabus_links") or []
+    source_urls    = course.get("source_urls") or []
+    syllabus_url   = course.get("syllabus_url")
+    if not syllabus_url and syllabus_links:
+        syllabus_url = syllabus_links[0]
+    if not syllabus_url:
+        for url in source_urls:
+            if "syllabus" in url.lower():
+                syllabus_url = url
+                break
+
+    _name_map = prereq_name_map or {}
+    prerequisite_details = [
+        {
+            "course_id":   p,
+            "name_he":     _name_map.get(p),
+            "known_in_db": _name_map.get(p) is not None,
+        }
+        for p in prereqs
+    ]
+
     return {
-        "course_id":        course["course_id"],
-        "name_he":          course.get("name_he"),
-        "weekly_hours":     course.get("weekly_hours"),
-        "difficulty_score": course.get("difficulty_score"),
-        "difficulty_level": course.get("difficulty_level"),
-        "course_type":      "elective",
-        "prerequisites":    prereqs,
-        "locked_by_user":   False,
-        "source":           "auto",
-        "data_quality":     data_quality,
-        "warnings":         course_warnings,
+        "course_id":                   course["course_id"],
+        "name_he":                     course.get("name_he"),
+        "weekly_hours":                course.get("weekly_hours"),
+        "difficulty_score":            course.get("difficulty_score"),
+        "difficulty_level":            course.get("difficulty_level"),
+        "workload_score":              course.get("workload_score"),
+        "conceptual_complexity_score": course.get("conceptual_complexity_score"),
+        "prerequisite_depth_score":    course.get("prerequisite_depth_score"),
+        "assessment_intensity_score":  course.get("assessment_intensity_score"),
+        "difficulty_confidence":       course.get("difficulty_confidence"),
+        "course_type":                 "elective",
+        "prerequisites":               prereqs,
+        "prerequisite_details":        prerequisite_details,
+        "instructor_uncertainty":      course.get("instructor_uncertainty"),
+        "locked_by_user":              False,
+        "source":                      "auto",
+        "data_quality":                data_quality,
+        "warnings":                    course_warnings,
+        "syllabus_url":                syllabus_url,
+        "syllabus_links":              syllabus_links,
+        "source_urls":                 source_urls,
+        "program_category_id":         cat_info["category_id"]   if cat_info else course.get("program_category_id"),
+        "program_category_name_he":    cat_info["name_he"]       if cat_info else course.get("program_category_name_he"),
+        "needs_category_review":       cat_info["needs_review"]  if cat_info else course.get("needs_category_review", False),
+        "selection_reason":            course.get("selection_reason"),
     }
+
+
+# ---------------------------------------------------------------------------
+# Program requirements post-processing
+# ---------------------------------------------------------------------------
+
+def _annotate_program_requirements(
+    board: dict[str, Any],
+    program: dict[str, Any],
+    completed_course_ids: list[str],
+) -> None:
+    """
+    Validate the board against program.requirements and embed results in metadata.
+
+    Adds to board["metadata"]:
+        program_requirements_validation  : full validate_program_plan result
+        program_requirements_categories  : category definitions for frontend use
+    """
+    validation = validate_program_plan(board, program, completed_course_ids)
+    frontend_cats = get_program_categories_for_frontend(program)
+
+    board.setdefault("metadata", {}).update({
+        "program_requirements_validation": validation,
+        "program_requirements_categories": frontend_cats,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Validation post-processing
+# ---------------------------------------------------------------------------
+
+def _annotate_validation(
+    board: dict[str, Any],
+    completed_course_ids: list[str],
+) -> dict[str, Any]:
+    """
+    Run validate_entire_board() on *board* and embed results per course.
+
+    Adds to each course:
+        validation_status : "ok" | "error"
+        validation_errors : list of invalid prerequisite course_ids
+
+    Adds to board metadata:
+        completed_course_ids : the list passed in (for frontend use)
+        board_validation     : {valid, invalid_count}
+    """
+    validation = validate_entire_board(board, completed_course_ids)
+    val_by_course = {r["course_id"]: r for r in validation["course_results"]}
+
+    for sem in board.get("semesters", []):
+        for course in sem.get("courses", []):
+            cid = course.get("course_id", "")
+            vr  = val_by_course.get(cid, {})
+            valid = vr.get("valid", True)
+            course["validation_status"] = "ok" if valid else "error"
+            course["validation_errors"] = (
+                vr.get("missing_prerequisites", [])
+                + vr.get("prerequisites_scheduled_same_semester", [])
+                + vr.get("prerequisites_scheduled_too_late", [])
+            )
+            # Attach explanation as a warning when invalid
+            if not valid:
+                explanation = vr.get("explanation", "")
+                if explanation and explanation not in course.get("warnings", []):
+                    course.setdefault("warnings", []).append(explanation)
+
+    board.setdefault("metadata", {}).update({
+        "completed_course_ids": completed_course_ids,
+        "board_validation": {
+            "valid":          validation["valid"],
+            "invalid_count":  validation["summary"]["invalid_placements"],
+            "error_count":    validation["summary"]["error_count"],
+        },
+    })
+    return board
 
 
 # ---------------------------------------------------------------------------
@@ -547,7 +785,7 @@ if __name__ == "__main__":
         prog_path = Path(args.program_json)
         if prog_path.exists():
             program = json.loads(prog_path.read_text(encoding="utf-8"))
-            print(f"[board] Program: {program.get('program_name', prog_path.name)}")
+            print(f"[board] Program: {program.get('program_name_he') or program.get('program_name', prog_path.name)}")
         else:
             print(f"[warn] Program JSON not found: {prog_path}")
 
@@ -562,11 +800,14 @@ if __name__ == "__main__":
         else (profile.max_weekly_hours if profile else None)
     )
 
+    completed = list(profile.completed_course_ids) if profile else []
+
     board = build_semester_board(
         plan                          = plan,
         program                       = program,
         max_weekly_hours_per_semester = max_hours_per_sem,
         start_year                    = args.start_year,
+        completed_course_ids          = completed,
         db_path                       = Path(args.db),
     )
 

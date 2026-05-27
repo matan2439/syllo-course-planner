@@ -161,11 +161,15 @@ def test_no_filter_eligible_stays_eligible(populated_db):
 
 def test_result_has_all_keys(populated_db):
     results = audit_courses(["FREE"], [], db_path=populated_db)
-    assert {
+    required = {
         "course_id", "name_he", "status", "missing_prerequisites",
-        "satisfied_prerequisites", "difficulty_score", "difficulty_level",
-        "weekly_hours", "reasons",
-    } == set(results[0].keys())
+        "missing_prerequisite_details", "satisfied_prerequisites",
+        "difficulty_score", "difficulty_level",
+        "workload_score", "conceptual_complexity_score", "prerequisite_depth_score",
+        "assessment_intensity_score", "difficulty_confidence", "difficulty_warnings",
+        "weekly_hours", "syllabus_url", "syllabus_links", "reasons",
+    }
+    assert required.issubset(set(results[0].keys()))
 
 
 def test_weekly_hours_computed(populated_db):
@@ -214,6 +218,46 @@ def test_counts_in_mixed_batch(populated_db):
     assert statuses.count("eligible")        == 1
     assert statuses.count("blocked")         == 1
     assert statuses.count("missing_from_db") == 1
+
+
+# ---------------------------------------------------------------------------
+# missing_prerequisite_details
+# ---------------------------------------------------------------------------
+
+def test_missing_prerequisite_details_present_when_blocked(populated_db):
+    results = audit_courses(["GATED"], [], db_path=populated_db)
+    assert "missing_prerequisite_details" in results[0]
+
+
+def test_missing_prerequisite_details_contains_free(populated_db):
+    results = audit_courses(["GATED"], [], db_path=populated_db)
+    details = results[0]["missing_prerequisite_details"]
+    assert any(d["course_id"] == "FREE" for d in details)
+
+
+def test_missing_prerequisite_details_known_in_db_true(populated_db):
+    results = audit_courses(["GATED"], [], db_path=populated_db)
+    details = results[0]["missing_prerequisite_details"]
+    free_detail = next(d for d in details if d["course_id"] == "FREE")
+    assert free_detail["known_in_db"] is True
+
+
+def test_missing_prerequisite_details_has_name_he(populated_db):
+    results = audit_courses(["GATED"], [], db_path=populated_db)
+    details = results[0]["missing_prerequisite_details"]
+    free_detail = next(d for d in details if d["course_id"] == "FREE")
+    # name_he for FREE is "FREE" in our fixture (_course sets name_he=course_id)
+    assert free_detail["name_he"] is not None
+
+
+def test_missing_prerequisite_details_empty_when_eligible(populated_db):
+    results = audit_courses(["FREE"], [], db_path=populated_db)
+    assert results[0]["missing_prerequisite_details"] == []
+
+
+def test_missing_prerequisite_details_empty_for_missing_from_db(tmp_db):
+    results = audit_courses(["UNKNOWN"], [], db_path=tmp_db)
+    assert results[0]["missing_prerequisite_details"] == []
 
 
 # ---------------------------------------------------------------------------

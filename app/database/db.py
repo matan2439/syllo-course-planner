@@ -3,9 +3,10 @@ SQLite persistence layer for merged course records.
 
 Tables
 ------
-courses        : one row per course_id (upsert on re-import)
-course_groups  : one row per group within a course
-prerequisites  : one row per (course_id, prerequisite_course_id) pair
+courses            : one row per course_id (upsert on re-import)
+course_groups      : one row per group within a course
+prerequisites      : one row per (course_id, prerequisite_course_id) pair
+course_grade_stats : historical grade statistics (secondary/unofficial source)
 """
 
 import json
@@ -92,6 +93,25 @@ prerequisites = Table(
     Column("course_id",              String, nullable=False),
     Column("prerequisite_course_id", String, nullable=False),
     UniqueConstraint("course_id", "prerequisite_course_id", name="uq_prereq"),
+)
+
+course_grade_stats = Table(
+    "course_grade_stats",
+    metadata,
+    Column("id",                 Integer, primary_key=True, autoincrement=True),
+    Column("course_id",          String,  nullable=False),
+    Column("year",               Integer),
+    Column("semester",           String),
+    Column("moed",               String),
+    Column("lecturer_name",      Text),
+    Column("average_grade",      Float),
+    Column("median_grade",       Float),
+    Column("standard_deviation", Float),
+    Column("pass_rate",          Float),
+    Column("num_students",       Integer),
+    Column("source_name",        String),
+    Column("source_url",         Text),
+    Column("fetched_at",         String),
 )
 
 
@@ -219,6 +239,132 @@ def get_course_by_id(course_id: str, db_path: Path = _DB_PATH) -> Optional[dict[
         result["prerequisite_course_ids"] = [r[0] for r in prereq_rows]
 
         return result
+
+
+def get_course_display_name(
+    course_id: str,
+    db_path: Path = _DB_PATH,
+) -> str | None:
+    """Return name_he (or name_en fallback) for *course_id*, or None if not found."""
+    if not db_path.exists():
+        return None
+    normalized = _normalize_course_id(course_id)
+    engine = _make_engine(db_path)
+    with engine.connect() as conn:
+        row = conn.execute(
+            select(courses.c.name_he, courses.c.name_en)
+            .where(courses.c.course_id == normalized)
+        ).first()
+    if row is None:
+        return None
+    return row.name_he or row.name_en or None
+
+
+def get_course_display_names(
+    course_ids: list[str],
+    db_path: Path = _DB_PATH,
+) -> dict[str, str | None]:
+    """
+    Batch lookup of display names.
+
+    Returns {original_course_id -> display_name}.  Missing entries map to None.
+    The input IDs are normalised internally so callers need not pre-normalise.
+    """
+    if not course_ids or not db_path.exists():
+        return {cid: None for cid in course_ids}
+    norm_map = {cid: _normalize_course_id(cid) for cid in course_ids}
+    engine = _make_engine(db_path)
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(courses.c.course_id, courses.c.name_he, courses.c.name_en)
+            .where(courses.c.course_id.in_(set(norm_map.values())))
+        ).all()
+    db_names: dict[str, str | None] = {
+        row.course_id: row.name_he or row.name_en or None for row in rows
+    }
+    return {cid: db_names.get(norm_map[cid]) for cid in course_ids}
+
+
+def save_grade_stats(
+    stats: list,          # list[CourseGradeStats] — avoid circular import with string type
+    db_path: Path = _DB_PATH,
+) -> int:
+    """
+    Replace all grade-stat rows for the courses present in *stats*, then
+    insert fresh rows.  Returns the number of rows inserted.
+
+    Accepts a list of CourseGradeStats (or plain dicts with the same keys).
+    Treats unofficial grade data as a full-replace cache: every import of a
+    course wipes its previous rows to avoid duplicates.
+    """
+    if not stats:
+        return 0
+    engine = _make_engine(db_path)
+
+    def _val(record, key: str):
+        return getattr(record, key, None) if not isinstance(record, dict) else record.get(key)
+
+    with engine.begin() as conn:
+        affected_ids: set[str] = set()
+        for s in stats:
+            cid = _normalize_course_id(_val(s, "course_id") or "")
+            if cid:
+                affected_ids.add(cid)
+
+        for cid in affected_ids:
+            conn.execute(
+                course_grade_stats.delete().where(course_grade_stats.c.course_id == cid)
+            )
+
+        inserted = 0
+        for s in stats:
+            cid = _normalize_course_id(_val(s, "course_id") or "")
+            if not cid:
+                continue
+            conn.execute(course_grade_stats.insert().values(
+                course_id          = cid,
+                year               = _val(s, "year"),
+                semester           = _val(s, "semester"),
+                moed               = _val(s, "moed"),
+                lecturer_name      = _val(s, "lecturer_name"),
+                average_grade      = _val(s, "average_grade"),
+                median_grade       = _val(s, "median_grade"),
+                standard_deviation = _val(s, "standard_deviation"),
+                pass_rate          = _val(s, "pass_rate"),
+                num_students       = _val(s, "num_students"),
+                source_name        = _val(s, "source_name") or "TAU Refactor",
+                source_url         = _val(s, "source_url"),
+                fetched_at         = _val(s, "fetched_at") or "",
+            ))
+            inserted += 1
+    return inserted
+
+
+def get_grade_stats(course_id: str, db_path: Path = _DB_PATH) -> list:
+    """
+    Return all grade-stat rows for *course_id* as CourseGradeStats instances.
+    Returns an empty list if the table does not exist or course is not found.
+    """
+    from app.models.grade_stats import CourseGradeStats  # local to avoid circular at module load
+
+    if not db_path.exists():
+        return []
+    normalized = _normalize_course_id(course_id)
+    engine = _make_engine(db_path)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                select(course_grade_stats).where(
+                    course_grade_stats.c.course_id == normalized
+                ).order_by(
+                    course_grade_stats.c.year.desc(),
+                    course_grade_stats.c.semester,
+                    course_grade_stats.c.moed,
+                )
+            ).mappings().all()
+        return [CourseGradeStats.model_validate(dict(r)) for r in rows]
+    except Exception:
+        return []
 
 
 def list_courses(db_path: Path = _DB_PATH) -> list[dict[str, Any]]:

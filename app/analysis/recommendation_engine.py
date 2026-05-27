@@ -56,7 +56,7 @@ def recommend_courses(
 
         # difficulty
         diff = estimate_course_difficulty(course_id, db_path)
-        difficulty_score = diff["difficulty_score"]
+        difficulty_score = diff["final_difficulty_score"]
         difficulty_level = diff["difficulty_level"]
 
         if max_difficulty is not None and difficulty_score is not None:
@@ -151,7 +151,7 @@ def _build_reasons(
     else:
         reasons.append(f"All {n} prerequisite(s) satisfied.")
     if diff["difficulty_level"]:
-        reasons.append(f"Difficulty: {diff['difficulty_level']} ({diff['difficulty_score']}).")
+        reasons.append(f"Difficulty: {diff['difficulty_level']} ({diff['final_difficulty_score']}).")
     if weekly_hours:
         reasons.append(f"Weekly hours: {weekly_hours}.")
     if unlocked_count:

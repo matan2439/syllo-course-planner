@@ -112,9 +112,16 @@ def test_course_fields_in_output(no_db):
     placed = [c for s in board["semesters"] for c in s["courses"]]
     assert len(placed) == 1
     c = placed[0]
-    assert {"course_id", "name_he", "weekly_hours", "difficulty_score",
-            "difficulty_level", "course_type", "prerequisites", "locked_by_user",
-            "source", "data_quality", "warnings"} == set(c.keys())
+    required = {
+        "course_id", "name_he", "weekly_hours", "difficulty_score",
+        "difficulty_level", "course_type", "prerequisites", "locked_by_user",
+        "source", "data_quality", "warnings",
+        "syllabus_url", "syllabus_links", "source_urls",
+        "workload_score", "conceptual_complexity_score",
+        "prerequisite_depth_score", "assessment_intensity_score",
+        "difficulty_confidence", "prerequisite_details",
+    }
+    assert required.issubset(set(c.keys()))
 
 
 def test_locked_by_user_false(no_db):
@@ -736,6 +743,161 @@ def test_load_mandatory_course_with_db_record(tmp_path):
     assert mc["name_he"] == "0001-0001"
     assert mc["course_type"] == "mandatory"
     assert warns == []
+
+
+# ---------------------------------------------------------------------------
+# Program course filtering
+# ---------------------------------------------------------------------------
+
+def test_program_filtering_excludes_unrelated_course(no_db):
+    prog = _program()
+    prog["course_categories"] = [
+        {"category_id": "allowed", "name_he": "מותר", "course_ids": ["ALLOWED"]}
+    ]
+    plan = _plan(_pc("ALLOWED"), _pc("NOT_ALLOWED"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "ALLOWED" in placed
+    assert "NOT_ALLOWED" not in placed
+
+
+def test_program_filtering_no_categories_keeps_all(no_db):
+    prog = _program()  # no course_categories key
+    plan = _plan(_pc("A"), _pc("B"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "A" in placed
+    assert "B" in placed
+
+
+def test_program_filtering_empty_categories_excludes_all(no_db):
+    prog = _program()
+    prog["course_categories"] = []
+    plan = _plan(_pc("A"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "A" not in placed
+
+
+def test_program_filtering_with_course_ids_file(tmp_path, no_db):
+    txt = tmp_path / "list.txt"
+    txt.write_text("# comment\nFROM_FILE\n", encoding="utf-8")
+    prog = _program()
+    prog["course_categories"] = [
+        {"category_id": "file_cat", "course_ids_file": str(txt)}
+    ]
+    plan = _plan(_pc("FROM_FILE"), _pc("NOT_IN_FILE"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "FROM_FILE" in placed
+    assert "NOT_IN_FILE" not in placed
+
+
+def test_program_filtering_missing_file_is_skipped(tmp_path, no_db):
+    prog = _program()
+    prog["course_categories"] = [
+        {"category_id": "cat", "course_ids_file": str(tmp_path / "absent.txt"), "course_ids": ["DIRECT"]}
+    ]
+    plan = _plan(_pc("DIRECT"), _pc("OTHER"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "DIRECT" in placed
+    assert "OTHER" not in placed
+
+
+def test_mandatory_always_placed_regardless_of_filter(no_db):
+    prog = _program(_sem_entry("year_3_semester_a", "MAND"))
+    prog["course_categories"] = [
+        {"category_id": "electives", "course_ids": ["ELEC"]}
+    ]
+    plan = _plan(_pc("ELEC"), _pc("UNRELATED"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    placed = [c["course_id"] for s in board["semesters"] for c in s["courses"]]
+    assert "MAND" in placed
+    assert "ELEC" in placed
+    assert "UNRELATED" not in placed
+
+
+def test_mandatory_course_is_locked(no_db):
+    prog = _program(_sem_entry("year_3_semester_a", "MAND"))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "MAND")
+    assert mc["locked_by_user"] is True
+    assert mc["course_type"] == "mandatory"
+    assert mc["source"] == "program"
+
+
+def test_mandatory_missing_from_db_still_placed_with_warning(no_db):
+    prog = _program(_sem_entry("year_3_semester_a", "MISS-9999"))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    ids = [c["course_id"] for c in placed]
+    assert "MISS-9999" in ids
+    mc = next(c for c in placed if c["course_id"] == "MISS-9999")
+    assert any("not found" in w.lower() or "missing" in w.lower() for w in mc["warnings"])
+    assert any("MISS-9999" in w for w in board["warnings"])
+
+
+def test_filtering_count_in_metadata(no_db):
+    prog = _program()
+    prog["course_categories"] = [
+        {"category_id": "allowed", "course_ids": ["A"]}
+    ]
+    plan = _plan(_pc("A"), _pc("B"), _pc("C"))
+    board = build_semester_board(plan, program=prog, db_path=no_db)
+    assert board["metadata"]["total_courses"] == 1
+
+
+# ---------------------------------------------------------------------------
+# prerequisite_details field
+# ---------------------------------------------------------------------------
+
+def test_prerequisite_details_empty_when_no_prereqs(no_db):
+    board = build_semester_board(_plan(_pc("A")), db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    assert placed[0]["prerequisite_details"] == []
+
+
+def test_prerequisite_details_structure_with_known_prereq(tmp_path):
+    db = tmp_path / "pd.db"
+    init_db(db)
+    save_merged_course(_db_course("0001-0001", prereqs=[]), db)
+    save_merged_course(_db_course("0002-0002", prereqs=["00010001"]), db)
+    plan = _plan(_pc("0001-0001"), _pc("0002-0002"))
+    board = build_semester_board(plan, db_path=db)
+    placed = {c["course_id"]: c for s in board["semesters"] for c in s["courses"]}
+    details = placed["0002-0002"]["prerequisite_details"]
+    assert len(details) == 1
+    assert details[0]["course_id"] == "0001-0001"
+    assert details[0]["known_in_db"] is True
+
+
+def test_prerequisite_details_unknown_prereq_known_in_db_false(tmp_path):
+    db = tmp_path / "pd2.db"
+    init_db(db)
+    # 0002-0002 has a prereq that is NOT in the DB
+    save_merged_course(_db_course("0002-0002", prereqs=["00019999"]), db)
+    plan = _plan(_pc("0002-0002"))
+    board = build_semester_board(plan, db_path=db)
+    placed = {c["course_id"]: c for s in board["semesters"] for c in s["courses"]}
+    details = placed["0002-0002"]["prerequisite_details"]
+    assert len(details) == 1
+    assert details[0]["known_in_db"] is False
+    assert details[0]["name_he"] is None
+
+
+def test_prerequisite_details_has_name_he_for_known(tmp_path):
+    db = tmp_path / "pd3.db"
+    init_db(db)
+    prereq = {**_db_course("0001-0001"), "name_he": "מתמטיקה"}
+    save_merged_course(prereq, db)
+    save_merged_course(_db_course("0002-0002", prereqs=["00010001"]), db)
+    plan = _plan(_pc("0001-0001"), _pc("0002-0002"))
+    board = build_semester_board(plan, db_path=db)
+    placed = {c["course_id"]: c for s in board["semesters"] for c in s["courses"]}
+    details = placed["0002-0002"]["prerequisite_details"]
+    assert details[0]["name_he"] == "מתמטיקה"
 
 
 # ---------------------------------------------------------------------------
