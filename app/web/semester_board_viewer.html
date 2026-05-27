@@ -86,6 +86,8 @@ body {
   font-size: 14px; display: flex; flex-direction: column;
   overflow: hidden; transition: background var(--t), color var(--t);
 }
+/* Restore body scroll when modal is NOT open */
+body:not(.prog-modal-open):not(.my-courses-open) { overflow: hidden; }
 
 /* Workspace blur when program picker is open (only affects board content) */
 body.prog-modal-open .workspace {
@@ -393,9 +395,9 @@ body.prog-modal-open .workspace {
 .detail-tab.active { color: var(--purple); border-bottom-color: var(--purple); }
 
 /* Override detail-body when tabs are present */
-.detail-body.tabbed { padding: 0; overflow: hidden; }
-.detail-tab-panel { display: none; height: 100%; overflow-y: auto; padding: 16px 20px; }
-.detail-tab-panel.active { display: block; }
+.detail-body.tabbed { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.detail-tab-panel { display: none; flex: 1; overflow-y: auto; padding: 16px 20px; min-height: 0; }
+.detail-tab-panel.active { display: flex; flex-direction: column; }
 
 /* ── AI chat panel ──────────────────────────────────────────────────────── */
 .ai-chat-wrap { display: flex; flex-direction: column; gap: 14px; }
@@ -440,6 +442,13 @@ body.prog-modal-open .workspace {
   background: var(--surface2); border-radius: 7px; padding: 7px 10px;
   border: 1px solid var(--border);
 }
+.ai-mock-banner {
+  font-size: .68rem; line-height: 1.5;
+  background: var(--warn-soft); color: #92400E;
+  border: 1px solid var(--warning); border-radius: 7px;
+  padding: 7px 10px; margin-bottom: 8px; direction: rtl;
+}
+[data-theme="dark"] .ai-mock-banner { background: #451A03; color: var(--warning); border-color: #92400E; }
 .ai-context-note { font-size: .66rem; color: var(--text-faint); line-height: 1.5; }
 
 .detail-foot {
@@ -513,7 +522,7 @@ body.prog-modal-open .workspace {
 }
 .sb-head-title { font-size: .85rem; font-weight: 700; }
 .sb-head-sub   { font-size: .68rem; color: var(--text-muted); margin-top: 2px; }
-.sb-body { flex:1; overflow-y: auto; padding: 8px; }
+.sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; }
 
 /* Repo group accordion */
 .repo-group { margin-bottom: 6px; }
@@ -575,7 +584,7 @@ body.prog-modal-open .workspace {
 .ai-panel > summary::-webkit-details-marker { display: none; }
 .ai-chevron { margin-inline-start: auto; font-size: .75rem; transition: transform var(--t); }
 .ai-panel[open] .ai-chevron { transform: rotate(180deg); }
-.ai-body { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.ai-body { padding: 10px 14px 14px; border-top: 1px solid var(--border); max-height: 260px; overflow-y: auto; }
 /* AI responses must be grounded in local DB/JSON data only. Never hallucinate. */
 .ai-note {
   font-size: .65rem; color: var(--text-faint); margin-bottom: 8px;
@@ -625,14 +634,54 @@ body.prog-modal-open .workspace {
 .prog-cat-count { font-size: .63rem; font-weight: 600; opacity: .85; }
 .prog-req-note { font-size: .62rem; color: var(--text-faint); margin-top: 5px; font-style: italic; }
 
-/* ── Legend ──────────────────────────────────────────────────────────────── */
-.sb-legend { padding: 10px 14px 13px; border-top: 1px solid var(--border); flex-shrink: 0; }
+/* ── Legend (compact) ────────────────────────────────────────────────────── */
+.sb-legend { padding: 8px 14px 10px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .legend-ttl {
   font-size: .61rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--text-faint); margin-bottom: 6px;
+  letter-spacing: .06em; color: var(--text-faint); margin-bottom: 5px;
 }
-.legend-row { display: flex; align-items: center; gap: 7px; font-size: .67rem; color: var(--text-muted); margin-bottom: 3px; }
-.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.legend-compact { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 5px; }
+.legend-ci { display: flex; align-items: center; gap: 4px; font-size: .65rem; color: var(--text-muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-workload-details { margin-top: 2px; }
+.legend-workload-details > summary {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .63rem; color: var(--text-faint); cursor: pointer;
+  list-style: none; padding: 2px 0;
+}
+.legend-workload-details > summary::marker,
+.legend-workload-details > summary::-webkit-details-marker { display: none; }
+.legend-workload-more { margin-inline-start: auto; font-size: .6rem; }
+.legend-workload-body { padding: 4px 0 0; font-size: .62rem; color: var(--text-faint); line-height: 1.7; }
+
+/* ── My Courses modal ────────────────────────────────────────────────────── */
+.my-course-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 9px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface2);
+  margin-bottom: 5px; transition: background var(--t), border-color var(--t);
+}
+.my-course-row.my-course-completed { border-color: var(--success); background: rgba(16,185,129,.05); }
+.my-course-row.my-course-current   { border-color: var(--blue);    background: rgba(37,99,235,.05); }
+.my-course-info { flex: 1; min-width: 0; }
+.my-course-id   { font-family: ui-monospace, monospace; font-size: .63rem; color: var(--text-faint); direction: ltr; display: block; }
+.my-course-name { font-size: .78rem; font-weight: 500; word-break: break-word; }
+.my-course-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.my-course-btn {
+  font-size: .67rem; padding: 3px 8px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text-muted); cursor: pointer; font-family: inherit;
+  transition: background var(--t), border-color var(--t), color var(--t);
+  white-space: nowrap;
+}
+.my-course-btn:hover { background: var(--bg2); }
+.my-course-btn.active.status-completed { background: rgba(16,185,129,.15); border-color: var(--success); color: var(--success); }
+.my-course-btn.active.status-current   { background: rgba(37,99,235,.15); border-color: var(--blue);    color: var(--blue); }
+.my-courses-summary {
+  display: flex; gap: 12px; font-size: .7rem; color: var(--text-muted);
+  padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+.my-courses-summary span { display: flex; align-items: center; gap: 4px; }
 
 /* ── Board area ──────────────────────────────────────────────────────────── */
 .board-area { flex: 1; overflow: auto; padding: 14px; transition: filter 250ms ease; }
@@ -652,7 +701,7 @@ body.prog-modal-open .workspace {
 .year-sems { display: flex; direction: rtl; gap: 12px; align-items: start; }
 
 /* ── Semester column ────────────────────────────────────────────────────── */
-.semester-col { display: flex; flex-direction: column; gap: 8px; }
+.semester-col { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-width: 180px; }
 .sem-hdr { color:#fff; border-radius: var(--radius); padding: 12px 14px 11px; }
 .col-y3a .sem-hdr { background: var(--y3a); }
 .col-y3b .sem-hdr { background: var(--y3b); }
@@ -916,6 +965,24 @@ body.prog-modal-open .workspace {
   </div>
 </div>
 
+<!-- ── My Courses modal ─────────────────────────────────────────────────── -->
+<div id="my-courses-modal" class="prog-overlay" hidden aria-modal="true" role="dialog">
+  <div class="prog-dialog">
+    <button id="my-courses-close-btn" class="prog-close-btn" aria-label="סגור">✕</button>
+    <div class="prog-header">
+      <h2 class="prog-title" style="font-size:1.2rem">הקורסים שלי</h2>
+      <p class="prog-subtitle">סמנו קורסים שהושלמו או שאתם לומדים כרגע — משפיע על בדיקת דרישות הקדם</p>
+    </div>
+    <div id="my-courses-summary" class="my-courses-summary"></div>
+    <div class="prog-search-wrap">
+      <input id="my-courses-search" class="prog-search" type="search" autocomplete="off"
+             placeholder="חיפוש לפי שם או קוד קורס" aria-label="חיפוש קורס" />
+      <span class="prog-search-icon" aria-hidden="true">🔍</span>
+    </div>
+    <div id="my-courses-list" class="prog-results" style="gap:0"></div>
+  </div>
+</div>
+
 <!-- ── Board notification toast ───────────────────────────────────────────── -->
 <!-- hidden by default; shown by showBoardNotify() -->
 
@@ -933,6 +1000,7 @@ body.prog-modal-open .workspace {
     </div>
     <div class="hdr-chips" id="hdr-chips"></div>
     <div class="hdr-actions">
+      <button class="btn btn-ghost" id="btn-my-courses">📋 הקורסים שלי</button>
       <button class="btn btn-ghost" id="btn-change-prog">החלפת תואר</button>
       <button class="btn" id="btn-reset">↺ איפוס</button>
       <button class="btn" id="btn-dark">☾ לילה</button>
@@ -949,25 +1017,38 @@ body.prog-modal-open .workspace {
 
       <div class="sb-legend">
         <div class="legend-ttl">מקרא</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--mand-accent)"></div>קורס חובה</div>
-        <div class="legend-row" style="padding-inline-start:16px;font-size:.63rem;color:var(--text-faint)">🔒 נעול · 🔓 לחצו לפתיחה</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--elec-accent)"></div>קורס בחירה</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--blk-accent)"></div>חסום (דרישות קדם)</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--miss-accent)"></div>חסר מהמאגר</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--success);opacity:.9"></div>עומס קל (&lt;10 ש׳׳ש)</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--warning)"></div>עומס בינוני (10–16)</div>
-        <div class="legend-row"><div class="legend-dot" style="background:var(--danger)"></div>עומס גבוה (16+)</div>
+        <div class="legend-compact">
+          <span class="legend-ci"><span class="legend-dot" style="background:var(--mand-accent)"></span>חובה 🔒</span>
+          <span class="legend-ci"><span class="legend-dot" style="background:var(--elec-accent)"></span>בחירה</span>
+          <span class="legend-ci"><span class="legend-dot" style="background:var(--blk-accent)"></span>חסום</span>
+          <span class="legend-ci"><span class="legend-dot" style="background:var(--miss-accent)"></span>חסר</span>
+        </div>
+        <details class="legend-workload-details">
+          <summary>
+            <span class="legend-ci"><span class="legend-dot" style="background:var(--success)"></span>נמוך</span>
+            <span class="legend-ci"><span class="legend-dot" style="background:var(--warning)"></span>בינוני</span>
+            <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>גבוה</span>
+            <span class="legend-workload-more">▸ איך מחושב עומס?</span>
+          </summary>
+          <div class="legend-workload-body">
+            קל: פחות מ-10 ש׳׳ש · בינוני: 10–16 · גבוה: 16+ ש׳׳ש שבועיות
+          </div>
+        </details>
       </div>
 
       <!-- AI panel: mock only — not connected to API -->
       <details class="ai-panel" id="ai-panel">
-        <summary>🤖 <span>עוזר AI</span> <span class="ai-chevron">›</span></summary>
+        <summary>🤖 <span>עוזר AI</span>
+          <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">לא מחובר</span>
+          <span class="ai-chevron">›</span>
+        </summary>
         <div class="ai-body">
-          <div class="ai-note">⚠ הלוח מדומה בלבד. המלצות עתידיות יתבססו על נתוני ה-DB המקומי בלבד.</div>
-          <textarea class="ai-textarea" rows="3"
+          <div class="ai-mock-banner">⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
+            בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.</div>
+          <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
             placeholder="לדוגמה: אני רוצה עומס קל בסמסטר א׳ ולהתמקד ברובוטיקה"></textarea>
-          <button class="ai-send" onclick="this.nextElementSibling.textContent='ממשיג הצעה... (מדומה)'">בקש הצעה</button>
-          <div class="ai-response">כאן תופיע המלצת AI שמבוססת על הקורסים ודרישות הקדם שלך.</div>
+          <button class="ai-send" id="ai-sidebar-send">בקש הצעה (מדומה)</button>
+          <div class="ai-response" id="ai-sidebar-response"></div>
         </div>
       </details>
     </aside>
@@ -1037,11 +1118,12 @@ const SEMESTERS = [
   { id:'year_4_semester_b', css:'col-y4b' },
 ];
 
-const MAX_HOURS = 20;
-const LS_STATE  = 'tau_board_v3';
-const LS_THEME  = 'tau_theme';
+const MAX_HOURS    = 20;
+const LS_STATE     = 'tau_board_v3';
+const LS_THEME     = 'tau_theme';
 const LS_PROG      = 'tau_program';
 const LS_OVERRIDES = 'tau_course_overrides';
+const LS_MY_COURSES = 'tau_my_courses';
 
 /* ── App state ──────────────────────────────────────────────────────────── */
 let courseMap     = {};
@@ -1055,16 +1137,17 @@ let dragFromSem         = null;
 let allowBlockedDrag    = false;
 let allowInvalidPlacement = false;   // override toggle: allow invalid drops with warning
 let boardValidation     = {};        // {courseId: validatePlacement result}; refreshed on render
-let completedCourseIds  = [];        // loaded from board metadata or derived from audit
+let completedCourseIds  = [];        // authoritative: board meta + user-marked completed
+let _boardCompletedIds  = [];        // from board.metadata.completed_course_ids
+let myCoursesState      = { completed: [], current: [] }; // user-marked; persisted to localStorage
 let programRequirements = null;      // {total_required_hours, categories:[]} from board metadata
 let _notifyTimer        = null;
-const openGroups     = new Set(
-  Object.entries(REPO_GROUPS).filter(([,v])=>v.open).map(([k])=>k)
-);
+const openGroups     = new Set(['mandatory', 'elective_avail', '_mandatory']);
 
 /* ── Bootstrap ──────────────────────────────────────────────────────────── */
 async function main() {
   applyTheme();
+  loadMyCoursesState();
   setupDragDelegation();
   setupCardClick();
   setupDetailOverlay();
@@ -1073,6 +1156,17 @@ async function main() {
   document.getElementById('btn-dark').addEventListener('click', toggleTheme);
   document.getElementById('btn-reset').addEventListener('click', resetBoard);
   document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
+  document.getElementById('btn-my-courses').addEventListener('click', openMyCoursesModal);
+
+  /* Sidebar AI send handler */
+  document.getElementById('ai-sidebar-send')?.addEventListener('click', () => {
+    const txt = document.getElementById('ai-sidebar-textarea')?.value?.trim();
+    const resp = document.getElementById('ai-sidebar-response');
+    if (!resp) return;
+    resp.textContent = txt
+      ? `בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\nשאלתך: ${txt}`
+      : 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.';
+  });
 
   buildProgModal();
 
@@ -1355,18 +1449,23 @@ function init(board, audit) {
     state = clone(originalState);
   }
 
-  // Extract completed course IDs for drag validation
-  completedCourseIds = board.metadata?.completed_course_ids || [];
-  if (!completedCourseIds.length && audit) {
-    // Derive from audit: prereqs satisfied by profile courses (not in plan)
+  // Extract board-level completed course IDs
+  _boardCompletedIds = board.metadata?.completed_course_ids || [];
+  if (!_boardCompletedIds.length && audit) {
     const derived = new Set();
     for (const ac of audit) {
       for (const p of (ac.satisfied_prerequisites || [])) {
         if (!courseMap[p]) derived.add(p);
       }
     }
-    completedCourseIds = [...derived];
+    _boardCompletedIds = [...derived];
   }
+
+  // Merge board completed + user-marked completed
+  completedCourseIds = [...new Set([..._boardCompletedIds, ...myCoursesState.completed])];
+
+  // Extract program requirements categories from board metadata
+  programRequirements = board.metadata?.program_requirements_categories || null;
 }
 
 function normalizeCourse(c, status) {
@@ -1429,22 +1528,87 @@ function mkChip(lbl, val, warn) {
   return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
 }
 
+function _buildRepoSection(gid, nameHe, ids, forceOpen) {
+  const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
+  const isOpen = forceOpen || openGroups.has(gid);
+  return `<details class="repo-group" data-group="${esc(gid)}"${isOpen?' open':''}>
+    <summary>
+      ${esc(nameHe)}
+      <span class="repo-group-count">${ids.length}</span>
+      <span class="repo-group-chevron">›</span>
+    </summary>
+    <div class="repo-zone" data-zone="repo">${cards}</div>
+  </details>`;
+}
+
 function renderSidebar() {
   const avail = state.repo.length;
   document.getElementById('repo-sub').textContent =
     `${avail} קורס${avail !== 1 ? 'ים' : ''} זמינים`;
 
-  const groups = { mandatory:[], elective_avail:[], elective_blocked:[], missing:[] };
+  /* Bucket courses from repo */
+  const mandatoryIds   = [];
+  const blockedIds     = [];
+  const missingIds     = [];
+  const byCatId        = {};   // category_id → [ids]
+  const otherIds       = [];   // in repo but not in any program category
+
+  const useCats = programRequirements?.categories?.length > 0;
+  if (useCats) {
+    for (const cat of programRequirements.categories) byCatId[cat.category_id] = [];
+  }
+
+  /* Build a quick lookup: course_id → category_id from programRequirements */
+  const progCatMap = {};
+  if (useCats) {
+    for (const cat of programRequirements.categories) {
+      for (const cid of (cat.course_ids || [])) progCatMap[cid] = cat.category_id;
+    }
+  }
+
   for (const id of state.repo) {
     const c = courseMap[id];
     if (!c) continue;
-    if (c.course_type === 'mandatory')         groups.mandatory.push(id);
-    else if (c.status === 'missing_from_db')   groups.missing.push(id);
-    else if (c.status === 'blocked')           groups.elective_blocked.push(id);
-    else                                       groups.elective_avail.push(id);
+    if (c.course_type === 'mandatory')       { mandatoryIds.push(id); continue; }
+    if (c.status === 'missing_from_db')      { missingIds.push(id);   continue; }
+    if (c.status === 'blocked')              { blockedIds.push(id);   continue; }
+    if (useCats) {
+      const catId = c.program_category_id || progCatMap[id] || null;
+      if (catId && byCatId[catId]) byCatId[catId].push(id);
+      else otherIds.push(id);
+    } else {
+      otherIds.push(id); /* fallback: all elective_avail */
+    }
   }
 
-  const blkToggle = groups.elective_blocked.length > 0
+  /* Build section HTML */
+  let sections = '';
+  sections += mandatoryIds.length ? _buildRepoSection('_mandatory', 'קורסי חובה', mandatoryIds, true) : '';
+
+  if (useCats) {
+    /* Ordered category groups from program */
+    for (const cat of programRequirements.categories) {
+      const ids = byCatId[cat.category_id] || [];
+      const suffix = (cat.min_courses > 0 && !cat.needs_review)
+        ? ` (נדרש לפחות ${cat.min_courses})` : '';
+      sections += _buildRepoSection(cat.category_id, (cat.name_he || cat.category_id) + suffix, ids, false);
+    }
+    if (otherIds.length) {
+      sections += _buildRepoSection('_other', 'לא משויך לתוכנית הנבחרת', otherIds, false);
+    }
+  } else {
+    sections += _buildRepoSection('elective_avail', 'קורסי בחירה זמינים', otherIds, true);
+  }
+
+  if (blockedIds.length) {
+    sections += _buildRepoSection('_blocked', 'חסומים בגלל דרישות קדם', blockedIds, false);
+  }
+  if (missingIds.length) {
+    sections += _buildRepoSection('_missing', 'חסר מידע במאגר', missingIds, false);
+  }
+
+  /* Toggles */
+  const blkToggle = blockedIds.length > 0
     ? `<button class="blk-toggle${allowBlockedDrag?' active':''}" id="blk-toggle-btn">
         <span class="blk-toggle-icon">${allowBlockedDrag?'🔓':'🔒'}</span>
         ${allowBlockedDrag ? 'הסתר גרירת חסומים' : 'הצג חסומים לגרירה ניסיונית'}
@@ -1455,20 +1619,11 @@ function renderSidebar() {
     ⚠ ${allowInvalidPlacement ? 'אפשר שיבוץ לא תקין (פעיל)' : 'אפשר שיבוץ לא תקין עם אזהרה'}
   </button>`;
 
-  const sections = Object.entries(REPO_GROUPS).map(([gid, meta]) => {
-    const ids   = groups[gid] || [];
-    const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
-    return `<details class="repo-group" data-group="${esc(gid)}"${openGroups.has(gid)?' open':''}>
-      <summary>
-        ${esc(meta.name_he)}
-        <span class="repo-group-count">${ids.length}</span>
-        <span class="repo-group-chevron">›</span>
-      </summary>
-      <div class="repo-zone" data-zone="repo">${cards}</div>
-    </details>`;
-  }).join('');
+  /* Program progress panel */
+  const prog = computeProgramProgress();
+  const progressHtml = prog ? renderProgramProgress(prog) : '';
 
-  document.getElementById('repo-body').innerHTML = invalToggle + blkToggle + sections;
+  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections;
   document.getElementById('invalid-toggle-btn')?.addEventListener('click', () => {
     allowInvalidPlacement = !allowInvalidPlacement;
     renderSidebar();
@@ -1480,7 +1635,76 @@ function renderSidebar() {
 }
 
 function renderBoard() {
-  document.getElementById('board').innerHTML = SEMESTERS.map(s => semColHtml(s)).join('');
+  const yearGroups = [
+    { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
+    { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
+  ];
+  document.getElementById('board').innerHTML = yearGroups.map(yg =>
+    `<div class="year-group">
+      <div class="year-hdr">${esc(yg.label)}</div>
+      <div class="year-sems">${yg.sems.map(s => semColHtml(s)).join('')}</div>
+    </div>`
+  ).join('');
+}
+
+function computeProgramProgress() {
+  if (!programRequirements) return null;
+  const allPlaced  = allPlacedIds();
+  const allCounted = new Set([...allPlaced, ...completedCourseIds]);
+
+  let plannedHours = 0, unknownHoursCount = 0;
+  for (const cid of allPlaced) {
+    const c = courseMap[cid];
+    if (c?.weekly_hours != null) plannedHours += c.weekly_hours;
+    else unknownHoursCount++;
+  }
+
+  const total = programRequirements.total_required_hours || null;
+  const pct   = total ? Math.min(100, Math.round((plannedHours / total) * 100)) : 0;
+  const remaining = total != null ? Math.max(0, total - plannedHours) : null;
+
+  const categories = (programRequirements.categories || []).map(cat => {
+    const catSet  = new Set(cat.course_ids || []);
+    const selected = [...allCounted].filter(cid => catSet.has(cid)).length;
+    const min      = cat.min_courses || 0;
+    return { ...cat, selected_count: selected, satisfied: selected >= min };
+  });
+
+  return {
+    total, plannedHours: Math.round(plannedHours * 10) / 10,
+    pct, remaining, unknownHoursCount, categories,
+  };
+}
+
+function renderProgramProgress(prog) {
+  if (!prog) return '';
+  const barColor = prog.pct >= 100 ? 'var(--success)' : 'var(--blue)';
+  const hoursBar = prog.total != null ? `
+    <div class="prog-hours-bar">
+      <div class="prog-hours-track">
+        <div class="prog-hours-fill" style="width:${prog.pct}%;background:${barColor}"></div>
+      </div>
+      <div class="prog-hours-labels">
+        <span>${prog.plannedHours} ש׳׳ש מתוכננות</span>
+        <span>${prog.total} ש׳׳ש נדרשות</span>
+      </div>
+    </div>` : '';
+
+  const reqCats = (prog.categories || []).filter(c => c.min_courses > 0 && !c.needs_review);
+  const catRows = reqCats.map(cat =>
+    `<div class="prog-cat-row ${cat.satisfied ? 'ok' : 'warn'}">
+      <span>${esc(cat.name_he || cat.category_id)}</span>
+      <span class="prog-cat-count">${cat.selected_count}/${cat.min_courses}</span>
+    </div>`
+  ).join('');
+
+  const unkNote = prog.unknownHoursCount > 0
+    ? `<div class="prog-req-note">⚠ ${prog.unknownHoursCount} קורסים ללא שעות ידועות</div>` : '';
+
+  return `<div class="prog-requirements">
+    <div class="prog-req-title">התקדמות בתוכנית</div>
+    ${hoursBar}${catRows}${unkNote}
+  </div>`;
 }
 
 function semColHtml(sem) {
@@ -1580,7 +1804,7 @@ function cardHtml(c, placed) {
       <span class="cid" dir="ltr">${esc(c.course_id)}</span>
       ${warnIcon}${actionBtn}
     </div>
-    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
+    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם חסר — נדרש רענון מידע'}</div>
     <div class="card-row">${typeBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml}</div>
   </div>${dragHint}
 </div>`;
@@ -1760,6 +1984,10 @@ function buildAiChatPanel(c) {
   //       Expected payload: { course_id, question, context: buildCourseContext(c) }
   //       Expected response: { answer: string }
   return `<div class="ai-chat-wrap">
+    <div class="ai-mock-banner">
+      ⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
+      לחיצה על "שלח" תציג את ההקשר שיישלח ל-AI כשיחובר. אין תשובות אמיתיות.
+    </div>
     <div>
       <div class="ai-suggested-label">שאלות מוצעות</div>
       <div class="ai-suggested-prompts" id="ai-prompt-list">${promptBtns}</div>
@@ -1768,13 +1996,10 @@ function buildAiChatPanel(c) {
       <textarea id="ai-chat-input" class="ai-textarea-chat" rows="3"
         placeholder="שאל שאלה על הקורס…" dir="rtl"></textarea>
       <div class="ai-send-row">
-        <button id="ai-chat-send" class="ai-send-btn">שלח ›</button>
+        <button id="ai-chat-send" class="ai-send-btn">שלח (מדומה) ›</button>
       </div>
     </div>
     <div id="ai-chat-response" class="ai-response-area ai-empty"></div>
-    <div class="ai-no-api-note">
-      🔗 ממשק AI טרם חובר. לחיצה על "שלח" תציג תצוגה מקדימה של ההקשר שיישלח ל-AI.
-    </div>
     <div class="ai-context-note">ℹ ${esc(ctxNote)}</div>
   </div>`;
 }
@@ -1806,12 +2031,12 @@ function handleAiSend(c) {
     const ctx = buildCourseContext(c);
     respEl.className = 'ai-response-area';
 
-    let text = '';
-    if (!hasSyllabus) text += '⚠ אין סילבוס שמור, ולכן הניתוח מוגבל.\n\n';
-    text += `[UI בלבד — API טרם חובר]\n\nשאלה: ${question}\n\nהקשר שיישלח ל-AI:\n${ctx}`;
+    let text = 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\n';
+    if (!hasSyllabus) text += '⚠ אין סילבוס שמור, ולכן הניתוח יהיה מוגבל כשיחובר.\n\n';
+    text += `[הקשר שישלח ל-AI כשיחובר]\nשאלה: ${question}\n\n${ctx}`;
     respEl.textContent = text;
     sendBtn.disabled = false;
-  }, 400);
+  }, 300);
 }
 
 function syllabusLink(c) {
@@ -2034,11 +2259,12 @@ function openCourseDetails(cid) {
       `<div class="detail-chips">${ids.map(p => `<span class="detail-chip ${cls}">${esc(_prereqName(p))} <span class="prereq-id">(${esc(p)})</span></span>`).join('')}</div>`;
 
     const rows = [
-      vr.ok_completed.length ? mkRow('הושלמו לפני:',   chips(vr.ok_completed, ''))        : '',
-      vr.ok_earlier.length   ? mkRow('סמסטר קודם:',    chips(vr.ok_earlier,   ''))        : '',
-      vr.same_sem.length     ? mkRow('אותו סמסטר:',    chips(vr.same_sem,     'missing')) : '',
-      vr.too_late.length     ? mkRow('סמסטר מאוחר:',   chips(vr.too_late,     'missing')) : '',
-      vr.missing.length      ? mkRow('לא שובצו כלל:',  chips(vr.missing,      'missing')) : '',
+      vr.ok_completed.length ? mkRow('הושלמו לפני:',    chips(vr.ok_completed, ''))        : '',
+      vr.ok_current?.length  ? mkRow('נלמד עכשיו:',     chips(vr.ok_current,   ''))        : '',
+      vr.ok_earlier.length   ? mkRow('סמסטר קודם:',     chips(vr.ok_earlier,   ''))        : '',
+      vr.same_sem.length     ? mkRow('אותו סמסטר:',     chips(vr.same_sem,     'missing')) : '',
+      vr.too_late.length     ? mkRow('סמסטר מאוחר:',    chips(vr.too_late,     'missing')) : '',
+      vr.missing.length      ? mkRow('לא שובצו כלל:',   chips(vr.missing,      'missing')) : '',
     ].filter(Boolean).join('');
 
     return mkSection('בדיקת דרישות קדם', header + rows);
@@ -2079,12 +2305,12 @@ function openCourseDetails(cid) {
         <span class="detail-cid" dir="ltr">${esc(cid)}</span>
         <button class="detail-close" id="detail-close-x" aria-label="סגור">✕</button>
       </div>
-      <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
+      <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם חסר — נדרש רענון מידע'}</div>
       <div class="detail-badges">${typeBdg} ${diffBdg} ${hoursHtml}</div>
     </div>
     <div class="detail-tabs">
       <button class="detail-tab active" data-tab="info">פרטי קורס</button>
-      <button class="detail-tab" data-tab="ai">🤖 שיחה עם AI</button>
+      <button class="detail-tab" data-tab="ai">🤖 שיחה עם AI <span style="font-size:.58rem;opacity:.6">(לא מחובר)</span></button>
     </div>
     <div class="detail-body tabbed">
       <div class="detail-tab-panel active" id="dtab-info">
@@ -2177,10 +2403,13 @@ function setupDetailOverlay() {
 function setupGlobalKeys() {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    const detailOpen = !document.getElementById('detail-overlay').hidden;
-    const modalOpen  = !document.getElementById('prog-modal').hidden;
+    const detailOpen    = !document.getElementById('detail-overlay').hidden;
+    const myCoursesOpen = !document.getElementById('my-courses-modal').hidden;
+    const modalOpen     = !document.getElementById('prog-modal').hidden;
     if (detailOpen) {
       closeDetails();
+    } else if (myCoursesOpen) {
+      closeMyCoursesModal();
     } else if (modalOpen && selectedProg) {
       hideModal();
     }
@@ -2201,10 +2430,10 @@ function _prereqName(cid) {
 }
 
 function validatePlacement(courseId, targetSemId) {
-  const semIds   = SEMESTERS.map(s => s.id);
+  const semIds    = SEMESTERS.map(s => s.id);
   const targetIdx = semIds.indexOf(targetSemId);
   if (targetIdx === -1) {
-    return { valid: false, missing: [], too_late: [], same_sem: [], ok_completed: [], ok_earlier: [], errors: [] };
+    return { valid: true, missing: [], too_late: [], same_sem: [], ok_completed: [], ok_earlier: [], ok_current: [], errors: [] };
   }
 
   // Build index: courseId → semesterIndex, excluding the course being validated
@@ -2217,16 +2446,20 @@ function validatePlacement(courseId, targetSemId) {
 
   const prereqs      = courseMap[courseId]?.prerequisites || [];
   const completedSet = new Set(completedCourseIds);
-  const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [];
+  const currentSet   = new Set(myCoursesState.current);
+  const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [], ok_current = [];
 
   for (const prereq of prereqs) {
     if (completedSet.has(prereq)) {
       ok_completed.push(prereq);
+    } else if (currentSet.has(prereq)) {
+      // Currently taking — satisfies prereq (with informational note, no blocking)
+      ok_current.push(prereq);
     } else if (prereq in courseSemIdx) {
       const idx = courseSemIdx[prereq];
-      if (idx < targetIdx)      ok_earlier.push(prereq);
+      if (idx < targetIdx)       ok_earlier.push(prereq);
       else if (idx === targetIdx) same_sem.push(prereq);
-      else                       too_late.push(prereq);
+      else                        too_late.push(prereq);
     } else {
       missing.push(prereq);
     }
@@ -2234,10 +2467,12 @@ function validatePlacement(courseId, targetSemId) {
 
   const valid  = missing.length === 0 && too_late.length === 0 && same_sem.length === 0;
   const errors = [...missing, ...too_late, ...same_sem];
-  return { valid, missing, too_late, same_sem, ok_completed, ok_earlier, errors };
+  return { valid, missing, too_late, same_sem, ok_completed, ok_earlier, ok_current, errors };
 }
 
 function revalidateBoard() {
+  // Keep completedCourseIds merged from board metadata + user-marked
+  completedCourseIds = [...new Set([..._boardCompletedIds, ...myCoursesState.completed])];
   boardValidation = {};
   for (const [semId, ids] of Object.entries(state.semesters)) {
     for (const cid of (ids || [])) {
@@ -2425,6 +2660,135 @@ function toggleTheme() {
   localStorage.setItem(LS_THEME, next);
   document.documentElement.dataset.theme = next;
   document.getElementById('btn-dark').textContent = next === 'dark' ? '☀ יום' : '☾ לילה';
+}
+
+/* ── My Courses ─────────────────────────────────────────────────────────── */
+function loadMyCoursesState() {
+  try {
+    const raw = localStorage.getItem(LS_MY_COURSES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      myCoursesState.completed = Array.isArray(parsed.completed) ? parsed.completed : [];
+      myCoursesState.current   = Array.isArray(parsed.current)   ? parsed.current   : [];
+    }
+  } catch { myCoursesState = { completed: [], current: [] }; }
+}
+
+function saveMyCoursesState() {
+  try { localStorage.setItem(LS_MY_COURSES, JSON.stringify(myCoursesState)); } catch {}
+}
+
+function toggleMyCourse(cid, status) {
+  const compIdx = myCoursesState.completed.indexOf(cid);
+  const currIdx = myCoursesState.current.indexOf(cid);
+  if (status === 'completed') {
+    if (compIdx !== -1) { myCoursesState.completed.splice(compIdx, 1); }
+    else {
+      myCoursesState.completed.push(cid);
+      if (currIdx !== -1) myCoursesState.current.splice(currIdx, 1); // remove from current
+    }
+  } else if (status === 'current') {
+    if (currIdx !== -1) { myCoursesState.current.splice(currIdx, 1); }
+    else {
+      myCoursesState.current.push(cid);
+      if (compIdx !== -1) myCoursesState.completed.splice(compIdx, 1); // remove from completed
+    }
+  }
+  saveMyCoursesState();
+}
+
+function openMyCoursesModal() {
+  const modal = document.getElementById('my-courses-modal');
+  document.body.classList.add('my-courses-open');
+  modal.classList.remove('hiding');
+  modal.removeAttribute('hidden');
+
+  const searchEl = document.getElementById('my-courses-search');
+  const listEl   = document.getElementById('my-courses-list');
+  searchEl.value = '';
+  _renderMyCoursesListContent(listEl, '');
+  setTimeout(() => searchEl.focus(), 60);
+
+  searchEl.oninput = () => _renderMyCoursesListContent(listEl, searchEl.value);
+
+  listEl.onclick = e => {
+    const btn = e.target.closest('[data-mc-status]');
+    if (!btn) return;
+    toggleMyCourse(btn.dataset.mcCid, btn.dataset.mcStatus);
+    _renderMyCoursesListContent(listEl, searchEl.value);
+    renderAll();
+  };
+
+  document.getElementById('my-courses-close-btn').onclick = closeMyCoursesModal;
+
+  /* Click overlay (outside dialog) to close */
+  modal.onclick = e => { if (e.target === modal) closeMyCoursesModal(); };
+}
+
+function closeMyCoursesModal() {
+  const modal = document.getElementById('my-courses-modal');
+  modal.classList.add('hiding');
+  setTimeout(() => {
+    modal.setAttribute('hidden', '');
+    modal.classList.remove('hiding');
+    document.body.classList.remove('my-courses-open');
+  }, 220);
+}
+
+function _renderMyCoursesListContent(listEl, query) {
+  const q = (query || '').toLowerCase().trim();
+  const completedSet = new Set(myCoursesState.completed);
+  const currentSet   = new Set(myCoursesState.current);
+
+  const courses = Object.values(courseMap)
+    .filter(c => !q ||
+      c.course_id.toLowerCase().includes(q) ||
+      (c.name_he || '').toLowerCase().includes(q))
+    .sort((a, b) => {
+      const an = a.name_he || a.course_id, bn = b.name_he || b.course_id;
+      return an.localeCompare(bn, 'he');
+    });
+
+  /* Update summary line */
+  const sumEl = document.getElementById('my-courses-summary');
+  if (sumEl) {
+    sumEl.innerHTML = `
+      <span>✅ ${myCoursesState.completed.length} הושלמו</span>
+      <span>📖 ${myCoursesState.current.length} נלמדים עכשיו</span>
+    `;
+  }
+
+  if (!courses.length) {
+    listEl.innerHTML = '<div class="prog-empty">לא נמצאו קורסים</div>';
+    return;
+  }
+
+  listEl.innerHTML = courses.map(c => {
+    const isDone    = completedSet.has(c.course_id);
+    const isCurrent = currentSet.has(c.course_id);
+    const rowCls    = isDone ? 'my-course-completed' : isCurrent ? 'my-course-current' : '';
+    const nameHtml  = c.name_he
+      ? esc(c.name_he)
+      : `<span style="color:var(--text-faint);font-style:italic">שם חסר — ${esc(c.course_id)}</span>`;
+    return `<div class="my-course-row ${rowCls}">
+      <div class="my-course-info">
+        <span class="my-course-id" dir="ltr">${esc(c.course_id)}</span>
+        <span class="my-course-name">${nameHtml}</span>
+      </div>
+      <div class="my-course-actions">
+        <button class="my-course-btn status-completed${isDone?' active':''}"
+          data-mc-status="completed" data-mc-cid="${esc(c.course_id)}"
+          title="${isDone ? 'בטל סימון הושלם' : 'סמן כהושלם'}">
+          ${isDone ? '✅ הושלם' : 'הושלם'}
+        </button>
+        <button class="my-course-btn status-current${isCurrent?' active':''}"
+          data-mc-status="current" data-mc-cid="${esc(c.course_id)}"
+          title="${isCurrent ? 'בטל סימון נלמד עכשיו' : 'סמן כנלמד עכשיו'}">
+          ${isCurrent ? '📖 נלמד' : 'נלמד עכשיו'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ── Utilities ──────────────────────────────────────────────────────────── */
