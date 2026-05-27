@@ -1,0 +1,13 @@
+{
+  "profile_name": "mechanical_year_3_example",
+  "completed_course_ids": [
+    "0542-2200",
+    "0542-2600",
+    "0542-4224"
+  ],
+  "preferred_topics": [],
+  "avoided_topics": [],
+  "max_difficulty": 3.2,
+  "max_weekly_hours": 4,
+  "target_specialization": "mechanical_electives"
+}

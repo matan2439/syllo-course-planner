@@ -1,0 +1,28 @@
+{
+  "program_id": "mechanical_engineering_2025",
+  "program_name": "Mechanical Engineering",
+  "university": "Tel Aviv University",
+  "year": 2025,
+  "semesters": [
+    {
+      "semester_id": "year_3_semester_a",
+      "display_name": "Year 3 — Semester A",
+      "mandatory_courses": []
+    },
+    {
+      "semester_id": "year_3_semester_b",
+      "display_name": "Year 3 — Semester B",
+      "mandatory_courses": []
+    },
+    {
+      "semester_id": "year_4_semester_a",
+      "display_name": "Year 4 — Semester A",
+      "mandatory_courses": []
+    },
+    {
+      "semester_id": "year_4_semester_b",
+      "display_name": "Year 4 — Semester B",
+      "mandatory_courses": []
+    }
+  ]
+}

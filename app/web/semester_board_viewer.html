@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<!--
+  TAU Course Planner — Semester Board
+  ────────────────────────────────────
+  פתיחה:
+    1. פיתחו טרמינל בתיקיית הפרויקט (tau-course-planner/).
+    2. הריצו:  python -m http.server 8080
+    3. פיתחו:  http://localhost:8080/app/web/semester_board_viewer.html
+-->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מתכנן לימודים — אוניברסיטת תל אביב</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Author display rules must never override the HTML hidden attribute */
+[hidden] { display: none !important; }
+
+/* ── Design tokens ──────────────────────────────────────────────────────── */
+:root {
+  --bg:        #F7F7FB;
+  --bg2:       #EEEFF5;
+  --surface:   #FFFFFF;
+  --surface2:  #F3F4F9;
+  --border:    #E5E7EB;
+  --border2:   #D1D5DB;
+  --text:      #111827;
+  --text-muted:#6B7280;
+  --text-faint:#9CA3AF;
+  --radius:    10px;
+  --shadow:    0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
+  --t:         180ms ease;
+
+  --easy-bg:#D1FAE5; --easy-text:#065F46; --easy-border:#6EE7B7;
+  --med-bg:#FEF3C7;  --med-text:#92400E;  --med-border:#FCD34D;
+  --hard-bg:#FEE2E2; --hard-text:#991B1B; --hard-border:#FCA5A5;
+  --vhard-bg:#FCE7F3;--vhard-text:#9D174D;--vhard-border:#F9A8D4;
+
+  --purple:      #7C3AED; --purple-soft:#EDE9FE;
+  --blue:        #2563EB; --blue-soft:  #DBEAFE;
+  --warning:     #F59E0B; --warn-soft:  #FEF3C7;
+  --danger:      #EF4444;
+  --success:     #10B981;
+
+  --mand-accent:#2563EB; --mand-bg:#EFF6FF; --mand-lock-bg:#DBEAFE;
+  --elec-accent:#7C3AED; --elec-bg:#FFFFFF;
+  --blk-accent: #9CA3AF; --blk-bg: #F9FAFB;
+  --miss-accent:#F59E0B; --miss-bg: #FFFBEB;
+
+  --y3a:#2563EB; --y3b:#1D4ED8; --y4a:#7C3AED; --y4b:#6D28D9;
+  --sidebar-w:284px;
+  --hdr-h:54px;
+}
+
+[data-theme="dark"] {
+  --bg:#0F1117; --bg2:#171A23;
+  --surface:#171A23; --surface2:#1F2430;
+  --border:#2D3342; --border2:#3D4455;
+  --text:#F9FAFB; --text-muted:#A1A1AA; --text-faint:#6B7280;
+
+  --easy-bg:#064E3B; --easy-text:#6EE7B7; --easy-border:#065F46;
+  --med-bg:#78350F;  --med-text:#FCD34D;  --med-border:#92400E;
+  --hard-bg:#7F1D1D; --hard-text:#FCA5A5; --hard-border:#991B1B;
+  --vhard-bg:#831843;--vhard-text:#F9A8D4;--vhard-border:#9D174D;
+
+  --purple:#A78BFA; --purple-soft:#2E1065;
+  --blue:  #60A5FA; --blue-soft:  #1E3A5F;
+  --warning:#FCD34D;--warn-soft:  #451A03;
+  --danger: #F87171;
+  --success:#34D399;
+
+  --mand-accent:#60A5FA; --mand-bg:#1E3A5F; --mand-lock-bg:#162E50;
+  --elec-accent:#A78BFA; --elec-bg:#1F2430;
+  --blk-bg:#1A1E2A; --miss-bg:#451A03;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+html, body { height:100%; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 14px; display: flex; flex-direction: column;
+  overflow: hidden; transition: background var(--t), color var(--t);
+}
+
+/* Workspace blur when program picker is open (only affects board content) */
+body.prog-modal-open .workspace {
+  filter: blur(3px) saturate(0.7);
+  pointer-events: none;
+  transition: filter 250ms ease;
+}
+
+/* ── Shared modal animation ─────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity:0; }              to { opacity:1; } }
+@keyframes fadeOut { from { opacity:1; }              to { opacity:0; } }
+@keyframes slideUp { from { transform:translateY(18px); opacity:0; } to { transform:none; opacity:1; } }
+@keyframes slideIn { from { transform:translateY(12px); opacity:0; } to { transform:none; opacity:1; } }
+
+/* ── Program selection modal ────────────────────────────────────────────── */
+.prog-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 220ms ease;
+  padding: 20px;
+}
+.prog-overlay.hiding { animation: fadeOut 200ms ease forwards; }
+
+.prog-dialog {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 32px 34px 26px;
+  box-shadow: var(--shadow-lg);
+  max-width: 520px; width: 100%;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  animation: slideUp 240ms ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.prog-close-btn {
+  position: absolute; top: 14px; inset-inline-end: 14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .82rem; transition: background var(--t), color var(--t), border-color var(--t);
+}
+.prog-close-btn:hover { background: var(--bg2); color: var(--danger); border-color: var(--danger); }
+
+.prog-header { margin-bottom: 16px; padding-inline-end: 28px; }
+.prog-title {
+  font-size: 1.4rem; font-weight: 800; margin-bottom: 4px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.prog-subtitle { font-size: .82rem; color: var(--text-muted); }
+
+.prog-search-wrap { position: relative; margin-bottom: 12px; flex-shrink: 0; }
+.prog-search-icon {
+  position: absolute; inset-inline-end: 11px; top: 50%; transform: translateY(-50%);
+  font-size: .85rem; color: var(--text-faint); pointer-events: none;
+}
+.prog-search {
+  width: 100%; padding: 10px 12px 10px 36px;
+  border: 1.5px solid var(--border2); border-radius: var(--radius);
+  background: var(--surface2); color: var(--text);
+  font-size: .85rem; font-family: inherit; direction: rtl;
+  transition: border-color var(--t), background var(--t), box-shadow var(--t);
+}
+.prog-search:focus {
+  outline: none; border-color: var(--purple); background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.12);
+}
+.prog-search::placeholder { color: var(--text-faint); }
+
+.prog-results {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  padding-inline-end: 2px;
+}
+.prog-empty {
+  padding: 32px 0; text-align: center;
+  font-size: .84rem; color: var(--text-faint);
+}
+.prog-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 14px 16px; border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface2); cursor: pointer; text-align: right;
+  width: 100%; font: inherit; color: var(--text);
+  transition: border-color var(--t), background var(--t), transform 140ms ease, box-shadow var(--t);
+}
+.prog-item:hover {
+  border-color: var(--purple); background: var(--purple-soft);
+  transform: translateY(-2px); box-shadow: 0 4px 14px rgba(124,58,237,.15);
+}
+.prog-item:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.prog-item.kb-focus { border-color: var(--blue); background: var(--blue-soft); transform: translateY(-1px); }
+.prog-item.loading  { opacity: .5; pointer-events: none; cursor: wait; }
+[data-theme="dark"] .prog-item:hover { background: var(--purple-soft); }
+[data-theme="dark"] .prog-item.kb-focus { background: var(--blue-soft); }
+
+.prog-icon     { font-size: 1.5rem; flex-shrink: 0; margin-top: 3px; line-height: 1; }
+.prog-info     { flex: 1; min-width: 0; text-align: right; }
+.prog-name     { font-size: .95rem; font-weight: 700; line-height: 1.35; margin-bottom: 2px; }
+.prog-spec     { font-size: .78rem; color: var(--blue); font-weight: 600; margin-bottom: 4px; }
+.prog-desc     { font-size: .72rem; color: var(--text-muted); margin-bottom: 5px; line-height: 1.4; }
+.prog-year-tag {
+  display: inline-flex; align-items: center;
+  font-size: .64rem; padding: 1px 7px; border-radius: 999px;
+  background: var(--bg2); border: 1px solid var(--border2); color: var(--text-faint);
+}
+
+.prog-modal-error {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px; flex-shrink: 0;
+  background: #FEE2E2; border: 1px solid #FCA5A5; color: #991B1B;
+  font-size: .78rem; line-height: 1.5; direction: rtl;
+}
+[data-theme="dark"] .prog-modal-error { background: #7F1D1D; border-color: #991B1B; color: #FCA5A5; }
+
+.prog-clear-wrap {
+  margin-top: 14px; padding-top: 13px;
+  border-top: 1px solid var(--border);
+  text-align: center; flex-shrink: 0;
+}
+.prog-clear-btn {
+  font-size: .72rem; color: var(--text-faint);
+  background: none; border: none; cursor: pointer;
+  padding: 4px 8px; border-radius: 6px;
+  transition: color var(--t), background var(--t);
+}
+.prog-clear-btn:hover { color: var(--danger); background: var(--bg2); }
+
+/* ── Course details modal ───────────────────────────────────────────────── */
+.detail-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,.42);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+  animation: fadeIn 200ms ease;
+  padding: 20px;
+}
+.detail-overlay.hiding { animation: fadeOut 180ms ease forwards; }
+
+.detail-panel {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  max-width: 480px; width: 100%;
+  max-height: 86vh;
+  display: flex; flex-direction: column;
+  animation: slideIn 220ms ease;
+  direction: rtl;
+  overflow: hidden;
+}
+
+.detail-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.detail-head-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px; margin-bottom: 6px;
+}
+.detail-cid {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: .68rem; color: var(--text-muted); letter-spacing: .04em;
+  direction: ltr; unicode-bidi: isolate; margin-top: 3px;
+}
+.detail-close {
+  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text-muted); cursor: pointer; font-size: .82rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t), color var(--t), border-color var(--t);
+}
+.detail-close:hover { background: var(--bg2); color: var(--danger); border-color: var(--danger); }
+.detail-name {
+  font-size: 1.05rem; font-weight: 700; line-height: 1.35;
+  margin-bottom: 9px; word-break: break-word;
+}
+.detail-name.unnamed { color: var(--text-muted); font-style: italic; font-weight: 400; }
+.detail-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+.detail-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+.detail-section { margin-bottom: 14px; }
+.detail-section:last-child { margin-bottom: 0; }
+.detail-section-title {
+  font-size: .61rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.detail-row {
+  font-size: .76rem; color: var(--text-muted);
+  line-height: 1.5; margin-bottom: 3px;
+  display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap;
+}
+.detail-lbl { color: var(--text-faint); font-size: .7rem; flex-shrink: 0; }
+.detail-val  { color: var(--text); }
+.detail-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.detail-chip {
+  font-family: ui-monospace, monospace; font-size: .64rem;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 2px 6px; color: var(--text-muted);
+  direction: ltr; unicode-bidi: isolate;
+}
+.detail-chip.missing { border-color: var(--danger); color: var(--danger); }
+.detail-warn {
+  font-size: .74rem; color: var(--miss-accent);
+  background: var(--miss-bg); border-radius: 7px;
+  padding: 7px 10px; margin-top: 3px; line-height: 1.45;
+}
+.detail-none { font-size: .74rem; color: var(--text-faint); font-style: italic; }
+
+.detail-foot {
+  padding: 13px 20px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; gap: 8px; align-items: center;
+}
+.detail-syl-note { font-size: .67rem; color: var(--text-faint); }
+
+/* Primary action button */
+.btn-primary {
+  background: var(--purple); color: #fff !important;
+  border-color: transparent;
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-primary:hover { opacity: .88; background: var(--purple); }
+.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.page-hdr {
+  height: var(--hdr-h); flex-shrink: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  display: flex; align-items: center; gap: 10px;
+  z-index: 30; transition: background var(--t);
+}
+.hdr-brand { display: flex; flex-direction: column; flex-shrink: 0; line-height: 1.2; }
+.hdr-title { font-size: .92rem; font-weight: 800; }
+.hdr-prog  { font-size: .68rem; color: var(--text-muted); }
+.hdr-chips { display: flex; gap: 5px; flex: 1; overflow: hidden; }
+.hdr-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .67rem; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  white-space: nowrap; flex-shrink: 0; transition: background var(--t);
+}
+.chip .cl { color: var(--text-muted); }
+.chip .cv { font-weight: 700; }
+.chip.warn { background: var(--warn-soft); border-color: var(--warning); color: #92400E; }
+[data-theme="dark"] .chip.warn { color: var(--warning); }
+
+.btn {
+  font-size: .72rem; font-weight: 600;
+  padding: 5px 12px; border-radius: 7px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--text); cursor: pointer;
+  transition: background var(--t), border-color var(--t), opacity var(--t);
+}
+.btn:hover { background: var(--bg2); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--bg2); }
+
+/* ── Workspace ──────────────────────────────────────────────────────────── */
+.workspace { flex:1; min-height:0; display:flex; overflow:hidden; }
+
+/* ── Sidebar (right in RTL) ─────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--surface);
+  border-inline-start: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  transition: background var(--t), filter 250ms ease;
+}
+.sb-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.sb-head-title { font-size: .85rem; font-weight: 700; }
+.sb-head-sub   { font-size: .68rem; color: var(--text-muted); margin-top: 2px; }
+.sb-body { flex:1; overflow-y: auto; padding: 8px; }
+
+/* Repo group accordion */
+.repo-group { margin-bottom: 6px; }
+.repo-group > summary {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-radius: 7px;
+  font-size: .65rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-faint);
+  cursor: pointer; user-select: none; list-style: none;
+  transition: background var(--t);
+}
+.repo-group > summary:hover { background: var(--bg2); }
+.repo-group > summary::marker,
+.repo-group > summary::-webkit-details-marker { display: none; }
+.repo-group-chevron { font-size: .7rem; margin-inline-start: auto; transition: transform var(--t); }
+.repo-group[open] .repo-group-chevron { transform: rotate(180deg); }
+.repo-group-count {
+  background: var(--bg2); border-radius: 999px;
+  font-size: .6rem; padding: 1px 6px;
+  color: var(--text-muted); font-weight: 600;
+}
+.repo-zone {
+  padding: 4px 2px; display: flex; flex-direction: column; gap: 5px;
+  min-height: 28px; border-radius: 7px; transition: background var(--t);
+}
+.repo-zone.drag-over {
+  background: rgba(37,99,235,.07);
+  outline: 2px dashed var(--blue); outline-offset: 1px;
+}
+.repo-zone:empty::after {
+  content: 'אין קורסים'; display: block; padding: 10px 8px;
+  font-size: .7rem; color: var(--text-faint); font-style: italic;
+}
+
+/* Blocked drag toggle */
+.blk-toggle {
+  margin: 8px 6px 4px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px; border-radius: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: .7rem; color: var(--text-muted); cursor: pointer;
+  transition: background var(--t), border-color var(--t);
+}
+.blk-toggle:hover { background: var(--bg2); }
+.blk-toggle.active { border-color: var(--warning); background: var(--warn-soft); color: #92400E; }
+[data-theme="dark"] .blk-toggle.active { color: var(--warning); }
+.blk-toggle-icon { font-size: .85rem; }
+
+/* ── AI panel ────────────────────────────────────────────────────────────── */
+.ai-panel { border-top: 1px solid var(--border); flex-shrink: 0; }
+.ai-panel > summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; cursor: pointer;
+  font-size: .78rem; font-weight: 600;
+  user-select: none; list-style: none; transition: background var(--t);
+}
+.ai-panel > summary:hover { background: var(--bg2); }
+.ai-panel > summary::marker,
+.ai-panel > summary::-webkit-details-marker { display: none; }
+.ai-chevron { margin-inline-start: auto; font-size: .75rem; transition: transform var(--t); }
+.ai-panel[open] .ai-chevron { transform: rotate(180deg); }
+.ai-body { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+/* AI responses must be grounded in local DB/JSON data only. Never hallucinate. */
+.ai-note {
+  font-size: .65rem; color: var(--text-faint); margin-bottom: 8px;
+  background: var(--surface2); border-radius: 6px; padding: 6px 8px;
+}
+.ai-textarea {
+  width: 100%; resize: none; border: 1px solid var(--border2);
+  border-radius: 7px; padding: 8px 10px;
+  font-size: .75rem; line-height: 1.5;
+  background: var(--surface); color: var(--text); font-family: inherit;
+  transition: border-color var(--t);
+}
+.ai-textarea:focus { outline: none; border-color: var(--purple); }
+.ai-send {
+  margin-top: 7px; width: 100%; padding: 7px 14px; border-radius: 7px;
+  background: var(--purple); color: #fff;
+  border: none; font-size: .75rem; font-weight: 600; cursor: pointer;
+  transition: opacity var(--t);
+}
+.ai-send:hover { opacity: .88; }
+.ai-response {
+  margin-top: 8px; font-size: .72rem; color: var(--text-muted);
+  background: var(--surface2); border-radius: 7px; padding: 9px 10px; line-height: 1.5;
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────────── */
+.sb-legend { padding: 10px 14px 13px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.legend-ttl {
+  font-size: .61rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-faint); margin-bottom: 6px;
+}
+.legend-row { display: flex; align-items: center; gap: 7px; font-size: .67rem; color: var(--text-muted); margin-bottom: 3px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── Board area ──────────────────────────────────────────────────────────── */
+.board-area { flex: 1; overflow: auto; padding: 14px; direction: ltr; transition: filter 250ms ease; }
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  gap: 12px; align-items: start; min-width: 820px; direction: ltr;
+}
+
+/* ── Semester column ────────────────────────────────────────────────────── */
+.semester-col { display: flex; flex-direction: column; gap: 8px; }
+.sem-hdr { color:#fff; border-radius: var(--radius); padding: 12px 14px 11px; }
+.col-y3a .sem-hdr { background: var(--y3a); }
+.col-y3b .sem-hdr { background: var(--y3b); }
+.col-y4a .sem-hdr { background: var(--y4a); }
+.col-y4b .sem-hdr { background: var(--y4b); }
+.sem-title { font-size: .87rem; font-weight: 700; margin-bottom: 5px; direction: rtl; }
+.sem-stats { display: flex; gap: 10px; flex-wrap: wrap; font-size: .68rem; opacity: .9; direction: rtl; }
+.sem-stats span { white-space: nowrap; }
+.wl-wrap { margin-top: 8px; }
+.wl-row  { display: flex; justify-content: space-between; font-size: .63rem; opacity: .85; margin-bottom: 3px; }
+.wl-track { height: 4px; border-radius: 999px; background: rgba(255,255,255,.25); overflow: hidden; }
+.wl-fill  { height: 100%; border-radius: 999px; background: rgba(255,255,255,.85); transition: width var(--t); }
+.wl-fill.med  { background: #FCD34D; }
+.wl-fill.over { background: #F87171; }
+.wl-note  { font-size: .62rem; opacity: .75; margin-top: 3px; direction: rtl; }
+
+/* Semester drop zone */
+.sem-zone {
+  display: flex; flex-direction: column; gap: 7px;
+  min-height: 72px; border-radius: var(--radius); padding: 4px 2px;
+  border: 1px solid transparent;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  direction: rtl;
+}
+.sem-zone.drag-over {
+  background: rgba(37,99,235,.06);
+  border: 1.5px dashed var(--blue);
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.1);
+}
+.sem-zone:empty::after {
+  content: 'גרור קורס לכאן';
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60px; font-size: .72rem; color: var(--text-faint);
+  border: 1px dashed var(--border2); border-radius: 7px;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.sem-zone.drag-over:empty::after {
+  border-color: var(--blue); color: var(--blue);
+}
+
+/* ── Course cards ───────────────────────────────────────────────────────── */
+.course-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border-inline-start: 4px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  transition:
+    box-shadow 200ms ease,
+    transform  200ms ease,
+    opacity    200ms ease,
+    background var(--t),
+    border-inline-start-color var(--t),
+    border-inline-start-width var(--t);
+}
+
+/* Draggable (elective) cards — full lift on hover */
+.course-card[draggable="true"]:not(.card-locked):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.07), 0 0 0 1.5px var(--border2);
+  z-index: 2;
+}
+/* Non-draggable cards — gentler lift */
+.course-card[draggable="false"]:not(.card-locked):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.10);
+}
+/* Locked cards — restrained, shows cursor hint */
+.card-locked { cursor: default; }
+.card-locked:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+/* Dragging state */
+.course-card.dragging {
+  opacity: .3;
+  transform: scale(.96) rotate(.5deg);
+  cursor: grabbing;
+  z-index: 50;
+  box-shadow: none;
+}
+
+/* Card type styles */
+.card-mandatory {
+  border-inline-start-color: var(--mand-accent);
+  background: var(--mand-bg);
+  border-inline-start-width: 5px;
+}
+.card-locked {
+  border-inline-start-color: var(--mand-accent);
+  background: var(--mand-lock-bg);
+  border-inline-start-width: 5px;
+}
+.card-elective  { border-inline-start-color: var(--elec-accent); background: var(--elec-bg); }
+.card-blocked   { border-inline-start-color: var(--blk-accent); background: var(--blk-bg); opacity: .76; }
+.card-missing   { border-inline-start-color: var(--miss-accent); background: var(--miss-bg); }
+
+/* Placed cards get difficulty color on border */
+.card-placed.diff-easy      { border-inline-start-color: var(--easy-border); }
+.card-placed.diff-medium    { border-inline-start-color: var(--med-border); }
+.card-placed.diff-hard      { border-inline-start-color: var(--hard-border); }
+.card-placed.diff-very_hard { border-inline-start-color: var(--vhard-border); }
+
+/* Card body */
+.card-main { padding: 9px 11px 8px; }
+.card-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 4px; margin-bottom: 4px;
+}
+.cid {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: .66rem; color: var(--text-muted); letter-spacing: .02em;
+  direction: ltr; unicode-bidi: isolate;
+}
+.cname {
+  font-size: .83rem; font-weight: 600; line-height: 1.3;
+  word-break: break-word; margin-bottom: 5px;
+}
+.cname.unnamed { color: var(--text-muted); font-style: italic; font-weight: 400; }
+.card-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.warn-icon { font-size: .75rem; margin-inline-start: auto; cursor: help; }
+
+/* Drag hint strip — visible on hover for draggable cards */
+.card-drag-hint {
+  font-size: .6rem; color: var(--text-faint);
+  text-align: center; letter-spacing: .04em;
+  padding: 3px 0 4px;
+  border-top: 1px solid var(--border);
+  opacity: 0;
+  transition: opacity 160ms ease;
+  cursor: grab;
+}
+.course-card[draggable="true"]:not(.card-locked):hover .card-drag-hint { opacity: 1; }
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: .61rem; font-weight: 600;
+  padding: 1px 6px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.bdg-mandatory { background: var(--blue-soft); color: #1E40AF; border-color: #93C5FD; }
+.bdg-elective  { background: var(--purple-soft); color: #5B21B6; border-color: #C4B5FD; }
+.bdg-blocked   { background: #F3F4F6; color: #6B7280; border-color: #D1D5DB; }
+.bdg-missing   { background: var(--warn-soft); color: #92400E; border-color: var(--warning); }
+[data-theme="dark"] .bdg-mandatory { background: #1E3A5F; color: #93C5FD; border-color: #2563EB; }
+[data-theme="dark"] .bdg-elective  { background: #2E1065; color: #C4B5FD; border-color: #7C3AED; }
+[data-theme="dark"] .bdg-blocked   { background: #1E293B; color: #94A3B8; border-color: #334155; }
+[data-theme="dark"] .bdg-missing   { background: #451A03; color: var(--warning); border-color: #92400E; }
+
+.bdg-easy      { background: var(--easy-bg);  color: var(--easy-text);  border-color: var(--easy-border); }
+.bdg-medium    { background: var(--med-bg);   color: var(--med-text);   border-color: var(--med-border); }
+.bdg-hard      { background: var(--hard-bg);  color: var(--hard-text);  border-color: var(--hard-border); }
+.bdg-very_hard { background: var(--vhard-bg); color: var(--vhard-text); border-color: var(--vhard-border); }
+
+.hrs-tag { font-size: .67rem; color: var(--text-muted); }
+.hrs-tag .v { font-weight: 700; color: var(--text); }
+.hrs-unk { font-size: .67rem; color: var(--miss-accent); font-style: italic; }
+
+/* Card action buttons */
+.rm-btn, .lock-btn {
+  font-size: .72rem; border: none; background: none;
+  cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+  transition: color var(--t), transform .12s;
+}
+.rm-btn { color: var(--text-faint); }
+.rm-btn:hover { color: var(--danger); }
+.lock-btn { color: var(--mand-accent); }
+.lock-btn:hover { transform: scale(1.2); }
+.card-locked .lock-btn { color: var(--text-faint); }
+
+/* ── State messages ──────────────────────────────────────────────────────── */
+.state-msg { padding: 60px 24px; text-align: center; color: var(--text-muted); }
+.state-err  { color: var(--danger); }
+.state-msg pre {
+  display: inline-block; text-align: right; margin-top: 14px;
+  font-size: .77rem; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; line-height: 1.7; max-width: 540px; white-space: pre-wrap;
+  direction: ltr;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<!-- ── Program selection modal ────────────────────────────────────────────── -->
+<div id="prog-modal" class="prog-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="prog-modal-title">
+  <div class="prog-dialog">
+    <button id="prog-close-btn" class="prog-close-btn" hidden aria-label="סגור">✕</button>
+    <div class="prog-header">
+      <h1 class="prog-title" id="prog-modal-title">בחרו תואר לתכנון</h1>
+      <p class="prog-subtitle">חפשו תואר, מסלול או מגמה</p>
+    </div>
+    <div class="prog-search-wrap">
+      <input id="prog-search" class="prog-search" type="search" autocomplete="off"
+             placeholder="חפשו תואר, מסלול או מגמה"
+             aria-label="חיפוש תואר" />
+      <span class="prog-search-icon" aria-hidden="true">🔍</span>
+    </div>
+    <div id="prog-results" class="prog-results" role="listbox" aria-label="תוצאות חיפוש"></div>
+    <div id="prog-modal-error" class="prog-modal-error" hidden></div>
+    <div id="prog-clear-wrap" class="prog-clear-wrap" hidden>
+      <button id="prog-clear-btn" class="prog-clear-btn">↺ איפוס בחירת תואר</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Course details modal ────────────────────────────────────────────────── -->
+<div id="detail-overlay" class="detail-overlay" hidden aria-modal="true" role="dialog" aria-label="פרטי קורס">
+  <div id="detail-panel" class="detail-panel"></div>
+</div>
+
+<!-- ── Main app ───────────────────────────────────────────────────────────── -->
+<div id="app" hidden>
+  <header class="page-hdr">
+    <div class="hdr-brand">
+      <span class="hdr-title">מתכנן לימודים</span>
+      <span class="hdr-prog" id="hdr-prog-name"></span>
+    </div>
+    <div class="hdr-chips" id="hdr-chips"></div>
+    <div class="hdr-actions">
+      <button class="btn btn-ghost" id="btn-change-prog">החלפת תואר</button>
+      <button class="btn" id="btn-reset">↺ איפוס</button>
+      <button class="btn" id="btn-dark">☾ לילה</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <div class="sb-head-title">מאגר קורסים</div>
+        <div class="sb-head-sub" id="repo-sub">טוען…</div>
+      </div>
+      <div class="sb-body" id="repo-body"></div>
+
+      <div class="sb-legend">
+        <div class="legend-ttl">מקרא</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--mand-accent)"></div>קורס חובה</div>
+        <div class="legend-row" style="padding-inline-start:16px;font-size:.63rem;color:var(--text-faint)">🔒 נעול · 🔓 לחצו לפתיחה</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--elec-accent)"></div>קורס בחירה</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--blk-accent)"></div>חסום (דרישות קדם)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--miss-accent)"></div>חסר מהמאגר</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--success);opacity:.9"></div>עומס קל (&lt;10 ש׳׳ש)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--warning)"></div>עומס בינוני (10–16)</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--danger)"></div>עומס גבוה (16+)</div>
+      </div>
+
+      <!-- AI panel: mock only — not connected to API -->
+      <details class="ai-panel" id="ai-panel">
+        <summary>🤖 <span>עוזר AI</span> <span class="ai-chevron">›</span></summary>
+        <div class="ai-body">
+          <div class="ai-note">⚠ הלוח מדומה בלבד. המלצות עתידיות יתבססו על נתוני ה-DB המקומי בלבד.</div>
+          <textarea class="ai-textarea" rows="3"
+            placeholder="לדוגמה: אני רוצה עומס קל בסמסטר א׳ ולהתמקד ברובוטיקה"></textarea>
+          <button class="ai-send" onclick="this.nextElementSibling.textContent='ממשיג הצעה... (מדומה)'">בקש הצעה</button>
+          <div class="ai-response">כאן תופיע המלצת AI שמבוססת על הקורסים ודרישות הקדם שלך.</div>
+        </div>
+      </details>
+    </aside>
+
+    <main class="board-area">
+      <div id="msg-load" class="state-msg">טוען נתוני לוח…</div>
+      <div id="msg-err"  class="state-msg state-err" hidden></div>
+      <div id="board"    class="board-grid" hidden></div>
+    </main>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── Programs registry ──────────────────────────────────────────────────────
+ * Add entries here when more programs are supported.
+ * board_json / audit_json: paths relative to this HTML file.
+ */
+const PROGRAM_LIST = [
+  {
+    program_id:             'mechanical_engineering_2025',
+    program_name_he:        'הנדסה מכנית',
+    specialization_name_he: null,
+    year:                   2025,
+    description_he:         'תכנון קורסי חובה ובחירה בהנדסה מכנית',
+    icon:                   '⚙️',
+    board_json:             '../../data/parsed_json/mechanical_semester_board.json',
+    audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
+  },
+  {
+    program_id:             'mechanical_engineering_biomedical_track_2025',
+    program_name_he:        'הנדסה מכנית',
+    specialization_name_he: 'מגמה בהנדסה ביו-רפואית',
+    year:                   2025,
+    description_he:         'תכנון קורסים להנדסה מכנית עם דגש ביו-רפואי',
+    icon:                   '🔬',
+    board_json:             '../../data/parsed_json/mechanical_semester_board.json',
+    audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
+  },
+];
+const PROGRAMS = Object.fromEntries(PROGRAM_LIST.map(p => [p.program_id, p]));
+
+/* ── Label maps ─────────────────────────────────────────────────────────── */
+const SEM_HE = {
+  year_3_semester_a: "שנה ג׳ — סמסטר א׳",
+  year_3_semester_b: "שנה ג׳ — סמסטר ב׳",
+  year_4_semester_a: "שנה ד׳ — סמסטר א׳",
+  year_4_semester_b: "שנה ד׳ — סמסטר ב׳",
+};
+const DIFF_HE  = { easy:'קל', medium:'בינוני', hard:'קשה', very_hard:'קשה מאוד' };
+const TYPE_HE  = { mandatory:'חובה', elective:'בחירה' };
+const STAT_HE  = { blocked:'חסום', missing_from_db:'חסר' };
+const CONF_HE  = { high:'גבוה', medium:'בינוני', low:'נמוך' };
+
+const REPO_GROUPS = {
+  mandatory:       { name_he: 'קורסי חובה',          open: true  },
+  elective_avail:  { name_he: 'קורסי בחירה זמינים',  open: true  },
+  elective_blocked:{ name_he: 'קורסי בחירה חסומים',  open: false },
+  missing:         { name_he: 'חסר מידע',             open: false },
+};
+
+const SEMESTERS = [
+  { id:'year_3_semester_a', css:'col-y3a' },
+  { id:'year_3_semester_b', css:'col-y3b' },
+  { id:'year_4_semester_a', css:'col-y4a' },
+  { id:'year_4_semester_b', css:'col-y4b' },
+];
+
+const MAX_HOURS = 20;
+const LS_STATE  = 'tau_board_v3';
+const LS_THEME  = 'tau_theme';
+const LS_PROG   = 'tau_program';  /* localStorage.selectedProgramId equivalent */
+
+/* ── App state ──────────────────────────────────────────────────────────── */
+let courseMap     = {};
+let state         = null; // { semesters:{}, repo:[], unlockedIds:[] }
+let originalState = null;
+let selectedProg  = null;
+
+/* UI-only state */
+let dragId           = null;
+let dragFromSem      = null;
+let allowBlockedDrag = false;
+const openGroups     = new Set(
+  Object.entries(REPO_GROUPS).filter(([,v])=>v.open).map(([k])=>k)
+);
+
+/* ── Bootstrap ──────────────────────────────────────────────────────────── */
+async function main() {
+  applyTheme();
+  setupDragDelegation();
+  setupCardClick();
+  setupDetailOverlay();
+  setupGlobalKeys();
+
+  document.getElementById('btn-dark').addEventListener('click', toggleTheme);
+  document.getElementById('btn-reset').addEventListener('click', resetBoard);
+  document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
+
+  buildProgModal();
+
+  const savedId = localStorage.getItem(LS_PROG);
+  if (savedId && PROGRAMS[savedId]) {
+    console.log('[main] Restoring saved program:', savedId);
+    await loadProgram(savedId, false);
+  } else {
+    showModal();
+  }
+}
+
+/* ── Program modal ──────────────────────────────────────────────────────── */
+function buildProgModal() {
+  const searchEl  = document.getElementById('prog-search');
+  const resultsEl = document.getElementById('prog-results');
+  const closeBtn  = document.getElementById('prog-close-btn');
+  const clearBtn  = document.getElementById('prog-clear-btn');
+  let kbIdx = -1;
+
+  function renderResults(query) {
+    const q = (query || '').trim().toLowerCase();
+    const filtered = q
+      ? PROGRAM_LIST.filter(p =>
+          [p.program_name_he, p.specialization_name_he, p.description_he]
+            .some(f => f && f.toLowerCase().includes(q))
+        )
+      : PROGRAM_LIST;
+    kbIdx = -1;
+    if (!filtered.length) {
+      resultsEl.innerHTML = '<div class="prog-empty">לא נמצאו תארים מתאימים</div>';
+      return;
+    }
+    resultsEl.innerHTML = filtered.map(p => `
+      <button class="prog-item" data-prog-id="${esc(p.program_id)}" role="option" type="button">
+        <span class="prog-icon" aria-hidden="true">${esc(p.icon || '📚')}</span>
+        <div class="prog-info">
+          <div class="prog-name">${esc(p.program_name_he)}</div>
+          ${p.specialization_name_he
+            ? `<div class="prog-spec">${esc(p.specialization_name_he)}</div>`
+            : ''}
+          <div class="prog-desc">${esc(p.description_he)}</div>
+          <span class="prog-year-tag">${esc(p.year)}</span>
+        </div>
+      </button>`).join('');
+  }
+
+  function applyKbFocus() {
+    const items = resultsEl.querySelectorAll('.prog-item');
+    items.forEach((el, i) => el.classList.toggle('kb-focus', i === kbIdx));
+    if (kbIdx >= 0) items[kbIdx]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  renderResults('');
+
+  searchEl.addEventListener('input', () => renderResults(searchEl.value));
+
+  searchEl.addEventListener('keydown', e => {
+    const items = resultsEl.querySelectorAll('.prog-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      kbIdx = Math.min(kbIdx + 1, items.length - 1);
+      applyKbFocus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      kbIdx = Math.max(kbIdx - 1, 0);
+      applyKbFocus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = kbIdx >= 0 ? items[kbIdx] : items[0];
+      target?.click();
+    } else if (e.key === 'Escape' && selectedProg) {
+      hideModal();
+    }
+  });
+
+  resultsEl.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-prog-id]');
+    if (!btn) return;
+    await loadProgram(btn.dataset.progId, true);
+  });
+
+  closeBtn.addEventListener('click', () => { if (selectedProg) hideModal(); });
+
+  clearBtn.addEventListener('click', () => {
+    console.log('[prog] Clearing program selection');
+    localStorage.removeItem(LS_PROG);
+    localStorage.removeItem(LS_STATE);
+    selectedProg = null;
+    courseMap = {}; state = null; originalState = null;
+    document.getElementById('app').setAttribute('hidden', '');
+    showModal();
+  });
+}
+
+function showModal() {
+  const modal    = document.getElementById('prog-modal');
+  const closeBtn = document.getElementById('prog-close-btn');
+  const clearWrp = document.getElementById('prog-clear-wrap');
+  const errEl    = document.getElementById('prog-modal-error');
+  const searchEl = document.getElementById('prog-search');
+
+  closeBtn.hidden = !selectedProg;
+  clearWrp.hidden = !selectedProg;
+  errEl.hidden    = true;
+
+  document.body.classList.add('prog-modal-open');
+  modal.classList.remove('hiding');
+  modal.removeAttribute('hidden');
+
+  /* Reset search + re-render */
+  searchEl.value = '';
+  searchEl.dispatchEvent(new Event('input'));
+  setTimeout(() => searchEl.focus(), 60);
+}
+
+function hideModal() {
+  const modal = document.getElementById('prog-modal');
+  modal.classList.add('hiding');
+  setTimeout(() => {
+    modal.setAttribute('hidden', '');
+    modal.classList.remove('hiding');
+    document.body.classList.remove('prog-modal-open');
+  }, 220);
+}
+
+/* ── Load program ───────────────────────────────────────────────────────── */
+/* fromModal=true: loading state inside modal; false: loading state in board */
+async function loadProgram(progId, fromModal) {
+  const prog = PROGRAMS[progId];
+  if (!prog) {
+    console.error('[loadProgram] Unknown program id:', progId);
+    return;
+  }
+  console.log('[loadProgram] Loading:', progId, '| fromModal:', fromModal);
+
+  const errEl     = document.getElementById('prog-modal-error');
+  let modalItems  = [];
+
+  errEl.hidden = true;
+
+  if (fromModal) {
+    modalItems = [...document.querySelectorAll('#prog-results .prog-item')];
+    modalItems.forEach(el => el.classList.add('loading'));
+  } else {
+    /* Show app skeleton while fetching */
+    document.getElementById('app').removeAttribute('hidden');
+    document.getElementById('msg-load').removeAttribute('hidden');
+    document.getElementById('board').setAttribute('hidden', '');
+    document.getElementById('msg-err').setAttribute('hidden', '');
+  }
+
+  try {
+    const [board, audit] = await Promise.all([
+      fetchJSON(prog.board_json),
+      fetchJSON(prog.audit_json).catch(err => {
+        console.warn('[loadProgram] audit JSON unavailable:', err.message);
+        return null;
+      }),
+    ]);
+    console.log('[loadProgram] OK — semesters:', board.semesters?.length ?? 0);
+
+    /* Commit */
+    selectedProg = prog;
+    localStorage.setItem(LS_PROG, progId);
+
+    /* Update header */
+    const nameStr = prog.specialization_name_he
+      ? `${prog.program_name_he} · ${prog.specialization_name_he} · ${prog.year}`
+      : `${prog.program_name_he} · ${prog.year}`;
+    document.getElementById('hdr-prog-name').textContent = nameStr;
+
+    init(board, audit);
+    renderAll();
+
+    document.getElementById('app').removeAttribute('hidden');
+    document.getElementById('msg-load').setAttribute('hidden', '');
+    document.getElementById('board').removeAttribute('hidden');
+    document.getElementById('msg-err').setAttribute('hidden', '');
+
+    hideModal(); /* no-op if already hidden */
+
+  } catch (err) {
+    console.error('[loadProgram] Failed:', err);
+
+    localStorage.removeItem(LS_PROG);
+    selectedProg = null;
+    document.getElementById('app').setAttribute('hidden', '');
+    modalItems.forEach(el => el.classList.remove('loading'));
+
+    errEl.textContent = `שגיאה בטעינת הנתונים: ${err.message}`;
+    errEl.hidden = false;
+
+    /* If loading was triggered without modal (saved program), open modal with error */
+    if (!fromModal) showModal();
+  }
+}
+
+/* ── Data init ──────────────────────────────────────────────────────────── */
+function init(board, audit) {
+  courseMap = {};
+
+  for (const sem of (board.semesters || [])) {
+    for (const c of (sem.courses || [])) {
+      courseMap[c.course_id] = normalizeCourse(c, c.locked_by_user ? 'locked' : 'eligible');
+    }
+  }
+
+  if (audit) {
+    for (const ac of audit) {
+      if (!courseMap[ac.course_id]) {
+        courseMap[ac.course_id] = {
+          course_id:             ac.course_id,
+          name_he:               ac.name_he    || null,
+          weekly_hours:          ac.weekly_hours,
+          difficulty_score:      ac.difficulty_score,
+          difficulty_level:      ac.difficulty_level || null,
+          course_type:           'elective',
+          status:                ac.status     || 'eligible',
+          locked_by_user:        false,
+          source:                'audit',
+          missing_prerequisites: ac.missing_prerequisites || [],
+          prerequisites:         ac.prerequisites         || [],
+          warnings:              ac.weekly_hours == null ? ['שעות שבועיות חסרות.'] : [],
+          data_quality:          { has_weekly_hours: ac.weekly_hours != null },
+          syllabus_url:          ac.syllabus_url   || null,
+          syllabus_links:        ac.syllabus_links  || [],
+          source_urls:           ac.source_urls     || [],
+          semester_availability: ac.semester_availability || null,
+        };
+      } else {
+        /* Enrich board entry with audit's syllabus links if missing */
+        const entry = courseMap[ac.course_id];
+        if (!entry.syllabus_url  && ac.syllabus_url)  entry.syllabus_url  = ac.syllabus_url;
+        if (!entry.syllabus_links?.length && ac.syllabus_links?.length)
+          entry.syllabus_links = ac.syllabus_links;
+      }
+    }
+  }
+
+  const origSems  = Object.fromEntries(SEMESTERS.map(s => [s.id, []]));
+  const placedSet = new Set();
+  for (const sem of (board.semesters || [])) {
+    if (origSems[sem.semester_id] !== undefined) {
+      origSems[sem.semester_id] = (sem.courses || []).map(c => c.course_id);
+      for (const c of (sem.courses || [])) placedSet.add(c.course_id);
+    }
+  }
+  const origRepo = Object.keys(courseMap).filter(id => !placedSet.has(id));
+  originalState  = { semesters: clone(origSems), repo: origRepo, unlockedIds: [] };
+
+  const saved = tryLoadState();
+  if (saved && validState(saved)) {
+    state = saved;
+    if (!Array.isArray(state.unlockedIds)) state.unlockedIds = [];
+  } else {
+    state = clone(originalState);
+  }
+}
+
+function normalizeCourse(c, status) {
+  return {
+    course_id:             c.course_id,
+    name_he:               c.name_he               || null,
+    weekly_hours:          c.weekly_hours,
+    difficulty_score:      c.difficulty_score,
+    difficulty_level:      c.difficulty_level       || null,
+    course_type:           c.course_type            || 'elective',
+    status,
+    locked_by_user:        !!c.locked_by_user,
+    source:                c.source                 || 'auto',
+    missing_prerequisites: c.missing_prerequisites  || [],
+    prerequisites:         c.prerequisites          || [],
+    warnings:              c.warnings               || [],
+    data_quality:          c.data_quality           || {},
+    syllabus_url:          c.syllabus_url           || null,
+    syllabus_links:        c.syllabus_links         || [],
+    source_urls:           c.source_urls            || [],
+    semester_availability: c.semester_availability  || null,
+  };
+}
+
+/* ── Render ─────────────────────────────────────────────────────────────── */
+function renderAll() { renderChips(); renderSidebar(); renderBoard(); }
+
+function renderChips() {
+  const placed  = allPlacedIds().size;
+  const noHours = Object.values(courseMap).filter(c => c.weekly_hours == null).length;
+  document.getElementById('hdr-chips').innerHTML = [
+    mkChip('סה״כ', Object.keys(courseMap).length, false),
+    mkChip('מוצבים', placed, false),
+    mkChip('במאגר', state.repo.length, false),
+    mkChip('חסרות שעות', noHours, noHours > 0),
+  ].join('');
+}
+function mkChip(lbl, val, warn) {
+  return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
+}
+
+function renderSidebar() {
+  const avail = state.repo.length;
+  document.getElementById('repo-sub').textContent =
+    `${avail} קורס${avail !== 1 ? 'ים' : ''} זמינים`;
+
+  const groups = { mandatory:[], elective_avail:[], elective_blocked:[], missing:[] };
+  for (const id of state.repo) {
+    const c = courseMap[id];
+    if (!c) continue;
+    if (c.course_type === 'mandatory')         groups.mandatory.push(id);
+    else if (c.status === 'missing_from_db')   groups.missing.push(id);
+    else if (c.status === 'blocked')           groups.elective_blocked.push(id);
+    else                                       groups.elective_avail.push(id);
+  }
+
+  const blkToggle = groups.elective_blocked.length > 0
+    ? `<button class="blk-toggle${allowBlockedDrag?' active':''}" id="blk-toggle-btn">
+        <span class="blk-toggle-icon">${allowBlockedDrag?'🔓':'🔒'}</span>
+        ${allowBlockedDrag ? 'הסתר גרירת חסומים' : 'הצג חסומים לגרירה ניסיונית'}
+       </button>` : '';
+
+  const sections = Object.entries(REPO_GROUPS).map(([gid, meta]) => {
+    const ids   = groups[gid] || [];
+    const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
+    return `<details class="repo-group" data-group="${esc(gid)}"${openGroups.has(gid)?' open':''}>
+      <summary>
+        ${esc(meta.name_he)}
+        <span class="repo-group-count">${ids.length}</span>
+        <span class="repo-group-chevron">›</span>
+      </summary>
+      <div class="repo-zone" data-zone="repo">${cards}</div>
+    </details>`;
+  }).join('');
+
+  document.getElementById('repo-body').innerHTML = blkToggle + sections;
+  document.getElementById('blk-toggle-btn')?.addEventListener('click', () => {
+    allowBlockedDrag = !allowBlockedDrag;
+    renderSidebar();
+  });
+}
+
+function renderBoard() {
+  document.getElementById('board').innerHTML = SEMESTERS.map(s => semColHtml(s)).join('');
+}
+
+function semColHtml(sem) {
+  const ids     = state.semesters[sem.id] || [];
+  const courses = ids.map(id => courseMap[id]).filter(Boolean);
+  let knownHrs  = 0, unknownCt = 0;
+  for (const c of courses) {
+    if (c.weekly_hours != null) knownHrs += c.weekly_hours;
+    else unknownCt++;
+  }
+  const avgDiff = courses.length
+    ? (courses.reduce((s,c)=>s+(c.difficulty_score||0),0)/courses.length).toFixed(1)
+    : null;
+  const pct    = Math.min(100, (knownHrs / MAX_HOURS) * 100).toFixed(1);
+  const wlCls  = knownHrs >= 16 ? 'over' : knownHrs >= 10 ? 'med' : '';
+  const hrsLbl = unknownCt > 0 ? `${knownHrs} שעות ידועות` : `${knownHrs} ש׳׳ש`;
+  const unkNote = unknownCt > 0
+    ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
+  const cards  = ids.map(id => cardHtml(courseMap[id], true)).join('');
+  return `<div class="semester-col ${esc(sem.css)}">
+    <div class="sem-hdr">
+      <div class="sem-title">${esc(SEM_HE[sem.id] || sem.id)}</div>
+      <div class="sem-stats">
+        <span>⏱ ${esc(hrsLbl)}</span>
+        <span>📚 ${courses.length} קורסים</span>
+        ${avgDiff != null ? `<span>📊 קושי ${esc(avgDiff)}</span>` : ''}
+      </div>
+      <div class="wl-wrap">
+        <div class="wl-row">
+          <span>עומס שבועי</span>
+          <span>${knownHrs}/${MAX_HOURS} ש׳׳ש</span>
+        </div>
+        <div class="wl-track"><div class="wl-fill ${wlCls}" style="width:${pct}%"></div></div>
+        ${unkNote}
+      </div>
+    </div>
+    <div class="sem-zone" data-zone="semester" data-sem="${esc(sem.id)}">${cards}</div>
+  </div>`;
+}
+
+/* ── Course card HTML ───────────────────────────────────────────────────── */
+function cardHtml(c, placed) {
+  if (!c) return '';
+  const type      = c.course_type || 'elective';
+  const status    = c.status      || 'eligible';
+  const level     = c.difficulty_level || '';
+  const locked    = isLocked(c);
+  const isBlocked = status === 'blocked';
+  const canDrag   = !locked && !(isBlocked && !allowBlockedDrag);
+
+  let cls = 'course-card';
+  if (locked)                          cls += ' card-locked';
+  else if (status === 'missing_from_db') cls += ' card-missing';
+  else if (isBlocked)                  cls += ' card-blocked';
+  else if (type === 'mandatory')       cls += ' card-mandatory';
+  else                                 cls += ' card-elective';
+  if (placed && level && !locked)      cls += ` card-placed diff-${esc(level)}`;
+
+  const typeBdg = status === 'missing_from_db'
+    ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
+    : status === 'blocked'
+    ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : type === 'mandatory'
+    ? `<span class="badge bdg-mandatory">${TYPE_HE.mandatory}</span>`
+    : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
+
+  const diffBdg = level
+    ? `<span class="badge bdg-${esc(level)}">${esc(DIFF_HE[level]||level)}${c.difficulty_score!=null?' '+c.difficulty_score:''}</span>`
+    : '';
+
+  const hoursHtml = c.weekly_hours != null
+    ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
+    : `<span class="hrs-unk">שעות לא ידועות</span>`;
+
+  const warnIcon  = (c.warnings||[]).length
+    ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
+
+  let actionBtn = '';
+  if (type === 'mandatory') {
+    const icon  = locked ? '🔒' : '🔓';
+    const title = locked ? 'לחצו לביטול נעילה' : 'לחצו לנעילה';
+    actionBtn = `<button class="lock-btn" data-toggle-lock="${esc(c.course_id)}" title="${title}">${icon}</button>`;
+  } else if (placed) {
+    actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
+  }
+
+  const dragHint = canDrag ? '<div class="card-drag-hint">⠿ גרירה</div>' : '';
+
+  return `<div class="${cls}" ${canDrag?'draggable="true"':'draggable="false"'} data-cid="${esc(c.course_id)}">
+  <div class="card-main">
+    <div class="card-top">
+      <span class="cid" dir="ltr">${esc(c.course_id)}</span>
+      ${warnIcon}${actionBtn}
+    </div>
+    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
+    <div class="card-row">${typeBdg} ${diffBdg} ${hoursHtml}</div>
+  </div>${dragHint}
+</div>`;
+}
+
+/* ── Course details modal ───────────────────────────────────────────────── */
+function syllabusLink(c) {
+  if (c.syllabus_url) return c.syllabus_url;
+  if (c.syllabus_links?.length) return c.syllabus_links[0];
+  return null;
+}
+
+function openCourseDetails(cid) {
+  const c = courseMap[cid];
+  if (!c) return;
+
+  const type   = c.course_type      || 'elective';
+  const status = c.status           || 'eligible';
+  const level  = c.difficulty_level || '';
+  const locked = isLocked(c);
+  const sylUrl = syllabusLink(c);
+
+  /* Badges */
+  const typeBdg = status === 'missing_from_db'
+    ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
+    : status === 'blocked'
+    ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : type === 'mandatory'
+    ? `<span class="badge bdg-mandatory">${TYPE_HE.mandatory}</span>`
+    : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
+
+  const diffBdg = level
+    ? `<span class="badge bdg-${esc(level)}">${esc(DIFF_HE[level]||level)} ${c.difficulty_score ?? ''}</span>`
+    : '';
+
+  const hoursHtml = c.weekly_hours != null
+    ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
+    : `<span class="hrs-unk">שעות לא ידועות</span>`;
+
+  /* Detail sections */
+  const prereqs = (c.prerequisites||[]).filter(Boolean);
+  const missing = (c.missing_prerequisites||[]).filter(Boolean);
+  const warns   = (c.warnings||[]);
+  const conf    = c.data_quality?.placement_confidence || '';
+  const src     = c.source || '';
+
+  const mkSection = (title, content) =>
+    `<div class="detail-section"><div class="detail-section-title">${title}</div>${content}</div>`;
+
+  const mkRow = (label, val) =>
+    `<div class="detail-row"><span class="detail-lbl">${label}</span> <span class="detail-val">${val}</span></div>`;
+
+  /* Basic info section */
+  const basicRows = [
+    mkRow('קוד קורס:', `<span dir="ltr" style="font-family:ui-monospace,monospace;unicode-bidi:isolate">${esc(cid)}</span>`),
+    mkRow('סוג:', esc(TYPE_HE[type] || type)),
+    c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`) : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
+    level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
+    status !== 'eligible' ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
+    c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
+  ].filter(Boolean).join('');
+
+  /* Prerequisites section */
+  const prereqSection = (prereqs.length || missing.length) ? mkSection('דרישות קדם',
+    (prereqs.length
+      ? `<div class="detail-chips">${prereqs.map(p=>`<span class="detail-chip">${esc(p)}</span>`).join('')}</div>`
+      : '<div class="detail-none">אין דרישות קדם</div>'
+    ) +
+    (missing.length
+      ? `<div style="margin-top:6px"><div class="detail-section-title" style="color:var(--danger)">דרישות קדם חסרות</div>
+           <div class="detail-chips">${missing.map(p=>`<span class="detail-chip missing">${esc(p)}</span>`).join('')}</div></div>`
+      : '')
+  ) : '';
+
+  /* Warnings section */
+  const warnSection = warns.length
+    ? mkSection('אזהרות', warns.map(w=>`<div class="detail-warn">⚠ ${esc(w)}</div>`).join(''))
+    : '';
+
+  /* Source / quality section */
+  const qualRows = [
+    src  ? mkRow('מקור:', esc(src)) : '',
+    conf ? mkRow('ביטחון הצבה:', esc(CONF_HE[conf] || conf)) : '',
+    c.data_quality?.has_weekly_hours === false ? mkRow('שעות:', '<span style="color:var(--miss-accent)">חסרות</span>') : '',
+  ].filter(Boolean).join('');
+  const qualSection = qualRows ? mkSection('מקור ואיכות נתונים', qualRows) : '';
+
+  /* Syllabus button */
+  const sylBtn = sylUrl
+    ? `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`
+    : `<button class="btn" disabled>📖 פתח סילבוס</button>`;
+  const sylNote = !sylUrl
+    ? '<span class="detail-syl-note">סילבוס לא זמין במידע שנשמר</span>'
+    : '';
+
+  /* Assemble panel */
+  document.getElementById('detail-panel').innerHTML = `
+    <div class="detail-head">
+      <div class="detail-head-row">
+        <span class="detail-cid" dir="ltr">${esc(cid)}</span>
+        <button class="detail-close" id="detail-close-x" aria-label="סגור">✕</button>
+      </div>
+      <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'שם לא זמין'}</div>
+      <div class="detail-badges">${typeBdg} ${diffBdg} ${hoursHtml}</div>
+    </div>
+    <div class="detail-body">
+      ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
+      ${prereqSection}
+      ${warnSection}
+      ${qualSection}
+    </div>
+    <div class="detail-foot">
+      ${sylBtn}
+      ${sylNote}
+      <button class="btn btn-ghost" id="detail-close-btn" style="margin-inline-start:auto">סגור</button>
+    </div>`;
+
+  const overlay = document.getElementById('detail-overlay');
+  overlay.classList.remove('hiding');
+  overlay.removeAttribute('hidden');
+
+  document.getElementById('detail-close-x').addEventListener('click', closeDetails);
+  document.getElementById('detail-close-btn').addEventListener('click', closeDetails);
+}
+
+function closeDetails() {
+  const overlay = document.getElementById('detail-overlay');
+  overlay.classList.add('hiding');
+  setTimeout(() => {
+    overlay.setAttribute('hidden', '');
+    overlay.classList.remove('hiding');
+  }, 200);
+}
+
+function setupDetailOverlay() {
+  /* Click outside panel to close */
+  document.getElementById('detail-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeDetails();
+  });
+}
+
+/* ── Global keyboard handler ────────────────────────────────────────────── */
+function setupGlobalKeys() {
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const detailOpen = !document.getElementById('detail-overlay').hidden;
+    const modalOpen  = !document.getElementById('prog-modal').hidden;
+    if (detailOpen) {
+      closeDetails();
+    } else if (modalOpen && selectedProg) {
+      hideModal();
+    }
+  });
+}
+
+/* ── Lock helpers ───────────────────────────────────────────────────────── */
+function isLocked(c) {
+  return c &&
+         c.locked_by_user === true &&
+         c.course_type    === 'mandatory' &&
+         !(state?.unlockedIds||[]).includes(c.course_id);
+}
+
+/* ── Drag & Drop ────────────────────────────────────────────────────────── */
+function setupDragDelegation() {
+  document.addEventListener('dragstart', e => {
+    const card = e.target.closest('.course-card[draggable="true"]');
+    if (!card) return;
+    const cid = card.dataset.cid;
+    const c   = courseMap[cid];
+    if (isLocked(c)) { e.preventDefault(); return; }
+    if (c?.status === 'blocked' && !allowBlockedDrag) { e.preventDefault(); return; }
+    dragId      = cid;
+    const sz    = card.closest('[data-zone="semester"]');
+    dragFromSem = sz ? sz.dataset.sem : null;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cid);
+  });
+
+  document.addEventListener('dragend', e => {
+    const card = e.target.closest('.course-card');
+    if (card) card.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragId = null; dragFromSem = null;
+  });
+
+  document.addEventListener('dragover', e => {
+    const zone = e.target.closest('[data-zone]');
+    if (!zone) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    zone.classList.add('drag-over');
+  });
+
+  document.addEventListener('dragleave', e => {
+    const zone = e.target.closest('[data-zone]');
+    if (!zone) return;
+    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+  });
+
+  document.addEventListener('drop', e => {
+    const zone = e.target.closest('[data-zone]');
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const id    = e.dataTransfer.getData('text/plain') || dragId;
+    const toSem = zone.dataset.zone === 'semester' ? zone.dataset.sem : null;
+    moveCourse(id, dragFromSem, toSem);
+  });
+
+  /* Click delegation for rm/lock buttons */
+  document.addEventListener('click', e => {
+    const rmBtn = e.target.closest('[data-rm]');
+    if (rmBtn) {
+      const id = rmBtn.dataset.rm;
+      const sz = rmBtn.closest('[data-zone="semester"]');
+      if (sz) moveCourse(id, sz.dataset.sem, null);
+      return;
+    }
+    const lkBtn = e.target.closest('[data-toggle-lock]');
+    if (lkBtn) {
+      const id = lkBtn.dataset.toggleLock;
+      const c  = courseMap[id];
+      if (!c || c.course_type !== 'mandatory') return;
+      const idx = (state.unlockedIds||[]).indexOf(id);
+      if (idx === -1) state.unlockedIds.push(id);
+      else            state.unlockedIds.splice(idx,1);
+      saveState(); renderAll();
+    }
+  });
+
+  /* Accordion toggle tracking (capture phase — toggle doesn't bubble) */
+  document.addEventListener('toggle', e => {
+    const det = e.target.closest('details.repo-group[data-group]');
+    if (!det) return;
+    if (det.open) openGroups.add(det.dataset.group);
+    else          openGroups.delete(det.dataset.group);
+  }, true);
+}
+
+/* ── Card click → open details ──────────────────────────────────────────── */
+function setupCardClick() {
+  document.addEventListener('click', e => {
+    /* Skip if clicking a button or other interactive element inside card */
+    if (e.target.closest('button,a,input,textarea,summary')) return;
+    const card = e.target.closest('.course-card');
+    if (!card) return;
+    openCourseDetails(card.dataset.cid);
+  });
+}
+
+/* ── State mutations ────────────────────────────────────────────────────── */
+function moveCourse(id, fromSem, toSem) {
+  if (!id || fromSem === toSem) return;
+  const c = courseMap[id];
+  if (isLocked(c)) return;
+
+  if (fromSem) state.semesters[fromSem] = (state.semesters[fromSem]||[]).filter(x=>x!==id);
+  else         state.repo = state.repo.filter(x=>x!==id);
+
+  if (toSem) {
+    if (!state.semesters[toSem]) state.semesters[toSem] = [];
+    if (!state.semesters[toSem].includes(id)) state.semesters[toSem].push(id);
+  } else {
+    if (!state.repo.includes(id)) state.repo.push(id);
+  }
+  saveState(); renderAll();
+}
+
+function resetBoard() {
+  state = clone(originalState);
+  localStorage.removeItem(LS_STATE);
+  renderAll();
+}
+
+/* ── Persistence ────────────────────────────────────────────────────────── */
+function saveState()    { try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch {} }
+function tryLoadState() { try { return JSON.parse(localStorage.getItem(LS_STATE)); } catch { return null; } }
+function validState(s)  { return s && typeof s.semesters === 'object' && Array.isArray(s.repo); }
+
+/* ── Dark mode ──────────────────────────────────────────────────────────── */
+function applyTheme() {
+  const dark = localStorage.getItem(LS_THEME) === 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const btn = document.getElementById('btn-dark');
+  if (btn) btn.textContent = dark ? '☀ יום' : '☾ לילה';
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(LS_THEME, next);
+  document.documentElement.dataset.theme = next;
+  document.getElementById('btn-dark').textContent = next === 'dark' ? '☀ יום' : '☾ לילה';
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function clone(o)       { return JSON.parse(JSON.stringify(o)); }
+function allPlacedIds() { return new Set(Object.values(state?.semesters||{}).flat()); }
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${url}`);
+  return r.json();
+}
+
+main();
+</script>
+</body>
+</html>
