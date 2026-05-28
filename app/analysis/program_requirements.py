@@ -2,8 +2,15 @@
 Generic program requirements engine.
 
 Loads and validates degree-completion requirements from a program JSON file.
-Works for any program that uses the requirements.elective_categories schema —
-no Mechanical Engineering–specific logic lives here.
+Supports two requirement formats:
+
+  Classic format  — requirements.elective_categories (list of category dicts)
+  PDF format      — requirements.core_categories + requirements.advanced_labs
+                    + requirements.other_specialization, course details in
+                    elective_courses and other_specialization_electives arrays.
+
+Both formats are normalised internally by _get_unified_categories(), so all
+public functions work with either.
 """
 
 from __future__ import annotations
@@ -14,6 +21,63 @@ from typing import Any
 
 from app.analysis.eligibility_engine import normalize_course_id
 from app.pipeline.bulk_import_courses import load_course_ids
+
+
+# ---------------------------------------------------------------------------
+# Internal normalisation
+# ---------------------------------------------------------------------------
+
+def _get_unified_categories(program_requirements: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Return a unified list of category dicts regardless of program format.
+
+    Classic format: reads requirements.elective_categories directly.
+
+    PDF format: merges requirements.core_categories, requirements.advanced_labs,
+    and requirements.other_specialization.  course_ids come from the
+    requirements.*[].course_ids fields (already embedded in the JSON).
+    """
+    reqs = program_requirements.get("requirements", {})
+    if not isinstance(reqs, dict):
+        return []
+
+    # --- Classic format -------------------------------------------------------
+    if "elective_categories" in reqs:
+        return list(reqs["elective_categories"])
+
+    # --- PDF format -----------------------------------------------------------
+    cats: list[dict[str, Any]] = []
+
+    for cc in reqs.get("core_categories", []):
+        cats.append(dict(cc))
+
+    adv = reqs.get("advanced_labs")
+    if isinstance(adv, dict):
+        cats.append(dict(adv))
+
+    other = reqs.get("other_specialization")
+    if isinstance(other, dict):
+        cats.append(dict(other))
+
+    return cats
+
+
+def get_all_program_course_ids(program_requirements: dict[str, Any]) -> set[str]:
+    """
+    Return the set of all normalised course IDs covered by a program,
+    across all categories (both formats).  Used for filtering allowed electives.
+    """
+    ids: set[str] = set()
+    for cat in _get_unified_categories(program_requirements):
+        for cid in cat.get("course_ids", []):
+            ids.add(normalize_course_id(cid))
+        fpath_str = cat.get("course_ids_file")
+        if fpath_str:
+            fpath = Path(fpath_str)
+            if fpath.exists():
+                for cid in load_course_ids(fpath):
+                    ids.add(normalize_course_id(cid))
+    return ids
 
 
 # ---------------------------------------------------------------------------
@@ -32,24 +96,22 @@ def build_course_category_map(
     """
     Return course_id → {category_id, name_he, needs_review}.
 
-    Reads from program_requirements["requirements"]["elective_categories"].
-    When a course appears in multiple categories the last entry wins.
-    Mandatory courses are also mapped to category_id="mandatory".
+    Works with both classic (elective_categories) and PDF (core_categories …)
+    formats.  Mandatory courses are also mapped to category_id="mandatory".
     """
-    reqs       = program_requirements.get("requirements", {})
-    categories = reqs.get("elective_categories", [])
+    cats   = _get_unified_categories(program_requirements)
     cat_map: dict[str, dict[str, Any]] = {}
 
-    for cat in categories:
+    for cat in cats:
         cat_id    = cat.get("category_id", "")
         name_he   = cat.get("name_he", "")
         needs_rev = bool(cat.get("needs_review", False))
 
         for cid in cat.get("course_ids", []):
             cat_map[normalize_course_id(cid)] = {
-                "category_id":   cat_id,
-                "name_he":       name_he,
-                "needs_review":  needs_rev,
+                "category_id":  cat_id,
+                "name_he":      name_he,
+                "needs_review": needs_rev,
             }
 
         fpath_str = cat.get("course_ids_file")
@@ -58,11 +120,12 @@ def build_course_category_map(
             if fpath.exists():
                 for cid in load_course_ids(fpath):
                     cat_map[normalize_course_id(cid)] = {
-                        "category_id":   cat_id,
-                        "name_he":       name_he,
-                        "needs_review":  needs_rev,
+                        "category_id":  cat_id,
+                        "name_he":      name_he,
+                        "needs_review": needs_rev,
                     }
 
+    reqs           = program_requirements.get("requirements", {}) if isinstance(program_requirements.get("requirements"), dict) else {}
     mandatory      = reqs.get("mandatory_courses", {})
     mandatory_name = mandatory.get("name_he", "קורסי חובה")
     for cid in mandatory.get("course_ids", []):
@@ -79,7 +142,7 @@ def build_course_category_map(
 
 def resolve_category_course_ids(cat: dict[str, Any]) -> list[str]:
     """
-    Return the full normalised course-ID list for one elective_category entry,
+    Return the full normalised course-ID list for one category entry,
     expanding course_ids_file entries if the file exists.
     """
     ids: list[str] = [normalize_course_id(c) for c in cat.get("course_ids", [])]
@@ -95,14 +158,22 @@ def get_program_categories_for_frontend(
     program_requirements: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Return a serialisable dict that the frontend embeds in board metadata.
-    Includes total_required_hours, program name, and each category with
-    its resolved course_ids list (for client-side validation).
+    Return a serialisable dict embedded in board metadata for the frontend.
+
+    Includes total_required_hours, program name, core_courses_total_min (if
+    present), other_category_label (for uncategorised courses), and each
+    category with its resolved course_ids list.
     """
-    reqs = program_requirements.get("requirements", {})
-    return {
-        "total_required_hours": program_requirements.get("total_required_hours"),
-        "program_name_he":      program_requirements.get("program_name_he"),
+    reqs = program_requirements.get("requirements", {}) if isinstance(program_requirements.get("requirements"), dict) else {}
+    cats = _get_unified_categories(program_requirements)
+
+    result: dict[str, Any] = {
+        "total_required_hours":  program_requirements.get("total_required_hours"),
+        "program_name_he":       program_requirements.get("program_name_he"),
+        "core_courses_total_min": reqs.get("core_courses_total_min"),
+        "other_category_label":  program_requirements.get("ui", {}).get(
+            "other_category_label", "לא משויך לתוכנית הנבחרת"
+        ),
         "categories": [
             {
                 "category_id":  cat.get("category_id", ""),
@@ -111,9 +182,10 @@ def get_program_categories_for_frontend(
                 "needs_review": bool(cat.get("needs_review", False)),
                 "course_ids":   resolve_category_course_ids(cat),
             }
-            for cat in reqs.get("elective_categories", [])
+            for cat in cats
         ],
     }
+    return result
 
 
 def validate_program_plan(
@@ -138,6 +210,9 @@ def validate_program_plan(
         planned_hours               : float
         unknown_hours_courses       : int
         remaining_hours             : float | None
+        core_courses_total_min      : int | None
+        core_courses_selected       : int | None
+        core_courses_satisfied      : bool | None
         category_results            : list — one dict per elective category
         missing_mandatory_courses   : list[str]
         missing_required_categories : list[str]
@@ -148,7 +223,7 @@ def validate_program_plan(
         category_id, name_he, min_courses, needs_review,
         selected_courses, selected_count, satisfied, missing_count
     """
-    reqs        = program_requirements.get("requirements", {})
+    reqs        = program_requirements.get("requirements", {}) if isinstance(program_requirements.get("requirements"), dict) else {}
     total_hours = program_requirements.get("total_required_hours")
 
     # ── Collect planned courses from board ──────────────────────────────────
@@ -169,28 +244,40 @@ def validate_program_plan(
             else:
                 unknown_hours_ct += 1
 
-    completed_set = {normalize_course_id(c) for c in completed_course_ids}
+    completed_set  = {normalize_course_id(c) for c in completed_course_ids}
     all_course_ids = completed_set | planned_ids
 
     # ── Mandatory courses ───────────────────────────────────────────────────
-    mandatory      = reqs.get("mandatory_courses", {})
-    mandatory_ids  = [normalize_course_id(c) for c in mandatory.get("course_ids", [])]
+    mandatory     = reqs.get("mandatory_courses", {})
+    mandatory_ids = [normalize_course_id(c) for c in mandatory.get("course_ids", [])]
     missing_mandatory = [cid for cid in mandatory_ids if cid not in all_course_ids]
 
     # ── Elective categories ─────────────────────────────────────────────────
-    elective_categories = reqs.get("elective_categories", [])
+    all_cats = _get_unified_categories(program_requirements)
     category_results: list[dict[str, Any]] = []
     missing_required_categories: list[str] = []
 
-    for cat in elective_categories:
+    # IDs belonging to core categories (fluids/solids/systems) for total count
+    core_cat_ids = {
+        cat.get("category_id")
+        for cat in reqs.get("core_categories", [])
+    }
+
+    core_selected = 0
+    core_total_min = reqs.get("core_courses_total_min")
+
+    for cat in all_cats:
         cat_id    = cat.get("category_id", "")
         min_c     = cat.get("min_courses", 1)
         needs_rev = bool(cat.get("needs_review", False))
         pool      = set(resolve_category_course_ids(cat))
 
-        selected  = [cid for cid in all_course_ids if cid in pool]
-        count     = len(selected)
+        selected = [cid for cid in all_course_ids if cid in pool]
+        count    = len(selected)
         satisfied = count >= min_c
+
+        if cat_id in core_cat_ids:
+            core_selected += count
 
         if min_c > 0 and not needs_rev and not satisfied:
             missing_required_categories.append(cat_id)
@@ -206,6 +293,13 @@ def validate_program_plan(
             "missing_count":   max(0, min_c - count),
         })
 
+    # Core-total validation (≥ core_courses_total_min across fluids+solids+systems)
+    core_satisfied: bool | None = None
+    if core_total_min is not None:
+        core_satisfied = core_selected >= core_total_min
+        if not core_satisfied:
+            missing_required_categories.append("core_total")
+
     # ── Warnings ────────────────────────────────────────────────────────────
     warnings: list[str] = []
     if unknown_hours_ct > 0:
@@ -216,9 +310,14 @@ def validate_program_plan(
     if missing_mandatory:
         warnings.append(f"קורסי חובה חסרים: {', '.join(missing_mandatory)}")
     for cat_id in missing_required_categories:
-        cat  = next(c for c in elective_categories if c.get("category_id") == cat_id)
-        name = cat.get("name_he", cat_id)
-        warnings.append(f"קטגוריה לא הושלמה: {name}")
+        if cat_id == "core_total":
+            warnings.append(
+                f"נדרשים לפחות {core_total_min} קורסי ליבה; נבחרו {core_selected}"
+            )
+        else:
+            cat  = next((c for c in all_cats if c.get("category_id") == cat_id), None)
+            name = cat.get("name_he", cat_id) if cat else cat_id
+            warnings.append(f"קטגוריה לא הושלמה: {name}")
 
     remaining = (
         round(max(0.0, total_hours - planned_hours), 1) if total_hours is not None else None
@@ -231,8 +330,11 @@ def validate_program_plan(
         parts = []
         if missing_mandatory:
             parts.append(f"{len(missing_mandatory)} קורסי חובה חסרים")
-        if missing_required_categories:
-            parts.append(f"{len(missing_required_categories)} קטגוריות לא הושלמו")
+        real_missing = [c for c in missing_required_categories if c != "core_total"]
+        if real_missing:
+            parts.append(f"{len(real_missing)} קטגוריות לא הושלמו")
+        if core_satisfied is False:
+            parts.append(f"קורסי ליבה: {core_selected}/{core_total_min}")
         explanation = "דרישות לא מסופקות: " + "; ".join(parts)
 
     return {
@@ -241,6 +343,9 @@ def validate_program_plan(
         "planned_hours":               round(planned_hours, 1),
         "unknown_hours_courses":       unknown_hours_ct,
         "remaining_hours":             remaining,
+        "core_courses_total_min":      core_total_min,
+        "core_courses_selected":       core_selected if core_total_min is not None else None,
+        "core_courses_satisfied":      core_satisfied,
         "category_results":            category_results,
         "missing_mandatory_courses":   missing_mandatory,
         "missing_required_categories": missing_required_categories,

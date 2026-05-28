@@ -44,7 +44,7 @@
   "requirements": {
     "mandatory_courses": {
       "name_he": "קורסי חובה",
-      "course_ids": []
+      "courses_file": "data/programs/mechanical_engineering_mandatory_2025.json"
     },
     "elective_categories": [
       {
@@ -72,8 +72,14 @@
         "course_ids": []
       },
       {
-        "category_id": "uncategorized",
-        "name_he": "בחירה נוספת",
+        "category_id": "other_specialization",
+        "name_he": "יתר קורסי התמחות",
+        "min_courses": 0,
+        "course_ids": []
+      },
+      {
+        "category_id": "uncategorized_review",
+        "name_he": "לא מסווג — נדרש שיוך",
         "min_courses": 0,
         "needs_review": true,
         "course_ids": [

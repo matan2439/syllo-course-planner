@@ -1,0 +1,129 @@
+{
+  "version": "2025",
+  "program_id": "mechanical_engineering_2025",
+  "description": "קורסי חובה — הנדסה מכנית. מבוסס על צילומי מסך שסיפק המשתמש. דורש אימות מול דף התוכנית הרשמי של אוניברסיטת תל אביב.",
+  "needs_verification": true,
+  "source_note": "User-provided from TAU program page screenshots — needs verification against official TAU program page",
+  "courses": [
+    {
+      "course_id": "0512-1204",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": true,
+      "placement_rule": "fixed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots"
+    },
+    {
+      "course_id": "0542-2400",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": true,
+      "placement_rule": "fixed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots"
+    },
+    {
+      "course_id": "0542-2500",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": true,
+      "placement_rule": "fixed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots"
+    },
+    {
+      "course_id": "0542-3243",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": true,
+      "placement_rule": "fixed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots"
+    },
+    {
+      "course_id": "0542-3620",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — appears in both Semester A and Semester B"
+    },
+    {
+      "course_id": "0542-3780",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — appears in both Semester A and Semester B"
+    },
+    {
+      "course_id": "0542-3791",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — appears in both Semester A and Semester B"
+    },
+    {
+      "course_id": "0542-3792",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+      "recommended_semester": "year_3_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — appears in both Semester A and Semester B"
+    },
+    {
+      "course_id": "0542-4010",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"],
+      "recommended_semester": "year_4_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — year 4 mandatory group, specific semester unconfirmed"
+    },
+    {
+      "course_id": "0542-4020",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"],
+      "recommended_semester": "year_4_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — year 4 mandatory group, specific semester unconfirmed"
+    },
+    {
+      "course_id": "0542-4091",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"],
+      "recommended_semester": "year_4_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — year 4 mandatory group, specific semester unconfirmed"
+    },
+    {
+      "course_id": "0542-4092",
+      "course_type": "mandatory",
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"],
+      "recommended_semester": "year_4_semester_a",
+      "locked_by_default": false,
+      "placement_rule": "choose_one_allowed_semester",
+      "needs_verification": true,
+      "source_note": "User-provided from TAU program page screenshots — year 4 mandatory group, specific semester unconfirmed"
+    }
+  ]
+}

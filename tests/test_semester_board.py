@@ -6,6 +6,7 @@ from app.database.db import init_db, save_merged_course
 from app.analysis.semester_board import (
     build_semester_board,
     _load_mandatory_course,
+    _parse_mandatory_specs,
     _weekly_hours_from_record,
     _topological_sort,
     _assign_to_semesters,
@@ -914,3 +915,213 @@ def test_weekly_hours_partial():
 
 def test_weekly_hours_all_present():
     assert _weekly_hours_from_record({"lecture_hours": 2.0, "tutorial_hours": 1.0, "lab_hours": 0.5}) == 3.5
+
+
+# ---------------------------------------------------------------------------
+# _parse_mandatory_specs unit tests
+# ---------------------------------------------------------------------------
+
+def _rich_program(*courses):
+    """Build a program dict using the new rich requirements.mandatory_courses.courses format."""
+    return {
+        "program_id": "test_rich",
+        "semesters": [],
+        "requirements": {
+            "mandatory_courses": {"courses": list(courses)}
+        },
+    }
+
+
+def _mc_spec(course_id, allowed_semesters, recommended=None, locked_by_default=None,
+             placement_rule=None, needs_verification=False, source_note=""):
+    spec = {"course_id": course_id, "allowed_semesters": allowed_semesters}
+    if recommended is not None:
+        spec["recommended_semester"] = recommended
+    if locked_by_default is not None:
+        spec["locked_by_default"] = locked_by_default
+    if placement_rule is not None:
+        spec["placement_rule"] = placement_rule
+    spec["needs_verification"] = needs_verification
+    spec["source_note"] = source_note
+    return spec
+
+
+def test_parse_specs_old_format():
+    prog = _program(_sem_entry("year_3_semester_a", "0001-0001"))
+    specs = _parse_mandatory_specs(prog)
+    assert len(specs) == 1
+    s = specs[0]
+    assert s["course_id"] == "0001-0001"
+    assert s["allowed_semesters"] == ["year_3_semester_a"]
+    assert s["locked_by_default"] is True
+    assert s["placement_rule"] == "fixed_semester"
+
+
+def test_parse_specs_new_format_fixed():
+    prog = _rich_program(_mc_spec("0001-0001", ["year_3_semester_a"]))
+    specs = _parse_mandatory_specs(prog)
+    assert len(specs) == 1
+    s = specs[0]
+    assert s["course_id"] == "0001-0001"
+    assert s["allowed_semesters"] == ["year_3_semester_a"]
+    assert s["locked_by_default"] is True
+    assert s["placement_rule"] == "fixed_semester"
+
+
+def test_parse_specs_new_format_flexible():
+    prog = _rich_program(_mc_spec("0001-0001", ["year_3_semester_a", "year_3_semester_b"]))
+    specs = _parse_mandatory_specs(prog)
+    assert len(specs) == 1
+    s = specs[0]
+    assert s["allowed_semesters"] == ["year_3_semester_a", "year_3_semester_b"]
+    assert s["locked_by_default"] is False
+    assert s["placement_rule"] == "choose_one_allowed_semester"
+
+
+def test_parse_specs_deduplication():
+    prog = _rich_program(_mc_spec("0001-0001", ["year_3_semester_a"]))
+    prog["semesters"] = [{"semester_id": "year_3_semester_a", "mandatory_courses": ["0001-0001"]}]
+    specs = _parse_mandatory_specs(prog)
+    assert len(specs) == 1  # rich format wins, old format is skipped
+
+
+def test_parse_specs_explicit_locked_by_default():
+    prog = _rich_program(_mc_spec("X", ["year_3_semester_a", "year_3_semester_b"],
+                                  locked_by_default=True))
+    specs = _parse_mandatory_specs(prog)
+    assert specs[0]["locked_by_default"] is True
+
+
+def test_parse_specs_explicit_placement_rule():
+    prog = _rich_program(_mc_spec("X", ["year_3_semester_a", "year_3_semester_b"],
+                                  placement_rule="choose_one_allowed_semester"))
+    specs = _parse_mandatory_specs(prog)
+    assert specs[0]["placement_rule"] == "choose_one_allowed_semester"
+
+
+def test_parse_specs_needs_verification():
+    prog = _rich_program(_mc_spec("X", ["year_3_semester_a"], needs_verification=True,
+                                  source_note="from screenshot"))
+    specs = _parse_mandatory_specs(prog)
+    assert specs[0]["needs_verification"] is True
+    assert specs[0]["source_note"] == "from screenshot"
+
+
+# ---------------------------------------------------------------------------
+# Flexible mandatory placement
+# ---------------------------------------------------------------------------
+
+def test_fixed_mandatory_placed_in_only_allowed_semester(no_db):
+    prog = _rich_program(_mc_spec("FIXED", ["year_3_semester_a"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    sem_a = next(s for s in board["semesters"] if s["semester_id"] == "year_3_semester_a")
+    ids = [c["course_id"] for c in sem_a["courses"]]
+    assert "FIXED" in ids
+
+
+def test_fixed_mandatory_locked_by_default_true(no_db):
+    prog = _rich_program(_mc_spec("FIXED", ["year_3_semester_a"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "FIXED")
+    assert mc["locked_by_default"] is True
+    assert mc["locked_by_user"] is True
+
+
+def test_flexible_mandatory_placed_once(no_db):
+    prog = _rich_program(_mc_spec("FLEX", ["year_3_semester_a", "year_3_semester_b"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    all_placed = [c for s in board["semesters"] for c in s["courses"]]
+    flex_courses = [c for c in all_placed if c["course_id"] == "FLEX"]
+    assert len(flex_courses) == 1
+
+
+def test_flexible_mandatory_placed_in_one_of_allowed_semesters(no_db):
+    prog = _rich_program(_mc_spec("FLEX", ["year_3_semester_a", "year_3_semester_b"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    for sem in board["semesters"]:
+        if any(c["course_id"] == "FLEX" for c in sem["courses"]):
+            assert sem["semester_id"] in ["year_3_semester_a", "year_3_semester_b"]
+            break
+    else:
+        pytest.fail("FLEX was not placed in any semester")
+
+
+def test_flexible_mandatory_locked_by_default_false(no_db):
+    prog = _rich_program(_mc_spec("FLEX", ["year_3_semester_a", "year_3_semester_b"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "FLEX")
+    assert mc["locked_by_default"] is False
+    assert mc["locked_by_user"] is False
+
+
+def test_flexible_mandatory_least_loaded_sem(no_db):
+    # Two flexible allowed semesters; semester_a has a fixed mandatory → semester_b is least loaded
+    prog = _rich_program(
+        _mc_spec("FIXED",   ["year_3_semester_a"]),
+        _mc_spec("FLEX",    ["year_3_semester_a", "year_3_semester_b"]),
+    )
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    flex_sem = next(
+        s["semester_id"]
+        for s in board["semesters"]
+        if any(c["course_id"] == "FLEX" for c in s["courses"])
+    )
+    # semester_a already has FIXED; FLEX should go to semester_b
+    assert flex_sem == "year_3_semester_b"
+
+
+def test_flexible_mandatory_placement_rule_field(no_db):
+    prog = _rich_program(_mc_spec("FLEX", ["year_3_semester_a", "year_3_semester_b"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "FLEX")
+    assert mc["placement_rule"] == "choose_one_allowed_semester"
+
+
+def test_fixed_mandatory_placement_rule_field(no_db):
+    prog = _rich_program(_mc_spec("FIXED", ["year_3_semester_a"]))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "FIXED")
+    assert mc["placement_rule"] == "fixed_semester"
+
+
+def test_mandatory_allowed_semesters_field_in_output(no_db):
+    allowed = ["year_3_semester_a", "year_3_semester_b"]
+    prog = _rich_program(_mc_spec("FLEX", allowed))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "FLEX")
+    assert mc["allowed_semesters"] == allowed
+
+
+def test_mandatory_needs_verification_propagated(no_db):
+    prog = _rich_program(_mc_spec("X", ["year_3_semester_a"],
+                                  needs_verification=True, source_note="screenshot"))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "X")
+    assert mc["needs_verification"] is True
+    assert mc["source_note"] == "screenshot"
+
+
+def test_flexible_not_duplicated_when_deduped(no_db):
+    # Same course ID in both new rich format and old format → placed only once
+    prog = _rich_program(_mc_spec("DUP", ["year_3_semester_a", "year_3_semester_b"]))
+    prog["semesters"] = [{"semester_id": "year_3_semester_a", "mandatory_courses": ["DUP"]}]
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    all_placed = [c for s in board["semesters"] for c in s["courses"]]
+    assert len([c for c in all_placed if c["course_id"] == "DUP"]) == 1
+
+
+def test_old_format_still_works_backward_compat(no_db):
+    prog = _program(_sem_entry("year_3_semester_a", "MAND-OLD"))
+    board = build_semester_board(_plan(), program=prog, db_path=no_db)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    mc = next(c for c in placed if c["course_id"] == "MAND-OLD")
+    assert mc["course_type"] == "mandatory"
+    assert mc["locked_by_default"] is True
+    assert mc["placement_rule"] == "fixed_semester"
+    assert mc["allowed_semesters"] == ["year_3_semester_a"]

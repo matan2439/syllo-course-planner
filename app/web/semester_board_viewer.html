@@ -506,14 +506,22 @@ body.prog-modal-open .workspace {
 .btn-ghost:hover { background: var(--bg2); }
 
 /* ── Workspace ──────────────────────────────────────────────────────────── */
+#app {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
 .workspace { flex:1; min-height:0; display:flex; overflow:hidden; }
 
 /* ── Sidebar (right in RTL) ─────────────────────────────────────────────── */
 .sidebar {
   width: var(--sidebar-w); min-width: var(--sidebar-w);
+  height: calc(100vh - var(--hdr-h));
+  max-height: calc(100vh - var(--hdr-h));
   background: var(--surface);
   border-inline-start: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column;
+  overflow: hidden;
   transition: background var(--t), filter 250ms ease;
 }
 .sb-head {
@@ -522,7 +530,18 @@ body.prog-modal-open .workspace {
 }
 .sb-head-title { font-size: .85rem; font-weight: 700; }
 .sb-head-sub   { font-size: .68rem; color: var(--text-muted); margin-top: 2px; }
-.sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; }
+.btn-auto-plan {
+  margin-top: 8px; width: 100%;
+  font-size: .72rem; font-weight: 600;
+  padding: 6px 10px; border-radius: 7px;
+  border: 1.5px solid var(--purple); background: var(--purple-soft);
+  color: var(--purple); cursor: pointer;
+  transition: background var(--t), border-color var(--t), color var(--t), opacity var(--t);
+}
+.btn-auto-plan:hover { background: var(--purple); color: #fff; }
+[data-theme="dark"] .btn-auto-plan { color: var(--purple); }
+[data-theme="dark"] .btn-auto-plan:hover { color: #fff; }
+.sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; overscroll-behavior: contain; }
 
 /* Repo group accordion */
 .repo-group { margin-bottom: 6px; }
@@ -556,6 +575,10 @@ body.prog-modal-open .workspace {
   content: 'אין קורסים'; display: block; padding: 10px 8px;
   font-size: .7rem; color: var(--text-faint); font-style: italic;
 }
+.repo-empty-msg {
+  padding: 8px 8px; font-size: .7rem; color: var(--text-faint);
+  font-style: italic; text-align: center;
+}
 
 /* Blocked drag toggle */
 .blk-toggle {
@@ -572,7 +595,7 @@ body.prog-modal-open .workspace {
 .blk-toggle-icon { font-size: .85rem; }
 
 /* ── AI panel ────────────────────────────────────────────────────────────── */
-.ai-panel { border-top: 1px solid var(--border); flex-shrink: 0; }
+.ai-panel { border-top: 1px solid var(--border); }
 .ai-panel > summary {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px; cursor: pointer;
@@ -635,7 +658,7 @@ body.prog-modal-open .workspace {
 .prog-req-note { font-size: .62rem; color: var(--text-faint); margin-top: 5px; font-style: italic; }
 
 /* ── Legend (compact) ────────────────────────────────────────────────────── */
-.sb-legend { padding: 8px 14px 10px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.sb-legend { padding: 8px 14px 10px; border-top: 1px solid var(--border); }
 .legend-ttl {
   font-size: .61rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--text-faint); margin-bottom: 5px;
@@ -894,14 +917,20 @@ body.prog-modal-open .workspace {
   padding: 1px 6px; border-radius: 999px;
   border: 1px solid transparent; white-space: nowrap;
 }
-.bdg-mandatory { background: var(--blue-soft); color: #1E40AF; border-color: #93C5FD; }
-.bdg-elective  { background: var(--purple-soft); color: #5B21B6; border-color: #C4B5FD; }
-.bdg-blocked   { background: #F3F4F6; color: #6B7280; border-color: #D1D5DB; }
-.bdg-missing   { background: var(--warn-soft); color: #92400E; border-color: var(--warning); }
-[data-theme="dark"] .bdg-mandatory { background: #1E3A5F; color: #93C5FD; border-color: #2563EB; }
-[data-theme="dark"] .bdg-elective  { background: #2E1065; color: #C4B5FD; border-color: #7C3AED; }
-[data-theme="dark"] .bdg-blocked   { background: #1E293B; color: #94A3B8; border-color: #334155; }
-[data-theme="dark"] .bdg-missing   { background: #451A03; color: var(--warning); border-color: #92400E; }
+.bdg-mandatory      { background: var(--blue-soft);   color: #1E40AF; border-color: #93C5FD; }
+.bdg-mandatory-flex { background: #ECFDF5;            color: #065F46; border-color: #6EE7B7; }
+.bdg-elective       { background: var(--purple-soft); color: #5B21B6; border-color: #C4B5FD; }
+.bdg-blocked        { background: #F3F4F6;            color: #6B7280; border-color: #D1D5DB; }
+.bdg-missing        { background: var(--warn-soft);   color: #92400E; border-color: var(--warning); }
+.bdg-partial        { background: #FFFBEB;            color: #92400E; border-color: #FCD34D; }
+.bdg-not-offered    { background: #F1F5F9;            color: #64748B; border-color: #CBD5E1; }
+[data-theme="dark"] .bdg-mandatory      { background: #1E3A5F; color: #93C5FD; border-color: #2563EB; }
+[data-theme="dark"] .bdg-mandatory-flex { background: #064E3B; color: #6EE7B7; border-color: #065F46; }
+[data-theme="dark"] .bdg-elective       { background: #2E1065; color: #C4B5FD; border-color: #7C3AED; }
+[data-theme="dark"] .bdg-blocked        { background: #1E293B; color: #94A3B8; border-color: #334155; }
+[data-theme="dark"] .bdg-missing        { background: #451A03; color: var(--warning); border-color: #92400E; }
+[data-theme="dark"] .bdg-partial        { background: #451A03; color: #FCD34D; border-color: #92400E; }
+[data-theme="dark"] .bdg-not-offered    { background: #1E293B; color: #94A3B8; border-color: #334155; }
 
 .bdg-easy      { background: var(--easy-bg);  color: var(--easy-text);  border-color: var(--easy-border); }
 .bdg-medium    { background: var(--med-bg);   color: var(--med-text);   border-color: var(--med-border); }
@@ -1012,45 +1041,9 @@ body.prog-modal-open .workspace {
       <div class="sb-head">
         <div class="sb-head-title">מאגר קורסים</div>
         <div class="sb-head-sub" id="repo-sub">טוען…</div>
+        <button class="btn btn-auto-plan" id="btn-auto-plan" title="מלא את הלוח אוטומטית לפי העדפות סמסטר">⚡ בנה תוכנית מומלצת</button>
       </div>
       <div class="sb-body" id="repo-body"></div>
-
-      <div class="sb-legend">
-        <div class="legend-ttl">מקרא</div>
-        <div class="legend-compact">
-          <span class="legend-ci"><span class="legend-dot" style="background:var(--mand-accent)"></span>חובה 🔒</span>
-          <span class="legend-ci"><span class="legend-dot" style="background:var(--elec-accent)"></span>בחירה</span>
-          <span class="legend-ci"><span class="legend-dot" style="background:var(--blk-accent)"></span>חסום</span>
-          <span class="legend-ci"><span class="legend-dot" style="background:var(--miss-accent)"></span>חסר</span>
-        </div>
-        <details class="legend-workload-details">
-          <summary>
-            <span class="legend-ci"><span class="legend-dot" style="background:var(--success)"></span>נמוך</span>
-            <span class="legend-ci"><span class="legend-dot" style="background:var(--warning)"></span>בינוני</span>
-            <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>גבוה</span>
-            <span class="legend-workload-more">▸ איך מחושב עומס?</span>
-          </summary>
-          <div class="legend-workload-body">
-            קל: פחות מ-10 ש׳׳ש · בינוני: 10–16 · גבוה: 16+ ש׳׳ש שבועיות
-          </div>
-        </details>
-      </div>
-
-      <!-- AI panel: mock only — not connected to API -->
-      <details class="ai-panel" id="ai-panel">
-        <summary>🤖 <span>עוזר AI</span>
-          <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">לא מחובר</span>
-          <span class="ai-chevron">›</span>
-        </summary>
-        <div class="ai-body">
-          <div class="ai-mock-banner">⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
-            בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.</div>
-          <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
-            placeholder="לדוגמה: אני רוצה עומס קל בסמסטר א׳ ולהתמקד ברובוטיקה"></textarea>
-          <button class="ai-send" id="ai-sidebar-send">בקש הצעה (מדומה)</button>
-          <div class="ai-response" id="ai-sidebar-response"></div>
-        </div>
-      </details>
     </aside>
 
     <main class="board-area">
@@ -1070,6 +1063,17 @@ body.prog-modal-open .workspace {
  */
 const PROGRAM_LIST = [
   {
+    program_id:             'mechanical_engineering_2027',
+    program_name_he:        'הנדסה מכנית',
+    specialization_name_he: null,
+    year:                   '2027 (תשפ"ז)',
+    description_he:         'קורסי בחירה וליבה לפי קובץ תשפ"ז — המקור העדכני ביותר',
+    icon:                   '⚙️',
+    board_json:             '../../data/parsed_json/mechanical_semester_board_2027.json',
+    audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
+    program_json:           '../../data/programs/mechanical_engineering_2027_from_pdf.json',
+  },
+  {
     program_id:             'mechanical_engineering_2025',
     program_name_he:        'הנדסה מכנית',
     specialization_name_he: null,
@@ -1078,6 +1082,7 @@ const PROGRAM_LIST = [
     icon:                   '⚙️',
     board_json:             '../../data/parsed_json/mechanical_semester_board.json',
     audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
+    program_json:           null,
   },
   {
     program_id:             'mechanical_engineering_biomedical_track_2025',
@@ -1088,6 +1093,7 @@ const PROGRAM_LIST = [
     icon:                   '🔬',
     board_json:             '../../data/parsed_json/mechanical_semester_board.json',
     audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
+    program_json:           null,
   },
 ];
 const PROGRAMS = Object.fromEntries(PROGRAM_LIST.map(p => [p.program_id, p]));
@@ -1119,7 +1125,7 @@ const SEMESTERS = [
 ];
 
 const MAX_HOURS    = 20;
-const LS_STATE     = 'tau_board_v3';
+const LS_STATE_PREFIX = 'tau_board_v3';   // appended with _${program_id}
 const LS_THEME     = 'tau_theme';
 const LS_PROG      = 'tau_program';
 const LS_OVERRIDES = 'tau_course_overrides';
@@ -1157,16 +1163,7 @@ async function main() {
   document.getElementById('btn-reset').addEventListener('click', resetBoard);
   document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
   document.getElementById('btn-my-courses').addEventListener('click', openMyCoursesModal);
-
-  /* Sidebar AI send handler */
-  document.getElementById('ai-sidebar-send')?.addEventListener('click', () => {
-    const txt = document.getElementById('ai-sidebar-textarea')?.value?.trim();
-    const resp = document.getElementById('ai-sidebar-response');
-    if (!resp) return;
-    resp.textContent = txt
-      ? `בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\nשאלתך: ${txt}`
-      : 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.';
-  });
+  document.getElementById('btn-auto-plan').addEventListener('click', buildRecommendedPlan);
 
   buildProgModal();
 
@@ -1254,7 +1251,7 @@ function buildProgModal() {
   clearBtn.addEventListener('click', () => {
     console.log('[prog] Clearing program selection');
     localStorage.removeItem(LS_PROG);
-    localStorage.removeItem(LS_STATE);
+    if (selectedProg) localStorage.removeItem(_lsStateKey());
     selectedProg = null;
     courseMap = {}; state = null; originalState = null;
     document.getElementById('app').setAttribute('hidden', '');
@@ -1320,14 +1317,21 @@ async function loadProgram(progId, fromModal) {
   }
 
   try {
-    const [board, audit] = await Promise.all([
+    const [board, audit, programJson] = await Promise.all([
       fetchJSON(prog.board_json),
       fetchJSON(prog.audit_json).catch(err => {
         console.warn('[loadProgram] audit JSON unavailable:', err.message);
         return null;
       }),
+      prog.program_json
+        ? fetchJSON(prog.program_json).catch(err => {
+            console.warn('[loadProgram] program JSON unavailable:', err.message);
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
-    console.log('[loadProgram] OK — semesters:', board.semesters?.length ?? 0);
+    console.log('[loadProgram] OK — semesters:', board.semesters?.length ?? 0,
+                '| programJson:', programJson ? 'loaded' : 'none');
 
     /* Commit */
     selectedProg = prog;
@@ -1339,7 +1343,7 @@ async function loadProgram(progId, fromModal) {
       : `${prog.program_name_he} · ${prog.year}`;
     document.getElementById('hdr-prog-name').textContent = nameStr;
 
-    init(board, audit);
+    init(board, audit, programJson);
     renderAll();
 
     document.getElementById('app').removeAttribute('hidden');
@@ -1366,7 +1370,7 @@ async function loadProgram(progId, fromModal) {
 }
 
 /* ── Data init ──────────────────────────────────────────────────────────── */
-function init(board, audit) {
+function init(board, audit, programJson) {
   courseMap = {};
 
   for (const sem of (board.semesters || [])) {
@@ -1375,9 +1379,15 @@ function init(board, audit) {
     }
   }
 
+  /* When the board embeds program_repository_courses, the audit must only
+   * enrich courses already in the program — it must not introduce unrelated
+   * audit-only courses that do not belong to this program. */
+  const hasProgramRepo = (board.metadata?.program_repository_courses?.length ?? 0) > 0;
+
   if (audit) {
     for (const ac of audit) {
       if (!courseMap[ac.course_id]) {
+        if (hasProgramRepo) continue;   // skip audit-only courses; they are not in this program
         courseMap[ac.course_id] = {
           course_id:                   ac.course_id,
           name_he:                     ac.name_he    || null,
@@ -1430,6 +1440,94 @@ function init(board, audit) {
     }
   }
 
+  /* ── Supplement courseMap with PDF program data ─────────────────────────
+   * Loads from two sources in priority order:
+   *   1. board.metadata.program_repository_courses  (embedded by backend)
+   *   2. programJson.elective_courses + other_specialization_electives (live fetch)
+   *
+   * For every course not already in courseMap: add with status "partial_info"
+   * (or "not_offered") using PDF name / hours / category as display data.
+   * For courses already in courseMap: only enrich category + offered fields.
+   */
+  const _addOrEnrichCourse = (cid, name_he, hours, offered_semesters, offered_in_year, catId, prereqs) => {
+    if (!cid) return;
+    if (courseMap[cid]) {
+      const e = courseMap[cid];
+      if (!e.program_category_id && catId) e.program_category_id = catId;
+      if (e.offered_in_year == null)        e.offered_in_year     = offered_in_year !== false;
+      if (!e.offered_semesters?.length && offered_semesters?.length)
+        e.offered_semesters = offered_semesters;
+    } else {
+      const isOffered = offered_in_year !== false;
+      courseMap[cid] = {
+        course_id:                   cid,
+        name_he:                     name_he || null,
+        weekly_hours:                hours   ?? null,
+        difficulty_score:            null,
+        difficulty_level:            null,
+        workload_score:              null,
+        conceptual_complexity_score: null,
+        prerequisite_depth_score:    null,
+        assessment_intensity_score:  null,
+        difficulty_confidence:       null,
+        difficulty_warnings:         [],
+        course_type:                 'elective',
+        status:                      isOffered ? 'partial_info' : 'not_offered',
+        locked_by_user:              false,
+        source:                      'program_json',
+        program_category_id:         catId,
+        program_category_name_he:    null,
+        needs_category_review:       false,
+        offered_in_year:             isOffered,
+        offered_semesters:           offered_semesters || [],
+        missing_prerequisites:       [],
+        missing_prerequisite_details:[],
+        prerequisites:               (prereqs || []).filter(p => p.course_id).map(p => p.course_id),
+        prerequisite_details:        (prereqs || []).filter(p => p.name_he)
+                                       .map(p => ({ course_id: p.course_id || null, name_he: p.name_he })),
+        warnings:                    isOffered ? [] : ['לא מוצע בשנת הלימודים הנוכחית'],
+        data_quality:                { has_weekly_hours: hours != null, partial: true },
+        syllabus_url:                null,
+        syllabus_links:              [],
+        source_urls:                 [],
+        semester_availability:       null,
+        grade_signal:                null,
+        instructor_uncertainty:      null,
+        allowed_semesters:           [],
+        locked_by_default:           false,
+        placement_rule:              'choose_one_allowed_semester',
+        needs_verification:          false,
+        source_note:                 '',
+        selection_reason:            null,
+      };
+    }
+  };
+
+  /* Source 1: embedded in board metadata (available even after localStorage restore) */
+  for (const rc of (board.metadata?.program_repository_courses || [])) {
+    _addOrEnrichCourse(
+      rc.course_id, rc.name_he, rc.weekly_hours,
+      rc.offered_semesters, rc.offered_in_year, rc.category_id, null
+    );
+  }
+
+  /* Source 2: live programJson fetch (enriches with prerequisites etc.) */
+  if (programJson) {
+    for (const ec of (programJson.elective_courses || [])) {
+      _addOrEnrichCourse(
+        ec.course_id, ec.name_he, ec.hours,
+        ec.offered_semesters, ec.offered_in_year,
+        ec.category_id || null, ec.prerequisites
+      );
+    }
+    for (const ec of (programJson.other_specialization_electives || [])) {
+      _addOrEnrichCourse(
+        ec.course_id, ec.name_he, null,
+        [], ec.offered_in_year, 'other_specialization', null
+      );
+    }
+  }
+
   const origSems  = Object.fromEntries(SEMESTERS.map(s => [s.id, []]));
   const placedSet = new Set();
   for (const sem of (board.semesters || [])) {
@@ -1445,6 +1543,18 @@ function init(board, audit) {
   if (saved && validState(saved)) {
     state = saved;
     if (!Array.isArray(state.unlockedIds)) state.unlockedIds = [];
+
+    /* Reconcile: courseMap may have grown (program_repository_courses loaded above)
+     * since localStorage state was saved. Add any new courseMap entries that are
+     * not already placed or in repo. */
+    const savedPlacedSet = new Set(Object.values(state.semesters).flat());
+    const savedRepoSet   = new Set(state.repo);
+    for (const cid of Object.keys(courseMap)) {
+      if (!savedPlacedSet.has(cid) && !savedRepoSet.has(cid)) {
+        state.repo.push(cid);
+        savedRepoSet.add(cid);
+      }
+    }
   } else {
     state = clone(originalState);
   }
@@ -1501,6 +1611,13 @@ function normalizeCourse(c, status) {
     program_category_name_he:    c.program_category_name_he    || null,
     needs_category_review:       c.needs_category_review       || false,
     selection_reason:            c.selection_reason            || null,
+    allowed_semesters:           c.allowed_semesters           || [],
+    locked_by_default:           c.locked_by_default           ?? true,
+    placement_rule:              c.placement_rule              || 'fixed_semester',
+    needs_verification:          c.needs_verification          || false,
+    source_note:                 c.source_note                 || '',
+    offered_in_year:             c.offered_in_year             ?? true,
+    offered_semesters:           c.offered_semesters           || [],
   };
 }
 
@@ -1528,16 +1645,18 @@ function mkChip(lbl, val, warn) {
   return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
 }
 
-function _buildRepoSection(gid, nameHe, ids, forceOpen) {
+function _buildRepoSection(gid, nameHe, ids, forceOpen, emptyMsg) {
   const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
   const isOpen = forceOpen || openGroups.has(gid);
+  const emptyHint = !ids.length && emptyMsg
+    ? `<div class="repo-empty-msg">${emptyMsg}</div>` : '';
   return `<details class="repo-group" data-group="${esc(gid)}"${isOpen?' open':''}>
     <summary>
       ${esc(nameHe)}
       <span class="repo-group-count">${ids.length}</span>
       <span class="repo-group-chevron">›</span>
     </summary>
-    <div class="repo-zone" data-zone="repo">${cards}</div>
+    <div class="repo-zone" data-zone="repo">${cards}${emptyHint}</div>
   </details>`;
 }
 
@@ -1569,13 +1688,22 @@ function renderSidebar() {
   for (const id of state.repo) {
     const c = courseMap[id];
     if (!c) continue;
-    if (c.course_type === 'mandatory')       { mandatoryIds.push(id); continue; }
-    if (c.status === 'missing_from_db')      { missingIds.push(id);   continue; }
-    if (c.status === 'blocked')              { blockedIds.push(id);   continue; }
+    if (c.course_type === 'mandatory') { mandatoryIds.push(id); continue; }
+
+    /* If the course belongs to a program category, always show it there —
+       even if it is blocked or has partial data.  The category section card
+       will display the appropriate status badge. */
+    const catId = c.program_category_id || progCatMap[id] || null;
+    if (useCats && catId && byCatId[catId] !== undefined) {
+      byCatId[catId].push(id);
+      continue;
+    }
+
+    /* Courses not in any program category fall into the generic sections */
+    if (c.status === 'missing_from_db') { missingIds.push(id);   continue; }
+    if (c.status === 'blocked')         { blockedIds.push(id);   continue; }
     if (useCats) {
-      const catId = c.program_category_id || progCatMap[id] || null;
-      if (catId && byCatId[catId]) byCatId[catId].push(id);
-      else otherIds.push(id);
+      otherIds.push(id);
     } else {
       otherIds.push(id); /* fallback: all elective_avail */
     }
@@ -1583,7 +1711,9 @@ function renderSidebar() {
 
   /* Build section HTML */
   let sections = '';
-  sections += mandatoryIds.length ? _buildRepoSection('_mandatory', 'קורסי חובה', mandatoryIds, true) : '';
+  /* Mandatory group — always shown; message when empty */
+  sections += _buildRepoSection('_mandatory', 'קורסי חובה', mandatoryIds, true,
+    'קורסי חובה עדיין לא הוזנו לתוכנית זו');
 
   if (useCats) {
     /* Ordered category groups from program */
@@ -1594,7 +1724,8 @@ function renderSidebar() {
       sections += _buildRepoSection(cat.category_id, (cat.name_he || cat.category_id) + suffix, ids, false);
     }
     if (otherIds.length) {
-      sections += _buildRepoSection('_other', 'לא משויך לתוכנית הנבחרת', otherIds, false);
+      const otherLabel = programRequirements?.other_category_label || 'לא משויך לתוכנית הנבחרת';
+      sections += _buildRepoSection('_other', otherLabel, otherIds, false);
     }
   } else {
     sections += _buildRepoSection('elective_avail', 'קורסי בחירה זמינים', otherIds, true);
@@ -1623,7 +1754,46 @@ function renderSidebar() {
   const prog = computeProgramProgress();
   const progressHtml = prog ? renderProgramProgress(prog) : '';
 
-  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections;
+  /* Legend injected inside scrollable body so sidebar scrolls end-to-end */
+  const legendHtml = `<div class="sb-legend">
+    <div class="legend-ttl">מקרא</div>
+    <div class="legend-compact">
+      <span class="legend-ci"><span class="legend-dot" style="background:var(--mand-accent)"></span>חובה 🔒</span>
+      <span class="legend-ci"><span class="legend-dot" style="background:var(--elec-accent)"></span>בחירה</span>
+      <span class="legend-ci"><span class="legend-dot" style="background:var(--blk-accent)"></span>חסום</span>
+      <span class="legend-ci"><span class="legend-dot" style="background:var(--miss-accent)"></span>חסר מידע</span>
+      <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>דרישות קדם חסרות</span>
+    </div>
+    <details class="legend-workload-details">
+      <summary>
+        <span class="legend-ci"><span class="legend-dot" style="background:var(--success)"></span>נמוך</span>
+        <span class="legend-ci"><span class="legend-dot" style="background:var(--warning)"></span>בינוני</span>
+        <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>גבוה</span>
+        <span class="legend-workload-more">▸ איך מחושבים עומס וקושי?</span>
+      </summary>
+      <div class="legend-workload-body">
+        קל: פחות מ-10 ש׳׳ש · בינוני: 10–16 · גבוה: 16+ ש׳׳ש שבועיות
+      </div>
+    </details>
+  </div>`;
+
+  /* AI panel injected inside scrollable body (mock only — not connected) */
+  const aiPanelHtml = `<details class="ai-panel" id="ai-panel">
+    <summary>🤖 <span>עוזר AI</span>
+      <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">לא מחובר</span>
+      <span class="ai-chevron">›</span>
+    </summary>
+    <div class="ai-body">
+      <div class="ai-mock-banner">⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
+        בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.</div>
+      <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
+        placeholder="לדוגמה: אני רוצה עומס קל בסמסטר א׳ ולהתמקד ברובוטיקה"></textarea>
+      <button class="ai-send" id="ai-sidebar-send">בקש הצעה (מדומה)</button>
+      <div class="ai-response" id="ai-sidebar-response"></div>
+    </div>
+  </details>`;
+
+  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections + legendHtml + aiPanelHtml;
   document.getElementById('invalid-toggle-btn')?.addEventListener('click', () => {
     allowInvalidPlacement = !allowInvalidPlacement;
     renderSidebar();
@@ -1631,6 +1801,15 @@ function renderSidebar() {
   document.getElementById('blk-toggle-btn')?.addEventListener('click', () => {
     allowBlockedDrag = !allowBlockedDrag;
     renderSidebar();
+  });
+  /* Re-wire AI send button (re-injected on each render) */
+  document.getElementById('ai-sidebar-send')?.addEventListener('click', () => {
+    const txt = document.getElementById('ai-sidebar-textarea')?.value?.trim();
+    const resp = document.getElementById('ai-sidebar-response');
+    if (!resp) return;
+    resp.textContent = txt
+      ? `בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\nשאלתך: ${txt}`
+      : 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.';
   });
 }
 
@@ -1659,8 +1838,8 @@ function computeProgramProgress() {
     else unknownHoursCount++;
   }
 
-  const total = programRequirements.total_required_hours || null;
-  const pct   = total ? Math.min(100, Math.round((plannedHours / total) * 100)) : 0;
+  const total     = programRequirements.total_required_hours || null;
+  const pct       = total ? Math.min(100, Math.round((plannedHours / total) * 100)) : 0;
   const remaining = total != null ? Math.max(0, total - plannedHours) : null;
 
   const categories = (programRequirements.categories || []).map(cat => {
@@ -1670,9 +1849,24 @@ function computeProgramProgress() {
     return { ...cat, selected_count: selected, satisfied: selected >= min };
   });
 
+  /* Core-total: sum across categories that belong to core_categories */
+  const coreTotalMin = programRequirements.core_courses_total_min ?? null;
+  let coreSelected = null;
+  let coreSatisfied = null;
+  if (coreTotalMin !== null) {
+    /* core categories are those with min_courses > 0 and NOT advanced_labs/other */
+    const nonCoreIds = new Set(['advanced_labs', 'other_specialization',
+                                'uncategorized_review', 'other_specialization_electives']);
+    coreSelected = categories
+      .filter(c => c.min_courses > 0 && !c.needs_review && !nonCoreIds.has(c.category_id))
+      .reduce((sum, c) => sum + c.selected_count, 0);
+    coreSatisfied = coreSelected >= coreTotalMin;
+  }
+
   return {
     total, plannedHours: Math.round(plannedHours * 10) / 10,
     pct, remaining, unknownHoursCount, categories,
+    coreTotalMin, coreSelected, coreSatisfied,
   };
 }
 
@@ -1690,6 +1884,14 @@ function renderProgramProgress(prog) {
       </div>
     </div>` : '';
 
+  /* Core-total row (e.g. "קורסי ליבה: 2/6") */
+  const coreTotalRow = prog.coreTotalMin != null ? `
+    <div class="prog-cat-row ${prog.coreSatisfied ? 'ok' : 'warn'}">
+      <span>קורסי ליבה (סה״כ)</span>
+      <span class="prog-cat-count">${prog.coreSelected}/${prog.coreTotalMin}</span>
+    </div>` : '';
+
+  /* Per-category rows for categories with min_courses > 0 */
   const reqCats = (prog.categories || []).filter(c => c.min_courses > 0 && !c.needs_review);
   const catRows = reqCats.map(cat =>
     `<div class="prog-cat-row ${cat.satisfied ? 'ok' : 'warn'}">
@@ -1698,12 +1900,16 @@ function renderProgramProgress(prog) {
     </div>`
   ).join('');
 
+  /* Remaining hours note */
+  const remainNote = prog.remaining != null && prog.remaining > 0
+    ? `<div class="prog-req-note">שעות חסרות עד ${prog.total}: <strong>${prog.remaining}</strong></div>` : '';
+
   const unkNote = prog.unknownHoursCount > 0
     ? `<div class="prog-req-note">⚠ ${prog.unknownHoursCount} קורסים ללא שעות ידועות</div>` : '';
 
   return `<div class="prog-requirements">
     <div class="prog-req-title">התקדמות בתוכנית</div>
-    ${hoursBar}${catRows}${unkNote}
+    ${hoursBar}${coreTotalRow}${catRows}${remainNote}${unkNote}
   </div>`;
 }
 
@@ -1755,20 +1961,33 @@ function cardHtml(c, placed) {
   const isBlocked = status === 'blocked';
   const canDrag   = !locked && !(isBlocked && !allowBlockedDrag);
 
+  const isPartial    = status === 'partial_info';
+  const isNotOffered = status === 'not_offered';
+
   let cls = 'course-card';
-  if (locked)                          cls += ' card-locked';
-  else if (status === 'missing_from_db') cls += ' card-missing';
-  else if (isBlocked)                  cls += ' card-blocked';
-  else if (type === 'mandatory')       cls += ' card-mandatory';
-  else                                 cls += ' card-elective';
-  if (placed && level && !locked)      cls += ` card-placed diff-${esc(level)}`;
+  if (locked)                           cls += ' card-locked';
+  else if (status === 'missing_from_db')  cls += ' card-missing';
+  else if (isBlocked)                   cls += ' card-blocked';
+  else if (isPartial || isNotOffered)   cls += ' card-missing'; /* reuse missing style */
+  else if (type === 'mandatory')        cls += ' card-mandatory';
+  else                                  cls += ' card-elective';
+  if (placed && level && !locked)       cls += ` card-placed diff-${esc(level)}`;
+
+  const isFixedMandatory = type === 'mandatory' && (c.locked_by_default ?? true) === true;
+  const isFlexMand       = type === 'mandatory' && !isFixedMandatory;
 
   const typeBdg = status === 'missing_from_db'
     ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
+    : isNotOffered
+    ? `<span class="badge bdg-not-offered">לא מוצע בתשפ"ז</span>`
+    : isPartial
+    ? `<span class="badge bdg-partial">מידע חלקי — נדרש ייבוא</span>`
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : isFlexMand
+    ? `<span class="badge bdg-mandatory-flex">חובה — גמיש</span>`
     : type === 'mandatory'
-    ? `<span class="badge bdg-mandatory">${TYPE_HE.mandatory}</span>`
+    ? `<span class="badge bdg-mandatory">חובה — נעול</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
   const diffBdg = level
@@ -1789,8 +2008,8 @@ function cardHtml(c, placed) {
 
   let actionBtn = '';
   if (type === 'mandatory') {
-    const icon  = locked ? '🔒' : '🔓';
-    const title = locked ? 'לחצו לביטול נעילה' : 'לחצו לנעילה';
+    const icon  = locked ? '🔒' : isFlexMand ? '↔' : '🔓';
+    const title = locked ? 'לחצו לביטול נעילה' : isFlexMand ? 'גמיש — ניתן להזזה בין סמסטרים מותרים' : 'לחצו לנעילה';
     actionBtn = `<button class="lock-btn" data-toggle-lock="${esc(c.course_id)}" title="${title}">${icon}</button>`;
   } else if (placed) {
     actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
@@ -2058,12 +2277,15 @@ function openCourseDetails(cid) {
   const sylUrl = syllabusLink(c);
 
   /* Badges */
+  const _isFlexMand = type === 'mandatory' && !(c.locked_by_default ?? true);
   const typeBdg = status === 'missing_from_db'
     ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : _isFlexMand
+    ? `<span class="badge bdg-mandatory-flex">חובה — גמיש</span>`
     : type === 'mandatory'
-    ? `<span class="badge bdg-mandatory">${TYPE_HE.mandatory}</span>`
+    ? `<span class="badge bdg-mandatory">חובה — נעול</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
   const diffBdg = level
@@ -2088,13 +2310,16 @@ function openCourseDetails(cid) {
     `<div class="detail-row"><span class="detail-lbl">${label}</span> <span class="detail-val">${val}</span></div>`;
 
   /* Basic info section */
+  const _allowedSemLabels = (c.allowed_semesters || []).map(sid => SEM_HE[sid] || sid).join(' / ');
   const basicRows = [
     mkRow('קוד קורס:', `<span dir="ltr" style="font-family:ui-monospace,monospace;unicode-bidi:isolate">${esc(cid)}</span>`),
-    mkRow('סוג:', esc(TYPE_HE[type] || type)),
+    mkRow('סוג:', esc(_isFlexMand ? 'חובה — גמיש' : TYPE_HE[type] || type)),
     c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`) : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
     level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
     status !== 'eligible' ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
+    (c.allowed_semesters?.length > 1) ? mkRow('ניתן לשיבוץ ב:', esc(_allowedSemLabels)) : '',
+    c.needs_verification ? mkRow('אימות:', '<span style="color:var(--warning)">⚠ ממתין לאימות</span>') : '',
   ].filter(Boolean).join('');
 
   /* Difficulty breakdown section */
@@ -2419,9 +2644,20 @@ function setupGlobalKeys() {
 /* ── Lock helpers ───────────────────────────────────────────────────────── */
 function isLocked(c) {
   return c &&
-         c.locked_by_user === true &&
-         c.course_type    === 'mandatory' &&
+         c.course_type       === 'mandatory' &&
+         (c.locked_by_default ?? true) === true &&
          !(state?.unlockedIds||[]).includes(c.course_id);
+}
+
+/* True when a mandatory course may be dragged between multiple allowed semesters */
+function isFlexibleMandatory(c) {
+  return c?.course_type === 'mandatory' && (c.allowed_semesters || []).length > 1;
+}
+
+/* False when drop target semester is outside the course's allowed_semesters */
+function isSemesterAllowed(c, semId) {
+  const allowed = c?.allowed_semesters || [];
+  return allowed.length === 0 || allowed.includes(semId);
 }
 
 /* ── Prerequisite validation (client-side mirror of plan_validator.py) ──── */
@@ -2534,10 +2770,12 @@ function setupDragDelegation() {
     zone.classList.add('drag-over');
 
     if (dragId && zone.dataset.zone === 'semester') {
-      const vr = validatePlacement(dragId, zone.dataset.sem);
-      zone.classList.toggle('drag-valid',   vr.valid);
-      zone.classList.toggle('drag-invalid', !vr.valid);
-      if (!vr.valid) {
+      const vr         = validatePlacement(dragId, zone.dataset.sem);
+      const dragCourse = courseMap[dragId];
+      const semBlocked = !isSemesterAllowed(dragCourse, zone.dataset.sem);
+      zone.classList.toggle('drag-valid',   vr.valid && !semBlocked);
+      zone.classList.toggle('drag-invalid', !vr.valid || semBlocked);
+      if (!vr.valid || semBlocked) {
         zone.dataset.dragErr = `חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`;
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
       } else {
@@ -2569,6 +2807,16 @@ function setupDragDelegation() {
     const toSem = zone.dataset.zone === 'semester' ? zone.dataset.sem : null;
 
     if (id && toSem) {
+      const dropCourse = courseMap[id];
+      /* Mandatory course semester restriction */
+      if (!isSemesterAllowed(dropCourse, toSem)) {
+        if (!allowInvalidPlacement) {
+          showBoardNotify('הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים');
+          return;
+        }
+        showBoardNotify('⚠ אזהרה: הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים');
+      }
+      /* Prerequisite validation */
       const vr = validatePlacement(id, toSem);
       if (!vr.valid && !allowInvalidPlacement) {
         showBoardNotify(`לא ניתן לשבץ: חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`);
@@ -2639,14 +2887,68 @@ function moveCourse(id, fromSem, toSem) {
 
 function resetBoard() {
   state = clone(originalState);
-  localStorage.removeItem(LS_STATE);
+  localStorage.removeItem(_lsStateKey());
   renderAll();
 }
 
+function buildRecommendedPlan() {
+  const MAX_PER_SEM = 5;
+  const semA    = SEMESTERS.filter(s => s.season === 'a').map(s => s.id);
+  const semB    = SEMESTERS.filter(s => s.season === 'b').map(s => s.id);
+  const allSems = SEMESTERS.map(s => s.id);
+
+  const byPref = { a: [], b: [], any: [] };
+  for (const cid of [...state.repo]) {
+    const c = courseMap[cid];
+    if (!c || c.course_type === 'mandatory') continue;
+    const sems = (c.offered_semesters || []).map(s => s.toLowerCase());
+    if      (sems.length === 1 && sems[0] === 'a') byPref.a.push(cid);
+    else if (sems.length === 1 && sems[0] === 'b') byPref.b.push(cid);
+    else                                           byPref.any.push(cid);
+  }
+
+  const diff = cid => courseMap[cid]?.difficulty_score ?? 5;
+  byPref.a.sort((a, b) => diff(a) - diff(b));
+  byPref.b.sort((a, b) => diff(a) - diff(b));
+  byPref.any.sort((a, b) => diff(a) - diff(b));
+
+  /* Batch-place without re-rendering per course */
+  const placed = new Set();
+  const _place = (cids, semPool) => {
+    for (const cid of cids) {
+      if (placed.has(cid)) continue;
+      const sem = semPool.find(s => (state.semesters[s] || []).length < MAX_PER_SEM);
+      if (!sem) continue;
+      state.repo = state.repo.filter(x => x !== cid);
+      if (!state.semesters[sem]) state.semesters[sem] = [];
+      if (!state.semesters[sem].includes(cid)) state.semesters[sem].push(cid);
+      placed.add(cid);
+    }
+  };
+
+  _place(byPref.a,   semA);
+  _place(byPref.b,   semB);
+  _place(byPref.any, allSems);
+
+  saveState(); renderAll();
+  showBoardNotify('תוכנית מומלצת נבנתה — ניתן לגרור קורסים לשינוי');
+}
+
 /* ── Persistence ────────────────────────────────────────────────────────── */
-function saveState()    { try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch {} }
-function tryLoadState() { try { return JSON.parse(localStorage.getItem(LS_STATE)); } catch { return null; } }
-function validState(s)  { return s && typeof s.semesters === 'object' && Array.isArray(s.repo); }
+function _lsStateKey() { return `${LS_STATE_PREFIX}_${selectedProg?.program_id || 'default'}`; }
+function saveState() {
+  try {
+    localStorage.setItem(_lsStateKey(), JSON.stringify({ ...state, program_id: selectedProg?.program_id }));
+  } catch {}
+}
+function tryLoadState() {
+  try { return JSON.parse(localStorage.getItem(_lsStateKey())); } catch { return null; }
+}
+function validState(s) {
+  if (!s || typeof s.semesters !== 'object' || !Array.isArray(s.repo)) return false;
+  if (s.program_id && selectedProg?.program_id && s.program_id !== selectedProg.program_id) return false;
+  return true;
+}
 
 /* ── Dark mode ──────────────────────────────────────────────────────────── */
 function applyTheme() {

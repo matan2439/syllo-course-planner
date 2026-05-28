@@ -20,6 +20,7 @@ from app.analysis.plan_validator import validate_entire_board
 from app.analysis.program_requirements import (
     build_course_category_map,
     get_program_categories_for_frontend,
+    get_all_program_course_ids,
     validate_program_plan,
 )
 from app.pipeline.bulk_import_courses import load_course_ids
@@ -68,17 +69,43 @@ def build_semester_board(
     mandatory_ids:    set[str]              = set()
 
     if program:
-        for sem_entry in program.get("semesters", []):
-            sem_id = sem_entry.get("semester_id", "")
-            if sem_id not in mandatory_by_sem:
+        specs       = _parse_mandatory_specs(program)
+        # Fixed first (single allowed semester), then flexible (multiple)
+        fixed_specs = [sp for sp in specs if len(sp["allowed_semesters"]) <= 1]
+        flex_specs  = [sp for sp in specs if len(sp["allowed_semesters"]) > 1]
+
+        for sp in fixed_specs:
+            cid    = sp["course_id"]
+            sem_id = sp["allowed_semesters"][0] if sp["allowed_semesters"] else None
+            if not sem_id or sem_id not in mandatory_by_sem:
+                global_warnings.append(
+                    f"Mandatory course {cid}: unknown or missing semester '{sem_id}'."
+                )
                 continue
-            for mc_id in sem_entry.get("mandatory_courses", []):
-                mc, mc_warns = _load_mandatory_course(mc_id, db_path)
-                global_warnings.extend(mc_warns)
-                mandatory_by_sem[sem_id].append(mc)
-                mandatory_ids.add(mc_id)
-                if mc.get("weekly_hours") is not None:
-                    mandatory_hours[sem_id] += mc["weekly_hours"]
+            mc, mc_warns = _load_mandatory_course(cid, db_path, sp)
+            global_warnings.extend(mc_warns)
+            mandatory_by_sem[sem_id].append(mc)
+            mandatory_ids.add(cid)
+            if mc.get("weekly_hours") is not None:
+                mandatory_hours[sem_id] += mc["weekly_hours"]
+
+        for sp in flex_specs:
+            cid     = sp["course_id"]
+            allowed = [s for s in sp["allowed_semesters"] if s in mandatory_by_sem]
+            if not allowed:
+                global_warnings.append(
+                    f"Mandatory course {cid}: no valid allowed_semesters "
+                    f"in {sp['allowed_semesters']}."
+                )
+                continue
+            # Least-loaded allowed semester (hours tiebreak: count)
+            sem_id = min(allowed, key=lambda s: (mandatory_hours[s], len(mandatory_by_sem[s])))
+            mc, mc_warns = _load_mandatory_course(cid, db_path, sp)
+            global_warnings.extend(mc_warns)
+            mandatory_by_sem[sem_id].append(mc)
+            mandatory_ids.add(cid)
+            if mc.get("weekly_hours") is not None:
+                mandatory_hours[sem_id] += mc["weekly_hours"]
 
     # Filter electives to only courses allowed by program categories
     allowed_ids = _build_allowed_course_ids(program) if program else None
@@ -103,6 +130,10 @@ def build_semester_board(
 
     # Fetch DB info (best-effort — gracefully skipped if DB absent)
     season_prefs    = _fetch_season_prefs(course_ids, db_path)
+    # Supplement DB season prefs with offered_semesters from program JSON
+    if program:
+        for cid, code in _build_season_prefs_from_program(program).items():
+            season_prefs.setdefault(cid, code)
     in_plan_prereqs = _fetch_in_plan_prereqs(course_ids, db_path)
     all_prereqs     = _fetch_all_prereqs(course_ids, db_path)
 
@@ -131,17 +162,106 @@ def build_semester_board(
 
 
 # ---------------------------------------------------------------------------
+# Mandatory course spec parsing
+# ---------------------------------------------------------------------------
+
+def _parse_mandatory_specs(program: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Return an ordered list of mandatory-course placement specs from *program*.
+
+    Reads from two sources (de-duplicated; first-seen wins):
+      1. program["requirements"]["mandatory_courses"]["courses"]  — rich format (new)
+      2. program["semesters"][*]["mandatory_courses"]             — plain IDs (old)
+
+    Old-format entries are treated as fixed (one allowed semester, locked_by_default=True).
+
+    Each returned spec:
+        course_id, allowed_semesters, recommended_semester,
+        locked_by_default, placement_rule, needs_verification, source_note
+    """
+    specs: list[dict[str, Any]] = []
+    seen:  set[str]             = set()
+
+    # New rich format: requirements.mandatory_courses.courses (inline or via courses_file)
+    reqs      = program.get("requirements", {})
+    mand_reqs = reqs.get("mandatory_courses", {}) if isinstance(reqs, dict) else {}
+    inline_courses = list(mand_reqs.get("courses", []))
+    cfile = mand_reqs.get("courses_file")
+    if cfile:
+        cfile_path = Path(cfile)
+        if cfile_path.exists():
+            with cfile_path.open(encoding="utf-8") as _fh:
+                _data = json.load(_fh)
+            inline_courses = _data.get("courses", inline_courses)
+    for mc in inline_courses:
+        raw_id = mc.get("course_id", "")
+        if not raw_id:
+            continue
+        cid = normalize_course_id(raw_id)
+        if cid in seen:
+            continue
+        seen.add(cid)
+        allowed = [s for s in mc.get("allowed_semesters", []) if s]
+        n       = len(allowed)
+        specs.append({
+            "course_id":           cid,
+            "allowed_semesters":   allowed,
+            "recommended_semester": mc.get("recommended_semester"),
+            "locked_by_default":   mc.get("locked_by_default", n <= 1),
+            "placement_rule":      mc.get("placement_rule",
+                                          "fixed_semester" if n <= 1
+                                          else "choose_one_allowed_semester"),
+            "needs_verification":  bool(mc.get("needs_verification", False)),
+            "source_note":         mc.get("source_note", ""),
+        })
+
+    # Old format: semesters[].mandatory_courses (plain IDs or dicts)
+    for sem_entry in program.get("semesters", []):
+        sem_id = sem_entry.get("semester_id", "")
+        for mc_entry in sem_entry.get("mandatory_courses", []):
+            raw_id = mc_entry if isinstance(mc_entry, str) else mc_entry.get("course_id", "")
+            if not raw_id:
+                continue
+            cid = normalize_course_id(raw_id)
+            if cid in seen:
+                continue
+            seen.add(cid)
+            specs.append({
+                "course_id":           cid,
+                "allowed_semesters":   [sem_id] if sem_id else [],
+                "recommended_semester": sem_id or None,
+                "locked_by_default":   True,
+                "placement_rule":      "fixed_semester",
+                "needs_verification":  False,
+                "source_note":         "",
+            })
+
+    return specs
+
+
+# ---------------------------------------------------------------------------
 # Mandatory course loading
 # ---------------------------------------------------------------------------
 
 def _load_mandatory_course(
     course_id: str,
     db_path: Path,
+    placement_spec: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """
     Look up *course_id* in the DB and return a fully-formatted mandatory-course
     dict plus any global-level warnings (e.g. "not found in DB").
+
+    *placement_spec* carries allowed_semesters, locked_by_default, placement_rule,
+    needs_verification, and source_note from the program JSON.
     """
+    spec             = placement_spec or {}
+    allowed_sems     = spec.get("allowed_semesters", [])
+    locked_by_default = spec.get("locked_by_default", True)
+    placement_rule   = spec.get("placement_rule", "fixed_semester")
+    needs_verif      = bool(spec.get("needs_verification", False))
+    source_note      = spec.get("source_note", "")
+
     global_warns: list[str] = []
     record: dict | None = None
 
@@ -177,7 +297,12 @@ def _load_mandatory_course(
             "prerequisites":               [],
             "prerequisite_details":        [],
             "instructor_uncertainty":      estimate_instructor_uncertainty(None, grade_stats),
-            "locked_by_user":              True,
+            "locked_by_user":              locked_by_default,
+            "allowed_semesters":           allowed_sems,
+            "locked_by_default":           locked_by_default,
+            "placement_rule":              placement_rule,
+            "needs_verification":          needs_verif,
+            "source_note":                 source_note,
             "source":                      "program",
             "data_quality": {
                 "has_weekly_hours":     False,
@@ -236,7 +361,12 @@ def _load_mandatory_course(
         "prerequisites":               prereqs,
         "prerequisite_details":        prerequisite_details,
         "instructor_uncertainty":      estimate_instructor_uncertainty(record, grade_stats),
-        "locked_by_user":              True,
+        "locked_by_user":              locked_by_default,
+        "allowed_semesters":           allowed_sems,
+        "locked_by_default":           locked_by_default,
+        "placement_rule":              placement_rule,
+        "needs_verification":          needs_verif,
+        "source_note":                 source_note,
         "source":                      "program",
         "data_quality": {
             "has_weekly_hours":     hours is not None,
@@ -268,26 +398,54 @@ def _weekly_hours_from_record(record: dict) -> float | None:
 
 def _build_allowed_course_ids(program: dict) -> set[str] | None:
     """
-    Return the set of normalized course IDs allowed by a program's course_categories.
+    Return the set of normalised course IDs allowed by a program.
 
-    Returns None when the program has no course_categories (no filtering applied).
-    For category entries with course_ids_file, loads the file relative to CWD.
-    Missing files are silently skipped so the board still renders.
+    Checks, in order:
+      1. program["course_categories"]  — classic explicit list
+      2. program["requirements"]       — both classic elective_categories and
+                                        new PDF format (core_categories + …)
+
+    Returns None when no allowlist is defined (no filtering applied).
     """
+    # --- Classic course_categories key ----------------------------------------
     categories = program.get("course_categories")
-    if categories is None:
-        return None
-    allowed: set[str] = set()
-    for cat in categories:
-        for cid in cat.get("course_ids", []):
-            allowed.add(normalize_course_id(cid))
-        fpath_str = cat.get("course_ids_file")
-        if fpath_str:
-            fpath = Path(fpath_str)
-            if fpath.exists():
-                for cid in load_course_ids(fpath):
-                    allowed.add(normalize_course_id(cid))
-    return allowed
+    if categories is not None:
+        allowed: set[str] = set()
+        for cat in categories:
+            for cid in cat.get("course_ids", []):
+                allowed.add(normalize_course_id(cid))
+            fpath_str = cat.get("course_ids_file")
+            if fpath_str:
+                fpath = Path(fpath_str)
+                if fpath.exists():
+                    for cid in load_course_ids(fpath):
+                        allowed.add(normalize_course_id(cid))
+        return allowed
+
+    # --- requirements-based allowlist (classic or PDF format) -----------------
+    reqs = program.get("requirements")
+    if reqs:
+        ids = get_all_program_course_ids(program)
+        return ids if ids else None
+
+    return None
+
+
+def _build_season_prefs_from_program(program: dict) -> dict[str, str]:
+    """
+    Extract offered_semesters from program.elective_courses and return a
+    course_id → season-code ("a"/"b") map to supplement DB-based preferences.
+    Only maps courses with exactly one offered semester.
+    """
+    prefs: dict[str, str] = {}
+    for ec in program.get("elective_courses", []):
+        cid      = ec.get("course_id")
+        offered  = ec.get("offered_semesters", [])
+        if cid and len(offered) == 1:
+            sem_code = offered[0].lower()  # "A" → "a", "B" → "b"
+            if sem_code in ("a", "b"):
+                prefs[normalize_course_id(cid)] = sem_code
+    return prefs
 
 
 # ---------------------------------------------------------------------------
@@ -678,6 +836,48 @@ def _format_course(
 # Program requirements post-processing
 # ---------------------------------------------------------------------------
 
+def _build_program_repository_courses(program: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Return a flat list of all elective + other-specialization courses defined in
+    the program JSON.  Embedded in board.metadata.program_repository_courses so
+    the frontend can initialise courseMap without a separate programJson fetch.
+    """
+    courses: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for ec in program.get("elective_courses", []):
+        cid = ec.get("course_id")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        courses.append({
+            "course_id":        cid,
+            "name_he":          ec.get("name_he"),
+            "weekly_hours":     ec.get("hours"),
+            "offered_semesters": ec.get("offered_semesters", []),
+            "offered_in_year":  ec.get("offered_in_year", True),
+            "category_id":      ec.get("category_id"),
+            "source":           "program_json",
+        })
+
+    for ec in program.get("other_specialization_electives", []):
+        cid = ec.get("course_id")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        courses.append({
+            "course_id":        cid,
+            "name_he":          ec.get("name_he"),
+            "weekly_hours":     None,
+            "offered_semesters": [],
+            "offered_in_year":  ec.get("offered_in_year", True),
+            "category_id":      "other_specialization",
+            "source":           "program_json",
+        })
+
+    return courses
+
+
 def _annotate_program_requirements(
     board: dict[str, Any],
     program: dict[str, Any],
@@ -689,13 +889,16 @@ def _annotate_program_requirements(
     Adds to board["metadata"]:
         program_requirements_validation  : full validate_program_plan result
         program_requirements_categories  : category definitions for frontend use
+        program_repository_courses       : all elective/specialisation courses
     """
-    validation = validate_program_plan(board, program, completed_course_ids)
+    validation    = validate_program_plan(board, program, completed_course_ids)
     frontend_cats = get_program_categories_for_frontend(program)
+    repo_courses  = _build_program_repository_courses(program)
 
     board.setdefault("metadata", {}).update({
         "program_requirements_validation": validation,
         "program_requirements_categories": frontend_cats,
+        "program_repository_courses":      repo_courses,
     })
 
 

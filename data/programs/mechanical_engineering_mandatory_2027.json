@@ -1,0 +1,9 @@
+{
+  "version": "2027",
+  "program_id": "mechanical_engineering_2027",
+  "description": "קורסי חובה — הנדסה מכנית תשפ\"ז. טרם מולאו — דורשים אימות מול דף התוכנית הרשמי.",
+  "status": "empty_placeholder",
+  "needs_verification": true,
+  "note": "קורסי החובה לתשפ\"ז טרם הוזנו. יש להשלים את הנתונים על בסיס הסילבוס הרשמי של אוניברסיטת תל אביב.",
+  "courses": []
+}
