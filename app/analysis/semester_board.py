@@ -123,7 +123,7 @@ def build_semester_board(
         )
         board = _annotate_validation(board, completed_course_ids or [])
         if program and program.get("requirements"):
-            _annotate_program_requirements(board, program, completed_course_ids or [])
+            _annotate_program_requirements(board, program, completed_course_ids or [], db_path=db_path)
         return board
 
     course_ids = [c["course_id"] for c in courses]
@@ -157,7 +157,7 @@ def build_semester_board(
     )
     board = _annotate_validation(board, completed_course_ids or [])
     if program and program.get("requirements"):
-        _annotate_program_requirements(board, program, completed_course_ids or [])
+        _annotate_program_requirements(board, program, completed_course_ids or [], db_path=db_path)
     return board
 
 
@@ -836,28 +836,72 @@ def _format_course(
 # Program requirements post-processing
 # ---------------------------------------------------------------------------
 
-def _build_program_repository_courses(program: dict[str, Any]) -> list[dict[str, Any]]:
+def _build_category_name_map(program: dict[str, Any]) -> dict[str, str]:
+    """Return {category_id: name_he} from program requirements."""
+    result: dict[str, str] = {}
+    reqs = program.get("requirements", {})
+    if not isinstance(reqs, dict):
+        return result
+    for cat in reqs.get("core_categories", []):
+        cid = cat.get("category_id")
+        if cid:
+            result[cid] = cat.get("name_he") or cid
+    for key in ("advanced_labs", "other_specialization"):
+        cat = reqs.get(key)
+        if isinstance(cat, dict):
+            cid = cat.get("category_id")
+            if cid:
+                result[cid] = cat.get("name_he") or cid
+    for cat in reqs.get("elective_categories", []):
+        cid = cat.get("category_id")
+        if cid and cid not in result:
+            result[cid] = cat.get("name_he") or cid
+    return result
+
+
+def _build_program_repository_courses(
+    program: dict[str, Any],
+    db_path: Path = _DB_PATH,
+) -> list[dict[str, Any]]:
     """
     Return a flat list of all elective + other-specialization courses defined in
     the program JSON.  Embedded in board.metadata.program_repository_courses so
     the frontend can initialise courseMap without a separate programJson fetch.
+
+    name_he: uses PDF name when available; falls back to DB lookup when null.
+    program_category_name_he: resolved from program requirements.
     """
+    cat_name_map = _build_category_name_map(program)
     courses: list[dict[str, Any]] = []
     seen: set[str] = set()
+
+    def _resolve_name(cid: str, name_he: str | None) -> str | None:
+        if name_he:
+            return name_he
+        if db_path.exists():
+            try:
+                record = get_course_by_id(cid, db_path)
+                if record:
+                    return record.get("name_he")
+            except Exception:
+                pass
+        return None
 
     for ec in program.get("elective_courses", []):
         cid = ec.get("course_id")
         if not cid or cid in seen:
             continue
         seen.add(cid)
+        cat_id = ec.get("category_id")
         courses.append({
-            "course_id":        cid,
-            "name_he":          ec.get("name_he"),
-            "weekly_hours":     ec.get("hours"),
-            "offered_semesters": ec.get("offered_semesters", []),
-            "offered_in_year":  ec.get("offered_in_year", True),
-            "category_id":      ec.get("category_id"),
-            "source":           "program_json",
+            "course_id":                cid,
+            "name_he":                  _resolve_name(cid, ec.get("name_he")),
+            "weekly_hours":             ec.get("hours"),
+            "offered_semesters":        ec.get("offered_semesters", []),
+            "offered_in_year":          ec.get("offered_in_year", True),
+            "category_id":              cat_id,
+            "program_category_name_he": cat_name_map.get(cat_id) if cat_id else None,
+            "source":                   "program_json",
         })
 
     for ec in program.get("other_specialization_electives", []):
@@ -865,14 +909,16 @@ def _build_program_repository_courses(program: dict[str, Any]) -> list[dict[str,
         if not cid or cid in seen:
             continue
         seen.add(cid)
+        cat_id = "other_specialization"
         courses.append({
-            "course_id":        cid,
-            "name_he":          ec.get("name_he"),
-            "weekly_hours":     None,
-            "offered_semesters": [],
-            "offered_in_year":  ec.get("offered_in_year", True),
-            "category_id":      "other_specialization",
-            "source":           "program_json",
+            "course_id":                cid,
+            "name_he":                  _resolve_name(cid, ec.get("name_he")),
+            "weekly_hours":             None,
+            "offered_semesters":        [],
+            "offered_in_year":          ec.get("offered_in_year", True),
+            "category_id":              cat_id,
+            "program_category_name_he": cat_name_map.get(cat_id),
+            "source":                   "program_json",
         })
 
     return courses
@@ -882,6 +928,7 @@ def _annotate_program_requirements(
     board: dict[str, Any],
     program: dict[str, Any],
     completed_course_ids: list[str],
+    db_path: Path = _DB_PATH,
 ) -> None:
     """
     Validate the board against program.requirements and embed results in metadata.
@@ -893,7 +940,7 @@ def _annotate_program_requirements(
     """
     validation    = validate_program_plan(board, program, completed_course_ids)
     frontend_cats = get_program_categories_for_frontend(program)
-    repo_courses  = _build_program_repository_courses(program)
+    repo_courses  = _build_program_repository_courses(program, db_path)
 
     board.setdefault("metadata", {}).update({
         "program_requirements_validation": validation,

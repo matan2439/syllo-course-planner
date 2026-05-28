@@ -524,3 +524,152 @@ def test_2027_board_build_from_empty_plan_produces_zero_placed(tmp_path):
         for c in sem.get("courses", [])
     ]
     assert placed == [], f"Expected 0 placed, got: {placed}"
+
+
+# ---------------------------------------------------------------------------
+# Part J: 2027 repository display quality
+# ---------------------------------------------------------------------------
+
+def test_elective_courses_all_have_names():
+    """All entries in elective_courses (core + labs) have non-null name_he."""
+    prog = _load_pdf_program()
+    for ec in prog["elective_courses"]:
+        assert ec.get("name_he"), (
+            f"{ec['course_id']} is missing name_he in elective_courses"
+        )
+
+
+def test_build_program_repository_courses_preserves_pdf_names():
+    """PDF-derived names are preserved in repository output for elective_courses."""
+    prog = _load_pdf_program()
+    pdf_names = {
+        ec["course_id"]: ec["name_he"]
+        for ec in prog["elective_courses"]
+        if ec.get("name_he")
+    }
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    for cid, expected_name in pdf_names.items():
+        assert repo_map[cid]["name_he"] == expected_name, (
+            f"{cid}: expected '{expected_name}', got '{repo_map[cid]['name_he']}'"
+        )
+
+
+def test_build_program_repository_courses_category_name_fluids():
+    """Fluids courses carry correct program_category_name_he."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    for cid in ["0542-4120", "0542-4123", "0542-4320", "0542-4352"]:
+        rc = repo_map[cid]
+        assert rc["program_category_name_he"] == "קורסי ליבה — זורמים", (
+            f"{cid}: got '{rc['program_category_name_he']}'"
+        )
+
+
+def test_build_program_repository_courses_category_name_solids():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    for cid in ["0542-4220", "0542-4221", "0542-4223", "0542-4224"]:
+        assert repo_map[cid]["program_category_name_he"] == "קורסי ליבה — מוצקים"
+
+
+def test_build_program_repository_courses_category_name_systems():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    for cid in ["0542-4420", "0542-4422", "0542-4455", "0542-4622"]:
+        assert repo_map[cid]["program_category_name_he"] == "קורסי ליבה — מערכות"
+
+
+def test_build_program_repository_courses_category_name_labs():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    for cid in ["0542-4391", "0542-4624", "0581-4131", "0542-4094"]:
+        assert repo_map[cid]["program_category_name_he"] == "מעבדות מתקדמות"
+
+
+def test_build_program_repository_courses_category_counts():
+    """Category ID counts: fluids=4, solids=4, systems=4, advanced_labs=5."""
+    from collections import Counter
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    counts = Counter(r["category_id"] for r in repo)
+    assert counts["fluids"]               == 4, f"fluids: {counts['fluids']}"
+    assert counts["solids"]               == 4, f"solids: {counts['solids']}"
+    assert counts["systems"]              == 4, f"systems: {counts['systems']}"
+    assert counts["advanced_labs"]        == 5, f"advanced_labs: {counts['advanced_labs']}"
+    assert counts["other_specialization"] == 39
+
+
+def test_build_program_repository_courses_other_specialization_category_id():
+    """All other_specialization_electives have category_id='other_specialization'."""
+    prog = _load_pdf_program()
+    other_ids = {e["course_id"] for e in prog["other_specialization_electives"]}
+    repo = _build_program_repository_courses(prog)
+    for rc in repo:
+        if rc["course_id"] in other_ids:
+            assert rc["category_id"] == "other_specialization", (
+                f"{rc['course_id']}: expected other_specialization, got '{rc['category_id']}'"
+            )
+
+
+def test_2027_board_json_fluids_have_category_name():
+    """Regenerated board JSON has program_category_name_he for fluids courses."""
+    board = _load_2027_board()
+    repo_map = {
+        r["course_id"]: r
+        for r in board["metadata"]["program_repository_courses"]
+    }
+    for cid in ["0542-4120", "0542-4123", "0542-4320", "0542-4352"]:
+        rc = repo_map.get(cid)
+        assert rc is not None, f"{cid} not found in board repository"
+        assert rc.get("program_category_name_he") == "קורסי ליבה — זורמים", (
+            f"{cid}: got '{rc.get('program_category_name_he')}'"
+        )
+
+
+def test_2027_board_json_all_have_program_category_name_he():
+    """All 56 repository courses in the board JSON carry program_category_name_he."""
+    board = _load_2027_board()
+    repo = board["metadata"]["program_repository_courses"]
+    missing = [
+        r["course_id"] for r in repo
+        if not r.get("program_category_name_he")
+    ]
+    assert not missing, f"Missing program_category_name_he: {missing}"
+
+
+def test_mandatory_placeholder_is_empty():
+    """mechanical_engineering_mandatory_2027.json is a placeholder with no courses."""
+    mand_path = Path("data/programs/mechanical_engineering_mandatory_2027.json")
+    assert mand_path.exists()
+    mand = json.loads(mand_path.read_text(encoding="utf-8"))
+    assert mand.get("status") == "empty_placeholder"
+    assert mand.get("courses") == []
+
+
+def test_2027_repository_fluids_count_4():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    assert sum(1 for r in repo if r["category_id"] == "fluids") == 4
+
+
+def test_2027_repository_solids_count_4():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    assert sum(1 for r in repo if r["category_id"] == "solids") == 4
+
+
+def test_2027_repository_systems_count_4():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    assert sum(1 for r in repo if r["category_id"] == "systems") == 4
+
+
+def test_2027_repository_advanced_labs_count_5():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    assert sum(1 for r in repo if r["category_id"] == "advanced_labs") == 5
