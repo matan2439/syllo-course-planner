@@ -39,6 +39,7 @@ from app.analysis.semester_board import (
     build_semester_board,
     _build_allowed_course_ids,
     _build_season_prefs_from_program,
+    _build_program_repository_courses,
 )
 
 
@@ -423,3 +424,103 @@ def test_core_courses_total_min_is_none_for_classic_program():
     }
     result = get_program_categories_for_frontend(classic_prog)
     assert result["core_courses_total_min"] is None
+
+
+# ---------------------------------------------------------------------------
+# Part I: 2027 board stabilization
+# ---------------------------------------------------------------------------
+
+_STALE_2025_ELECTIVES = {
+    "0512-1203",
+    "0512-4362",
+    "0542-4224",
+    "0512-4200",
+    "0512-4702",
+}
+_BOARD_2027_PATH = Path("data/parsed_json/mechanical_semester_board_2027.json")
+
+
+def _load_2027_board() -> dict[str, Any]:
+    return json.loads(_BOARD_2027_PATH.read_text(encoding="utf-8"))
+
+
+def test_2027_board_file_exists():
+    assert _BOARD_2027_PATH.exists(), "mechanical_semester_board_2027.json is missing"
+
+
+def test_2027_initial_board_has_zero_placed_courses():
+    board = _load_2027_board()
+    placed = [
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+    ]
+    assert placed == [], f"Expected 0 placed courses, got: {placed}"
+
+
+def test_2027_board_has_program_repository_courses():
+    board = _load_2027_board()
+    repo = board.get("metadata", {}).get("program_repository_courses", [])
+    assert len(repo) == 56, f"Expected 56 PDF courses in repository, got {len(repo)}"
+
+
+def test_2027_stale_2025_electives_not_in_placed_courses():
+    board = _load_2027_board()
+    placed_ids = {
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+    }
+    contamination = placed_ids & _STALE_2025_ELECTIVES
+    assert not contamination, f"Stale 2025 courses found in 2027 semesters: {contamination}"
+
+
+def test_2027_stale_courses_may_be_in_repo_but_never_placed():
+    """Courses shared between 2025 and 2027 programs are allowed in the 2027
+    repository (they belong to the program) but must never be pre-placed."""
+    board = _load_2027_board()
+    placed_ids = {
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+    }
+    contamination = placed_ids & _STALE_2025_ELECTIVES
+    assert not contamination, (
+        f"Old electives pre-placed in 2027 semesters: {contamination}"
+    )
+
+
+def test_build_program_repository_courses_returns_56_entries():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    assert len(repo) == 56
+
+
+def test_build_program_repository_courses_no_duplicates():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    ids = [r["course_id"] for r in repo]
+    assert len(ids) == len(set(ids)), "Duplicate course_ids in program_repository_courses"
+
+
+def test_build_program_repository_courses_electives_have_category():
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    elective_ids = {e["course_id"] for e in prog.get("elective_courses", [])}
+    for r in repo:
+        if r["course_id"] in elective_ids:
+            assert r["category_id"] is not None, (
+                f"Elective {r['course_id']} missing category_id in program_repository_courses"
+            )
+
+
+def test_2027_board_build_from_empty_plan_produces_zero_placed(tmp_path):
+    """build_semester_board with empty selected_courses and 2027 PDF program → 0 placed."""
+    prog  = _load_pdf_program()
+    board = build_semester_board({"selected_courses": []}, program=prog)
+    placed = [
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+    ]
+    assert placed == [], f"Expected 0 placed, got: {placed}"

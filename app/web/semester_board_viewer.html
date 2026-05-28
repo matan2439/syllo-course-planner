@@ -534,13 +534,11 @@ body.prog-modal-open .workspace {
   margin-top: 8px; width: 100%;
   font-size: .72rem; font-weight: 600;
   padding: 6px 10px; border-radius: 7px;
-  border: 1.5px solid var(--purple); background: var(--purple-soft);
-  color: var(--purple); cursor: pointer;
-  transition: background var(--t), border-color var(--t), color var(--t), opacity var(--t);
+  border: 1.5px solid var(--border2); background: var(--surface2);
+  color: var(--text-faint); cursor: not-allowed;
+  opacity: .7;
 }
-.btn-auto-plan:hover { background: var(--purple); color: #fff; }
-[data-theme="dark"] .btn-auto-plan { color: var(--purple); }
-[data-theme="dark"] .btn-auto-plan:hover { color: #fff; }
+.btn-auto-plan:disabled { pointer-events: auto; }
 .sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; overscroll-behavior: contain; }
 
 /* Repo group accordion */
@@ -1041,7 +1039,8 @@ body.prog-modal-open .workspace {
       <div class="sb-head">
         <div class="sb-head-title">מאגר קורסים</div>
         <div class="sb-head-sub" id="repo-sub">טוען…</div>
-        <button class="btn btn-auto-plan" id="btn-auto-plan" title="מלא את הלוח אוטומטית לפי העדפות סמסטר">⚡ בנה תוכנית מומלצת</button>
+        <button class="btn btn-auto-plan" id="btn-auto-plan" disabled
+          title="בשלב זה בניית תוכנית אוטומטית עדיין לא מחוברת. בהמשך ניתן יהיה להזין העדפות אישיות וה-AI יבנה תוכנית שעומדת בדרישות התואר.">🤖 בנה תוכנית עם AI — בקרוב</button>
       </div>
       <div class="sb-body" id="repo-body"></div>
     </aside>
@@ -1163,7 +1162,7 @@ async function main() {
   document.getElementById('btn-reset').addEventListener('click', resetBoard);
   document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
   document.getElementById('btn-my-courses').addEventListener('click', openMyCoursesModal);
-  document.getElementById('btn-auto-plan').addEventListener('click', buildRecommendedPlan);
+  /* btn-auto-plan is disabled — no click handler until AI is connected */
 
   buildProgModal();
 
@@ -1576,6 +1575,15 @@ function init(board, audit, programJson) {
 
   // Extract program requirements categories from board metadata
   programRequirements = board.metadata?.program_requirements_categories || null;
+
+  /* ── Dev diagnostics (console only) ───────────────────────────────────── */
+  const _planned = Object.values(state.semesters).flat().length;
+  const _pdfRepo = board.metadata?.program_repository_courses?.length ?? 0;
+  console.log('[init] program:', selectedProg?.program_id);
+  console.log('[init] board JSON:', selectedProg?.board_json);
+  console.log('[init] planned courses:', _planned);
+  console.log('[init] repository courses (state.repo):', state.repo.length);
+  console.log('[init] PDF repository courses (board.metadata):', _pdfRepo);
 }
 
 function normalizeCourse(c, status) {
@@ -1779,16 +1787,23 @@ function renderSidebar() {
 
   /* AI panel injected inside scrollable body (mock only — not connected) */
   const aiPanelHtml = `<details class="ai-panel" id="ai-panel">
-    <summary>🤖 <span>עוזר AI</span>
-      <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">לא מחובר</span>
+    <summary>🤖 <span>עוזר AI לתכנון מערכת</span>
+      <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">עדיין לא מחובר</span>
       <span class="ai-chevron">›</span>
     </summary>
     <div class="ai-body">
-      <div class="ai-mock-banner">⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
-        בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.</div>
+      <div class="ai-mock-banner">⚠ עוזר AI לתכנון מערכת — עדיין לא מחובר.<br>
+        בהמשך תוכל להזין העדפות אישיות וה-AI יבנה תוכנית שעומדת בדרישות התואר.</div>
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:6px">דוגמאות להעדפות:</div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני רוצה עומס קל בסמסטר א׳</span>
+        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני עובד יום בשבוע</span>
+        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני מעדיף פחות קורסים מתמטיים</span>
+        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני רוצה לסיים את קורסי הליבה מוקדם</span>
+      </div>
       <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
-        placeholder="לדוגמה: אני רוצה עומס קל בסמסטר א׳ ולהתמקד ברובוטיקה"></textarea>
-      <button class="ai-send" id="ai-sidebar-send">בקש הצעה (מדומה)</button>
+        placeholder="הזן העדפות אישיות…" disabled></textarea>
+      <button class="ai-send" id="ai-sidebar-send" disabled style="opacity:.5;cursor:not-allowed">שלח (לא מחובר)</button>
       <div class="ai-response" id="ai-sidebar-response"></div>
     </div>
   </details>`;
