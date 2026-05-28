@@ -707,7 +707,7 @@ body.prog-modal-open .workspace {
 /* ── Board area ──────────────────────────────────────────────────────────── */
 .board-area { flex: 1; overflow: auto; padding: 14px; transition: filter 250ms ease; }
 .board-grid {
-  display: flex; direction: rtl; /* earliest semester on far right */
+  display: flex; flex-wrap: wrap; direction: rtl; /* earliest semester on far right */
   gap: 16px; align-items: start; min-width: 860px;
 }
 
@@ -950,6 +950,16 @@ body.prog-modal-open .workspace {
 .lock-btn { color: var(--mand-accent); }
 .lock-btn:hover { transform: scale(1.2); }
 .card-locked .lock-btn { color: var(--text-faint); }
+
+/* ── Board empty-state hint ──────────────────────────────────────────────── */
+.board-empty-hint {
+  flex-basis: 100%;
+  padding: 18px 20px;
+  text-align: center;
+  font-size: .83rem; color: var(--text-muted); line-height: 1.6;
+  background: var(--surface2); border: 1px dashed var(--border2);
+  border-radius: var(--radius); direction: rtl;
+}
 
 /* ── State messages ──────────────────────────────────────────────────────── */
 .state-msg { padding: 60px 24px; text-align: center; color: var(--text-muted); }
@@ -1577,6 +1587,14 @@ function init(board, audit, programJson) {
   // Extract program requirements categories from board metadata
   programRequirements = board.metadata?.program_requirements_categories || null;
 
+  // When the board is empty, pre-open required (min_courses > 0) categories so they are
+  // immediately visible. other_specialization (min_courses === 0) stays collapsed.
+  if (allPlacedIds().size === 0 && programRequirements?.categories) {
+    for (const cat of programRequirements.categories) {
+      if (cat.min_courses > 0 && !cat.needs_review) openGroups.add(cat.category_id);
+    }
+  }
+
   /* ── Dev diagnostics (console only) ───────────────────────────────────── */
   const _planned = Object.values(state.semesters).flat().length;
   const _pdfRepo = board.metadata?.program_repository_courses?.length ?? 0;
@@ -1830,11 +1848,14 @@ function renderSidebar() {
 }
 
 function renderBoard() {
+  const emptyHint = allPlacedIds().size === 0
+    ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
+    : '';
   const yearGroups = [
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = yearGroups.map(yg =>
+  document.getElementById('board').innerHTML = emptyHint + yearGroups.map(yg =>
     `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
       <div class="year-sems">${yg.sems.map(s => semColHtml(s)).join('')}</div>
