@@ -351,6 +351,21 @@ body.prog-modal-open .workspace {
 .diff-bfill { height: 100%; border-radius: 3px; transition: width .3s ease; }
 .diff-bval { font-size: .68rem; color: var(--text-muted); direction: ltr; text-align: start; }
 .diff-conf { font-size: .68rem; color: var(--text-faint); margin-top: 8px; }
+.diff-signals-wrap {
+  margin-top: 7px; padding: 7px 9px; border-radius: 6px;
+  background: var(--warn-soft); border: 1px solid rgba(245,158,11,.3);
+  font-size: .67rem; color: var(--text-muted); line-height: 1.5;
+}
+[data-theme="dark"] .diff-signals-wrap { background: #451A03; border-color: rgba(252,211,77,.2); }
+.diff-signals { margin-top: 5px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.diff-sig-label { font-weight: 600; white-space: nowrap; }
+.diff-sig-label.ok   { color: var(--success); }
+.diff-sig-label.miss { color: var(--warning); }
+.diff-sig-item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 5px; font-size: .62rem; white-space: nowrap;
+}
+.diff-sig-item.miss { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.07); }
 
 /* ── Instructor uncertainty section ─────────────────────────────────────── */
 .iu-score-row {
@@ -497,6 +512,14 @@ body.prog-modal-open .workspace {
   display: inline-flex; align-items: center; gap: 5px;
 }
 .btn-primary:hover { opacity: .88; background: var(--purple); }
+.btn-outline-detail {
+  border: 1.5px solid var(--blue); color: var(--blue) !important;
+  background: transparent; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .8rem;
+}
+.btn-outline-detail:hover { background: var(--blue-soft); }
+[data-theme="dark"] .btn-outline-detail { border-color: var(--blue); }
 .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -1617,6 +1640,10 @@ function init(board, audit, programJson) {
         syllabus_links:              [],
         source_urls:                 [],
         course_details_url:          null,
+        exam_url:                    null,
+        prerequisites_url:           null,
+        moodle_url:                  null,
+        mailing_list_url:            null,
         detail_source_type:          null,
         official_details_available:  null,
         semester_availability:       null,
@@ -1654,6 +1681,10 @@ function init(board, audit, programJson) {
       if (!_ce.course_details_url  && rc.course_details_url)  _ce.course_details_url  = rc.course_details_url;
       if (!_ce.syllabus_url        && rc.syllabus_url)         _ce.syllabus_url        = rc.syllabus_url;
       if (!_ce.syllabus_links?.length && rc.syllabus_links?.length) _ce.syllabus_links = rc.syllabus_links;
+      if (!_ce.exam_url            && rc.exam_url)             _ce.exam_url            = rc.exam_url;
+      if (!_ce.prerequisites_url   && rc.prerequisites_url)   _ce.prerequisites_url   = rc.prerequisites_url;
+      if (!_ce.moodle_url          && rc.moodle_url)          _ce.moodle_url          = rc.moodle_url;
+      if (!_ce.mailing_list_url    && rc.mailing_list_url)    _ce.mailing_list_url    = rc.mailing_list_url;
       if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
       if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
     }
@@ -2210,7 +2241,7 @@ function cardHtml(c, placed) {
       <span class="cid" dir="ltr">${esc(c.course_id)}</span>
       ${warnIcon}${actionBtn}
     </div>
-    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם חסר — נדרש רענון מידע'}</div>
+    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
     <div class="card-row">${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml}</div>
   </div>${dragHint}
 </div>`;
@@ -2538,14 +2569,43 @@ function openCourseDetails(cid) {
       ? `<div class="diff-conf">ביטחון: <strong>${Math.round(conf*100)}%</strong></div>`
       : '';
 
-    const lowConfWarn = conf != null && conf < 0.6
-      ? `<div class="detail-warn" style="margin-top:6px">⚠ ציון הקושי מבוסס על מידע חלקי — ייתכן שאינו מדויק.</div>`
-      : '';
+    /* Difficulty signals breakdown — shown when confidence < 0.6 */
+    let signalsHtml = '';
+    if (conf != null && conf < 0.6) {
+      const available = [], missing = [];
 
-    const diffWarns = (c.difficulty_warnings || []).map(w =>
+      // What we have
+      if (c.weekly_hours != null)    available.push('שעות שבועיות');
+      if (c.program_category_id)     available.push('קטגוריית קורס');
+      if ((c.prerequisites||[]).length > 0) available.push('דרישות קדם בסיסיות');
+      if (c.course_details_url)      available.push('דף פרטי קורס (TAU)');
+      if (c.syllabus_url)            available.push('קישור סילבוס');
+      if (c.grade_signal)            available.push('נתוני ציונים היסטוריים');
+      /* workload_score != null (and not partial) = DB data */
+      const fromDb = c.workload_score != null && !c.data_quality?.partial;
+      if (fromDb) available.push('תיאור קורס ונושאים (DB)');
+
+      // What's missing
+      if (c.weekly_hours == null)    missing.push('שעות שבועיות');
+      if (!fromDb)                   missing.push('תיאור מפורט של נושאי הקורס');
+      if (!c.syllabus_url)           missing.push('קישור סילבוס פעיל');
+      if (!c.grade_signal)           missing.push('נתוני ציונים היסטוריים');
+      const hasAssessment = c.assessment_intensity_score != null && c.assessment_intensity_score > 1.05;
+      if (!hasAssessment)            missing.push('מבנה הערכה / מטלות / מבחן');
+
+      const avHtml = available.length
+        ? `<div class="diff-signals"><span class="diff-sig-label ok">✓ קיים:</span> ${available.map(s=>`<span class="diff-sig-item">${esc(s)}</span>`).join('')}</div>`
+        : '';
+      const miHtml = missing.length
+        ? `<div class="diff-signals"><span class="diff-sig-label miss">✗ חסר לחישוב מדויק:</span> ${missing.map(s=>`<span class="diff-sig-item miss">${esc(s)}</span>`).join('')}</div>`
+        : '';
+      signalsHtml = `<div class="diff-signals-wrap">⚠ ציון הקושי מבוסס על מידע חלקי — ייתכן שאינו מדויק.${avHtml}${miHtml}</div>`;
+    }
+
+    const diffWarns = (c.difficulty_warnings || []).filter(w => !w.includes('חלקי')).map(w =>
       `<div class="detail-warn">⚠ ${esc(w)}</div>`).join('');
 
-    return mkSection('פירוט מדד הקושי', bars + confHtml + lowConfWarn + diffWarns);
+    return mkSection('פירוט מדד הקושי', bars + confHtml + signalsHtml + diffWarns);
   })();
 
   /* Grade statistics section (secondary / unofficial) */
@@ -2695,19 +2755,29 @@ function openCourseDetails(cid) {
   ].filter(Boolean).join('');
   const qualSection = qualRows ? mkSection('מקור ואיכות נתונים', qualRows) : '';
 
-  /* Syllabus / course-details button — Task D logic:
-   *  1. syllabus_url  → "פתח סילבוס" (primary, direct PDF)
-   *  2. course_details_url only → "פתח פרטי קורס באתר TAU" (secondary)
-   *  3. official_details_available but no URL → partial note
-   *  4. nothing → "חסר מידע רשמי" */
-  const detailUrl = c.course_details_url || null;
+  /* Syllabus / course-details buttons:
+   *  syllabus_url + course_details_url → both buttons (primary + secondary)
+   *  syllabus_url only                 → "פתח סילבוס"
+   *  course_details_url only           → "פתח פרטי קורס באתר TAU"
+   *  official but no URL               → disabled + partial note
+   *  nothing                           → disabled + missing note */
+  const detailUrl  = c.course_details_url || null;
   const hasOfficial = !!(c.official_details_available);
+
+  const sylBtnHtml = sylUrl
+    ? `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`
+    : '';
+  const detailBtnHtml = detailUrl
+    ? `<a href="${esc(detailUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-detail">🔗 פרטי קורס — TAU</a>`
+    : '';
+
   let sylBtn, sylNote;
-  if (sylUrl) {
-    sylBtn  = `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`;
-    sylNote = detailUrl
-      ? `<a href="${esc(detailUrl)}" target="_blank" rel="noopener noreferrer" class="detail-syl-note detail-syl-link">🔗 פרטי קורס באתר TAU</a>`
-      : '';
+  if (sylUrl && detailUrl) {
+    sylBtn  = sylBtnHtml + ' ' + detailBtnHtml;
+    sylNote = '';
+  } else if (sylUrl) {
+    sylBtn  = sylBtnHtml;
+    sylNote = '';
   } else if (detailUrl) {
     sylBtn  = `<a href="${esc(detailUrl)}" target="_blank" rel="noopener noreferrer" class="btn">🔗 פתח פרטי קורס באתר TAU</a>`;
     sylNote = '<span class="detail-syl-note">לא נמצא קישור סילבוס, אך מוצג מידע רשמי שנמצא בידיעון.</span>';
@@ -2733,7 +2803,7 @@ function openCourseDetails(cid) {
         <span class="detail-cid" dir="ltr">${esc(cid)}</span>
         <button class="detail-close" id="detail-close-x" aria-label="סגור">✕</button>
       </div>
-      <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם חסר — נדרש רענון מידע'}</div>
+      <div class="detail-name${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
       <div class="detail-badges">${typeBdg} ${diffBdg} ${hoursHtml}</div>
     </div>
     <div class="detail-tabs">

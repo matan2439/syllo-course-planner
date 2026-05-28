@@ -250,7 +250,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 3.1,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424120&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424120&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542412001",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4120-01.html"
       },
       {
         "course_id": "0542-4123",
@@ -276,7 +280,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.95,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424123&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424123&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542412301",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4123-01.html"
       },
       {
         "course_id": "0542-4320",
@@ -290,7 +298,7 @@
         "program_category_name_he": "קורסי ליבה — זורמים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424320&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432001&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -300,7 +308,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.8,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424320&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424320&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542432001",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4320-01.html"
       },
       {
         "course_id": "0542-4352",
@@ -327,7 +339,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.8,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424352&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424352&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542435202",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4352-02.html"
       },
       {
         "course_id": "0542-4220",
@@ -353,7 +369,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.6,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424220&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424220&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542422001",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4220-01.html"
       },
       {
         "course_id": "0542-4221",
@@ -379,7 +399,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.75,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424221&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424221&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542422101",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4221-01.html"
       },
       {
         "course_id": "0542-4223",
@@ -406,7 +430,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.75,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424223&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424223&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542422302",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4223-02.html"
       },
       {
         "course_id": "0542-4224",
@@ -432,7 +460,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.6,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424224&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424224&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542422401",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4224-01.html"
       },
       {
         "course_id": "0542-4420",
@@ -446,7 +478,7 @@
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424420&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442001&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -456,7 +488,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.8,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424420&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424420&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542442001",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4420-01.html"
       },
       {
         "course_id": "0542-4422",
@@ -470,7 +506,7 @@
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424422&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442201&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -480,7 +516,10 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.95,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424422&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542442201",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4422-01.html"
       },
       {
         "course_id": "0542-4455",
@@ -494,7 +533,7 @@
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424455&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542445501&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -504,7 +543,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 2.95,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424455&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424455&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542445501",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4455-01.html"
       },
       {
         "course_id": "0542-4622",
@@ -518,7 +561,7 @@
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424622&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462201&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -528,7 +571,11 @@
         "workload_score": 2.78,
         "conceptual_complexity_score": 3.1,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424622&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424622&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542462201",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4622-01.html"
       },
       {
         "course_id": "0542-4391",
@@ -542,7 +589,7 @@
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424391&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542439102&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -552,7 +599,10 @@
         "workload_score": 2.56,
         "conceptual_complexity_score": 2.85,
         "prerequisite_depth_score": 2.0,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424391&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542439102",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4391-02.html"
       },
       {
         "course_id": "0542-4624",
@@ -566,7 +616,7 @@
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424624&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462402&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -576,7 +626,10 @@
         "workload_score": 2.33,
         "conceptual_complexity_score": 2.55,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424624&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542462402",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4624-02.html"
       },
       {
         "course_id": "0581-4131",
@@ -603,7 +656,10 @@
         "workload_score": 1.44,
         "conceptual_complexity_score": 2.4,
         "prerequisite_depth_score": 1.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05814131&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0581413102",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0581-4131-02.html"
       },
       {
         "course_id": "0542-4093",
@@ -639,7 +695,7 @@
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424094&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409401&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_program_expanded_row",
         "official_details_available": true,
@@ -649,7 +705,10 @@
         "workload_score": 1.44,
         "conceptual_complexity_score": 2.55,
         "prerequisite_depth_score": 3.5,
-        "assessment_intensity_score": 1.0
+        "assessment_intensity_score": 1.0,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424094&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409401",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4094-01.html"
       },
       {
         "course_id": "0542-4124",
@@ -681,7 +740,10 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424125&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542412501",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4125-01.html"
       },
       {
         "course_id": "0542-4131",
@@ -738,10 +800,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424179&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542417901&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424179&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424179&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542417901",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4179-01.html"
       },
       {
         "course_id": "0542-4191",
@@ -768,10 +834,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422602&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424226&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424226&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542422602",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4226-02.html"
       },
       {
         "course_id": "0542-4275",
@@ -783,10 +853,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424275&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542427501&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424275&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424275&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542427501",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4275-01.html"
       },
       {
         "course_id": "0542-4321",
@@ -828,10 +902,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424351&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435101&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424351&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424351&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542435101",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4351-01.html"
       },
       {
         "course_id": "0542-4425",
@@ -849,7 +927,10 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442502&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424425&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542442502",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4425-02.html"
       },
       {
         "course_id": "0542-4524",
@@ -866,7 +947,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452401&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424524&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424524&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542452401",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4524-01.html"
       },
       {
         "course_id": "0542-4527",
@@ -878,10 +963,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424527&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452701&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424527&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424527&kv=01&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542452701",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4527-01.html"
       },
       {
         "course_id": "0542-4559",
@@ -893,10 +982,13 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424559&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542455902&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424559&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542455902",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4559-02.html"
       },
       {
         "course_id": "0542-4621",
@@ -908,10 +1000,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462101&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424621&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424621&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542462101",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4621-01.html"
       },
       {
         "course_id": "0542-4722",
@@ -930,7 +1026,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472203&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424722&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424722&kv=03&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542472203",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4722-03.html"
       },
       {
         "course_id": "0509-4010",
@@ -947,7 +1047,9 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0509401001",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0509-4010-01.html"
       },
       {
         "course_id": "0512-1203",
@@ -966,7 +1068,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120303&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05121203&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05121203&kv=03&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512120303",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-1203-03.html"
       },
       {
         "course_id": "0512-1202",
@@ -978,10 +1084,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121202&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120213&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05121202&kv=08&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05121202&kv=13&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512120213",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-1202-13.html"
       },
       {
         "course_id": "0512-2508",
@@ -1007,7 +1117,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250810&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05122508&kv=06&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05122508&kv=10&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512250810",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-2508-10.html"
       },
       {
         "course_id": "0512-4200",
@@ -1029,7 +1143,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420006&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05124200&kv=04&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05124200&kv=06&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512420006",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-4200-06.html"
       },
       {
         "course_id": "0512-4362",
@@ -1048,7 +1166,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436203&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05124362&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05124362&kv=03&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512436203",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-4362-03.html"
       },
       {
         "course_id": "0512-4700",
@@ -1067,7 +1189,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470003&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05124700&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05124700&kv=03&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512470003",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-4700-03.html"
       },
       {
         "course_id": "0512-4702",
@@ -1085,7 +1211,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470202&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05124702&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05124702&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512470202",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-4702-02.html"
       },
       {
         "course_id": "0571-1818",
@@ -1105,7 +1235,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181804&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05711818&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05711818&kv=04&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0571181804",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0571-1818-04.html"
       },
       {
         "course_id": "0571-3802",
@@ -1124,7 +1258,11 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380203&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05713802&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05713802&kv=03&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0571380203",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0571-3802-03.html"
       },
       {
         "course_id": "0571-4174",
@@ -1141,7 +1279,10 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05714174&kv=01&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0571417401",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0571-4174-01.html"
       },
       {
         "course_id": "0555-4000",
@@ -1153,10 +1294,12 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555400002&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555400002",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4000-02.html"
       },
       {
         "course_id": "0555-4432",
@@ -1168,10 +1311,12 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555443202&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555443202",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4432-02.html"
       },
       {
         "course_id": "0555-4555",
@@ -1183,10 +1328,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554555&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455502&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05554555&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05554555&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555455502",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4555-02.html"
       },
       {
         "course_id": "0555-4562",
@@ -1198,10 +1347,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554562&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555456202&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05554562&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05554562&kv=02&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555456202",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4562-02.html"
       },
       {
         "course_id": "0555-3160",
@@ -1213,10 +1366,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553160&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555316003&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05553160&kv=01&sem=20251",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05553160&kv=03&sem=20251",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555316003",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-3160-03.html"
       },
       {
         "course_id": "0555-4630",
@@ -1228,10 +1385,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554630&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555463002&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05554630&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05554630&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555463002",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4630-02.html"
       },
       {
         "course_id": "0555-4550",
@@ -1243,10 +1404,14 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455002&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05554550&kv=01&sem=20252",
+        "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05554550&kv=02&sem=20252",
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0555455002",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0555-4550-02.html"
       },
       {
         "course_id": "0542-4011",
@@ -1263,7 +1428,9 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542401101",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4011-01.html"
       },
       {
         "course_id": "0542-4012",
@@ -1280,7 +1447,9 @@
           "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401201&year=2025"
         ],
         "detail_source_type": "syllabus",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542401201",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4012-01.html"
       },
       {
         "course_id": "0542-3112",
@@ -1292,10 +1461,12 @@
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
         "source": "program_json",
         "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423112&year=2025",
-        "syllabus_url": null,
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311202&year=2025",
         "syllabus_links": [],
         "detail_source_type": "tau_course_details",
-        "official_details_available": true
+        "official_details_available": true,
+        "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542311202",
+        "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3112-02.html"
       }
     ]
   },

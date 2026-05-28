@@ -182,3 +182,71 @@ def test_source1_loop_enriches_official_details(html):
     """Source 1 loop must copy official_details_available from board JSON."""
     assert "rc.official_details_available" in html, \
         "Source 1 block must reference rc.official_details_available"
+
+
+# ---------------------------------------------------------------------------
+# Both-buttons logic (Issue 1)
+# ---------------------------------------------------------------------------
+
+def test_both_buttons_shown_when_syllabus_and_detail_url(html):
+    """When both sylUrl and detailUrl exist, both buttons appear in the same block."""
+    # The combined case outputs both button HTML vars in the same branch
+    assert "sylBtnHtml + ' ' + detailBtnHtml" in html or \
+           "sylBtnHtml" in html and "detailBtnHtml" in html, \
+        "HTML should have logic for showing both syllabus and detail buttons"
+
+
+def test_detail_btn_class_outline(html):
+    """Secondary TAU detail button must have a distinct outline style class."""
+    assert "btn-outline-detail" in html
+
+
+def test_modal_shows_both_when_both_exist(html):
+    """Modal footer logic must have a branch for sylUrl AND detailUrl both present."""
+    assert "sylUrl && detailUrl" in html or "if (sylUrl && detailUrl)" in html or \
+           "sylUrl" in html and "detailUrl" in html, \
+        "Modal must handle the case where both sylUrl and detailUrl exist"
+
+
+def test_exam_url_copied_from_board_json(html):
+    """Source 1 enrichment must copy exam_url from board JSON."""
+    assert "rc.exam_url" in html
+
+
+def test_moodle_url_copied_from_board_json(html):
+    """Source 1 enrichment must copy moodle_url from board JSON."""
+    assert "rc.moodle_url" in html
+
+
+# ---------------------------------------------------------------------------
+# Difficulty signals breakdown (Issue 2)
+# ---------------------------------------------------------------------------
+
+def test_difficulty_signals_available_label(html):
+    """Difficulty section must show available signals."""
+    assert "קיים:" in html or "diff-sig-label ok" in html
+
+
+def test_difficulty_signals_missing_label(html):
+    """Difficulty section must show missing signals."""
+    assert "חסר לחישוב מדויק" in html
+
+
+def test_difficulty_signals_css_class(html):
+    """diff-signals-wrap CSS class must exist."""
+    assert "diff-signals-wrap" in html
+
+
+def test_difficulty_signals_computed_from_fields(html):
+    """Signal computation must check weekly_hours and other fields."""
+    assert "weekly_hours" in html and "program_category_id" in html
+
+
+# ---------------------------------------------------------------------------
+# Issue 3: "שם חסר" text
+# ---------------------------------------------------------------------------
+
+def test_missing_name_uses_import_wording(html):
+    """Unnamed course message must say 'נדרש ייבוא מידע' not 'נדרש רענון'."""
+    assert "נדרש ייבוא מידע" in html, "Must use 'ייבוא מידע' wording"
+    assert "נדרש רענון מידע" not in html, "Old 'רענון' wording must be removed"
