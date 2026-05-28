@@ -837,6 +837,54 @@ def _format_course(
 # Program requirements post-processing
 # ---------------------------------------------------------------------------
 
+_COURSE_SEARCH_BASE = "https://ims.tau.ac.il/tal/kr/search_l.aspx"
+_COURSE_DETAILS_YEAR = 2025
+
+
+def _build_course_details_url(course_id: str, year: int = _COURSE_DETAILS_YEAR) -> str | None:
+    """Construct the stable TAU course-search URL for *course_id*."""
+    digits = "".join(c for c in course_id if c.isdigit())
+    if len(digits) < 7:
+        return None
+    return f"{_COURSE_SEARCH_BASE}?course_num={digits}&year={year}"
+
+
+def _resolve_course_db_data(
+    cid: str,
+    pdf_name: str | None,
+    db_path: Path,
+) -> dict:
+    """Single DB lookup returning name_he, syllabus_url, syllabus_links, in_db."""
+    result: dict = {
+        "name_he": pdf_name,
+        "syllabus_url": None,
+        "syllabus_links": [],
+        "in_db": False,
+    }
+    if not db_path.exists():
+        return result
+    try:
+        record = get_course_by_id(cid, db_path)
+        if not record:
+            return result
+        result["in_db"] = True
+        if not pdf_name:
+            result["name_he"] = record.get("name_he")
+        syllabus_links: list[str] = record.get("syllabus_links") or []
+        result["syllabus_links"] = syllabus_links
+        syllabus_url: str | None = None
+        for g in record.get("groups") or []:
+            if g.get("syllabus_url"):
+                syllabus_url = g["syllabus_url"]
+                break
+        if not syllabus_url and syllabus_links:
+            syllabus_url = syllabus_links[0]
+        result["syllabus_url"] = syllabus_url
+    except Exception:
+        pass
+    return result
+
+
 def _difficulty_entry_from_estimate(est: dict) -> dict:
     """Extract frontend-relevant difficulty fields from a lightweight estimate dict."""
     return {
@@ -889,18 +937,6 @@ def _build_program_repository_courses(
     courses: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    def _resolve_name(cid: str, name_he: str | None) -> str | None:
-        if name_he:
-            return name_he
-        if db_path.exists():
-            try:
-                record = get_course_by_id(cid, db_path)
-                if record:
-                    return record.get("name_he")
-            except Exception:
-                pass
-        return None
-
     for ec in program.get("elective_courses", []):
         cid = ec.get("course_id")
         if not cid or cid in seen:
@@ -910,7 +946,20 @@ def _build_program_repository_courses(
         hours = ec.get("hours")
         prereq_count = len(ec.get("prerequisites") or [])
         teaching_fmt = ec.get("teaching_format")  # may be set by enrichment
-        name = _resolve_name(cid, ec.get("name_he"))
+
+        db_data = _resolve_course_db_data(cid, ec.get("name_he"), db_path)
+        name = db_data["name_he"]
+        syllabus_url = db_data["syllabus_url"]
+        syllabus_links = db_data["syllabus_links"]
+        in_db = db_data["in_db"]
+
+        # Detail source: syllabus > tau_program_expanded_row > db > tau_course_details
+        if syllabus_url:
+            detail_src = "syllabus"
+        else:
+            detail_src = "tau_program_expanded_row"
+
+        course_details_url = _build_course_details_url(cid)
 
         # Lightweight difficulty estimate — uses hours, prereqs, category, name
         diff: dict = {}
@@ -936,6 +985,11 @@ def _build_program_repository_courses(
             "category_id":              cat_id,
             "program_category_name_he": cat_name_map.get(cat_id) if cat_id else None,
             "source":                   "program_json",
+            "course_details_url":       course_details_url,
+            "syllabus_url":             syllabus_url,
+            "syllabus_links":           syllabus_links,
+            "detail_source_type":       detail_src,
+            "official_details_available": True,
             **diff,
         })
 
@@ -945,7 +999,22 @@ def _build_program_repository_courses(
             continue
         seen.add(cid)
         cat_id = "other_specialization"
-        name = _resolve_name(cid, ec.get("name_he"))
+
+        db_data = _resolve_course_db_data(cid, ec.get("name_he"), db_path)
+        name = db_data["name_he"]
+        syllabus_url = db_data["syllabus_url"]
+        syllabus_links = db_data["syllabus_links"]
+        in_db = db_data["in_db"]
+
+        if syllabus_url:
+            detail_src = "syllabus"
+        elif in_db:
+            detail_src = "db"
+        else:
+            detail_src = "tau_course_details"
+
+        course_details_url = _build_course_details_url(cid)
+
         courses.append({
             "course_id":                cid,
             "name_he":                  name,
@@ -955,6 +1024,11 @@ def _build_program_repository_courses(
             "category_id":              cat_id,
             "program_category_name_he": cat_name_map.get(cat_id),
             "source":                   "program_json",
+            "course_details_url":       course_details_url,
+            "syllabus_url":             syllabus_url,
+            "syllabus_links":           syllabus_links,
+            "detail_source_type":       detail_src,
+            "official_details_available": True,
         })
 
     return courses

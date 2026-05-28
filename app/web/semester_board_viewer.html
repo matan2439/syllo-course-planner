@@ -486,6 +486,8 @@ body.prog-modal-open .workspace {
   display: flex; gap: 8px; align-items: center;
 }
 .detail-syl-note { font-size: .67rem; color: var(--text-faint); }
+.detail-syl-link { color: var(--blue); text-decoration: none; font-size: .67rem; }
+.detail-syl-link:hover { text-decoration: underline; }
 
 /* Primary action button */
 .btn-primary {
@@ -1614,6 +1616,9 @@ function init(board, audit, programJson) {
         syllabus_url:                null,
         syllabus_links:              [],
         source_urls:                 [],
+        course_details_url:          null,
+        detail_source_type:          null,
+        official_details_available:  null,
         semester_availability:       null,
         grade_signal:                null,
         instructor_uncertainty:      null,
@@ -1634,10 +1639,10 @@ function init(board, audit, programJson) {
       rc.offered_semesters, rc.offered_in_year, rc.category_id, null,
       rc.program_category_name_he || null
     );
-    /* Enrich with lightweight difficulty estimate stored in board JSON */
-    if (rc.difficulty_score != null) {
-      const _ce = courseMap[rc.course_id];
-      if (_ce && _ce.difficulty_score == null) {
+    /* Enrich with difficulty, URL, and detail data from board JSON */
+    const _ce = courseMap[rc.course_id];
+    if (_ce) {
+      if (_ce.difficulty_score == null && rc.difficulty_score != null) {
         _ce.difficulty_score            = rc.difficulty_score;
         _ce.difficulty_level            = rc.difficulty_level            || null;
         _ce.difficulty_confidence       = rc.difficulty_confidence       ?? null;
@@ -1646,6 +1651,11 @@ function init(board, audit, programJson) {
         _ce.prerequisite_depth_score    = rc.prerequisite_depth_score    ?? null;
         _ce.assessment_intensity_score  = rc.assessment_intensity_score  ?? null;
       }
+      if (!_ce.course_details_url  && rc.course_details_url)  _ce.course_details_url  = rc.course_details_url;
+      if (!_ce.syllabus_url        && rc.syllabus_url)         _ce.syllabus_url        = rc.syllabus_url;
+      if (!_ce.syllabus_links?.length && rc.syllabus_links?.length) _ce.syllabus_links = rc.syllabus_links;
+      if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
+      if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
     }
   }
 
@@ -2685,13 +2695,29 @@ function openCourseDetails(cid) {
   ].filter(Boolean).join('');
   const qualSection = qualRows ? mkSection('מקור ואיכות נתונים', qualRows) : '';
 
-  /* Syllabus button */
-  const sylBtn = sylUrl
-    ? `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`
-    : `<button class="btn" disabled>📖 פתח סילבוס</button>`;
-  const sylNote = !sylUrl
-    ? '<span class="detail-syl-note">לא נמצא קישור סילבוס באתר התוכנית. מוצג המידע הרשמי הזמין מהידיעון.</span>'
-    : '';
+  /* Syllabus / course-details button — Task D logic:
+   *  1. syllabus_url  → "פתח סילבוס" (primary, direct PDF)
+   *  2. course_details_url only → "פתח פרטי קורס באתר TAU" (secondary)
+   *  3. official_details_available but no URL → partial note
+   *  4. nothing → "חסר מידע רשמי" */
+  const detailUrl = c.course_details_url || null;
+  const hasOfficial = !!(c.official_details_available);
+  let sylBtn, sylNote;
+  if (sylUrl) {
+    sylBtn  = `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`;
+    sylNote = detailUrl
+      ? `<a href="${esc(detailUrl)}" target="_blank" rel="noopener noreferrer" class="detail-syl-note detail-syl-link">🔗 פרטי קורס באתר TAU</a>`
+      : '';
+  } else if (detailUrl) {
+    sylBtn  = `<a href="${esc(detailUrl)}" target="_blank" rel="noopener noreferrer" class="btn">🔗 פתח פרטי קורס באתר TAU</a>`;
+    sylNote = '<span class="detail-syl-note">לא נמצא קישור סילבוס, אך מוצג מידע רשמי שנמצא בידיעון.</span>';
+  } else if (hasOfficial) {
+    sylBtn  = `<button class="btn" disabled>📖 פתח סילבוס</button>`;
+    sylNote = '<span class="detail-syl-note">לא נמצא קישור סילבוס, אך מוצג מידע רשמי שנמצא בידיעון.</span>';
+  } else {
+    sylBtn  = `<button class="btn" disabled>📖 פתח סילבוס</button>`;
+    sylNote = '<span class="detail-syl-note">חסר מידע רשמי מפורט לקורס זה.</span>';
+  }
 
   /* Override sections */
   const overrideDisplaySection = buildOverrideDisplaySection(existingOverride, mkSection, mkRow);

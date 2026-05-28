@@ -87,9 +87,10 @@ def test_modal_renders_families_not_program_list(html):
 # ---------------------------------------------------------------------------
 
 def test_syllabus_note_uses_official_source_message(html):
-    """Missing syllabus note should mention official source, not imply invalid data."""
-    assert "המידע הרשמי הזמין מהידיעון" in html, \
-        "Syllabus note should reference official source data"
+    """Missing syllabus note should confirm that official data is available, not imply total absence."""
+    # Old wrong text must not appear; new partial-info text must be present
+    assert "מידע רשמי שנמצא בידיעון" in html, \
+        "Partial-syllabus note should reference official source data"
 
 
 def test_difficulty_display_not_gated_on_syllabus(html):
@@ -126,3 +127,58 @@ def test_difficulty_breakdown_section_checks_subscores(html):
         "hasDiffData should check subscores"
     assert "syllabus" not in hdd.lower(), \
         "hasDiffData must not check syllabus"
+
+
+# ---------------------------------------------------------------------------
+# Course-details URL and modal buttons (Tasks B/D/E)
+# ---------------------------------------------------------------------------
+
+def test_course_details_url_field_in_coursemap(html):
+    """courseMap entries must initialise course_details_url (not undefined)."""
+    assert "course_details_url:" in html, \
+        "course_details_url must be initialised in courseMap"
+
+
+def test_official_details_available_field_in_coursemap(html):
+    """courseMap entries must initialise official_details_available."""
+    assert "official_details_available:" in html, \
+        "official_details_available must be set in courseMap"
+
+
+def test_modal_shows_course_details_button_when_no_syllabus(html):
+    """When no syllabus_url but course_details_url exists → 'פתח פרטי קורס'."""
+    assert "פתח פרטי קורס באתר TAU" in html, \
+        "Modal must have 'פתח פרטי קורס באתר TAU' button text"
+
+
+def test_modal_missing_syllabus_note_uses_partial_wording(html):
+    """Partial-info note says official data exists, not that data is missing."""
+    assert "לא נמצא קישור סילבוס, אך מוצג מידע רשמי שנמצא בידיעון" in html, \
+        "Partial note must confirm official data is available"
+
+
+def test_modal_no_official_data_note(html):
+    """When no official data at all, the modal must say so."""
+    assert "חסר מידע רשמי מפורט לקורס זה" in html, \
+        "No-official-data note must be present"
+
+
+def test_modal_no_longer_says_wrong_missing_note(html):
+    """Old wrong message must not appear anywhere in the HTML."""
+    assert "לא נמצא קישור סילבוס באתר התוכנית" not in html, \
+        "Old wrong syllabus note must be removed"
+
+
+def test_source1_loop_enriches_course_details_url(html):
+    """Source 1 enrichment block must copy course_details_url from board JSON."""
+    # The enrichment happens in a block after the _addOrEnrichCourse call
+    assert "rc.course_details_url" in html, \
+        "Source 1 block must reference rc.course_details_url"
+    assert "_ce.course_details_url" in html or "course_details_url  = rc.course_details_url" in html, \
+        "Source 1 block must assign course_details_url to the courseMap entry"
+
+
+def test_source1_loop_enriches_official_details(html):
+    """Source 1 loop must copy official_details_available from board JSON."""
+    assert "rc.official_details_available" in html, \
+        "Source 1 block must reference rc.official_details_available"

@@ -6,12 +6,35 @@ Data flow:
   GraphQL body (list[dict])  →  parse_program_body()  →  structured dict
   GraphQL prereq body        →  parse_prereq_body()   →  structured dict
   PDF program + page data    →  enrich_pdf_program()  →  enriched dict
+
+Course-detail URLs
+------------------
+The stable, public TAU course page URL (no token required):
+    https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=<8-digits>&year=<year>
+
+TAU also serves a Syllabus_L.aspx page but it requires a daily SHA-256 token
+computed from a hardcoded secret + current date. We do NOT generate that token
+here; instead we store the stable search URL as course_details_url.
 """
 
 from __future__ import annotations
 
 import re
 from typing import Optional
+
+_COURSE_SEARCH_BASE = "https://ims.tau.ac.il/tal/kr/search_l.aspx"
+
+
+def build_course_details_url(course_id: str, year: int | str = 2025) -> str | None:
+    """Return the stable TAU course search URL for *course_id* and *year*.
+
+    *course_id* may contain hyphens (0542-4120) or be raw digits (05424120).
+    Returns None if fewer than 8 digits can be extracted.
+    """
+    digits = "".join(c for c in str(course_id) if c.isdigit())
+    if len(digits) < 7:
+        return None
+    return f"{_COURSE_SEARCH_BASE}?course_num={digits}&year={year}"
 
 # ---------------------------------------------------------------------------
 # Hebrew → structured helpers
@@ -93,7 +116,7 @@ def _build_teaching_format(kurs: dict) -> list[dict]:
     return fmt
 
 
-def _parse_kurs(kurs: dict) -> dict:
+def _parse_kurs(kurs: dict, shana: int | str = 2025) -> dict:
     """Parse a single kurs dict into a normalised course record."""
     raw_id = kurs.get("kursshow") or kurs.get("kursid") or ""
     course_id = normalize_course_id(raw_id)
@@ -104,13 +127,15 @@ def _parse_kurs(kurs: dict) -> dict:
     teaching_format = _build_teaching_format(kurs)
 
     return {
-        "course_id": course_id,
-        "name_he": name_he or None,
-        "weekly_hours": weekly_hours,
-        "credit_hours": credit_hours,
-        "has_prereqs": has_prereqs,
-        "teaching_format": teaching_format,
-        "source": "tau_program_page",
+        "course_id":         course_id,
+        "name_he":           name_he or None,
+        "weekly_hours":      weekly_hours,
+        "credit_hours":      credit_hours,
+        "has_prereqs":       has_prereqs,
+        "teaching_format":   teaching_format,
+        "course_details_url": build_course_details_url(raw_id, shana),
+        "detail_source_type": "tau_program_expanded_row",
+        "source":            "tau_program_page",
     }
 
 

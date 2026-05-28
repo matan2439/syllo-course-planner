@@ -237,6 +237,13 @@
         "category_id": "fluids",
         "program_category_name_he": "קורסי ליבה — זורמים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424120&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412001&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412001&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.37,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -256,6 +263,13 @@
         "category_id": "fluids",
         "program_category_name_he": "קורסי ליבה — זורמים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424123&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412301&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412301&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.42,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -275,6 +289,11 @@
         "category_id": "fluids",
         "program_category_name_he": "קורסי ליבה — זורמים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424320&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.26,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.5,
@@ -294,6 +313,14 @@
         "category_id": "fluids",
         "program_category_name_he": "קורסי ליבה — זורמים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424352&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435201&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435202&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.36,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.5,
@@ -313,6 +340,13 @@
         "category_id": "solids",
         "program_category_name_he": "קורסי ליבה — מוצקים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424220&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422001&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422001&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.29,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.5,
@@ -332,6 +366,13 @@
         "category_id": "solids",
         "program_category_name_he": "קורסי ליבה — מוצקים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424221&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422101&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422101&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.25,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -351,6 +392,14 @@
         "category_id": "solids",
         "program_category_name_he": "קורסי ליבה — מוצקים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424223&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422301&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422301&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422302&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.25,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -370,6 +419,13 @@
         "category_id": "solids",
         "program_category_name_he": "קורסי ליבה — מוצקים",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424224&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422401&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422401&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 2.19,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.5,
@@ -389,6 +445,11 @@
         "category_id": "systems",
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424420&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.36,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.5,
@@ -408,6 +469,11 @@
         "category_id": "systems",
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424422&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.32,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -427,6 +493,11 @@
         "category_id": "systems",
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424455&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.42,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -446,6 +517,11 @@
         "category_id": "systems",
         "program_category_name_he": "קורסי ליבה — מערכות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424622&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.37,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -465,6 +541,11 @@
         "category_id": "advanced_labs",
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424391&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.32,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -484,6 +565,11 @@
         "category_id": "advanced_labs",
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424624&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.04,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -503,6 +589,14 @@
         "category_id": "advanced_labs",
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05814131&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413101&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413101&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413102&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true,
         "difficulty_score": 1.72,
         "difficulty_level": "easy",
         "difficulty_confidence": 0.5,
@@ -520,6 +614,11 @@
         "category_id": "advanced_labs",
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424093&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 1.62,
         "difficulty_level": "easy",
         "difficulty_confidence": 0.5,
@@ -539,6 +638,11 @@
         "category_id": "advanced_labs",
         "program_category_name_he": "מעבדות מתקדמות",
         "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424094&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_program_expanded_row",
+        "official_details_available": true,
         "difficulty_score": 2.17,
         "difficulty_level": "medium",
         "difficulty_confidence": 0.55,
@@ -555,7 +659,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424124&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4125",
@@ -565,7 +674,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424125&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4131",
@@ -575,7 +691,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424131&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4132",
@@ -585,7 +706,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424132&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4135",
@@ -595,7 +721,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424135&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4179",
@@ -605,7 +736,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424179&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4191",
@@ -615,7 +751,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424191&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4226",
@@ -625,7 +766,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4275",
@@ -635,7 +781,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424275&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4321",
@@ -645,7 +796,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424321&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4322",
@@ -655,7 +811,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424322&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4351",
@@ -665,7 +826,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424351&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4425",
@@ -675,7 +841,15 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424425&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442502&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4524",
@@ -685,7 +859,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424524&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452401&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452401&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4527",
@@ -695,7 +876,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424527&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4559",
@@ -705,7 +891,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424559&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4621",
@@ -715,7 +906,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4722",
@@ -725,7 +921,16 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424722&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472201&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472202&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472203&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0509-4010",
@@ -735,7 +940,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05094010&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-1203",
@@ -745,7 +957,16 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121203&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120301&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120301&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120302&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120303&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-1202",
@@ -755,7 +976,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121202&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0512-2508",
@@ -765,7 +991,23 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122508&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250801&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250801&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250802&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250803&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250804&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250805&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250806&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250807&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250808&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250809&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250810&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-4200",
@@ -775,7 +1017,19 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124200&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420002&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420003&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420004&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420005&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420006&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-4362",
@@ -785,7 +1039,16 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124362&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436201&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436202&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436203&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-4700",
@@ -795,7 +1058,16 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124700&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470001&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470001&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470002&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470003&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0512-4702",
@@ -805,7 +1077,15 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124702&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470201&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470202&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0571-1818",
@@ -815,7 +1095,17 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05711818&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181801&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181801&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181802&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181803&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181804&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0571-3802",
@@ -825,7 +1115,16 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05713802&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380201&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380202&year=2025",
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380203&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0571-4174",
@@ -835,7 +1134,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05714174&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4000",
@@ -845,7 +1151,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4432",
@@ -855,7 +1166,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4555",
@@ -865,7 +1181,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554555&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4562",
@@ -875,7 +1196,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554562&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-3160",
@@ -885,7 +1211,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553160&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4630",
@@ -895,7 +1226,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554630&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0555-4550",
@@ -905,7 +1241,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4011",
@@ -915,7 +1256,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424011&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0542-4012",
@@ -925,7 +1273,14 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424012&year=2025",
+        "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401201&year=2025",
+        "syllabus_links": [
+          "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401201&year=2025"
+        ],
+        "detail_source_type": "syllabus",
+        "official_details_available": true
       },
       {
         "course_id": "0542-3112",
@@ -935,7 +1290,12 @@
         "offered_in_year": true,
         "category_id": "other_specialization",
         "program_category_name_he": "קורסי התמחות / בחירה נוספים",
-        "source": "program_json"
+        "source": "program_json",
+        "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423112&year=2025",
+        "syllabus_url": null,
+        "syllabus_links": [],
+        "detail_source_type": "tau_course_details",
+        "official_details_available": true
       }
     ]
   },
