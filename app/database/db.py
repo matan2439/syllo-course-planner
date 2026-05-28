@@ -344,11 +344,17 @@ def get_grade_stats(course_id: str, db_path: Path = _DB_PATH) -> list:
     """
     Return all grade-stat rows for *course_id* as CourseGradeStats instances.
     Returns an empty list if the table does not exist or course is not found.
+
+    Accepts both hyphenated ("0542-4320") and plain-digit ("05424320") IDs;
+    both are normalised to the canonical hyphenated form before querying.
+    TAU Factor data is stored with the same normalisation so lookups work
+    regardless of whether the caller uses the dashed or undashed form.
     """
     from app.models.grade_stats import CourseGradeStats  # local to avoid circular at module load
 
     if not db_path.exists():
         return []
+    # _normalize_course_id converts both "05424320" and "0542-4320" → "0542-4320"
     normalized = _normalize_course_id(course_id)
     engine = _make_engine(db_path)
     try:

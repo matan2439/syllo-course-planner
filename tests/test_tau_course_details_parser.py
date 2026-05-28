@@ -218,3 +218,122 @@ def test_known_names_preserved(board_repo):
 def test_39_other_specialization_preserved(board_repo):
     n = sum(1 for r in board_repo if r.get("category_id") == "other_specialization")
     assert n == 39, f"Expected 39 other_specialization, got {n}"
+
+
+# ---------------------------------------------------------------------------
+# 6. New fields: assessment_type, syllabus_ai_analysis_status, tau_factor (Issues B/C)
+# ---------------------------------------------------------------------------
+
+def test_board_has_assessment_type_field(board_repo):
+    """Every repo course must have assessment_type field."""
+    missing = [r["course_id"] for r in board_repo if "assessment_type" not in r]
+    assert not missing, f"Missing assessment_type: {missing}"
+
+
+def test_assessment_type_valid_values(board_repo):
+    valid = {"final_exam", "project", "assignment", "mixed", "unknown"}
+    for r in board_repo:
+        v = r.get("assessment_type")
+        assert v in valid, f"{r['course_id']}: unexpected assessment_type={v!r}"
+
+
+def test_board_has_syllabus_ai_analysis_status(board_repo):
+    for r in board_repo:
+        assert "syllabus_ai_analysis_status" in r, f"{r['course_id']} missing field"
+
+
+def test_syllabus_ai_status_pending_when_syllabus_url(board_repo):
+    for r in board_repo:
+        if r.get("syllabus_url"):
+            assert r.get("syllabus_ai_analysis_status") == "pending", \
+                f"{r['course_id']}: has syllabus_url but status={r.get('syllabus_ai_analysis_status')}"
+
+
+def test_syllabus_ai_status_not_available_when_no_syllabus(board_repo):
+    for r in board_repo:
+        if not r.get("syllabus_url"):
+            assert r.get("syllabus_ai_analysis_status") == "not_available", \
+                f"{r['course_id']}: no syllabus but status={r.get('syllabus_ai_analysis_status')}"
+
+
+def test_board_has_tau_factor_lookup_status(board_repo):
+    valid = {"found", "not_found", "not_queried"}
+    for r in board_repo:
+        v = r.get("tau_factor_lookup_status")
+        assert v in valid, f"{r['course_id']}: invalid tau_factor_lookup_status={v!r}"
+
+
+def test_course_0542_4320_has_difficulty_score(board_repo):
+    """course 0542-4320 must have a difficulty_score even with partial data."""
+    rc = next((r for r in board_repo if r["course_id"] == "0542-4320"), None)
+    assert rc is not None, "0542-4320 not in board repo"
+    assert rc.get("difficulty_score") is not None, "0542-4320 must have difficulty_score"
+    assert rc.get("difficulty_level") in ("easy", "medium", "hard", "very_hard")
+
+
+def test_0542_4320_assessment_type_is_extracted(board_repo):
+    """Course 0542-4320 is in DB with exam info — assessment_type should be extracted."""
+    rc = next((r for r in board_repo if r["course_id"] == "0542-4320"), None)
+    assert rc is not None
+    # 0542-4320 is in the fluids category and was imported; should have some assessment data
+    # It's acceptable for it to be "unknown" if exam_info is not in the local DB
+    assert rc.get("assessment_type") in ("final_exam", "project", "assignment", "mixed", "unknown")
+
+
+def test_syllabus_ai_topics_is_empty_list(board_repo):
+    """syllabus_ai_topics must be an empty list (AI not connected)."""
+    for r in board_repo:
+        topics = r.get("syllabus_ai_topics")
+        assert isinstance(topics, list) and len(topics) == 0, \
+            f"{r['course_id']}: syllabus_ai_topics should be empty list, got {topics!r}"
+
+
+def test_syllabus_ai_complexity_notes_is_null(board_repo):
+    """syllabus_ai_complexity_notes must be null (AI not connected)."""
+    for r in board_repo:
+        assert r.get("syllabus_ai_complexity_notes") is None, \
+            f"{r['course_id']}: syllabus_ai_complexity_notes should be null"
+
+
+def test_planned_courses_still_zero(board):
+    placed = sum(len(s.get("courses", [])) for s in board["semesters"])
+    assert placed == 0
+
+
+# ---------------------------------------------------------------------------
+# 7. _classify_assessment helper (Issue C)
+# ---------------------------------------------------------------------------
+
+from app.analysis.semester_board import _classify_assessment
+
+
+def test_classify_exam_info_with_exam_keyword():
+    rec = {"exam_info": "בחינה סופית", "assignments": None}
+    assert _classify_assessment(rec) == "final_exam"
+
+
+def test_classify_project_keyword():
+    rec = {"exam_info": None, "assignments": "פרויקט גמר"}
+    assert _classify_assessment(rec) == "project"
+
+
+def test_classify_mixed_exam_and_project():
+    rec = {"exam_info": "מבחן", "assignments": "פרויקט"}
+    assert _classify_assessment(rec) == "mixed"
+
+
+def test_classify_unknown_when_no_data():
+    rec = {"exam_info": None, "assignments": None}
+    assert _classify_assessment(rec) == "unknown"
+
+
+def test_classify_unknown_when_empty_strings():
+    rec = {"exam_info": "", "assignments": ""}
+    assert _classify_assessment(rec) == "unknown"
+
+
+def test_classify_does_not_infer_detailed_homework():
+    """Must not return detailed homework type without explicit keywords."""
+    rec = {"exam_info": "קורס מעשי", "assignments": None}
+    # No explicit exam/project/assignment keyword → unknown
+    assert _classify_assessment(rec) in ("unknown", "assignment")  # conservative

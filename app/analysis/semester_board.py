@@ -849,39 +849,83 @@ def _build_course_details_url(course_id: str, year: int = _COURSE_DETAILS_YEAR) 
     return f"{_COURSE_SEARCH_BASE}?course_num={digits}&year={year}"
 
 
+def _classify_assessment(record: dict) -> str:
+    """Classify assessment type from DB exam_info and assignments fields.
+
+    Returns one of: "final_exam", "project", "assignment", "mixed", "unknown".
+    Only classifies if explicit textual evidence exists in the DB record.
+    """
+    exam_info   = (record.get("exam_info")   or "").lower()
+    assignments = (record.get("assignments") or "").lower()
+    text = exam_info + " " + assignments
+    if not text.strip():
+        return "unknown"
+    has_exam    = any(w in text for w in ("מבחן", "בחינה", "exam", "test"))
+    has_project = any(w in text for w in ("פרויקט", "project", "עבודה גמר"))
+    has_hw      = any(w in text for w in ("עבודה", "הגשה", "assignment", "homework"))
+    if has_exam and (has_project or has_hw):
+        return "mixed"
+    if has_exam:
+        return "final_exam"
+    if has_project:
+        return "project"
+    if has_hw:
+        return "assignment"
+    return "unknown"
+
+
 def _resolve_course_db_data(
     cid: str,
     pdf_name: str | None,
     db_path: Path,
 ) -> dict:
-    """Single DB lookup returning name_he, syllabus_url, syllabus_links, in_db."""
+    """Single DB lookup returning course metadata and derived fields.
+
+    Returns: name_he, syllabus_url, syllabus_links, in_db,
+             assessment_type, assessment_text_raw, tau_factor_status.
+    """
     result: dict = {
-        "name_he": pdf_name,
-        "syllabus_url": None,
-        "syllabus_links": [],
-        "in_db": False,
+        "name_he":            pdf_name,
+        "syllabus_url":       None,
+        "syllabus_links":     [],
+        "in_db":              False,
+        "assessment_type":    "unknown",
+        "assessment_text_raw": None,
+        "tau_factor_status":  "not_queried",
     }
     if not db_path.exists():
         return result
     try:
         record = get_course_by_id(cid, db_path)
         if not record:
-            return result
-        result["in_db"] = True
-        if not pdf_name:
-            result["name_he"] = record.get("name_he")
-        syllabus_links: list[str] = record.get("syllabus_links") or []
-        result["syllabus_links"] = syllabus_links
-        syllabus_url: str | None = None
-        for g in record.get("groups") or []:
-            if g.get("syllabus_url"):
-                syllabus_url = g["syllabus_url"]
-                break
-        if not syllabus_url and syllabus_links:
-            syllabus_url = syllabus_links[0]
-        result["syllabus_url"] = syllabus_url
+            result["tau_factor_status"] = "not_found"
+        else:
+            result["in_db"] = True
+            if not pdf_name:
+                result["name_he"] = record.get("name_he")
+            syllabus_links: list[str] = record.get("syllabus_links") or []
+            result["syllabus_links"] = syllabus_links
+            syllabus_url: str | None = None
+            for g in record.get("groups") or []:
+                if g.get("syllabus_url"):
+                    syllabus_url = g["syllabus_url"]
+                    break
+            if not syllabus_url and syllabus_links:
+                syllabus_url = syllabus_links[0]
+            result["syllabus_url"] = syllabus_url
+            result["assessment_type"] = _classify_assessment(record)
+            raw_assessment = (record.get("exam_info") or "") or (record.get("assignments") or "")
+            result["assessment_text_raw"] = raw_assessment or None
     except Exception:
         pass
+
+    # Grade stats check (TAU Factor) — run regardless of whether course record exists
+    try:
+        stats = get_grade_stats(cid, db_path)
+        result["tau_factor_status"] = "found" if stats else "not_found"
+    except Exception:
+        pass
+
     return result
 
 
@@ -952,6 +996,9 @@ def _build_program_repository_courses(
         syllabus_url = db_data["syllabus_url"]
         syllabus_links = db_data["syllabus_links"]
         in_db = db_data["in_db"]
+        assessment_type = db_data["assessment_type"]
+        assessment_text_raw = db_data["assessment_text_raw"]
+        tau_factor_status = db_data["tau_factor_status"]
 
         # Detail source: syllabus > tau_program_expanded_row > db > tau_course_details
         if syllabus_url:
@@ -960,6 +1007,9 @@ def _build_program_repository_courses(
             detail_src = "tau_program_expanded_row"
 
         course_details_url = _build_course_details_url(cid)
+
+        # Syllabus AI analysis — placeholder fields (AI not connected yet)
+        syllabus_ai_status = "pending" if syllabus_url else "not_available"
 
         # Lightweight difficulty estimate — uses hours, prereqs, category, name
         diff: dict = {}
@@ -977,19 +1027,26 @@ def _build_program_repository_courses(
                 pass
 
         courses.append({
-            "course_id":                cid,
-            "name_he":                  name,
-            "weekly_hours":             hours,
-            "offered_semesters":        ec.get("offered_semesters", []),
-            "offered_in_year":          ec.get("offered_in_year", True),
-            "category_id":              cat_id,
-            "program_category_name_he": cat_name_map.get(cat_id) if cat_id else None,
-            "source":                   "program_json",
-            "course_details_url":       course_details_url,
-            "syllabus_url":             syllabus_url,
-            "syllabus_links":           syllabus_links,
-            "detail_source_type":       detail_src,
-            "official_details_available": True,
+            "course_id":                    cid,
+            "name_he":                      name,
+            "weekly_hours":                 hours,
+            "offered_semesters":            ec.get("offered_semesters", []),
+            "offered_in_year":              ec.get("offered_in_year", True),
+            "category_id":                  cat_id,
+            "program_category_name_he":     cat_name_map.get(cat_id) if cat_id else None,
+            "source":                       "program_json",
+            "course_details_url":           course_details_url,
+            "syllabus_url":                 syllabus_url,
+            "syllabus_links":               syllabus_links,
+            "detail_source_type":           detail_src,
+            "official_details_available":   True,
+            "assessment_type":              assessment_type,
+            "assessment_text_raw":          assessment_text_raw,
+            "syllabus_text_available":      syllabus_url is not None,
+            "syllabus_ai_analysis_status":  syllabus_ai_status,
+            "syllabus_ai_topics":           [],
+            "syllabus_ai_complexity_notes": None,
+            "tau_factor_lookup_status":     tau_factor_status,
             **diff,
         })
 
@@ -1005,6 +1062,9 @@ def _build_program_repository_courses(
         syllabus_url = db_data["syllabus_url"]
         syllabus_links = db_data["syllabus_links"]
         in_db = db_data["in_db"]
+        assessment_type = db_data["assessment_type"]
+        assessment_text_raw = db_data["assessment_text_raw"]
+        tau_factor_status = db_data["tau_factor_status"]
 
         if syllabus_url:
             detail_src = "syllabus"
@@ -1014,21 +1074,29 @@ def _build_program_repository_courses(
             detail_src = "tau_course_details"
 
         course_details_url = _build_course_details_url(cid)
+        syllabus_ai_status = "pending" if syllabus_url else "not_available"
 
         courses.append({
-            "course_id":                cid,
-            "name_he":                  name,
-            "weekly_hours":             None,
-            "offered_semesters":        [],
-            "offered_in_year":          ec.get("offered_in_year", True),
-            "category_id":              cat_id,
-            "program_category_name_he": cat_name_map.get(cat_id),
-            "source":                   "program_json",
-            "course_details_url":       course_details_url,
-            "syllabus_url":             syllabus_url,
-            "syllabus_links":           syllabus_links,
-            "detail_source_type":       detail_src,
-            "official_details_available": True,
+            "course_id":                    cid,
+            "name_he":                      name,
+            "weekly_hours":                 None,
+            "offered_semesters":            [],
+            "offered_in_year":              ec.get("offered_in_year", True),
+            "category_id":                  cat_id,
+            "program_category_name_he":     cat_name_map.get(cat_id),
+            "source":                       "program_json",
+            "course_details_url":           course_details_url,
+            "syllabus_url":                 syllabus_url,
+            "syllabus_links":               syllabus_links,
+            "detail_source_type":           detail_src,
+            "official_details_available":   True,
+            "assessment_type":              assessment_type,
+            "assessment_text_raw":          assessment_text_raw,
+            "syllabus_text_available":      syllabus_url is not None,
+            "syllabus_ai_analysis_status":  syllabus_ai_status,
+            "syllabus_ai_topics":           [],
+            "syllabus_ai_complexity_notes": None,
+            "tau_factor_lookup_status":     tau_factor_status,
         })
 
     return courses

@@ -378,3 +378,89 @@ def test_estimator_empty_grade_stats_bypasses_db(tmp_db):
     # Passing [] explicitly skips DB lookup
     result = estimate_course_difficulty("0001-0001", tmp_db, grade_stats=[])
     assert result["grade_signal"] is None
+
+
+# ---------------------------------------------------------------------------
+# normalize_for_tau_factor (Issue A)
+# ---------------------------------------------------------------------------
+
+from app.models.grade_stats import normalize_for_tau_factor
+
+
+def test_normalize_dashed_to_undashed():
+    assert normalize_for_tau_factor("0542-4320") == "05424320"
+
+
+def test_normalize_undashed_stays_undashed():
+    assert normalize_for_tau_factor("05424320") == "05424320"
+
+
+def test_normalize_preserves_leading_zeroes():
+    assert normalize_for_tau_factor("0001-0001") == "00010001"
+
+
+def test_normalize_strips_spaces():
+    assert normalize_for_tau_factor("0542 4320") == "05424320"
+
+
+def test_normalize_strips_all_non_digits():
+    assert normalize_for_tau_factor("0542/4320") == "05424320"
+
+
+def test_normalize_already_digits_only():
+    assert normalize_for_tau_factor("03682157") == "03682157"
+
+
+def test_normalize_for_tau_factor_matches_db_digits():
+    """normalize_for_tau_factor and DB digits extraction produce same 8 digits."""
+    import re
+    cid = "0542-4320"
+    tau_factor_id = normalize_for_tau_factor(cid)
+    db_digits = re.sub(r"\D", "", cid)
+    assert tau_factor_id == db_digits
+
+
+# ---------------------------------------------------------------------------
+# get_grade_stats accepts both dashed and undashed IDs (Issue A)
+# ---------------------------------------------------------------------------
+
+def test_get_grade_stats_by_dashed_id(tmp_db):
+    """Grade stats saved with dashed ID are retrievable by dashed ID."""
+    save_grade_stats([_stat("0542-4320")], tmp_db)
+    rows = get_grade_stats("0542-4320", tmp_db)
+    assert len(rows) == 1
+
+
+def test_get_grade_stats_by_undashed_id(tmp_db):
+    """Grade stats saved with dashed ID are retrievable by undashed (TAU Factor) ID."""
+    save_grade_stats([_stat("0542-4320")], tmp_db)
+    rows = get_grade_stats("05424320", tmp_db)
+    assert len(rows) == 1, "undashed ID lookup must find the dashed-stored record"
+
+
+def test_get_grade_stats_returns_empty_for_unknown_course(tmp_db):
+    rows = get_grade_stats("0542-4320", tmp_db)
+    assert rows == []
+
+
+def test_tau_factor_status_not_found_when_no_grade_stats(tmp_db):
+    """tau_factor_lookup_status is 'not_found' when no grade stats in DB."""
+    from app.analysis.semester_board import _resolve_course_db_data
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["tau_factor_status"] == "not_found"
+
+
+def test_tau_factor_status_not_queried_when_no_db(tmp_path):
+    """tau_factor_lookup_status is 'not_queried' when DB does not exist."""
+    from app.analysis.semester_board import _resolve_course_db_data
+    missing_db = tmp_path / "absent.db"
+    result = _resolve_course_db_data("0542-4320", None, missing_db)
+    assert result["tau_factor_status"] == "not_queried"
+
+
+def test_tau_factor_status_found_when_grade_stats_present(tmp_db):
+    """tau_factor_lookup_status is 'found' when grade stats exist for the course."""
+    from app.analysis.semester_board import _resolve_course_db_data
+    save_grade_stats([_stat("0542-4320")], tmp_db)
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["tau_factor_status"] == "found"

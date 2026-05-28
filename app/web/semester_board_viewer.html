@@ -1644,6 +1644,13 @@ function init(board, audit, programJson) {
         prerequisites_url:           null,
         moodle_url:                  null,
         mailing_list_url:            null,
+        assessment_type:             null,
+        assessment_text_raw:         null,
+        syllabus_text_available:     null,
+        syllabus_ai_analysis_status: null,
+        syllabus_ai_topics:          [],
+        syllabus_ai_complexity_notes: null,
+        tau_factor_lookup_status:    null,
         detail_source_type:          null,
         official_details_available:  null,
         semester_availability:       null,
@@ -1685,6 +1692,11 @@ function init(board, audit, programJson) {
       if (!_ce.prerequisites_url   && rc.prerequisites_url)   _ce.prerequisites_url   = rc.prerequisites_url;
       if (!_ce.moodle_url          && rc.moodle_url)          _ce.moodle_url          = rc.moodle_url;
       if (!_ce.mailing_list_url    && rc.mailing_list_url)    _ce.mailing_list_url    = rc.mailing_list_url;
+      if (_ce.assessment_type      == null && rc.assessment_type)    _ce.assessment_type            = rc.assessment_type;
+      if (_ce.assessment_text_raw  == null && rc.assessment_text_raw) _ce.assessment_text_raw       = rc.assessment_text_raw;
+      if (_ce.syllabus_text_available == null)                 _ce.syllabus_text_available    = rc.syllabus_text_available  ?? null;
+      if (_ce.syllabus_ai_analysis_status == null)             _ce.syllabus_ai_analysis_status = rc.syllabus_ai_analysis_status ?? null;
+      if (_ce.tau_factor_lookup_status == null)                _ce.tau_factor_lookup_status   = rc.tau_factor_lookup_status ?? null;
       if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
       if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
     }
@@ -2574,24 +2586,44 @@ function openCourseDetails(cid) {
     if (conf != null && conf < 0.6) {
       const available = [], missing = [];
 
-      // What we have
-      if (c.weekly_hours != null)    available.push('שעות שבועיות');
-      if (c.program_category_id)     available.push('קטגוריית קורס');
-      if ((c.prerequisites||[]).length > 0) available.push('דרישות קדם בסיסיות');
-      if (c.course_details_url)      available.push('דף פרטי קורס (TAU)');
-      if (c.syllabus_url)            available.push('קישור סילבוס');
-      if (c.grade_signal)            available.push('נתוני ציונים היסטוריים');
-      /* workload_score != null (and not partial) = DB data */
-      const fromDb = c.workload_score != null && !c.data_quality?.partial;
-      if (fromDb) available.push('תיאור קורס ונושאים (DB)');
+      // Available signals
+      if (c.weekly_hours != null)          available.push('שעות שבועיות');
+      if (c.program_category_id)           available.push('קטגוריית קורס');
+      if ((c.prerequisites||[]).length > 0) available.push('עומק דרישות קדם');
+      if (c.course_details_url)            available.push('דף פרטי קורס (TAU)');
+      if (c.syllabus_url)                  available.push('קישור סילבוס');
+      if (c.assessment_type && c.assessment_type !== 'unknown')
+                                           available.push('סוג הערכה סופי');
+      if (c.grade_signal)                  available.push('נתוני טאו פקטור');
+      const aiStatus = c.syllabus_ai_analysis_status;
+      if (aiStatus === 'complete')         available.push('ניתוח AI של סילבוס');
 
-      // What's missing
-      if (c.weekly_hours == null)    missing.push('שעות שבועיות');
-      if (!fromDb)                   missing.push('תיאור מפורט של נושאי הקורס');
-      if (!c.syllabus_url)           missing.push('קישור סילבוס פעיל');
-      if (!c.grade_signal)           missing.push('נתוני ציונים היסטוריים');
-      const hasAssessment = c.assessment_intensity_score != null && c.assessment_intensity_score > 1.05;
-      if (!hasAssessment)            missing.push('מבנה הערכה / מטלות / מבחן');
+      // Missing signals
+      if (c.weekly_hours == null)          missing.push('שעות שבועיות');
+
+      // Syllabus / AI analysis
+      if (aiStatus === 'complete') {
+        /* nothing — already in available */
+      } else if (aiStatus === 'pending') {
+        missing.push('ניתוח AI של נושאי הסילבוס');
+      } else {
+        missing.push('קישור סילבוס פעיל');
+      }
+
+      // Assessment type
+      if (!c.assessment_type || c.assessment_type === 'unknown')
+        missing.push('סוג הערכה סופי');
+
+      // TAU Factor grade stats
+      const tfStatus = c.tau_factor_lookup_status;
+      if (!c.grade_signal) {
+        if (tfStatus === 'not_found')
+          missing.push('נתוני טאו פקטור (לא נמצאו עבור מספר הקורס)');
+        else if (tfStatus === 'not_queried')
+          missing.push('טרם בוצע חיפוש בטאו פקטור');
+        else
+          missing.push('נתוני ציונים היסטוריים מטאו פקטור');
+      }
 
       const avHtml = available.length
         ? `<div class="diff-signals"><span class="diff-sig-label ok">✓ קיים:</span> ${available.map(s=>`<span class="diff-sig-item">${esc(s)}</span>`).join('')}</div>`

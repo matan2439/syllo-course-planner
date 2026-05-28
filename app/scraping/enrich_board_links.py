@@ -79,6 +79,13 @@ def enrich_board(
             if val and not rc.get(key):
                 new_fields[key] = val
 
+        # Sync AI-analysis placeholder fields when syllabus_url is newly found
+        if "syllabus_url" in new_fields:
+            if not rc.get("syllabus_text_available"):
+                new_fields["syllabus_text_available"] = True
+            if rc.get("syllabus_ai_analysis_status") in (None, "not_available"):
+                new_fields["syllabus_ai_analysis_status"] = "pending"
+
         if new_fields:
             enriched[cid] = new_fields
             print(f"[enrich] {cid}: {list(new_fields)}")

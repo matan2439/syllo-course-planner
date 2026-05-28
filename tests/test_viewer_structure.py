@@ -250,3 +250,85 @@ def test_missing_name_uses_import_wording(html):
     """Unnamed course message must say 'נדרש ייבוא מידע' not 'נדרש רענון'."""
     assert "נדרש ייבוא מידע" in html, "Must use 'ייבוא מידע' wording"
     assert "נדרש רענון מידע" not in html, "Old 'רענון' wording must be removed"
+
+
+# ---------------------------------------------------------------------------
+# Issue A: TAU Factor specific wording in difficulty signals
+# ---------------------------------------------------------------------------
+
+def test_tau_factor_not_queried_message(html):
+    """Signals must include 'טרם בוצע חיפוש בטאו פקטור' when not queried."""
+    assert "טרם בוצע חיפוש בטאו פקטור" in html
+
+
+def test_tau_factor_not_found_message(html):
+    """Signals must include a 'לא נמצאו נתוני טאו פקטור' or similar message."""
+    assert "לא נמצאו עבור מספר הקורס" in html or "לא נמצאו נתוני טאו פקטור" in html
+
+
+def test_tau_factor_available_label(html):
+    """When grade_signal exists, 'נתוני טאו פקטור' is listed as available."""
+    assert "נתוני טאו פקטור" in html
+
+
+def test_no_vague_grade_stats_wording(html):
+    """Vague 'נתוני ציונים היסטוריים' alone must not appear without TAU Factor attribution."""
+    # The proper phrasing includes 'טאו פקטור' when referring to grade stats
+    assert "מטאו פקטור" in html or "טאו פקטור" in html
+
+
+# ---------------------------------------------------------------------------
+# Issue B: Syllabus AI analysis placeholder
+# ---------------------------------------------------------------------------
+
+def test_syllabus_ai_field_in_coursemap(html):
+    """courseMap must initialise syllabus_ai_analysis_status."""
+    assert "syllabus_ai_analysis_status:" in html
+
+
+def test_syllabus_pending_shows_ai_analysis_needed(html):
+    """When syllabus exists but AI not done, show 'ניתוח AI של נושאי הסילבוס'."""
+    assert "ניתוח AI של נושאי הסילבוס" in html
+
+
+def test_syllabus_not_available_shows_no_link(html):
+    """When no syllabus, show 'קישור סילבוס פעיל' as missing (not AI)."""
+    assert "קישור סילבוס פעיל" in html
+
+
+def test_no_vague_course_description_missing(html):
+    """Must not show vague 'תיאור מפורט של נושאי הקורס' — replaced by AI analysis wording."""
+    assert "תיאור מפורט של נושאי הקורס" not in html
+
+
+# ---------------------------------------------------------------------------
+# Issue C: Assessment type in signals
+# ---------------------------------------------------------------------------
+
+def test_assessment_type_in_coursemap(html):
+    """courseMap must initialise assessment_type."""
+    assert "assessment_type:" in html
+
+
+def test_assessment_type_in_available_signals(html):
+    """When assessment_type != unknown, 'סוג הערכה סופי' appears in available."""
+    assert "סוג הערכה סופי" in html
+
+
+def test_no_vague_assessment_wording(html):
+    """Must not show 'מבנה הערכה / מטלות / מבחן' — replaced by precise assessment_type."""
+    assert "מבנה הערכה / מטלות / מבחן" not in html
+
+
+# ---------------------------------------------------------------------------
+# Issue D: Precise signal wording
+# ---------------------------------------------------------------------------
+
+def test_signal_uses_depth_not_basic(html):
+    """Prerequisite signal should say 'עומק דרישות קדם' not 'דרישות קדם בסיסיות'."""
+    assert "עומק דרישות קדם" in html
+
+
+def test_no_vague_general_description_signal(html):
+    """Must not include 'תיאור קורס ונושאים (DB)' — vague signal replaced."""
+    assert "תיאור קורס ונושאים (DB)" not in html

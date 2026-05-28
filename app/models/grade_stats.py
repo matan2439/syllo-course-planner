@@ -7,8 +7,27 @@ It supplements but never overrides official course metadata.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
+
+
+def normalize_for_tau_factor(course_id: str) -> str:
+    """Normalise a course ID to the TAU Factor / TAU Refactor format (digits only).
+
+    TAU Factor identifies courses without the hyphen separator.
+    Leading zeroes are always preserved.
+
+    Examples
+    --------
+    >>> normalize_for_tau_factor("0542-4320")
+    '05424320'
+    >>> normalize_for_tau_factor("05424320")
+    '05424320'
+    >>> normalize_for_tau_factor("0542 4320")
+    '05424320'
+    """
+    return re.sub(r"\D", "", str(course_id))
 
 
 class CourseGradeStats(BaseModel):
