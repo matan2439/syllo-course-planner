@@ -1071,6 +1071,7 @@ const PROGRAM_LIST = [
     board_json:             '../../data/parsed_json/mechanical_semester_board_2027.json',
     audit_json:             '../../data/parsed_json/mechanical_electives_profile_audit.json',
     program_json:           '../../data/programs/mechanical_engineering_2027_from_pdf.json',
+    state_version:          '2027_pdf_empty_board_v1',
   },
   {
     program_id:             'mechanical_engineering_2025',
@@ -2953,7 +2954,7 @@ function buildRecommendedPlan() {
 function _lsStateKey() { return `${LS_STATE_PREFIX}_${selectedProg?.program_id || 'default'}`; }
 function saveState() {
   try {
-    localStorage.setItem(_lsStateKey(), JSON.stringify({ ...state, program_id: selectedProg?.program_id }));
+    localStorage.setItem(_lsStateKey(), JSON.stringify({ ...state, program_id: selectedProg?.program_id, state_version: selectedProg?.state_version ?? null }));
   } catch {}
 }
 function tryLoadState() {
@@ -2962,6 +2963,7 @@ function tryLoadState() {
 function validState(s) {
   if (!s || typeof s.semesters !== 'object' || !Array.isArray(s.repo)) return false;
   if (s.program_id && selectedProg?.program_id && s.program_id !== selectedProg.program_id) return false;
+  if (selectedProg?.state_version && s.state_version !== selectedProg.state_version) return false;
   return true;
 }
 
