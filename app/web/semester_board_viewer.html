@@ -214,6 +214,21 @@ body.prog-modal-open .workspace {
   background: var(--bg2); border: 1px solid var(--border2); color: var(--text-faint);
 }
 
+/* Archive-version row shown below the main family card */
+.prog-archive-row {
+  margin-top: 4px; padding-top: 5px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: .65rem; color: var(--text-faint);
+}
+.prog-archive-label { white-space: nowrap; }
+.prog-archive-btn {
+  font-size: .63rem; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--border2); background: var(--bg2);
+  color: var(--text-muted); cursor: pointer; transition: background var(--t), color var(--t);
+}
+.prog-archive-btn:hover { background: var(--surface2); color: var(--text); }
+
 .prog-modal-error {
   margin-top: 12px; padding: 10px 14px; border-radius: 8px; flex-shrink: 0;
   background: #FEE2E2; border: 1px solid #FCA5A5; color: #991B1B;
@@ -1143,6 +1158,33 @@ const PROGRAM_LIST = [
 ];
 const PROGRAMS = Object.fromEntries(PROGRAM_LIST.map(p => [p.program_id, p]));
 
+/* ── Program families ────────────────────────────────────────────────────────
+ * Groups related program versions under one UI card.
+ * default_program_id: the version shown and selected from the main card.
+ * archive_ids: older/secondary versions accessible via a smaller link.
+ * Each family maps to exactly one card in the program picker modal.
+ */
+const PROGRAM_FAMILIES = [
+  {
+    family_id:              'mechanical_engineering',
+    display_name_he:        'הנדסה מכנית',
+    specialization_name_he: null,
+    icon:                   '⚙️',
+    description_he:         'תוכנית חד-חוגית בהנדסה מכנית',
+    default_program_id:     'mechanical_engineering_2027',
+    archive_ids:            ['mechanical_engineering_2025'],
+  },
+  {
+    family_id:              'mechanical_engineering_biomedical',
+    display_name_he:        'הנדסה מכנית',
+    specialization_name_he: 'מגמה בהנדסה ביו-רפואית',
+    icon:                   '🔬',
+    description_he:         'תכנון קורסים להנדסה מכנית עם דגש ביו-רפואי',
+    default_program_id:     'mechanical_engineering_biomedical_track_2025',
+    archive_ids:            [],
+  },
+];
+
 /* ── Label maps ─────────────────────────────────────────────────────────── */
 const SEM_HE = {
   year_3_semester_a: "שנה ג׳ — סמסטר א׳",
@@ -1239,29 +1281,57 @@ function buildProgModal() {
 
   function renderResults(query) {
     const q = (query || '').trim().toLowerCase();
+    /* Filter by family-level display fields — not by year/program_id */
     const filtered = q
-      ? PROGRAM_LIST.filter(p =>
-          [p.program_name_he, p.specialization_name_he, p.description_he]
-            .some(f => f && f.toLowerCase().includes(q))
+      ? PROGRAM_FAMILIES.filter(f =>
+          [f.display_name_he, f.specialization_name_he, f.description_he]
+            .some(v => v && v.toLowerCase().includes(q))
         )
-      : PROGRAM_LIST;
+      : PROGRAM_FAMILIES;
     kbIdx = -1;
     if (!filtered.length) {
       resultsEl.innerHTML = '<div class="prog-empty">לא נמצאו תארים מתאימים</div>';
       return;
     }
-    resultsEl.innerHTML = filtered.map(p => `
-      <button class="prog-item" data-prog-id="${esc(p.program_id)}" role="option" type="button">
-        <span class="prog-icon" aria-hidden="true">${esc(p.icon || '📚')}</span>
-        <div class="prog-info">
-          <div class="prog-name">${esc(p.program_name_he)}</div>
-          ${p.specialization_name_he
-            ? `<div class="prog-spec">${esc(p.specialization_name_he)}</div>`
-            : ''}
-          <div class="prog-desc">${esc(p.description_he)}</div>
-          <span class="prog-year-tag">${esc(p.year)}</span>
-        </div>
-      </button>`).join('');
+    resultsEl.innerHTML = filtered.map(f => {
+      const defProg = PROGRAMS[f.default_program_id];
+      const yearTag = defProg?.year
+        ? `<span class="prog-year-tag">מקור: ${esc(String(defProg.year))}</span>`
+        : '';
+      /* Archive versions row — rendered outside the main button to avoid invalid nesting */
+      const archiveHtml = f.archive_ids?.length
+        ? `<div class="prog-archive-row" data-family="${esc(f.family_id)}">
+             <span class="prog-archive-label">גרסה ישנה זמינה:</span>
+             ${f.archive_ids.map(id => {
+               const ap = PROGRAMS[id];
+               return ap
+                 ? `<button class="prog-archive-btn" data-prog-id="${esc(id)}" type="button"
+                      title="${esc(ap.description_he || id)}">${esc(String(ap.year || id))}</button>`
+                 : '';
+             }).join('')}
+           </div>`
+        : '';
+      return `
+        <button class="prog-item" data-prog-id="${esc(f.default_program_id)}" role="option" type="button">
+          <span class="prog-icon" aria-hidden="true">${esc(f.icon || '📚')}</span>
+          <div class="prog-info">
+            <div class="prog-name">${esc(f.display_name_he)}</div>
+            ${f.specialization_name_he
+              ? `<div class="prog-spec">${esc(f.specialization_name_he)}</div>`
+              : ''}
+            <div class="prog-desc">${esc(f.description_he)}</div>
+            ${yearTag}
+          </div>
+        </button>
+        ${archiveHtml}`;
+    }).join('');
+    /* Wire archive buttons (separate click, don't propagate to parent card) */
+    resultsEl.querySelectorAll('.prog-archive-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await loadProgram(btn.dataset.progId, true);
+      });
+    });
   }
 
   function applyKbFocus() {
@@ -1564,6 +1634,19 @@ function init(board, audit, programJson) {
       rc.offered_semesters, rc.offered_in_year, rc.category_id, null,
       rc.program_category_name_he || null
     );
+    /* Enrich with lightweight difficulty estimate stored in board JSON */
+    if (rc.difficulty_score != null) {
+      const _ce = courseMap[rc.course_id];
+      if (_ce && _ce.difficulty_score == null) {
+        _ce.difficulty_score            = rc.difficulty_score;
+        _ce.difficulty_level            = rc.difficulty_level            || null;
+        _ce.difficulty_confidence       = rc.difficulty_confidence       ?? null;
+        _ce.workload_score              = rc.workload_score              ?? null;
+        _ce.conceptual_complexity_score = rc.conceptual_complexity_score ?? null;
+        _ce.prerequisite_depth_score    = rc.prerequisite_depth_score    ?? null;
+        _ce.assessment_intensity_score  = rc.assessment_intensity_score  ?? null;
+      }
+    }
   }
 
   /* Source 2: live programJson fetch (enriches with prerequisites etc.) */
@@ -2082,8 +2165,10 @@ function cardHtml(c, placed) {
     ? `<span class="badge ${catStyles.bdg}">${esc(catStyles.label)}</span>`
     : '';
 
+  /* Lightweight estimate: difficulty_score present but no workload subscore (not from full audit) */
+  const isEstimatedDiff = level && c.workload_score == null && c.difficulty_score != null;
   const diffBdg = level
-    ? `<span class="badge bdg-${esc(level)}">${esc(DIFF_HE[level]||level)}${c.difficulty_score!=null?' '+c.difficulty_score:''}</span>`
+    ? `<span class="badge bdg-${esc(level)}" title="${isEstimatedDiff ? 'הערכה מבוססת מידע חלקי' : ''}">${esc(DIFF_HE[level]||level)}${c.difficulty_score!=null?' '+c.difficulty_score:''}${isEstimatedDiff?'~':''}</span>`
     : '';
 
   const prereqVr      = placed ? boardValidation[c.course_id] : null;
@@ -2444,7 +2529,7 @@ function openCourseDetails(cid) {
       : '';
 
     const lowConfWarn = conf != null && conf < 0.6
-      ? `<div class="detail-warn" style="margin-top:6px">⚠ מדד הקושי אינו ודאי כי חסר סילבוס או מידע שעות.</div>`
+      ? `<div class="detail-warn" style="margin-top:6px">⚠ ציון הקושי מבוסס על מידע חלקי — ייתכן שאינו מדויק.</div>`
       : '';
 
     const diffWarns = (c.difficulty_warnings || []).map(w =>
@@ -2605,7 +2690,7 @@ function openCourseDetails(cid) {
     ? `<a href="${esc(sylUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">📖 פתח סילבוס</a>`
     : `<button class="btn" disabled>📖 פתח סילבוס</button>`;
   const sylNote = !sylUrl
-    ? '<span class="detail-syl-note">סילבוס לא זמין במידע שנשמר</span>'
+    ? '<span class="detail-syl-note">לא נמצא קישור סילבוס באתר התוכנית. מוצג המידע הרשמי הזמין מהידיעון.</span>'
     : '';
 
   /* Override sections */

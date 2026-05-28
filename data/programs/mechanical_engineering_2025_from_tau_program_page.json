@@ -1,0 +1,1643 @@
+{
+  "program_id": "mechanical_engineering_2025",
+  "program_name_he": "תוכנית חד-חוגית בהנדסה מכנית",
+  "program_name": "Mechanical Engineering",
+  "academic_year_he": "תשפ\"ו",
+  "source_type": "tau_program_page_graphql",
+  "source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2025&tab=programStudy&tcid=8715",
+  "graphql_endpoint": "https://tochniot.tau.ac.il/graphql",
+  "tcid": "8715",
+  "shana": "2025",
+  "parsed_at": "2026-05-28T16:16:33",
+  "total_required_hours": 184,
+  "mandatory_courses": {
+    "source": "tau_program_page",
+    "needs_verification": false,
+    "courses": [
+      {
+        "course_id": "0509-1510",
+        "name_he": "גרפיקה הנדסית",
+        "weekly_hours": 5.0,
+        "credit_hours": 4.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור ותרגיל",
+            "hours": 3.0
+          },
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1624",
+        "name_he": "אלגברה ליניארית להנדסה מכנית",
+        "weekly_hours": 7.0,
+        "credit_hours": 6.5,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 5.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1646",
+        "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+        "weekly_hours": 6.0,
+        "credit_hours": 5.5,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 4.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1815",
+        "name_he": "כימיה בסיסית להנדסה",
+        "weekly_hours": 3.0,
+        "credit_hours": 3.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1820",
+        "name_he": "תכנות - (פייתון)",
+        "weekly_hours": 4.0,
+        "credit_hours": 3.5,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-1800",
+        "name_he": "מבוא להנדסה מכנית",
+        "weekly_hours": 0.0,
+        "credit_hours": 0.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "תרגיל",
+            "hours": null
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_1_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1645",
+        "name_he": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1647",
+        "name_he": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+        "weekly_hours": 6.0,
+        "credit_hours": 5.5,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 4.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1834",
+        "name_he": "מעבדה בפיזיקה",
+        "weekly_hours": 2.0,
+        "credit_hours": 2.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-1810",
+        "name_he": "מכניקה של חלקיקים",
+        "weekly_hours": 5.0,
+        "credit_hours": 4.5,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-1820",
+        "name_he": "סטטיקה של גוף קשיח",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0581-1111",
+        "name_he": "מבוא למדע והנדסה של חומרים",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0581-1132",
+        "name_he": "מבוא למדע והנדסה של חומרים - מעבדה",
+        "weekly_hours": 1.0,
+        "credit_hours": 0.5,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "מעבדה",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 1,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_1_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-1829",
+        "name_he": "פיזיקה (2)",
+        "weekly_hours": 6.0,
+        "credit_hours": 5.5,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 4.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-2805",
+        "name_he": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-2844",
+        "name_he": "פונקציות מרוכבות",
+        "weekly_hours": 3.0,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-2110",
+        "name_he": "דינמיקה של גוף קשיח",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור ותרגיל",
+            "hours": 4.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-2200",
+        "name_he": "מכניקת המוצקים (1)",
+        "weekly_hours": 5.0,
+        "credit_hours": 5.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור ותרגיל",
+            "hours": 5.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a",
+          "year_2_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-2600",
+        "name_he": "תרמודינמיקה (1)",
+        "weekly_hours": 5.0,
+        "credit_hours": 5.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 4.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_2_semester_a",
+          "year_2_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-2804",
+        "name_he": "אנליזה נומרית",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_2_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-2843",
+        "name_he": "אנליזה הרמונית",
+        "weekly_hours": 3.0,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_2_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0509-2846",
+        "name_he": "משוואות דיפרנציאליות חלקיות",
+        "weekly_hours": 3.0,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_2_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0512-1205",
+        "name_he": "מבוא למעגלים מערכות ואותות חשמליים",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_2_semester_b"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-2500",
+        "name_he": "מכניקת הזורמים (1)",
+        "weekly_hours": 5.0,
+        "credit_hours": 5.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 4.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 2,
+        "semester_section": "סמסטר ב",
+        "allowed_semesters": [
+          "year_2_semester_b",
+          "year_3_semester_a"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0512-1204",
+        "name_he": "המרת אנרגיה והנע חשמלי",
+        "weekly_hours": 3.5,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          },
+          {
+            "type": "מעבדה",
+            "hours": 0.5
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-2400",
+        "name_he": "תכן מכני (1)",
+        "weekly_hours": 4.0,
+        "credit_hours": 3.5,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור ותרגיל",
+            "hours": 4.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-3243",
+        "name_he": "מבוא לבקרה",
+        "weekly_hours": 5.5,
+        "credit_hours": 5.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 2.0
+          },
+          {
+            "type": "מעבדה",
+            "hours": 0.5
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a"
+        ],
+        "locked_by_default": true,
+        "placement_rule": "fixed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-3620",
+        "name_he": "מעבר חם",
+        "weekly_hours": 4.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          },
+          {
+            "type": "תרגיל",
+            "hours": 1.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a",
+          "year_3_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-3780",
+        "name_he": "תהליכי עיבוד (1)",
+        "weekly_hours": 3.0,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 3.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a",
+          "year_3_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-3791",
+        "name_he": "תהליכי עיבוד - מעבדה",
+        "weekly_hours": 2.0,
+        "credit_hours": 1.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a",
+          "year_3_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-3792",
+        "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+        "weekly_hours": 4.0,
+        "credit_hours": 3.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "שיעור",
+            "hours": 2.0
+          },
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 3,
+        "semester_section": "סמסטר א",
+        "allowed_semesters": [
+          "year_3_semester_a",
+          "year_3_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-4010",
+        "name_he": "תיכון ופרוייקט (1)",
+        "weekly_hours": 3.0,
+        "credit_hours": 4.0,
+        "has_prereqs": false,
+        "teaching_format": [
+          {
+            "type": "פרוייקט",
+            "hours": 3.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 4,
+        "semester_section": "קורסי חובה",
+        "allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-4020",
+        "name_he": "תיכון ופרוייקט (2)",
+        "weekly_hours": 3.0,
+        "credit_hours": 4.0,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "פרוייקט",
+            "hours": 3.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 4,
+        "semester_section": "קורסי חובה",
+        "allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-4091",
+        "name_he": "מעבדה במכניקת המוצקים",
+        "weekly_hours": 2.0,
+        "credit_hours": 1.5,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 4,
+        "semester_section": "קורסי חובה",
+        "allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      },
+      {
+        "course_id": "0542-4092",
+        "name_he": "מעבדת זרימה ומעבר חום",
+        "weekly_hours": 2.0,
+        "credit_hours": 1.5,
+        "has_prereqs": true,
+        "teaching_format": [
+          {
+            "type": "מעבדה",
+            "hours": 2.0
+          }
+        ],
+        "source": "tau_program_page",
+        "year": 4,
+        "semester_section": "קורסי חובה",
+        "allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "locked_by_default": false,
+        "placement_rule": "choose_one_allowed_semester",
+        "needs_verification": false
+      }
+    ]
+  },
+  "elective_core_courses": [
+    {
+      "course_id": "0542-4120",
+      "name_he": "תרמודינמיקה (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "fluids",
+      "section_he": "זורמים"
+    },
+    {
+      "course_id": "0542-4123",
+      "name_he": "תהליכי מעבר חום וחומר",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "fluids",
+      "section_he": "זורמים"
+    },
+    {
+      "course_id": "0542-4220",
+      "name_he": "תורת התנודות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "solids",
+      "section_he": "מוצקים"
+    },
+    {
+      "course_id": "0542-4221",
+      "name_he": "מבוא לתורת האלסטיות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "solids",
+      "section_he": "מוצקים"
+    },
+    {
+      "course_id": "0542-4223",
+      "name_he": "מבוא לאלמנטים סופיים",
+      "weekly_hours": 4.0,
+      "credit_hours": 3.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור",
+          "hours": 2.0
+        },
+        {
+          "type": "תרגיל",
+          "hours": 2.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "solids",
+      "section_he": "מוצקים"
+    },
+    {
+      "course_id": "0542-4224",
+      "name_he": "מכניקת המוצקים (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "solids",
+      "section_he": "מוצקים"
+    },
+    {
+      "course_id": "0542-4420",
+      "name_he": "תורת המכונות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "systems",
+      "section_he": "מערכות"
+    },
+    {
+      "course_id": "0542-4422",
+      "name_he": "תכן הנדסי: מבוא ושיטות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "systems",
+      "section_he": "מערכות"
+    },
+    {
+      "course_id": "0542-4455",
+      "name_he": "בינה חישובית",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "systems",
+      "section_he": "מערכות"
+    },
+    {
+      "course_id": "0542-4622",
+      "name_he": "דינמיקה ובקרה של מערכות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "systems",
+      "section_he": "מערכות"
+    },
+    {
+      "course_id": "0542-4624",
+      "name_he": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "weekly_hours": 3.0,
+      "credit_hours": 2.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "מעבדה",
+          "hours": 3.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "advanced_labs",
+      "section_he": "מעבדות מתקדמות"
+    },
+    {
+      "course_id": "0581-4131",
+      "name_he": "מעבדה בחומרים הנדסיים",
+      "weekly_hours": 1.0,
+      "credit_hours": 0.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "מעבדה",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "advanced_labs",
+      "section_he": "מעבדות מתקדמות"
+    },
+    {
+      "course_id": "0542-4093",
+      "name_he": "מעבדה במערכות אנרגיה",
+      "weekly_hours": 1.0,
+      "credit_hours": 0.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "מעבדה",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "category_id": "advanced_labs",
+      "section_he": "מעבדות מתקדמות"
+    }
+  ],
+  "specialization_courses": [
+    {
+      "course_id": "0542-4221",
+      "name_he": "מבוא לתורת האלסטיות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מבנים ומכניקה חישובית"
+    },
+    {
+      "course_id": "0542-4222",
+      "name_he": "תורת המבנים",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מבנים ומכניקה חישובית"
+    },
+    {
+      "course_id": "0542-4223",
+      "name_he": "מבוא לאלמנטים סופיים",
+      "weekly_hours": 4.0,
+      "credit_hours": 3.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור",
+          "hours": 2.0
+        },
+        {
+          "type": "תרגיל",
+          "hours": 2.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מבנים ומכניקה חישובית"
+    },
+    {
+      "course_id": "0542-4224",
+      "name_he": "מכניקת המוצקים (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מבנים ומכניקה חישובית"
+    },
+    {
+      "course_id": "0542-4120",
+      "name_he": "תרמודינמיקה (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "הנדסת סביבה"
+    },
+    {
+      "course_id": "0542-4123",
+      "name_he": "תהליכי מעבר חום וחומר",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "הנדסת סביבה"
+    },
+    {
+      "course_id": "0542-4125",
+      "name_he": "מבוא להנדסת סביבה",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "הנדסת סביבה"
+    },
+    {
+      "course_id": "0542-4224",
+      "name_he": "מכניקת המוצקים (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "אווירונאוטיקה וחלל"
+    },
+    {
+      "course_id": "0542-4522",
+      "name_he": "מכניקת של טייס וגופים בחלל",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "אווירונאוטיקה וחלל"
+    },
+    {
+      "course_id": "0542-4523",
+      "name_he": "מבוא לאוירודינמיקה",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "אווירונאוטיקה וחלל"
+    },
+    {
+      "course_id": "0542-4455",
+      "name_he": "בינה חישובית",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות מכטרוניות"
+    },
+    {
+      "course_id": "0542-4620",
+      "name_he": "מכאטרוניקה - עקרונות השימוש במיקרו מעבדים",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור",
+          "hours": 3.0
+        },
+        {
+          "type": "מעבדה",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות מכטרוניות"
+    },
+    {
+      "course_id": "0542-4621",
+      "name_he": "מבוא לרובוטיקה",
+      "weekly_hours": 3.0,
+      "credit_hours": 3.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 3.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות מכטרוניות"
+    },
+    {
+      "course_id": "0542-4622",
+      "name_he": "דינמיקה ובקרה של מערכות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות מכטרוניות"
+    },
+    {
+      "course_id": "0542-4624",
+      "name_he": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "weekly_hours": 3.0,
+      "credit_hours": 2.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "מעבדה",
+          "hours": 3.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות מכטרוניות"
+    },
+    {
+      "course_id": "0542-4321",
+      "name_he": "הידראוליקה הנדסית",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "זרימה ותיכון תרמי"
+    },
+    {
+      "course_id": "0542-4322",
+      "name_he": "תכנון תרמי של ציוד אלקטרוני",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "זרימה ותיכון תרמי"
+    },
+    {
+      "course_id": "0542-4351",
+      "name_he": "הנדסה ימית",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "זרימה ותיכון תרמי"
+    },
+    {
+      "course_id": "0542-4420",
+      "name_he": "תורת המכונות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "תכן מכני"
+    },
+    {
+      "course_id": "0542-4421",
+      "name_he": "נושאים מתקדמים בתכן מערכות מכניות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "תכן מכני"
+    },
+    {
+      "course_id": "0542-4422",
+      "name_he": "תכן הנדסי: מבוא ושיטות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "תכן מכני"
+    },
+    {
+      "course_id": "0542-4424",
+      "name_he": "תכן ראשוני של כלי טיס",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור",
+          "hours": 3.0
+        },
+        {
+          "type": "תרגיל",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "תכן מכני"
+    },
+    {
+      "course_id": "0542-4220",
+      "name_he": "תורת התנודות",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות ממוזערות וחומרים"
+    },
+    {
+      "course_id": "0542-4224",
+      "name_he": "מכניקת המוצקים (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות ממוזערות וחומרים"
+    },
+    {
+      "course_id": "0542-4722",
+      "name_he": "מבוא להנדסת מערכות זעירות (Mems)",
+      "weekly_hours": 5.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        },
+        {
+          "type": "מעבדה",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות ממוזערות וחומרים"
+    },
+    {
+      "course_id": "0542-4093",
+      "name_he": "מעבדה במערכות אנרגיה",
+      "weekly_hours": 1.0,
+      "credit_hours": 0.5,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "מעבדה",
+          "hours": 1.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4120",
+      "name_he": "תרמודינמיקה (2)",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4131",
+      "name_he": "מנועי שריפה פנימית",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4132",
+      "name_he": "אנרגיה מתחדשת",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4163",
+      "name_he": "מיזוג אויר וחימום",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4179",
+      "name_he": "מתקנים לייצור כח וניצול אנרגיה",
+      "weekly_hours": 4.0,
+      "credit_hours": 4.0,
+      "has_prereqs": true,
+      "teaching_format": [
+        {
+          "type": "שיעור ותרגיל",
+          "hours": 4.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "מערכות אנרגיה"
+    },
+    {
+      "course_id": "0542-4011",
+      "name_he": "פרוייקט מחקר למצטיינים (1)",
+      "weekly_hours": 3.0,
+      "credit_hours": 3.0,
+      "has_prereqs": false,
+      "teaching_format": [
+        {
+          "type": "פרוייקט",
+          "hours": 3.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "קורסי התמחות נוספים"
+    },
+    {
+      "course_id": "0542-4012",
+      "name_he": "פרויקט מחקר למצטיינים (2)",
+      "weekly_hours": 3.0,
+      "credit_hours": 3.0,
+      "has_prereqs": false,
+      "teaching_format": [
+        {
+          "type": "פרוייקט",
+          "hours": 3.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "קורסי התמחות נוספים"
+    },
+    {
+      "course_id": "0542-3112",
+      "name_he": "פרויקט יישומי בהנדסה מכנית",
+      "weekly_hours": 2.0,
+      "credit_hours": 2.0,
+      "has_prereqs": false,
+      "teaching_format": [
+        {
+          "type": "פרוייקט",
+          "hours": 2.0
+        }
+      ],
+      "source": "tau_program_page",
+      "specialization_track_he": "קורסי התמחות נוספים"
+    }
+  ],
+  "parse_warnings": []
+}

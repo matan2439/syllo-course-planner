@@ -1,0 +1,339 @@
+{
+  "data": {
+    "results": {
+      "body": [
+        {
+          "teurshana": "תשפ\"ו (2025-2026)",
+          "tclongkey": "054211010000",
+          "teurtochnit": "תוכנית חד-חוגית בהנדסה מכנית",
+          "teurtoar": "B.Sc. בהנדסה מכנית",
+          "hesbernosaf": "<p dir=\"rtl\">לצבור לפחות 184 שעות לימודי מגמה</p>",
+          "sugshaot": "01",
+          "teurshaot": "ש\"ס",
+          "rama": [
+            {
+              "ramaid": "1",
+              "teurrama": "שנה א",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "7",
+                  "teurrama": "סמסטר א",
+                  "kurs": [
+                    {
+                      "kursid": "05091510",
+                      "kursshow": "0509-1510",
+                      "teurkurs": "גרפיקה הנדסית",
+                      "shaotuni": "5",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור ותרגיל",
+                      "shaot1": "3",
+                      "ofenhoraa2": "מעבדה",
+                      "shaot2": "2",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "0",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    },
+                    {
+                      "kursid": "05091646",
+                      "kursshow": "0509-1646",
+                      "teurkurs": "חשבון דיפרנציאלי ואינטגרלי 1ב'",
+                      "shaotuni": "6",
+                      "mishkal": "5.5",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "4",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "2",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "0",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "ramaid": "3",
+              "teurrama": "שנה ג",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "11",
+                  "teurrama": "סמסטר א",
+                  "kurs": [
+                    {
+                      "kursid": "05421204",
+                      "kursshow": "0542-1204",
+                      "teurkurs": "המרת אנרגיה והנע חשמלי",
+                      "shaotuni": "3.5",
+                      "mishkal": "3",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "2",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "מעבדה",
+                      "shaot3": "0.50",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "1",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    },
+                    {
+                      "kursid": "05423620",
+                      "kursshow": "0542-3620",
+                      "teurkurs": "מעבר חם",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "3",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                },
+                {
+                  "ramaid": "12",
+                  "teurrama": "סמסטר ב",
+                  "kurs": [
+                    {
+                      "kursid": "05423620",
+                      "kursshow": "0542-3620",
+                      "teurkurs": "מעבר חם",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "3",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                },
+                {
+                  "ramaid": "30",
+                  "teurrama": "קורסי שאר רוח",
+                  "kurs": []
+                }
+              ]
+            },
+            {
+              "ramaid": "4",
+              "teurrama": "שנה ד",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "13",
+                  "teurrama": "קורסי חובה",
+                  "kurs": [
+                    {
+                      "kursid": "05424010",
+                      "kursshow": "0542-4010",
+                      "teurkurs": "תיכון ופרוייקט (1)",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "פרוייקט",
+                      "shaot1": "4",
+                      "ofenhoraa2": "",
+                      "shaot2": "",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    },
+                    {
+                      "kursid": "05424020",
+                      "kursshow": "0542-4020",
+                      "teurkurs": "תיכון ופרוייקט (2)",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "פרוייקט",
+                      "shaot1": "4",
+                      "ofenhoraa2": "",
+                      "shaot2": "",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "ramaid": "23",
+              "teurrama": "שנים ג'+ד' קורסי ליבה/בחירה/מעבדות מתקדמות",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "24",
+                  "teurrama": "זורמים",
+                  "kurs": [
+                    {
+                      "kursid": "05424120",
+                      "kursshow": "0542-4120",
+                      "teurkurs": "תרמודינמיקה (2)",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "3",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    },
+                    {
+                      "kursid": "05424320",
+                      "kursshow": "0542-4320",
+                      "teurkurs": "מכניקת הזורמים (2)",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "3",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                },
+                {
+                  "ramaid": "25",
+                  "teurrama": "מוצקים",
+                  "kurs": [
+                    {
+                      "kursid": "05424220",
+                      "kursshow": "0542-4220",
+                      "teurkurs": "מכניקת הגמישות",
+                      "shaotuni": "4",
+                      "mishkal": "4",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "3",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                },
+                {
+                  "ramaid": "26",
+                  "teurrama": "מערכות",
+                  "kurs": []
+                },
+                {
+                  "ramaid": "27",
+                  "teurrama": "מעבדות מתקדמות",
+                  "kurs": []
+                }
+              ]
+            },
+            {
+              "ramaid": "5",
+              "teurrama": "שנים ג+ד - קורסי  בחירה/התמחות",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "14",
+                  "teurrama": "מבנים ומכניקה חישובית",
+                  "kurs": [
+                    {
+                      "kursid": "05424221",
+                      "kursshow": "0542-4221",
+                      "teurkurs": "מכניקת המוצקים הלא-ליניארית",
+                      "shaotuni": "3",
+                      "mishkal": "3",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "2",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "1",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    },
+                    {
+                      "kursid": "05424222",
+                      "kursshow": "0542-4222",
+                      "teurkurs": "ניתוח ממוחשב",
+                      "shaotuni": "3",
+                      "mishkal": "3",
+                      "ofenhoraa1": "שיעור",
+                      "shaot1": "2",
+                      "ofenhoraa2": "תרגיל",
+                      "shaot2": "1",
+                      "ofenhoraa3": "",
+                      "shaot3": "",
+                      "drishotkedem": "0",
+                      "drishotmakbilot": "0",
+                      "mevutal": "0",
+                      "anglit": "",
+                      "hidekurs": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "ramaid": "6",
+              "teurrama": "קורסי שאר רוח",
+              "tavnit": "51",
+              "rama": [
+                {
+                  "ramaid": "19",
+                  "teurrama": "קורסי שאר רוח",
+                  "kurs": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

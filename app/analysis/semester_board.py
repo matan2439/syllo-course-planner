@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from app.database.db import _DB_PATH, get_course_by_id, get_prerequisites, get_course_display_names, get_grade_stats
+from app.analysis.difficulty_estimator import estimate_difficulty_lightweight
 from app.analysis.eligibility_engine import normalize_course_id
 from app.analysis.instructor_uncertainty import estimate_instructor_uncertainty
 from app.analysis.plan_validator import validate_entire_board
@@ -836,6 +837,19 @@ def _format_course(
 # Program requirements post-processing
 # ---------------------------------------------------------------------------
 
+def _difficulty_entry_from_estimate(est: dict) -> dict:
+    """Extract frontend-relevant difficulty fields from a lightweight estimate dict."""
+    return {
+        "difficulty_score":              est["final_difficulty_score"],
+        "difficulty_level":              est["difficulty_level"],
+        "difficulty_confidence":         est["confidence"],
+        "workload_score":                est["workload_score"],
+        "conceptual_complexity_score":   est["conceptual_complexity_score"],
+        "prerequisite_depth_score":      est["prerequisite_depth_score"],
+        "assessment_intensity_score":    est["assessment_intensity_score"],
+    }
+
+
 def _build_category_name_map(program: dict[str, Any]) -> dict[str, str]:
     """Return {category_id: name_he} from program requirements."""
     result: dict[str, str] = {}
@@ -893,15 +907,36 @@ def _build_program_repository_courses(
             continue
         seen.add(cid)
         cat_id = ec.get("category_id")
+        hours = ec.get("hours")
+        prereq_count = len(ec.get("prerequisites") or [])
+        teaching_fmt = ec.get("teaching_format")  # may be set by enrichment
+        name = _resolve_name(cid, ec.get("name_he"))
+
+        # Lightweight difficulty estimate — uses hours, prereqs, category, name
+        diff: dict = {}
+        if hours is not None or prereq_count > 0 or name:
+            try:
+                est = estimate_difficulty_lightweight(
+                    weekly_hours=hours,
+                    prereq_count=prereq_count,
+                    teaching_format=teaching_fmt,
+                    category_id=cat_id,
+                    name_he=name,
+                )
+                diff = _difficulty_entry_from_estimate(est)
+            except Exception:
+                pass
+
         courses.append({
             "course_id":                cid,
-            "name_he":                  _resolve_name(cid, ec.get("name_he")),
-            "weekly_hours":             ec.get("hours"),
+            "name_he":                  name,
+            "weekly_hours":             hours,
             "offered_semesters":        ec.get("offered_semesters", []),
             "offered_in_year":          ec.get("offered_in_year", True),
             "category_id":              cat_id,
             "program_category_name_he": cat_name_map.get(cat_id) if cat_id else None,
             "source":                   "program_json",
+            **diff,
         })
 
     for ec in program.get("other_specialization_electives", []):
@@ -910,9 +945,10 @@ def _build_program_repository_courses(
             continue
         seen.add(cid)
         cat_id = "other_specialization"
+        name = _resolve_name(cid, ec.get("name_he"))
         courses.append({
             "course_id":                cid,
-            "name_he":                  _resolve_name(cid, ec.get("name_he")),
+            "name_he":                  name,
             "weekly_hours":             None,
             "offered_semesters":        [],
             "offered_in_year":          ec.get("offered_in_year", True),

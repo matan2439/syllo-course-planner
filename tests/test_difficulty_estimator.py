@@ -460,3 +460,153 @@ def test_real_course_factors_present(real_db):
     r = estimate_course_difficulty("0368-2157", real_db)
     assert "total_hours" in r["factors"]
     assert "prereq_count" in r["factors"]
+
+
+# ---------------------------------------------------------------------------
+# estimate_difficulty_lightweight — no DB record needed
+# ---------------------------------------------------------------------------
+
+from app.analysis.difficulty_estimator import estimate_difficulty_lightweight
+
+
+def test_lightweight_returns_non_null_score_with_hours():
+    r = estimate_difficulty_lightweight(
+        weekly_hours=4.0, prereq_count=2,
+        teaching_format=None, category_id="fluids", name_he="תרמודינמיקה (2)"
+    )
+    assert r["final_difficulty_score"] is not None
+    assert 1.0 <= r["final_difficulty_score"] <= 5.0
+
+
+def test_lightweight_returns_non_null_score_without_syllabus():
+    """Missing syllabus_url does not affect the lightweight difficulty score."""
+    r = estimate_difficulty_lightweight(
+        weekly_hours=4.0, prereq_count=1,
+        teaching_format=None, category_id="solids", name_he="מבוא לאלמנטים סופיים"
+    )
+    # Score should be computed even without any syllabus information
+    assert r["final_difficulty_score"] is not None
+    assert r["difficulty_level"] in ("easy", "medium", "hard", "very_hard")
+
+
+def test_lightweight_confidence_below_0_6():
+    """Lightweight confidence is always below the 0.6 partial-data threshold."""
+    r = estimate_difficulty_lightweight(
+        weekly_hours=4.0, prereq_count=2,
+        teaching_format=None, category_id="fluids", name_he="תרמודינמיקה"
+    )
+    assert r["confidence"] < 0.6, f"confidence={r['confidence']} should be < 0.6"
+
+
+def test_lightweight_confidence_no_hours():
+    """Without hours, confidence is even lower."""
+    r_no_hours  = estimate_difficulty_lightweight(weekly_hours=None,  prereq_count=0, teaching_format=None, category_id=None, name_he=None)
+    r_with_hours = estimate_difficulty_lightweight(weekly_hours=5.0, prereq_count=0, teaching_format=None, category_id=None, name_he=None)
+    assert r_no_hours["confidence"] < r_with_hours["confidence"]
+
+
+def test_lightweight_has_partial_warning():
+    r = estimate_difficulty_lightweight(
+        weekly_hours=3.0, prereq_count=1, teaching_format=None, category_id="systems", name_he=None
+    )
+    assert any("חלקי" in w or "חסר" in w.lower() for w in r["warnings"])
+
+
+def test_lightweight_workload_score_none_when_no_hours():
+    r = estimate_difficulty_lightweight(
+        weekly_hours=None, prereq_count=0, teaching_format=None, category_id=None, name_he=None
+    )
+    assert r["workload_score"] is None
+
+
+def test_lightweight_workload_score_computed_from_hours():
+    r = estimate_difficulty_lightweight(
+        weekly_hours=4.0, prereq_count=0, teaching_format=None, category_id=None, name_he=None
+    )
+    assert r["workload_score"] is not None
+    assert r["workload_score"] == pytest.approx(1.0 + 4.0 * (4.0 / 9.0), abs=0.01)
+
+
+def test_lightweight_lab_raises_assessment_score():
+    r_lab = estimate_difficulty_lightweight(
+        weekly_hours=3.5, prereq_count=1,
+        teaching_format=[{"type": "שיעור", "hours": 2}, {"type": "מעבדה", "hours": 1.5}],
+        category_id="advanced_labs", name_he="מעבדה ברובוטיקה"
+    )
+    r_no_lab = estimate_difficulty_lightweight(
+        weekly_hours=3.5, prereq_count=1,
+        teaching_format=[{"type": "שיעור", "hours": 3.5}],
+        category_id="fluids", name_he="תרמודינמיקה"
+    )
+    assert r_lab["assessment_intensity_score"] > r_no_lab["assessment_intensity_score"]
+
+
+def test_lightweight_zero_hours_zero_prereqs_still_returns_score():
+    """Even with minimal data, lightweight estimator always returns a score."""
+    r = estimate_difficulty_lightweight(
+        weekly_hours=None, prereq_count=0, teaching_format=None, category_id=None, name_he=None
+    )
+    assert r["final_difficulty_score"] is not None
+    assert r["difficulty_level"] is not None
+
+
+# ---------------------------------------------------------------------------
+# _build_program_repository_courses — difficulty for elective courses
+# ---------------------------------------------------------------------------
+
+import json
+from pathlib import Path
+from app.analysis.semester_board import _build_program_repository_courses
+
+
+def test_repository_elective_courses_have_difficulty_score():
+    """elective_courses with hours/prereqs get a difficulty_score in repository output."""
+    prog = json.loads(
+        Path("data/programs/mechanical_engineering_2027_from_pdf.json")
+        .read_text(encoding="utf-8")
+    )
+    repo = _build_program_repository_courses(prog)
+    # fluids/solids/systems/labs all have hours in the PDF
+    elective_ids = {ec["course_id"] for ec in prog.get("elective_courses", [])}
+    for rc in repo:
+        if rc["course_id"] in elective_ids:
+            assert rc.get("difficulty_score") is not None, (
+                f"{rc['course_id']} should have difficulty_score"
+            )
+            assert rc.get("difficulty_level") in ("easy", "medium", "hard", "very_hard")
+            assert rc.get("difficulty_confidence") is not None
+            assert rc["difficulty_confidence"] < 0.6
+
+
+def test_repository_other_specialization_no_difficulty_score():
+    """other_specialization_electives (no hours in PDF) have no difficulty_score."""
+    prog = json.loads(
+        Path("data/programs/mechanical_engineering_2027_from_pdf.json")
+        .read_text(encoding="utf-8")
+    )
+    repo = _build_program_repository_courses(prog)
+    other_ids = {ec["course_id"] for ec in prog.get("other_specialization_electives", [])}
+    for rc in repo:
+        if rc["course_id"] in other_ids:
+            assert rc.get("difficulty_score") is None, (
+                f"{rc['course_id']} should not have difficulty_score (no hours in PDF)"
+            )
+
+
+def test_board_json_elective_courses_have_difficulty_score():
+    """Regenerated board JSON has difficulty_score for all elective_courses."""
+    board = json.loads(
+        Path("data/parsed_json/mechanical_semester_board_2027.json")
+        .read_text(encoding="utf-8")
+    )
+    repo = board["metadata"]["program_repository_courses"]
+    prog = json.loads(
+        Path("data/programs/mechanical_engineering_2027_from_pdf.json")
+        .read_text(encoding="utf-8")
+    )
+    elective_ids = {ec["course_id"] for ec in prog.get("elective_courses", [])}
+    for rc in repo:
+        if rc["course_id"] in elective_ids:
+            assert rc.get("difficulty_score") is not None, (
+                f"Board JSON: {rc['course_id']} missing difficulty_score"
+            )
