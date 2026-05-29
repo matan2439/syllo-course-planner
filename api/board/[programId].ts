@@ -42,13 +42,28 @@ export function parseProgramVersionId(programId: string): ParsedProgramId | null
 /**
  * Query program_versions for board_json.
  * Exported for unit-testing via dependency injection.
+ *
+ * Connection options explained:
+ *   prepare: false      — Supabase uses PgBouncer in transaction mode (port 6543).
+ *                         PgBouncer transaction mode does not support prepared
+ *                         statements. Without this flag the postgres package sends
+ *                         PREPARE/EXECUTE which PgBouncer rejects, causing the
+ *                         connection to hang.
+ *   connect_timeout: 10 — Fail fast instead of blocking indefinitely on a
+ *                         bad connection.
+ *   idle_timeout: 5     — Release idle connections quickly in serverless context.
  */
 export async function queryBoardJson(
   dbUrl: string,
   base: string,
   year: number,
 ): Promise<Record<string, unknown> | null> {
-  const sql = postgres(dbUrl, { max: 1, idle_timeout: 5 });
+  const sql = postgres(dbUrl, {
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 10,  // don't hang on a slow/failed connection
+    prepare: false,        // required: PgBouncer transaction mode forbids prepared statements
+  });
   try {
     const rows = await sql<Array<{ board_json: Record<string, unknown> | null }>>`
       SELECT board_json
@@ -60,7 +75,10 @@ export async function queryBoardJson(
     if (!rows.length || rows[0].board_json == null) return null;
     return rows[0].board_json;
   } finally {
-    await sql.end();
+    // timeout: 5 prevents sql.end() from hanging when the connection is in a
+    // bad state (e.g. PgBouncer rejected the session). Without this, the
+    // finally block blocks forever → NO_RESPONSE_FROM_FUNCTION (502).
+    await sql.end({ timeout: 5 });
   }
 }
 
@@ -70,6 +88,22 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  // Outer catch: ensures we always send a response even if something
+  // unexpected throws before or after the queryBoardJson try/catch.
+  try {
+    await _handle(req, res);
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Unexpected server error.',
+        code: 'INTERNAL_ERROR',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
+
+async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
