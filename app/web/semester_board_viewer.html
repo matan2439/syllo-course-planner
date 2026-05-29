@@ -1346,7 +1346,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
     try {
       const errBody = await response.json();
       if (errBody.code === 'NO_API_KEY') {
-        errMsg = '⚠ לא הוגדר מפתח AI. הגדר ANTHROPIC_API_KEY בקובץ .env והפעל מחדש את vercel dev.';
+        errMsg = '⚠ לא הוגדר מפתח AI. בסביבת Vercel — הוסף ANTHROPIC_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.';
       } else {
         errMsg = `⚠ שגיאה: ${errBody.error || errMsg}`;
       }
