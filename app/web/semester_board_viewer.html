@@ -1230,7 +1230,23 @@ const LS_STATE_PREFIX = 'tau_board_v3';   // appended with _${program_id}
 const LS_THEME     = 'tau_theme';
 const LS_PROG      = 'tau_program';
 const LS_OVERRIDES = 'tau_course_overrides';
-const LS_MY_COURSES = 'tau_my_courses';
+const LS_MY_COURSES  = 'tau_my_courses';
+const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
+
+/* ── AI session token (quota) ────────────────────────────────────────────── */
+/**
+ * Return the browser's anonymous session UUID, creating it on first call.
+ * Stored in localStorage so it persists across page reloads for the same
+ * browser.  The server uses this to track free AI request quota.
+ */
+function getOrCreateSessionToken() {
+  let token = localStorage.getItem(LS_AI_SESSION);
+  if (!token) {
+    token = crypto.randomUUID();
+    localStorage.setItem(LS_AI_SESSION, token);
+  }
+  return token;
+}
 
 /* ── AI endpoint ─────────────────────────────────────────────────────────── */
 const AI_ENDPOINT = '/api/ai/course-planner';
@@ -1325,6 +1341,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
     program_id:    selectedProg?.program_id || 'unknown',
     plan_context:  planContext,
     course_context: courseContext || undefined,
+    session_token: getOrCreateSessionToken(),
   };
 
   let response;
@@ -1347,6 +1364,23 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
       const errBody = await response.json();
       if (errBody.code === 'NO_API_KEY') {
         errMsg = '⚠ לא הוגדר מפתח AI. בסביבת Vercel — הוסף ANTHROPIC_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.';
+      } else if (errBody.code === 'QUOTA_EXCEEDED') {
+        targetEl.className = 'ai-response-area';
+        targetEl.textContent = '';
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'text-align:center;padding:14px 8px';
+        const msg = document.createElement('p');
+        msg.style.cssText = 'margin-bottom:10px;color:var(--text-muted);font-size:.78rem';
+        msg.textContent = 'ניצלת את מכסת שאלות ה-AI החינמית.';
+        const btn = document.createElement('button');
+        btn.disabled = true;
+        btn.style.cssText = 'opacity:.45;cursor:not-allowed;padding:6px 16px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);font-size:.73rem;font-family:inherit';
+        btn.textContent = 'רכישת קרדיטים תתווסף בקרוב';
+        wrap.appendChild(msg);
+        wrap.appendChild(btn);
+        targetEl.appendChild(wrap);
+        sendBtn.disabled = false;
+        return;
       } else {
         errMsg = `⚠ שגיאה: ${errBody.error || errMsg}`;
       }
