@@ -16,9 +16,13 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+
+# Load .env so DIRECT_DATABASE_URL is available without a manual shell export
+load_dotenv()
 
 # Make the project root importable so 'app.*' imports work inside migrations
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
