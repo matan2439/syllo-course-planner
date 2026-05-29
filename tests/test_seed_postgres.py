@@ -32,6 +32,7 @@ from app.pipeline.seed_postgres import (
     extract_syllabus_sources,
     extract_all,
     seed_all,
+    _BOARD_PATH as _BOARD,
 )
 
 _SQLITE   = Path("data/database.sqlite")
@@ -72,6 +73,17 @@ def test_extract_courses_no_duplicate_course_ids():
     courses = extract_courses_from_sqlite(_SQLITE)
     ids = [c["course_id"] for c in courses]
     assert len(ids) == len(set(ids)), "Duplicate course_ids found in SQLite extraction"
+
+
+def test_extract_program_version_includes_board_json():
+    """extract_program_version loads board_json from the board path when it exists."""
+    pv = extract_program_version(_enriched_json, _BOARD)
+    assert pv["board_json"] is not None, "board_json should be loaded from _BOARD_PATH"
+    assert isinstance(pv["board_json"], dict), "board_json should be a dict"
+    assert "semesters" in pv["board_json"], "board_json should have 'semesters' key"
+    assert "metadata" in pv["board_json"], "board_json should have 'metadata' key"
+    repo = pv["board_json"]["metadata"].get("program_repository_courses", [])
+    assert len(repo) == 56, f"Expected 56 repo courses in board_json, got {len(repo)}"
 
 
 # ── 2. course_groups year enrichment ─────────────────────────────────────────

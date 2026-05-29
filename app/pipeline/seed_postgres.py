@@ -105,8 +105,15 @@ def extract_programs(enriched: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract_program_version(enriched: dict[str, Any]) -> dict[str, Any]:
-    """One row for program_versions; stores the full enriched JSON as raw_json."""
+def extract_program_version(
+    enriched: dict[str, Any],
+    board_path: Path = _BOARD_PATH,
+) -> dict[str, Any]:
+    """One row for program_versions; stores enriched JSON as raw_json and
+    the pre-computed board document as board_json."""
+    board_json: dict[str, Any] | None = None
+    if board_path.exists():
+        board_json = json.loads(board_path.read_text("utf-8"))
     return {
         "program_id":           BASE_PROGRAM_ID,
         "academic_year":        ACADEMIC_YEAR,
@@ -116,6 +123,7 @@ def extract_program_version(enriched: dict[str, Any]) -> dict[str, Any]:
         "total_required_hours": enriched.get("total_required_hours"),
         "notes":                enriched.get("notes", []),
         "raw_json":             enriched,
+        "board_json":           board_json,
     }
 
 
@@ -470,7 +478,7 @@ def extract_all(
     board     = json.loads(board_path.read_text("utf-8"))
 
     program         = extract_programs(enriched)
-    program_version = extract_program_version(enriched)
+    program_version = extract_program_version(enriched, board_path)
 
     # Courses: full records from SQLite, then stubs from board/mandatory
     sqlite_courses = extract_courses_from_sqlite(sqlite_path)
@@ -575,16 +583,22 @@ def _upsert_programs_and_version(cur: Any, data: SeedData, result: SeedResult) -
     result.programs = 1
 
     pv = data.program_version
+    board_json_raw = (
+        json.dumps(pv["board_json"], ensure_ascii=False)
+        if pv.get("board_json") is not None
+        else None
+    )
     cur.execute(
         """
         INSERT INTO program_versions
             (id, program_id, academic_year, academic_year_he, is_active,
-             source_type, total_required_hours, notes, raw_json)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+             source_type, total_required_hours, notes, raw_json, board_json)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (program_id, academic_year) DO UPDATE SET
             total_required_hours = EXCLUDED.total_required_hours,
             notes      = EXCLUDED.notes,
             raw_json   = EXCLUDED.raw_json,
+            board_json = EXCLUDED.board_json,
             updated_at = now()
         RETURNING id
         """,
@@ -595,6 +609,7 @@ def _upsert_programs_and_version(cur: Any, data: SeedData, result: SeedResult) -
             pv.get("total_required_hours"),
             json.dumps(pv.get("notes", []), ensure_ascii=False),
             json.dumps(pv.get("raw_json", {}), ensure_ascii=False),
+            board_json_raw,
         ),
     )
     pv_id = str(cur.fetchone()[0])
