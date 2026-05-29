@@ -183,15 +183,16 @@ def test_board_category_counts_sum_to_56(repo):
 # ---------------------------------------------------------------------------
 
 def test_all_board_courses_have_tau_factor_status(repo):
-    valid = {"not_started", "matched", "not_found", "failed"}
+    valid = {"not_started", "matched", "not_found", "failed", "source_unconfigured"}
     bad = [r["course_id"] for r in repo if r.get("tau_factor_status") not in valid]
     assert not bad, f"Invalid tau_factor_status: {bad}"
 
 
-def test_tau_factor_no_match_unless_import_ran(repo):
-    """tau_factor_status must not be 'matched' — no importer has run."""
-    matched = [r["course_id"] for r in repo if r.get("tau_factor_status") == "matched"]
-    assert not matched, f"No course should be matched without running importer: {matched}"
+def test_tau_factor_matched_have_grade_signal(repo):
+    """Every course with tau_factor_status='matched' must have a grade_signal dict."""
+    matched = [r for r in repo if r.get("tau_factor_status") == "matched"]
+    missing = [r["course_id"] for r in matched if not r.get("grade_signal")]
+    assert not missing, f"Matched courses missing grade_signal: {missing}"
 
 
 def test_tau_factor_lookup_id_normalized(repo):
