@@ -1690,6 +1690,7 @@ function init(board, audit, programJson) {
       if (_ce.tau_factor_avg_grade == null && rc.tau_factor_avg_grade != null) _ce.tau_factor_avg_grade = rc.tau_factor_avg_grade;
       if (_ce.tau_factor_sample_size == null && rc.tau_factor_sample_size != null) _ce.tau_factor_sample_size = rc.tau_factor_sample_size;
       if (!_ce.tau_factor_source_url && rc.tau_factor_source_url) _ce.tau_factor_source_url   = rc.tau_factor_source_url;
+      if (!_ce.grade_signal && rc.grade_signal)                _ce.grade_signal               = rc.grade_signal;
       if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
       if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
     }
