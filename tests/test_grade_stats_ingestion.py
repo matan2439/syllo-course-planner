@@ -327,7 +327,9 @@ def test_matched_grade_signal_shown_as_available(tmp_path):
     from app.analysis.semester_board import _resolve_course_db_data
     r = _resolve_course_db_data("0542-4320", None, db)
     assert r["tau_factor_status"] == "matched"
-    assert r["tau_factor_avg_grade"] is None  # avg populated only in board enrichment, not here
+    assert r["tau_factor_avg_grade"] == 78.0
+    assert r["grade_signal"] is not None
+    assert r["grade_signal"]["average_grade"] == 78.0
 
 
 # ---------------------------------------------------------------------------

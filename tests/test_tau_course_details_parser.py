@@ -263,7 +263,7 @@ def test_syllabus_ai_status_not_available_when_no_syllabus(board_repo):
 
 def test_board_has_tau_factor_status(board_repo):
     """Every repo course must have tau_factor_status (renamed from tau_factor_lookup_status)."""
-    valid = {"not_started", "matched", "not_found", "failed"}
+    valid = {"not_started", "matched", "not_found", "failed", "source_unconfigured"}
     for r in board_repo:
         v = r.get("tau_factor_status")
         assert v in valid, f"{r['course_id']}: invalid tau_factor_status={v!r}"

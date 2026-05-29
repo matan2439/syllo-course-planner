@@ -282,6 +282,9 @@ def _load_mandatory_course(
         except Exception:
             pass
 
+    from app.models.grade_stats import compute_grade_signal
+    grade_signal = compute_grade_signal(grade_stats) if grade_stats else None
+
     if record is None:
         # Use name_he / weekly_hours from placement spec (e.g. from mandatory JSON)
         spec_name  = spec.get("name_he")
@@ -305,6 +308,7 @@ def _load_mandatory_course(
             "prerequisites":               [],
             "prerequisite_details":        [],
             "instructor_uncertainty":      estimate_instructor_uncertainty(None, grade_stats),
+            "grade_signal":                grade_signal,
             "locked_by_user":              locked_by_default,
             "allowed_semesters":           allowed_sems,
             "locked_by_default":           locked_by_default,
@@ -370,6 +374,7 @@ def _load_mandatory_course(
         "prerequisites":               prereqs,
         "prerequisite_details":        prerequisite_details,
         "instructor_uncertainty":      estimate_instructor_uncertainty(record, grade_stats),
+        "grade_signal":                grade_signal,
         "locked_by_user":              locked_by_default,
         "allowed_semesters":           allowed_sems,
         "locked_by_default":           locked_by_default,
@@ -828,6 +833,7 @@ def _format_course(
         "prerequisites":               prereqs,
         "prerequisite_details":        prerequisite_details,
         "instructor_uncertainty":      course.get("instructor_uncertainty"),
+        "grade_signal":                course.get("grade_signal"),
         "locked_by_user":              False,
         "source":                      "auto",
         "data_quality":                data_quality,
@@ -910,6 +916,7 @@ def _resolve_course_db_data(
         "tau_factor_avg_grade":     None,
         "tau_factor_sample_size":   None,
         "tau_factor_source_url":    None,
+        "grade_signal":             None,
     }
     if not db_path.exists():
         return result
@@ -952,7 +959,13 @@ def _resolve_course_db_data(
     try:
         stats = get_grade_stats(cid, db_path)
         if stats:
-            result["tau_factor_status"] = "matched"
+            from app.models.grade_stats import compute_grade_signal
+            grade_signal = compute_grade_signal(stats)
+            result["tau_factor_status"]      = "matched"
+            result["grade_signal"]           = grade_signal
+            result["tau_factor_avg_grade"]   = grade_signal["average_grade"]      if grade_signal else None
+            result["tau_factor_sample_size"] = grade_signal["num_students_total"] if grade_signal else None
+            result["tau_factor_source_url"]  = grade_signal["source_url"]         if grade_signal else None
         elif source_configured:
             result["tau_factor_status"] = "not_started"
         else:
@@ -1082,9 +1095,10 @@ def _build_program_repository_courses(
             "syllabus_ai_complexity_notes": None,
             "tau_factor_lookup_id":         db_data["tau_factor_lookup_id"],
             "tau_factor_status":            db_data["tau_factor_status"],
-            "tau_factor_avg_grade":         None,
-            "tau_factor_sample_size":       None,
-            "tau_factor_source_url":        None,
+            "tau_factor_avg_grade":         db_data.get("tau_factor_avg_grade"),
+            "tau_factor_sample_size":       db_data.get("tau_factor_sample_size"),
+            "tau_factor_source_url":        db_data.get("tau_factor_source_url"),
+            "grade_signal":                 db_data.get("grade_signal"),
             **diff,
         })
 
@@ -1137,9 +1151,10 @@ def _build_program_repository_courses(
             "syllabus_ai_complexity_notes": None,
             "tau_factor_lookup_id":         db_data["tau_factor_lookup_id"],
             "tau_factor_status":            db_data["tau_factor_status"],
-            "tau_factor_avg_grade":         None,
-            "tau_factor_sample_size":       None,
-            "tau_factor_source_url":        None,
+            "tau_factor_avg_grade":         db_data.get("tau_factor_avg_grade"),
+            "tau_factor_sample_size":       db_data.get("tau_factor_sample_size"),
+            "tau_factor_source_url":        db_data.get("tau_factor_source_url"),
+            "grade_signal":                 db_data.get("grade_signal"),
         })
 
     return courses
