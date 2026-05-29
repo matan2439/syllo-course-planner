@@ -14,6 +14,15 @@
  *   without a database connection.
  *
  * Runtime: Node.js (quota check requires TCP connection to Postgres).
+ *
+ * ── HANG FIX ─────────────────────────────────────────────────────────────────
+ * Previous versions used result.text.then() to detect stream completion.
+ * result.text and result.toTextStreamResponse() BOTH consume the same internal
+ * ReadableStream.  A stream can only have one reader → result.text "steals"
+ * all the tokens and the response body delivers nothing to the browser.
+ *
+ * Fix: use the onFinish callback in streamText() which is invoked by the SDK
+ * internally after generation completes, without needing a second stream reader.
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic';
@@ -90,30 +99,15 @@ function resolveModel(): ModelConfig | null {
 
 // ── Dev mode helpers ──────────────────────────────────────────────────────────
 
-/**
- * True when AI_DEV_MODE=true and we are NOT in a Vercel production deployment.
- * VERCEL_ENV=production is set automatically by Vercel in production — we use
- * it as a safety guard so a misconfigured VERCEL env never enables dev mode
- * in production.
- */
 function isDevMode(): boolean {
   if (process.env.VERCEL_ENV === 'production') return false;
   return process.env.AI_DEV_MODE === 'true';
 }
 
-/**
- * True when quota should be bypassed: only in dev mode, never in production.
- * When true, checkAndEnsureSession / incrementCreditsUsed are skipped,
- * and DATABASE_URL is not required.
- */
 function isBypassQuota(): boolean {
   return isDevMode() && process.env.AI_DEV_BYPASS_QUOTA === 'true';
 }
 
-/**
- * A deterministic mock streaming response returned in dev mode.
- * Sets X-AI-Dev-Mode: true so the browser can log a console message.
- */
 function mockStreamResponse(): Response {
   const text =
     '[מצב פיתוח] תשובת AI לדוגמה — אין קריאה לספק מודל אמיתי.\n' +
@@ -133,6 +127,41 @@ function mockStreamResponse(): Response {
       'X-AI-Dev-Mode': 'true',
     },
   });
+}
+
+// ── Quota helpers ─────────────────────────────────────────────────────────────
+
+async function runQuotaCheck(
+  session_token: string,
+  dbUrl: string,
+): Promise<Response | null> {
+  // Returns a JSON error Response if quota is exceeded or DB fails,
+  // returns null if the request is allowed to proceed.
+  let quota;
+  try {
+    quota = await checkAndEnsureSession(session_token, dbUrl);
+  } catch (err) {
+    console.error('[ai] quota DB error:', err instanceof Error ? err.message : String(err));
+    return jsonError(
+      503,
+      'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
+      { detail: err instanceof Error ? err.message : String(err) },
+      'DB_ERROR',
+    );
+  }
+
+  console.log('[ai] quota check passed — credits_used:', quota.credits_used, 'remaining:', quota.remaining);
+
+  if (!quota.allowed) {
+    return jsonError(
+      429,
+      'מכסת שאלות ה-AI החינמית נוצלה.',
+      { credits_used: quota.credits_used, free_limit: quota.free_limit,
+        credits_paid: quota.credits_paid, remaining: 0 },
+      'QUOTA_EXCEEDED',
+    );
+  }
+  return null;
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -155,47 +184,27 @@ export default async function handler(req: Request): Promise<Response> {
 
   const { message, program_id, plan_context, course_context, session_token } = parsed.data;
 
+  console.log('[ai] request started — program_id:', program_id,
+    '— session_token present:', !!session_token);
+
   // ── Dev mode fast path ────────────────────────────────────────────────────
   if (isDevMode()) {
+    console.log('[ai] dev mode active — bypass_quota:', isBypassQuota());
+
     if (isBypassQuota()) {
-      // Full bypass: skip quota check + DB operations entirely.
       return mockStreamResponse();
     }
 
-    // Dev mode with quota enforcement: still check + consume quota in Supabase.
     const dbUrl = process.env.DATABASE_URL ?? '';
     if (!dbUrl) {
-      return jsonError(
-        503,
+      return jsonError(503,
         'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.',
-        undefined,
-        'NO_DATABASE_URL',
-      );
+        undefined, 'NO_DATABASE_URL');
     }
 
-    let quota;
-    try {
-      quota = await checkAndEnsureSession(session_token, dbUrl);
-    } catch (err) {
-      return jsonError(
-        503,
-        'Failed to check AI quota.',
-        { detail: err instanceof Error ? err.message : String(err) },
-        'DB_ERROR',
-      );
-    }
+    const quotaErr = await runQuotaCheck(session_token, dbUrl);
+    if (quotaErr) return quotaErr;
 
-    if (!quota.allowed) {
-      return jsonError(
-        429,
-        'מכסת שאלות ה-AI החינמית נוצלה.',
-        { credits_used: quota.credits_used, free_limit: quota.free_limit,
-          credits_paid: quota.credits_paid, remaining: 0 },
-        'QUOTA_EXCEEDED',
-      );
-    }
-
-    // Mock response is instant — increment synchronously before returning.
     await Promise.allSettled([
       incrementCreditsUsed(session_token, dbUrl),
       logUsageEvent(session_token, 'dev-mock', dbUrl),
@@ -208,45 +217,23 @@ export default async function handler(req: Request): Promise<Response> {
 
   const modelConfig = resolveModel();
   if (!modelConfig) {
-    return jsonError(
-      503,
+    console.log('[ai] no API key configured');
+    return jsonError(503,
       'לא הוגדר מפתח AI. בסביבת Vercel — הוסף ANTHROPIC_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.',
-      undefined,
-      'NO_API_KEY',
-    );
+      undefined, 'NO_API_KEY');
   }
+
+  console.log('[ai] model selected:', modelConfig.name);
 
   const dbUrl = process.env.DATABASE_URL ?? '';
   if (!dbUrl) {
-    return jsonError(
-      503,
+    return jsonError(503,
       'Database not configured. Set DATABASE_URL to enable AI quota tracking.',
-      undefined,
-      'NO_DATABASE_URL',
-    );
+      undefined, 'NO_DATABASE_URL');
   }
 
-  let quota;
-  try {
-    quota = await checkAndEnsureSession(session_token, dbUrl);
-  } catch (err) {
-    return jsonError(
-      503,
-      'Failed to check AI quota.',
-      { detail: err instanceof Error ? err.message : String(err) },
-      'DB_ERROR',
-    );
-  }
-
-  if (!quota.allowed) {
-    return jsonError(
-      429,
-      'מכסת שאלות ה-AI החינמית נוצלה.',
-      { credits_used: quota.credits_used, free_limit: quota.free_limit,
-        credits_paid: quota.credits_paid, remaining: 0 },
-      'QUOTA_EXCEEDED',
-    );
-  }
+  const quotaErr = await runQuotaCheck(session_token, dbUrl);
+  if (quotaErr) return quotaErr;
 
   const systemPrompt = buildSystemPrompt({
     program_id,
@@ -254,30 +241,54 @@ export default async function handler(req: Request): Promise<Response> {
     course_context,
   });
 
-  const result = streamText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: message }],
-    maxTokens: 1024,
-  });
+  // ── Stream ────────────────────────────────────────────────────────────────
+  //
+  // IMPORTANT: do NOT access result.text after calling result.toTextStreamResponse().
+  // Both would compete for the same ReadableStream reader, causing the response
+  // body to deliver no bytes → the browser hangs forever at "מחשב תשובה…".
+  //
+  // Use the onFinish callback instead — it is called by the SDK internally
+  // after the generation completes, without needing a second stream reader.
 
-  // Increment credits and log usage AFTER the stream completes successfully.
-  // result.text resolves when all tokens have been generated.
-  result.text
-    .then(async () => {
-      await Promise.allSettled([
-        incrementCreditsUsed(session_token, dbUrl),
-        logUsageEvent(session_token, modelConfig.name, dbUrl),
-      ]);
-    })
-    .catch(() => { /* AI generation failed — credit NOT consumed */ });
+  let result;
+  try {
+    result = streamText({
+      model: modelConfig.model,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: message }],
+      maxTokens: 1024,
+      onFinish: async ({ usage }) => {
+        console.log('[ai] stream completed — tokens:', usage?.totalTokens ?? '?');
+        await Promise.allSettled([
+          incrementCreditsUsed(session_token, dbUrl),
+          logUsageEvent(session_token, modelConfig.name, dbUrl),
+        ]);
+      },
+    });
+  } catch (err) {
+    console.error('[ai] streamText() threw:', err instanceof Error ? err.message : String(err));
+    return jsonError(503,
+      'לא ניתן ליצור חיבור לספק ה-AI. נסה שוב.',
+      { detail: err instanceof Error ? err.message : String(err) },
+      'AI_PROVIDER_ERROR');
+  }
 
-  return result.toTextStreamResponse({
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'text/plain; charset=utf-8',
-    },
-  });
+  console.log('[ai] stream started');
+
+  try {
+    return result.toTextStreamResponse({
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+    });
+  } catch (err) {
+    console.error('[ai] toTextStreamResponse() threw:', err instanceof Error ? err.message : String(err));
+    return jsonError(503,
+      'שגיאה בהפעלת שידור ה-AI.',
+      { detail: err instanceof Error ? err.message : String(err) },
+      'STREAM_ERROR');
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

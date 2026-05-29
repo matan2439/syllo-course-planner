@@ -1338,11 +1338,15 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
 
   const payload = {
     message,
-    program_id:    selectedProg?.program_id || 'unknown',
-    plan_context:  planContext,
+    program_id:     selectedProg?.program_id || 'unknown',
+    plan_context:   planContext,
     course_context: courseContext || undefined,
-    session_token: getOrCreateSessionToken(),
+    session_token:  getOrCreateSessionToken(),
   };
+
+  // Abort the request if no data arrives within 60 seconds.
+  const controller = new AbortController();
+  const abortTimer = setTimeout(() => controller.abort(), 60_000);
 
   let response;
   try {
@@ -1350,15 +1354,21 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
+      signal:  controller.signal,
     });
   } catch (networkErr) {
+    clearTimeout(abortTimer);
+    const isTimeout = networkErr?.name === 'AbortError';
     targetEl.className = 'ai-response-area';
-    targetEl.textContent = '⚠ שגיאת רשת — לא ניתן להגיע לשרת ה-AI. ודא ש-vercel dev פועל.';
+    targetEl.textContent = isTimeout
+      ? '⚠ הבקשה לקחה יותר מדי זמן. נסה שוב.'
+      : '⚠ שגיאת רשת — לא ניתן להגיע לשרת ה-AI.';
     sendBtn.disabled = false;
     return;
   }
 
   if (!response.ok) {
+    clearTimeout(abortTimer);
     let errMsg = `שגיאה ${response.status}`;
     try {
       const errBody = await response.json();
@@ -1381,10 +1391,14 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
         targetEl.appendChild(wrap);
         sendBtn.disabled = false;
         return;
+      } else if (errBody.code === 'DB_ERROR') {
+        errMsg = '⚠ בעיה זמנית במסד הנתונים — נסה שוב עוד רגע.';
+      } else if (errBody.code === 'AI_PROVIDER_ERROR' || errBody.code === 'STREAM_ERROR') {
+        errMsg = '⚠ ספק ה-AI לא הגיב — נסה שוב.';
       } else {
         errMsg = `⚠ שגיאה: ${errBody.error || errMsg}`;
       }
-    } catch { /* ignore */ }
+    } catch { /* ignore JSON parse failure */ }
     targetEl.className = 'ai-response-area';
     targetEl.textContent = errMsg;
     sendBtn.disabled = false;
@@ -1410,9 +1424,21 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
       text += decoder.decode(value, { stream: true });
       targetEl.textContent = text;
     }
-  } catch {
-    targetEl.textContent += '\n\n[השידור הופסק]';
+    // If we got a 200 but zero bytes, show a fallback message
+    if (!text.trim()) {
+      targetEl.textContent = '⚠ התקבלה תשובה ריקה מה-AI — נסה שוב.';
+    }
+  } catch (streamErr) {
+    const isAbort = streamErr?.name === 'AbortError';
+    if (text) {
+      targetEl.textContent += isAbort ? '\n\n[הבקשה הופסקה]' : '\n\n[השידור הופסק]';
+    } else {
+      targetEl.textContent = isAbort
+        ? '⚠ הבקשה לקחה יותר מדי זמן.'
+        : '⚠ שגיאה בקבלת תשובה מה-AI — נסה שוב.';
+    }
   } finally {
+    clearTimeout(abortTimer);
     sendBtn.disabled = false;
   }
 }

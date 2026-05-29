@@ -6,17 +6,26 @@
 
 // ── AI SDK mocks ──────────────────────────────────────────────────────────────
 
-const mockText = Promise.resolve('מדובר בתוכנית לימודים מאוזנת.');
-
+// streamText mock: calls the onFinish callback after a microtask (simulating
+// stream completion), then returns the standard mock result object.
+// This mirrors the real SDK's behaviour — onFinish fires after generation.
 jest.mock('ai', () => ({
-  streamText: jest.fn().mockReturnValue({
-    text: mockText,
-    toTextStreamResponse: jest.fn().mockReturnValue(
-      new Response('מדובר בתוכנית לימודים מאוזנת.', {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-      }),
-    ),
+  streamText: jest.fn().mockImplementation(({ onFinish }: { onFinish?: Function }) => {
+    if (onFinish) {
+      // Simulate async stream completion
+      Promise.resolve().then(() =>
+        onFinish({ usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+                   finishReason: 'stop', text: 'מדובר בתוכנית לימודים מאוזנת.' }),
+      );
+    }
+    return {
+      toTextStreamResponse: jest.fn().mockReturnValue(
+        new Response('מדובר בתוכנית לימודים מאוזנת.', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }),
+      ),
+    };
   }),
 }));
 
@@ -281,20 +290,17 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
   });
 
-  it('does not call incrementCreditsUsed before the response', async () => {
-    // The increment is scheduled via result.text.then() — it should not
-    // have been called synchronously by the time the response is returned.
+  it('calls incrementCreditsUsed via onFinish after successful response', async () => {
+    // onFinish is called by the streamText mock in a microtask — allow it to run
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
     await handler(makeRequest(VALID_BODY));
-    // mockText (Promise.resolve) resolves in microtask — allow it to run
-    await Promise.resolve();
-    // After one microtask tick, incrementCreditsUsed should have been called
+    await Promise.resolve(); // let onFinish microtask settle
     expect(mockIncrementCreditsUsed).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
   });
 
-  it('calls logUsageEvent after successful response', async () => {
+  it('calls logUsageEvent via onFinish after successful response', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
@@ -307,26 +313,31 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     );
   });
 
-  it('does not consume credit when AI generation fails', async () => {
+  it('does not call incrementCreditsUsed when onFinish is not invoked', async () => {
+    // Simulate streamText where onFinish is never called (e.g. provider error)
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
-
-    const failedText = Promise.reject(new Error('AI generation failed'));
-    // Prevent unhandled rejection warnings in the test runner
-    failedText.catch(() => {});
-
-    jest.requireMock('ai').streamText.mockReturnValueOnce({
-      text: failedText,
-      toTextStreamResponse: jest.fn().mockReturnValue(
-        new Response('', { status: 200 }),
-      ),
-    });
-
+    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
+      // onFinish never called → credits must not be incremented
+      toTextStreamResponse: jest.fn().mockReturnValue(new Response('', { status: 200 })),
+    }));
     await handler(makeRequest(VALID_BODY));
-    // Allow promises to settle
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise(resolve => setTimeout(resolve, 30));
     expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 AI_PROVIDER_ERROR when streamText() throws', async () => {
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    jest.requireMock('ai').streamText.mockImplementationOnce(() => {
+      throw new Error('invalid api key');
+    });
+    const res  = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe('AI_PROVIDER_ERROR');
   });
 });
 
