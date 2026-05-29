@@ -361,3 +361,115 @@ describe('POST /api/ai/course-planner — context forwarding', () => {
     expect(callArgs.system).not.toContain('sk-ant-test-key');
   });
 });
+
+// ── AI dev mode ───────────────────────────────────────────────────────────────
+
+describe('POST /api/ai/course-planner — AI dev mode', () => {
+  afterEach(() => {
+    delete process.env.AI_DEV_MODE;
+    delete process.env.AI_DEV_BYPASS_QUOTA;
+    delete process.env.VERCEL_ENV;
+    delete process.env.DATABASE_URL;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    jest.clearAllMocks();
+  });
+
+  it('returns mock response without API key when AI_DEV_MODE=true', async () => {
+    process.env.AI_DEV_MODE    = 'true';
+    process.env.DATABASE_URL   = 'postgresql://test@localhost/test';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    const res = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-AI-Dev-Mode')).toBe('true');
+    const text = await res.text();
+    expect(text).toContain('מצב פיתוח');
+  });
+
+  it('does not call Anthropic or OpenAI in AI_DEV_MODE', async () => {
+    process.env.AI_DEV_MODE  = 'true';
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
+    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
+    await handler(makeRequest(VALID_BODY));
+    expect(createAnthropic).not.toHaveBeenCalled();
+    expect(createOpenAI).not.toHaveBeenCalled();
+  });
+
+  it('returns NO_API_KEY when AI_DEV_MODE is false and no key is set', async () => {
+    process.env.AI_DEV_MODE  = 'false';
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    const res  = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe('NO_API_KEY');
+  });
+
+  it('skips quota entirely when AI_DEV_BYPASS_QUOTA=true', async () => {
+    process.env.AI_DEV_MODE         = 'true';
+    process.env.AI_DEV_BYPASS_QUOTA = 'true';
+    // No DATABASE_URL — bypass means we do not touch Supabase at all
+    const res = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('X-AI-Dev-Mode')).toBe('true');
+    expect(mockCheckAndEnsureSession).not.toHaveBeenCalled();
+    expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
+    expect(mockLogUsageEvent).not.toHaveBeenCalled();
+  });
+
+  it('still enforces quota in AI_DEV_MODE when bypass is not set', async () => {
+    process.env.AI_DEV_MODE  = 'true';
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
+    });
+    const res  = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.code).toBe('QUOTA_EXCEEDED');
+    expect(mockCheckAndEnsureSession).toHaveBeenCalled();
+  });
+
+  it('ignores AI_DEV_MODE in production — uses real logic, requires API key', async () => {
+    process.env.AI_DEV_MODE  = 'true';
+    process.env.VERCEL_ENV   = 'production';
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    // No API key → should get NO_API_KEY (real path, dev mode ignored)
+    const res  = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe('NO_API_KEY');
+    // Dev mode header must NOT be present
+    expect(res.headers.get('X-AI-Dev-Mode')).toBeNull();
+  });
+
+  it('AI_DEV_BYPASS_QUOTA is ignored in production', async () => {
+    process.env.AI_DEV_MODE         = 'true';
+    process.env.AI_DEV_BYPASS_QUOTA = 'true';
+    process.env.VERCEL_ENV          = 'production';
+    process.env.DATABASE_URL        = 'postgresql://test@localhost/test';
+    // In production dev mode is disabled → quota is still required
+    // and API key is required
+    const res  = await handler(makeRequest(VALID_BODY));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe('NO_API_KEY');
+    expect(mockCheckAndEnsureSession).not.toHaveBeenCalled(); // never reached (API key check first)
+  });
+
+  it('increments credits in AI_DEV_MODE when bypass is off', async () => {
+    process.env.AI_DEV_MODE  = 'true';
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 1, credits_paid: 0, free_limit: 5, remaining: 4,
+    });
+    await handler(makeRequest(VALID_BODY));
+    expect(mockIncrementCreditsUsed).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
+    expect(mockLogUsageEvent).toHaveBeenCalledWith(VALID_SESSION_TOKEN, 'dev-mock', expect.any(String));
+  });
+});

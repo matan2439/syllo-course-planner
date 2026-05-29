@@ -1391,6 +1391,11 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
     return;
   }
 
+  // Dev mode indicator (console only — no UI change)
+  if (response.headers.get('X-AI-Dev-Mode') === 'true') {
+    console.log('[AI] dev mode response — no real model call');
+  }
+
   // Read streaming plain-text response
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
