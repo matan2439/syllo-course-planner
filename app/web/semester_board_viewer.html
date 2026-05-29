@@ -1232,6 +1232,152 @@ const LS_PROG      = 'tau_program';
 const LS_OVERRIDES = 'tau_course_overrides';
 const LS_MY_COURSES = 'tau_my_courses';
 
+/* ── AI endpoint ─────────────────────────────────────────────────────────── */
+const AI_ENDPOINT = '/api/ai/course-planner';
+
+/**
+ * Build a condensed plan context object from current app state to send to the
+ * AI endpoint. Keeps payload small — no full board JSON, just what the model needs.
+ */
+function buildPlanContext() {
+  if (!state) return { semesters: [] };
+
+  const placedIds = new Set(Object.values(state.semesters).flat());
+
+  const semesters = SEMESTERS.map(sem => {
+    const courseIds = state.semesters[sem.id] || [];
+    const courses = courseIds.map(cid => courseMap[cid]).filter(Boolean).map(c => ({
+      course_id:             c.course_id,
+      name_he:               c.name_he,
+      hours:                 c.weekly_hours,
+      difficulty_level:      c.difficulty_level,
+      difficulty_score:      c.difficulty_score,
+      course_type:           c.course_type || 'elective',
+      category:              c.program_category_name_he || c.program_category_id,
+      missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
+    }));
+    return {
+      id:          sem.id,
+      label:       SEM_HE[sem.id] || sem.id,
+      courses,
+      total_hours: courses.reduce((s, c) => s + (c.hours || 0), 0),
+    };
+  }).filter(sem => sem.courses.length > 0);
+
+  const mandatory_unplaced = Object.values(courseMap)
+    .filter(c => c.course_type === 'mandatory' && !placedIds.has(c.course_id) && c.status !== 'missing_from_db')
+    .map(c => ({ course_id: c.course_id, name_he: c.name_he, hours: c.weekly_hours }))
+    .slice(0, 20);
+
+  const prerequisite_issues = Object.values(courseMap)
+    .filter(c => placedIds.has(c.course_id) && c.missing_prerequisites?.length)
+    .map(c => ({ course_id: c.course_id, name_he: c.name_he, missing: c.missing_prerequisites.filter(Boolean) }))
+    .slice(0, 10);
+
+  // Grade signals for placed courses only
+  const grade_signals = {};
+  placedIds.forEach(cid => {
+    const c = courseMap[cid];
+    if (c?.grade_signal?.average_grade != null) {
+      grade_signals[cid] = {
+        average_grade:      c.grade_signal.average_grade,
+        num_students_total: c.grade_signal.num_students_total,
+      };
+    }
+  });
+
+  // Requirements progress
+  let requirements_progress;
+  if (programRequirements) {
+    const prog = computeProgramProgress?.();
+    requirements_progress = {
+      completed_hours: prog?.planned_hours || 0,
+      required_hours:  programRequirements.total_required_hours || 185,
+      categories:      (programRequirements.categories || []).map(cat => {
+        const placed = semesters.flatMap(s => s.courses)
+          .filter(c => c.category === cat.name_he || c.category === cat.category_id).length;
+        return { name: cat.name_he || cat.category_id, required: cat.min_courses || 0, placed };
+      }),
+    };
+  }
+
+  return {
+    program_name:         selectedProg?.program_name,
+    semesters,
+    mandatory_unplaced:   mandatory_unplaced.length ? mandatory_unplaced : undefined,
+    requirements_progress,
+    prerequisite_issues:  prerequisite_issues.length ? prerequisite_issues : undefined,
+    grade_signals:        Object.keys(grade_signals).length ? grade_signals : undefined,
+  };
+}
+
+/**
+ * Call the AI endpoint and stream the response text into `targetEl`.
+ * Returns a Promise that resolves when streaming is complete.
+ */
+async function callAiStream(message, planContext, courseContext, targetEl, sendBtn) {
+  sendBtn.disabled = true;
+  targetEl.className = 'ai-response-area ai-loading';
+  targetEl.textContent = 'מחשב תשובה…';
+
+  const payload = {
+    message,
+    program_id:    selectedProg?.program_id || 'unknown',
+    plan_context:  planContext,
+    course_context: courseContext || undefined,
+  };
+
+  let response;
+  try {
+    response = await fetch(AI_ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+  } catch (networkErr) {
+    targetEl.className = 'ai-response-area';
+    targetEl.textContent = '⚠ שגיאת רשת — לא ניתן להגיע לשרת ה-AI. ודא ש-vercel dev פועל.';
+    sendBtn.disabled = false;
+    return;
+  }
+
+  if (!response.ok) {
+    let errMsg = `שגיאה ${response.status}`;
+    try {
+      const errBody = await response.json();
+      if (errBody.code === 'NO_API_KEY') {
+        errMsg = '⚠ לא הוגדר מפתח AI. הגדר ANTHROPIC_API_KEY בקובץ .env והפעל מחדש את vercel dev.';
+      } else {
+        errMsg = `⚠ שגיאה: ${errBody.error || errMsg}`;
+      }
+    } catch { /* ignore */ }
+    targetEl.className = 'ai-response-area';
+    targetEl.textContent = errMsg;
+    sendBtn.disabled = false;
+    return;
+  }
+
+  // Read streaming plain-text response
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  targetEl.className = 'ai-response-area';
+  targetEl.textContent = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      targetEl.textContent = text;
+    }
+  } catch {
+    targetEl.textContent += '\n\n[השידור הופסק]';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
 /* ── App state ──────────────────────────────────────────────────────────── */
 let courseMap     = {};
 let state         = null; // { semesters:{}, repo:[], unlockedIds:[] }
@@ -1963,25 +2109,24 @@ function renderSidebar() {
   const prog = computeProgramProgress();
   const progressHtml = prog ? renderProgramProgress(prog) : '';
 
-  /* AI panel injected inside scrollable body (mock only — not connected) */
+  /* AI panel — connected to /api/ai/course-planner via Vercel AI SDK */
   const aiPanelHtml = `<details class="ai-panel" id="ai-panel">
     <summary>🤖 <span>עוזר AI לתכנון מערכת</span>
-      <span style="font-size:.59rem;color:var(--text-faint);margin-inline-start:4px">עדיין לא מחובר</span>
+      <span style="font-size:.59rem;color:#22c55e;margin-inline-start:4px" id="ai-status-badge">מחובר</span>
       <span class="ai-chevron">›</span>
     </summary>
     <div class="ai-body">
-      <div class="ai-mock-banner">⚠ עוזר AI לתכנון מערכת — עדיין לא מחובר.<br>
-        בהמשך תוכל להזין העדפות אישיות וה-AI יבנה תוכנית שעומדת בדרישות התואר.</div>
-      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:6px">דוגמאות להעדפות:</div>
+      <div class="ai-note">💡 שאל שאלות על התוכנית שלך — האסיסטנט מבוסס על הנתונים המקומיים בלבד.</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
-        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני רוצה עומס קל בסמסטר א׳</span>
-        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני עובד יום בשבוע</span>
-        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני מעדיף פחות קורסים מתמטיים</span>
-        <span style="font-size:.66rem;color:var(--text-faint);padding:3px 6px;background:var(--surface2);border-radius:5px">אני רוצה לסיים את קורסי הליבה מוקדם</span>
+        <button class="ai-prompt-btn" data-sidebar-prompt="האם התוכנית שלי מאוזנת?">💬 האם התוכנית שלי מאוזנת?</button>
+        <button class="ai-prompt-btn" data-sidebar-prompt="איזה קורסי ליבה חסרים לי?">💬 איזה קורסי ליבה חסרים לי?</button>
+        <button class="ai-prompt-btn" data-sidebar-prompt="איך אפשר להוריד עומס בסמסטר הכבד ביותר?">💬 איך אפשר להוריד עומס?</button>
+        <button class="ai-prompt-btn" data-sidebar-prompt="האם יש בעיות דרישות קדם בתוכנית שלי?">💬 בעיות דרישות קדם?</button>
+        <button class="ai-prompt-btn" data-sidebar-prompt="איזה קורסים מתאימים אם אני מעדיף עומס נמוך?">💬 קורסים עם עומס נמוך?</button>
       </div>
       <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
-        placeholder="הזן העדפות אישיות…" disabled></textarea>
-      <button class="ai-send" id="ai-sidebar-send" disabled style="opacity:.5;cursor:not-allowed">שלח (לא מחובר)</button>
+        placeholder="שאל שאלה על התוכנית…" dir="rtl"></textarea>
+      <button class="ai-send" id="ai-sidebar-send">שלח ›</button>
       <div class="ai-response" id="ai-sidebar-response"></div>
     </div>
   </details>`;
@@ -1995,14 +2140,25 @@ function renderSidebar() {
     allowBlockedDrag = !allowBlockedDrag;
     renderSidebar();
   });
-  /* Re-wire AI send button (re-injected on each render) */
+  /* Re-wire AI send + suggested prompt buttons (re-injected on each render) */
   document.getElementById('ai-sidebar-send')?.addEventListener('click', () => {
-    const txt = document.getElementById('ai-sidebar-textarea')?.value?.trim();
-    const resp = document.getElementById('ai-sidebar-response');
-    if (!resp) return;
-    resp.textContent = txt
-      ? `בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\nשאלתך: ${txt}`
-      : 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.';
+    const textarea = document.getElementById('ai-sidebar-textarea');
+    const respEl   = document.getElementById('ai-sidebar-response');
+    const sendBtn  = document.getElementById('ai-sidebar-send');
+    const msg      = textarea?.value?.trim();
+    if (!msg || !respEl || !sendBtn) return;
+    callAiStream(msg, buildPlanContext(), null, respEl, sendBtn);
+  });
+  document.querySelectorAll('[data-sidebar-prompt]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const msg    = btn.dataset.sidebarPrompt;
+      const respEl = document.getElementById('ai-sidebar-response');
+      const sendBtn = document.getElementById('ai-sidebar-send');
+      if (!msg || !respEl || !sendBtn) return;
+      const textarea = document.getElementById('ai-sidebar-textarea');
+      if (textarea) textarea.value = msg;
+      callAiStream(msg, buildPlanContext(), null, respEl, sendBtn);
+    });
   });
 }
 
@@ -2407,14 +2563,7 @@ function buildAiChatPanel(c) {
     `<button class="ai-prompt-btn" data-prompt="${esc(p)}">💬 ${esc(p)}</button>`
   ).join('');
 
-  // TODO: Wire up to POST /api/ai/course-chat when backend AI provider is ready.
-  //       Expected payload: { course_id, question, context: buildCourseContext(c) }
-  //       Expected response: { answer: string }
   return `<div class="ai-chat-wrap">
-    <div class="ai-mock-banner">
-      ⚠ תצוגת AI ניסיונית — עדיין לא מחובר למנוע AI.<br>
-      לחיצה על "שלח" תציג את ההקשר שיישלח ל-AI כשיחובר. אין תשובות אמיתיות.
-    </div>
     <div>
       <div class="ai-suggested-label">שאלות מוצעות</div>
       <div class="ai-suggested-prompts" id="ai-prompt-list">${promptBtns}</div>
@@ -2423,7 +2572,7 @@ function buildAiChatPanel(c) {
       <textarea id="ai-chat-input" class="ai-textarea-chat" rows="3"
         placeholder="שאל שאלה על הקורס…" dir="rtl"></textarea>
       <div class="ai-send-row">
-        <button id="ai-chat-send" class="ai-send-btn">שלח (מדומה) ›</button>
+        <button id="ai-chat-send" class="ai-send-btn">שלח ›</button>
       </div>
     </div>
     <div id="ai-chat-response" class="ai-response-area ai-empty"></div>
@@ -2431,39 +2580,15 @@ function buildAiChatPanel(c) {
   </div>`;
 }
 
-/**
- * Handle the AI send button.
- * TODO: Replace the placeholder logic below with a real fetch() call once
- *       the backend exposes POST /api/ai/course-chat.
- */
+/** Handle the AI send button in the course detail modal. */
 function handleAiSend(c) {
   const input    = document.getElementById('ai-chat-input');
   const respEl   = document.getElementById('ai-chat-response');
   const sendBtn  = document.getElementById('ai-chat-send');
-  const question = input.value.trim();
-  if (!question) return;
-
-  sendBtn.disabled = true;
-  respEl.className = 'ai-response-area ai-loading';
-  respEl.textContent = 'מכין תשובה…';
-
-  // TODO: Replace setTimeout below with a real API call:
-  //   const payload = { course_id: c.course_id, question, context: buildCourseContext(c) };
-  //   const res = await fetch('/api/ai/course-chat', { method:'POST',
-  //     headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  //   const { answer } = await res.json();
-  //   respEl.textContent = answer;
-  setTimeout(() => {
-    const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
-    const ctx = buildCourseContext(c);
-    respEl.className = 'ai-response-area';
-
-    let text = 'בשלב זה השיחה אינה מחוברת עדיין. בעתיד הניתוח יתבסס על הסילבוס, דרישות הקדם, נתוני ציונים והערות המשתמש.\n\n';
-    if (!hasSyllabus) text += '⚠ אין סילבוס שמור, ולכן הניתוח יהיה מוגבל כשיחובר.\n\n';
-    text += `[הקשר שישלח ל-AI כשיחובר]\nשאלה: ${question}\n\n${ctx}`;
-    respEl.textContent = text;
-    sendBtn.disabled = false;
-  }, 300);
+  const question = input?.value?.trim();
+  if (!question || !respEl || !sendBtn) return;
+  const courseCtx = buildCourseContext(c);
+  callAiStream(question, buildPlanContext(), courseCtx, respEl, sendBtn);
 }
 
 function syllabusLink(c) {
