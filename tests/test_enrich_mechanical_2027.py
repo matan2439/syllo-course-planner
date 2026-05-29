@@ -155,11 +155,15 @@ def test_board_other_specialization_count_39(repo):
     assert sum(1 for r in repo if r.get("category_id") == "other_specialization") == 39
 
 
-def test_board_planned_courses_zero():
-    """Planned (board-placed) courses for 2027 must remain 0."""
+def test_board_planned_electives_zero():
+    """Planned elective/core/lab courses remain 0; only mandatory may be auto-placed."""
     board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
-    placed = sum(len(s.get("courses", [])) for s in board["semesters"])
-    assert placed == 0, f"Expected 0 planned courses, got {placed}"
+    placed_electives = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
+    ]
+    assert not placed_electives, f"Unexpected placed non-mandatory: {[c['course_id'] for c in placed_electives]}"
 
 
 def test_board_category_counts_sum_to_56(repo):
@@ -232,3 +236,135 @@ def test_mandatory_file_no_overlap_with_repo():
     repo_ids = {r["course_id"] for r in board["metadata"]["program_repository_courses"]}
     overlap = mand_ids & repo_ids
     assert not overlap, f"Mandatory courses overlap with elective repo: {overlap}"
+
+
+# ---------------------------------------------------------------------------
+# Mandatory courses: board placement (Part B)
+# ---------------------------------------------------------------------------
+
+def test_board_mandatory_placed():
+    """Board JSON must have mandatory courses placed in semesters."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    mandatory = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    ]
+    assert len(mandatory) >= 1, "Board must have at least one mandatory course placed"
+
+
+def test_board_mandatory_have_names():
+    """All placed mandatory courses must have name_he from spec."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    mandatory = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    ]
+    missing = [c["course_id"] for c in mandatory if not c.get("name_he")]
+    assert not missing, f"Mandatory courses missing name_he: {missing}"
+
+
+def test_board_mandatory_have_hours():
+    """All placed mandatory courses must have weekly_hours from spec."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    mandatory = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    ]
+    missing = [c["course_id"] for c in mandatory if c.get("weekly_hours") is None]
+    assert not missing, f"Mandatory courses missing weekly_hours: {missing}"
+
+
+def test_board_mandatory_not_in_repo():
+    """Mandatory placed courses must not appear in program_repository_courses."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    mandatory_ids = {
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    }
+    repo_ids = {r["course_id"] for r in board["metadata"]["program_repository_courses"]}
+    overlap = mandatory_ids & repo_ids
+    assert not overlap, f"Mandatory courses appear in repo: {overlap}"
+
+
+def test_board_mandatory_not_duplicated():
+    """Each mandatory course appears at most once across all semesters."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    mandatory_ids = [
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    ]
+    from collections import Counter
+    counts = Counter(mandatory_ids)
+    dupes = {cid: n for cid, n in counts.items() if n > 1}
+    assert not dupes, f"Duplicate mandatory courses: {dupes}"
+
+
+def test_board_mandatory_locked_by_default():
+    """Placed mandatory courses have locked_by_default=True."""
+    board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    not_locked = [
+        c["course_id"]
+        for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory" and not c.get("locked_by_default", True)
+    ]
+    assert not not_locked, f"Mandatory courses not locked: {not_locked}"
+
+
+# ---------------------------------------------------------------------------
+# weekly_hours fix for other_specialization (Part C)
+# ---------------------------------------------------------------------------
+
+def test_enriched_program_spec_courses_have_hours():
+    """The enriched program JSON has hours for some other_specialization courses."""
+    enriched_path = Path("data/programs/mechanical_engineering_2027_enriched.json")
+    enriched = json.loads(enriched_path.read_text(encoding="utf-8"))
+    spec = enriched.get("other_specialization_electives", [])
+    with_hours = [c for c in spec if c.get("hours") is not None]
+    assert len(with_hours) > 0, "Enriched program must have hours for some spec courses"
+
+
+def test_board_spec_courses_use_enriched_hours(repo):
+    """Some other_specialization repo courses should have non-null weekly_hours (from enriched)."""
+    spec_with_hours = [
+        r for r in repo
+        if r.get("category_id") == "other_specialization"
+        and r.get("weekly_hours") is not None
+    ]
+    assert len(spec_with_hours) > 0, (
+        "After fix, at least some other_specialization courses must have weekly_hours"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Enriched program preferred (Part A)
+# ---------------------------------------------------------------------------
+
+def test_enriched_program_has_mandatory_courses_file_ref():
+    """mechanical_engineering_2027_enriched.json must reference the mandatory courses file."""
+    enriched_path = Path("data/programs/mechanical_engineering_2027_enriched.json")
+    enriched = json.loads(enriched_path.read_text(encoding="utf-8"))
+    mand_ref = enriched.get("requirements", {}).get("mandatory_courses", {})
+    assert "courses_file" in mand_ref, (
+        "Enriched program must have requirements.mandatory_courses.courses_file"
+    )
+    courses_file = Path(mand_ref["courses_file"])
+    assert courses_file.exists(), f"courses_file path must exist: {courses_file}"
+
+
+def test_mandatory_json_uses_full_semester_ids():
+    """mandatory_2027.json must use full semester IDs like 'year_3_semester_a'."""
+    mand = json.loads(_MAND_PATH.read_text(encoding="utf-8"))
+    for c in mand.get("courses", []):
+        for sem in c.get("allowed_semesters", []):
+            assert sem.startswith("year_"), (
+                f"{c['course_id']}: allowed_semesters must be full IDs like "
+                f"'year_3_semester_a', got {sem!r}"
+            )

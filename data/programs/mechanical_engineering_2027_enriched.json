@@ -14,6 +14,11 @@
     "יש להתחשב בדרישות הקדם לכל קורס"
   ],
   "requirements": {
+    "mandatory_courses": {
+      "courses_file": "data/programs/mechanical_engineering_mandatory_2027.json",
+      "source": "tau_graphql_2025",
+      "needs_verification": true
+    },
     "core_courses_total_min": 6,
     "core_categories": [
       {

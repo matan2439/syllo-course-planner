@@ -210,9 +210,13 @@ def test_board_json_syllabus_url_format(board_repo):
             assert "tau.ac.il" in syl, f"Unexpected syllabus_url: {syl}"
 
 
-def test_board_json_planned_courses_still_zero(board):
-    placed = sum(len(s.get("courses", [])) for s in board["semesters"])
-    assert placed == 0, "Board must remain empty (no auto-placed courses)"
+def test_board_json_planned_electives_still_zero(board):
+    placed_elec = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
+    ]
+    assert not placed_elec, f"Non-mandatory courses must not be auto-placed: {[c['course_id'] for c in placed_elec]}"
 
 
 # ---------------------------------------------------------------------------

@@ -207,6 +207,8 @@ def _parse_mandatory_specs(program: dict[str, Any]) -> list[dict[str, Any]]:
         n       = len(allowed)
         specs.append({
             "course_id":           cid,
+            "name_he":             mc.get("name_he"),
+            "weekly_hours":        mc.get("weekly_hours") or mc.get("hours"),
             "allowed_semesters":   allowed,
             "recommended_semester": mc.get("recommended_semester"),
             "locked_by_default":   mc.get("locked_by_default", n <= 1),
@@ -281,13 +283,17 @@ def _load_mandatory_course(
             pass
 
     if record is None:
-        global_warns.append(
-            f"Mandatory course {course_id} not found in database."
-        )
+        # Use name_he / weekly_hours from placement spec (e.g. from mandatory JSON)
+        spec_name  = spec.get("name_he")
+        spec_hours = spec.get("weekly_hours")
+        if not spec_name:
+            global_warns.append(
+                f"Mandatory course {course_id} not found in database."
+            )
         return {
             "course_id":                   course_id,
-            "name_he":                     None,
-            "weekly_hours":                None,
+            "name_he":                     spec_name,
+            "weekly_hours":                spec_hours,
             "difficulty_score":            None,
             "difficulty_level":            None,
             "workload_score":              None,
@@ -307,12 +313,12 @@ def _load_mandatory_course(
             "source_note":                 source_note,
             "source":                      "program",
             "data_quality": {
-                "has_weekly_hours":     False,
+                "has_weekly_hours":     spec_hours is not None,
                 "has_semester_data":    True,
                 "has_difficulty_score": False,
                 "placement_confidence": "high",
             },
-            "warnings":      ["Course not found in database."],
+            "warnings":      [] if spec_name else ["Course not found in database."],
             "syllabus_url":  None,
             "syllabus_links": [],
             "source_urls":   [],
@@ -1095,8 +1101,8 @@ def _build_program_repository_courses(
         courses.append({
             "course_id":                    cid,
             "name_he":                      name,
-            "weekly_hours":                 None,
-            "offered_semesters":            [],
+            "weekly_hours":                 ec.get("hours") or ec.get("weekly_hours"),
+            "offered_semesters":            ec.get("offered_semesters", []),
             "offered_in_year":              ec.get("offered_in_year", True),
             "category_id":                  cat_id,
             "program_category_name_he":     cat_name_map.get(cat_id),

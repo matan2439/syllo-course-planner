@@ -3,39 +3,639 @@
     {
       "semester_id": "year_3_semester_a",
       "display_name": "Year 3 — Semester A",
-      "courses": [],
-      "total_weekly_hours": null,
+      "courses": [
+        {
+          "course_id": "0512-1204",
+          "name_he": "המרת אנרגיה והנע חשמלי",
+          "weekly_hours": 3.5,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-2400",
+          "name_he": "תכן מכני (1)",
+          "weekly_hours": 4.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-2500",
+          "name_he": "מכניקת הזורמים (1)",
+          "weekly_hours": 5.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-3243",
+          "name_he": "מבוא לבקרה",
+          "weekly_hours": 5.5,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        }
+      ],
+      "total_weekly_hours": 18.0,
       "average_difficulty": null,
       "warnings": []
     },
     {
       "semester_id": "year_3_semester_b",
       "display_name": "Year 3 — Semester B",
-      "courses": [],
-      "total_weekly_hours": null,
+      "courses": [
+        {
+          "course_id": "0542-3620",
+          "name_he": "מעבר חם",
+          "weekly_hours": 4.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-3780",
+          "name_he": "תהליכי עיבוד (1)",
+          "weekly_hours": 3.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-3791",
+          "name_he": "תהליכי עיבוד - מעבדה",
+          "weekly_hours": 2.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-3792",
+          "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+          "weekly_hours": 4.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        }
+      ],
+      "total_weekly_hours": 13.0,
       "average_difficulty": null,
       "warnings": []
     },
     {
       "semester_id": "year_4_semester_a",
       "display_name": "Year 4 — Semester A",
-      "courses": [],
-      "total_weekly_hours": null,
+      "courses": [
+        {
+          "course_id": "0542-4010",
+          "name_he": "תיכון ופרוייקט (1)",
+          "weekly_hours": 3.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-4091",
+          "name_he": "מעבדה במכניקת המוצקים",
+          "weekly_hours": 2.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        }
+      ],
+      "total_weekly_hours": 5.0,
       "average_difficulty": null,
       "warnings": []
     },
     {
       "semester_id": "year_4_semester_b",
       "display_name": "Year 4 — Semester B",
-      "courses": [],
-      "total_weekly_hours": null,
+      "courses": [
+        {
+          "course_id": "0542-4020",
+          "name_he": "תיכון ופרוייקט (2)",
+          "weekly_hours": 3.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        },
+        {
+          "course_id": "0542-4092",
+          "name_he": "מעבדת זרימה ומעבר חום",
+          "weekly_hours": 2.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "syllabus_url": null,
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": []
+        }
+      ],
+      "total_weekly_hours": 5.0,
       "average_difficulty": null,
       "warnings": []
     }
   ],
   "warnings": [],
   "metadata": {
-    "total_courses": 0,
+    "total_courses": 12,
     "start_year": 3,
     "completed_course_ids": [],
     "board_validation": {
@@ -46,9 +646,9 @@
     "program_requirements_validation": {
       "valid": false,
       "total_required_hours": 185,
-      "planned_hours": 0.0,
+      "planned_hours": 41.0,
       "unknown_hours_courses": 0,
-      "remaining_hours": 185.0,
+      "remaining_hours": 144.0,
       "core_courses_total_min": 6,
       "core_courses_selected": 0,
       "core_courses_satisfied": false,
@@ -2199,7 +2799,7 @@
     ]
   },
   "summary": {
-    "total_courses": 0,
+    "total_courses": 12,
     "courses_with_missing_hours": 0,
     "courses_with_unknown_semester": 0,
     "low_confidence_placements": 0

@@ -178,9 +178,13 @@ def test_board_has_moodle_urls(board_repo):
     assert n > 0, "Expected some courses to have moodle_url"
 
 
-def test_board_planned_still_zero(board):
-    placed = sum(len(s.get("courses", [])) for s in board["semesters"])
-    assert placed == 0, "Board must remain empty"
+def test_board_planned_electives_still_zero(board):
+    placed_elec = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
+    ]
+    assert not placed_elec, f"Non-mandatory courses must not be auto-placed: {[c['course_id'] for c in placed_elec]}"
 
 
 def test_board_repo_still_56(board_repo):
@@ -298,9 +302,13 @@ def test_syllabus_ai_complexity_notes_is_null(board_repo):
             f"{r['course_id']}: syllabus_ai_complexity_notes should be null"
 
 
-def test_planned_courses_still_zero(board):
-    placed = sum(len(s.get("courses", [])) for s in board["semesters"])
-    assert placed == 0
+def test_planned_electives_still_zero(board):
+    placed_elec = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
+    ]
+    assert not placed_elec
 
 
 # ---------------------------------------------------------------------------

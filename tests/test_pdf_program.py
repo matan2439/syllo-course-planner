@@ -448,14 +448,16 @@ def test_2027_board_file_exists():
     assert _BOARD_2027_PATH.exists(), "mechanical_semester_board_2027.json is missing"
 
 
-def test_2027_initial_board_has_zero_placed_courses():
+def test_2027_initial_board_has_zero_placed_electives():
+    """Elective/core/lab courses are not auto-placed; only mandatory courses may appear."""
     board = _load_2027_board()
-    placed = [
+    placed_elec = [
         c["course_id"]
         for sem in board["semesters"]
         for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
     ]
-    assert placed == [], f"Expected 0 placed courses, got: {placed}"
+    assert placed_elec == [], f"Expected 0 placed electives, got: {placed_elec}"
 
 
 def test_2027_board_has_program_repository_courses():
@@ -759,11 +761,30 @@ def test_board_json_2027_repository_count_56():
     assert len(repo) == 56
 
 
-def test_board_json_2027_planned_count_zero():
-    """Board JSON has 0 planned (placed) courses."""
+def test_board_json_2027_planned_electives_zero():
+    """Board JSON has 0 planned elective/core/lab courses (only mandatory auto-placed)."""
     board = _load_2027_board()
-    planned = sum(len(s.get("courses", [])) for s in board["semesters"])
-    assert planned == 0
+    placed = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") != "mandatory"
+    ]
+    assert placed == [], f"Expected 0 placed electives, got: {[c['course_id'] for c in placed]}"
+
+
+def test_board_json_2027_mandatory_placed():
+    """Board JSON has mandatory courses placed (sourced from mandatory_2027.json)."""
+    board = _load_2027_board()
+    mandatory = [
+        c for sem in board["semesters"]
+        for c in sem.get("courses", [])
+        if c.get("course_type") == "mandatory"
+    ]
+    # The mandatory file has 12 courses; allow >=1 placed (verification may differ)
+    assert len(mandatory) >= 1, "Expected at least 1 mandatory course placed"
+    # All placed courses must have a name (from spec)
+    missing_name = [c["course_id"] for c in mandatory if not c.get("name_he")]
+    assert not missing_name, f"Mandatory courses missing name_he: {missing_name}"
 
 
 def test_board_json_2027_category_counts():

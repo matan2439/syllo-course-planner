@@ -14,9 +14,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a"]
     },
     {
       "course_id": "0542-2400",
@@ -25,9 +23,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a"]
     },
     {
       "course_id": "0542-2500",
@@ -36,9 +32,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a"]
     },
     {
       "course_id": "0542-3243",
@@ -47,9 +41,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a"]
     },
     {
       "course_id": "0542-3620",
@@ -58,9 +50,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"]
     },
     {
       "course_id": "0542-3780",
@@ -69,9 +59,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"]
     },
     {
       "course_id": "0542-3791",
@@ -80,9 +68,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"]
     },
     {
       "course_id": "0542-3792",
@@ -91,9 +77,7 @@
       "year": 3,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "A"
-      ]
+      "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"]
     },
     {
       "course_id": "0542-4010",
@@ -102,9 +86,7 @@
       "year": 4,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "B"
-      ]
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"]
     },
     {
       "course_id": "0542-4020",
@@ -113,9 +95,7 @@
       "year": 4,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "B"
-      ]
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"]
     },
     {
       "course_id": "0542-4091",
@@ -124,9 +104,7 @@
       "year": 4,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "B"
-      ]
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"]
     },
     {
       "course_id": "0542-4092",
@@ -135,9 +113,7 @@
       "year": 4,
       "locked_by_default": true,
       "source": "tau_graphql_2025",
-      "allowed_semesters": [
-        "B"
-      ]
+      "allowed_semesters": ["year_4_semester_a", "year_4_semester_b"]
     }
   ]
 }
