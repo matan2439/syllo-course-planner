@@ -642,13 +642,20 @@ def test_2027_board_json_all_have_program_category_name_he():
     assert not missing, f"Missing program_category_name_he: {missing}"
 
 
-def test_mandatory_placeholder_is_empty():
-    """mechanical_engineering_mandatory_2027.json is a placeholder with no courses."""
+def test_mandatory_file_is_valid():
+    """mechanical_engineering_mandatory_2027.json is valid: has status, needs_verification, courses list."""
     mand_path = Path("data/programs/mechanical_engineering_mandatory_2027.json")
     assert mand_path.exists()
     mand = json.loads(mand_path.read_text(encoding="utf-8"))
-    assert mand.get("status") == "empty_placeholder"
-    assert mand.get("courses") == []
+    assert "status" in mand, "status field required"
+    assert "courses" in mand, "courses field required"
+    assert isinstance(mand["courses"], list), "courses must be a list"
+    # Each course must have a course_id
+    for c in mand["courses"]:
+        assert "course_id" in c, f"mandatory course missing course_id: {c}"
+    # Status must be a known value
+    valid_statuses = {"empty_placeholder", "extracted_from_graphql", "verified"}
+    assert mand.get("status") in valid_statuses, f"Unknown mandatory status: {mand.get('status')}"
 
 
 def test_2027_repository_fluids_count_4():

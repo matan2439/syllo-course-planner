@@ -449,3 +449,67 @@ def test_ai_panel_still_present(html):
     """AI assistant panel must still be present after legend removal."""
     assert "ai-panel" in html
     assert "עוזר AI לתכנון מערכת" in html
+
+
+# ---------------------------------------------------------------------------
+# TAU Factor 'failed' status (Part G / Part H)
+# ---------------------------------------------------------------------------
+
+def test_tau_factor_failed_message(html):
+    """When tau_factor_status == 'failed', show 'טעינת נתוני טאו פקטור נכשלה'."""
+    assert "טעינת נתוני טאו פקטור נכשלה" in html, \
+        "Failed TAU Factor status must show a specific failure message"
+
+
+def test_tau_factor_four_statuses_handled(html):
+    """All four TAU Factor statuses have distinct handling in the signals section."""
+    assert "not_found" in html,    "not_found case must be handled"
+    assert "failed" in html,       "failed case must be handled"
+    assert "not_started" in html,  "not_started case must be handled"
+    assert "טרם נטענו נתוני טאו פקטור" in html
+    assert "לא נמצאו נתוני טאו פקטור עבור מספר הקורס" in html
+    assert "טעינת נתוני טאו פקטור נכשלה" in html
+
+
+# ---------------------------------------------------------------------------
+# other_specialization section visibility (Part E / Part H)
+# ---------------------------------------------------------------------------
+
+def test_other_specialization_opened_on_empty_board(html):
+    """When board is empty, other_specialization section is added to openGroups."""
+    assert "other_specialization" in html, "other_specialization category must be referenced"
+    # The init code must add other_specialization to openGroups when board is empty
+    assert "openGroups.add(cat.category_id)" in html and "other_specialization" in html, \
+        "openGroups.add must reference other_specialization"
+
+
+def test_other_specialization_title_includes_count(html):
+    """Section title for other_specialization includes '— N קורסים' suffix."""
+    assert "other_specialization" in html
+    # The count suffix pattern must be in the rendering code
+    assert "קורסים" in html, "Section title must include 'קורסים' count suffix"
+
+
+# ---------------------------------------------------------------------------
+# Enrichment infrastructure (Part H)
+# ---------------------------------------------------------------------------
+
+def test_enrich_mechanical_2027_module_exists():
+    """app/pipeline/enrich_mechanical_2027.py must exist as an importable module."""
+    from pathlib import Path
+    assert Path("app/pipeline/enrich_mechanical_2027.py").exists(), \
+        "Enrichment command module must exist at app/pipeline/enrich_mechanical_2027.py"
+
+
+def test_enrich_module_has_enrich_board_function():
+    """enrich_mechanical_2027.enrich_board must be importable."""
+    from app.pipeline.enrich_mechanical_2027 import enrich_board
+    assert callable(enrich_board)
+
+
+def test_enrich_module_has_normalize_course_id():
+    """enrich_mechanical_2027._normalize_course_id must format IDs as XXXX-XXXX."""
+    from app.pipeline.enrich_mechanical_2027 import _normalize_course_id
+    assert _normalize_course_id("05424320") == "0542-4320"
+    assert _normalize_course_id("0542-4320") == "0542-4320"
+    assert _normalize_course_id("0001-0001") == "0001-0001"

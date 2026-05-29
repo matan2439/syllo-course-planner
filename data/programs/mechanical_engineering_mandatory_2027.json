@@ -1,9 +1,143 @@
 {
   "version": "2027",
   "program_id": "mechanical_engineering_2027",
-  "description": "קורסי חובה — הנדסה מכנית תשפ\"ז. טרם מולאו — דורשים אימות מול דף התוכנית הרשמי.",
-  "status": "empty_placeholder",
+  "description": "קורסי חובה שנה ג'+ד' — הנדסה מכנית תשפ\"ז. מקור: TAU GraphQL API 2025.",
+  "status": "extracted_from_graphql",
   "needs_verification": true,
-  "note": "קורסי החובה לתשפ\"ז טרם הוזנו. יש להשלים את הנתונים על בסיס הסילבוס הרשמי של אוניברסיטת תל אביב.",
-  "courses": []
+  "note": "קורסי החובה נחלצו מ-API הרשמי של אוניברסיטת תל אביב (tochniot.tau.ac.il). יש לאמת מול הסילבוס הרשמי.",
+  "source": "tau_graphql_2025",
+  "courses": [
+    {
+      "course_id": "0512-1204",
+      "name_he": "המרת אנרגיה והנע חשמלי",
+      "weekly_hours": 3.5,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-2400",
+      "name_he": "תכן מכני (1)",
+      "weekly_hours": 4.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-2500",
+      "name_he": "מכניקת הזורמים (1)",
+      "weekly_hours": 5.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-3243",
+      "name_he": "מבוא לבקרה",
+      "weekly_hours": 5.5,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-3620",
+      "name_he": "מעבר חם",
+      "weekly_hours": 4.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-3780",
+      "name_he": "תהליכי עיבוד (1)",
+      "weekly_hours": 3.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-3791",
+      "name_he": "תהליכי עיבוד - מעבדה",
+      "weekly_hours": 2.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-3792",
+      "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+      "weekly_hours": 4.0,
+      "year": 3,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "A"
+      ]
+    },
+    {
+      "course_id": "0542-4010",
+      "name_he": "תיכון ופרוייקט (1)",
+      "weekly_hours": 3.0,
+      "year": 4,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "B"
+      ]
+    },
+    {
+      "course_id": "0542-4020",
+      "name_he": "תיכון ופרוייקט (2)",
+      "weekly_hours": 3.0,
+      "year": 4,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "B"
+      ]
+    },
+    {
+      "course_id": "0542-4091",
+      "name_he": "מעבדה במכניקת המוצקים",
+      "weekly_hours": 2.0,
+      "year": 4,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "B"
+      ]
+    },
+    {
+      "course_id": "0542-4092",
+      "name_he": "מעבדת זרימה ומעבר חום",
+      "weekly_hours": 2.0,
+      "year": 4,
+      "locked_by_default": true,
+      "source": "tau_graphql_2025",
+      "allowed_semesters": [
+        "B"
+      ]
+    }
+  ]
 }

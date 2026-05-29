@@ -962,7 +962,7 @@
       {
         "course_id": "0542-4125",
         "name_he": "מבוא להנדסת סביבה",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -995,7 +995,7 @@
       {
         "course_id": "0542-4131",
         "name_he": "מנועי שריפה פנימית",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1023,7 +1023,7 @@
       {
         "course_id": "0542-4132",
         "name_he": "אנרגיה מתחדשת",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1050,8 +1050,8 @@
       },
       {
         "course_id": "0542-4135",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "תכן תרמי מתקדם בעזרת כלי תוכנה הנדסיים",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1079,7 +1079,7 @@
       {
         "course_id": "0542-4179",
         "name_he": "מתקנים לייצור כח וניצול אנרגיה",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1138,8 +1138,8 @@
       },
       {
         "course_id": "0542-4226",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "יישומי אלמנטים סופיים בתעשייה",
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1170,8 +1170,8 @@
       },
       {
         "course_id": "0542-4275",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "אווירודינמיקה של טורבינות רוח",
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1203,7 +1203,7 @@
       {
         "course_id": "0542-4321",
         "name_he": "הידראוליקה הנדסית",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1231,7 +1231,7 @@
       {
         "course_id": "0542-4322",
         "name_he": "תכנון תרמי של ציוד אלקטרוני",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1259,7 +1259,7 @@
       {
         "course_id": "0542-4351",
         "name_he": "הנדסה ימית",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1291,7 +1291,7 @@
       {
         "course_id": "0542-4425",
         "name_he": "הדפסת תלת מימד ותכן חלקי פלסטיקה",
-        "weekly_hours": null,
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1325,7 +1325,7 @@
       {
         "course_id": "0542-4524",
         "name_he": "מבוא להנדסת חלל",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1358,8 +1358,8 @@
       },
       {
         "course_id": "0542-4527",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "מכניקת המסלולים של לוויינים",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1390,8 +1390,8 @@
       },
       {
         "course_id": "0542-4559",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "מעבדה במכאטרוניקה",
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1422,7 +1422,7 @@
       {
         "course_id": "0542-4621",
         "name_he": "מבוא לרובוטיקה",
-        "weekly_hours": null,
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1454,7 +1454,7 @@
       {
         "course_id": "0542-4722",
         "name_he": "מבוא להנדסת מערכות זעירות (Mems)",
-        "weekly_hours": null,
+        "weekly_hours": 5.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1490,7 +1490,7 @@
       {
         "course_id": "0509-4010",
         "name_he": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
-        "weekly_hours": null,
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1522,7 +1522,7 @@
       {
         "course_id": "0512-1203",
         "name_he": "מבוא לעיבוד אותות",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1590,7 +1590,7 @@
       {
         "course_id": "0512-2508",
         "name_he": "התקנים אלקטרוניים",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1633,7 +1633,7 @@
       {
         "course_id": "0512-4200",
         "name_he": "מבוא לעיבוד ספרתי של אותות",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1672,7 +1672,7 @@
       {
         "course_id": "0512-4362",
         "name_he": "מערכות משוב שימושיות",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1708,7 +1708,7 @@
       {
         "course_id": "0512-4700",
         "name_he": "טכנולוגיות מיקרו וננו אלקטרוניקה",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1744,7 +1744,7 @@
       {
         "course_id": "0512-4702",
         "name_he": "מערכות ממוזערות לבישות",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1779,7 +1779,7 @@
       {
         "course_id": "0571-1818",
         "name_he": "מבני נתונים",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1816,7 +1816,7 @@
       {
         "course_id": "0571-3802",
         "name_he": "מודלים דטרמיניסטיים בחקר ביצועים",
-        "weekly_hours": null,
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1852,7 +1852,7 @@
       {
         "course_id": "0571-4174",
         "name_he": "תיכון וחשיבה המצאתית",
-        "weekly_hours": null,
+        "weekly_hours": 2.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1884,8 +1884,8 @@
       },
       {
         "course_id": "0555-4000",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1914,8 +1914,8 @@
       },
       {
         "course_id": "0555-4432",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "תכנון מערכות ביו-רפואיות",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1944,8 +1944,8 @@
       },
       {
         "course_id": "0555-4555",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -1976,8 +1976,8 @@
       },
       {
         "course_id": "0555-4562",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "מבוא לאולטרסאונד: הדמיה וטיפול",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2008,8 +2008,8 @@
       },
       {
         "course_id": "0555-3160",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "הנדסת תאים ורקמות",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2040,8 +2040,8 @@
       },
       {
         "course_id": "0555-4630",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "ביו-חומרים פולימרים",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2072,8 +2072,8 @@
       },
       {
         "course_id": "0555-4550",
-        "name_he": null,
-        "weekly_hours": null,
+        "name_he": "מבוא לביופיזיקה של התא",
+        "weekly_hours": 4.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2105,7 +2105,7 @@
       {
         "course_id": "0542-4011",
         "name_he": "פרוייקט מחקר למצטיינים (1)",
-        "weekly_hours": null,
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2137,7 +2137,7 @@
       {
         "course_id": "0542-4012",
         "name_he": "פרויקט מחקר למצטיינים (2)",
-        "weekly_hours": null,
+        "weekly_hours": 3.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",
@@ -2169,7 +2169,7 @@
       {
         "course_id": "0542-3112",
         "name_he": "פרויקט יישומי בהנדסה מכנית",
-        "weekly_hours": null,
+        "weekly_hours": 2.0,
         "offered_semesters": [],
         "offered_in_year": true,
         "category_id": "other_specialization",

@@ -1761,11 +1761,12 @@ function init(board, audit, programJson) {
   // Extract program requirements categories from board metadata
   programRequirements = board.metadata?.program_requirements_categories || null;
 
-  // When the board is empty, pre-open required (min_courses > 0) categories so they are
-  // immediately visible. other_specialization (min_courses === 0) stays collapsed.
+  // When the board is empty, pre-open required (min_courses > 0) categories and the
+  // other_specialization section so elective courses are immediately visible.
   if (allPlacedIds().size === 0 && programRequirements?.categories) {
     for (const cat of programRequirements.categories) {
       if (cat.min_courses > 0 && !cat.needs_review) openGroups.add(cat.category_id);
+      if (cat.category_id === 'other_specialization') openGroups.add(cat.category_id);
     }
   }
 
@@ -1922,8 +1923,12 @@ function renderSidebar() {
     /* Ordered category groups from program */
     for (const cat of programRequirements.categories) {
       const ids = byCatId[cat.category_id] || [];
-      const suffix = (cat.min_courses > 0 && !cat.needs_review)
+      let suffix = (cat.min_courses > 0 && !cat.needs_review)
         ? ` (נדרש לפחות ${cat.min_courses})` : '';
+      /* For the main elective section, make the count prominent in the title */
+      if (cat.category_id === 'other_specialization' && ids.length > 0) {
+        suffix = ` — ${ids.length} קורסים`;
+      }
       sections += _buildRepoSection(cat.category_id, (cat.name_he || cat.category_id) + suffix, ids, false);
     }
     if (otherIds.length) {
@@ -2598,10 +2603,10 @@ function openCourseDetails(cid) {
       if (!c.grade_signal) {
         if (tfStatus === 'not_found')
           missing.push('לא נמצאו נתוני טאו פקטור עבור מספר הקורס' + tauIdNote);
+        else if (tfStatus === 'failed')
+          missing.push('טעינת נתוני טאו פקטור נכשלה' + tauIdNote);
         else if (tfStatus === 'not_started' || !tfStatus)
           missing.push('טרם נטענו נתוני טאו פקטור' + tauIdNote);
-        else
-          missing.push('נתוני ציונים היסטוריים מטאו פקטור');
       }
 
       const avHtml = available.length
