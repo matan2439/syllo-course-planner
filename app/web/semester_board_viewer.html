@@ -1593,7 +1593,7 @@ async function loadProgram(progId, fromModal) {
 
   try {
     const [board, audit, programJson] = await Promise.all([
-      fetchJSON(prog.board_json),
+      fetchBoardJSON(prog),
       fetchJSON(prog.audit_json).catch(err => {
         console.warn('[loadProgram] audit JSON unavailable:', err.message);
         return null;
@@ -3519,6 +3519,36 @@ async function fetchJSON(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status}: ${url}`);
   return r.json();
+}
+
+/**
+ * Load board JSON for a program.
+ *
+ * Strategy (in order):
+ *   1. GET /api/board/{program_id}  — Vercel / vercel dev (Postgres)
+ *   2. prog.board_json static path  — python -m http.server or any static server
+ *
+ * Falls back silently on any network error, non-200 status, or malformed JSON.
+ * Logs the source so the developer can see which path was taken.
+ */
+async function fetchBoardJSON(prog) {
+  const apiUrl = `/api/board/${encodeURIComponent(prog.program_id)}`;
+  try {
+    const r = await fetch(apiUrl);
+    if (r.ok) {
+      const data = await r.json();
+      if (data && typeof data === 'object') {
+        const repo    = data.metadata?.program_repository_courses?.length ?? '?';
+        const placed  = (data.semesters || []).flatMap(s => s.courses || []).length;
+        console.log(`[board] source: api | program: ${prog.program_id} | repo: ${repo} | placed: ${placed}`);
+        return data;
+      }
+    }
+  } catch { /* network error or JSON parse failure — fall through */ }
+
+  // Fallback: load from the local static JSON file
+  console.log(`[board] source: static-json | program: ${prog.program_id} | path: ${prog.board_json}`);
+  return fetchJSON(prog.board_json);
 }
 
 main();
