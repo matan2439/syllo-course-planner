@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "cd web && npm run dev",
+    "dev:web": "cd web && npm run dev",
     "typecheck": "tsc --noEmit",
     "test": "jest --testPathPattern=tests/api"
   },
