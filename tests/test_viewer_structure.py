@@ -507,9 +507,10 @@ def test_enrich_module_has_enrich_board_function():
     assert callable(enrich_board)
 
 
-def test_enrich_module_has_normalize_course_id():
-    """enrich_mechanical_2027._normalize_course_id must format IDs as XXXX-XXXX."""
-    from app.pipeline.enrich_mechanical_2027 import _normalize_course_id
-    assert _normalize_course_id("05424320") == "0542-4320"
-    assert _normalize_course_id("0542-4320") == "0542-4320"
-    assert _normalize_course_id("0001-0001") == "0001-0001"
+def test_build_course_details_url_formats_id():
+    """_build_course_details_url must generate IMS URL with undashed 8-digit course ID."""
+    from app.analysis.semester_board import _build_course_details_url
+    url = _build_course_details_url("0542-4320")
+    assert url is not None and "05424320" in url
+    url2 = _build_course_details_url("0001-0001")
+    assert url2 is not None and "00010001" in url2

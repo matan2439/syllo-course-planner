@@ -92,6 +92,40 @@ def enrich_board(
             enriched[cid] = new_fields
             print(f"[enrich] {cid}: {list(new_fields)}")
 
+    # ── Phase 2: placed courses in semesters (e.g. mandatory) ─────────────────
+    placed_enriched: dict[str, dict] = {}
+    for sem in board.get("semesters", []):
+        for course in sem.get("courses", []):
+            cid        = course.get("course_id", "")
+            detail_url = course.get("course_details_url")
+            if not detail_url or not cid:
+                continue
+            already_full = all([course.get("syllabus_url"), course.get("exam_url")])
+            if already_full and not force_refresh:
+                continue
+            digits     = "".join(c for c in cid if c.isdigit())
+            cache_path = cache_dir / f"course_{digits}_{year}.html"
+            try:
+                html  = fetch_url(detail_url, cache_path, force_refresh)
+                links = parse_course_details_links(html)
+            except Exception as exc:
+                print(f"[skip placed] {cid}: {exc}")
+                continue
+            new_fields: dict = {}
+            for key, val in links.items():
+                if val and not course.get(key):
+                    new_fields[key] = val
+            if "syllabus_url" in new_fields:
+                if not course.get("syllabus_text_available"):
+                    new_fields["syllabus_text_available"] = True
+                if course.get("syllabus_ai_analysis_status") in (None, "not_available"):
+                    new_fields["syllabus_ai_analysis_status"] = "pending"
+                if course.get("assessment_analysis_status") in (None, "not_available"):
+                    new_fields["assessment_analysis_status"] = "not_started"
+            if new_fields:
+                placed_enriched[cid] = new_fields
+                print(f"[enrich placed] {cid}: {list(new_fields)}")
+
     if not dry_run:
         for rc in repo:
             cid = rc.get("course_id", "")
@@ -100,12 +134,21 @@ def enrich_board(
             # Final sync: assessment_analysis_status must reflect syllabus_url presence
             if rc.get("syllabus_url") and rc.get("assessment_analysis_status") in (None, "not_available"):
                 rc["assessment_analysis_status"] = "not_started"
+        for sem in board.get("semesters", []):
+            for course in sem.get("courses", []):
+                cid = course.get("course_id", "")
+                if cid in placed_enriched:
+                    course.update(placed_enriched[cid])
+                if course.get("syllabus_url") and course.get("assessment_analysis_status") in (None, "not_available"):
+                    course["assessment_analysis_status"] = "not_started"
         board_path.write_text(
             json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         print(f"\nBoard JSON updated: {board_path}")
 
-    return enriched
+    # Merge both sets for the return value
+    combined = {**enriched, **placed_enriched}
+    return combined
 
 
 def main() -> None:

@@ -44,14 +44,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121204&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120407&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05121204&kv=01&sem=20251",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05121204&kv=07&sem=20251",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512120407",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-1204-07.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-2400",
@@ -93,14 +101,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422400&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542240001&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05422400&kv=01&sem=20251",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05422400&kv=01&sem=20251",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542240001",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-2400-01.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-2500",
@@ -142,14 +158,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422500&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542250005&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05422500&kv=04&sem=20252",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05422500&kv=05&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542250005",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-2500-05.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-3243",
@@ -191,14 +215,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423243&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542324308&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05423243&kv=01&sem=20251",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05423243&kv=08&sem=20251",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542324308",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3243-08.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         }
       ],
       "total_weekly_hours": 18.0,
@@ -250,14 +282,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362007&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05423620&kv=05&sem=20252",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05423620&kv=07&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542362007",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3620-07.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-3780",
@@ -300,14 +340,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423780&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378002&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05423780&kv=02&sem=20252",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05423780&kv=02&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542378002",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3780-02.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-3791",
@@ -350,14 +398,20 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423791&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379110&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542379110",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3791-10.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-3792",
@@ -400,14 +454,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423792&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05423792&kv=01&sem=20250",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05423792&kv=05&sem=20250",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542379205",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3792-05.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         }
       ],
       "total_weekly_hours": 13.0,
@@ -459,14 +521,20 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424010&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542401001",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4010-01.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-4091",
@@ -509,14 +577,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424091&kv=10&sem=20252",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424091&kv=10&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409110",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4091-10.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         }
       ],
       "total_weekly_hours": 5.0,
@@ -568,14 +644,21 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424020&kv=01&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542402001",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4020-01.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         },
         {
           "course_id": "0542-4092",
@@ -618,14 +701,22 @@
             "placement_confidence": "high"
           },
           "warnings": [],
-          "syllabus_url": null,
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424092&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409204&year=2025",
           "syllabus_links": [],
           "source_urls": [],
           "program_category_id": null,
           "program_category_name_he": null,
           "needs_category_review": false,
           "validation_status": "ok",
-          "validation_errors": []
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424092&kv=04&sem=20251",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424092&kv=04&sem=20251",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409204",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4092-04.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "pending",
+          "assessment_analysis_status": "not_started"
         }
       ],
       "total_weekly_hours": 5.0,

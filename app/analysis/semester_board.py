@@ -318,10 +318,11 @@ def _load_mandatory_course(
                 "has_difficulty_score": False,
                 "placement_confidence": "high",
             },
-            "warnings":      [] if spec_name else ["Course not found in database."],
-            "syllabus_url":  None,
-            "syllabus_links": [],
-            "source_urls":   [],
+            "warnings":         [] if spec_name else ["Course not found in database."],
+            "course_details_url": _build_course_details_url(course_id),
+            "syllabus_url":      None,
+            "syllabus_links":    [],
+            "source_urls":       [],
         }, global_warns
 
     hours   = _weekly_hours_from_record(record)
@@ -382,8 +383,9 @@ def _load_mandatory_course(
             "has_difficulty_score": False,
             "placement_confidence": "high",
         },
-        "warnings":      course_warns,
-        "syllabus_url":  syllabus_url,
+        "warnings":         course_warns,
+        "course_details_url": _build_course_details_url(course_id),
+        "syllabus_url":      syllabus_url,
         "syllabus_links": syllabus_links,
         "source_urls":   [],
     }, global_warns
