@@ -28,3 +28,8 @@ node_modules/
 .vercel/
 .env.local
 .env.production
+
+# Next.js
+**/.next/
+**/out/
+next-env.d.ts

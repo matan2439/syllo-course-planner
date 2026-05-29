@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:      #F7F7FB;
+  --purple:  #7C3AED;
+}
+
+html {
+  font-family: 'Heebo', 'Segoe UI', system-ui, sans-serif;
+}
