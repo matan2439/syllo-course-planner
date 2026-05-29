@@ -1646,11 +1646,17 @@ function init(board, audit, programJson) {
         mailing_list_url:            null,
         assessment_type:             null,
         assessment_text_raw:         null,
+        assessment_analysis_status:  null,
+        assessment_ai_notes:         null,
         syllabus_text_available:     null,
         syllabus_ai_analysis_status: null,
         syllabus_ai_topics:          [],
         syllabus_ai_complexity_notes: null,
-        tau_factor_lookup_status:    null,
+        tau_factor_lookup_id:        null,
+        tau_factor_status:           null,
+        tau_factor_avg_grade:        null,
+        tau_factor_sample_size:      null,
+        tau_factor_source_url:       null,
         detail_source_type:          null,
         official_details_available:  null,
         semester_availability:       null,
@@ -1694,9 +1700,15 @@ function init(board, audit, programJson) {
       if (!_ce.mailing_list_url    && rc.mailing_list_url)    _ce.mailing_list_url    = rc.mailing_list_url;
       if (_ce.assessment_type      == null && rc.assessment_type)    _ce.assessment_type            = rc.assessment_type;
       if (_ce.assessment_text_raw  == null && rc.assessment_text_raw) _ce.assessment_text_raw       = rc.assessment_text_raw;
+      if (_ce.assessment_analysis_status == null)              _ce.assessment_analysis_status = rc.assessment_analysis_status ?? null;
+      if (_ce.assessment_ai_notes  == null && rc.assessment_ai_notes) _ce.assessment_ai_notes       = rc.assessment_ai_notes;
       if (_ce.syllabus_text_available == null)                 _ce.syllabus_text_available    = rc.syllabus_text_available  ?? null;
       if (_ce.syllabus_ai_analysis_status == null)             _ce.syllabus_ai_analysis_status = rc.syllabus_ai_analysis_status ?? null;
-      if (_ce.tau_factor_lookup_status == null)                _ce.tau_factor_lookup_status   = rc.tau_factor_lookup_status ?? null;
+      if (!_ce.tau_factor_lookup_id && rc.tau_factor_lookup_id) _ce.tau_factor_lookup_id      = rc.tau_factor_lookup_id;
+      if (_ce.tau_factor_status    == null)                    _ce.tau_factor_status          = rc.tau_factor_status ?? null;
+      if (_ce.tau_factor_avg_grade == null && rc.tau_factor_avg_grade != null) _ce.tau_factor_avg_grade = rc.tau_factor_avg_grade;
+      if (_ce.tau_factor_sample_size == null && rc.tau_factor_sample_size != null) _ce.tau_factor_sample_size = rc.tau_factor_sample_size;
+      if (!_ce.tau_factor_source_url && rc.tau_factor_source_url) _ce.tau_factor_source_url   = rc.tau_factor_source_url;
       if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
       if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
     }
@@ -1853,15 +1865,16 @@ function mkChip(lbl, val, warn) {
   return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
 }
 
-function _buildRepoSection(gid, nameHe, ids, forceOpen, emptyMsg) {
+function _buildRepoSection(gid, nameHe, ids, forceOpen, emptyMsg, notLoadedLabel) {
   const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
   const isOpen = forceOpen || openGroups.has(gid);
+  const countDisplay = (notLoadedLabel && !ids.length) ? notLoadedLabel : ids.length;
   const emptyHint = !ids.length && emptyMsg
     ? `<div class="repo-empty-msg">${emptyMsg}</div>` : '';
   return `<details class="repo-group" data-group="${esc(gid)}"${isOpen?' open':''}>
     <summary>
       ${esc(nameHe)}
-      <span class="repo-group-count">${ids.length}</span>
+      <span class="repo-group-count">${countDisplay}</span>
       <span class="repo-group-chevron">›</span>
     </summary>
     <div class="repo-zone" data-zone="repo">${cards}${emptyHint}</div>
@@ -1919,9 +1932,10 @@ function renderSidebar() {
 
   /* Build section HTML */
   let sections = '';
-  /* Mandatory group — always shown; message when empty */
+  /* Mandatory group — always shown; precise placeholder when empty */
   sections += _buildRepoSection('_mandatory', 'קורסי חובה', mandatoryIds, true,
-    'קורסי חובה עדיין לא הוזנו לתוכנית זו');
+    'קורסי החובה עדיין לא נטענו ממקור רשמי. לאחר הוספת קובץ קורסי החובה, הם ישובצו אוטומטית בלוח.',
+    'טרם נטען');
 
   if (useCats) {
     /* Ordered category groups from program */
@@ -2592,7 +2606,8 @@ function openCourseDetails(cid) {
       if ((c.prerequisites||[]).length > 0) available.push('עומק דרישות קדם');
       if (c.course_details_url)            available.push('דף פרטי קורס (TAU)');
       if (c.syllabus_url)                  available.push('קישור סילבוס');
-      if (c.assessment_type && c.assessment_type !== 'unknown')
+      const aStatus = c.assessment_analysis_status;
+      if (aStatus === 'complete' && c.assessment_type && c.assessment_type !== 'unknown')
                                            available.push('סוג הערכה סופי');
       if (c.grade_signal)                  available.push('נתוני טאו פקטור');
       const aiStatus = c.syllabus_ai_analysis_status;
@@ -2601,26 +2616,32 @@ function openCourseDetails(cid) {
       // Missing signals
       if (c.weekly_hours == null)          missing.push('שעות שבועיות');
 
-      // Syllabus / AI analysis
+      // Syllabus / AI analysis — precise wording by status
       if (aiStatus === 'complete') {
         /* nothing — already in available */
-      } else if (aiStatus === 'pending') {
-        missing.push('ניתוח AI של נושאי הסילבוס');
+      } else if (aiStatus === 'pending' || (c.syllabus_url && aiStatus !== 'complete')) {
+        missing.push('ניתוח AI של הסילבוס לחילוץ נושאים וסוג הערכה');
       } else {
-        missing.push('קישור סילבוס פעיל');
+        missing.push('לא נמצא קישור סילבוס פעיל');
       }
 
-      // Assessment type
-      if (!c.assessment_type || c.assessment_type === 'unknown')
-        missing.push('סוג הערכה סופי');
+      // Assessment type — AI-only field; never fabricated from regex
+      if (aStatus === 'not_started') {
+        missing.push('סוג ההערכה הסופי דורש ניתוח AI של הסילבוס');
+      } else if (aStatus === 'not_available') {
+        missing.push('לא נמצא סילבוס פעיל לניתוח סוג ההערכה');
+      }
 
-      // TAU Factor grade stats
-      const tfStatus = c.tau_factor_lookup_status;
+      // TAU Factor grade stats — distinguish "not loaded" from "not found"
+      const tfStatus = c.tau_factor_status;
+      const tauIdNote = c.tau_factor_lookup_id
+        ? ` (מזהה: ${esc(c.tau_factor_lookup_id)})`
+        : '';
       if (!c.grade_signal) {
         if (tfStatus === 'not_found')
-          missing.push('נתוני טאו פקטור (לא נמצאו עבור מספר הקורס)');
-        else if (tfStatus === 'not_queried')
-          missing.push('טרם בוצע חיפוש בטאו פקטור');
+          missing.push('לא נמצאו נתוני טאו פקטור עבור מספר הקורס' + tauIdNote);
+        else if (tfStatus === 'not_started' || !tfStatus)
+          missing.push('טרם נטענו נתוני טאו פקטור' + tauIdNote);
         else
           missing.push('נתוני ציונים היסטוריים מטאו פקטור');
       }

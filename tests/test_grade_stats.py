@@ -443,24 +443,95 @@ def test_get_grade_stats_returns_empty_for_unknown_course(tmp_db):
     assert rows == []
 
 
-def test_tau_factor_status_not_found_when_no_grade_stats(tmp_db):
-    """tau_factor_lookup_status is 'not_found' when no grade stats in DB."""
+def test_tau_factor_status_not_started_when_no_grade_stats(tmp_db):
+    """tau_factor_status is 'not_started' when DB has no grade stats (importer not run)."""
     from app.analysis.semester_board import _resolve_course_db_data
     result = _resolve_course_db_data("0542-4320", None, tmp_db)
-    assert result["tau_factor_status"] == "not_found"
+    assert result["tau_factor_status"] == "not_started"
 
 
-def test_tau_factor_status_not_queried_when_no_db(tmp_path):
-    """tau_factor_lookup_status is 'not_queried' when DB does not exist."""
+def test_tau_factor_status_not_started_when_no_db(tmp_path):
+    """tau_factor_status is 'not_started' when DB does not exist."""
     from app.analysis.semester_board import _resolve_course_db_data
     missing_db = tmp_path / "absent.db"
     result = _resolve_course_db_data("0542-4320", None, missing_db)
-    assert result["tau_factor_status"] == "not_queried"
+    assert result["tau_factor_status"] == "not_started"
 
 
-def test_tau_factor_status_found_when_grade_stats_present(tmp_db):
-    """tau_factor_lookup_status is 'found' when grade stats exist for the course."""
+def test_tau_factor_status_matched_when_grade_stats_present(tmp_db):
+    """tau_factor_status is 'matched' when grade stats exist for the course."""
     from app.analysis.semester_board import _resolve_course_db_data
     save_grade_stats([_stat("0542-4320")], tmp_db)
     result = _resolve_course_db_data("0542-4320", None, tmp_db)
-    assert result["tau_factor_status"] == "found"
+    assert result["tau_factor_status"] == "matched"
+
+
+def test_tau_factor_lookup_id_is_normalized(tmp_db):
+    """tau_factor_lookup_id is the undashed course ID for TAU Factor lookup."""
+    from app.analysis.semester_board import _resolve_course_db_data
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["tau_factor_lookup_id"] == "05424320"
+
+
+def test_tau_factor_lookup_id_already_undashed(tmp_db):
+    """tau_factor_lookup_id stays undashed when input is already undashed."""
+    from app.analysis.semester_board import _resolve_course_db_data
+    result = _resolve_course_db_data("05424320", None, tmp_db)
+    assert result["tau_factor_lookup_id"] == "05424320"
+
+
+def test_assessment_type_is_null_not_regex_derived(tmp_db):
+    """assessment_type is None regardless of exam_info — AI-only field."""
+    from app.database.db import init_db, save_merged_course
+    from app.analysis.semester_board import _resolve_course_db_data
+    # Populate DB with a course that has exam info
+    course = {
+        "course_id": "0542-4320", "name_he": "test", "name_en": None,
+        "faculty": None, "department": None, "year": 2025, "semester": None,
+        "credits": None, "lecture_hours": None, "tutorial_hours": None,
+        "lab_hours": None, "prerequisites_raw_text": None,
+        "prerequisite_course_ids": [], "course_description": None,
+        "topics": [], "assignments": None,
+        "exam_info": "בחינה סופית",  # would trigger regex classification
+        "syllabus_links": [], "groups": [], "source_files": {},
+    }
+    save_merged_course(course, tmp_db)
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["assessment_type"] is None, "assessment_type must not be derived from regex"
+
+
+def test_assessment_analysis_status_not_started_when_syllabus_exists(tmp_db):
+    """assessment_analysis_status is 'not_started' when syllabus_url exists but no AI ran."""
+    from app.database.db import init_db, save_merged_course
+    from app.analysis.semester_board import _resolve_course_db_data
+    course = {
+        "course_id": "0542-4320", "name_he": "test", "name_en": None,
+        "faculty": None, "department": None, "year": 2025, "semester": None,
+        "credits": None, "lecture_hours": None, "tutorial_hours": None,
+        "lab_hours": None, "prerequisites_raw_text": None,
+        "prerequisite_course_ids": [], "course_description": None,
+        "topics": [], "assignments": None, "exam_info": None,
+        "syllabus_links": ["https://example.com/syllabus.pdf"],
+        "groups": [], "source_files": {},
+    }
+    save_merged_course(course, tmp_db)
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["assessment_analysis_status"] == "not_started"
+
+
+def test_assessment_analysis_status_not_available_when_no_syllabus(tmp_db):
+    """assessment_analysis_status is 'not_available' when no syllabus_url exists."""
+    from app.database.db import init_db, save_merged_course
+    from app.analysis.semester_board import _resolve_course_db_data
+    course = {
+        "course_id": "0542-4320", "name_he": "test", "name_en": None,
+        "faculty": None, "department": None, "year": 2025, "semester": None,
+        "credits": None, "lecture_hours": None, "tutorial_hours": None,
+        "lab_hours": None, "prerequisites_raw_text": None,
+        "prerequisite_course_ids": [], "course_description": None,
+        "topics": [], "assignments": None, "exam_info": None,
+        "syllabus_links": [], "groups": [], "source_files": {},
+    }
+    save_merged_course(course, tmp_db)
+    result = _resolve_course_db_data("0542-4320", None, tmp_db)
+    assert result["assessment_analysis_status"] == "not_available"

@@ -85,6 +85,8 @@ def enrich_board(
                 new_fields["syllabus_text_available"] = True
             if rc.get("syllabus_ai_analysis_status") in (None, "not_available"):
                 new_fields["syllabus_ai_analysis_status"] = "pending"
+            if rc.get("assessment_analysis_status") in (None, "not_available"):
+                new_fields["assessment_analysis_status"] = "not_started"
 
         if new_fields:
             enriched[cid] = new_fields
@@ -95,6 +97,9 @@ def enrich_board(
             cid = rc.get("course_id", "")
             if cid in enriched:
                 rc.update(enriched[cid])
+            # Final sync: assessment_analysis_status must reflect syllabus_url presence
+            if rc.get("syllabus_url") and rc.get("assessment_analysis_status") in (None, "not_available"):
+                rc["assessment_analysis_status"] = "not_started"
         board_path.write_text(
             json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8"
         )

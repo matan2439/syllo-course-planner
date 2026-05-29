@@ -16,6 +16,7 @@ from typing import Any
 from app.database.db import _DB_PATH, get_course_by_id, get_prerequisites, get_course_display_names, get_grade_stats
 from app.analysis.difficulty_estimator import estimate_difficulty_lightweight
 from app.analysis.eligibility_engine import normalize_course_id
+from app.models.grade_stats import normalize_for_tau_factor
 from app.analysis.instructor_uncertainty import estimate_instructor_uncertainty
 from app.analysis.plan_validator import validate_entire_board
 from app.analysis.program_requirements import (
@@ -882,24 +883,31 @@ def _resolve_course_db_data(
     """Single DB lookup returning course metadata and derived fields.
 
     Returns: name_he, syllabus_url, syllabus_links, in_db,
-             assessment_type, assessment_text_raw, tau_factor_status.
+             assessment_type (always None — AI-derived only),
+             assessment_text_raw, assessment_analysis_status, assessment_ai_notes,
+             tau_factor_lookup_id, tau_factor_status, tau_factor_avg_grade,
+             tau_factor_sample_size, tau_factor_source_url.
     """
     result: dict = {
-        "name_he":            pdf_name,
-        "syllabus_url":       None,
-        "syllabus_links":     [],
-        "in_db":              False,
-        "assessment_type":    "unknown",
-        "assessment_text_raw": None,
-        "tau_factor_status":  "not_queried",
+        "name_he":                  pdf_name,
+        "syllabus_url":             None,
+        "syllabus_links":           [],
+        "in_db":                    False,
+        "assessment_type":          None,          # AI-derived only; never set from regex
+        "assessment_text_raw":      None,
+        "assessment_analysis_status": "not_available",  # updated after syllabus_url resolved
+        "assessment_ai_notes":      None,
+        "tau_factor_lookup_id":     normalize_for_tau_factor(cid),
+        "tau_factor_status":        "not_started",
+        "tau_factor_avg_grade":     None,
+        "tau_factor_sample_size":   None,
+        "tau_factor_source_url":    None,
     }
     if not db_path.exists():
         return result
     try:
         record = get_course_by_id(cid, db_path)
-        if not record:
-            result["tau_factor_status"] = "not_found"
-        else:
+        if record:
             result["in_db"] = True
             if not pdf_name:
                 result["name_he"] = record.get("name_he")
@@ -913,18 +921,23 @@ def _resolve_course_db_data(
             if not syllabus_url and syllabus_links:
                 syllabus_url = syllabus_links[0]
             result["syllabus_url"] = syllabus_url
-            result["assessment_type"] = _classify_assessment(record)
+            # assessment_type intentionally left None — requires AI syllabus analysis
             raw_assessment = (record.get("exam_info") or "") or (record.get("assignments") or "")
             result["assessment_text_raw"] = raw_assessment or None
     except Exception:
         pass
 
-    # Grade stats check (TAU Factor) — run regardless of whether course record exists
+    # assessment_analysis_status: reflects whether AI analysis is possible / has run
+    result["assessment_analysis_status"] = (
+        "not_started" if result["syllabus_url"] else "not_available"
+    )
+
+    # TAU Factor check — empty stats means importer has not run yet ("not_started")
     try:
         stats = get_grade_stats(cid, db_path)
-        result["tau_factor_status"] = "found" if stats else "not_found"
+        result["tau_factor_status"] = "matched" if stats else "not_started"
     except Exception:
-        pass
+        result["tau_factor_status"] = "failed"
 
     return result
 
@@ -995,10 +1008,8 @@ def _build_program_repository_courses(
         name = db_data["name_he"]
         syllabus_url = db_data["syllabus_url"]
         syllabus_links = db_data["syllabus_links"]
-        in_db = db_data["in_db"]
         assessment_type = db_data["assessment_type"]
         assessment_text_raw = db_data["assessment_text_raw"]
-        tau_factor_status = db_data["tau_factor_status"]
 
         # Detail source: syllabus > tau_program_expanded_row > db > tau_course_details
         if syllabus_url:
@@ -1042,11 +1053,17 @@ def _build_program_repository_courses(
             "official_details_available":   True,
             "assessment_type":              assessment_type,
             "assessment_text_raw":          assessment_text_raw,
+            "assessment_analysis_status":   db_data["assessment_analysis_status"],
+            "assessment_ai_notes":          None,
             "syllabus_text_available":      syllabus_url is not None,
             "syllabus_ai_analysis_status":  syllabus_ai_status,
             "syllabus_ai_topics":           [],
             "syllabus_ai_complexity_notes": None,
-            "tau_factor_lookup_status":     tau_factor_status,
+            "tau_factor_lookup_id":         db_data["tau_factor_lookup_id"],
+            "tau_factor_status":            db_data["tau_factor_status"],
+            "tau_factor_avg_grade":         None,
+            "tau_factor_sample_size":       None,
+            "tau_factor_source_url":        None,
             **diff,
         })
 
@@ -1064,7 +1081,6 @@ def _build_program_repository_courses(
         in_db = db_data["in_db"]
         assessment_type = db_data["assessment_type"]
         assessment_text_raw = db_data["assessment_text_raw"]
-        tau_factor_status = db_data["tau_factor_status"]
 
         if syllabus_url:
             detail_src = "syllabus"
@@ -1092,11 +1108,17 @@ def _build_program_repository_courses(
             "official_details_available":   True,
             "assessment_type":              assessment_type,
             "assessment_text_raw":          assessment_text_raw,
+            "assessment_analysis_status":   db_data["assessment_analysis_status"],
+            "assessment_ai_notes":          None,
             "syllabus_text_available":      syllabus_url is not None,
             "syllabus_ai_analysis_status":  syllabus_ai_status,
             "syllabus_ai_topics":           [],
             "syllabus_ai_complexity_notes": None,
-            "tau_factor_lookup_status":     tau_factor_status,
+            "tau_factor_lookup_id":         db_data["tau_factor_lookup_id"],
+            "tau_factor_status":            db_data["tau_factor_status"],
+            "tau_factor_avg_grade":         None,
+            "tau_factor_sample_size":       None,
+            "tau_factor_source_url":        None,
         })
 
     return courses

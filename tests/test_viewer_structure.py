@@ -256,14 +256,14 @@ def test_missing_name_uses_import_wording(html):
 # Issue A: TAU Factor specific wording in difficulty signals
 # ---------------------------------------------------------------------------
 
-def test_tau_factor_not_queried_message(html):
-    """Signals must include 'טרם בוצע חיפוש בטאו פקטור' when not queried."""
-    assert "טרם בוצע חיפוש בטאו פקטור" in html
+def test_tau_factor_not_started_message(html):
+    """Signals must show 'טרם נטענו נתוני טאו פקטור' when TAU Factor not loaded."""
+    assert "טרם נטענו נתוני טאו פקטור" in html
 
 
 def test_tau_factor_not_found_message(html):
-    """Signals must include a 'לא נמצאו נתוני טאו פקטור' or similar message."""
-    assert "לא נמצאו עבור מספר הקורס" in html or "לא נמצאו נתוני טאו פקטור" in html
+    """Signals must include 'לא נמצאו נתוני טאו פקטור עבור מספר הקורס' when lookup was attempted."""
+    assert "לא נמצאו נתוני טאו פקטור עבור מספר הקורס" in html
 
 
 def test_tau_factor_available_label(html):
@@ -287,13 +287,13 @@ def test_syllabus_ai_field_in_coursemap(html):
 
 
 def test_syllabus_pending_shows_ai_analysis_needed(html):
-    """When syllabus exists but AI not done, show 'ניתוח AI של נושאי הסילבוס'."""
-    assert "ניתוח AI של נושאי הסילבוס" in html
+    """When syllabus exists but AI not done, show precise AI analysis message."""
+    assert "ניתוח AI של הסילבוס לחילוץ נושאים וסוג הערכה" in html
 
 
 def test_syllabus_not_available_shows_no_link(html):
-    """When no syllabus, show 'קישור סילבוס פעיל' as missing (not AI)."""
-    assert "קישור סילבוס פעיל" in html
+    """When no syllabus, show 'לא נמצא קישור סילבוס פעיל' as missing."""
+    assert "לא נמצא קישור סילבוס פעיל" in html
 
 
 def test_no_vague_course_description_missing(html):
@@ -332,3 +332,91 @@ def test_signal_uses_depth_not_basic(html):
 def test_no_vague_general_description_signal(html):
     """Must not include 'תיאור קורס ונושאים (DB)' — vague signal replaced."""
     assert "תיאור קורס ונושאים (DB)" not in html
+
+
+# ---------------------------------------------------------------------------
+# TAU Factor new fields (Problems 2 & 4)
+# ---------------------------------------------------------------------------
+
+def test_tau_factor_status_field_in_coursemap(html):
+    """courseMap must initialise tau_factor_status (not tau_factor_lookup_status)."""
+    assert "tau_factor_status:" in html
+
+
+def test_tau_factor_lookup_id_field_in_coursemap(html):
+    """courseMap must initialise tau_factor_lookup_id."""
+    assert "tau_factor_lookup_id:" in html
+
+
+def test_tau_factor_not_started_message_distinct_from_not_found(html):
+    """'not_started' case shows 'טרם נטענו' not 'לא נמצאו' wording."""
+    assert "טרם נטענו נתוני טאו פקטור" in html
+    # Ensure 'not_found' branch uses different wording
+    assert "לא נמצאו נתוני טאו פקטור עבור מספר הקורס" in html
+
+
+def test_tau_factor_lookup_id_shown_in_signals(html):
+    """Signals must reference tau_factor_lookup_id for user-visible ID display."""
+    assert "tau_factor_lookup_id" in html
+
+
+def test_old_tau_factor_lookup_status_not_in_coursemap_init(html):
+    """tau_factor_lookup_status must not appear as a courseMap init key (renamed)."""
+    # It may appear in comments/tests but not as a live field initialization
+    import re
+    # Check the _addOrEnrichCourse function body doesn't init the old key
+    m = re.search(r"courseMap\[cid\]\s*=\s*\{(.*?)\};", html, re.DOTALL)
+    if m:
+        assert "tau_factor_lookup_status:" not in m.group(1)
+
+
+# ---------------------------------------------------------------------------
+# Assessment analysis status (Problem 1)
+# ---------------------------------------------------------------------------
+
+def test_assessment_analysis_status_field_in_coursemap(html):
+    """courseMap must initialise assessment_analysis_status."""
+    assert "assessment_analysis_status:" in html
+
+
+def test_assessment_not_started_shows_ai_required_message(html):
+    """When assessment_analysis_status == 'not_started', modal shows AI-required message."""
+    assert "סוג ההערכה הסופי דורש ניתוח AI של הסילבוס" in html
+
+
+def test_assessment_not_available_shows_no_syllabus_message(html):
+    """When assessment_analysis_status == 'not_available', modal says no syllabus for analysis."""
+    assert "לא נמצא סילבוס פעיל לניתוח סוג ההערכה" in html
+
+
+def test_assessment_type_not_shown_as_available_without_complete_status(html):
+    """assessment_type in available signals must be gated on aStatus === 'complete'."""
+    import re
+    # Find the available.push('סוג הערכה סופי') line and check it requires 'complete'
+    m = re.search(r"aStatus.*complete.*available.*סוג הערכה סופי|available.*סוג הערכה סופי.*aStatus.*complete",
+                  html, re.DOTALL)
+    assert m, "available push for 'סוג הערכה סופי' must be gated on aStatus === 'complete'"
+
+
+# ---------------------------------------------------------------------------
+# Mandatory courses placeholder (Problem 3)
+# ---------------------------------------------------------------------------
+
+def test_mandatory_section_shows_not_loaded_label(html):
+    """Mandatory section must show 'טרם נטען' label when count is zero."""
+    assert "טרם נטען" in html
+
+
+def test_mandatory_empty_message_official_source(html):
+    """Mandatory empty message must say 'לא נטענו ממקור רשמי'."""
+    assert "לא נטענו ממקור רשמי" in html
+
+
+def test_mandatory_empty_message_auto_placement_note(html):
+    """Mandatory empty message must mention auto-placement when file is added."""
+    assert "ישובצו אוטומטית בלוח" in html
+
+
+def test_mandatory_section_does_not_show_zero_count_wording(html):
+    """Must not have the old 'קורסי חובה עדיין לא הוזנו לתוכנית זו' message."""
+    assert "קורסי חובה עדיין לא הוזנו לתוכנית זו" not in html

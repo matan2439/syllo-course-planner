@@ -231,7 +231,8 @@ def test_board_has_assessment_type_field(board_repo):
 
 
 def test_assessment_type_valid_values(board_repo):
-    valid = {"final_exam", "project", "assignment", "mixed", "unknown"}
+    # assessment_type is AI-derived only; valid states are known values or None
+    valid = {"final_exam", "project", "assignment", "mixed", "unknown", None}
     for r in board_repo:
         v = r.get("assessment_type")
         assert v in valid, f"{r['course_id']}: unexpected assessment_type={v!r}"
@@ -256,11 +257,12 @@ def test_syllabus_ai_status_not_available_when_no_syllabus(board_repo):
                 f"{r['course_id']}: no syllabus but status={r.get('syllabus_ai_analysis_status')}"
 
 
-def test_board_has_tau_factor_lookup_status(board_repo):
-    valid = {"found", "not_found", "not_queried"}
+def test_board_has_tau_factor_status(board_repo):
+    """Every repo course must have tau_factor_status (renamed from tau_factor_lookup_status)."""
+    valid = {"not_started", "matched", "not_found", "failed"}
     for r in board_repo:
-        v = r.get("tau_factor_lookup_status")
-        assert v in valid, f"{r['course_id']}: invalid tau_factor_lookup_status={v!r}"
+        v = r.get("tau_factor_status")
+        assert v in valid, f"{r['course_id']}: invalid tau_factor_status={v!r}"
 
 
 def test_course_0542_4320_has_difficulty_score(board_repo):
@@ -271,13 +273,14 @@ def test_course_0542_4320_has_difficulty_score(board_repo):
     assert rc.get("difficulty_level") in ("easy", "medium", "hard", "very_hard")
 
 
-def test_0542_4320_assessment_type_is_extracted(board_repo):
-    """Course 0542-4320 is in DB with exam info — assessment_type should be extracted."""
+def test_0542_4320_assessment_type_requires_ai(board_repo):
+    """assessment_type is None for 0542-4320 — AI syllabus analysis is required."""
     rc = next((r for r in board_repo if r["course_id"] == "0542-4320"), None)
     assert rc is not None
-    # 0542-4320 is in the fluids category and was imported; should have some assessment data
-    # It's acceptable for it to be "unknown" if exam_info is not in the local DB
-    assert rc.get("assessment_type") in ("final_exam", "project", "assignment", "mixed", "unknown")
+    # assessment_type is never regex-derived; must be None until AI analysis runs
+    assert rc.get("assessment_type") is None, (
+        "assessment_type must be None — it is an AI-only field, not regex-extracted"
+    )
 
 
 def test_syllabus_ai_topics_is_empty_list(board_repo):

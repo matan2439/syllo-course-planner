@@ -673,3 +673,111 @@ def test_2027_repository_advanced_labs_count_5():
     prog = _load_pdf_program()
     repo = _build_program_repository_courses(prog)
     assert sum(1 for r in repo if r["category_id"] == "advanced_labs") == 5
+
+
+# ---------------------------------------------------------------------------
+# Part K: TAU Factor and assessment fields in repository (Problems 1, 2, 4)
+# ---------------------------------------------------------------------------
+
+def test_repository_course_has_tau_factor_lookup_id():
+    """Each repository course has tau_factor_lookup_id (undashed course ID)."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    repo_map = {r["course_id"]: r for r in repo}
+    # Course 0542-4320 must expose tau_factor_lookup_id == "05424320"
+    rc = repo_map["0542-4320"]
+    assert rc.get("tau_factor_lookup_id") == "05424320", (
+        f"Expected '05424320', got '{rc.get('tau_factor_lookup_id')}'"
+    )
+
+
+def test_repository_all_courses_have_tau_factor_lookup_id():
+    """All 56 repository courses have a non-null tau_factor_lookup_id."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    missing = [r["course_id"] for r in repo if not r.get("tau_factor_lookup_id")]
+    assert not missing, f"Missing tau_factor_lookup_id: {missing}"
+
+
+def test_repository_tau_factor_status_is_not_started_without_db():
+    """Without a real DB, tau_factor_status is 'not_started' (importer not run)."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    # All courses should be not_started (no TAU Factor importer has run)
+    non_started = [
+        r["course_id"] for r in repo
+        if r.get("tau_factor_status") not in ("not_started", "matched", "failed")
+    ]
+    assert not non_started, f"Unexpected tau_factor_status values: {non_started}"
+
+
+def test_repository_assessment_type_is_null():
+    """assessment_type in repository must be None — never regex-derived."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    non_null = [r["course_id"] for r in repo if r.get("assessment_type") is not None]
+    assert not non_null, f"assessment_type must be None; found non-null: {non_null}"
+
+
+def test_repository_assessment_analysis_status_set():
+    """assessment_analysis_status is set on each repository course."""
+    prog = _load_pdf_program()
+    repo = _build_program_repository_courses(prog)
+    valid_statuses = {"not_started", "pending", "complete", "not_available"}
+    invalid = [
+        r["course_id"] for r in repo
+        if r.get("assessment_analysis_status") not in valid_statuses
+    ]
+    assert not invalid, f"Invalid assessment_analysis_status on: {invalid}"
+
+
+def test_board_json_2027_tau_factor_lookup_id_for_0542_4320():
+    """Board JSON repo entry for 0542-4320 has tau_factor_lookup_id == '05424320'."""
+    board = _load_2027_board()
+    repo_map = {
+        r["course_id"]: r
+        for r in board["metadata"]["program_repository_courses"]
+    }
+    rc = repo_map.get("0542-4320")
+    assert rc is not None, "0542-4320 not found in board repository"
+    assert rc.get("tau_factor_lookup_id") == "05424320", (
+        f"Expected '05424320', got '{rc.get('tau_factor_lookup_id')}'"
+    )
+
+
+def test_board_json_2027_repository_count_56():
+    """Board JSON has exactly 56 repository courses."""
+    board = _load_2027_board()
+    repo = board["metadata"]["program_repository_courses"]
+    assert len(repo) == 56
+
+
+def test_board_json_2027_planned_count_zero():
+    """Board JSON has 0 planned (placed) courses."""
+    board = _load_2027_board()
+    planned = sum(len(s.get("courses", [])) for s in board["semesters"])
+    assert planned == 0
+
+
+def test_board_json_2027_category_counts():
+    """Board JSON repository category counts: fluids=4, solids=4, systems=4, labs=5, other=39."""
+    from collections import Counter
+    board = _load_2027_board()
+    repo = board["metadata"]["program_repository_courses"]
+    cats = Counter(r.get("category_id") for r in repo if r.get("category_id"))
+    assert cats["fluids"]               == 4
+    assert cats["solids"]               == 4
+    assert cats["systems"]              == 4
+    assert cats["advanced_labs"]        == 5
+    assert cats["other_specialization"] == 39
+
+
+def test_board_json_2027_mandatory_not_in_repository():
+    """Mandatory courses (from placeholder file) must not appear in repository courses."""
+    board = _load_2027_board()
+    repo_ids = {r["course_id"] for r in board["metadata"]["program_repository_courses"]}
+    mand_path = Path("data/programs/mechanical_engineering_mandatory_2027.json")
+    mand = json.loads(mand_path.read_text(encoding="utf-8"))
+    mand_ids = {c["course_id"] for c in mand.get("courses", [])}
+    overlap = repo_ids & mand_ids
+    assert not overlap, f"Mandatory courses found in repository: {overlap}"
