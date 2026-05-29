@@ -1,5 +1,5 @@
 /**
- * Tests for GET /api/board/[programId]
+ * Tests for GET /api/board/:programId  (api/board.ts)
  *
  * The postgres module is mocked — no real database connection is required.
  * Tests cover parsing, happy path, all error branches, and fixture counts.
@@ -19,7 +19,7 @@ jest.mock('postgres', () => jest.fn().mockReturnValue(mockSql));
 import handler, {
   parseProgramVersionId,
   queryBoardJson,
-} from '../../api/board/[programId]';
+} from '../../api/board';
 
 // ── Board fixture with exact expected counts ──────────────────────────────────
 

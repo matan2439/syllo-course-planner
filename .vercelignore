@@ -1,0 +1,4 @@
+# Secrets — must never be served as static files
+.env
+.env.local
+.env.production

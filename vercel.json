@@ -1,7 +1,9 @@
 {
   "version": 2,
+  "framework": null,
   "rewrites": [
-    { "source": "/", "destination": "/app/web/semester_board_viewer.html" }
+    { "source": "/api/board/:programId", "destination": "/api/board?programId=:programId" },
+    { "source": "/",                     "destination": "/app/web/semester_board_viewer.html" }
   ],
   "headers": [
     {
