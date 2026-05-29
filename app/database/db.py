@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from app.config import settings
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -120,6 +122,11 @@ course_grade_stats = Table(
 # ---------------------------------------------------------------------------
 
 def _make_engine(db_path: Path = _DB_PATH):
+    # Use DATABASE_URL (Postgres) only when the caller is using the default
+    # production path.  Explicit db_path arguments (always used in tests) keep
+    # the SQLite behaviour unchanged regardless of environment variables.
+    if db_path is _DB_PATH and settings.database_url:
+        return create_engine(settings.database_url)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return create_engine(_DB_URL_TEMPLATE.format(path=db_path.as_posix()))
 
