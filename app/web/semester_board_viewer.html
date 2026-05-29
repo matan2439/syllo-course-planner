@@ -708,25 +708,6 @@ body.prog-modal-open .workspace {
 .prog-cat-count { font-size: .63rem; font-weight: 600; opacity: .85; }
 .prog-req-note { font-size: .62rem; color: var(--text-faint); margin-top: 5px; font-style: italic; }
 
-/* ── Legend (compact) ────────────────────────────────────────────────────── */
-.sb-legend { padding: 8px 14px 10px; border-top: 1px solid var(--border); }
-.legend-ttl {
-  font-size: .61rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--text-faint); margin-bottom: 5px;
-}
-.legend-compact { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 5px; }
-.legend-ci { display: flex; align-items: center; gap: 4px; font-size: .65rem; color: var(--text-muted); }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.legend-workload-details { margin-top: 2px; }
-.legend-workload-details > summary {
-  display: flex; align-items: center; gap: 10px;
-  font-size: .63rem; color: var(--text-faint); cursor: pointer;
-  list-style: none; padding: 2px 0;
-}
-.legend-workload-details > summary::marker,
-.legend-workload-details > summary::-webkit-details-marker { display: none; }
-.legend-workload-more { margin-inline-start: auto; font-size: .6rem; }
-.legend-workload-body { padding: 4px 0 0; font-size: .62rem; color: var(--text-faint); line-height: 1.7; }
 
 /* ── My Courses modal ────────────────────────────────────────────────────── */
 .my-course-row {
@@ -1976,29 +1957,6 @@ function renderSidebar() {
   const prog = computeProgramProgress();
   const progressHtml = prog ? renderProgramProgress(prog) : '';
 
-  /* Legend injected inside scrollable body so sidebar scrolls end-to-end */
-  const legendHtml = `<div class="sb-legend">
-    <div class="legend-ttl">מקרא</div>
-    <div class="legend-compact">
-      <span class="legend-ci"><span class="legend-dot" style="background:var(--mand-accent)"></span>חובה 🔒</span>
-      <span class="legend-ci"><span class="legend-dot" style="background:var(--elec-accent)"></span>בחירה</span>
-      <span class="legend-ci"><span class="legend-dot" style="background:var(--blk-accent)"></span>חסום</span>
-      <span class="legend-ci"><span class="legend-dot" style="background:var(--miss-accent)"></span>חסר מידע</span>
-      <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>דרישות קדם חסרות</span>
-    </div>
-    <details class="legend-workload-details">
-      <summary>
-        <span class="legend-ci"><span class="legend-dot" style="background:var(--success)"></span>נמוך</span>
-        <span class="legend-ci"><span class="legend-dot" style="background:var(--warning)"></span>בינוני</span>
-        <span class="legend-ci"><span class="legend-dot" style="background:var(--danger)"></span>גבוה</span>
-        <span class="legend-workload-more">▸ איך מחושבים עומס וקושי?</span>
-      </summary>
-      <div class="legend-workload-body">
-        קל: פחות מ-10 ש׳׳ש · בינוני: 10–16 · גבוה: 16+ ש׳׳ש שבועיות
-      </div>
-    </details>
-  </div>`;
-
   /* AI panel injected inside scrollable body (mock only — not connected) */
   const aiPanelHtml = `<details class="ai-panel" id="ai-panel">
     <summary>🤖 <span>עוזר AI לתכנון מערכת</span>
@@ -2022,7 +1980,7 @@ function renderSidebar() {
     </div>
   </details>`;
 
-  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections + legendHtml + aiPanelHtml;
+  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections + aiPanelHtml;
   document.getElementById('invalid-toggle-btn')?.addEventListener('click', () => {
     allowInvalidPlacement = !allowInvalidPlacement;
     renderSidebar();

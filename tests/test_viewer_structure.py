@@ -420,3 +420,32 @@ def test_mandatory_empty_message_auto_placement_note(html):
 def test_mandatory_section_does_not_show_zero_count_wording(html):
     """Must not have the old 'קורסי חובה עדיין לא הוזנו לתוכנית זו' message."""
     assert "קורסי חובה עדיין לא הוזנו לתוכנית זו" not in html
+
+
+# ---------------------------------------------------------------------------
+# Legend removal
+# ---------------------------------------------------------------------------
+
+def test_legend_section_removed(html):
+    """The מקרא legend section must not exist in the rendered HTML."""
+    assert "sb-legend" not in html
+    assert "legend-ttl" not in html
+    assert "legendHtml" not in html
+
+
+def test_legend_hebrew_label_removed(html):
+    """The Hebrew 'מקרא' label must not appear in the sidebar legend context."""
+    # 'מקרא' may appear in comments/docs but not as a legend title class
+    assert "legend-ttl" not in html
+
+
+def test_legend_workload_explanation_removed(html):
+    """The 'איך מחושבים עומס וקושי?' collapsible must not exist."""
+    assert "legend-workload-details" not in html
+    assert "איך מחושבים עומס וקושי?" not in html
+
+
+def test_ai_panel_still_present(html):
+    """AI assistant panel must still be present after legend removal."""
+    assert "ai-panel" in html
+    assert "עוזר AI לתכנון מערכת" in html
