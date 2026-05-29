@@ -134,6 +134,17 @@ def init_db(db_path: Path = _DB_PATH) -> None:
     metadata.create_all(engine)
 
 
+def ensure_grade_stats_table(db_path: Path = _DB_PATH) -> bool:
+    """Create course_grade_stats table if missing; return True if it now exists.
+
+    Safe migration helper: never deletes or modifies existing tables.
+    Useful when the DB was initialised before course_grade_stats was added.
+    """
+    engine = _make_engine(db_path)
+    course_grade_stats.create(engine, checkfirst=True)
+    return True
+
+
 def save_merged_course(merged: dict[str, Any], db_path: Path = _DB_PATH) -> None:
     """Insert or replace a merged course record (upsert by course_id)."""
     engine = _make_engine(db_path)

@@ -1,0 +1,14 @@
+{
+  "_note": "Grade statistics source configuration for tau-course-planner.",
+  "_usage": "Set source_url to a URL or local file path containing grade JSON/CSV data.",
+  "_env_override": "GRADE_STATS_SOURCE_URL environment variable overrides source_url.",
+  "_formats": [
+    "JSON list:  [{course_id, avg_grade, sample_size, ...}]",
+    "JSON dict:  {<course_id>: {avg_grade, sample_size}}",
+    "CSV:        course_id,avg_grade,sample_size[,year,semester,source_url]"
+  ],
+  "_status": "Source URL is not yet configured. Grade stats will show 'source_unconfigured'.",
+  "source_url": "",
+  "source_name": "grade_import",
+  "max_age_hours": 24
+}

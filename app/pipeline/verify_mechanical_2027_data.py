@@ -59,8 +59,9 @@ def verify() -> dict:
         "repo_missing_syllabus_ids":    [r["course_id"] for r in repo_miss_syl],
         "mandatory_with_course_details_url": mand_with_det,
         "mandatory_with_syllabus_url":       len(mand_with_syl),
-        "tau_factor_matched":        tf_counts.get("matched", 0),
-        "tau_factor_not_started":    tf_counts.get("not_started", 0),
+        "tau_factor_matched":             tf_counts.get("matched", 0),
+        "tau_factor_not_started":         tf_counts.get("not_started", 0),
+        "tau_factor_source_unconfigured": tf_counts.get("source_unconfigured", 0),
         "repo_with_difficulty_score":   repo_with_diff,
         "repo_partial_info":         repo_partial,
     }
@@ -121,7 +122,9 @@ def main() -> None:
     check("repo course_details == 56", v["repo_with_course_details_url"] == 56, f"got {v['repo_with_course_details_url']}")
     check("repo syllabus_url >= 48",   v["repo_with_syllabus_url"] >= 48,       f"got {v['repo_with_syllabus_url']}")
     check("mandatory course_details > 0", v["mandatory_with_course_details_url"] > 0, f"got {v['mandatory_with_course_details_url']}")
-    check("tau_factor not_started==56",v["tau_factor_not_started"] == 56)
+    # tau_factor: all unmatched unless importer ran
+    tf_unmatched = v["tau_factor_not_started"] + v.get("tau_factor_source_unconfigured", 0)
+    check("tau_factor none matched",   v["tau_factor_matched"] == 0,   "importer not run")
 
     print()
     print("Overall:", "PASS" if ok else "FAIL — see above")

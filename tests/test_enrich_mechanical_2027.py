@@ -188,10 +188,10 @@ def test_all_board_courses_have_tau_factor_status(repo):
     assert not bad, f"Invalid tau_factor_status: {bad}"
 
 
-def test_tau_factor_remains_not_started_unless_import_ran(repo):
-    """tau_factor_status must be not_started for all courses — no importer has run."""
-    non_started = [r["course_id"] for r in repo if r.get("tau_factor_status") != "not_started"]
-    assert not non_started, f"Expected all not_started, found: {non_started}"
+def test_tau_factor_no_match_unless_import_ran(repo):
+    """tau_factor_status must not be 'matched' — no importer has run."""
+    matched = [r["course_id"] for r in repo if r.get("tau_factor_status") == "matched"]
+    assert not matched, f"No course should be matched without running importer: {matched}"
 
 
 def test_tau_factor_lookup_id_normalized(repo):

@@ -62,11 +62,13 @@ _YEAR_ALIASES      = {"year", "academicYear", "שנה"}
 _SEMESTER_ALIASES  = {"semester", "סמסטר"}
 _MOED_ALIASES      = {"moed", "מועד", "examPeriod"}
 _LECTURER_ALIASES  = {"lecturer", "lecturerName", "lecturer_name", "מרצה", "instructors"}
-_AVG_ALIASES       = {"average", "avg", "averageGrade", "average_grade", "ממוצע"}
+# avg_grade and avg_grade are the canonical names; keep legacy aliases
+_AVG_ALIASES       = {"avg_grade", "average", "avg", "averageGrade", "average_grade", "ממוצע"}
 _MED_ALIASES       = {"median", "medianGrade", "median_grade", "חציון"}
 _STD_ALIASES       = {"standardDeviation", "std", "sd", "standard_deviation", "סטיית_תקן"}
 _PASS_ALIASES      = {"passRate", "pass_rate", "passPercent", "passRatio"}
-_STUDENTS_ALIASES  = {"numStudents", "num_students", "numTested", "tested",
+# sample_size is the canonical external name; keep legacy aliases
+_STUDENTS_ALIASES  = {"sample_size", "numStudents", "num_students", "numTested", "tested",
                       "מספר_נבחנים", "count", "n"}
 
 _SEMESTER_NORM = {
@@ -102,9 +104,11 @@ def _normalize_record(
     from app.database.db import _normalize_course_id  # local import to avoid circulars
 
     raw_id = _pick(raw, _COURSE_ID_ALIASES)
-    if raw_id is None:
+    if not raw_id and raw_id != 0:
         return None
     course_id = _normalize_course_id(str(raw_id))
+    if not course_id:
+        return None
 
     # Semester normalisation
     sem_raw = _pick(raw, _SEMESTER_ALIASES)
@@ -160,6 +164,12 @@ def _normalize_record(
     )
 
 
+def _looks_like_course_id(key: str) -> bool:
+    """Return True if *key* looks like a course ID (8 digits, possibly with dash)."""
+    digits = re.sub(r"\D", "", key)
+    return len(digits) == 8
+
+
 def parse_grades_json(
     data: list | dict,
     source_name: str = "TAU Refactor",
@@ -167,21 +177,72 @@ def parse_grades_json(
     fetched_at: str = "",
 ) -> list[CourseGradeStats]:
     """
-    Parse a raw JSON payload (list or dict) into a list of CourseGradeStats.
+    Parse a raw JSON payload into a list of CourseGradeStats.
+
+    Supported shapes:
+      1. List of records:             [{course_id, avg_grade, ...}, ...]
+      2. Wrapper dict:                {"data": [...]} | {"grades": [...]} | ...
+      3. Course-keyed dict:           {"05424320": {avg_grade: 82.4, sample_size: 120}, ...}
+
     Records missing a course_id are silently skipped.
     """
     if isinstance(data, dict):
+        # Shape 2: wrapper dict with known list key
         for key in ("data", "grades", "courses", "results"):
             if key in data and isinstance(data[key], list):
                 data = data[key]
                 break
         else:
-            data = list(data.values()) if all(isinstance(v, dict) for v in data.values()) else []
+            # Shape 3: course-ID-keyed dict {"05424320": {avg_grade: ...}}
+            if data and all(_looks_like_course_id(k) for k in data):
+                records: list[dict] = []
+                for cid, val in data.items():
+                    if isinstance(val, dict):
+                        rec = dict(val)
+                        rec.setdefault("course_id", cid)
+                        records.append(rec)
+                    elif isinstance(val, (int, float)):
+                        # bare scalar: treat as avg_grade
+                        records.append({"course_id": cid, "avg_grade": val})
+                data = records
+            else:
+                # fallback: treat values as records
+                data = list(data.values()) if all(isinstance(v, dict) for v in data.values()) else []
 
     results: list[CourseGradeStats] = []
     for raw in data:
         if not isinstance(raw, dict):
             continue
+        record = _normalize_record(raw, source_name, source_url, fetched_at)
+        if record is not None:
+            results.append(record)
+    return results
+
+
+def parse_grades_csv(
+    text: str,
+    source_name: str = "TAU Refactor",
+    source_url: str | None = None,
+    fetched_at: str = "",
+) -> list[CourseGradeStats]:
+    """Parse CSV text into CourseGradeStats.
+
+    Expected columns (order flexible, header required):
+        course_id, avg_grade, sample_size[, median, std, pass_rate, year, semester, source_url]
+
+    Leading/trailing whitespace in cells is stripped.
+    """
+    import csv, io
+    rows: list[dict] = list(csv.DictReader(io.StringIO(text.strip())))
+    # Normalise column names: strip spaces, lowercase
+    norm_rows: list[dict] = []
+    for row in rows:
+        norm: dict = {}
+        for k, v in row.items():
+            norm[(k or "").strip().lower()] = (v or "").strip()
+        norm_rows.append(norm)
+    results: list[CourseGradeStats] = []
+    for raw in norm_rows:
         record = _normalize_record(raw, source_name, source_url, fetched_at)
         if record is not None:
             results.append(record)
@@ -263,6 +324,73 @@ def import_grade_stats(
 
 
 # ---------------------------------------------------------------------------
+# Grade-source configuration
+# ---------------------------------------------------------------------------
+
+_CONFIG_PATH = Path("data/config/grade_sources.json")
+_ENV_VAR     = "GRADE_STATS_SOURCE_URL"
+
+
+def get_configured_source_url() -> str | None:
+    """Return the grade-stats source URL from env var or config file, or None."""
+    import os
+
+    # 1. Environment variable takes priority
+    env = os.environ.get(_ENV_VAR, "").strip()
+    if env:
+        return env
+
+    # 2. Config file
+    if _CONFIG_PATH.exists():
+        try:
+            cfg = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+            url = cfg.get("source_url", "").strip()
+            if url:
+                return url
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return None
+
+
+def import_grade_stats_from_file(
+    file_path: Path,
+    db_path: Path = _DB_PATH,
+    source_name: str = "grade_import",
+    source_url: str | None = None,
+) -> int:
+    """Import grade stats from a local JSON or CSV file.
+
+    Supports:
+      • JSON list:    [{course_id, avg_grade, ...}, ...]
+      • JSON dict:    {"05424320": {avg_grade: 82.4, sample_size: 120}, ...}
+      • CSV:          course_id,avg_grade,sample_size[,...]
+
+    Returns number of records inserted.
+    """
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    text = file_path.read_text(encoding="utf-8")
+
+    if file_path.suffix.lower() == ".csv":
+        stats = parse_grades_csv(text, source_name=source_name,
+                                 source_url=source_url, fetched_at=fetched_at)
+    else:
+        data = json.loads(text)
+        stats = parse_grades_json(data, source_name=source_name,
+                                  source_url=source_url, fetched_at=fetched_at)
+
+    if not stats:
+        print(f"[grades] No records parsed from {file_path}")
+        return 0
+
+    from app.database.db import ensure_grade_stats_table
+    ensure_grade_stats_table(db_path)
+    inserted = save_grade_stats(stats, db_path)
+    print(f"[grades] Inserted {inserted} record(s) from {file_path}")
+    return inserted
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -270,25 +398,41 @@ if __name__ == "__main__":
     import argparse
 
     cli = argparse.ArgumentParser(
-        description="Import TAU Refactor / TAU Factor grade statistics into the planner DB"
+        description="Import grade statistics into the planner DB (JSON, CSV, or URL).\n"
+                    f"Set {_ENV_VAR} or configure {_CONFIG_PATH} to use a default source."
     )
     cli.add_argument("--source-url",    default=None, metavar="URL",
-                     help="URL to download grade statistics JSON from")
+                     help="URL to download grade stats JSON from (overrides config)")
+    cli.add_argument("--file",          default=None, metavar="PATH",
+                     help="Import from local JSON or CSV file directly")
     cli.add_argument("--cache",         default="data/grades/grades.json", metavar="PATH",
-                     help="Local cache path for the downloaded JSON (default: data/grades/grades.json)")
+                     help="Local cache path for downloaded JSON (default: data/grades/grades.json)")
     cli.add_argument("--db",           default=str(_DB_PATH), metavar="PATH",
                      help=f"Database path (default: {_DB_PATH})")
-    cli.add_argument("--source-name",  default="TAU Refactor", metavar="NAME",
-                     help="Display name for attribution (default: TAU Refactor)")
+    cli.add_argument("--source-name",  default="grade_import", metavar="NAME",
+                     help="Display name for attribution (default: grade_import)")
     cli.add_argument("--max-age-hours", type=float, default=24.0, metavar="N",
                      help="Re-download if cache is older than N hours (default: 24)")
     args = cli.parse_args()
 
-    n = import_grade_stats(
-        source_url    = args.source_url,
-        cache_path    = Path(args.cache),
-        db_path       = Path(args.db),
-        source_name   = args.source_name,
-        max_age_hours = args.max_age_hours,
-    )
-    print(f"[grades] Inserted {n} grade record(s).")
+    if args.file:
+        n = import_grade_stats_from_file(
+            file_path   = Path(args.file),
+            db_path     = Path(args.db),
+            source_name = args.source_name,
+        )
+    else:
+        url = args.source_url or get_configured_source_url()
+        if not url:
+            print(f"[grades] Grade source URL is not configured.")
+            print(f"  Set {_ENV_VAR} env var or edit {_CONFIG_PATH}")
+            print(f"  Or use --file PATH to import a local JSON/CSV file.")
+        else:
+            n = import_grade_stats(
+                source_url    = url,
+                cache_path    = Path(args.cache),
+                db_path       = Path(args.db),
+                source_name   = args.source_name,
+                max_age_hours = args.max_age_hours,
+            )
+            print(f"[grades] Inserted {n} grade record(s).")

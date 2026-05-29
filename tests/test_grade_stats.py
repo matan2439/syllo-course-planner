@@ -443,19 +443,22 @@ def test_get_grade_stats_returns_empty_for_unknown_course(tmp_db):
     assert rows == []
 
 
-def test_tau_factor_status_not_started_when_no_grade_stats(tmp_db):
-    """tau_factor_status is 'not_started' when DB has no grade stats (importer not run)."""
+def test_tau_factor_status_not_started_or_unconfigured_when_no_grade_stats(tmp_db):
+    """tau_factor_status is 'not_started' or 'source_unconfigured' when DB has no grade stats."""
     from app.analysis.semester_board import _resolve_course_db_data
     result = _resolve_course_db_data("0542-4320", None, tmp_db)
-    assert result["tau_factor_status"] == "not_started"
+    # Acceptable: source_unconfigured (no source URL set) or not_started (source set but not run)
+    assert result["tau_factor_status"] in ("not_started", "source_unconfigured"), (
+        f"Expected not_started or source_unconfigured, got: {result['tau_factor_status']!r}"
+    )
 
 
 def test_tau_factor_status_not_started_when_no_db(tmp_path):
-    """tau_factor_status is 'not_started' when DB does not exist."""
+    """tau_factor_status is 'not_started' or 'source_unconfigured' when DB does not exist."""
     from app.analysis.semester_board import _resolve_course_db_data
     missing_db = tmp_path / "absent.db"
     result = _resolve_course_db_data("0542-4320", None, missing_db)
-    assert result["tau_factor_status"] == "not_started"
+    assert result["tau_factor_status"] in ("not_started", "source_unconfigured")
 
 
 def test_tau_factor_status_matched_when_grade_stats_present(tmp_db):

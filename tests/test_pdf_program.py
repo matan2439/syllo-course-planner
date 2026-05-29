@@ -708,16 +708,16 @@ def test_repository_all_courses_have_tau_factor_lookup_id():
     assert not missing, f"Missing tau_factor_lookup_id: {missing}"
 
 
-def test_repository_tau_factor_status_is_not_started_without_db():
-    """Without a real DB, tau_factor_status is 'not_started' (importer not run)."""
+def test_repository_tau_factor_status_valid_without_db():
+    """Without a real DB, tau_factor_status must be a known valid value."""
     prog = _load_pdf_program()
     repo = _build_program_repository_courses(prog)
-    # All courses should be not_started (no TAU Factor importer has run)
-    non_started = [
+    valid = {"not_started", "matched", "failed", "source_unconfigured", "not_found"}
+    invalid = [
         r["course_id"] for r in repo
-        if r.get("tau_factor_status") not in ("not_started", "matched", "failed")
+        if r.get("tau_factor_status") not in valid
     ]
-    assert not non_started, f"Unexpected tau_factor_status values: {non_started}"
+    assert not invalid, f"Unexpected tau_factor_status values: {invalid}"
 
 
 def test_repository_assessment_type_is_null():

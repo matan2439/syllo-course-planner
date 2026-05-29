@@ -940,10 +940,23 @@ def _resolve_course_db_data(
         "not_started" if result["syllabus_url"] else "not_available"
     )
 
-    # TAU Factor check — empty stats means importer has not run yet ("not_started")
+    # Grade stats check.
+    # "source_unconfigured" if no source URL is set; "not_started" if importer not run;
+    # "matched" if data found; "failed" on error.
+    try:
+        from app.grades.grade_stats_importer import get_configured_source_url
+        source_configured = get_configured_source_url() is not None
+    except Exception:
+        source_configured = False
+
     try:
         stats = get_grade_stats(cid, db_path)
-        result["tau_factor_status"] = "matched" if stats else "not_started"
+        if stats:
+            result["tau_factor_status"] = "matched"
+        elif source_configured:
+            result["tau_factor_status"] = "not_started"
+        else:
+            result["tau_factor_status"] = "source_unconfigured"
     except Exception:
         result["tau_factor_status"] = "failed"
 
