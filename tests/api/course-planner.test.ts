@@ -414,6 +414,62 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     const body = res.json.mock.calls[0][0];
     expect(body.code).toBe('AI_PROVIDER_ERROR');
   });
+
+  it('returns 503 AI_EMPTY_RESPONSE when stream closes immediately with no chunks', async () => {
+    // This is the real production failure mode: Anthropic rejects the request
+    // silently (billing/auth error) and the Vercel AI SDK returns an empty stream
+    // rather than throwing, causing a 200 with empty body.
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
+      textStream: new ReadableStream<string>({
+        start(controller) { controller.close(); } // immediately done, no chunks
+      }),
+    }));
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.status).toHaveBeenCalledWith(503);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('AI_EMPTY_RESPONSE');
+    // Should NOT call res.write (no content committed before error)
+    expect(res.write).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 AI_BILLING_ERROR when stream throws with billing message', async () => {
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    const billingErr = Object.assign(new Error('Your credit balance is too low'), { status: 403 });
+    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
+      textStream: new ReadableStream<string>({
+        start(controller) { controller.error(billingErr); }
+      }),
+    }));
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.status).toHaveBeenCalledWith(503);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('AI_BILLING_ERROR');
+    expect(res.write).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 AI_AUTH_ERROR when stream throws with 401', async () => {
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
+    });
+    const authErr = Object.assign(new Error('Invalid authentication credentials'), { status: 401 });
+    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
+      textStream: new ReadableStream<string>({
+        start(controller) { controller.error(authErr); }
+      }),
+    }));
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.status).toHaveBeenCalledWith(503);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('AI_AUTH_ERROR');
+  });
 });
 
 // ── AI dev mode ───────────────────────────────────────────────────────────────

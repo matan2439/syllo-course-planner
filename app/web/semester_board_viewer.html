@@ -1395,6 +1395,14 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
         errMsg = '⚠ בקשת ה-AI לא תקינה. נסה לרענן את הדף (Ctrl+Shift+R).';
       } else if (errBody.code === 'DB_ERROR') {
         errMsg = '⚠ בעיה זמנית במסד הנתונים — נסה שוב עוד רגע.';
+      } else if (errBody.code === 'AI_BILLING_ERROR') {
+        errMsg = '⚠ חשבון ה-AI אינו פעיל — יש להוסיף קרדיטים ב-Anthropic Console.';
+      } else if (errBody.code === 'AI_AUTH_ERROR') {
+        errMsg = '⚠ מפתח ה-AI אינו תקין — בדוק את ANTHROPIC_API_KEY בהגדרות Vercel.';
+      } else if (errBody.code === 'AI_RATE_LIMIT') {
+        errMsg = '⚠ הגעת למגבלת קריאות — נסה שוב עוד מספר שניות.';
+      } else if (errBody.code === 'AI_EMPTY_RESPONSE') {
+        errMsg = '⚠ שירות ה-AI לא החזיר תוכן — ייתכן שיש בעיה בחיוב ב-Anthropic Console.';
       } else if (errBody.code === 'AI_PROVIDER_ERROR' || errBody.code === 'STREAM_ERROR') {
         errMsg = '⚠ ספק ה-AI לא הגיב — נסה שוב.';
       } else {

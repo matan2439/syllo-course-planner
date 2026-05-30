@@ -146,27 +146,85 @@ async function sendMockStream(res: VercelResponse): Promise<void> {
 }
 
 /**
+ * Classify a provider-level error and send an appropriate JSON response.
+ * Called when the stream errors or returns no chunks before any response is committed.
+ */
+function classifyAndSendProviderError(res: VercelResponse, err: unknown): void {
+  const msg    = err instanceof Error ? err.message : String(err);
+  const status = (err as any)?.status ?? (err as any)?.statusCode ?? 0;
+  console.error('[ai] provider error — status:', status, '— message:', msg);
+
+  if (status === 401 || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('invalid api key')) {
+    console.error('[ai] CLASSIFICATION: AI_AUTH_ERROR');
+    sendError(res, 503, 'שגיאת אימות ב-API של Anthropic — בדוק את ANTHROPIC_API_KEY.', 'AI_AUTH_ERROR');
+  } else if (
+    status === 402 || status === 403 ||
+    msg.toLowerCase().includes('billing') || msg.toLowerCase().includes('credit') ||
+    msg.toLowerCase().includes('quota')   || msg.toLowerCase().includes('permission')
+  ) {
+    console.error('[ai] CLASSIFICATION: AI_BILLING_ERROR');
+    sendError(res, 503, 'לא ניתן לבצע קריאה ל-Anthropic — בדוק חיוב/קרדיטים בקונסולה.', 'AI_BILLING_ERROR');
+  } else if (status === 429 || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('rate_limit')) {
+    console.error('[ai] CLASSIFICATION: AI_RATE_LIMIT');
+    sendError(res, 429, 'הגעת למגבלת קריאות Anthropic — נסה שוב עוד כמה שניות.', 'AI_RATE_LIMIT');
+  } else {
+    console.error('[ai] CLASSIFICATION: AI_PROVIDER_ERROR');
+    sendError(res, 503, 'שגיאה בספק ה-AI — נסה שוב.', 'AI_PROVIDER_ERROR', { detail: msg });
+  }
+}
+
+/**
  * Pipe result.textStream (ReadableStream<string>) to a Node.js VercelResponse.
- * Uses textStream — a single reader with no conflict — instead of
- * toTextStreamResponse() which would require a second competing reader.
+ *
+ * Reads the FIRST chunk before committing the 200 response.  If the provider
+ * silently closes the stream with no chunks (e.g. Anthropic billing/auth error
+ * handled inside the SDK), we can still return a proper JSON error instead of
+ * a 200 with an empty body that the browser shows as "תשובה ריקה".
  */
 async function pipeTextStream(
   res: VercelResponse,
   textStream: ReadableStream<string>,
 ): Promise<void> {
+  const reader = textStream.getReader();
+
+  // ── Peek at the first chunk ──────────────────────────────────────────────
+  let first: ReadableStreamReadResult<string>;
+  try {
+    first = await reader.read();
+  } catch (err) {
+    // Provider threw on first read — classify and return JSON error
+    classifyAndSendProviderError(res, err);
+    return;
+  }
+
+  if (first.done) {
+    // Stream ended immediately with zero chunks and no exception.
+    // This is how the Vercel AI SDK signals a silenced provider error
+    // (billing, auth, quota).  Log and return a proper JSON error.
+    console.error('[ai] stream empty — provider returned no chunks (likely billing/auth issue)');
+    sendError(
+      res, 503,
+      'שירות ה-AI לא החזיר תוכן. בדוק חיוב/קרדיטים ב-Anthropic Console.',
+      'AI_EMPTY_RESPONSE',
+    );
+    return;
+  }
+
+  // ── First chunk received — commit the streaming response ─────────────────
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.status(200);
+  res.write(first.value);
 
-  const reader = textStream.getReader();
+  // ── Stream remaining chunks ───────────────────────────────────────────────
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      res.write(value); // value is a string chunk from the AI SDK
+      res.write(value);
     }
   } catch (err) {
-    console.error('[ai] stream read error:', err instanceof Error ? err.message : String(err));
+    console.error('[ai] mid-stream error:', err instanceof Error ? err.message : String(err));
   } finally {
     res.end();
   }
