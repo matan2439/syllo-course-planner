@@ -4,27 +4,25 @@
  * Streaming AI endpoint for TAU course-planner assistant.
  * Supports Anthropic (preferred) and OpenAI via Vercel AI SDK.
  *
- * Dev mode (AI_DEV_MODE=true):
- *   Returns a deterministic mock streaming response without calling any
- *   model provider.  Ignored in production (VERCEL_ENV=production).
- *
- * Quota bypass (AI_DEV_BYPASS_QUOTA=true):
- *   Only active when AI_DEV_MODE=true AND not in production.
- *   Skips all Supabase quota operations so you can develop locally
- *   without a database connection.
- *
  * Runtime: Node.js (quota check requires TCP connection to Postgres).
  *
- * ── HANG FIX ─────────────────────────────────────────────────────────────────
- * Previous versions used result.text.then() to detect stream completion.
- * result.text and result.toTextStreamResponse() BOTH consume the same internal
- * ReadableStream.  A stream can only have one reader → result.text "steals"
- * all the tokens and the response body delivers nothing to the browser.
+ * ── HANDLER PATTERN ───────────────────────────────────────────────────────────
+ * Uses Vercel Node.js handler pattern: (req: VercelRequest, res: VercelResponse).
+ * Returning a Web API Response object from a Node.js Vercel function is silently
+ * ignored — the runtime logs "WARN: default export return..." and the response
+ * is never sent, causing a 504 timeout.
  *
- * Fix: use the onFinish callback in streamText() which is invoked by the SDK
- * internally after generation completes, without needing a second stream reader.
+ * All responses must use:
+ *   res.status(n).json(...)    for JSON errors
+ *   res.write(...) / res.end() for streaming
+ *
+ * ── STREAMING ─────────────────────────────────────────────────────────────────
+ * Uses result.textStream (ReadableStream<string>) instead of
+ * result.toTextStreamResponse() so there is exactly ONE stream reader and no
+ * dual-reader conflict that caused the previous hang.
  */
 
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, type LanguageModel } from 'ai';
@@ -97,7 +95,7 @@ function resolveModel(): ModelConfig | null {
   return null;
 }
 
-// ── Dev mode helpers ──────────────────────────────────────────────────────────
+// ── Dev mode ──────────────────────────────────────────────────────────────────
 
 function isDevMode(): boolean {
   if (process.env.VERCEL_ENV === 'production') return false;
@@ -108,78 +106,115 @@ function isBypassQuota(): boolean {
   return isDevMode() && process.env.AI_DEV_BYPASS_QUOTA === 'true';
 }
 
-function mockStreamResponse(): Response {
+// ── Response helpers ──────────────────────────────────────────────────────────
+
+function sendError(
+  res: VercelResponse,
+  status: number,
+  message: string,
+  code?: string,
+  details?: unknown,
+): void {
+  const body: Record<string, unknown> = { error: message };
+  if (code)    body.code    = code;
+  if (details) body.details = details;
+  res.status(status).json(body);
+}
+
+/** Write mock text directly to the response (dev mode, no real model call). */
+async function sendMockStream(res: VercelResponse): Promise<void> {
   const text =
     '[מצב פיתוח] תשובת AI לדוגמה — אין קריאה לספק מודל אמיתי.\n' +
     'ניתן לבדוק את זרימת ה-UI, ניהול מכסה וטיפול בשגיאות ללא עלויות API.';
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(encoder.encode(text));
-      controller.close();
-    },
-  });
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'X-AI-Dev-Mode': 'true',
-    },
-  });
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('X-AI-Dev-Mode', 'true');
+  res.status(200);
+  res.write(text);
+  res.end();
 }
 
-// ── Quota helpers ─────────────────────────────────────────────────────────────
+/**
+ * Pipe result.textStream (ReadableStream<string>) to a Node.js VercelResponse.
+ * Uses textStream — a single reader with no conflict — instead of
+ * toTextStreamResponse() which would require a second competing reader.
+ */
+async function pipeTextStream(
+  res: VercelResponse,
+  textStream: ReadableStream<string>,
+): Promise<void> {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.status(200);
 
+  const reader = textStream.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value); // value is a string chunk from the AI SDK
+    }
+  } catch (err) {
+    console.error('[ai] stream read error:', err instanceof Error ? err.message : String(err));
+  } finally {
+    res.end();
+  }
+}
+
+// ── Quota helper ──────────────────────────────────────────────────────────────
+
+/**
+ * Check quota in Supabase.
+ * Returns true if the request is allowed; returns false and writes an error
+ * response if quota is exceeded or the DB is unreachable.
+ */
 async function runQuotaCheck(
   session_token: string,
   dbUrl: string,
-): Promise<Response | null> {
-  // Returns a JSON error Response if quota is exceeded or DB fails,
-  // returns null if the request is allowed to proceed.
+  res: VercelResponse,
+): Promise<boolean> {
   let quota;
   try {
     quota = await checkAndEnsureSession(session_token, dbUrl);
   } catch (err) {
     console.error('[ai] quota DB error:', err instanceof Error ? err.message : String(err));
-    return jsonError(
-      503,
-      'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
-      { detail: err instanceof Error ? err.message : String(err) },
-      'DB_ERROR',
-    );
+    sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
+      'DB_ERROR', { detail: err instanceof Error ? err.message : String(err) });
+    return false;
   }
 
   console.log('[ai] quota check passed — credits_used:', quota.credits_used, 'remaining:', quota.remaining);
 
   if (!quota.allowed) {
-    return jsonError(
-      429,
-      'מכסת שאלות ה-AI החינמית נוצלה.',
-      { credits_used: quota.credits_used, free_limit: quota.free_limit,
-        credits_paid: quota.credits_paid, remaining: 0 },
-      'QUOTA_EXCEEDED',
-    );
+    sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
+      credits_used: quota.credits_used,
+      free_limit:   quota.free_limit,
+      credits_paid:  quota.credits_paid,
+      remaining:     0,
+    });
+    return false;
   }
-  return null;
+  return true;
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
-  if (req.method !== 'POST') return jsonError(405, 'Method not allowed');
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  // CORS on every response
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError(400, 'Invalid JSON body');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'POST') {
+    sendError(res, 405, 'Method not allowed');
+    return;
   }
 
-  const parsed = requestSchema.safeParse(body);
+  // req.body is auto-parsed by Vercel Node runtime for application/json requests
+  const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) {
-    return jsonError(400, 'Invalid request', parsed.error.flatten().fieldErrors);
+    sendError(res, 400, 'Invalid request', undefined, parsed.error.flatten().fieldErrors);
+    return;
   }
 
   const { message, program_id, plan_context, course_context, session_token } = parsed.data;
@@ -192,25 +227,28 @@ export default async function handler(req: Request): Promise<Response> {
     console.log('[ai] dev mode active — bypass_quota:', isBypassQuota());
 
     if (isBypassQuota()) {
-      return mockStreamResponse();
+      await sendMockStream(res);
+      return;
     }
 
     const dbUrl = process.env.DATABASE_URL ?? '';
     if (!dbUrl) {
-      return jsonError(503,
+      sendError(res, 503,
         'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.',
-        undefined, 'NO_DATABASE_URL');
+        'NO_DATABASE_URL');
+      return;
     }
 
-    const quotaErr = await runQuotaCheck(session_token, dbUrl);
-    if (quotaErr) return quotaErr;
+    const allowed = await runQuotaCheck(session_token, dbUrl, res);
+    if (!allowed) return;
 
     await Promise.allSettled([
       incrementCreditsUsed(session_token, dbUrl),
       logUsageEvent(session_token, 'dev-mock', dbUrl),
     ]);
 
-    return mockStreamResponse();
+    await sendMockStream(res);
+    return;
   }
 
   // ── Production / real AI path ─────────────────────────────────────────────
@@ -218,37 +256,30 @@ export default async function handler(req: Request): Promise<Response> {
   const modelConfig = resolveModel();
   if (!modelConfig) {
     console.log('[ai] no API key configured');
-    return jsonError(503,
+    sendError(res, 503,
       'לא הוגדר מפתח AI. בסביבת Vercel — הוסף ANTHROPIC_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.',
-      undefined, 'NO_API_KEY');
+      'NO_API_KEY');
+    return;
   }
 
   console.log('[ai] model selected:', modelConfig.name);
 
   const dbUrl = process.env.DATABASE_URL ?? '';
   if (!dbUrl) {
-    return jsonError(503,
+    sendError(res, 503,
       'Database not configured. Set DATABASE_URL to enable AI quota tracking.',
-      undefined, 'NO_DATABASE_URL');
+      'NO_DATABASE_URL');
+    return;
   }
 
-  const quotaErr = await runQuotaCheck(session_token, dbUrl);
-  if (quotaErr) return quotaErr;
+  const allowed = await runQuotaCheck(session_token, dbUrl, res);
+  if (!allowed) return;
 
   const systemPrompt = buildSystemPrompt({
     program_id,
     plan_context: plan_context as PlanContext,
     course_context,
   });
-
-  // ── Stream ────────────────────────────────────────────────────────────────
-  //
-  // IMPORTANT: do NOT access result.text after calling result.toTextStreamResponse().
-  // Both would compete for the same ReadableStream reader, causing the response
-  // body to deliver no bytes → the browser hangs forever at "מחשב תשובה…".
-  //
-  // Use the onFinish callback instead — it is called by the SDK internally
-  // after the generation completes, without needing a second stream reader.
 
   let result;
   try {
@@ -267,46 +298,11 @@ export default async function handler(req: Request): Promise<Response> {
     });
   } catch (err) {
     console.error('[ai] streamText() threw:', err instanceof Error ? err.message : String(err));
-    return jsonError(503,
-      'לא ניתן ליצור חיבור לספק ה-AI. נסה שוב.',
-      { detail: err instanceof Error ? err.message : String(err) },
-      'AI_PROVIDER_ERROR');
+    sendError(res, 503, 'לא ניתן ליצור חיבור לספק ה-AI. נסה שוב.',
+      'AI_PROVIDER_ERROR', { detail: err instanceof Error ? err.message : String(err) });
+    return;
   }
 
   console.log('[ai] stream started');
-
-  try {
-    return result.toTextStreamResponse({
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'text/plain; charset=utf-8',
-      },
-    });
-  } catch (err) {
-    console.error('[ai] toTextStreamResponse() threw:', err instanceof Error ? err.message : String(err));
-    return jsonError(503,
-      'שגיאה בהפעלת שידור ה-AI.',
-      { detail: err instanceof Error ? err.message : String(err) },
-      'STREAM_ERROR');
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function jsonError(
-  status: number,
-  message: string,
-  details?: unknown,
-  code?: string,
-): Response {
-  const body: Record<string, unknown> = { error: message };
-  if (code)    body.code    = code;
-  if (details) body.details = details;
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
+  await pipeTextStream(res, result.textStream);
 }
