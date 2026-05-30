@@ -97,6 +97,14 @@ describe('checkAndEnsureSession', () => {
     await expect(checkAndEnsureSession(TEST_TOKEN, TEST_DB_URL)).rejects.toThrow();
     expect(mockEnd).toHaveBeenCalledWith({ timeout: 5 });
   });
+
+  it('throws UPSERT_NO_ROWS error when RETURNING returns empty array', async () => {
+    // Guard against the edge case where UPSERT...RETURNING returns no rows,
+    // which would cause a silent TypeError on rows[0] destructuring.
+    mockSql.mockResolvedValueOnce([]);  // empty result from DB
+    await expect(checkAndEnsureSession(TEST_TOKEN, TEST_DB_URL)).rejects.toThrow('UPSERT_NO_ROWS');
+    expect(mockEnd).toHaveBeenCalledWith({ timeout: 5 });
+  });
 });
 
 // ── incrementCreditsUsed ──────────────────────────────────────────────────────
@@ -130,11 +138,13 @@ describe('logUsageEvent', () => {
     expect(mockEnd).toHaveBeenCalledWith({ timeout: 5 });
   });
 
-  it('calls sql.end() even on error', async () => {
+  it('swallows errors (non-fatal) and still calls sql.end()', async () => {
+    // logUsageEvent is non-fatal — errors are logged but not re-thrown so
+    // that a usage-logging failure never blocks the AI response.
     mockSql.mockRejectedValueOnce(new Error('timeout'));
     await expect(
       logUsageEvent(TEST_TOKEN, 'claude-3-5-sonnet-20241022', TEST_DB_URL),
-    ).rejects.toThrow();
+    ).resolves.toBeUndefined();   // resolves, not rejects
     expect(mockEnd).toHaveBeenCalledWith({ timeout: 5 });
   });
 });

@@ -246,9 +246,15 @@ async function runQuotaCheck(
   try {
     quota = await checkAndEnsureSession(session_token, dbUrl);
   } catch (err) {
-    console.error('[ai] quota DB error:', err instanceof Error ? err.message : String(err));
+    // Include the error CLASS name so future log searches can narrow the cause:
+    //   search "PostgresError" → DB query failed
+    //   search "TypeError"     → rows[0] was undefined (UPSERT_NO_ROWS)
+    //   search "Error"         → generic / connection error
+    const errClass = (err as any)?.constructor?.name ?? 'UnknownError';
+    const errMsg   = err instanceof Error ? err.message : String(err);
+    console.error(`[ai] quota DB error [${errClass}]:`, errMsg);
     sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
-      'DB_ERROR', { detail: err instanceof Error ? err.message : String(err) });
+      'DB_ERROR', { detail: errMsg, errorClass: errClass });
     return false;
   }
 
