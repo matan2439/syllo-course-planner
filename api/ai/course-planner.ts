@@ -32,15 +32,19 @@ import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_q
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
+// Note: several fields use .nullish() (not .optional()) because the JavaScript
+// frontend sends null for missing course properties, not undefined.
+// z.string().optional() = string | undefined — rejects null.
+// z.string().nullish()  = string | null | undefined — accepts both.
 const courseInPlanSchema = z.object({
-  course_id: z.string(),
-  name_he: z.string().optional(),
-  hours: z.number().optional(),
-  difficulty_level: z.string().optional(),
-  difficulty_score: z.number().optional(),
-  course_type: z.string().optional(),
-  category: z.string().optional(),
-  missing_prerequisites: z.array(z.string()).optional(),
+  course_id:              z.string(),
+  name_he:                z.string().nullish(),   // c.name_he can be null (stub courses)
+  hours:                  z.number().nullish(),   // c.weekly_hours is null for many courses
+  difficulty_level:       z.string().nullish(),   // can be null before difficulty is computed
+  difficulty_score:       z.number().nullish(),   // same
+  course_type:            z.string().optional(),  // always set to 'elective' if missing
+  category:               z.string().nullish(),   // null when both category fields are absent
+  missing_prerequisites:  z.array(z.string()).optional(),
 });
 
 const semesterPlanSchema = z.object({
@@ -51,20 +55,28 @@ const semesterPlanSchema = z.object({
 });
 
 const planContextSchema = z.object({
-  program_name: z.string().optional(),
-  semesters: z.array(semesterPlanSchema),
+  program_name: z.string().nullish(),
+  semesters:    z.array(semesterPlanSchema),
   mandatory_unplaced: z
-    .array(z.object({ course_id: z.string(), name_he: z.string().optional(), hours: z.number().optional() }))
+    .array(z.object({
+      course_id: z.string(),
+      name_he:   z.string().nullish(),   // c.name_he can be null
+      hours:     z.number().nullish(),   // c.weekly_hours can be null
+    }))
     .optional(),
   requirements_progress: z
     .object({
       completed_hours: z.number(),
-      required_hours: z.number(),
-      categories: z.array(z.object({ name: z.string(), required: z.number(), placed: z.number() })),
+      required_hours:  z.number(),
+      categories:      z.array(z.object({ name: z.string(), required: z.number(), placed: z.number() })),
     })
     .optional(),
   prerequisite_issues: z
-    .array(z.object({ course_id: z.string(), name_he: z.string().optional(), missing: z.array(z.string()) }))
+    .array(z.object({
+      course_id: z.string(),
+      name_he:   z.string().nullish(),   // c.name_he can be null
+      missing:   z.array(z.string()),
+    }))
     .optional(),
   grade_signals: z
     .record(z.object({ average_grade: z.number().optional(), num_students_total: z.number().optional() }))
@@ -213,7 +225,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // req.body is auto-parsed by Vercel Node runtime for application/json requests
   const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) {
-    sendError(res, 400, 'Invalid request', undefined, parsed.error.flatten().fieldErrors);
+    // Include safe Zod issue paths/messages — no user data, no secrets
+    const issues = parsed.error.issues.map(i => ({
+      path:    i.path.join('.'),
+      message: i.message,
+    }));
+    console.error('[ai] validation failed:', JSON.stringify(issues));
+    sendError(res, 400, 'Invalid request', 'INVALID_REQUEST', { issues });
     return;
   }
 

@@ -127,6 +127,82 @@ describe('POST /api/ai/course-planner — input validation', () => {
     expect(res.json).not.toHaveBeenCalled(); // streaming path never calls json
   });
 
+  it('passes when courses have null hours and null name_he (real frontend payload)', async () => {
+    // Mirrors what buildPlanContext() sends: null values from JS course objects
+    const payloadWithNulls = {
+      ...VALID_BODY,
+      plan_context: {
+        semesters: [
+          {
+            id: 'year_3_semester_a',
+            label: "שנה ג׳ — סמסטר א׳",
+            total_hours: 0,
+            courses: [
+              {
+                course_id: '0542-4420',
+                name_he: null,              // null — common for stub courses
+                hours: null,                // null — common when weekly_hours not in DB
+                difficulty_level: null,     // null — not computed yet
+                difficulty_score: null,     // null — not computed yet
+                course_type: 'elective',
+                category: null,             // null — no category assigned
+                missing_prerequisites: [],
+              },
+            ],
+          },
+        ],
+        mandatory_unplaced: [
+          { course_id: '0512-1204', name_he: null, hours: null },
+        ],
+        prerequisite_issues: [
+          { course_id: '0542-4320', name_he: null, missing: ['0542-4120'] },
+        ],
+      },
+    };
+    const res = makeRes();
+    await handler(makeReq(payloadWithNulls), res as any);
+    // Should stream successfully — nulls are now accepted by the schema
+    expect(res.write).toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 INVALID_REQUEST with issue path for missing session_token', async () => {
+    const { session_token: _, ...rest } = VALID_BODY;
+    const res = makeRes();
+    await handler(makeReq(rest), res as any);
+    expect(res.status).toHaveBeenCalledWith(400);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('INVALID_REQUEST');
+    expect(body.details.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'session_token' }),
+      ]),
+    );
+  });
+
+  it('returns 400 INVALID_REQUEST for invalid UUID session_token', async () => {
+    const res = makeRes();
+    await handler(makeReq({ ...VALID_BODY, session_token: 'not-a-uuid' }), res as any);
+    expect(res.status).toHaveBeenCalledWith(400);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('INVALID_REQUEST');
+    expect(body.details.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'session_token', message: expect.stringContaining('UUID') }),
+      ]),
+    );
+  });
+
+  it('returns 400 INVALID_REQUEST for missing plan_context.semesters', async () => {
+    const res = makeRes();
+    await handler(makeReq({ ...VALID_BODY, plan_context: {} }), res as any);
+    expect(res.status).toHaveBeenCalledWith(400);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('INVALID_REQUEST');
+    expect(body.details.issues.some((i: { path: string }) => i.path.includes('semesters'))).toBe(true);
+  });
+
   it('returns 400 JSON for empty message', async () => {
     const res = makeRes();
     await handler(makeReq({ ...VALID_BODY, message: '' }), res as any);

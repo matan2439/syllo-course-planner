@@ -1391,6 +1391,8 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
         targetEl.appendChild(wrap);
         sendBtn.disabled = false;
         return;
+      } else if (errBody.code === 'INVALID_REQUEST') {
+        errMsg = '⚠ בקשת ה-AI לא תקינה. נסה לרענן את הדף (Ctrl+Shift+R).';
       } else if (errBody.code === 'DB_ERROR') {
         errMsg = '⚠ בעיה זמנית במסד הנתונים — נסה שוב עוד רגע.';
       } else if (errBody.code === 'AI_PROVIDER_ERROR' || errBody.code === 'STREAM_ERROR') {
