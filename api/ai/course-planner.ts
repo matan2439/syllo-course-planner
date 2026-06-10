@@ -250,11 +250,17 @@ async function runQuotaCheck(
     //   search "PostgresError" → DB query failed
     //   search "TypeError"     → rows[0] was undefined (UPSERT_NO_ROWS)
     //   search "Error"         → generic / connection error
-    const errClass = (err as any)?.constructor?.name ?? 'UnknownError';
-    const errMsg   = err instanceof Error ? err.message : String(err);
-    console.error(`[ai] quota DB error [${errClass}]:`, errMsg);
+    const errClass  = (err as any)?.constructor?.name ?? 'UnknownError';
+    const errMsg    = err instanceof Error ? err.message : String(err);
+    const sqlState  = (err as any)?.code; // postgres.js sets `code` to the Postgres SQLSTATE
+    console.error(`[ai] quota DB error [${errClass}] sqlState=${sqlState ?? 'n/a'}:`, errMsg);
     sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
-      'DB_ERROR', { detail: errMsg, errorClass: errClass });
+      'DB_ERROR', {
+        phase: 'quota_check',
+        errorClass: errClass,
+        safeMessage: errMsg,
+        ...(sqlState ? { sqlState } : {}),
+      });
     return false;
   }
 
@@ -313,7 +319,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const dbUrl = process.env.DATABASE_URL ?? '';
+    const dbUrl = (process.env.DATABASE_URL ?? '').trim();
     if (!dbUrl) {
       sendError(res, 503,
         'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.',
@@ -346,7 +352,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   console.log('[ai] model selected:', modelConfig.name);
 
-  const dbUrl = process.env.DATABASE_URL ?? '';
+  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
   if (!dbUrl) {
     sendError(res, 503,
       'Database not configured. Set DATABASE_URL to enable AI quota tracking.',

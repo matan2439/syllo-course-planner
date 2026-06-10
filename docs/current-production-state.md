@@ -1,4 +1,16 @@
-# Current Production State — 2026-05-30
+# Current Production State — 2026-06-10
+
+## Recent Updates (since 2026-05-30)
+
+Five follow-up fixes hardened the AI assistant endpoint:
+- Fixed AI panel hanging on stalled/failed responses
+- Fixed Vercel Node runtime streaming for `/api/ai/course-planner`
+- Fixed AI request payload validation
+- Added a dev mode for AI that avoids paid model calls
+- Fixed empty AI responses on Anthropic billing/auth errors and quota DB error handling
+
+These were incremental robustness fixes — overall architecture and "What Works Now" below are unchanged.
+
 
 ## Live URLs
 
