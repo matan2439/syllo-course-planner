@@ -2581,15 +2581,55 @@ function buildOverridePanel(cid, ov) {
  * TODO: Pass this string to POST /api/ai/course-chat alongside the question
  *       when implementing the real API call in handleAiSend().
  */
+/** Find which semester (if any) a course is currently placed in. */
+function findCoursePlacement(courseId) {
+  if (!state) return null;
+  for (const sem of SEMESTERS) {
+    if ((state.semesters[sem.id] || []).includes(courseId)) {
+      return SEM_HE[sem.id] || sem.id;
+    }
+  }
+  return null;
+}
+
 function buildCourseContext(c) {
   const ov = getOverride(c.course_id);
   const lines = [];
 
-  if (c.name_he)         lines.push(`שם קורס: ${c.name_he} (${c.course_id})`);
+  lines.push(`קוד קורס: ${c.course_id}`);
+  if (c.name_he)         lines.push(`שם קורס: ${c.name_he}`);
   if (c.weekly_hours != null)
                          lines.push(`שעות שבועיות: ${c.weekly_hours}`);
+  else                   lines.push('שעות שבועיות: לא ידוע');
+
+  lines.push(`סוג קורס: ${TYPE_HE[c.course_type] || c.course_type || 'לא ידוע'}`);
+
+  const category = c.program_category_name_he || c.program_category_id;
+  lines.push(`קטגוריה: ${category || 'לא ידוע'}`);
+
+  const placement = findCoursePlacement(c.course_id);
+  lines.push(`שיבוץ נוכחי: ${placement || 'לא משובץ בתוכנית'}`);
+
   if (c.difficulty_level)
-                         lines.push(`רמת קושי: ${DIFF_HE[c.difficulty_level] || c.difficulty_level} (ציון ${c.difficulty_score})`);
+                         lines.push(`רמת קושי כוללת: ${DIFF_HE[c.difficulty_level] || c.difficulty_level} (ציון ${c.difficulty_score ?? 'לא ידוע'})`);
+  else                   lines.push('רמת קושי כוללת: לא ידוע');
+
+  // Difficulty sub-scores — explicitly mark missing ones so the AI doesn't guess
+  const subScores = [
+    ['עומס',              c.workload_score],
+    ['מורכבות מושגית',     c.conceptual_complexity_score],
+    ['עומק דרישות קדם',    c.prerequisite_depth_score],
+    ['עצימות הערכה',       c.assessment_intensity_score],
+  ];
+  for (const [label, val] of subScores) {
+    lines.push(`${label}: ${val != null ? val : 'לא ידוע'}`);
+  }
+  if (c.difficulty_confidence != null) {
+    lines.push(`אמינות נתוני קושי: ${c.difficulty_confidence}`);
+    if (c.difficulty_confidence < 0.6) lines.push('⚠ נתוני הקושי לקורס זה חלקיים — אמינות נמוכה');
+  } else {
+    lines.push('אמינות נתוני קושי: לא ידוע');
+  }
 
   const prereqs = (c.prerequisite_details || []).map(d => d.name_he ? `${d.name_he} (${d.course_id})` : d.course_id);
   if (prereqs.length)    lines.push(`דרישות קדם: ${prereqs.join(', ')}`);
@@ -2597,18 +2637,22 @@ function buildCourseContext(c) {
                          lines.push(`דרישות קדם חסרות: ${c.missing_prerequisites.join(', ')}`);
 
   const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
-  lines.push(`סילבוס: ${hasSyllabus ? 'זמין' : 'לא זמין'}`);
+  lines.push(`סילבוס זמין: ${hasSyllabus ? 'כן' : 'לא — אין תוכן סילבוס זמין למערכת'}`);
   if (hasSyllabus && c.syllabus_url) lines.push(`קישור סילבוס: ${c.syllabus_url}`);
+  if (c.assessment_type) lines.push(`סוג הערכה: ${c.assessment_type}`);
 
   const gs = c.grade_signal;
   if (gs) {
     if (gs.average_grade      != null) lines.push(`ממוצע היסטורי: ${gs.average_grade}`);
+    else                                lines.push('ממוצע היסטורי: לא ידוע');
     if (gs.median_grade       != null) lines.push(`חציון היסטורי: ${gs.median_grade}`);
     if (gs.standard_deviation != null) lines.push(`סטיית תקן: ${gs.standard_deviation}`);
     if (gs.pass_rate          != null) lines.push(`שיעור עוברים: ${Math.round(gs.pass_rate * 100)}%`);
     if (gs.num_students_total != null) lines.push(`סה״כ סטודנטים: ${gs.num_students_total}`);
     if (gs.years_available?.length)    lines.push(`שנים: ${gs.years_available.join(', ')}`);
     lines.push(`מקור ציונים: ${gs.source_name || 'TAU Refactor'} (לא רשמי)`);
+  } else {
+    lines.push('נתוני ציונים היסטוריים: לא זמינים');
   }
 
   const iu = c.instructor_uncertainty;
@@ -2640,8 +2684,8 @@ const _AI_SUGGESTED_PROMPTS = [
 function buildAiChatPanel(c) {
   const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
   const ctxNote = hasSyllabus
-    ? 'כשה-API יחובר, הניתוח יתבסס על: סילבוס, נתוני קורס, ציונים היסטוריים, והערות שהזנת.'
-    : 'אין סילבוס שמור — הניתוח יוגבל למידע הקורס הבסיסי.';
+    ? 'הניתוח מתבסס על: נתוני קורס, ציוני קושי, ציונים היסטוריים, קישור לסילבוס (ללא תוכן הסילבוס עצמו) והערות שהזנת.'
+    : 'אין סילבוס שמור — הניתוח מוגבל למידע הקורס הבסיסי, ציוני קושי וציונים היסטוריים בלבד.';
 
   const promptBtns = _AI_SUGGESTED_PROMPTS.map(p =>
     `<button class="ai-prompt-btn" data-prompt="${esc(p)}">💬 ${esc(p)}</button>`
@@ -3034,7 +3078,7 @@ function openCourseDetails(cid) {
     </div>
     <div class="detail-tabs">
       <button class="detail-tab active" data-tab="info">פרטי קורס</button>
-      <button class="detail-tab" data-tab="ai">🤖 שיחה עם AI <span style="font-size:.58rem;opacity:.6">(לא מחובר)</span></button>
+      <button class="detail-tab" data-tab="ai">🤖 שיחה עם AI</button>
     </div>
     <div class="detail-body tabbed">
       <div class="detail-tab-panel active" id="dtab-info">
@@ -3097,7 +3141,7 @@ function openCourseDetails(cid) {
     if (!btn) return;
     const input = document.getElementById('ai-chat-input');
     input.value = btn.dataset.prompt;
-    input.focus();
+    handleAiSend(c);
   });
 
   /* AI send */
