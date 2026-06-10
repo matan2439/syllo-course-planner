@@ -89,6 +89,20 @@ const planContextSchema = z.object({
       missing:   z.array(z.string()),
     }))
     .optional(),
+  personal_status: z
+    .object({
+      completed:        z.array(z.object({ course_id: z.string(), name_he: z.string().nullish(), semester_label: z.string().nullish() })).optional(),
+      currently_taking: z.array(z.object({ course_id: z.string(), name_he: z.string().nullish(), semester_label: z.string().nullish() })).optional(),
+      planned:          z.array(z.object({ course_id: z.string(), name_he: z.string().nullish(), semester_label: z.string().nullish() })).optional(),
+    })
+    .optional(),
+  personal_prerequisite_issues: z
+    .array(z.object({
+      course_id: z.string(),
+      name_he:   z.string().nullish(),
+      issues:    z.array(z.string()),
+    }))
+    .optional(),
   grade_signals: z
     .record(z.object({
       average_grade:      z.number().optional(),

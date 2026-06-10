@@ -88,6 +88,43 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('2472');
   });
 
+  it('includes personal status — completed, currently taking, planned', () => {
+    const ctx: PlanContext = {
+      ...PLAN_CONTEXT,
+      personal_status: {
+        completed:        [{ course_id: '0542-4120', name_he: 'חשבון 1' }],
+        currently_taking: [{ course_id: '0542-4220', name_he: 'מכניקת הזורמים (1)', semester_label: "שנה ג׳ — סמסטר א׳" }],
+        planned:          [{ course_id: '0542-4221', name_he: 'דינמיקה', semester_label: "שנה ג׳ — סמסטר ב׳" }],
+      },
+    };
+    const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: ctx });
+    expect(prompt).toContain('חשבון 1');
+    expect(prompt).toContain('מכניקת הזורמים (1)');
+    expect(prompt).toContain('דינמיקה');
+    expect(prompt).toContain("שנה ג׳ — סמסטר א׳");
+  });
+
+  it('reports no personal status when none provided', () => {
+    const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: PLAN_CONTEXT });
+    expect(prompt).toContain('לא הוזן מידע אישי');
+  });
+
+  it('includes personal prerequisite issues', () => {
+    const ctx: PlanContext = {
+      ...PLAN_CONTEXT,
+      personal_prerequisite_issues: [
+        {
+          course_id: '0542-4320',
+          name_he: 'מכניקת מוצקים',
+          issues: ['הקורס חשבון 1 נלמד עכשיו ולכן יכול לשמש כדרישת קדם רק מסמסטר הבא.'],
+        },
+      ],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: ctx });
+    expect(prompt).toContain('מכניקת מוצקים');
+    expect(prompt).toContain('נלמד עכשיו ולכן יכול לשמש כדרישת קדם רק מסמסטר הבא');
+  });
+
   it('includes course-specific context when provided', () => {
     const prompt = buildSystemPrompt({
       program_id: 'mechanical_2027',

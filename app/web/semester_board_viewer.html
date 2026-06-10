@@ -718,10 +718,12 @@ body.prog-modal-open .workspace {
 }
 .my-course-row.my-course-completed { border-color: var(--success); background: rgba(16,185,129,.05); }
 .my-course-row.my-course-current   { border-color: var(--blue);    background: rgba(37,99,235,.05); }
+.my-course-row.my-course-planned   { border-color: var(--warning, #d97706); background: rgba(217,119,6,.05); }
 .my-course-info { flex: 1; min-width: 0; }
 .my-course-id   { font-family: ui-monospace, monospace; font-size: .63rem; color: var(--text-faint); direction: ltr; display: block; }
 .my-course-name { font-size: .78rem; font-weight: 500; word-break: break-word; }
-.my-course-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.my-course-meta { font-size: .62rem; color: var(--text-faint); margin-inline-end: 8px; }
+.my-course-actions { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
 .my-course-btn {
   font-size: .67rem; padding: 3px 8px; border-radius: 6px;
   border: 1px solid var(--border2); background: var(--surface);
@@ -732,9 +734,20 @@ body.prog-modal-open .workspace {
 .my-course-btn:hover { background: var(--bg2); }
 .my-course-btn.active.status-completed { background: rgba(16,185,129,.15); border-color: var(--success); color: var(--success); }
 .my-course-btn.active.status-current   { background: rgba(37,99,235,.15); border-color: var(--blue);    color: var(--blue); }
+.my-course-status-select, .my-course-sem-select {
+  font-size: .67rem; padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); font-family: inherit; cursor: pointer;
+}
+.my-courses-explainer {
+  font-size: .68rem; color: var(--text-muted); background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  margin-bottom: 8px; line-height: 1.5;
+}
 .my-courses-summary {
   display: flex; gap: 12px; font-size: .7rem; color: var(--text-muted);
   padding: 6px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 .my-courses-summary span { display: flex; align-items: center; gap: 4px; }
 
@@ -1064,7 +1077,10 @@ body.prog-modal-open .workspace {
     <button id="my-courses-close-btn" class="prog-close-btn" aria-label="סגור">✕</button>
     <div class="prog-header">
       <h2 class="prog-title" style="font-size:1.2rem">הקורסים שלי</h2>
-      <p class="prog-subtitle">סמנו קורסים שהושלמו או שאתם לומדים כרגע — משפיע על בדיקת דרישות הקדם</p>
+      <p class="prog-subtitle">סמנו לכל קורס סטטוס אישי: הושלם, נלמד עכשיו, מתוכנן בלוח, או לא נלקח</p>
+    </div>
+    <div class="my-courses-explainer">
+      סטטוס אישי משפיע על בדיקת דרישות קדם, אך לא משנה את הסמסטר הרשמי של הקורס.
     </div>
     <div id="my-courses-summary" class="my-courses-summary"></div>
     <div class="prog-search-wrap">
@@ -1231,6 +1247,7 @@ const LS_THEME     = 'tau_theme';
 const LS_PROG      = 'tau_program';
 const LS_OVERRIDES = 'tau_course_overrides';
 const LS_MY_COURSES  = 'tau_my_courses';
+const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 
 /* ── AI session token (quota) ────────────────────────────────────────────── */
@@ -1327,12 +1344,37 @@ function buildPlanContext() {
     };
   }
 
+  // Personal status — completed / currently taking / planned, distinct from official board placement
+  const personal_status = { completed: [], currently_taking: [], planned: [] };
+  for (const [cid, us] of Object.entries(userCourseStatuses)) {
+    const c = courseMap[cid];
+    if (!c || us.status === 'not_taken') continue;
+    const entry = { course_id: cid, name_he: c.name_he };
+    if ((us.status === 'currently_taking' || us.status === 'planned') && us.planned_semester) {
+      entry.semester_label = SEM_HE[us.planned_semester] || us.planned_semester;
+    }
+    personal_status[us.status].push(entry);
+  }
+
+  // Prerequisite issues that stem specifically from the user's personal status
+  const personal_prerequisite_issues = Object.entries(boardValidation || {})
+    .filter(([, vr]) => vr.blocked_current_same?.length || vr.blocked_planned_later?.length)
+    .map(([cid, vr]) => ({
+      course_id: cid,
+      name_he:   courseMap[cid]?.name_he,
+      issues:    validationMessages({ ...vr, missing: [], too_late: [], same_sem: [] }),
+    }))
+    .filter(i => i.issues.length)
+    .slice(0, 10);
+
   return {
     program_name:         selectedProg?.program_name,
     semesters,
     mandatory_unplaced:   mandatory_unplaced.length ? mandatory_unplaced : undefined,
     requirements_progress,
     prerequisite_issues:  prerequisite_issues.length ? prerequisite_issues : undefined,
+    personal_status:      (personal_status.completed.length || personal_status.currently_taking.length || personal_status.planned.length) ? personal_status : undefined,
+    personal_prerequisite_issues: personal_prerequisite_issues.length ? personal_prerequisite_issues : undefined,
     grade_signals:        Object.keys(grade_signals).length ? grade_signals : undefined,
   };
 }
@@ -1477,7 +1519,8 @@ let allowInvalidPlacement = false;   // override toggle: allow invalid drops wit
 let boardValidation     = {};        // {courseId: validatePlacement result}; refreshed on render
 let completedCourseIds  = [];        // authoritative: board meta + user-marked completed
 let _boardCompletedIds  = [];        // from board.metadata.completed_course_ids
-let myCoursesState      = { completed: [], current: [] }; // user-marked; persisted to localStorage
+let myCoursesState      = { completed: [], current: [] }; // legacy; kept in sync for backward compatibility
+let userCourseStatuses  = {}; // { [course_id]: { status, planned_semester, override_reason } }; persisted to localStorage
 let programRequirements = null;      // {total_required_hours, categories:[]} from board metadata
 let _notifyTimer        = null;
 const openGroups     = new Set(['mandatory', 'elective_avail', '_mandatory']);
@@ -1486,6 +1529,7 @@ const openGroups     = new Set(['mandatory', 'elective_avail', '_mandatory']);
 async function main() {
   applyTheme();
   loadMyCoursesState();
+  loadUserCourseStatuses();
   setupDragDelegation();
   setupCardClick();
   setupDetailOverlay();
@@ -1988,7 +2032,8 @@ function init(board, audit, programJson) {
   }
 
   // Merge board completed + user-marked completed
-  completedCourseIds = [...new Set([..._boardCompletedIds, ...myCoursesState.completed])];
+  const userCompletedIds = Object.keys(userCourseStatuses).filter(cid => userCourseStatuses[cid].status === 'completed');
+  completedCourseIds = [...new Set([..._boardCompletedIds, ...userCompletedIds])];
 
   // Extract program requirements categories from board metadata
   programRequirements = board.metadata?.program_requirements_categories || null;
@@ -3030,10 +3075,14 @@ function openCourseDetails(cid) {
     const rows = [
       vr.ok_completed.length ? mkRow('הושלמו לפני:',    chips(vr.ok_completed, ''))        : '',
       vr.ok_current?.length  ? mkRow('נלמד עכשיו:',     chips(vr.ok_current,   ''))        : '',
+      vr.ok_planned?.length  ? mkRow('מתוכנן קודם:',    chips(vr.ok_planned,   ''))        : '',
       vr.ok_earlier.length   ? mkRow('סמסטר קודם:',     chips(vr.ok_earlier,   ''))        : '',
       vr.same_sem.length     ? mkRow('אותו סמסטר:',     chips(vr.same_sem,     'missing')) : '',
       vr.too_late.length     ? mkRow('סמסטר מאוחר:',    chips(vr.too_late,     'missing')) : '',
       vr.missing.length      ? mkRow('לא שובצו כלל:',   chips(vr.missing,      'missing')) : '',
+      vr.blocked_current_same?.length ? mkRow('נלמד באותו סמסטר:', chips(vr.blocked_current_same, 'missing')) : '',
+      vr.blocked_planned_later?.length ? mkRow('מתוכנן מאוחר יותר:', chips(vr.blocked_planned_later, 'missing')) : '',
+      validationMessages(vr).length ? `<div style="margin-top:6px;font-size:.74rem;color:var(--danger)">${validationMessages(vr).map(esc).join('<br>')}</div>` : '',
     ].filter(Boolean).join('');
 
     return mkSection('בדיקת דרישות קדם', header + rows);
@@ -3243,11 +3292,27 @@ function _prereqName(cid) {
   return courseMap[cid]?.name_he || cid;
 }
 
+/* Index of a semester id within SEMESTERS, or -1 if unknown */
+function _semIndexOf(semId) {
+  return SEMESTERS.findIndex(s => s.id === semId);
+}
+
+/* Semester index a course should be considered "in" for prerequisite-timing purposes:
+   personal planned/current semester takes precedence over the official board placement. */
+function _userSemesterIndex(cid, courseSemIdx) {
+  const us = userCourseStatuses[cid];
+  if (us?.planned_semester) {
+    const idx = _semIndexOf(us.planned_semester);
+    if (idx !== -1) return idx;
+  }
+  return cid in courseSemIdx ? courseSemIdx[cid] : -1;
+}
+
 function validatePlacement(courseId, targetSemId) {
   const semIds    = SEMESTERS.map(s => s.id);
   const targetIdx = semIds.indexOf(targetSemId);
   if (targetIdx === -1) {
-    return { valid: true, missing: [], too_late: [], same_sem: [], ok_completed: [], ok_earlier: [], ok_current: [], errors: [] };
+    return { valid: true, missing: [], too_late: [], same_sem: [], ok_completed: [], ok_earlier: [], ok_current: [], ok_planned: [], blocked_current_same: [], blocked_planned_later: [], errors: [] };
   }
 
   // Build index: courseId → semesterIndex, excluding the course being validated
@@ -3258,18 +3323,35 @@ function validatePlacement(courseId, targetSemId) {
     }
   }
 
-  const prereqs      = courseMap[courseId]?.prerequisites || [];
-  const completedSet = new Set(completedCourseIds);
-  const currentSet   = new Set(myCoursesState.current);
-  const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [], ok_current = [];
+  const prereqs = courseMap[courseId]?.prerequisites || [];
+  const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [], ok_current = [], ok_planned = [],
+        blocked_current_same = [], blocked_planned_later = [];
 
   for (const prereq of prereqs) {
-    if (completedSet.has(prereq)) {
+    const status = userCourseStatuses[prereq]?.status || 'not_taken';
+
+    if (status === 'completed') {
       ok_completed.push(prereq);
-    } else if (currentSet.has(prereq)) {
-      // Currently taking — satisfies prereq (with informational note, no blocking)
-      ok_current.push(prereq);
-    } else if (prereq in courseSemIdx) {
+      continue;
+    }
+
+    if (status === 'currently_taking' || status === 'planned') {
+      const idx = _userSemesterIndex(prereq, courseSemIdx);
+      if (idx === -1) {
+        // No timing information available — informational only, doesn't block.
+        (status === 'currently_taking' ? ok_current : ok_planned).push(prereq);
+      } else if (targetIdx > idx) {
+        (status === 'currently_taking' ? ok_current : ok_planned).push(prereq);
+      } else if (status === 'currently_taking') {
+        blocked_current_same.push(prereq);
+      } else {
+        blocked_planned_later.push(prereq);
+      }
+      continue;
+    }
+
+    // not_taken — fall back to official board placement
+    if (prereq in courseSemIdx) {
       const idx = courseSemIdx[prereq];
       if (idx < targetIdx)       ok_earlier.push(prereq);
       else if (idx === targetIdx) same_sem.push(prereq);
@@ -3279,14 +3361,32 @@ function validatePlacement(courseId, targetSemId) {
     }
   }
 
-  const valid  = missing.length === 0 && too_late.length === 0 && same_sem.length === 0;
+  const valid  = missing.length === 0 && too_late.length === 0 && same_sem.length === 0
+    && blocked_current_same.length === 0 && blocked_planned_later.length === 0;
   const errors = [...missing, ...too_late, ...same_sem];
-  return { valid, missing, too_late, same_sem, ok_completed, ok_earlier, ok_current, errors };
+  return { valid, missing, too_late, same_sem, ok_completed, ok_earlier, ok_current, ok_planned, blocked_current_same, blocked_planned_later, errors };
+}
+
+/* Build the list of human-readable Hebrew validation messages for a validatePlacement() result */
+function validationMessages(vr) {
+  const msgs = [];
+  const blockedPrereqIds = [...vr.missing, ...vr.too_late, ...vr.same_sem];
+  if (blockedPrereqIds.length) {
+    msgs.push(`חסרות דרישות קדם: ${blockedPrereqIds.map(_prereqName).join(', ')}`);
+  }
+  for (const cid of vr.blocked_current_same) {
+    msgs.push(`הקורס ${_prereqName(cid)} נלמד עכשיו ולכן יכול לשמש כדרישת קדם רק מסמסטר הבא.`);
+  }
+  for (const cid of vr.blocked_planned_later) {
+    msgs.push(`דרישת הקדם ${_prereqName(cid)} מתוכננת לאחר הקורס הזה.`);
+  }
+  return msgs;
 }
 
 function revalidateBoard() {
   // Keep completedCourseIds merged from board metadata + user-marked
-  completedCourseIds = [...new Set([..._boardCompletedIds, ...myCoursesState.completed])];
+  const userCompleted = Object.keys(userCourseStatuses).filter(cid => userCourseStatuses[cid].status === 'completed');
+  completedCourseIds = [...new Set([..._boardCompletedIds, ...userCompleted])];
   boardValidation = {};
   for (const [semId, ids] of Object.entries(state.semesters)) {
     for (const cid of (ids || [])) {
@@ -3361,7 +3461,7 @@ function setupDragDelegation() {
         zone.dataset.dragErr = 'הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים';
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
       } else if (!vr.valid) {
-        zone.dataset.dragErr = `חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`;
+        zone.dataset.dragErr = validationMessages(vr).join(' | ');
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
       } else {
         delete zone.dataset.dragErr;
@@ -3410,7 +3510,7 @@ function setupDragDelegation() {
       /* Prerequisite validation */
       const vr = validatePlacement(id, toSem);
       if (!vr.valid && !allowInvalidPlacement) {
-        showBoardNotify(`לא ניתן לשבץ: חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`);
+        showBoardNotify(`לא ניתן לשבץ: ${validationMessages(vr).join(' | ')}`);
         return;
       }
     }
@@ -3463,6 +3563,19 @@ function moveCourse(id, fromSem, toSem) {
   } else {
     if (!state.repo.includes(id)) state.repo.push(id);
   }
+
+  // Keep a flexible mandatory course's personal planned semester in sync with its
+  // board placement, unless the user has explicitly overridden it.
+  if (toSem && isFlexibleMandatory(c)) {
+    const us = userCourseStatuses[id] || { status: 'not_taken', planned_semester: null, override_reason: null };
+    if (!us.override_reason) {
+      us.planned_semester = toSem;
+      if (us.status === 'not_taken') us.status = 'planned';
+      userCourseStatuses[id] = us;
+      saveUserCourseStatuses();
+    }
+  }
+
   saveState(); renderAll();
 }
 
@@ -3547,6 +3660,14 @@ function toggleTheme() {
 }
 
 /* ── My Courses ─────────────────────────────────────────────────────────── */
+const USER_STATUS_HE = {
+  completed:        'הושלם',
+  currently_taking: 'נלמד עכשיו',
+  planned:          'מתוכנן בלוח',
+  not_taken:        'לא נלקח',
+};
+
+/* Legacy load — kept only to migrate old tau_my_courses data into userCourseStatuses */
 function loadMyCoursesState() {
   try {
     const raw = localStorage.getItem(LS_MY_COURSES);
@@ -3558,27 +3679,60 @@ function loadMyCoursesState() {
   } catch { myCoursesState = { completed: [], current: [] }; }
 }
 
-function saveMyCoursesState() {
-  try { localStorage.setItem(LS_MY_COURSES, JSON.stringify(myCoursesState)); } catch {}
-}
-
-function toggleMyCourse(cid, status) {
-  const compIdx = myCoursesState.completed.indexOf(cid);
-  const currIdx = myCoursesState.current.indexOf(cid);
-  if (status === 'completed') {
-    if (compIdx !== -1) { myCoursesState.completed.splice(compIdx, 1); }
-    else {
-      myCoursesState.completed.push(cid);
-      if (currIdx !== -1) myCoursesState.current.splice(currIdx, 1); // remove from current
+/* Load per-course personal status. Migrates legacy tau_my_courses on first run. */
+function loadUserCourseStatuses() {
+  try {
+    const raw = localStorage.getItem(LS_USER_STATUSES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      userCourseStatuses = (parsed && typeof parsed === 'object') ? parsed : {};
+      return;
     }
-  } else if (status === 'current') {
-    if (currIdx !== -1) { myCoursesState.current.splice(currIdx, 1); }
-    else {
-      myCoursesState.current.push(cid);
-      if (compIdx !== -1) myCoursesState.completed.splice(compIdx, 1); // remove from completed
+  } catch { userCourseStatuses = {}; }
+
+  // Migration from legacy tau_my_courses (completed / currently-taking only)
+  for (const cid of myCoursesState.completed || []) {
+    userCourseStatuses[cid] = { status: 'completed', planned_semester: null, override_reason: null };
+  }
+  for (const cid of myCoursesState.current || []) {
+    if (!userCourseStatuses[cid]) {
+      userCourseStatuses[cid] = { status: 'currently_taking', planned_semester: null, override_reason: null };
     }
   }
-  saveMyCoursesState();
+  if (Object.keys(userCourseStatuses).length) saveUserCourseStatuses();
+}
+
+function saveUserCourseStatuses() {
+  try { localStorage.setItem(LS_USER_STATUSES, JSON.stringify(userCourseStatuses)); } catch {}
+}
+
+function getUserStatus(cid) {
+  return userCourseStatuses[cid] || { status: 'not_taken', planned_semester: null, override_reason: null };
+}
+
+/* Set a course's personal status. plannedSemester applies to currently_taking/planned only. */
+function setUserStatus(cid, status, plannedSemester) {
+  const us = userCourseStatuses[cid] || { status: 'not_taken', planned_semester: null, override_reason: null };
+  us.status = status;
+  if (status === 'currently_taking' || status === 'planned') {
+    us.planned_semester = plannedSemester || us.planned_semester || null;
+  } else {
+    us.planned_semester = null;
+  }
+  userCourseStatuses[cid] = us;
+  saveUserCourseStatuses();
+
+  // Keep legacy myCoursesState in sync for any old code paths
+  myCoursesState.completed = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'completed');
+  myCoursesState.current   = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'currently_taking');
+}
+
+/* The semester id (if any) in which a course is currently placed on the board */
+function findCourseBoardSemester(cid) {
+  for (const [semId, ids] of Object.entries(state?.semesters || {})) {
+    if ((ids || []).includes(cid)) return semId;
+  }
+  return null;
 }
 
 function openMyCoursesModal() {
@@ -3595,10 +3749,19 @@ function openMyCoursesModal() {
 
   searchEl.oninput = () => _renderMyCoursesListContent(listEl, searchEl.value);
 
-  listEl.onclick = e => {
-    const btn = e.target.closest('[data-mc-status]');
-    if (!btn) return;
-    toggleMyCourse(btn.dataset.mcCid, btn.dataset.mcStatus);
+  listEl.onchange = e => {
+    const statusSel = e.target.closest('[data-mc-status-select]');
+    const semSel    = e.target.closest('[data-mc-sem-select]');
+    if (statusSel) {
+      const cid = statusSel.dataset.mcStatusSelect;
+      setUserStatus(cid, statusSel.value, getUserStatus(cid).planned_semester);
+    } else if (semSel) {
+      const cid = semSel.dataset.mcSemSelect;
+      const us  = getUserStatus(cid);
+      setUserStatus(cid, us.status, semSel.value || null);
+    } else {
+      return;
+    }
     _renderMyCoursesListContent(listEl, searchEl.value);
     renderAll();
   };
@@ -3621,8 +3784,6 @@ function closeMyCoursesModal() {
 
 function _renderMyCoursesListContent(listEl, query) {
   const q = (query || '').toLowerCase().trim();
-  const completedSet = new Set(myCoursesState.completed);
-  const currentSet   = new Set(myCoursesState.current);
 
   const courses = Object.values(courseMap)
     .filter(c => !q ||
@@ -3636,9 +3797,14 @@ function _renderMyCoursesListContent(listEl, query) {
   /* Update summary line */
   const sumEl = document.getElementById('my-courses-summary');
   if (sumEl) {
+    const counts = { completed: 0, currently_taking: 0, planned: 0 };
+    for (const us of Object.values(userCourseStatuses)) {
+      if (counts[us.status] != null) counts[us.status]++;
+    }
     sumEl.innerHTML = `
-      <span>✅ ${myCoursesState.completed.length} הושלמו</span>
-      <span>📖 ${myCoursesState.current.length} נלמדים עכשיו</span>
+      <span>✅ ${counts.completed} הושלמו</span>
+      <span>📖 ${counts.currently_taking} נלמדים עכשיו</span>
+      <span>🗓 ${counts.planned} מתוכננים</span>
     `;
   }
 
@@ -3648,28 +3814,43 @@ function _renderMyCoursesListContent(listEl, query) {
   }
 
   listEl.innerHTML = courses.map(c => {
-    const isDone    = completedSet.has(c.course_id);
-    const isCurrent = currentSet.has(c.course_id);
-    const rowCls    = isDone ? 'my-course-completed' : isCurrent ? 'my-course-current' : '';
-    const nameHtml  = c.name_he
+    const us     = getUserStatus(c.course_id);
+    const status = us.status;
+    const rowCls = status === 'completed' ? 'my-course-completed'
+                 : status === 'currently_taking' ? 'my-course-current'
+                 : status === 'planned' ? 'my-course-planned' : '';
+    const nameHtml = c.name_he
       ? esc(c.name_he)
       : `<span style="color:var(--text-faint);font-style:italic">שם חסר — ${esc(c.course_id)}</span>`;
+
+    const recSemId  = c.recommended_semester;
+    const recSemHe  = recSemId ? (SEM_HE[recSemId] || recSemId) : null;
+    const boardSemId = findCourseBoardSemester(c.course_id);
+    const boardSemHe = boardSemId ? (SEM_HE[boardSemId] || boardSemId) : null;
+
+    const metaParts = [];
+    if (recSemHe)   metaParts.push(`<span class="my-course-meta">מומלץ רשמית: ${esc(recSemHe)}</span>`);
+    if (boardSemHe) metaParts.push(`<span class="my-course-meta">בלוח כעת: ${esc(boardSemHe)}</span>`);
+
+    const showSemPicker = status === 'currently_taking' || status === 'planned';
+    const semOptions = ['<option value="">בחר סמסטר…</option>']
+      .concat(SEMESTERS.map(s => `<option value="${esc(s.id)}"${us.planned_semester === s.id ? ' selected' : ''}>${esc(SEM_HE[s.id] || s.id)}</option>`))
+      .join('');
+
     return `<div class="my-course-row ${rowCls}">
       <div class="my-course-info">
         <span class="my-course-id" dir="ltr">${esc(c.course_id)}</span>
         <span class="my-course-name">${nameHtml}</span>
+        ${metaParts.join('')}
       </div>
       <div class="my-course-actions">
-        <button class="my-course-btn status-completed${isDone?' active':''}"
-          data-mc-status="completed" data-mc-cid="${esc(c.course_id)}"
-          title="${isDone ? 'בטל סימון הושלם' : 'סמן כהושלם'}">
-          ${isDone ? '✅ הושלם' : 'הושלם'}
-        </button>
-        <button class="my-course-btn status-current${isCurrent?' active':''}"
-          data-mc-status="current" data-mc-cid="${esc(c.course_id)}"
-          title="${isCurrent ? 'בטל סימון נלמד עכשיו' : 'סמן כנלמד עכשיו'}">
-          ${isCurrent ? '📖 נלמד' : 'נלמד עכשיו'}
-        </button>
+        <select class="my-course-status-select" data-mc-status-select="${esc(c.course_id)}" aria-label="סטטוס אישי">
+          <option value="not_taken"        ${status==='not_taken'?'selected':''}>${USER_STATUS_HE.not_taken}</option>
+          <option value="completed"        ${status==='completed'?'selected':''}>${USER_STATUS_HE.completed}</option>
+          <option value="currently_taking" ${status==='currently_taking'?'selected':''}>${USER_STATUS_HE.currently_taking}</option>
+          <option value="planned"          ${status==='planned'?'selected':''}>${USER_STATUS_HE.planned}</option>
+        </select>
+        ${showSemPicker ? `<select class="my-course-sem-select" data-mc-sem-select="${esc(c.course_id)}" aria-label="סמסטר אישי">${semOptions}</select>` : ''}
       </div>
     </div>`;
   }).join('');

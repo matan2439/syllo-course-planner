@@ -46,12 +46,35 @@ export interface PrereqIssue {
   missing: string[];
 }
 
+/** A course the user has personally marked as completed, in progress, or planned. */
+export interface PersonalStatusCourse {
+  course_id: string;
+  name_he?: string;
+  semester_label?: string;
+}
+
+/** Personal academic status — distinct from the official board placement. */
+export interface PersonalStatus {
+  completed?: PersonalStatusCourse[];
+  currently_taking?: PersonalStatusCourse[];
+  planned?: PersonalStatusCourse[];
+}
+
+/** Prerequisite issues that arise specifically from the user's personal course status. */
+export interface PersonalPrereqIssue {
+  course_id: string;
+  name_he?: string;
+  issues: string[];
+}
+
 export interface PlanContext {
   program_name?: string;
   semesters: SemesterPlan[];
   mandatory_unplaced?: Array<{ course_id: string; name_he?: string; hours?: number }>;
   requirements_progress?: RequirementsProgress;
   prerequisite_issues?: PrereqIssue[];
+  personal_status?: PersonalStatus;
+  personal_prerequisite_issues?: PersonalPrereqIssue[];
   grade_signals?: Record<string, {
     average_grade?: number;
     median_grade?: number | null;
@@ -137,6 +160,35 @@ function prereqIssuesSection(issues: PrereqIssue[] | undefined): string {
     .join('\n');
 }
 
+function personalStatusSection(status: PersonalStatus | undefined): string {
+  if (!status) return 'לא הוזן מידע אישי על קורסים שהושלמו/נלמדים/מתוכננים.';
+
+  const fmt = (list: PersonalStatusCourse[] | undefined): string =>
+    !list?.length
+      ? '  (אין)'
+      : list
+          .map(c => `  • ${c.name_he || c.course_id} (${c.course_id})${c.semester_label ? ` — ${c.semester_label}` : ''}`)
+          .join('\n');
+
+  return [
+    'קורסים שהושלמו (סטטוס אישי):',
+    fmt(status.completed),
+    '',
+    'קורסים הנלמדים כעת (סטטוס אישי):',
+    fmt(status.currently_taking),
+    '',
+    'קורסים מתוכננים לסמסטרים עתידיים (סטטוס אישי):',
+    fmt(status.planned),
+  ].join('\n');
+}
+
+function personalPrereqIssuesSection(issues: PersonalPrereqIssue[] | undefined): string {
+  if (!issues?.length) return 'לא זוהו בעיות דרישות קדם הנובעות מהסטטוס האישי.';
+  return issues
+    .map(i => `  • ${i.name_he || i.course_id}:\n${i.issues.map(m => `    - ${m}`).join('\n')}`)
+    .join('\n');
+}
+
 function gradeSignalsSection(
   signals: PlanContext['grade_signals'],
 ): string {
@@ -173,6 +225,14 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     '',
     '### בעיות דרישות קדם',
     prereqIssuesSection(ctx.prerequisite_issues),
+    '',
+    '### סטטוס אישי (השלמה / לימוד נוכחי / תכנון אישי)',
+    'הערה: הסטטוס האישי הוא בנוסף לשיבוץ הרשמי בלוח, ואינו משנה אותו. קורס',
+    'יכול להופיע בלוח בסמסטר רשמי אחד, בעוד שהמשתמש לומד אותו בפועל בסמסטר אחר.',
+    personalStatusSection(ctx.personal_status),
+    '',
+    '### בעיות דרישות קדם הנובעות מהסטטוס האישי',
+    personalPrereqIssuesSection(ctx.personal_prerequisite_issues),
   ];
 
   if (ctx.grade_signals && Object.keys(ctx.grade_signals).length) {
@@ -209,6 +269,10 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     אם תקציר כזה סופק. אל תמציא פרטים מעבר למה שכתוב בתקציר.
 12. אם נכתב במפורש "אין תוכן סילבוס זמין למערכת" — ציין זאת בפירוש ואל תנחש
     מה מכיל הסילבוס.
+13. הבחן תמיד בין שיבוץ רשמי בלוח (כולל placement_policy וה-recommended_semester)
+    לבין הסטטוס האישי של המשתמש (קורסים שהושלמו, נלמדים כעת, או מתוכננים אישית).
+    אל תניח שקורס "הושלם" רק כי הוא מופיע בסמסטר מוקדם בלוח הרשמי — התבסס אך ורק
+    על המידע בסעיף "סטטוס אישי".
 
 ## נתוני התוכנית הנוכחית
 
