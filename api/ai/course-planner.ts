@@ -55,6 +55,7 @@ const courseInPlanSchema = z.object({
   difficulty_confidence:       z.number().nullish(),
   assessment_type:             z.string().nullish(),
   has_syllabus:                z.boolean().optional(),
+  has_syllabus_summary:        z.boolean().optional(),
 });
 
 const semesterPlanSchema = z.object({

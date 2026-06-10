@@ -1278,6 +1278,7 @@ function buildPlanContext() {
       difficulty_confidence:       c.difficulty_confidence       ?? null,
       assessment_type:             c.assessment_type             ?? null,
       has_syllabus:                Boolean(c.syllabus_url || c.syllabus_links?.length),
+      has_syllabus_summary:        Boolean(c.syllabus_text_available && c.syllabus_summary_he),
     }));
     return {
       id:          sem.id,
@@ -2036,6 +2037,12 @@ function normalizeCourse(c, status) {
     data_quality:                c.data_quality           || {},
     syllabus_url:                c.syllabus_url           || null,
     syllabus_links:              c.syllabus_links         || [],
+    syllabus_text_available:     c.syllabus_text_available     ?? false,
+    syllabus_summary_he:         c.syllabus_summary_he         || null,
+    syllabus_topics_he:          c.syllabus_topics_he          || [],
+    syllabus_prerequisites_he:   c.syllabus_prerequisites_he   || [],
+    syllabus_assessment_he:      c.syllabus_assessment_he      || null,
+    syllabus_structure_he:       c.syllabus_structure_he       || null,
     source_urls:                 c.source_urls            || [],
     semester_availability:       c.semester_availability  || null,
     grade_signal:                c.grade_signal           || null,
@@ -2637,7 +2644,20 @@ function buildCourseContext(c) {
                          lines.push(`דרישות קדם חסרות: ${c.missing_prerequisites.join(', ')}`);
 
   const hasSyllabus = !!(c.syllabus_url || c.syllabus_links?.length);
-  lines.push(`סילבוס זמין: ${hasSyllabus ? 'כן' : 'לא — אין תוכן סילבוס זמין למערכת'}`);
+  if (c.syllabus_text_available && c.syllabus_summary_he) {
+    lines.push('סילבוס זמין: כן (תוכן מהסילבוס מצורף להלן)');
+    lines.push(`תקציר סילבוס: ${c.syllabus_summary_he}`);
+    if (c.syllabus_topics_he?.length)
+                           lines.push(`נושאי לימוד מהסילבוס: ${c.syllabus_topics_he.join(', ')}`);
+    if (c.syllabus_prerequisites_he?.length)
+                           lines.push(`דרישות קדם מהסילבוס: ${c.syllabus_prerequisites_he.join(', ')}`);
+    if (c.syllabus_assessment_he)
+                           lines.push(`מטלות/הערכה מהסילבוס: ${c.syllabus_assessment_he}`);
+    if (c.syllabus_structure_he)
+                           lines.push(`מבנה הקורס מהסילבוס: ${c.syllabus_structure_he}`);
+  } else {
+    lines.push(`סילבוס זמין: ${hasSyllabus ? 'כן (קישור בלבד, ללא תוכן מנותח)' : 'לא — אין תוכן סילבוס זמין למערכת'}`);
+  }
   if (hasSyllabus && c.syllabus_url) lines.push(`קישור סילבוס: ${c.syllabus_url}`);
   if (c.assessment_type) lines.push(`סוג הערכה: ${c.assessment_type}`);
 

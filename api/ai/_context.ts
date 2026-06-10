@@ -18,6 +18,7 @@ export interface CourseInPlan {
   // Assessment / syllabus availability — booleans/labels only, no URLs (keeps context compact)
   assessment_type?: string | null;
   has_syllabus?: boolean;
+  has_syllabus_summary?: boolean;
 }
 
 export interface SemesterPlan {
@@ -93,6 +94,7 @@ function semestersSection(semesters: SemesterPlan[]): string {
 
       if (c.assessment_type) parts.push(`סוג הערכה: ${c.assessment_type}`);
       if (c.has_syllabus === false) parts.push('אין סילבוס זמין');
+      else if (c.has_syllabus_summary) parts.push('יש תקציר סילבוס זמין');
 
       if (c.difficulty_confidence != null && c.difficulty_confidence < 0.6)
         parts.push('⚠ נתוני קושי חלקיים — אמינות נמוכה');
@@ -201,6 +203,12 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
    באותו סמסטר, או קורס קשה לצד עומס שעות גבוה.
 10. אם נשאלת על דרישות התואר, התבסס על "התקדמות לדרישות התואר" ועל
     "קורסי חובה שטרם שובצו" כדי לציין מה עוד חסר.
+11. אם בפרטי הקורס הספציפי מופיע "תקציר סילבוס" (syllabus_summary_he) ושדות
+    סילבוס נוספים (נושאי לימוד, דרישות קדם, מטלות/הערכה, מבנה הקורס) — השתמש
+    במידע זה כדי לענות על שאלות אודות תוכן הקורס. אל תאמר שאין מידע מהסילבוס
+    אם תקציר כזה סופק. אל תמציא פרטים מעבר למה שכתוב בתקציר.
+12. אם נכתב במפורש "אין תוכן סילבוס זמין למערכת" — ציין זאת בפירוש ואל תנחש
+    מה מכיל הסילבוס.
 
 ## נתוני התוכנית הנוכחית
 
