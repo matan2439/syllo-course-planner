@@ -91,17 +91,24 @@ def main() -> int:
 
     course_filter = set(args.course) if args.course else None
     processed = 0
-    for semester in data.get("semesters", []):
-        for course in semester.get("courses", []):
-            if not course.get("syllabus_url"):
-                continue
-            if course_filter and course.get("course_id") not in course_filter:
-                continue
-            if args.limit is not None and processed >= args.limit:
-                break
-            print(f"Processing {course.get('course_id')} — {course.get('name_he')}")
-            if enrich_course(course, force=args.force):
-                processed += 1
+
+    def _course_iter():
+        for semester in data.get("semesters", []):
+            for course in semester.get("courses", []):
+                yield course
+        for course in data.get("metadata", {}).get("program_repository_courses", []):
+            yield course
+
+    for course in _course_iter():
+        if not course.get("syllabus_url"):
+            continue
+        if course_filter and course.get("course_id") not in course_filter:
+            continue
+        if args.limit is not None and processed >= args.limit:
+            break
+        print(f"Processing {course.get('course_id')} — {course.get('name_he')}")
+        if enrich_course(course, force=args.force):
+            processed += 1
 
     board_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Done. Enriched {processed} course(s). Wrote {board_path}")
