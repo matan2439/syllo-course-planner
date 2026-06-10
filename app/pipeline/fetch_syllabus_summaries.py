@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
@@ -58,14 +59,22 @@ def enrich_course(course: dict, force: bool = False) -> bool:
     if not syllabus_url:
         return False
 
+    cache = _cache_path(course_id)
+    was_cached = cache.exists() and not force
     html = _fetch_html(syllabus_url, course_id, force=force)
-    syllabus = parse_syllabus(html, source_file=_cache_path(course_id).name) if html else None
+    syllabus = parse_syllabus(html, source_file=cache.name) if html else None
 
     fetched_at = datetime.now(timezone.utc).isoformat()
     summary = build_syllabus_summary(syllabus, source_url=syllabus_url, fetched_at=fetched_at)
     course.update(summary)
     if syllabus is not None:
         course["syllabus_ai_analysis_status"] = "done"
+    else:
+        course["syllabus_ai_analysis_status"] = "failed"
+
+    # Be polite to the TAU server when actually fetching over the network.
+    if not was_cached and html is not None:
+        time.sleep(1.0)
     return True
 
 

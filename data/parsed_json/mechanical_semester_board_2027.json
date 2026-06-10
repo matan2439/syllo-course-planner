@@ -59,8 +59,19 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512120407",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-1204-07.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "תכן הקורס 1 הגדרות יסוד, ערך ממוצע, ערך יעיל, וערך- RMS, חישיב הספק חילופין, PF, הרמוניות.",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "פיזיקה (2) (05091829) + מבוא למעגלים מערכות ואותו (05121205) קורסים מקבילים מבוא למעגלים מערכות ואותו (05121205) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת",
+            "מופיעות בדף הידיעון של התוכנית"
+          ],
+          "syllabus_assessment_he": "ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "0.5 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120407&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:12.352126+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-2400",
@@ -117,8 +128,19 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542240001",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-2400-01.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "הקורס מספק הכרת חלקי מכונות שונים ושיטות תכן שונות. מספק לסטודנט כלים להבנת נושאים מתקדמים בתכן, ידע בסיסי בתפקוד מכלולים ומאפר מבט על תפקיד מהנדס מכונות. נלמדים: חישובי חוזק לעומס סטטי וחישוב לאורך חיים אין-סופי בהתעייפות בעומס דינמי, התחשבות בריכוז מאמצים. תכן מחברי ריתוך וברגים. ממסרות מכניות, נצילות ויחס תמסורת. סוגי ממסרות. מצמדים, חישוב חוזק ובלאי של מצמדי חיכוך. מסבים ובחירתם. תכן גלים. קפיצי מתיחה ולחיצה. שימוש בטבלאות, גרפים, טבלאות תקן, קטלוגים של חלקים סטנדרטיים.",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "גרפיקה הנדסית (05091510) + מבוא למדע והנדסת חומרים (05421830) + מכניקת המוצקים (1) (05422200) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת",
+            "מופיעות בדף הידיעון של התוכנית"
+          ],
+          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "4.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542240001&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:13.862152+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-2500",
@@ -175,8 +197,46 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542250005",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-2500-05.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                5 ש\"ס משקל:               4",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "משוואות דיפרנציאליות רגילות",
+            "תרמודינמיקה (1)",
+            "דינמיקה של גוף קשיח",
+            "מושגי יסוד במכניקת הזורמים .הידרוסטטיקה - לחץ",
+            "מנומטר",
+            "כוחות על גוף טבול",
+            "ציפה. קינמטיקה - תיאורי אוילר ולגראנג'",
+            "נגזרת חומרית",
+            "קווי זרם קווי מסלול. הידרודינמיקה - משוואת אוילר",
+            "משוואת ברנולי",
+            "צינור פיטו",
+            "צינור ברנולי. משוואות שימור - משוואת ההובלה של ריינולדס",
+            "שימור מסה",
+            "שימור תנע",
+            "שימור אנרגיה. משוואות דיפרנציאליות - שימור מסה (רציפות)",
+            "נוויה- סטוקס",
+            "זרימת פואזל",
+            "זרימת קואט. אנליזה מימדית ודמיות - משפט באקינגהם",
+            "קבוצות חסרות מימד",
+            "מספרים בעלי משמעות",
+            "דמיות. זרימה בצינור - זרימה למינרית",
+            "זרימה טורבולנטית",
+            "זרימה מפותחת",
+            "הפסדים",
+            "מערכת צינורות. זרימה סביב גופים - עילוי",
+            "גרר",
+            "שכבת גבול (שיטה אינטגרלית",
+            "פתרון בלאזיוס)",
+            "זרימה למינרית וטורבולנטית"
+          ],
+          "syllabus_assessment_he": "ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "1.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542250005&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:15.051319+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-3243",
@@ -233,8 +293,36 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542324308",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3243-08.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות: 5.5 משקל: 5",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "מבוא למעגלים",
+            "מערכות ואותות חשמליים",
+            "מידול מערכות מכניות ואחרות בהיבט של בקרה",
+            "לינאריזציה - משתני סטייה",
+            "דיאגרמת בלוקים",
+            "חוג סגור",
+            "יציבות פנימית",
+            "בקר PID",
+            "שגיאת מצב מתמיד",
+            "כיוונון בקרים בעזרת תהליך זיגלר-ניקולס",
+            "מג\"ש",
+            "תגובת תדר",
+            "קריטריון נייקויסט",
+            "דיאגרמת בודה ונייקויסט",
+            "תהליכים עם זמן מת",
+            "עודף הגבר ועודף פאזה",
+            "קריטריוני ביצועם בתדר ובזמן והקשר ביניהן",
+            "בקר רשת קידום-פיגור",
+            "בקרה במרחב המצב"
+          ],
+          "syllabus_assessment_he": "ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "2.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542324308&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:16.212231+00:00",
+          "syllabus_confidence": 0.8
         }
       ],
       "total_weekly_hours": 18.0,
@@ -301,8 +389,16 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542362007",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3620-07.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "Introduction: conduction, convection and radiation. Conduction: Fourier's law. One-dimensional problems in steady state. Heat exchangers. The general heat transfer equation and techniques for solution. Fins. Two-dimensional problems. Transient problems.",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [],
+          "syllabus_assessment_he": "Students may be required to submit additional assignments Full requirements as stated in full syllabus",
+          "syllabus_structure_he": null,
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362007&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:17.373713+00:00",
+          "syllabus_confidence": 0.4
         },
         {
           "course_id": "0542-3780",
@@ -360,8 +456,19 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542378002",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3780-02.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "הקורס מיועד לסטודנטים להנדסת מכונות, ומטרתו להעניק למהנדסי העתיד הבנה כיצד פרמטרי התכן משפיעים על תהליך הייצור. במהלך הקורס נלמדים סוגים שונים של תהליכי ייצור ונבחנים המאפיינים המקשרים בין התכן לייצור, כגון סבילות, טיב פני שטח ופרמטרים נוספים.",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "גרפיקה הנדסית (05091510) + מבוא למדע והנדסת חומרים (05421830) קורסים מקבילים תהליכי עיבוד - מעבדה (05423791) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת",
+            "מופיעות בדף הידיעון של התוכנית"
+          ],
+          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "3.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378002&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:18.536760+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-3791",
@@ -417,8 +524,16 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542379110",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-3791-10.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "מטרת הקורס היא לגשר ולמלא את הפער הקיים בין הידע התיאורתי שבתכנון חלקים לבין הפן המעשי של ייצור אותם חלקים. בסיום הקורס התלמיד ייצא עם ידע ולכל הפחות \"תחושה\" של איך משרטוט מתקבל חלק, מהם התהליכים והשלבים בייצור.",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [],
+          "syllabus_assessment_he": "דוח מעבדה ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "2.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379110&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:19.726149+00:00",
+          "syllabus_confidence": 0.6
         },
         {
           "course_id": "0542-3792",
@@ -508,7 +623,7 @@
           "syllabus_assessment_he": "ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בסמסטר ב' עוד 5 מעבדות במהלך הסמסטר ובחינה סופית על כל החומר הנלמד בהרצאות ובמעבדות. | צומצם משמעותית מספר הדו\"חות והמצגות שכל סטודנט/ית תאלץ/יאלץ להגיש במהלך הקורס. | לקבוצות 1+2 ינתנו הקלות בהגשת דוחות, הארכת זמן בהגשת דוחות ואפשרות לבחירה של חלק מהדוחות.",
           "syllabus_structure_he": "2.0 שעות הרצאה",
           "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2025",
-          "syllabus_last_fetched_at": "2026-06-10T20:32:59.109668+00:00",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:20.749196+00:00",
           "syllabus_confidence": 1.0
         }
       ],
@@ -574,8 +689,23 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542401001",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4010-01.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                3 ש\"ס משקל:               4",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "136 שעות  או באישור מנחה",
+            "הפרויקט עוסק בפתרון של בעיה טכנולוגית. בהינתן תיאור בעיה כללי",
+            "נדרש להגדיר את הפרויקט",
+            "לפתח דרישות ולתכן פתרון שעונה עליהן",
+            "היקף הפרויקט מוגדר כ- 400 שעות לכל סטודנט.ית. ניתן לבצע פרויקט בקבוצות של שני סטודנטים.יות. בפרויקטים יותר גדולים",
+            "כל קבוצה של שני סטודנטים.יות תקבל לאחריותה חלק מהפרויקט. בנית אבטיפוס להוכחת היתכנות מומלצת ביותר. כל קבוצה תקבל מנחה בעל.ת ניסיון מהתעשייה להנחות אותה או חוקר.ת מבית הספר להנדסה מכנית לפרוייקטים מחקריים בעלי אופי אקדמי"
+          ],
+          "syllabus_assessment_he": "פרוייקט ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "3.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:20.947637+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-4091",
@@ -633,8 +763,31 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409110",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4091-10.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                2 מ' משקל:               1.5",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "מכניקת המוצקים (1)",
+            "מבוא למדע והנדסת חומרים",
+            "הקדמה",
+            "עקרונות מדידת עיבורים וחישוב מאמצים",
+            "קליטת ועיבוד נתונים בעזרת מחשב",
+            "אנליזת מאמצים בשיטת האלמנט הסופי",
+            "קריטריוני כניעה",
+            "עקרונות מדידה אופטו-מכניים. שדוגראפיה",
+            "קריסה של קורות",
+            "מאמצים משולבים",
+            "תנודות",
+            "פוטואלסטיות",
+            "הזזות במישור בשיטת מוארה",
+            "כניעה במתיחה ובפיתול"
+          ],
+          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "2.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:22.123079+00:00",
+          "syllabus_confidence": 0.8
         }
       ],
       "total_weekly_hours": 5.0,
@@ -700,8 +853,23 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542402001",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4020-01.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                3 ש\"ס משקל:               4",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "136 שעות  או באישור מנחה",
+            "הפרויקט עוסק בפתרון של בעיה טכנולוגית. בהינתן תיאור בעיה כללי",
+            "נדרש להגדיר את הפרויקט",
+            "לפתח דרישות ולתכן פתרון שעונה עליהן",
+            "היקף הפרויקט מוגדר כ- 400 שעות לכל סטודנט.ית. ניתן לבצע פרויקט בקבוצות של שני סטודנטים.יות. בפרויקטים יותר גדולים",
+            "כל קבוצה של שני סטודנטים.יות תקבל לאחריותה חלק מהפרויקט. בנית אבטיפוס להוכחת היתכנות מומלצת ביותר. כל קבוצה תקבל מנחה בעל.ת ניסיון מהתעשייה להנחות אותה או חוקר.ת מבית הספר להנדסה מכנית לפרוייקטים מחקריים בעלי אופי אקדמי"
+          ],
+          "syllabus_assessment_he": "פרוייקט ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "3.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:23.317590+00:00",
+          "syllabus_confidence": 0.8
         },
         {
           "course_id": "0542-4092",
@@ -759,8 +927,32 @@
           "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409204",
           "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4092-04.html",
           "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "pending",
-          "assessment_analysis_status": "not_started"
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "ש\"ס: 2 מ' משקל: 1.5 נק\"ז",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "תרמודינמיקה (1)",
+            "הנדסת ניסויים ומדידות - מעבדה",
+            "מכניקת הזורמים (1)",
+            "מעבר חום",
+            "רשימת הניסויים:",
+            "מערכת מדי ספיקה וזרימה בצנרת: בדיקת ביצועי מדי ספיקה: נחיר",
+            "מד- ונטורי",
+            "ע\"י בדיקת מפל הלחץ לאורך צינורות בעלי אופי שונה. בדיקת הפסדי הלחץ עקב אביזרי צנרת שונים",
+            "זרימה סביב גליל במנהרת רוח: בדיקת פיזור הלחצים סביב גליל בזרימה תת-קולית. חישוב הכוחות הפועלים ומדידות בשובל",
+            "מחליף חום: בדיקת ביצועי מחליף חום בזרימה נגדית ומקבילה",
+            "מנוע דיזל: מדידות פרמטרים אופיניים כגון נצילות תרמית ותצרוכת דלק סגולית במנוע דיזל ארבע פעימות בעל צילינדר אחד",
+            "משאבה צנטריפוגלית: נצילות הידראולית של משאבה כתלות בספיקה ובעומס הכניסה והיציאה. קביעת מספרים חסרי מימד האופיניים למשאבה",
+            "ניסוי המחשה: ניסוי ריינדולס",
+            "מדידת פירוס המהירות בצינור באמצעות מערכת לעיבוד תמונה. זרימה במתקן ונטורי",
+            "מעבר חום במוטות מתכתיים: מעבר חום בהולכה ובהסעה חופשית ומאולצת בצלעות אנכיים"
+          ],
+          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "3.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409204&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:11:24.496203+00:00",
+          "syllabus_confidence": 0.8
         }
       ],
       "total_weekly_hours": 5.0,
