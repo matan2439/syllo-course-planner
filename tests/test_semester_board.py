@@ -746,6 +746,30 @@ def test_load_mandatory_course_with_db_record(tmp_path):
     assert warns == []
 
 
+def test_load_mandatory_course_fixed_placement_policy(no_db):
+    spec = {
+        "allowed_semesters": ["year_3_semester_a"],
+        "locked_by_default": True,
+        "placement_rule": "fixed_semester",
+        "recommended_semester": "year_3_semester_a",
+    }
+    mc, _ = _load_mandatory_course("0001-0001", no_db, placement_spec=spec)
+    assert mc["is_mandatory"] is True
+    assert mc["placement_policy"] == "fixed"
+    assert mc["recommended_semester"] == "year_3_semester_a"
+
+
+def test_load_mandatory_course_flexible_placement_policy(no_db):
+    spec = {
+        "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+        "locked_by_default": True,
+        "placement_rule": "choose_one_allowed_semester",
+    }
+    mc, _ = _load_mandatory_course("0001-0001", no_db, placement_spec=spec)
+    assert mc["is_mandatory"] is True
+    assert mc["placement_policy"] == "flexible"
+
+
 # ---------------------------------------------------------------------------
 # Program course filtering
 # ---------------------------------------------------------------------------

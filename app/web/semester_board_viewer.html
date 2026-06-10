@@ -2054,6 +2054,12 @@ function normalizeCourse(c, status) {
     allowed_semesters:           c.allowed_semesters           || [],
     locked_by_default:           c.locked_by_default           ?? true,
     placement_rule:              c.placement_rule              || 'fixed_semester',
+    is_mandatory:                c.is_mandatory ?? (c.course_type === 'mandatory'),
+    placement_policy:            c.placement_policy || (
+                                    c.course_type !== 'mandatory' ? 'elective'
+                                    : (c.allowed_semesters || []).length > 1 ? 'flexible' : 'fixed'
+                                  ),
+    recommended_semester:        c.recommended_semester        ?? (c.allowed_semesters || [])[0] ?? null,
     needs_verification:          c.needs_verification          || false,
     source_note:                 c.source_note                 || '',
     offered_in_year:             c.offered_in_year             ?? true,
@@ -2421,8 +2427,8 @@ function cardHtml(c, placed) {
   /* Category border override — only in repo (not placed), only for known categories */
   if (!placed && catStyles)             cls += ` ${catStyles.card}`;
 
-  const isFixedMandatory = type === 'mandatory' && (c.locked_by_default ?? true) === true;
-  const isFlexMand       = type === 'mandatory' && !isFixedMandatory;
+  const isFixedMandatory = c.placement_policy === 'fixed' && type === 'mandatory';
+  const isFlexMand       = c.placement_policy === 'flexible';
 
   const typeBdg = status === 'missing_from_db'
     ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
@@ -2433,9 +2439,9 @@ function cardHtml(c, placed) {
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
     : isFlexMand
-    ? `<span class="badge bdg-mandatory-flex">חובה — גמיש</span>`
-    : type === 'mandatory'
-    ? `<span class="badge bdg-mandatory">חובה — נעול</span>`
+    ? `<span class="badge bdg-mandatory-flex">חובה גמיש</span>`
+    : isFixedMandatory
+    ? `<span class="badge bdg-mandatory">חובה קבוע</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
   /* Category badge — shown in repo for core categories (fluids/solids/systems/labs) */
@@ -2462,10 +2468,10 @@ function cardHtml(c, placed) {
     ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
 
   let actionBtn = '';
-  if (type === 'mandatory') {
-    const icon  = locked ? '🔒' : isFlexMand ? '↔' : '🔓';
-    const title = locked ? 'לחצו לביטול נעילה' : isFlexMand ? 'גמיש — ניתן להזזה בין סמסטרים מותרים' : 'לחצו לנעילה';
-    actionBtn = `<button class="lock-btn" data-toggle-lock="${esc(c.course_id)}" title="${title}">${icon}</button>`;
+  if (isFixedMandatory) {
+    actionBtn = `<span class="lock-btn" title="חובה קבוע — לא ניתן להזיז">🔒</span>`;
+  } else if (isFlexMand) {
+    actionBtn = `<span class="lock-btn" title="חובה גמיש — ניתן להזזה בין סמסטרים מותרים">↔</span>`;
   } else if (placed) {
     actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
   }
@@ -2758,15 +2764,16 @@ function openCourseDetails(cid) {
   const sylUrl = syllabusLink(c);
 
   /* Badges */
-  const _isFlexMand = type === 'mandatory' && !(c.locked_by_default ?? true);
+  const _isFlexMand = c.placement_policy === 'flexible';
+  const _isFixedMand = c.placement_policy === 'fixed' && type === 'mandatory';
   const typeBdg = status === 'missing_from_db'
     ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
     : _isFlexMand
-    ? `<span class="badge bdg-mandatory-flex">חובה — גמיש</span>`
-    : type === 'mandatory'
-    ? `<span class="badge bdg-mandatory">חובה — נעול</span>`
+    ? `<span class="badge bdg-mandatory-flex">חובה גמיש</span>`
+    : _isFixedMand
+    ? `<span class="badge bdg-mandatory">חובה קבוע</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
   const diffBdg = level
@@ -2794,7 +2801,7 @@ function openCourseDetails(cid) {
   const _allowedSemLabels = (c.allowed_semesters || []).map(sid => SEM_HE[sid] || sid).join(' / ');
   const basicRows = [
     mkRow('קוד קורס:', `<span dir="ltr" style="font-family:ui-monospace,monospace;unicode-bidi:isolate">${esc(cid)}</span>`),
-    mkRow('סוג:', esc(_isFlexMand ? 'חובה — גמיש' : TYPE_HE[type] || type)),
+    mkRow('סוג:', esc(_isFlexMand ? 'חובה גמיש' : _isFixedMand ? 'חובה קבוע' : TYPE_HE[type] || type)),
     c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`) : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
     level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
     status !== 'eligible' ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
@@ -3205,22 +3212,30 @@ function setupGlobalKeys() {
 }
 
 /* ── Lock helpers ───────────────────────────────────────────────────────── */
+/* placement_policy: 'fixed' (mandatory_fixed) → never draggable
+                      'flexible' (mandatory_flexible) → draggable within allowed_semesters
+                      'elective' → existing drag rules */
 function isLocked(c) {
-  return c &&
-         c.course_type       === 'mandatory' &&
-         (c.locked_by_default ?? true) === true &&
-         !(state?.unlockedIds||[]).includes(c.course_id);
+  return c?.placement_policy === 'fixed';
 }
 
 /* True when a mandatory course may be dragged between multiple allowed semesters */
 function isFlexibleMandatory(c) {
-  return c?.course_type === 'mandatory' && (c.allowed_semesters || []).length > 1;
+  return c?.placement_policy === 'flexible';
 }
 
 /* False when drop target semester is outside the course's allowed_semesters */
 function isSemesterAllowed(c, semId) {
   const allowed = c?.allowed_semesters || [];
   return allowed.length === 0 || allowed.includes(semId);
+}
+
+/* False when the course's offered_semesters (A/B) excludes the target semester's A/B slot */
+function isOfferedInSemester(c, semId) {
+  const offered = c?.offered_semesters || [];
+  if (!offered.length) return true;
+  const part = semId.endsWith('_semester_a') ? 'A' : semId.endsWith('_semester_b') ? 'B' : null;
+  return !part || offered.includes(part);
 }
 
 /* ── Prerequisite validation (client-side mirror of plan_validator.py) ──── */
@@ -3336,9 +3351,16 @@ function setupDragDelegation() {
       const vr         = validatePlacement(dragId, zone.dataset.sem);
       const dragCourse = courseMap[dragId];
       const semBlocked = !isSemesterAllowed(dragCourse, zone.dataset.sem);
-      zone.classList.toggle('drag-valid',   vr.valid && !semBlocked);
-      zone.classList.toggle('drag-invalid', !vr.valid || semBlocked);
-      if (!vr.valid || semBlocked) {
+      const notOffered = !semBlocked && !isOfferedInSemester(dragCourse, zone.dataset.sem);
+      zone.classList.toggle('drag-valid',   vr.valid && !semBlocked && !notOffered);
+      zone.classList.toggle('drag-invalid', !vr.valid || semBlocked || notOffered);
+      if (semBlocked) {
+        zone.dataset.dragErr = 'הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה';
+        e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
+      } else if (notOffered) {
+        zone.dataset.dragErr = 'הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים';
+        e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
+      } else if (!vr.valid) {
         zone.dataset.dragErr = `חסרות דרישות קדם: ${vr.errors.map(_prereqName).join(', ')}`;
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
       } else {
@@ -3374,6 +3396,12 @@ function setupDragDelegation() {
       /* Mandatory course semester restriction */
       if (!isSemesterAllowed(dropCourse, toSem)) {
         if (!allowInvalidPlacement) {
+          showBoardNotify('הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה');
+          return;
+        }
+        showBoardNotify('⚠ אזהרה: הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה');
+      } else if (!isOfferedInSemester(dropCourse, toSem)) {
+        if (!allowInvalidPlacement) {
           showBoardNotify('הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים');
           return;
         }
@@ -3397,16 +3425,6 @@ function setupDragDelegation() {
       const sz = rmBtn.closest('[data-zone="semester"]');
       if (sz) moveCourse(id, sz.dataset.sem, null);
       return;
-    }
-    const lkBtn = e.target.closest('[data-toggle-lock]');
-    if (lkBtn) {
-      const id = lkBtn.dataset.toggleLock;
-      const c  = courseMap[id];
-      if (!c || c.course_type !== 'mandatory') return;
-      const idx = (state.unlockedIds||[]).indexOf(id);
-      if (idx === -1) state.unlockedIds.push(id);
-      else            state.unlockedIds.splice(idx,1);
-      saveState(); renderAll();
     }
   });
 

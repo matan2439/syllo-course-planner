@@ -243,6 +243,11 @@ def _parse_mandatory_specs(program: dict[str, Any]) -> list[dict[str, Any]]:
     return specs
 
 
+def _placement_policy_from_rule(placement_rule: str) -> str:
+    """Map a mandatory-course placement_rule to a placement_policy value."""
+    return "flexible" if placement_rule == "choose_one_allowed_semester" else "fixed"
+
+
 # ---------------------------------------------------------------------------
 # Mandatory course loading
 # ---------------------------------------------------------------------------
@@ -311,8 +316,11 @@ def _load_mandatory_course(
             "grade_signal":                grade_signal,
             "locked_by_user":              locked_by_default,
             "allowed_semesters":           allowed_sems,
+            "recommended_semester":        spec.get("recommended_semester"),
             "locked_by_default":           locked_by_default,
             "placement_rule":              placement_rule,
+            "is_mandatory":                True,
+            "placement_policy":            _placement_policy_from_rule(placement_rule),
             "needs_verification":          needs_verif,
             "source_note":                 source_note,
             "source":                      "program",
@@ -377,8 +385,11 @@ def _load_mandatory_course(
         "grade_signal":                grade_signal,
         "locked_by_user":              locked_by_default,
         "allowed_semesters":           allowed_sems,
+        "recommended_semester":        spec.get("recommended_semester"),
         "locked_by_default":           locked_by_default,
         "placement_rule":              placement_rule,
+        "is_mandatory":                True,
+        "placement_policy":            _placement_policy_from_rule(placement_rule),
         "needs_verification":          needs_verif,
         "source_note":                 source_note,
         "source":                      "program",
@@ -830,6 +841,8 @@ def _format_course(
         "assessment_intensity_score":  course.get("assessment_intensity_score"),
         "difficulty_confidence":       course.get("difficulty_confidence"),
         "course_type":                 "elective",
+        "is_mandatory":                False,
+        "placement_policy":            "elective",
         "prerequisites":               prereqs,
         "prerequisite_details":        prerequisite_details,
         "instructor_uncertainty":      course.get("instructor_uncertainty"),
