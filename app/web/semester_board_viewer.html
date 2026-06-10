@@ -1271,6 +1271,13 @@ function buildPlanContext() {
       course_type:           c.course_type || 'elective',
       category:              c.program_category_name_he || c.program_category_id,
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
+      workload_score:              c.workload_score              ?? null,
+      conceptual_complexity_score: c.conceptual_complexity_score ?? null,
+      prerequisite_depth_score:    c.prerequisite_depth_score    ?? null,
+      assessment_intensity_score:  c.assessment_intensity_score  ?? null,
+      difficulty_confidence:       c.difficulty_confidence       ?? null,
+      assessment_type:             c.assessment_type             ?? null,
+      has_syllabus:                Boolean(c.syllabus_url || c.syllabus_links?.length),
     }));
     return {
       id:          sem.id,
@@ -1297,6 +1304,8 @@ function buildPlanContext() {
     if (c?.grade_signal?.average_grade != null) {
       grade_signals[cid] = {
         average_grade:      c.grade_signal.average_grade,
+        median_grade:       c.grade_signal.median_grade ?? null,
+        pass_rate:          c.grade_signal.pass_rate ?? null,
         num_students_total: c.grade_signal.num_students_total,
       };
     }

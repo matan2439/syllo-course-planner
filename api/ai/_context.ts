@@ -9,6 +9,15 @@ export interface CourseInPlan {
   course_type?: string;
   category?: string;
   missing_prerequisites?: string[];
+  // Difficulty sub-scores (1-5 scale; null/missing if not yet computed)
+  workload_score?: number | null;
+  conceptual_complexity_score?: number | null;
+  prerequisite_depth_score?: number | null;
+  assessment_intensity_score?: number | null;
+  difficulty_confidence?: number | null;
+  // Assessment / syllabus availability — booleans/labels only, no URLs (keeps context compact)
+  assessment_type?: string | null;
+  has_syllabus?: boolean;
 }
 
 export interface SemesterPlan {
@@ -42,7 +51,12 @@ export interface PlanContext {
   mandatory_unplaced?: Array<{ course_id: string; name_he?: string; hours?: number }>;
   requirements_progress?: RequirementsProgress;
   prerequisite_issues?: PrereqIssue[];
-  grade_signals?: Record<string, { average_grade?: number; num_students_total?: number }>;
+  grade_signals?: Record<string, {
+    average_grade?: number;
+    median_grade?: number | null;
+    pass_rate?: number | null;
+    num_students_total?: number;
+  }>;
 }
 
 export interface SystemPromptInput {
@@ -53,19 +67,41 @@ export interface SystemPromptInput {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Render a 1-5 sub-score compactly, or omit if unknown. */
+function subScore(label: string, value: number | null | undefined): string | null {
+  return value != null ? `${label} ${value}` : null;
+}
+
 function semestersSection(semesters: SemesterPlan[]): string {
   if (!semesters.length) return 'אין קורסים משובצים עדיין.';
   return semesters.map(sem => {
+    const overloaded = sem.total_hours >= 16 ? ' ⚠ עומס גבוה' : '';
     const courseLines = sem.courses.map(c => {
       const parts: string[] = [`  • ${c.name_he || c.course_id} (${c.course_id})`];
       if (c.hours != null) parts.push(`${c.hours} ש"ש`);
-      if (c.difficulty_level) parts.push(`קושי: ${c.difficulty_level}`);
+      if (c.course_type) parts.push(c.course_type === 'mandatory' ? 'חובה' : 'בחירה');
       if (c.category) parts.push(`קטגוריה: ${c.category}`);
+      if (c.difficulty_level) parts.push(`קושי כולל: ${c.difficulty_level}${c.difficulty_score != null ? ` (${c.difficulty_score})` : ''}`);
+
+      const subScores = [
+        subScore('עומס', c.workload_score),
+        subScore('מורכבות', c.conceptual_complexity_score),
+        subScore('עומק דרישות קדם', c.prerequisite_depth_score),
+        subScore('עצימות הערכה', c.assessment_intensity_score),
+      ].filter(Boolean);
+      if (subScores.length) parts.push(`(${subScores.join(', ')})`);
+
+      if (c.assessment_type) parts.push(`סוג הערכה: ${c.assessment_type}`);
+      if (c.has_syllabus === false) parts.push('אין סילבוס זמין');
+
+      if (c.difficulty_confidence != null && c.difficulty_confidence < 0.6)
+        parts.push('⚠ נתוני קושי חלקיים — אמינות נמוכה');
+
       if (c.missing_prerequisites?.length)
         parts.push(`⚠ דרישות קדם חסרות: ${c.missing_prerequisites.join(', ')}`);
       return parts.join(' | ');
     }).join('\n');
-    return `**${sem.label}** (${sem.total_hours} ש"ש סה"כ)\n${courseLines}`;
+    return `**${sem.label}** (${sem.total_hours} ש"ש סה"כ)${overloaded}\n${courseLines}`;
   }).join('\n\n');
 }
 
@@ -100,11 +136,17 @@ function prereqIssuesSection(issues: PrereqIssue[] | undefined): string {
 }
 
 function gradeSignalsSection(
-  signals: Record<string, { average_grade?: number; num_students_total?: number }> | undefined,
+  signals: PlanContext['grade_signals'],
 ): string {
   if (!signals || !Object.keys(signals).length) return '';
   const lines = Object.entries(signals)
-    .map(([cid, s]) => `  • ${cid}: ממוצע ${s.average_grade ?? '?'} (${s.num_students_total ?? '?'} סטודנטים)`)
+    .map(([cid, s]) => {
+      const parts = [`ממוצע ${s.average_grade ?? '?'}`];
+      if (s.median_grade != null) parts.push(`חציון ${s.median_grade}`);
+      if (s.pass_rate != null) parts.push(`אחוז עוברים ${Math.round(s.pass_rate * 100)}%`);
+      parts.push(`${s.num_students_total ?? '?'} סטודנטים`);
+      return `  • ${cid}: ${parts.join(', ')}`;
+    })
     .join('\n');
   return `### נתוני ציונים היסטוריים (מ-Arazim TAU Refactor)\n${lines}`;
 }
@@ -146,10 +188,19 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
 ## כללים
 1. ענה תמיד בעברית ברורה ותמציתית.
 2. אל תמציא עובדות על קורסים — השתמש אך ורק במידע שסופק לך.
-3. כאשר מידע חסר (ציונים, סילבוס, סוג הגשה), ציין זאת במפורש.
+3. כאשר מידע חסר (ציונים, סילבוס, סוג הגשה, ציוני קושי), ציין זאת במפורש ואל תנחש.
 4. המלצות הן ייעוציות בלבד — לא ייעוץ אקדמי רשמי.
 5. אל תציע לשנות קורסי חובה נעולים — רק התייחס אליהם כעובדה קיימת.
 6. אם אין לך מספיק מידע לענות, אמור זאת בפירוש.
+7. תהיה ספציפי: ציין שמות קורסים ומספרי קורס, ושימוש במספרים בפועל מהתוכנית
+   (שעות שבועיות, ציוני קושי, ממוצעים) ולא תיאורים כלליים.
+8. סמסטר עם 16 ש"ש ומעלה מסומן "⚠ עומס גבוה" — אם נשאלת על איזון התוכנית,
+   ציין במפורש אילו סמסטרים עמוסים ואילו קורסים ספציפיים תורמים לכך
+   (למשל קורסים עם עומס/מורכבות גבוהים או הרבה שעות שבועיות).
+9. שים לב לשילובים מסוכנים: כמה קורסים עם ציוני "מורכבות" או "עומס" גבוהים
+   באותו סמסטר, או קורס קשה לצד עומס שעות גבוה.
+10. אם נשאלת על דרישות התואר, התבסס על "התקדמות לדרישות התואר" ועל
+    "קורסי חובה שטרם שובצו" כדי לציין מה עוד חסר.
 
 ## נתוני התוכנית הנוכחית
 

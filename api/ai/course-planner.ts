@@ -47,6 +47,14 @@ const courseInPlanSchema = z.object({
   course_type:            z.string().optional(),  // always set to 'elective' if missing
   category:               z.string().nullish(),   // null when both category fields are absent
   missing_prerequisites:  z.array(z.string()).optional(),
+  // Difficulty sub-scores — null/missing if not yet computed
+  workload_score:              z.number().nullish(),
+  conceptual_complexity_score: z.number().nullish(),
+  prerequisite_depth_score:    z.number().nullish(),
+  assessment_intensity_score:  z.number().nullish(),
+  difficulty_confidence:       z.number().nullish(),
+  assessment_type:             z.string().nullish(),
+  has_syllabus:                z.boolean().optional(),
 });
 
 const semesterPlanSchema = z.object({
@@ -81,7 +89,12 @@ const planContextSchema = z.object({
     }))
     .optional(),
   grade_signals: z
-    .record(z.object({ average_grade: z.number().optional(), num_students_total: z.number().optional() }))
+    .record(z.object({
+      average_grade:      z.number().optional(),
+      median_grade:       z.number().nullish(),
+      pass_rate:          z.number().nullish(),
+      num_students_total: z.number().optional(),
+    }))
     .optional(),
 });
 

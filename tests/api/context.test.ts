@@ -109,6 +109,73 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt({ program_id: 'test', plan_context: emptyCtx });
     expect(prompt).toContain('אין קורסים משובצים עדיין');
   });
+
+  it('flags overloaded semesters (>=16 hours)', () => {
+    const heavyCtx: PlanContext = {
+      semesters: [{
+        id: 'year_3_semester_a', label: "שנה ג׳ — סמסטר א׳", total_hours: 18,
+        courses: [{ course_id: '0542-4420', name_he: 'תורת המכונות', hours: 18, course_type: 'mandatory' }],
+      }],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: heavyCtx });
+    expect(prompt).toContain('עומס גבוה');
+  });
+
+  it('does not flag light semesters (<16 hours)', () => {
+    const lightCtx: PlanContext = {
+      semesters: [{
+        id: 'year_3_semester_a', label: "שנה ג׳ — סמסטר א׳", total_hours: 5,
+        courses: [{ course_id: '0542-4420', name_he: 'תורת המכונות', hours: 5, course_type: 'elective' }],
+      }],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: lightCtx });
+    expect(prompt).not.toContain('ש"ש סה"כ) ⚠ עומס גבוה');
+  });
+
+  it('includes difficulty sub-scores when provided', () => {
+    const ctx: PlanContext = {
+      semesters: [{
+        id: 'year_3_semester_a', label: "שנה ג׳ — סמסטר א׳", total_hours: 5,
+        courses: [{
+          course_id: '0542-4420', name_he: 'תורת המכונות', hours: 5, course_type: 'elective',
+          workload_score: 4, conceptual_complexity_score: 5, prerequisite_depth_score: 2,
+          assessment_intensity_score: 3,
+        }],
+      }],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    expect(prompt).toContain('עומס 4');
+    expect(prompt).toContain('מורכבות 5');
+    expect(prompt).toContain('עומק דרישות קדם 2');
+    expect(prompt).toContain('עצימות הערכה 3');
+  });
+
+  it('flags missing syllabus and low-confidence difficulty data', () => {
+    const ctx: PlanContext = {
+      semesters: [{
+        id: 'year_3_semester_a', label: "שנה ג׳ — סמסטר א׳", total_hours: 5,
+        courses: [{
+          course_id: '0542-4420', name_he: 'תורת המכונות', hours: 5, course_type: 'elective',
+          has_syllabus: false, difficulty_confidence: 0.3,
+        }],
+      }],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    expect(prompt).toContain('אין סילבוס זמין');
+    expect(prompt).toContain('אמינות נמוכה');
+  });
+
+  it('includes median grade and pass rate in grade signals', () => {
+    const ctx: PlanContext = {
+      ...PLAN_CONTEXT,
+      grade_signals: {
+        '0542-4420': { average_grade: 60.6, median_grade: 62, pass_rate: 0.85, num_students_total: 2472 },
+      },
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    expect(prompt).toContain('חציון 62');
+    expect(prompt).toContain('85%');
+  });
 });
 
 describe('computeSemesterLoads', () => {
