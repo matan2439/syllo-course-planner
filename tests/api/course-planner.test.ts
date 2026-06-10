@@ -439,6 +439,45 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
   });
 
+  it('allows requests beyond 5 credits when AI_FREE_QUOTA raises the limit', async () => {
+    process.env.AI_FREE_QUOTA = '1000';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: true, credits_used: 50, credits_paid: 0, free_limit: 1000, remaining: 950,
+    });
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.write).toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }));
+    delete process.env.AI_FREE_QUOTA;
+  });
+
+  it('AI_TEST_MODE=true bypasses QUOTA_EXCEEDED and still streams', async () => {
+    process.env.AI_TEST_MODE = 'true';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
+    });
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.write).toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }));
+    expect(res.setHeader).toHaveBeenCalledWith('X-AI-Quota-Bypass', 'true');
+    delete process.env.AI_TEST_MODE;
+  });
+
+  it('AI_TEST_MODE=false still enforces QUOTA_EXCEEDED', async () => {
+    process.env.AI_TEST_MODE = 'false';
+    mockCheckAndEnsureSession.mockResolvedValueOnce({
+      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
+    });
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.status).toHaveBeenCalledWith(429);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('QUOTA_EXCEEDED');
+    delete process.env.AI_TEST_MODE;
+  });
+
   it('calls incrementCreditsUsed via onFinish after stream', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,

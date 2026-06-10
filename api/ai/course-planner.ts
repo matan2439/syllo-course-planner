@@ -30,7 +30,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { buildSystemPrompt, type PlanContext } from './_context';
-import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
+import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent, FREE_LIMIT } from './_quota';
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -176,6 +176,17 @@ function isDevMode(): boolean {
 
 function isBypassQuota(): boolean {
   return isDevMode() && process.env.AI_DEV_BYPASS_QUOTA === 'true';
+}
+
+/**
+ * Temporary production-safe quota override for manual testing.
+ * AI_TEST_MODE=true allows requests through even when the free quota is
+ * exhausted — usage is still tracked (incrementCreditsUsed/logUsageEvent
+ * still run as normal). Defaults to false. MUST be unset before public
+ * release — see docs/vercel-ai-integration.md.
+ */
+function isTestModeBypass(): boolean {
+  return process.env.AI_TEST_MODE === 'true';
 }
 
 // ── Response helpers ──────────────────────────────────────────────────────────
@@ -327,9 +338,17 @@ async function runQuotaCheck(
     return false;
   }
 
-  console.log('[ai] quota check passed — credits_used:', quota.credits_used, 'remaining:', quota.remaining);
+  console.log('[ai] quota check — credits_used:', quota.credits_used, 'remaining:', quota.remaining,
+    'free_limit:', quota.free_limit, '(AI_FREE_QUOTA raw:', JSON.stringify(process.env.AI_FREE_QUOTA),
+    ', parsed FREE_LIMIT:', FREE_LIMIT, ') allowed:', quota.allowed);
 
   if (!quota.allowed) {
+    if (isTestModeBypass()) {
+      console.warn('[ai] AI_TEST_MODE=true — bypassing QUOTA_EXCEEDED for testing',
+        '(credits_used:', quota.credits_used, 'free_limit:', quota.free_limit, ')');
+      res.setHeader('X-AI-Quota-Bypass', 'true');
+      return true;
+    }
     sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
       credits_used: quota.credits_used,
       free_limit:   quota.free_limit,

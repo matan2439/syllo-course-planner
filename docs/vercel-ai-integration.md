@@ -56,6 +56,8 @@ details will now be live.
 | `OPENAI_API_KEY` | OpenAI API key. Get one at platform.openai.com. Used with `gpt-4o-mini`. |
 | `ANTHROPIC_API_KEY` | Anthropic API key. Get one at console.anthropic.com. Used with `claude-3-5-haiku-20241022`. |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio API key. Get one at aistudio.google.com. Used with `gemini-1.5-flash`. |
+| `AI_FREE_QUOTA` | Optional. Number of free AI requests per anonymous session. Default `5`. |
+| `AI_TEST_MODE` | **Temporary testing override.** `true` bypasses `QUOTA_EXCEEDED` (429) entirely — usage is still tracked. Default `false`. **Must be set back to `false`/removed before public release.** Responses include an `X-AI-Quota-Bypass: true` header while active. |
 
 **Set at least the key for your chosen provider.** OpenAI's `gpt-4o-mini` is the
 recommended default — low cost and good Hebrew quality.
