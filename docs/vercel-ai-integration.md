@@ -2,8 +2,8 @@
 
 ## Overview
 
-The AI assistant is built on the **Vercel AI SDK** (`ai` package) with an
-**Anthropic Claude** or **OpenAI GPT** backend (whichever API key is configured).
+The AI assistant is built on the **Vercel AI SDK** (`ai` package) with a
+configurable backend: **OpenAI**, **Anthropic Claude**, or **Google Gemini**.
 
 The backend is a single Edge Function at `api/ai/course-planner.ts`.
 The frontend (`app/web/semester_board_viewer.html`) calls it with a condensed
@@ -25,7 +25,8 @@ Copy the example env file and add your key:
 
 ```bash
 cp .env.example .env
-# Then edit .env and fill in ANTHROPIC_API_KEY or OPENAI_API_KEY
+# Then edit .env: optionally set AI_PROVIDER (openai | anthropic | google)
+# and fill in the matching API key (OPENAI_API_KEY by default)
 ```
 
 ### 3. Start the dev server
@@ -51,13 +52,27 @@ details will now be live.
 
 | Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key (preferred). Get one at console.anthropic.com |
-| `OPENAI_API_KEY` | OpenAI API key (fallback). Get one at platform.openai.com |
+| `AI_PROVIDER` | Optional. `openai` \| `anthropic` \| `google`. Selects the provider explicitly. If unset, falls back OpenAI → Anthropic → Google (first with a key set). |
+| `OPENAI_API_KEY` | OpenAI API key. Get one at platform.openai.com. Used with `gpt-4o-mini`. |
+| `ANTHROPIC_API_KEY` | Anthropic API key. Get one at console.anthropic.com. Used with `claude-3-5-haiku-20241022`. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio API key. Get one at aistudio.google.com. Used with `gemini-1.5-flash`. |
 
-**Set at least one.** Anthropic is tried first; OpenAI is used if only its key is set.
+**Set at least the key for your chosen provider.** OpenAI's `gpt-4o-mini` is the
+recommended default — low cost and good Hebrew quality.
 
-If neither key is set, the endpoint returns HTTP 503 with `{ code: "NO_API_KEY" }`
-and the UI shows a clear error message.
+If `AI_PROVIDER` is set but its matching key is missing, the endpoint returns
+HTTP 503 with `{ code: "NO_API_KEY" }` naming that provider's key — there is
+no fallback to other providers in that case. If `AI_PROVIDER` is unset and no
+key is found in the fallback order, the same error is returned for OpenAI.
+
+### Switching providers in production
+
+1. In Vercel → Project Settings → Environment Variables, add the API key for
+   the new provider (e.g. `GOOGLE_GENERATIVE_AI_API_KEY`).
+2. Set `AI_PROVIDER` to `openai`, `anthropic`, or `google`.
+3. Redeploy (`vercel --prod` or push to `master`).
+
+No code changes or database changes are required to switch providers.
 
 ---
 

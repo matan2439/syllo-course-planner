@@ -36,6 +36,10 @@ jest.mock('@ai-sdk/openai', () => ({
   createOpenAI: jest.fn().mockReturnValue(jest.fn().mockReturnValue('mock-openai-model')),
 }));
 
+jest.mock('@ai-sdk/google', () => ({
+  createGoogleGenerativeAI: jest.fn().mockReturnValue(jest.fn().mockReturnValue('mock-google-model')),
+}));
+
 // ── Quota module mock ─────────────────────────────────────────────────────────
 
 const mockCheckAndEnsureSession = jest.fn().mockResolvedValue({
@@ -315,6 +319,71 @@ describe('POST /api/ai/course-planner — API key handling', () => {
   });
 });
 
+// ── AI_PROVIDER selection ─────────────────────────────────────────────────────
+
+describe('POST /api/ai/course-planner — AI_PROVIDER selection', () => {
+  beforeEach(() => {
+    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
+    mockCheckAndEnsureSession.mockResolvedValue({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
+  });
+  afterEach(() => {
+    delete process.env.AI_PROVIDER;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    delete process.env.DATABASE_URL;
+    jest.clearAllMocks();
+  });
+
+  it('AI_PROVIDER=openai selects OpenAI', async () => {
+    process.env.AI_PROVIDER    = 'openai';
+    process.env.OPENAI_API_KEY = 'sk-openai-test';
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test'; // present but must NOT be used
+    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
+    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(createOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-openai-test' }));
+    expect(createAnthropic).not.toHaveBeenCalled();
+  });
+
+  it('AI_PROVIDER=anthropic selects Anthropic', async () => {
+    process.env.AI_PROVIDER       = 'anthropic';
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
+    process.env.OPENAI_API_KEY    = 'sk-openai-test'; // present but must NOT be used
+    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
+    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(createAnthropic).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-ant-test' }));
+    expect(createOpenAI).not.toHaveBeenCalled();
+  });
+
+  it('AI_PROVIDER=google selects Google Gemini', async () => {
+    process.env.AI_PROVIDER = 'google';
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'goog-test-key';
+    const { createGoogleGenerativeAI } = jest.requireMock('@ai-sdk/google');
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(createGoogleGenerativeAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'goog-test-key' }));
+  });
+
+  it('missing AI_PROVIDER defaults safely (uses OpenAI when its key is present)', async () => {
+    process.env.OPENAI_API_KEY = 'sk-openai-test';
+    const { createOpenAI } = jest.requireMock('@ai-sdk/openai');
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(createOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-openai-test' }));
+  });
+
+  it('returns NO_API_KEY for the selected provider when AI_PROVIDER=google but key missing', async () => {
+    process.env.AI_PROVIDER = 'google';
+    process.env.OPENAI_API_KEY = 'sk-openai-test'; // other keys present — must not be used as fallback
+    const res = makeRes();
+    await handler(makeReq(VALID_BODY), res as any);
+    expect(res.status).toHaveBeenCalledWith(503);
+    const body = res.json.mock.calls[0][0];
+    expect(body.code).toBe('NO_API_KEY');
+    expect(body.error).toContain('GOOGLE_GENERATIVE_AI_API_KEY');
+  });
+});
+
 // ── Quota enforcement ─────────────────────────────────────────────────────────
 
 describe('POST /api/ai/course-planner — quota enforcement', () => {
@@ -506,9 +575,11 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
     const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
     const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
+    const { createGoogleGenerativeAI } = jest.requireMock('@ai-sdk/google');
     await handler(makeReq(VALID_BODY), makeRes() as any);
     expect(createAnthropic).not.toHaveBeenCalled();
     expect(createOpenAI).not.toHaveBeenCalled();
+    expect(createGoogleGenerativeAI).not.toHaveBeenCalled();
   });
 
   it('returns 503 NO_API_KEY JSON when AI_DEV_MODE is false and no key', async () => {

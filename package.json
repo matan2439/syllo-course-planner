@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.7",
+    "@ai-sdk/google": "^1.2.22",
     "@ai-sdk/openai": "^1.0.14",
     "ai": "^4.0.0",
     "postgres": "^3.4.4",
@@ -25,6 +26,8 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/tests/api/**/*.test.ts"]
+    "testMatch": [
+      "**/tests/api/**/*.test.ts"
+    ]
   }
 }

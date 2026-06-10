@@ -2,7 +2,8 @@
  * POST /api/ai/course-planner
  *
  * Streaming AI endpoint for TAU course-planner assistant.
- * Supports Anthropic (preferred) and OpenAI via Vercel AI SDK.
+ * Supports OpenAI, Anthropic, and Google (Gemini) via Vercel AI SDK.
+ * Provider is selected by AI_PROVIDER env var (defaults to OpenAI).
  *
  * Runtime: Node.js (quota check requires TCP connection to Postgres).
  *
@@ -25,6 +26,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import { buildSystemPrompt, type PlanContext } from './_context';
@@ -93,19 +95,64 @@ const requestSchema = z.object({
 
 // ── Model selection ───────────────────────────────────────────────────────────
 
-interface ModelConfig { model: LanguageModel; name: string }
+type AiProvider = 'anthropic' | 'openai' | 'google';
 
-function resolveModel(): ModelConfig | null {
-  if (process.env.ANTHROPIC_API_KEY) {
-    const provider = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    return { model: provider('claude-3-5-sonnet-20241022'), name: 'claude-3-5-sonnet-20241022' };
+interface ModelConfig { model: LanguageModel; name: string; provider: AiProvider }
+
+/** Low-cost default model per provider. */
+const PROVIDER_MODEL: Record<AiProvider, string> = {
+  openai:    'gpt-4o-mini',
+  anthropic: 'claude-3-5-haiku-20241022',
+  google:    'gemini-1.5-flash',
+};
+
+const PROVIDER_KEY_ENV: Record<AiProvider, string> = {
+  openai:    'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  google:    'GOOGLE_GENERATIVE_AI_API_KEY',
+};
+
+function buildModel(p: AiProvider): ModelConfig | null {
+  const apiKey = process.env[PROVIDER_KEY_ENV[p]];
+  if (!apiKey) return null;
+  const modelName = PROVIDER_MODEL[p];
+  switch (p) {
+    case 'openai':
+      return { model: createOpenAI({ apiKey })(modelName), name: modelName, provider: p };
+    case 'anthropic':
+      return { model: createAnthropic({ apiKey })(modelName), name: modelName, provider: p };
+    case 'google':
+      return { model: createGoogleGenerativeAI({ apiKey })(modelName), name: modelName, provider: p };
   }
-  if (process.env.OPENAI_API_KEY) {
-    const provider = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    return { model: provider('gpt-4o-mini'), name: 'gpt-4o-mini' };
-  }
-  return null;
 }
+
+/**
+ * Resolve which AI provider/model to use.
+ *
+ * AI_PROVIDER=anthropic|openai|google selects a provider explicitly — if its
+ * API key is missing, resolution fails (no fallback to other providers).
+ *
+ * If AI_PROVIDER is unset, falls back through OpenAI → Anthropic → Google,
+ * picking the first provider with an API key configured. OpenAI's
+ * gpt-4o-mini is the recommended default: low cost and good Hebrew quality.
+ */
+function resolveModel(): ModelConfig | null {
+  const requested = (process.env.AI_PROVIDER ?? '').trim().toLowerCase();
+  if (requested) {
+    if (requested !== 'anthropic' && requested !== 'openai' && requested !== 'google') {
+      console.error(`[ai] unknown AI_PROVIDER "${requested}" — ignoring`);
+    } else {
+      return buildModel(requested);
+    }
+  }
+  return buildModel('openai') ?? buildModel('anthropic') ?? buildModel('google');
+}
+
+const PROVIDER_LABEL: Record<AiProvider, string> = {
+  openai:    'OpenAI',
+  anthropic: 'Anthropic',
+  google:    'Google',
+};
 
 // ── Dev mode ──────────────────────────────────────────────────────────────────
 
@@ -149,24 +196,26 @@ async function sendMockStream(res: VercelResponse): Promise<void> {
  * Classify a provider-level error and send an appropriate JSON response.
  * Called when the stream errors or returns no chunks before any response is committed.
  */
-function classifyAndSendProviderError(res: VercelResponse, err: unknown): void {
+function classifyAndSendProviderError(res: VercelResponse, err: unknown, provider: AiProvider): void {
   const msg    = err instanceof Error ? err.message : String(err);
   const status = (err as any)?.status ?? (err as any)?.statusCode ?? 0;
+  const label  = PROVIDER_LABEL[provider];
+  const keyEnv = PROVIDER_KEY_ENV[provider];
   console.error('[ai] provider error — status:', status, '— message:', msg);
 
   if (status === 401 || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('invalid api key')) {
     console.error('[ai] CLASSIFICATION: AI_AUTH_ERROR');
-    sendError(res, 503, 'שגיאת אימות ב-API של Anthropic — בדוק את ANTHROPIC_API_KEY.', 'AI_AUTH_ERROR');
+    sendError(res, 503, `שגיאת אימות ב-API של ${label} — בדוק את ${keyEnv}.`, 'AI_AUTH_ERROR');
   } else if (
     status === 402 || status === 403 ||
     msg.toLowerCase().includes('billing') || msg.toLowerCase().includes('credit') ||
     msg.toLowerCase().includes('quota')   || msg.toLowerCase().includes('permission')
   ) {
     console.error('[ai] CLASSIFICATION: AI_BILLING_ERROR');
-    sendError(res, 503, 'לא ניתן לבצע קריאה ל-Anthropic — בדוק חיוב/קרדיטים בקונסולה.', 'AI_BILLING_ERROR');
+    sendError(res, 503, `לא ניתן לבצע קריאה ל-${label} — בדוק חיוב/קרדיטים בקונסולה.`, 'AI_BILLING_ERROR');
   } else if (status === 429 || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('rate_limit')) {
     console.error('[ai] CLASSIFICATION: AI_RATE_LIMIT');
-    sendError(res, 429, 'הגעת למגבלת קריאות Anthropic — נסה שוב עוד כמה שניות.', 'AI_RATE_LIMIT');
+    sendError(res, 429, `הגעת למגבלת קריאות ${label} — נסה שוב עוד כמה שניות.`, 'AI_RATE_LIMIT');
   } else {
     console.error('[ai] CLASSIFICATION: AI_PROVIDER_ERROR');
     sendError(res, 503, 'שגיאה בספק ה-AI — נסה שוב.', 'AI_PROVIDER_ERROR', { detail: msg });
@@ -184,6 +233,7 @@ function classifyAndSendProviderError(res: VercelResponse, err: unknown): void {
 async function pipeTextStream(
   res: VercelResponse,
   textStream: ReadableStream<string>,
+  provider: AiProvider,
 ): Promise<void> {
   const reader = textStream.getReader();
 
@@ -193,7 +243,7 @@ async function pipeTextStream(
     first = await reader.read();
   } catch (err) {
     // Provider threw on first read — classify and return JSON error
-    classifyAndSendProviderError(res, err);
+    classifyAndSendProviderError(res, err, provider);
     return;
   }
 
@@ -204,7 +254,7 @@ async function pipeTextStream(
     console.error('[ai] stream empty — provider returned no chunks (likely billing/auth issue)');
     sendError(
       res, 503,
-      'שירות ה-AI לא החזיר תוכן. בדוק חיוב/קרדיטים ב-Anthropic Console.',
+      `שירות ה-AI לא החזיר תוכן. בדוק חיוב/קרדיטים בקונסולה של ${PROVIDER_LABEL[provider]}.`,
       'AI_EMPTY_RESPONSE',
     );
     return;
@@ -344,8 +394,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const modelConfig = resolveModel();
   if (!modelConfig) {
     console.log('[ai] no API key configured');
+    const requested = (process.env.AI_PROVIDER ?? '').trim().toLowerCase();
+    const provider: AiProvider =
+      requested === 'anthropic' || requested === 'openai' || requested === 'google'
+        ? requested : 'openai';
+    const keyEnv = PROVIDER_KEY_ENV[provider];
     sendError(res, 503,
-      'לא הוגדר מפתח AI. בסביבת Vercel — הוסף ANTHROPIC_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.',
+      `לא הוגדר מפתח AI עבור ${PROVIDER_LABEL[provider]}. בסביבת Vercel — הוסף ${keyEnv} בלוח הבקרה. מקומית — הגדר בקובץ .env.`,
       'NO_API_KEY');
     return;
   }
@@ -392,5 +447,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   console.log('[ai] stream started');
-  await pipeTextStream(res, result.textStream);
+  await pipeTextStream(res, result.textStream, modelConfig.provider);
 }
