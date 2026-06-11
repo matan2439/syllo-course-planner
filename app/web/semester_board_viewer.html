@@ -1278,7 +1278,7 @@ function buildPlanContext() {
   const placedIds = new Set(Object.values(state.semesters).flat());
 
   const semesters = SEMESTERS.map(sem => {
-    const courseIds = state.semesters[sem.id] || [];
+    const courseIds = (state.semesters[sem.id] || []).filter(cid => !isCourseCompleted(cid));
     const courses = courseIds.map(cid => courseMap[cid]).filter(Boolean).map(c => ({
       course_id:             c.course_id,
       name_he:               c.name_he,
@@ -2414,7 +2414,7 @@ function renderProgramProgress(prog) {
 }
 
 function semColHtml(sem) {
-  const ids     = state.semesters[sem.id] || [];
+  const ids     = (state.semesters[sem.id] || []).filter(id => !isCourseCompleted(id));
   const courses = ids.map(id => courseMap[id]).filter(Boolean);
   let knownHrs  = 0, unknownCt = 0;
   for (const c of courses) {
@@ -3770,17 +3770,58 @@ function getUserStatus(cid) {
   return userCourseStatuses[cid] || { status: 'not_taken', planned_semester: null, override_reason: null };
 }
 
+/* True if the user has personally marked this course as completed. */
+function isCourseCompleted(cid) {
+  return getUserStatus(cid).status === 'completed';
+}
+
+/* Default semester to place a course back on the board: the user's planned
+ * semester if set, otherwise the recommended/first effective semester. */
+function _defaultRestoreSemester(c, us) {
+  if (us?.planned_semester) return us.planned_semester;
+  if (c?.recommended_semester) return c.recommended_semester;
+  const effective = c?.effective_allowed_semesters || c?.allowed_semesters || [];
+  return effective[0] || null;
+}
+
 /* Set a course's personal status. plannedSemester applies to currently_taking/planned only. */
 function setUserStatus(cid, status, plannedSemester) {
   const us = userCourseStatuses[cid] || { status: 'not_taken', planned_semester: null, override_reason: null };
+  const prevStatus = us.status;
+  const c = courseMap[cid];
   us.status = status;
   if (status === 'currently_taking' || status === 'planned') {
     us.planned_semester = plannedSemester || us.planned_semester || null;
-  } else {
+  } else if (status !== 'completed') {
     us.planned_semester = null;
   }
+
+  if (status === 'completed' && prevStatus !== 'completed' && state) {
+    // Remove from the visible board — completed courses no longer occupy a
+    // future semester slot or count toward weekly hours.
+    const currentSem = findCourseBoardSemester(cid);
+    if (currentSem) {
+      us._pre_completion_semester = currentSem;
+      state.semesters[currentSem] = (state.semesters[currentSem] || []).filter(x => x !== cid);
+    }
+  } else if (prevStatus === 'completed' && status !== 'completed' && state) {
+    // Restore to the board.
+    if (status === 'not_taken' && c?.course_type !== 'mandatory') {
+      if (!state.repo.includes(cid)) state.repo.push(cid);
+    } else {
+      const target = us._pre_completion_semester || _defaultRestoreSemester(c, us);
+      if (target && state.semesters[target] !== undefined) {
+        if (!state.semesters[target].includes(cid)) state.semesters[target].push(cid);
+      } else if (!state.repo.includes(cid)) {
+        state.repo.push(cid);
+      }
+    }
+    delete us._pre_completion_semester;
+  }
+
   userCourseStatuses[cid] = us;
   saveUserCourseStatuses();
+  if (state) saveState();
 
   // Keep legacy myCoursesState in sync for any old code paths
   myCoursesState.completed = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'completed');
