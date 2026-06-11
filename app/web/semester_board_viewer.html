@@ -310,6 +310,14 @@ body.prog-modal-open .workspace {
   letter-spacing: .07em; color: var(--text-faint);
   margin-bottom: 6px;
 }
+.detail-section-collapsible { cursor: default; }
+.detail-section-collapsible > summary.detail-section-title {
+  cursor: pointer; list-style: none; margin-bottom: 0;
+}
+.detail-section-collapsible > summary.detail-section-title::-webkit-details-marker { display: none; }
+.detail-section-collapsible > summary.detail-section-title::before { content: '▸ '; }
+.detail-section-collapsible[open] > summary.detail-section-title::before { content: '▾ '; }
+.detail-section-collapsible[open] > summary.detail-section-title { margin-bottom: 6px; }
 .detail-row {
   font-size: .76rem; color: var(--text-muted);
   line-height: 1.5; margin-bottom: 3px;
@@ -3083,8 +3091,9 @@ function openCourseDetails(cid) {
   const conf    = c.data_quality?.placement_confidence || '';
   const src     = c.source || '';
 
-  const mkSection = (title, content) =>
-    `<div class="detail-section"><div class="detail-section-title">${title}</div>${content}</div>`;
+  const mkSection = (title, content, collapsed) => collapsed
+    ? `<details class="detail-section detail-section-collapsible"><summary class="detail-section-title">${title}</summary>${content}</details>`
+    : `<div class="detail-section"><div class="detail-section-title">${title}</div>${content}</div>`;
 
   const mkRow = (label, val) =>
     `<div class="detail-row"><span class="detail-lbl">${label}</span> <span class="detail-val">${val}</span></div>`;
@@ -3224,7 +3233,7 @@ function openCourseDetails(cid) {
     const diffWarns = (c.difficulty_warnings || []).filter(w => !w.includes('חלקי')).map(w =>
       `<div class="detail-warn">⚠ ${esc(w)}</div>`).join('');
 
-    return mkSection('פירוט מדד הקושי', bars + confHtml + signalsHtml + diffWarns);
+    return mkSection('פירוט מדד הקושי', bars + confHtml + signalsHtml + diffWarns, true);
   })();
 
   /* Grade statistics section (secondary / unofficial) */
@@ -3242,7 +3251,7 @@ function openCourseDetails(cid) {
       mkRow('מקור:', `<span style="color:var(--text-muted);font-size:.68rem">${esc(gs.source_name || 'TAU Refactor')}</span>`),
     ].filter(Boolean).join('');
     const unofficialWarn = `<div class="detail-warn" style="margin-top:6px">⚠ נתוני הציונים מבוססים על מקור היסטורי לא רשמי (${esc(gs.source_name || 'TAU Refactor')}) ועשויים שלא לשקף את הסמסטר הקרוב — אזהרה זו מתייחסת רק לנתוני הציונים, לא לשם/סילבוס/שעות הקורס.</div>`;
-    return mkSection('נתוני ציונים היסטוריים', rows + unofficialWarn);
+    return mkSection('נתוני ציונים היסטוריים', rows + unofficialWarn, true);
   })();
 
   /* Instructor uncertainty section */
@@ -3376,7 +3385,7 @@ function openCourseDetails(cid) {
     conf ? mkRow('ביטחון הצבה:', esc(CONF_HE[conf] || conf)) : '',
     c.data_quality?.has_weekly_hours === false ? mkRow('שעות:', '<span style="color:var(--miss-accent)">חסרות</span>') : '',
   ].filter(Boolean).join('');
-  const qualSection = qualRows ? mkSection('מקור ואיכות נתונים', qualRows) : '';
+  const qualSection = qualRows ? mkSection('מקור ואיכות נתונים', qualRows, true) : '';
 
   /* Syllabus / course-details buttons:
    *  syllabus_url + course_details_url → both buttons (primary + secondary)
@@ -3436,7 +3445,7 @@ function openCourseDetails(cid) {
     <div class="detail-body tabbed">
       <div class="detail-tab-panel active" id="dtab-info">
         ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
-        ${mkSection('איכות מידע', dataQualityRows)}
+        ${mkSection('איכות מידע', dataQualityRows, true)}
         ${diffSection}
         ${gradeSection}
         ${instructorSection}
@@ -4554,6 +4563,8 @@ function buildPlanValidationInputs() {
       hours: c.weekly_hours ?? c.semester_hours ?? null,
       effective_allowed_semesters: c.effective_allowed_semesters || null,
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
+      is_mandatory: c.course_type === 'mandatory' || !!c.is_mandatory,
+      placement_policy: c.placement_policy || null,
     };
   }
 
@@ -4686,7 +4697,12 @@ function validatePlanProposalLocal(proposal, ctx) {
       semHours += info?.hours || 0;
     }
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
-      warnings.push(`ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`);
+      const overBy = semHours - ctx.maxHoursPerSemester;
+      if (overBy > 3 || ctx.balanceLoad) {
+        errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
+      } else {
+        warnings.push(`ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`);
+      }
     }
   }
 
@@ -4697,6 +4713,59 @@ function validatePlanProposalLocal(proposal, ctx) {
   }
 
   return { errors, warnings };
+}
+
+/**
+ * PART D — simple load-balancing repair: if a semester exceeds the user's
+ * max weekly hours and another semester has spare room, move a non-mandatory,
+ * non-fixed course (within its effective_allowed_semesters) to even things out.
+ * Never moves mandatory/fixed courses, never violates allowed semesters.
+ * Returns { proposal, repaired } — proposal is a new object if changes were made.
+ */
+function repairPlanLoad(proposal, ctx) {
+  const max = ctx.maxHoursPerSemester;
+  if (max == null) return { proposal, repaired: false };
+
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+
+  let repaired = false;
+  let guard = 0;
+  while (guard++ < 50) {
+    let moved = false;
+    const hours = sems.map(hoursOf);
+    const overIdx = hours.findIndex(h => h > max);
+    if (overIdx === -1) break;
+
+    const sem = sems[overIdx];
+    for (let k = 0; k < sem.course_ids.length; k++) {
+      const cid = sem.course_ids[k];
+      const info = ctx.courses[cid] || {};
+      if (info.is_mandatory || info.placement_policy === 'fixed') continue;
+      const ch = info.hours || 0;
+      if (!ch) continue;
+
+      // pick the most underloaded valid target semester that stays within max
+      let bestJ = -1, bestRoom = -1;
+      for (let j = 0; j < sems.length; j++) {
+        if (j === overIdx) continue;
+        if (info.effective_allowed_semesters?.length && !info.effective_allowed_semesters.includes(sems[j].semester_id)) continue;
+        const room = max - hours[j];
+        if (room >= ch && room > bestRoom) { bestRoom = room; bestJ = j; }
+      }
+      if (bestJ === -1) continue;
+
+      sem.course_ids.splice(k, 1);
+      sems[bestJ].course_ids.push(cid);
+      moved = true;
+      repaired = true;
+      break;
+    }
+    if (!moved) break;
+  }
+
+  if (!repaired) return { proposal, repaired: false };
+  return { proposal: { ...proposal, semesters: sems }, repaired: true };
 }
 
 async function requestPlanProposal(prefs) {
@@ -4739,10 +4808,20 @@ async function requestPlanProposal(prefs) {
 
     const ctx = buildPlanValidationInputs();
     ctx.maxHoursPerSemester = prefs.max_weekly_hours ?? null;
-    const { errors, warnings } = validatePlanProposalLocal(normalized, ctx);
+    ctx.balanceLoad = !!prefs.balance_load;
 
-    _aiPlanLastProposal = normalized;
-    openPlanPreviewModal(normalized, errors, warnings, autofixed);
+    const { proposal: repairedProposal, repaired } = repairPlanLoad(normalized, ctx);
+    if (repaired) {
+      repairedProposal.warnings_he = [
+        ...(repairedProposal.warnings_he || []),
+        'התוכנית תוקנה אוטומטית לפני התצוגה כדי להפחית עומס.',
+      ];
+    }
+
+    const { errors, warnings } = validatePlanProposalLocal(repairedProposal, ctx);
+
+    _aiPlanLastProposal = repairedProposal;
+    openPlanPreviewModal(repairedProposal, errors, warnings, autofixed);
   } catch (err) {
     statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     genBtn.disabled = false;
@@ -4829,7 +4908,7 @@ function _renderGroupedList(messages, classify, groupLabels, order) {
 function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
   const allWarnings = [...(proposal.warnings_he || []), ...warnings];
 
-  // ── Top summary ──────────────────────────────────────────────────────────
+  // ── Top summary (status / blocking errors / max load only) ─────────────────
   let maxSemHours = 0;
   const semHoursById = {};
   for (const sem of (proposal.semesters || [])) {
@@ -4838,12 +4917,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     maxSemHours = Math.max(maxSemHours, hrs);
   }
 
+  const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'));
   const canApply = errors.length === 0;
+  const statusLabel = canApply
+    ? '✓ ניתן להחיל את התוכנית'
+    : (severeOverload ? '✗ לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת' : '✗ לא ניתן להחיל — יש לתקן שגיאות');
   const statusHtml = `
     <div class="ai-plan-preview-status ${canApply ? 'status-ok' : 'status-bad'}">
-      <strong>${canApply ? '✓ ניתן להחיל את התוכנית' : '✗ לא ניתן להחיל — יש לתקן שגיאות'}</strong>
+      <strong>${statusLabel}</strong>
       <span class="ai-plan-status-pill">שגיאות חוסמות: ${errors.length}</span>
-      <span class="ai-plan-status-pill">אזהרות: ${allWarnings.length}</span>
       <span class="ai-plan-status-pill">עומס מרבי בסמסטר: ${maxSemHours} ש״ש</span>
     </div>`;
 
@@ -4851,26 +4933,31 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
 
-  // ── Semester cards ───────────────────────────────────────────────────────
+  // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
+  const MAX_COURSES_SHOWN = 5;
+  const maxHours = _aiPlanLastPreferences?.max_weekly_hours;
   const semestersHtml = (proposal.semesters || []).map(sem => {
     const hrs = semHoursById[sem.semester_id] || 0;
-    const maxHours = _aiPlanLastPreferences?.max_weekly_hours;
     const overloaded = maxHours != null && hrs > maxHours;
-    const courses = (sem.course_ids || []).map(cid => {
+    const cids = sem.course_ids || [];
+    const shown = cids.slice(0, MAX_COURSES_SHOWN).map(cid => {
       const c = courseMap[cid];
       const hasWarning = allWarnings.some(w => w.includes(`(${cid})`) || w.includes(cid));
       return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>${hasWarning ? `<span class="ai-plan-badge-warn">⚠</span>` : ''}</li>`;
     }).join('');
+    const more = cids.length > MAX_COURSES_SHOWN
+      ? `<li class="ai-plan-hint">ועוד ${cids.length - MAX_COURSES_SHOWN} קורסים</li>`
+      : '';
     return `<div class="ai-plan-sem ${overloaded ? 'sem-overload' : ''}">
       <div class="ai-plan-sem-title">
         <span>${esc(SEM_HE[sem.semester_id] || sem.semester_id)}</span>
-        <span class="ai-plan-sem-hours ${overloaded ? 'over' : ''}">${hrs} ש״ש</span>
+        <span class="ai-plan-sem-hours ${overloaded ? 'over' : ''}">${hrs} ש״ש${overloaded ? ' ⚠' : ''}</span>
       </div>
-      <ul class="ai-plan-sem-courses">${courses || '<li>אין קורסים</li>'}</ul>
+      <ul class="ai-plan-sem-courses">${shown || '<li>אין קורסים</li>'}${more}</ul>
     </div>`;
   }).join('');
 
-  // ── Moves ────────────────────────────────────────────────────────────────
+  // ── Moves (collapsible) ──────────────────────────────────────────────────
   const moves = computePlanMoves(proposal);
   const movesHtml = moves.length
     ? `<ul class="ai-plan-moves">${moves.map(m => {
@@ -4881,9 +4968,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
       }).join('')}</ul>`
     : '<div class="ai-plan-hint">אין שינויים לעומת התוכנית הנוכחית.</div>';
 
-  // ── Errors / warnings, grouped ───────────────────────────────────────────
+  // ── Requirements — compact checklist ────────────────────────────────────
+  const reqHtml = (proposal.requirements_status || []).length
+    ? `<ul class="ai-plan-reqs">${proposal.requirements_status.map(r =>
+        `<li>${r.satisfied ? '✓' : '⚠'} ${esc(r.name)}: ${esc(r.placed)}/${esc(r.required)}</li>`).join('')}</ul>`
+    : '';
+
+  // ── Errors / warnings, grouped (collapsible) ────────────────────────────
   const errorsHtml = errors.length
-    ? `<div class="ai-plan-errors"><strong>⚠ התוכנית אינה תקינה ולא ניתן להחיל אותה:</strong>
+    ? `<div class="ai-plan-errors"><strong>⚠ סיבות לחסימה:</strong>
         ${_renderGroupedList(errors, _classifyPlanError, PLAN_ERROR_GROUP_HE, ['placement', 'duplicate', 'completed', 'other'])}
        </div>`
     : '';
@@ -4894,10 +4987,22 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
        </div>`
     : '';
 
-  const reqHtml = (proposal.requirements_status || []).length
-    ? `<ul class="ai-plan-reqs">${proposal.requirements_status.map(r =>
-        `<li>${esc(r.name)}: ${esc(r.placed)}/${esc(r.required)} ${r.satisfied ? '✓' : '⚠'}</li>`).join('')}</ul>`
-    : '';
+  const detailsHtml = `
+    <details class="ai-plan-details">
+      <summary>פירוט והסברים</summary>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:10px">
+        <div class="ai-plan-rationale">${esc(proposal.rationale_he || '')}</div>
+        ${errorsHtml}
+        ${warningsHtml}
+        ${reqHtml ? `<div><div style="font-weight:600;margin-bottom:4px">סטטוס דרישות</div>${reqHtml}</div>` : ''}
+      </div>
+    </details>`;
+
+  const movesDetailsHtml = `
+    <details class="ai-plan-details">
+      <summary>מה השתנה?</summary>
+      <div style="margin-top:8px">${movesHtml}</div>
+    </details>`;
 
   const panel = document.getElementById('ai-plan-panel');
   panel.innerHTML = `
@@ -4910,23 +5015,12 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
       ${autofixHtml}
-      ${errorsHtml}
-      <div>
-        <div style="font-weight:600;margin-bottom:6px">נימוק התוכנית</div>
-        <div class="ai-plan-rationale">${esc(proposal.rationale_he || '')}</div>
-      </div>
-      <div>
-        <div style="font-weight:600;margin-bottom:6px">סמסטרים מוצעים</div>
-        <div class="ai-plan-sems">${semestersHtml}</div>
-      </div>
-      <div>
-        <div style="font-weight:600;margin-bottom:6px">שינויים לעומת התוכנית הנוכחית</div>
-        ${movesHtml}
-      </div>
-      ${reqHtml ? `<div><div style="font-weight:600;margin-bottom:6px">סטטוס דרישות</div>${reqHtml}</div>` : ''}
-      ${warningsHtml}
+      <div class="ai-plan-sems">${semestersHtml}</div>
+      ${movesDetailsHtml}
+      ${detailsHtml}
       <div class="ai-plan-local-note">
-        החלת התוכנית משנה רק את הלוח המקומי שלך, לא את תוכנית הלימודים הרשמית.
+        החלת התוכנית משנה רק את הלוח המקומי שלך, לא את תוכנית הלימודים הרשמית.<br>
+        השינוי נשמר אצלך בלבד ואפשר לערוך אותו בגרירה.
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap">
         <button class="btn btn-primary" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל תוכנית</button>
@@ -4941,7 +5035,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     if (!canApply) return; // safety: never apply an invalid plan
     applyPlanProposal(proposal);
     closeAiPlanModal();
-    showBoardNotify('התוכנית הותאמה אישית הוחלה על הלוח שלך');
+    showBoardNotify('התוכנית הוחלה על הלוח שלך');
   });
   document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
     openPlanPreferencesModal();

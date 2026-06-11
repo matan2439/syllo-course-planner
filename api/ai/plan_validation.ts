@@ -147,6 +147,8 @@ export interface PlanValidationContext {
   courses: Record<string, PlanValidationCourseInfo>;
   /** Maximum total weekly hours allowed per semester (from user preferences). */
   maxHoursPerSemester?: number;
+  /** True if the user explicitly asked for a balanced load ("איזון עומס") — makes any overload blocking. */
+  balanceLoad?: boolean;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number }>;
   /** course_id -> name_he, used to produce readable Hebrew error/warning messages. */
@@ -249,11 +251,19 @@ export function validatePlanProposal(
       semHours += info?.hours ?? 0;
     }
 
-    // 5. semester hour limit — warning only
+    // 5. semester hour limit — severe overload (or any overload when the user
+    // asked for a balanced load) blocks the plan; mild overload is a warning.
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
-      warnings.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`,
-      );
+      const overBy = semHours - ctx.maxHoursPerSemester;
+      if (overBy > 3 || ctx.balanceLoad) {
+        errors.push(
+          `לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`,
+        );
+      } else {
+        warnings.push(
+          `ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`,
+        );
+      }
     }
   }
 

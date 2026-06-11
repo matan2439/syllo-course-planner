@@ -207,6 +207,67 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.some(w => w.includes('year_3_semester_a') && w.includes('9'))).toBe(true);
   });
 
+  it('blocks a plan when a semester severely exceeds the max weekly hours (more than +3)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      maxHoursPerSemester: 14,
+      courses: {
+        '0542-4120': { hours: 27 },
+        '0542-4221': { hours: 5 },
+      },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx); // 27 > 14 + 3
+    expect(result.errors.some(e => e.includes('עומס חורג משמעותית') && e.includes('27'))).toBe(true);
+  });
+
+  it('only warns when a semester mildly exceeds the max weekly hours (within +3)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      maxHoursPerSemester: 14,
+      courses: {
+        '0542-4120': { hours: 16 },
+        '0542-4221': { hours: 5 },
+      },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx); // 16 <= 14 + 3
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('16') && w.includes('שעות שבועיות'))).toBe(true);
+  });
+
+  it('does not block on overload when no max weekly hours is configured', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: {
+        '0542-4120': { hours: 27 },
+        '0542-4221': { hours: 5 },
+      },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+  });
+
   it('warns when a category requirement is not satisfied', () => {
     const proposal: PlanProposal = {
       ...BASE_PROPOSAL,
