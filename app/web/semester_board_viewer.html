@@ -2019,6 +2019,8 @@ function init(board, audit, programJson) {
     state = clone(originalState);
   }
 
+  reconcilePlacements();
+
   // Extract board-level completed course IDs
   _boardCompletedIds = board.metadata?.completed_course_ids || [];
   if (!_boardCompletedIds.length && audit) {
@@ -3648,6 +3650,42 @@ function buildRecommendedPlan() {
 
   saveState(); renderAll();
   showBoardNotify('תוכנית מומלצת נבנתה — ניתן לגרור קורסים לשינוי');
+}
+
+/* ── Reconciliation ─────────────────────────────────────────────────────────
+ * If a saved layout (from localStorage, possibly stale) places a flexible
+ * mandatory course in a semester outside its current effective_allowed_semesters
+ * (board data may have been updated since the layout was saved — e.g. a course
+ * that was officially flexible A/B is now known to be offered only in B this
+ * year), move it to the first valid effective semester. Notify the user once. */
+function reconcilePlacements() {
+  if (!state || typeof state.semesters !== 'object') return;
+  let changed = false;
+
+  for (const [semId, ids] of Object.entries(state.semesters)) {
+    if (!Array.isArray(ids)) continue;
+    for (const cid of [...ids]) {
+      const c = courseMap[cid];
+      const effective = c?.effective_allowed_semesters;
+      if (!effective || !effective.length) continue;
+      if (effective.includes(semId)) continue;
+
+      const target = effective.find(s => state.semesters[s] !== undefined) || null;
+      state.semesters[semId] = state.semesters[semId].filter(x => x !== cid);
+      if (target) {
+        if (!state.semesters[target]) state.semesters[target] = [];
+        if (!state.semesters[target].includes(cid)) state.semesters[target].push(cid);
+      } else if (!state.repo.includes(cid)) {
+        state.repo.push(cid);
+      }
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveState();
+    showBoardNotify('עודכנו נתוני תוכנית הלימודים — שיבוצים לא חוקיים תוקנו');
+  }
 }
 
 /* ── Persistence ────────────────────────────────────────────────────────── */

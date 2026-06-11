@@ -4914,7 +4914,8 @@
         "placement_policy": "elective",
         "recommended_semester": null
       }
-    ]
+    ],
+    "board_data_version": "6453b3d75c5a811f"
   },
   "summary": {
     "total_courses": 12,
