@@ -177,6 +177,14 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                                           "has syllabus_summary_he but no topics/assessment fields — "
                                           "AI context for this elective may be thin"))
 
+    # 13. course has a parsed syllabus summary but no hour data at all —
+    # distinct from "syllabus missing" (check 10/11)
+    for sem_id, c in all_courses:
+        cid = c.get("course_id")
+        if c.get("syllabus_summary_he") and c.get("weekly_hours") is None and c.get("semester_hours") is None:
+            issues.append(AuditIssue("warning", "hours_missing_with_syllabus", cid,
+                                      "has syllabus_summary_he but no weekly_hours/semester_hours data"))
+
     return issues
 
 

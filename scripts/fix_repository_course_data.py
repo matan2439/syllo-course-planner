@@ -39,6 +39,11 @@ RECOVERED = {
         "syllabus_assessment_he": "ייתכנו מטלות נוספות מעבר למבחן הסופי.",
         "syllabus_structure_he": "2.0 שעות סמסטריאליות, מעבדה ביום רביעי 16:00-20:00",
         "syllabus_confidence": 0.7,
+        "semester_hours": 2.0,
+        "lab_hours": 4.0,
+        "teaching_format": "הרצאה + מעבדה",
+        "hours_source": "syllabus_page",
+        "hours_source_confidence": "medium",
     },
     "0542-4124": {
         "name_source": "not_found",

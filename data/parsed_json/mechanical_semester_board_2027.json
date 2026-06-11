@@ -3901,7 +3901,12 @@
         "placement_policy": "elective",
         "recommended_semester": null,
         "name_source": "syllabus_page",
-        "name_source_confidence": "high"
+        "name_source_confidence": "high",
+        "semester_hours": 2.0,
+        "lab_hours": 4.0,
+        "teaching_format": "הרצאה + מעבדה",
+        "hours_source": "syllabus_page",
+        "hours_source_confidence": "medium"
       },
       {
         "course_id": "0512-2508",
@@ -5034,7 +5039,7 @@
         "name_source_confidence": "high"
       }
     ],
-    "board_data_version": "4eac9b71718daacb"
+    "board_data_version": "5ec3d239e9bd5567"
   },
   "summary": {
     "total_courses": 12,

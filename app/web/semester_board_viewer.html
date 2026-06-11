@@ -1956,6 +1956,13 @@ function init(board, audit, programJson) {
         syllabus_structure_he:       null,
         syllabus_source_url:         null,
         syllabus_confidence:         null,
+        semester_hours:              null,
+        lecture_hours:               null,
+        tutorial_hours:              null,
+        lab_hours:                   null,
+        teaching_format:             null,
+        hours_source:                null,
+        hours_source_confidence:     null,
       };
     }
   };
@@ -2007,6 +2014,13 @@ function init(board, audit, programJson) {
       if (!_ce.syllabus_structure_he && rc.syllabus_structure_he) _ce.syllabus_structure_he = rc.syllabus_structure_he;
       if (!_ce.syllabus_source_url && rc.syllabus_source_url) _ce.syllabus_source_url = rc.syllabus_source_url;
       if (_ce.syllabus_confidence == null && rc.syllabus_confidence != null) _ce.syllabus_confidence = rc.syllabus_confidence;
+      if (_ce.semester_hours == null && rc.semester_hours != null) _ce.semester_hours = rc.semester_hours;
+      if (_ce.lecture_hours == null && rc.lecture_hours != null) _ce.lecture_hours = rc.lecture_hours;
+      if (_ce.tutorial_hours == null && rc.tutorial_hours != null) _ce.tutorial_hours = rc.tutorial_hours;
+      if (_ce.lab_hours == null && rc.lab_hours != null) _ce.lab_hours = rc.lab_hours;
+      if (!_ce.teaching_format && rc.teaching_format) _ce.teaching_format = rc.teaching_format;
+      if (!_ce.hours_source && rc.hours_source) _ce.hours_source = rc.hours_source;
+      if (!_ce.hours_source_confidence && rc.hours_source_confidence) _ce.hours_source_confidence = rc.hours_source_confidence;
       if (rc.name_source)                                     _ce.name_source            = rc.name_source;
       if (rc.name_source_confidence)                          _ce.name_source_confidence = rc.name_source_confidence;
     }
@@ -2633,6 +2647,8 @@ function cardHtml(c, placed) {
 
   const hoursHtml = c.weekly_hours != null
     ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
+    : c.semester_hours != null
+    ? `<span class="hrs-unk">שעות שבועיות לא זמינות; שעות סמסטריאליות: ${esc(c.semester_hours)}</span>`
     : `<span class="hrs-unk">שעות לא ידועות</span>`;
 
   const warnIcon  = (c.warnings||[]).length
@@ -2784,7 +2800,14 @@ function buildCourseContext(c) {
   if (c.name_he)         lines.push(`שם קורס: ${c.name_he}`);
   if (c.weekly_hours != null)
                          lines.push(`שעות שבועיות: ${c.weekly_hours}`);
+  else if (c.semester_hours != null)
+                         lines.push(`שעות שבועיות: לא ידוע (שעות סמסטריאליות: ${c.semester_hours})`);
   else                   lines.push('שעות שבועיות: לא ידוע');
+
+  if (c.lecture_hours != null) lines.push(`שעות הרצאה: ${c.lecture_hours}`);
+  if (c.tutorial_hours != null) lines.push(`שעות תרגול: ${c.tutorial_hours}`);
+  if (c.lab_hours != null) lines.push(`שעות מעבדה: ${c.lab_hours}`);
+  if (c.teaching_format) lines.push(`אופן הוראה: ${c.teaching_format}`);
 
   lines.push(`סוג קורס: ${TYPE_HE[c.course_type] || c.course_type || 'לא ידוע'}`);
 
@@ -2956,6 +2979,8 @@ function openCourseDetails(cid) {
 
   const hoursHtml = c.weekly_hours != null
     ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
+    : c.semester_hours != null
+    ? `<span class="hrs-unk">שעות שבועיות לא זמינות; שעות סמסטריאליות: ${esc(c.semester_hours)}</span>`
     : `<span class="hrs-unk">שעות לא ידועות</span>`;
 
   /* Detail sections */
@@ -2976,7 +3001,9 @@ function openCourseDetails(cid) {
   const basicRows = [
     mkRow('קוד קורס:', `<span dir="ltr" style="font-family:ui-monospace,monospace;unicode-bidi:isolate">${esc(cid)}</span>`),
     mkRow('סוג:', esc(_isFlexMand ? 'חובה גמיש' : _isFixedMand ? 'חובה קבוע' : TYPE_HE[type] || type)),
-    c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`) : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
+    c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`)
+      : c.semester_hours != null ? mkRow('שעות שבועיות:', `<span style="color:var(--miss-accent)">לא זמינות</span> (שעות סמסטריאליות: ${esc(c.semester_hours)})`)
+      : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
     level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
     (status !== 'eligible' && status !== 'partial_info') ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
@@ -2993,7 +3020,7 @@ function openCourseDetails(cid) {
     : 'סילבוס חסר';
   const missingData = [
     !c.name_he ? 'שם קורס' : null,
-    c.weekly_hours == null ? 'שעות שבועיות' : null,
+    (c.weekly_hours == null && c.semester_hours == null) ? 'שעות שבועיות' : null,
     !c.syllabus_summary_he ? 'תקציר סילבוס' : null,
     c.grade_signal == null ? 'נתוני ציונים' : null,
   ].filter(Boolean);
