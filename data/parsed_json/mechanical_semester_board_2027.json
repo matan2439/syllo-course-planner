@@ -824,106 +824,9 @@
           ],
           "offering_source_url": null,
           "offering_source_confidence": "low"
-        },
-        {
-          "course_id": "0542-4091",
-          "name_he": "מעבדה במכניקת המוצקים",
-          "weekly_hours": 2.0,
-          "difficulty_score": null,
-          "difficulty_level": null,
-          "workload_score": null,
-          "conceptual_complexity_score": null,
-          "prerequisite_depth_score": null,
-          "assessment_intensity_score": null,
-          "difficulty_confidence": null,
-          "course_type": "mandatory",
-          "prerequisites": [],
-          "prerequisite_details": [],
-          "instructor_uncertainty": {
-            "current_lecturers": [],
-            "historical_lecturers": [],
-            "instructor_uncertainty_score": 0.4,
-            "instructor_notes": null,
-            "instructor_changed_warning": false,
-            "warnings": [
-              "מרצה הסמסטר לא ידוע"
-            ]
-          },
-          "grade_signal": null,
-          "locked_by_user": true,
-          "allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
-          ],
-          "locked_by_default": true,
-          "placement_rule": "choose_one_allowed_semester",
-          "needs_verification": false,
-          "source_note": "",
-          "source": "program",
-          "data_quality": {
-            "has_weekly_hours": true,
-            "has_semester_data": true,
-            "has_difficulty_score": false,
-            "placement_confidence": "high"
-          },
-          "warnings": [],
-          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2025",
-          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
-          "syllabus_links": [],
-          "source_urls": [],
-          "program_category_id": null,
-          "program_category_name_he": null,
-          "needs_category_review": false,
-          "validation_status": "ok",
-          "validation_errors": [],
-          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424091&kv=10&sem=20252",
-          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424091&kv=10&sem=20252",
-          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409110",
-          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4091-10.html",
-          "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "done",
-          "assessment_analysis_status": "not_started",
-          "syllabus_summary_he": "שעות:                2 מ' משקל:               1.5",
-          "syllabus_topics_he": [],
-          "syllabus_prerequisites_he": [
-            "מכניקת המוצקים (1)",
-            "מבוא למדע והנדסת חומרים",
-            "הקדמה",
-            "עקרונות מדידת עיבורים וחישוב מאמצים",
-            "קליטת ועיבוד נתונים בעזרת מחשב",
-            "אנליזת מאמצים בשיטת האלמנט הסופי",
-            "קריטריוני כניעה",
-            "עקרונות מדידה אופטו-מכניים. שדוגראפיה",
-            "קריסה של קורות",
-            "מאמצים משולבים",
-            "תנודות",
-            "פוטואלסטיות",
-            "הזזות במישור בשיטת מוארה",
-            "כניעה במתיחה ובפיתול"
-          ],
-          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
-          "syllabus_structure_he": "2.0 שעות הרצאה",
-          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
-          "syllabus_last_fetched_at": "2026-06-10T21:31:53.001346+00:00",
-          "syllabus_confidence": 0.8,
-          "is_mandatory": true,
-          "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a",
-          "program_allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
-          ],
-          "offered_semesters": [
-            "B"
-          ],
-          "effective_allowed_semesters": [
-            "year_4_semester_b"
-          ],
-          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
-          "offering_source_confidence": "high"
         }
       ],
-      "total_weekly_hours": 5.0,
+      "total_weekly_hours": 3.0,
       "average_difficulty": null,
       "warnings": []
     },
@@ -1114,9 +1017,106 @@
           ],
           "offering_source_url": null,
           "offering_source_confidence": "low"
+        },
+        {
+          "course_id": "0542-4091",
+          "name_he": "מעבדה במכניקת המוצקים",
+          "weekly_hours": 2.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "grade_signal": null,
+          "locked_by_user": true,
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": [],
+          "exam_url": "https://ims.tau.ac.il/tal/kr/Bhina_L.aspx?kurs=05424091&kv=10&sem=20252",
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424091&kv=10&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542409110",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4091-10.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                2 מ' משקל:               1.5",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "מכניקת המוצקים (1)",
+            "מבוא למדע והנדסת חומרים",
+            "הקדמה",
+            "עקרונות מדידת עיבורים וחישוב מאמצים",
+            "קליטת ועיבוד נתונים בעזרת מחשב",
+            "אנליזת מאמצים בשיטת האלמנט הסופי",
+            "קריטריוני כניעה",
+            "עקרונות מדידה אופטו-מכניים. שדוגראפיה",
+            "קריסה של קורות",
+            "מאמצים משולבים",
+            "תנודות",
+            "פוטואלסטיות",
+            "הזזות במישור בשיטת מוארה",
+            "כניעה במתיחה ובפיתול"
+          ],
+          "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "2.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:31:53.001346+00:00",
+          "syllabus_confidence": 0.8,
+          "is_mandatory": true,
+          "placement_policy": "flexible",
+          "recommended_semester": "year_4_semester_b",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": [
+            "B"
+          ],
+          "effective_allowed_semesters": [
+            "year_4_semester_b"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+          "offering_source_confidence": "high"
         }
       ],
-      "total_weekly_hours": 5.0,
+      "total_weekly_hours": 7.0,
       "average_difficulty": null,
       "warnings": []
     }

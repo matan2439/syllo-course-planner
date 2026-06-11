@@ -93,7 +93,10 @@ def build_semester_board(
 
         for sp in flex_specs:
             cid     = sp["course_id"]
-            allowed = [s for s in sp["allowed_semesters"] if s in mandatory_by_sem]
+            # Narrow placement candidates to this year's effective offering
+            # (program flexibility ∩ actual syllabus offering), if known.
+            effective_sems = _offering_fields(cid, sp["allowed_semesters"])["effective_allowed_semesters"]
+            allowed = [s for s in effective_sems if s in mandatory_by_sem]
             if not allowed:
                 global_warnings.append(
                     f"Mandatory course {cid}: no valid allowed_semesters "
