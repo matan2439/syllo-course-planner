@@ -3026,9 +3026,14 @@ function openCourseDetails(cid) {
   ].filter(Boolean);
   const dataQualityRows = [
     (c.name_source && c.name_source_confidence)
-      ? mkRow('מקור שם הקורס:', esc(`${c.name_source} (אמינות: ${c.name_source_confidence})`))
+      ? mkRow('מקור שם:', esc(`${c.name_source} (אמינות: ${c.name_source_confidence})`))
       : '',
-    mkRow('זמינות סילבוס:', esc(syllabusAvail)),
+    mkRow('מקור סילבוס:', esc(c.syllabus_summary_he ? `${syllabusAvail} (${c.syllabus_source_url ? 'דף סילבוס TAU' : 'לא ידוע'})` : syllabusAvail)),
+    (c.weekly_hours != null || c.semester_hours != null)
+      ? mkRow('מקור שעות:', esc(c.hours_source ? `${c.hours_source}${c.hours_source_confidence ? ` (אמינות: ${c.hours_source_confidence})` : ''}` : 'תוכנית לימודים'))
+      : '',
+    c.grade_signal ? mkRow('מקור ציונים:', esc(c.grade_signal.source_name || 'TAU Refactor (לא רשמי)')) : '',
+    mkRow('מקור קטגוריה/תוכנית:', 'נתוני קטגוריה/תוכנית מקורם בקובץ תוכנית פנימי ועשויים לדרוש אימות'),
     missingData.length ? mkRow('מידע חסר:', esc(missingData.join(', '))) : '',
   ].filter(Boolean).join('');
 
@@ -3141,7 +3146,7 @@ function openCourseDetails(cid) {
       gs.years_available?.length    ? mkRow('שנים זמינות:',    gs.years_available.join(', ')) : '',
       mkRow('מקור:', `<span style="color:var(--text-muted);font-size:.68rem">${esc(gs.source_name || 'TAU Refactor')}</span>`),
     ].filter(Boolean).join('');
-    const unofficialWarn = `<div class="detail-warn" style="margin-top:6px">⚠ מקור לא רשמי; לא בהכרח משקף את הסמסטר הקרוב.</div>`;
+    const unofficialWarn = `<div class="detail-warn" style="margin-top:6px">⚠ נתוני הציונים מבוססים על מקור היסטורי לא רשמי (${esc(gs.source_name || 'TAU Refactor')}) ועשויים שלא לשקף את הסמסטר הקרוב — אזהרה זו מתייחסת רק לנתוני הציונים, לא לשם/סילבוס/שעות הקורס.</div>`;
     return mkSection('נתוני ציונים היסטוריים', rows + unofficialWarn);
   })();
 
