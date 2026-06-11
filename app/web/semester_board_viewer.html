@@ -2648,8 +2648,13 @@ function cardHtml(c, placed) {
   const hoursHtml = c.weekly_hours != null
     ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
     : c.semester_hours != null
-    ? `<span class="hrs-unk">שעות שבועיות לא זמינות; שעות סמסטריאליות: ${esc(c.semester_hours)}</span>`
+    ? `<span class="hrs-tag"><span class="v">${esc(c.semester_hours)}</span> שעות סמסטריאליות (לפי הסילבוס)<span class="hrs-unk" style="display:block;font-size:.6rem"> שעות שבועיות לא צוינו</span></span>`
     : `<span class="hrs-unk">שעות לא ידועות</span>`;
+
+  const extraHoursHtml = [
+    c.lab_hours != null ? `<span class="hrs-tag">מעבדה: <span class="v">${esc(c.lab_hours)}</span> שעות</span>` : '',
+    c.teaching_format ? `<span class="hrs-tag">אופן הוראה: ${esc(c.teaching_format)}</span>` : '',
+  ].filter(Boolean).join(' ');
 
   const warnIcon  = (c.warnings||[]).length
     ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
@@ -2672,7 +2677,7 @@ function cardHtml(c, placed) {
       ${warnIcon}${actionBtn}
     </div>
     <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
-    <div class="card-row">${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml}</div>
+    <div class="card-row">${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
   </div>${dragHint}
 </div>`;
 }
@@ -2801,7 +2806,7 @@ function buildCourseContext(c) {
   if (c.weekly_hours != null)
                          lines.push(`שעות שבועיות: ${c.weekly_hours}`);
   else if (c.semester_hours != null)
-                         lines.push(`שעות שבועיות: לא ידוע (שעות סמסטריאליות: ${c.semester_hours})`);
+                         lines.push(`היקף לפי הסילבוס: ${c.semester_hours} שעות סמסטריאליות (שעות שבועיות לא צוינו)`);
   else                   lines.push('שעות שבועיות: לא ידוע');
 
   if (c.lecture_hours != null) lines.push(`שעות הרצאה: ${c.lecture_hours}`);
@@ -2980,7 +2985,7 @@ function openCourseDetails(cid) {
   const hoursHtml = c.weekly_hours != null
     ? `<span class="hrs-tag"><span class="v">${esc(c.weekly_hours)}</span> ש׳׳ש</span>`
     : c.semester_hours != null
-    ? `<span class="hrs-unk">שעות שבועיות לא זמינות; שעות סמסטריאליות: ${esc(c.semester_hours)}</span>`
+    ? `<span class="hrs-tag"><span class="v">${esc(c.semester_hours)}</span> שעות סמסטריאליות (לפי הסילבוס)<span class="hrs-unk" style="display:block;font-size:.6rem"> שעות שבועיות לא צוינו</span></span>`
     : `<span class="hrs-unk">שעות לא ידועות</span>`;
 
   /* Detail sections */
@@ -3002,8 +3007,10 @@ function openCourseDetails(cid) {
     mkRow('קוד קורס:', `<span dir="ltr" style="font-family:ui-monospace,monospace;unicode-bidi:isolate">${esc(cid)}</span>`),
     mkRow('סוג:', esc(_isFlexMand ? 'חובה גמיש' : _isFixedMand ? 'חובה קבוע' : TYPE_HE[type] || type)),
     c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`)
-      : c.semester_hours != null ? mkRow('שעות שבועיות:', `<span style="color:var(--miss-accent)">לא זמינות</span> (שעות סמסטריאליות: ${esc(c.semester_hours)})`)
+      : c.semester_hours != null ? mkRow('היקף לפי הסילבוס:', `${esc(c.semester_hours)} שעות סמסטריאליות <span style="color:var(--miss-accent);font-size:.65rem">(שעות שבועיות לא צוינו)</span>`)
       : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
+    c.lab_hours != null ? mkRow('מעבדה:', `${esc(c.lab_hours)} שעות`) : '',
+    c.teaching_format ? mkRow('אופן הוראה:', esc(c.teaching_format)) : '',
     level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
     (status !== 'eligible' && status !== 'partial_info') ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
