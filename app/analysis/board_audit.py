@@ -177,7 +177,19 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                                           "has syllabus_summary_he but no topics/assessment fields — "
                                           "AI context for this elective may be thin"))
 
-    # 13. course has a parsed syllabus summary but no hour data at all —
+    # 13. mojibake/garbled Hebrew text in name/category fields
+    _HEBREW_TEXT_FIELDS = ("name_he", "program_category_name_he", "syllabus_summary_he")
+    for sem_id, c in all_courses:
+        cid = c.get("course_id")
+        for field in _HEBREW_TEXT_FIELDS:
+            val = c.get(field)
+            if not val:
+                continue
+            if "�" in val or any("À" <= ch <= "ÿ" for ch in val):
+                issues.append(AuditIssue("error", "mojibake_text", cid,
+                                          f"{field} appears to contain garbled/mojibake text: {val!r}"))
+
+    # 14. course has a parsed syllabus summary but no hour data at all —
     # distinct from "syllabus missing" (check 10/11)
     for sem_id, c in all_courses:
         cid = c.get("course_id")
@@ -186,6 +198,7 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                                       "has syllabus_summary_he but no weekly_hours/semester_hours data"))
 
     return issues
+
 
 
 def _intersect_effective(program_allowed: list[str], offered: list[str]) -> list[str]:
