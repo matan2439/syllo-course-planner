@@ -81,6 +81,39 @@ export interface PlanContext {
     pass_rate?: number | null;
     num_students_total?: number;
   }>;
+  /** course_ids the user marked as "אל תזיז" — must stay in their current semester. */
+  pinned_course_ids?: string[];
+  /** Semesters whose total_hours already exceed a typical weekly cap. */
+  overload_warnings?: Array<{ semester_id: string; label: string; total_hours: number }>;
+  /** Elective category requirements with eligible (not yet completed/scheduled) candidates. */
+  category_requirements?: Array<{
+    name: string;
+    required: number;
+    placed: number;
+    candidates: Array<{
+      course_id: string;
+      name_he?: string;
+      hours?: number | null;
+      has_syllabus_summary?: boolean;
+      grade_average?: number | null;
+      is_wanted?: boolean;
+    }>;
+  }>;
+  /** Progress toward the 185 ש"ש degree-hour requirement. */
+  total_hours_progress?: { known_completed_hours: number };
+  /** Courses that may legally be moved between semesters (not pinned, not completed). */
+  movable_courses?: Array<{
+    course_id: string;
+    name_he?: string;
+    current_semester: string | null;
+    hours?: number | null;
+    effective_allowed_semesters?: string[] | null;
+  }>;
+}
+
+/** Personal status entries can carry a known hours figure for degree-hour accounting. */
+export interface PersonalStatusCourseWithHours extends PersonalStatusCourse {
+  hours?: number | null;
 }
 
 export interface SystemPromptInput {

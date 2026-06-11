@@ -25,6 +25,7 @@ import {
   type AiProvider,
 } from './course-planner';
 import { planProposalSchema, normalizePlanProposal, droppedPlacementWarnings } from './plan_validation';
+import { buildCompletionAnalysis, formatCompletionMessages } from './completion_analysis';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -167,7 +168,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     course_context,
   });
 
+  const completionAnalysis = buildCompletionAnalysis(plan_context as PlanContext);
+  const completionLines = formatCompletionMessages(completionAnalysis);
+  const completionSection = `## משימת השלמת תואר מחושבת
+זוהי המטרה שחושבה מראש מהלוח הנוכחי — תכנן כלפיה, אל תנחש:
+${completionLines.map(l => `- ${l}`).join('\n')}
+${preferences.max_weekly_hours != null ? `- העדפת המשתמש למגבלת שעות שבועית: ${preferences.max_weekly_hours} ש"ש לסמסטר.` : '- לא הוגדרה מגבלת שעות מפורשת — שאף לא לחרוג מ-18 ש"ש לסמסטר ככל הניתן.'}
+
+הנחיות מחייבות נוספות:
+- "קורסים שהמשתמש רוצה לכלול" הם העדפה בלבד, לא התוכנית כולה.
+- אם יש קטגוריות בחירה עם דרישות שלא מולאו, עליך להוסיף עבורן קורסי בחירה מהמועמדים שצוינו — זו עדיפות ראשונה.
+- לאחר מילוי דרישות הקטגוריות, אזן את העומס בין הסמסטרים באמצעות הקורסים הניתנים להזזה שצוינו.
+- אסור להשאיר סמסטר עם 27 ש"ש (או כל עומס חורג משמעותית) אם קיימים קורסים הניתנים להזזה שיכולים לפתור זאת.
+- אם לא ניתן למלא דרישה כלשהי, הסבר במפורש מדוע ב-warnings_he.
+`;
+
   const planSystemPrompt = `${baseSystemPrompt}
+
+${completionSection}
 
 ## משימה: בניית תוכנית סמסטרים מותאמת אישית
 
