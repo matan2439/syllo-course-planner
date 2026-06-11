@@ -583,6 +583,22 @@ body.prog-modal-open .workspace {
 }
 .sb-head-title { font-size: .85rem; font-weight: 700; }
 .sb-head-sub   { font-size: .68rem; color: var(--text-muted); margin-top: 2px; }
+.repo-search-box {
+  display: flex; align-items: center; gap: 4px; margin-top: 8px;
+}
+.repo-search-input {
+  flex: 1; min-width: 0; padding: 6px 8px; font-size: .72rem;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-2, #1c1f26); color: var(--text); text-align: right;
+}
+.repo-search-input:focus { outline: 1px solid var(--accent, #3b82f6); }
+.repo-search-clear {
+  flex-shrink: 0; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-2, #1c1f26); color: var(--text-muted);
+  font-size: .68rem; padding: 6px 8px; cursor: pointer;
+}
+.repo-search-clear:hover { color: var(--text); }
+.repo-search-status { font-size: .66rem; color: var(--text-muted); margin-top: 4px; min-height: 1em; }
 .btn-auto-plan {
   margin-top: 8px; width: 100%;
   font-size: .72rem; font-weight: 600;
@@ -1121,6 +1137,12 @@ body.prog-modal-open .workspace {
       <div class="sb-head">
         <div class="sb-head-title">מאגר קורסים</div>
         <div class="sb-head-sub" id="repo-sub">טוען…</div>
+        <div class="repo-search-box">
+          <input type="text" id="repo-search-input" class="repo-search-input" dir="rtl"
+            placeholder="חיפוש קורס לפי שם, קוד או נושא...">
+          <button class="repo-search-clear" id="repo-search-clear" title="נקה חיפוש">✕</button>
+        </div>
+        <div class="repo-search-status" id="repo-search-status"></div>
         <button class="btn btn-auto-plan" id="btn-auto-plan" disabled
           title="בשלב זה בניית תוכנית אוטומטית עדיין לא מחוברת. בהמשך ניתן יהיה להזין העדפות אישיות וה-AI יבנה תוכנית שעומדת בדרישות התואר.">🤖 בנה תוכנית עם AI — בקרוב</button>
       </div>
@@ -1524,6 +1546,7 @@ let userCourseStatuses  = {}; // { [course_id]: { status, planned_semester, over
 let programRequirements = null;      // {total_required_hours, categories:[]} from board metadata
 let _notifyTimer        = null;
 const openGroups     = new Set(['mandatory', 'elective_avail', '_mandatory']);
+let repoSearchTerm   = '';
 
 /* ── Bootstrap ──────────────────────────────────────────────────────────── */
 async function main() {
@@ -2160,13 +2183,26 @@ function mkChip(lbl, val, warn) {
   return `<div class="chip${warn?' warn':''}"><span class="cl">${esc(lbl)}</span> <span class="cv">${esc(val)}</span></div>`;
 }
 
+function _repoSearchText(c, nameHe) {
+  const parts = [
+    c.course_id, c.name_he, c.name_en, nameHe,
+    c.program_category_name_he, CAT_CSS[c.program_category_id]?.label,
+    ...(c.syllabus_topics_he || []), c.syllabus_summary_he,
+  ];
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
 function _buildRepoSection(gid, nameHe, ids, forceOpen, emptyMsg, notLoadedLabel) {
-  const cards = ids.map(id => cardHtml(courseMap[id], false)).join('');
+  const cards = ids.map(id => {
+    const c = courseMap[id];
+    if (!c) return '';
+    return `<div class="repo-card-wrap" data-search="${esc(_repoSearchText(c, nameHe))}">${cardHtml(c, false)}</div>`;
+  }).join('');
   const isOpen = forceOpen || openGroups.has(gid);
   const countDisplay = (notLoadedLabel && !ids.length) ? notLoadedLabel : ids.length;
   const emptyHint = !ids.length && emptyMsg
     ? `<div class="repo-empty-msg">${emptyMsg}</div>` : '';
-  return `<details class="repo-group" data-group="${esc(gid)}"${isOpen?' open':''}>
+  return `<details class="repo-group" data-group="${esc(gid)}"${isOpen?' open':''}${forceOpen?' data-force-open="1"':''}>
     <summary>
       ${esc(nameHe)}
       <span class="repo-group-count">${countDisplay}</span>
@@ -2326,6 +2362,61 @@ function renderSidebar() {
       callAiStream(msg, buildPlanContext(), null, respEl, sendBtn);
     });
   });
+
+  /* Repository search */
+  const searchInput = document.getElementById('repo-search-input');
+  if (searchInput) {
+    searchInput.value = repoSearchTerm;
+    searchInput.addEventListener('input', () => {
+      repoSearchTerm = searchInput.value;
+      applyRepoSearch();
+    });
+  }
+  document.getElementById('repo-search-clear')?.addEventListener('click', () => {
+    repoSearchTerm = '';
+    if (searchInput) searchInput.value = '';
+    applyRepoSearch();
+  });
+  applyRepoSearch();
+}
+
+function applyRepoSearch() {
+  const term = repoSearchTerm.trim().toLowerCase();
+  const statusEl = document.getElementById('repo-search-status');
+  const groups = document.querySelectorAll('#repo-body .repo-group');
+
+  if (!term) {
+    document.querySelectorAll('#repo-body .repo-card-wrap').forEach(w => { w.style.display = ''; });
+    groups.forEach(g => {
+      g.style.display = '';
+      g.open = openGroups.has(g.dataset.group) || g.hasAttribute('data-force-open');
+    });
+    if (statusEl) statusEl.textContent = '';
+    return;
+  }
+
+  let totalMatches = 0;
+  groups.forEach(g => {
+    let groupMatches = 0;
+    g.querySelectorAll('.repo-card-wrap').forEach(w => {
+      const match = (w.dataset.search || '').includes(term);
+      w.style.display = match ? '' : 'none';
+      if (match) groupMatches++;
+    });
+    totalMatches += groupMatches;
+    if (groupMatches > 0) {
+      g.style.display = '';
+      g.open = true;
+    } else {
+      g.style.display = 'none';
+    }
+  });
+
+  if (statusEl) {
+    statusEl.textContent = totalMatches > 0
+      ? `${totalMatches} קורסים נמצאו`
+      : 'לא נמצאו קורסים';
+  }
 }
 
 function renderBoard() {
@@ -2887,7 +2978,7 @@ function openCourseDetails(cid) {
     mkRow('סוג:', esc(_isFlexMand ? 'חובה גמיש' : _isFixedMand ? 'חובה קבוע' : TYPE_HE[type] || type)),
     c.weekly_hours != null ? mkRow('שעות שבועיות:', `${esc(c.weekly_hours)} ש׳׳ש`) : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
     level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
-    status !== 'eligible' ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
+    (status !== 'eligible' && status !== 'partial_info') ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
     (c.allowed_semesters?.length > 1) ? mkRow('ניתן לשיבוץ ב:', esc(_allowedSemLabels)) : '',
     isOfferingRestrictedFlex(c)
