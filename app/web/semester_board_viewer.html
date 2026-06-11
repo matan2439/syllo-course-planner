@@ -2097,6 +2097,10 @@ function normalizeCourse(c, status) {
     needs_category_review:       c.needs_category_review       || false,
     selection_reason:            c.selection_reason            || null,
     allowed_semesters:           c.allowed_semesters           || [],
+    program_allowed_semesters:   c.program_allowed_semesters   || c.allowed_semesters || [],
+    effective_allowed_semesters: c.effective_allowed_semesters || c.allowed_semesters || [],
+    offering_source_url:         c.offering_source_url         || null,
+    offering_source_confidence:  c.offering_source_confidence  || null,
     locked_by_default:           c.locked_by_default           ?? true,
     placement_rule:              c.placement_rule              || 'fixed_semester',
     is_mandatory:                c.is_mandatory ?? (c.course_type === 'mandatory'),
@@ -2483,6 +2487,8 @@ function cardHtml(c, placed) {
     ? `<span class="badge bdg-partial">מידע חלקי</span>`
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : isFlexMand && isOfferingRestrictedFlex(c)
+    ? `<span class="badge bdg-mandatory-flex" title="${esc('חובה גמיש בתוכנית, מוצע השנה רק בסמסטר ' + (SEM_HE[(c.effective_allowed_semesters||[])[0]] || ''))}">חובה גמיש (השנה: ${esc(SEM_HE[(c.effective_allowed_semesters||[])[0]]?.split(' ').pop() || '')})</span>`
     : isFlexMand
     ? `<span class="badge bdg-mandatory-flex">חובה גמיש</span>`
     : isFixedMandatory
@@ -2815,6 +2821,8 @@ function openCourseDetails(cid) {
     ? `<span class="badge bdg-missing">${STAT_HE.missing_from_db}</span>`
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
+    : _isFlexMand && isOfferingRestrictedFlex(c)
+    ? `<span class="badge bdg-mandatory-flex">חובה גמיש (השנה: ${esc(SEM_HE[(c.effective_allowed_semesters||[])[0]]?.split(' ').pop() || '')})</span>`
     : _isFlexMand
     ? `<span class="badge bdg-mandatory-flex">חובה גמיש</span>`
     : _isFixedMand
@@ -2852,6 +2860,9 @@ function openCourseDetails(cid) {
     status !== 'eligible' ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
     (c.allowed_semesters?.length > 1) ? mkRow('ניתן לשיבוץ ב:', esc(_allowedSemLabels)) : '',
+    isOfferingRestrictedFlex(c)
+      ? mkRow('שים לב:', esc(`חובה גמיש בתוכנית, מוצע השנה רק בסמסטר ${SEM_HE[(c.effective_allowed_semesters||[])[0]]?.split(' ').pop() || ''}`))
+      : '',
     c.needs_verification ? mkRow('אימות:', '<span style="color:var(--warning)">⚠ ממתין לאימות</span>') : '',
   ].filter(Boolean).join('');
 
@@ -3273,10 +3284,21 @@ function isFlexibleMandatory(c) {
   return c?.placement_policy === 'flexible';
 }
 
-/* False when drop target semester is outside the course's allowed_semesters */
+/* False when drop target semester is outside the course's effective allowed semesters
+   (program allowed_semesters narrowed by this year's actual offering, if known) */
 function isSemesterAllowed(c, semId) {
-  const allowed = c?.allowed_semesters || [];
+  const allowed = c?.effective_allowed_semesters || c?.allowed_semesters || [];
   return allowed.length === 0 || allowed.includes(semId);
+}
+
+/* True when a course is officially flexible in the program but this year's actual
+   offering restricts it to a single semester (effective narrower than program-level) */
+function isOfferingRestrictedFlex(c) {
+  const program = c?.program_allowed_semesters || c?.allowed_semesters || [];
+  const effective = c?.effective_allowed_semesters || program;
+  return c?.placement_policy === 'flexible'
+    && program.length > 1
+    && effective.length === 1;
 }
 
 /* False when the course's offered_semesters (A/B) excludes the target semester's A/B slot */

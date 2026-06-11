@@ -74,7 +74,16 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "fixed",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-2400",
@@ -146,7 +155,16 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "fixed",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-2500",
@@ -245,7 +263,16 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "fixed",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-3243",
@@ -334,7 +361,16 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "fixed",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         }
       ],
       "total_weekly_hours": 18.0,
@@ -413,7 +449,18 @@
           "syllabus_confidence": 0.4,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-3780",
@@ -486,7 +533,18 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-3791",
@@ -554,7 +612,18 @@
           "syllabus_confidence": 0.6,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-3792",
@@ -648,7 +717,18 @@
           "syllabus_confidence": 1.0,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_3_semester_a"
+          "recommended_semester": "year_3_semester_a",
+          "program_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         }
       ],
       "total_weekly_hours": 13.0,
@@ -732,7 +812,18 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a"
+          "recommended_semester": "year_4_semester_a",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-4091",
@@ -817,7 +908,19 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a"
+          "recommended_semester": "year_4_semester_a",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": [
+            "B"
+          ],
+          "effective_allowed_semesters": [
+            "year_4_semester_b"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+          "offering_source_confidence": "high"
         }
       ],
       "total_weekly_hours": 5.0,
@@ -902,7 +1005,18 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a"
+          "recommended_semester": "year_4_semester_a",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         },
         {
           "course_id": "0542-4092",
@@ -988,7 +1102,18 @@
           "syllabus_confidence": 0.8,
           "is_mandatory": true,
           "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a"
+          "recommended_semester": "year_4_semester_a",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": null,
+          "effective_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offering_source_url": null,
+          "offering_source_confidence": "low"
         }
       ],
       "total_weekly_hours": 5.0,

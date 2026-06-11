@@ -249,6 +249,49 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Actual yearly offering data (Layer 2) — overrides for "officially flexible"
+# mandatory courses whose real per-year offering was verified against the
+# live TAU syllabus pages. Courses not listed here have unknown
+# offered_semesters (low confidence; effective == program allowed semesters).
+# ---------------------------------------------------------------------------
+# offered_semesters uses the existing 'A'/'B' convention (see elective
+# courses' offered_semesters), so it stays compatible with isOfferedInSemester.
+OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] = {
+    "0542-4091": {
+        "offered_semesters": ["B"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+        "offering_source_confidence": "high",
+    },
+}
+
+_PART_TO_SUFFIX = {"A": "_semester_a", "B": "_semester_b"}
+
+
+def _offering_fields(course_id: str, allowed_sems: list[str]) -> dict[str, Any]:
+    """Compute Layer-1/Layer-2/effective allowed-semester fields for a course."""
+    override = OFFERED_SEMESTERS_OVERRIDES.get(course_id)
+    program_allowed = list(allowed_sems)
+    if override:
+        offered = list(override["offered_semesters"])
+        offered_suffixes = [_PART_TO_SUFFIX[p] for p in offered if p in _PART_TO_SUFFIX]
+        effective = [s for s in program_allowed if any(s.endswith(suf) for suf in offered_suffixes)] or program_allowed
+        source_url = override["offering_source_url"]
+        confidence = override["offering_source_confidence"]
+    else:
+        offered = None
+        effective = program_allowed
+        source_url = None
+        confidence = "low"
+    return {
+        "program_allowed_semesters": program_allowed,
+        "offered_semesters": offered,
+        "effective_allowed_semesters": effective,
+        "offering_source_url": source_url,
+        "offering_source_confidence": confidence,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Mandatory course loading
 # ---------------------------------------------------------------------------
 
@@ -321,6 +364,7 @@ def _load_mandatory_course(
             "placement_rule":              placement_rule,
             "is_mandatory":                True,
             "placement_policy":            _placement_policy_from_rule(placement_rule),
+            **_offering_fields(course_id, allowed_sems),
             "needs_verification":          needs_verif,
             "source_note":                 source_note,
             "source":                      "program",
@@ -390,6 +434,7 @@ def _load_mandatory_course(
         "placement_rule":              placement_rule,
         "is_mandatory":                True,
         "placement_policy":            _placement_policy_from_rule(placement_rule),
+        **_offering_fields(course_id, allowed_sems),
         "needs_verification":          needs_verif,
         "source_note":                 source_note,
         "source":                      "program",
