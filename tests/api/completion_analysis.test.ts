@@ -61,6 +61,17 @@ describe('buildCompletionAnalysis', () => {
     expect(a.pinned_course_ids).toEqual(['A']);
   });
 
+  it('carries category_id through from category_requirements', () => {
+    const ctx = baseCtx({
+      category_requirements: [
+        { name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 0, candidates: [{ course_id: 'F1', name_he: 'זרימה', hours: 3 }] },
+      ],
+    });
+    const a = buildCompletionAnalysis(ctx);
+    expect(a.categories[0].category_id).toBe('fluids');
+    expect(a.categories[0].missing).toBe(1);
+  });
+
   it('marks hours approximate when courses have unknown hours', () => {
     const ctx = baseCtx({
       semesters: [{ id: 's1', label: 'ס1', total_hours: 4, courses: [{ course_id: 'A', hours: null }] }],
@@ -194,6 +205,16 @@ describe('evaluatePlanCompleteness', () => {
     expect(result.incomplete).toBe(false);
     expect(result.reasons).toEqual([]);
   });
+
+  it('reports "no candidate available" informationally without blocking apply', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{ name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1, candidates: [] }],
+    };
+    const result = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis as any);
+    expect(result.reasons.some(r => r.includes('אין קורס מועמד זמין בקטגוריה "מעבדות מתקדמות"'))).toBe(true);
+    expect(result.incomplete).toBe(false);
+  });
 });
 
 describe('scoreCandidate / pickBestCandidate', () => {
@@ -273,6 +294,42 @@ describe('repairAddMissingElectives', () => {
     };
     const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds });
     expect(result.added[0].semester_id).toBe('s2');
+  });
+
+  it('fills all four mechanical-engineering core categories when candidates exist', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const allCourses = {
+      F1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      S1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      Y1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      L1: { hours: 2, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const analysis = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [
+        { name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'F1', hours: 3 }] },
+        { name: 'קורסי ליבה — מוצקים', category_id: 'solids', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'S1', hours: 3 }] },
+        { name: 'קורסי ליבה — מערכות', category_id: 'systems', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'Y1', hours: 3 }] },
+        { name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'L1', hours: 2 }] },
+      ],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis as any, { courses: allCourses, knownSemesterIds: ['s1', 's2'] });
+    expect(result.added.map(a => a.course_id).sort()).toEqual(['F1', 'L1', 'S1', 'Y1']);
+  });
+
+  it('allows a candidate with unknown hours and treats it as 0 for load purposes', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const courses = { U1: { hours: null, effective_allowed_semesters: ['s1'] } };
+    const analysis = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', category_id: 'other_specialization', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'U1', hours: null }] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds: ['s1'] });
+    expect(result.added).toEqual([{ course_id: 'U1', category: 'בחירה', semester_id: 's1' }]);
   });
 
   it('does not add a candidate already placed in the proposal', () => {

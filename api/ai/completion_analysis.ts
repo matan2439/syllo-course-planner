@@ -34,6 +34,7 @@ export interface CompletionCandidate {
 
 export interface CompletionCategory {
   name: string;
+  category_id?: string | null;
   required: number;
   placed: number;
   missing: number;
@@ -114,6 +115,7 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     const required = Number(cat.required) || 0;
     return {
       name: cat.name,
+      category_id: cat.category_id ?? null,
       required,
       placed,
       missing: Math.max(0, required - placed),
@@ -232,12 +234,15 @@ export function evaluatePlanCompleteness(
   opts: { wantedCourseIds?: string[]; courseHours?: Record<string, number | null | undefined>; movableCourseIds?: Set<string> } = {},
 ): CompletenessResult {
   const reasons: string[] = [];
+  const blocking: string[] = [];
   const placed = new Set(proposalSemesters.flatMap(s => s.course_ids));
 
   // 1. missing mandatory courses
   const missingMandatory = analysis.missing_mandatory.filter(c => !placed.has(c.course_id));
   if (missingMandatory.length) {
-    reasons.push(`חסרים קורסי חובה: ${missingMandatory.map(c => c.name_he || c.course_id).join(', ')}.`);
+    const msg = `חסרים קורסי חובה: ${missingMandatory.map(c => c.name_he || c.course_id).join(', ')}.`;
+    reasons.push(msg);
+    blocking.push(msg);
   }
 
   // 2. unmet elective categories with available candidates
@@ -245,11 +250,14 @@ export function evaluatePlanCompleteness(
     const placedFromCategory = cat.candidates.filter(c => placed.has(c.course_id)).length + (cat.placed - cat.candidates.length > 0 ? 0 : 0);
     const stillMissing = Math.max(0, cat.missing - cat.candidates.filter(c => placed.has(c.course_id)).length);
     if (stillMissing > 0 && cat.candidates.some(c => !placed.has(c.course_id))) {
-      reasons.push(
-        stillMissing === 1
-          ? `חסר קורס אחד מקורסי הקטגוריה "${cat.name}".`
-          : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`,
-      );
+      const msg = stillMissing === 1
+        ? `חסר קורס אחד מקורסי הקטגוריה "${cat.name}".`
+        : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`;
+      reasons.push(msg);
+      blocking.push(msg);
+    } else if (stillMissing > 0) {
+      // Category still unmet, but no eligible candidates exist — informational only.
+      reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
     } else if (cat.missing > 0 && placedFromCategory >= cat.missing) {
       reasons.push(`הדרישה הושלמה: קטגוריית "${cat.name}".`);
     }
@@ -264,7 +272,9 @@ export function evaluatePlanCompleteness(
   }
   const remainingAfter = Math.max(0, analysis.hours.remaining_hours - addedHours);
   if (remainingAfter > SEVERE_OVERLOAD_MARGIN * 2 && addedHours === 0 && analysis.hours.remaining_hours > 0) {
-    reasons.push(`חסרות כ-${remainingAfter} שעות מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר, ולא נוספו קורסי בחירה.`);
+    const msg = `חסרות כ-${remainingAfter} שעות מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר, ולא נוספו קורסי בחירה.`;
+    reasons.push(msg);
+    blocking.push(msg);
   }
 
   // 4. severe overload remains and movable courses exist
@@ -275,7 +285,9 @@ export function evaluatePlanCompleteness(
         ? sem.course_ids.filter(cid => opts.movableCourseIds!.has(cid))
         : [];
       if (movableInSem.length > 0) {
-        reasons.push(`סמסטר ${sem.semester_id} עמוס מדי (${hrs} ש"ש) למרות שניתן להעביר קורסים גמישים.`);
+        const msg = `סמסטר ${sem.semester_id} עמוס מדי (${hrs} ש"ש) למרות שניתן להעביר קורסים גמישים.`;
+        reasons.push(msg);
+        blocking.push(msg);
       }
     }
   }
@@ -290,7 +302,7 @@ export function evaluatePlanCompleteness(
     added_electives++;
   }
 
-  return { incomplete: reasons.length > 0, reasons, added_electives };
+  return { incomplete: blocking.length > 0, reasons, added_electives };
 }
 
 /** Score a candidate elective for repair-insertion (higher = preferred). */

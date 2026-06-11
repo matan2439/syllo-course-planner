@@ -88,6 +88,7 @@ export interface PlanContext {
   /** Elective category requirements with eligible (not yet completed/scheduled) candidates. */
   category_requirements?: Array<{
     name: string;
+    category_id?: string | null;
     required: number;
     placed: number;
     candidates: Array<{

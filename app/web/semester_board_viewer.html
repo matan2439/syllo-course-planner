@@ -1457,21 +1457,6 @@ function buildPlanContext() {
     }
   });
 
-  // Requirements progress
-  let requirements_progress;
-  if (programRequirements) {
-    const prog = computeProgramProgress?.();
-    requirements_progress = {
-      completed_hours: prog?.planned_hours || 0,
-      required_hours:  programRequirements.total_required_hours || 185,
-      categories:      (programRequirements.categories || []).map(cat => {
-        const placed = semesters.flatMap(s => s.courses)
-          .filter(c => c.category === cat.name_he || c.category === cat.category_id).length;
-        return { name: cat.name_he || cat.category_id, required: cat.min_courses || 0, placed };
-      }),
-    };
-  }
-
   // Personal status — completed / currently taking / planned, distinct from official board placement
   const personal_status = { completed: [], currently_taking: [], planned: [] };
   for (const [cid, us] of Object.entries(userCourseStatuses)) {
@@ -1485,14 +1470,47 @@ function buildPlanContext() {
     personal_status[us.status].push(entry);
   }
 
-  // Completion-analysis support (PART A): category requirements + candidates,
-  // known completed hours, and movable courses for the live board.
   const completedIdsForAnalysis = new Set(personal_status.completed.map(c => c.course_id));
   const wantedIdsForAnalysis = new Set(_aiPlanLastPreferences?.wanted_course_ids || []);
 
+  // A course satisfies a category if it's in the category's stable course_ids
+  // list, or (fallback for courses not enumerated in any category's list) its
+  // own program_category_id/name matches the category. Prefer course_ids/
+  // category_id over Hebrew display names, which can drift.
+  const _courseInCategory = (cid, cat) => {
+    if ((cat.course_ids || []).includes(cid)) return true;
+    const c = courseMap[cid];
+    if (!c) return false;
+    return c.program_category_id === cat.category_id || c.program_category_name_he === cat.name_he;
+  };
+  // A category requirement is satisfied by courses already placed on the
+  // board OR already completed by the user — either counts toward "placed".
+  const _categoryPlacedCount = (cat) => {
+    const ids = new Set([...placedIds, ...completedIdsForAnalysis]);
+    let n = 0;
+    for (const cid of ids) if (_courseInCategory(cid, cat)) n++;
+    return n;
+  };
+
+  // Requirements progress
+  let requirements_progress;
+  if (programRequirements) {
+    const prog = computeProgramProgress?.();
+    requirements_progress = {
+      completed_hours: prog?.planned_hours || 0,
+      required_hours:  programRequirements.total_required_hours || 185,
+      categories:      (programRequirements.categories || []).map(cat => ({
+        name: cat.name_he || cat.category_id,
+        required: cat.min_courses || 0,
+        placed: _categoryPlacedCount(cat),
+      })),
+    };
+  }
+
+  // Completion-analysis support (PART A): category requirements + candidates,
+  // known completed hours, and movable courses for the live board.
   const category_requirements = (programRequirements?.categories || []).map(cat => {
-    const placed = semesters.flatMap(s => s.courses)
-      .filter(c => c.category === cat.name_he || c.category === cat.category_id).length;
+    const placed = _categoryPlacedCount(cat);
     const candidates = (cat.course_ids || [])
       .filter(cid => courseMap[cid] && !placedIds.has(cid) && !completedIdsForAnalysis.has(cid))
       .map(cid => {
@@ -1506,7 +1524,7 @@ function buildPlanContext() {
           is_wanted:            wantedIdsForAnalysis.has(cid),
         };
       });
-    return { name: cat.name_he || cat.category_id, required: cat.min_courses || 0, placed, candidates };
+    return { name: cat.name_he || cat.category_id, category_id: cat.category_id || null, required: cat.min_courses || 0, placed, candidates };
   });
 
   const known_completed_hours = personal_status.completed
@@ -5109,20 +5127,27 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
  */
 function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   const reasons = [];
+  const blocking = [];
   const placed = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
 
   const missingMandatory = analysis.missing_mandatory.filter(c => !placed.has(c.course_id));
   if (missingMandatory.length) {
-    reasons.push(`חסרים קורסי חובה: ${missingMandatory.map(c => c.name_he || c.course_id).join(', ')}.`);
+    const msg = `חסרים קורסי חובה: ${missingMandatory.map(c => c.name_he || c.course_id).join(', ')}.`;
+    reasons.push(msg);
+    blocking.push(msg);
   }
 
   for (const cat of analysis.categories) {
     const placedFromCategory = cat.candidates.filter(c => placed.has(c.course_id)).length;
     const stillMissing = Math.max(0, cat.missing - placedFromCategory);
     if (stillMissing > 0 && cat.candidates.some(c => !placed.has(c.course_id))) {
-      reasons.push(stillMissing === 1
+      const msg = stillMissing === 1
         ? `חסר קורס אחד מקורסי הקטגוריה "${cat.name}".`
-        : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`);
+        : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`;
+      reasons.push(msg);
+      blocking.push(msg);
+    } else if (stillMissing > 0) {
+      reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
     } else if (cat.missing > 0 && placedFromCategory >= cat.missing) {
       reasons.push(`הדרישה הושלמה: קטגוריית "${cat.name}".`);
     }
@@ -5136,7 +5161,9 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   }
   const remainingAfter = Math.max(0, analysis.hours.remaining_hours - addedHours);
   if (remainingAfter > SEVERE_OVERLOAD_MARGIN * 2 && addedHours === 0 && analysis.hours.remaining_hours > 0) {
-    reasons.push(`חסרות כ-${remainingAfter} שעות מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר, ולא נוספו קורסי בחירה.`);
+    const msg = `חסרות כ-${remainingAfter} שעות מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר, ולא נוספו קורסי בחירה.`;
+    reasons.push(msg);
+    blocking.push(msg);
   }
 
   for (const sem of proposalSemesters) {
@@ -5144,7 +5171,9 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
     if (hrs > DEFAULT_MAX_HOURS_PER_SEMESTER + SEVERE_OVERLOAD_MARGIN) {
       const movableInSem = opts.movableCourseIds ? (sem.course_ids || []).filter(cid => opts.movableCourseIds.has(cid)) : [];
       if (movableInSem.length > 0) {
-        reasons.push(`סמסטר ${SEM_HE[sem.semester_id] || sem.semester_id} עמוס מדי (${hrs} ש"ש) למרות שניתן להעביר קורסים גמישים.`);
+        const msg = `סמסטר ${SEM_HE[sem.semester_id] || sem.semester_id} עמוס מדי (${hrs} ש"ש) למרות שניתן להעביר קורסים גמישים.`;
+        reasons.push(msg);
+        blocking.push(msg);
       }
     }
   }
@@ -5158,7 +5187,7 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
     added_electives++;
   }
 
-  return { incomplete: reasons.length > 0, reasons, added_electives };
+  return { incomplete: blocking.length > 0, reasons, added_electives };
 }
 
 async function requestPlanProposal(prefs, actionType) {
