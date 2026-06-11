@@ -260,9 +260,46 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 # offered_semesters uses the existing 'A'/'B' convention (see elective
 # courses' offered_semesters), so it stays compatible with isOfferedInSemester.
 OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] = {
+    "0542-3620": {
+        "offered_semesters": ["A"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-3780": {
+        "offered_semesters": ["A"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-3791": {
+        "offered_semesters": ["A"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-3792": {
+        # Yearly course (lectures in semester A, labs continue into semester B) —
+        # offered both semesters, so it does not narrow the program-level allowance.
+        "offered_semesters": ["A", "B"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-4010": {
+        "offered_semesters": ["A"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-4020": {
+        "offered_semesters": ["B"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+        "offering_source_confidence": "high",
+    },
     "0542-4091": {
         "offered_semesters": ["B"],
         "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
+        "offering_source_confidence": "high",
+    },
+    "0542-4092": {
+        "offered_semesters": ["A"],
+        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409201&year=2025",
         "offering_source_confidence": "high",
     },
 }

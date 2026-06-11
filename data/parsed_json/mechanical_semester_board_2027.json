@@ -371,16 +371,7 @@
           ],
           "offering_source_url": null,
           "offering_source_confidence": "low"
-        }
-      ],
-      "total_weekly_hours": 18.0,
-      "average_difficulty": null,
-      "warnings": []
-    },
-    {
-      "semester_id": "year_3_semester_b",
-      "display_name": "Year 3 — Semester B",
-      "courses": [
+        },
         {
           "course_id": "0542-3620",
           "name_he": "מעבר חם",
@@ -454,13 +445,14 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offered_semesters": null,
-          "effective_allowed_semesters": [
-            "year_3_semester_a",
-            "year_3_semester_b"
+          "offered_semesters": [
+            "A"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
+          "offering_source_confidence": "high"
         },
         {
           "course_id": "0542-3780",
@@ -538,13 +530,14 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offered_semesters": null,
-          "effective_allowed_semesters": [
-            "year_3_semester_a",
-            "year_3_semester_b"
+          "offered_semesters": [
+            "A"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
+          "offering_source_confidence": "high"
         },
         {
           "course_id": "0542-3791",
@@ -617,14 +610,24 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offered_semesters": null,
-          "effective_allowed_semesters": [
-            "year_3_semester_a",
-            "year_3_semester_b"
+          "offered_semesters": [
+            "A"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
-        },
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
+          "offering_source_confidence": "high"
+        }
+      ],
+      "total_weekly_hours": 27.0,
+      "average_difficulty": null,
+      "warnings": []
+    },
+    {
+      "semester_id": "year_3_semester_b",
+      "display_name": "Year 3 — Semester B",
+      "courses": [
         {
           "course_id": "0542-3792",
           "name_he": "הנדסת ניסויים ומדידות - מעבדה",
@@ -722,16 +725,19 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offered_semesters": null,
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
           "effective_allowed_semesters": [
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",
+          "offering_source_confidence": "high"
         }
       ],
-      "total_weekly_hours": 13.0,
+      "total_weekly_hours": 4.0,
       "average_difficulty": null,
       "warnings": []
     },
@@ -817,109 +823,14 @@
             "year_4_semester_a",
             "year_4_semester_b"
           ],
-          "offered_semesters": null,
+          "offered_semesters": [
+            "A"
+          ],
           "effective_allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
+            "year_4_semester_a"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
-        }
-      ],
-      "total_weekly_hours": 3.0,
-      "average_difficulty": null,
-      "warnings": []
-    },
-    {
-      "semester_id": "year_4_semester_b",
-      "display_name": "Year 4 — Semester B",
-      "courses": [
-        {
-          "course_id": "0542-4020",
-          "name_he": "תיכון ופרוייקט (2)",
-          "weekly_hours": 3.0,
-          "difficulty_score": null,
-          "difficulty_level": null,
-          "workload_score": null,
-          "conceptual_complexity_score": null,
-          "prerequisite_depth_score": null,
-          "assessment_intensity_score": null,
-          "difficulty_confidence": null,
-          "course_type": "mandatory",
-          "prerequisites": [],
-          "prerequisite_details": [],
-          "instructor_uncertainty": {
-            "current_lecturers": [],
-            "historical_lecturers": [],
-            "instructor_uncertainty_score": 0.4,
-            "instructor_notes": null,
-            "instructor_changed_warning": false,
-            "warnings": [
-              "מרצה הסמסטר לא ידוע"
-            ]
-          },
-          "grade_signal": null,
-          "locked_by_user": true,
-          "allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
-          ],
-          "locked_by_default": true,
-          "placement_rule": "choose_one_allowed_semester",
-          "needs_verification": false,
-          "source_note": "",
-          "source": "program",
-          "data_quality": {
-            "has_weekly_hours": true,
-            "has_semester_data": true,
-            "has_difficulty_score": false,
-            "placement_confidence": "high"
-          },
-          "warnings": [],
-          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2025",
-          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
-          "syllabus_links": [],
-          "source_urls": [],
-          "program_category_id": null,
-          "program_category_name_he": null,
-          "needs_category_review": false,
-          "validation_status": "ok",
-          "validation_errors": [],
-          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424020&kv=01&sem=20252",
-          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542402001",
-          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4020-01.html",
-          "syllabus_text_available": true,
-          "syllabus_ai_analysis_status": "done",
-          "assessment_analysis_status": "not_started",
-          "syllabus_summary_he": "שעות:                3 ש\"ס משקל:               4",
-          "syllabus_topics_he": [],
-          "syllabus_prerequisites_he": [
-            "136 שעות  או באישור מנחה",
-            "הפרויקט עוסק בפתרון של בעיה טכנולוגית. בהינתן תיאור בעיה כללי",
-            "נדרש להגדיר את הפרויקט",
-            "לפתח דרישות ולתכן פתרון שעונה עליהן",
-            "היקף הפרויקט מוגדר כ- 400 שעות לכל סטודנט.ית. ניתן לבצע פרויקט בקבוצות של שני סטודנטים.יות. בפרויקטים יותר גדולים",
-            "כל קבוצה של שני סטודנטים.יות תקבל לאחריותה חלק מהפרויקט. בנית אבטיפוס להוכחת היתכנות מומלצת ביותר. כל קבוצה תקבל מנחה בעל.ת ניסיון מהתעשייה להנחות אותה או חוקר.ת מבית הספר להנדסה מכנית לפרוייקטים מחקריים בעלי אופי אקדמי"
-          ],
-          "syllabus_assessment_he": "פרוייקט ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
-          "syllabus_structure_he": "3.0 שעות הרצאה",
-          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
-          "syllabus_last_fetched_at": "2026-06-10T21:31:53.096976+00:00",
-          "syllabus_confidence": 0.8,
-          "is_mandatory": true,
-          "placement_policy": "flexible",
-          "recommended_semester": "year_4_semester_a",
-          "program_allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
-          ],
-          "offered_semesters": null,
-          "effective_allowed_semesters": [
-            "year_4_semester_a",
-            "year_4_semester_b"
-          ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
+          "offering_source_confidence": "high"
         },
         {
           "course_id": "0542-4092",
@@ -1010,13 +921,111 @@
             "year_4_semester_a",
             "year_4_semester_b"
           ],
-          "offered_semesters": null,
+          "offered_semesters": [
+            "A"
+          ],
           "effective_allowed_semesters": [
+            "year_4_semester_a"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409201&year=2025",
+          "offering_source_confidence": "high"
+        }
+      ],
+      "total_weekly_hours": 5.0,
+      "average_difficulty": null,
+      "warnings": []
+    },
+    {
+      "semester_id": "year_4_semester_b",
+      "display_name": "Year 4 — Semester B",
+      "courses": [
+        {
+          "course_id": "0542-4020",
+          "name_he": "תיכון ופרוייקט (2)",
+          "weekly_hours": 3.0,
+          "difficulty_score": null,
+          "difficulty_level": null,
+          "workload_score": null,
+          "conceptual_complexity_score": null,
+          "prerequisite_depth_score": null,
+          "assessment_intensity_score": null,
+          "difficulty_confidence": null,
+          "course_type": "mandatory",
+          "prerequisites": [],
+          "prerequisite_details": [],
+          "instructor_uncertainty": {
+            "current_lecturers": [],
+            "historical_lecturers": [],
+            "instructor_uncertainty_score": 0.4,
+            "instructor_notes": null,
+            "instructor_changed_warning": false,
+            "warnings": [
+              "מרצה הסמסטר לא ידוע"
+            ]
+          },
+          "grade_signal": null,
+          "locked_by_user": true,
+          "allowed_semesters": [
             "year_4_semester_a",
             "year_4_semester_b"
           ],
-          "offering_source_url": null,
-          "offering_source_confidence": "low"
+          "locked_by_default": true,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false,
+          "source_note": "",
+          "source": "program",
+          "data_quality": {
+            "has_weekly_hours": true,
+            "has_semester_data": true,
+            "has_difficulty_score": false,
+            "placement_confidence": "high"
+          },
+          "warnings": [],
+          "course_details_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2025",
+          "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+          "syllabus_links": [],
+          "source_urls": [],
+          "program_category_id": null,
+          "program_category_name_he": null,
+          "needs_category_review": false,
+          "validation_status": "ok",
+          "validation_errors": [],
+          "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05424020&kv=01&sem=20252",
+          "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0542402001",
+          "mailing_list_url": "http://listserv.tau.ac.il/archives/0542-4020-01.html",
+          "syllabus_text_available": true,
+          "syllabus_ai_analysis_status": "done",
+          "assessment_analysis_status": "not_started",
+          "syllabus_summary_he": "שעות:                3 ש\"ס משקל:               4",
+          "syllabus_topics_he": [],
+          "syllabus_prerequisites_he": [
+            "136 שעות  או באישור מנחה",
+            "הפרויקט עוסק בפתרון של בעיה טכנולוגית. בהינתן תיאור בעיה כללי",
+            "נדרש להגדיר את הפרויקט",
+            "לפתח דרישות ולתכן פתרון שעונה עליהן",
+            "היקף הפרויקט מוגדר כ- 400 שעות לכל סטודנט.ית. ניתן לבצע פרויקט בקבוצות של שני סטודנטים.יות. בפרויקטים יותר גדולים",
+            "כל קבוצה של שני סטודנטים.יות תקבל לאחריותה חלק מהפרויקט. בנית אבטיפוס להוכחת היתכנות מומלצת ביותר. כל קבוצה תקבל מנחה בעל.ת ניסיון מהתעשייה להנחות אותה או חוקר.ת מבית הספר להנדסה מכנית לפרוייקטים מחקריים בעלי אופי אקדמי"
+          ],
+          "syllabus_assessment_he": "פרוייקט ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
+          "syllabus_structure_he": "3.0 שעות הרצאה",
+          "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+          "syllabus_last_fetched_at": "2026-06-10T21:31:53.096976+00:00",
+          "syllabus_confidence": 0.8,
+          "is_mandatory": true,
+          "placement_policy": "flexible",
+          "recommended_semester": "year_4_semester_a",
+          "program_allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "offered_semesters": [
+            "B"
+          ],
+          "effective_allowed_semesters": [
+            "year_4_semester_b"
+          ],
+          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+          "offering_source_confidence": "high"
         },
         {
           "course_id": "0542-4091",
@@ -1116,7 +1125,7 @@
           "offering_source_confidence": "high"
         }
       ],
-      "total_weekly_hours": 7.0,
+      "total_weekly_hours": 5.0,
       "average_difficulty": null,
       "warnings": []
     }
