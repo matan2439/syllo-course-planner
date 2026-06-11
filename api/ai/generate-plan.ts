@@ -24,7 +24,7 @@ import {
   PROVIDER_KEY_ENV,
   type AiProvider,
 } from './course-planner';
-import { planProposalSchema } from './plan_validation';
+import { planProposalSchema, normalizePlanProposal, droppedPlacementWarnings } from './plan_validation';
 
 const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -181,25 +181,64 @@ ${preferencesToHebrew(preferences)}
   "requirements_status": [{ "name": "string", "required": number, "placed": number, "satisfied": boolean }]
 }`;
 
-  try {
-    const result = await generateObject({
-      model: modelConfig.model,
-      schema: planProposalSchema,
-      system: planSystemPrompt,
-      prompt: 'בנה את הצעת התוכנית לפי ההנחיות וההעדפות שלעיל.',
-    });
+  // Valid semester ids for this plan — used to keep the AI's semester_id
+  // values consistent, and to retry with a stricter reminder if it deviates.
+  const validSemesterIds = ((plan_context as PlanContext).semesters ?? []).map(s => s.id);
+  const semesterIdHint = validSemesterIds.length
+    ? `\n\nחשוב: שדה semester_id בכל סמסטר חייב להיות אחד מהערכים המדויקים הבאים (ללא שינוי): ${validSemesterIds.map(id => `"${id}"`).join(', ')}.`
+    : '';
 
-    await Promise.allSettled([
-      incrementCreditsUsed(session_token, dbUrl),
-      logUsageEvent(session_token, modelConfig.name, dbUrl),
-    ]);
+  let object: z.infer<typeof planProposalSchema> | null = null;
+  let lastErr: unknown = null;
 
-    res.status(200).json(result.object);
-  } catch (err) {
-    console.error('[ai/generate-plan] generateObject failed:', err instanceof Error ? err.message : String(err));
-    sendError(res, 503, 'לא ניתן ליצור הצעת תוכנית כעת. נסה שוב.', 'AI_PROVIDER_ERROR',
-      { detail: err instanceof Error ? err.message : String(err) });
+  // Up to 2 attempts: structured output occasionally returns malformed JSON
+  // or paraphrased semester_id values — retry once with a stricter reminder.
+  for (let attempt = 0; attempt < 2 && !object; attempt++) {
+    try {
+      const result = await generateObject({
+        model: modelConfig.model,
+        schema: planProposalSchema,
+        system: planSystemPrompt + (attempt > 0 ? semesterIdHint : ''),
+        prompt: attempt > 0
+          ? 'הפלט הקודם לא תאם את הסכימה הנדרשת. בנה מחדש את הצעת התוכנית, והקפד להחזיר JSON תקין בלבד התואם בדיוק לסכימה, עם semester_id מתוך הרשימה שצוינה.'
+          : 'בנה את הצעת התוכנית לפי ההנחיות וההעדפות שלעיל.',
+      });
+      object = result.object;
+    } catch (err) {
+      lastErr = err;
+      console.error(`[ai/generate-plan] generateObject attempt ${attempt + 1} failed:`, err instanceof Error ? err.message : String(err));
+    }
   }
+
+  if (!object) {
+    sendError(res, 503, 'לא ניתן ליצור הצעת תוכנית כעת — תשובת ה-AI לא תאמה את הפורמט הנדרש. נסה שוב.', 'AI_PROVIDER_ERROR',
+      { detail: lastErr instanceof Error ? lastErr.message : String(lastErr) });
+    return;
+  }
+
+  await Promise.allSettled([
+    incrementCreditsUsed(session_token, dbUrl),
+    logUsageEvent(session_token, modelConfig.name, dbUrl),
+  ]);
+
+  // Normalize semester_id values (Hebrew labels, casing variants, etc.) to
+  // the canonical ids used by the board, and surface any placements that
+  // could not be mapped as Hebrew warnings instead of silently dropping them.
+  const { proposal: normalized, dropped } = normalizePlanProposal(object);
+  if (dropped.length) {
+    const courseNames: Record<string, string> = {};
+    for (const sem of (plan_context as PlanContext).semesters ?? []) {
+      for (const c of sem.courses) {
+        if (c.name_he) courseNames[c.course_id] = c.name_he;
+      }
+    }
+    normalized.warnings_he = [
+      ...normalized.warnings_he,
+      ...droppedPlacementWarnings(dropped, courseNames),
+    ];
+  }
+
+  res.status(200).json(normalized);
 }
 
 /** Deterministic mock proposal for dev mode — echoes the current plan unchanged. */

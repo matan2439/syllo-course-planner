@@ -1,6 +1,9 @@
 import {
   planProposalSchema,
   validatePlanProposal,
+  normalizeSemesterId,
+  normalizePlanProposal,
+  droppedPlacementWarnings,
   type PlanProposal,
   type PlanValidationContext,
 } from '../../api/ai/plan_validation';
@@ -44,6 +47,79 @@ describe('planProposalSchema', () => {
     expect(result.moves).toEqual([]);
     expect(result.warnings_he).toEqual([]);
     expect(result.requirements_status).toEqual([]);
+  });
+});
+
+describe('normalizeSemesterId', () => {
+  it('passes through canonical ids unchanged', () => {
+    expect(normalizeSemesterId('year_3_semester_a')).toBe('year_3_semester_a');
+    expect(normalizeSemesterId('year_4_semester_b')).toBe('year_4_semester_b');
+  });
+
+  it('normalizes Hebrew semester labels', () => {
+    expect(normalizeSemesterId("שנה ג׳ — סמסטר א׳")).toBe('year_3_semester_a');
+    expect(normalizeSemesterId("שנה ד׳ — סמסטר ב׳")).toBe('year_4_semester_b');
+  });
+
+  it('normalizes loose Latin variants', () => {
+    expect(normalizeSemesterId('Y3A')).toBe('year_3_semester_a');
+    expect(normalizeSemesterId('year3-semesterB')).toBe('year_3_semester_b');
+  });
+
+  it('returns null for unrecognizable input', () => {
+    expect(normalizeSemesterId('סמסטר קיץ')).toBeNull();
+    expect(normalizeSemesterId('')).toBeNull();
+    expect(normalizeSemesterId(null)).toBeNull();
+  });
+});
+
+describe('normalizePlanProposal', () => {
+  it('normalizes Hebrew semester ids and merges duplicates', () => {
+    const proposal: PlanProposal = {
+      semesters: [
+        { semester_id: "שנה ג׳ — סמסטר א׳", course_ids: ['0542-4120'] },
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4420'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+      ],
+      moves: [],
+      warnings_he: [],
+      rationale_he: 'x',
+      requirements_status: [],
+    };
+    const { proposal: normalized, dropped } = normalizePlanProposal(proposal);
+    expect(dropped).toEqual([]);
+    const semA = normalized.semesters.find(s => s.semester_id === 'year_3_semester_a')!;
+    expect(semA.course_ids.sort()).toEqual(['0542-4120', '0542-4420']);
+  });
+
+  it('drops placements with unrecognizable semester ids and reports them', () => {
+    const proposal: PlanProposal = {
+      semesters: [
+        { semester_id: 'סמסטר קיץ', course_ids: ['0542-9999'] },
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
+      ],
+      moves: [],
+      warnings_he: [],
+      rationale_he: 'x',
+      requirements_status: [],
+    };
+    const { proposal: normalized, dropped } = normalizePlanProposal(proposal);
+    expect(dropped).toEqual([{ course_id: '0542-9999', raw_semester_id: 'סמסטר קיץ' }]);
+    expect(normalized.semesters.find(s => s.semester_id === 'year_3_semester_a')!.course_ids).toEqual(['0542-4120']);
+    expect(normalized.semesters.some(s => (s.course_ids as string[]).includes('0542-9999'))).toBe(false);
+  });
+});
+
+describe('droppedPlacementWarnings', () => {
+  it('produces a Hebrew warning per dropped course, using course names when available', () => {
+    const warnings = droppedPlacementWarnings(
+      [{ course_id: '0542-9999', raw_semester_id: 'סמסטר קיץ' }],
+      { '0542-9999': 'קורס לדוגמה' },
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('קורס לדוגמה');
+    expect(warnings[0]).toContain('0542-9999');
+    expect(warnings[0]).toContain('סמסטר קיץ');
   });
 });
 
