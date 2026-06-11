@@ -669,6 +669,7 @@ body.prog-modal-open .workspace {
 
 /* Preferences summary */
 .ai-plan-summary { font-size: .78rem; line-height: 1.5; background: var(--bg-2, #1c1f26); border-radius: 8px; padding: 8px 10px; }
+.ai-plan-completeness { font-size: .76rem; line-height: 1.6; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
 
 /* Preview modal — top status bar */
 .ai-plan-preview-status {
@@ -4470,8 +4471,11 @@ function openPlanPreferencesModal() {
 
       <div class="ai-plan-section">
         <div class="ai-plan-section-title">קורסים מועדפים / לא רצויים</div>
+        <div class="ai-plan-hint" style="margin-bottom:6px">
+          הקורסים שתבחר כאן הם העדפה בלבד, לא התוכנית כולה — המערכת תוסיף גם קורסי חובה ובחירה נוספים לפי דרישות התואר.
+        </div>
         <div class="ai-plan-field">
-          קורסים שברצונך לכלול
+          קורסים שאני רוצה לקחת (העדפה — לא הרשימה המלאה)
           <div class="ai-course-picker">
             <input type="text" id="ai-pref-wanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
             <div class="ai-course-picker-results" id="ai-pref-wanted-results" hidden></div>
@@ -4569,9 +4573,23 @@ function buildPlanValidationInputs() {
   }
 
   const categoryRequirements = (programRequirements?.categories || [])
-    .map(cat => ({ name: cat.name_he || cat.category_id, required: cat.min_courses || 0 }));
+    .map(cat => ({
+      name: cat.name_he || cat.category_id,
+      required: cat.min_courses || 0,
+      availableElectiveIds: (cat.course_ids || []).filter(cid => !completedCourseIds.has(cid) && courseMap[cid]),
+    }));
 
-  return { completedCourseIds, courses, categoryRequirements };
+  const requiredMandatoryCourseIds = Object.values(courseMap)
+    .filter(c => c.course_type === 'mandatory' && !completedCourseIds.has(c.course_id) && c.status !== 'missing_from_db')
+    .map(c => c.course_id);
+
+  const movableCourseIds = new Set(
+    Object.values(courseMap)
+      .filter(c => !completedCourseIds.has(c.course_id) && c.placement_policy !== 'fixed')
+      .map(c => c.course_id)
+  );
+
+  return { completedCourseIds, courses, categoryRequirements, requiredMandatoryCourseIds, movableCourseIds };
 }
 
 /**
@@ -4699,16 +4717,63 @@ function validatePlanProposalLocal(proposal, ctx) {
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
       const overBy = semHours - ctx.maxHoursPerSemester;
       if (overBy > 3 || ctx.balanceLoad) {
-        errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
+        const movableInSem = ctx.movableCourseIds
+          ? (sem.course_ids || []).filter(cid => ctx.movableCourseIds.has(cid))
+          : [];
+        if (movableInSem.length > 0) {
+          errors.push('התוכנית לא איזנה עומס למרות שקיימים קורסים גמישים/בחירה שניתן להזיז.');
+        } else {
+          errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
+        }
       } else {
         warnings.push(`ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`);
       }
     }
   }
 
+  // partial-plan check — every not-completed mandatory course must appear.
+  if (ctx.requiredMandatoryCourseIds) {
+    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(cid => !placedCourseIds.has(cid));
+    if (missingMandatory.length > 0) {
+      errors.push('התוכנית לא כוללת את כל קורסי החובה שלא הושלמו.');
+    }
+  }
+
+  // category/elective requirements — blocking if the plan only adds courses
+  // the user explicitly requested (no electives) despite unmet requirements.
+  let addedNonWantedElectives = false;
+  if (ctx.wantedCourseIds) {
+    const wanted = new Set(ctx.wantedCourseIds);
+    for (const cid of placedCourseIds) {
+      const info = ctx.courses[cid];
+      if (!wanted.has(cid) && !ctx.completedCourseIds.has(cid) && !info?.is_mandatory) {
+        addedNonWantedElectives = true;
+        break;
+      }
+    }
+  }
+
+  if (ctx.categoryRequirements) {
+    for (const req of ctx.categoryRequirements) {
+      const status = (proposal.requirements_status || []).find(r => r.name === req.name);
+      if (status && status.placed < status.required) {
+        if (ctx.wantedCourseIds && !addedNonWantedElectives) {
+          errors.push('התוכנית חלקית — לא נוספו מספיק קורסי בחירה להשלמת דרישות התואר.');
+        } else if (req.availableElectiveIds?.length) {
+          warnings.push(`חסרים קורסי בחירה בקטגוריה ${req.name}.`);
+        } else {
+          warnings.push(`דרישת "${req.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+        }
+      }
+    }
+  }
+
   for (const status of (proposal.requirements_status || [])) {
     if (!status.satisfied && status.placed < status.required) {
-      warnings.push(`דרישת "${status.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+      const already = warnings.find(w => w.includes(`"${status.name}"`)) || errors.find(e => e.includes('התוכנית חלקית'));
+      if (!already) {
+        warnings.push(`דרישת "${status.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+      }
     }
   }
 
@@ -4741,7 +4806,7 @@ function repairPlanLoad(proposal, ctx) {
     for (let k = 0; k < sem.course_ids.length; k++) {
       const cid = sem.course_ids[k];
       const info = ctx.courses[cid] || {};
-      if (info.is_mandatory || info.placement_policy === 'fixed') continue;
+      if (info.placement_policy === 'fixed') continue; // never move fixed-placement courses
       const ch = info.hours || 0;
       if (!ch) continue;
 
@@ -4809,12 +4874,13 @@ async function requestPlanProposal(prefs) {
     const ctx = buildPlanValidationInputs();
     ctx.maxHoursPerSemester = prefs.max_weekly_hours ?? null;
     ctx.balanceLoad = !!prefs.balance_load;
+    ctx.wantedCourseIds = prefs.wanted_course_ids || [];
 
     const { proposal: repairedProposal, repaired } = repairPlanLoad(normalized, ctx);
     if (repaired) {
       repairedProposal.warnings_he = [
         ...(repairedProposal.warnings_he || []),
-        'התוכנית תוקנה אוטומטית לפני התצוגה כדי להפחית עומס.',
+        'התוכנית אוזנה אוטומטית לפני התצוגה.',
       ];
     }
 
@@ -4933,6 +4999,28 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
 
+  // ── Completeness summary: full vs. partial plan, missing requirements,
+  // and how many electives were added beyond the requested courses.
+  const completenessCtx = buildPlanValidationInputs();
+  const wantedIds = new Set(_aiPlanLastPreferences?.wanted_course_ids || []);
+  const isPartial = errors.some(e => e.includes('חלקית') || e.includes('לא כוללת את כל קורסי החובה'));
+  const missingReqs = (proposal.requirements_status || []).filter(r => !r.satisfied && r.placed < r.required);
+  let extraElectives = 0;
+  for (const sem of (proposal.semesters || [])) {
+    for (const cid of (sem.course_ids || [])) {
+      const info = completenessCtx.courses[cid];
+      if (!wantedIds.has(cid) && !completenessCtx.completedCourseIds.has(cid) && !info?.is_mandatory) extraElectives++;
+    }
+  }
+  const completenessHtml = `
+    <div class="ai-plan-completeness">
+      <div>${isPartial ? '⚠ זוהי תוכנית חלקית — חלק מהדרישות לא מולאו.' : '✓ זוהי תוכנית מלאה לסמסטרים שנותרו.'}</div>
+      <div>קורסי בחירה שנוספו מעבר לקורסים שביקשת: ${extraElectives}</div>
+      ${missingReqs.length
+        ? `<div>דרישות שחסרות עדיין: ${missingReqs.map(r => `${esc(r.name)} (${esc(r.placed)}/${esc(r.required)})`).join(', ')}</div>`
+        : '<div>כל הדרישות הידועות מולאות.</div>'}
+    </div>`;
+
   // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
   const MAX_COURSES_SHOWN = 5;
   const maxHours = _aiPlanLastPreferences?.max_weekly_hours;
@@ -5015,6 +5103,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed) {
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
       ${autofixHtml}
+      ${completenessHtml}
       <div class="ai-plan-sems">${semestersHtml}</div>
       ${movesDetailsHtml}
       ${detailsHtml}

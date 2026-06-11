@@ -138,6 +138,8 @@ export interface PlanValidationCourseInfo {
   effective_allowed_semesters?: string[] | null;
   /** Prerequisite course_ids still missing for this course (from prerequisite_issues). */
   missing_prerequisites?: string[];
+  /** True if this is a mandatory (חובה) course. */
+  is_mandatory?: boolean;
 }
 
 export interface PlanValidationContext {
@@ -150,7 +152,13 @@ export interface PlanValidationContext {
   /** True if the user explicitly asked for a balanced load ("איזון עומס") — makes any overload blocking. */
   balanceLoad?: boolean;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
-  categoryRequirements?: Array<{ name: string; required: number }>;
+  categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
+  /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
+  requiredMandatoryCourseIds?: string[];
+  /** course_ids the user explicitly asked for — used to detect "wanted-only" partial plans. */
+  wantedCourseIds?: string[];
+  /** course_ids that could be moved between semesters (flexible mandatory or electives). */
+  movableCourseIds?: Set<string>;
   /** course_id -> name_he, used to produce readable Hebrew error/warning messages. */
   courseNames?: Record<string, string>;
   /** semester_id -> Hebrew label (e.g. SEM_HE), used to produce readable messages. */
@@ -256,9 +264,18 @@ export function validatePlanProposal(
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
       const overBy = semHours - ctx.maxHoursPerSemester;
       if (overBy > 3 || ctx.balanceLoad) {
-        errors.push(
-          `לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`,
-        );
+        const movableInSem = ctx.movableCourseIds
+          ? sem.course_ids.filter(cid => ctx.movableCourseIds!.has(cid))
+          : [];
+        if (movableInSem.length > 0) {
+          errors.push(
+            'התוכנית לא איזנה עומס למרות שקיימים קורסים גמישים/בחירה שניתן להזיז.',
+          );
+        } else {
+          errors.push(
+            `לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`,
+          );
+        }
       } else {
         warnings.push(
           `ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`,
@@ -267,12 +284,40 @@ export function validatePlanProposal(
     }
   }
 
-  // 6. category/elective requirements not met — warning only
+  // 6. partial-plan check — every not-completed mandatory course must appear.
+  if (ctx.requiredMandatoryCourseIds) {
+    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(cid => !placedCourseIds.has(cid));
+    if (missingMandatory.length > 0) {
+      errors.push('התוכנית לא כוללת את כל קורסי החובה שלא הושלמו.');
+    }
+  }
+
+  // 7. category/elective requirements not met — warning, or blocking if the
+  // plan only adds the courses the user explicitly requested (no electives
+  // beyond "wanted") despite unmet requirements.
+  let addedNonWantedElectives = false;
+  if (ctx.wantedCourseIds) {
+    const wanted = new Set(ctx.wantedCourseIds);
+    for (const cid of placedCourseIds) {
+      const info = ctx.courses[cid];
+      if (!wanted.has(cid) && !ctx.completedCourseIds.has(cid) && !info?.is_mandatory) {
+        addedNonWantedElectives = true;
+        break;
+      }
+    }
+  }
+
   if (ctx.categoryRequirements) {
     for (const req of ctx.categoryRequirements) {
       const status = proposal.requirements_status.find(r => r.name === req.name);
       if (status && status.placed < status.required) {
-        warnings.push(`דרישת "${req.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+        if (ctx.wantedCourseIds && !addedNonWantedElectives) {
+          errors.push('התוכנית חלקית — לא נוספו מספיק קורסי בחירה להשלמת דרישות התואר.');
+        } else if (req.availableElectiveIds && req.availableElectiveIds.length > 0) {
+          warnings.push(`חסרים קורסי בחירה בקטגוריה ${req.name}.`);
+        } else {
+          warnings.push(`דרישת "${req.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+        }
       }
     }
   }

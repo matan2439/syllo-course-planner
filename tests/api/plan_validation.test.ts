@@ -248,6 +248,83 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.some(w => w.includes('16') && w.includes('שעות שבועיות'))).toBe(true);
   });
 
+  it('rejects a plan that omits not-completed mandatory courses', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      requiredMandatoryCourseIds: ['0542-4120', '0542-9001'], // 0542-9001 not in the plan
+    };
+    const result = validatePlanProposal(BASE_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('לא כוללת את כל קורסי החובה'))).toBe(true);
+  });
+
+  it('rejects a plan that only adds wanted courses despite unmet category requirements', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      wantedCourseIds: ['0542-4120', '0542-4420', '0542-4221'], // = exactly all placed courses
+      categoryRequirements: [{ name: 'קורסי בחירה', required: 10 }],
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      requirements_status: [
+        { name: 'קורסי בחירה', required: 10, placed: 0, satisfied: false },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('התוכנית חלקית'))).toBe(true);
+  });
+
+  it('does not flag "wanted-only" partial plan when extra electives were added', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      wantedCourseIds: ['0542-4120'],
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL, // also places 0542-4420 and 0542-4221, neither wanted nor mandatory
+      requirements_status: [
+        { name: 'קורסי בחירה', required: 10, placed: 4, satisfied: false },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('התוכנית חלקית'))).toBe(false);
+  });
+
+  it('warns about a specific category when electives are unmet but available', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      categoryRequirements: [
+        { name: 'מערכות בקרה', required: 2, availableElectiveIds: ['0542-9100', '0542-9101'] },
+      ],
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      requirements_status: [
+        { name: 'מערכות בקרה', required: 2, placed: 0, satisfied: false },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.warnings.some(w => w.includes('חסרים קורסי בחירה בקטגוריה מערכות בקרה'))).toBe(true);
+  });
+
+  it('blocks overload as "did not balance" when movable courses exist in the overloaded semester', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      maxHoursPerSemester: 14,
+      movableCourseIds: new Set(['0542-4221']),
+      courses: {
+        '0542-4120': { hours: 22 },
+        '0542-4221': { hours: 5 },
+      },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120', '0542-4221'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx); // 27 > 14 + 3, and 0542-4221 is movable
+    expect(result.errors.some(e => e.includes('לא איזנה עומס'))).toBe(true);
+  });
+
   it('does not block on overload when no max weekly hours is configured', () => {
     const ctx: PlanValidationContext = {
       completedCourseIds: new Set(),
