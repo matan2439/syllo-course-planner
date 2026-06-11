@@ -207,6 +207,41 @@ function gradeSignalsSection(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/**
+ * Parses a few key fields out of the (free-text) course_context block and, if any
+ * workload-relevant data is present, builds a short deterministic Hebrew summary
+ * sentence. This makes it harder for the model to ignore hours/syllabus data when
+ * answering workload questions, even if difficulty_score is missing.
+ */
+function buildWorkloadSummary(courseContext: string): string | null {
+  const grab = (label: string): string | null => {
+    const m = courseContext.match(new RegExp(`^${label}: (.+)$`, 'm'));
+    return m ? m[1].trim() : null;
+  };
+
+  const parts: string[] = [];
+  const semesterScope = grab('היקף לפי הסילבוס');
+  const lecture  = grab('שעות הרצאה');
+  const tutorial = grab('שעות תרגול');
+  const lab      = grab('שעות מעבדה');
+  const format   = grab('אופן הוראה');
+  const hasSyllabus = /^תקציר סילבוס: /m.test(courseContext);
+
+  if (semesterScope)        parts.push(semesterScope);
+  if (lecture)               parts.push(`${lecture} שעות הרצאה`);
+  if (tutorial)              parts.push(`${tutorial} שעות תרגול`);
+  if (lab)                   parts.push(`${lab} שעות מעבדה`);
+  if (format)                parts.push(`אופן הוראה: ${format}`);
+
+  if (!parts.length && !hasSyllabus) return null;
+
+  const lines: string[] = [];
+  if (parts.length) lines.push(`לקורס זה קיימים נתוני עומס: ${parts.join(', ')}.`);
+  if (hasSyllabus)  lines.push('בנוסף, קיים תקציר סילבוס עם נושאי לימוד, מבנה והערכה — יש להשתמש בו לתיאור אופי העומס (תיאורטי/מעבדה/פרויקט/הגשות).');
+  lines.push('יש להשתמש במידע זה במענה על שאלות עומס, גם אם difficulty_score (ציון קושי מספרי) חסר.');
+  return lines.join(' ');
+}
+
 export function buildSystemPrompt(input: SystemPromptInput): string {
   const { program_id, plan_context: ctx, course_context } = input;
   const programName = ctx.program_name || program_id;
@@ -240,7 +275,9 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   }
 
   if (course_context) {
+    const workloadSummary = buildWorkloadSummary(course_context);
     sections.push('', '### פרטי קורס ספציפי', course_context);
+    if (workloadSummary) sections.push('', '### סיכום נתוני עומס לקורס זה (לשימוש בתשובות על עומס)', workloadSummary);
   }
 
   const planBlock = sections.join('\n');

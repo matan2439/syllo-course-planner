@@ -152,6 +152,26 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('אופן הוראה: הרצאה + מעבדה');
   });
 
+  it('prepends a deterministic workload summary when course_context has hours/syllabus data', () => {
+    const courseContext = [
+      'קוד קורס: 0512-1202',
+      'שם קורס: אלקטרוניקה בסיסית',
+      'היקף לפי הסילבוס: 2 שעות סמסטריאליות (שעות שבועיות לא צוינו)',
+      'שעות מעבדה: 4',
+      'אופן הוראה: הרצאה + מעבדה',
+      'תקציר סילבוס: הקורס עוסק במגברים אופרטיביים...',
+    ].join('\n');
+    const prompt = buildSystemPrompt({
+      program_id: 'mechanical_2027',
+      plan_context: PLAN_CONTEXT,
+      course_context: courseContext,
+    });
+    expect(prompt).toContain('סיכום נתוני עומס לקורס זה');
+    expect(prompt).toContain('4 שעות מעבדה');
+    expect(prompt).toContain('הרצאה + מעבדה');
+    expect(prompt).toContain('2 שעות סמסטריאליות');
+  });
+
   it('instructs the model not to treat missing difficulty_score as missing workload evidence', () => {
     const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: PLAN_CONTEXT });
     expect(prompt).toContain('אין מדד קושי מספרי');
