@@ -5,6 +5,7 @@ import {
   scoreCandidate,
   pickBestCandidate,
   repairAddMissingElectives,
+  repairPlanLoad,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
 } from '../../api/ai/completion_analysis';
@@ -342,5 +343,140 @@ describe('repairAddMissingElectives', () => {
     };
     const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds });
     expect(result.added).toEqual([]);
+  });
+});
+
+describe('repairPlanLoad', () => {
+  const allSems = ['s1', 's2', 's3'];
+
+  it('moves an elective out of a 27h semester into an underloaded one', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'M2', 'E1'] }, // mandatory 12+12, elective 3 = 27
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      M2: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      E1: { hours: 3, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(true);
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's2')!.course_ids).toContain('E1');
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids).not.toContain('E1');
+  });
+
+  it('prefers moving an elective before a flexible mandatory course', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['MF', 'E1'] }, // flexible mandatory 18 + elective 3 = 21
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      MF: { hours: 18, course_type: 'mandatory', placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] },
+      E1: { hours: 3, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's2')!.course_ids).toEqual(['E1']);
+  });
+
+  it('does not move a pinned elective', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] },
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = { E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] } };
+    const result = repairPlanLoad(proposal as any, {
+      courses, maxHoursPerSemester: 20, pinnedCourseIds: new Set(['E1']),
+    });
+    expect(result.repaired).toBe(false);
+    expect(result.unmovedOverloaded[0].not_movable).toContain('E1');
+  });
+
+  it('does not move a completed elective', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] },
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = { E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] } };
+    const result = repairPlanLoad(proposal as any, {
+      courses, maxHoursPerSemester: 20, completedCourseIds: new Set(['E1']),
+    });
+    expect(result.repaired).toBe(false);
+    expect(result.unmovedOverloaded[0].not_movable).toContain('E1');
+  });
+
+  it('reports unmoved overload with the movable courses that remain (no legal target)', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] },
+        { semester_id: 's2', course_ids: ['F1', 'F2'] },
+      ],
+    };
+    // E1 only allowed in s1 (its current semester) -> no legal target
+    const courses = {
+      E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1'] },
+      F1: { hours: 18, placement_policy: 'fixed' },
+      F2: { hours: 18, placement_policy: 'fixed' },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(false);
+    const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
+    expect(s1Report.movable).toEqual(['E1']);
+    expect(s1Report.not_movable).toEqual([]);
+  });
+
+  it('allows an elective without effective_allowed_semesters to move to any known semester', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1', 'E2'] },
+        { semester_id: 's2', course_ids: [] },
+        { semester_id: 's3', course_ids: [] },
+      ],
+    };
+    const courses = {
+      E1: { hours: 12, course_type: 'elective' }, // no effective_allowed_semesters
+      E2: { hours: 12, course_type: 'elective' },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(true);
+    const s1 = result.proposal.semesters.find((s: any) => s.semester_id === 's1')!;
+    expect(s1.course_ids.length).toBe(1);
+  });
+});
+
+describe('PART B integration: severe overload + completeness', () => {
+  const baseAnalysis = {
+    completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+    categories: [],
+    hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+    overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+  };
+
+  it('blocks Apply when severe overload remains and movable courses exist', () => {
+    const proposalSemesters = [{ semester_id: 's1', course_ids: ['E1', 'F1'] }];
+    const courseHours = { E1: 9, F1: 18 }; // 27 total, max 20, margin 3 -> severe
+    const result = evaluatePlanCompleteness(proposalSemesters, baseAnalysis as any, {
+      courseHours,
+      movableCourseIds: new Set(['E1']),
+    });
+    expect(result.incomplete).toBe(true);
+    expect(result.reasons.some(r => r.includes('עמוס מדי'))).toBe(true);
+  });
+
+  it('does not block when overload remains but no movable courses exist', () => {
+    const proposalSemesters = [{ semester_id: 's1', course_ids: ['F1', 'F2'] }];
+    const courseHours = { F1: 18, F2: 9 }; // 27 total, max 20, no movable
+    const result = evaluatePlanCompleteness(proposalSemesters, baseAnalysis as any, {
+      courseHours,
+      movableCourseIds: new Set(),
+    });
+    expect(result.incomplete).toBe(false);
   });
 });

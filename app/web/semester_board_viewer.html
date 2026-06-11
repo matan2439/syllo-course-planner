@@ -4539,15 +4539,16 @@ function openPlanPreferencesModal() {
         <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
       </div>
       <p style="margin:4px 0 0;font-size:.8rem;color:var(--text-muted)">
-        ה-AI יציע תוכנית סמסטרים מבוססת על ההעדפות שלך. התוכנית תוצג לתצוגה מקדימה ולא תיכנס לתוקף עד שתאשר אותה.
+        בחר העדפות — ה-AI יציע שינויים על הלוח הנוכחי.
       </p>
     </div>
     <div class="detail-body" style="padding:16px 20px 0;direction:rtl">
       <div class="ai-plan-section">
         <div class="ai-plan-section-title">פעולות מהירות על הלוח הנוכחי</div>
-        <div class="ai-plan-hint" style="margin-bottom:6px">
-          כל פעולה משתמשת בלוח הנוכחי שלך (כולל קורסים מסומנים כ"אל תזיז") ושולחת בקשה ממוקדת ל-AI.
-        </div>
+        <details class="ai-plan-details" style="margin-bottom:6px">
+          <summary>מה זה עושה?</summary>
+          <div class="ai-plan-hint">כל פעולה משתמשת בלוח הנוכחי שלך (כולל קורסים מסומנים כ"אל תזיז") ושולחת בקשה ממוקדת ל-AI.</div>
+        </details>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="ai-plan-quick-balance">אזן עומס</button>
           <button class="btn" id="ai-plan-quick-electives">השלם דרישות בחירה</button>
@@ -4566,9 +4567,10 @@ function openPlanPreferencesModal() {
           <input type="number" id="ai-pref-max-hours" min="1" max="40" placeholder="לדוגמה: 18"
                  value="${lastPrefs?.max_weekly_hours ?? ''}">
         </label>
-        <div class="ai-plan-hint">
-          קורסים שסומנו כ"הושלם" לא ישובצו מחדש; קורסים "בלימוד כעת"/"מתוכננים" יישמרו בהתאם לסטטוס האישי שלך.
-        </div>
+        <details class="ai-plan-details">
+          <summary>מה זה עושה?</summary>
+          <div class="ai-plan-hint">קורסים שסומנו כ"הושלם" לא ישובצו מחדש; קורסים "בלימוד כעת"/"מתוכננים" יישמרו בהתאם לסטטוס האישי שלך.</div>
+        </details>
       </div>
 
       <div class="ai-plan-section">
@@ -4589,9 +4591,10 @@ function openPlanPreferencesModal() {
 
       <div class="ai-plan-section">
         <div class="ai-plan-section-title">קורסים מועדפים / לא רצויים</div>
-        <div class="ai-plan-hint" style="margin-bottom:6px">
-          הקורסים שתבחר כאן הם העדפה בלבד, לא התוכנית כולה — המערכת תוסיף גם קורסי חובה ובחירה נוספים לפי דרישות התואר.
-        </div>
+        <details class="ai-plan-details" style="margin-bottom:6px">
+          <summary>מה זה עושה?</summary>
+          <div class="ai-plan-hint">הקורסים שתבחר כאן הם העדפה בלבד, לא התוכנית כולה — המערכת תוסיף גם קורסי חובה ובחירה נוספים לפי דרישות התואר.</div>
+        </details>
         <div class="ai-plan-field">
           קורסים שאני רוצה לקחת (העדפה — לא הרשימה המלאה)
           <div class="ai-course-picker">
@@ -4710,6 +4713,7 @@ function buildPlanValidationInputs() {
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
       is_mandatory: c.course_type === 'mandatory' || !!c.is_mandatory,
       placement_policy: c.placement_policy || null,
+      course_type: c.course_type || null,
     };
   }
 
@@ -4942,40 +4946,83 @@ function validatePlanProposalLocal(proposal, ctx) {
  * Never moves mandatory/fixed courses, never violates allowed semesters.
  * Returns { proposal, repaired } — proposal is a new object if changes were made.
  */
+/**
+ * Is this course movable for load-balancing purposes? Electives (by
+ * course_type or placement_policy) and other non-fixed, non-pinned,
+ * non-completed courses are movable; fixed-placement, pinned ("אל תזיז"),
+ * and completed courses never are.
+ */
+function _isMovableForBalance(cid, info, ctx) {
+  if (!info) return false;
+  if (info.placement_policy === 'fixed') return false;
+  if (ctx.pinnedCourseIds?.has(cid)) return false;
+  if (ctx.completedCourseIds?.has(cid)) return false;
+  return true;
+}
+
+function _isElectiveLike(info) {
+  return info?.course_type === 'elective' || info?.placement_policy === 'elective';
+}
+function _isFlexibleMandatory(info) {
+  return !_isElectiveLike(info) && info?.placement_policy === 'flexible';
+}
+function _balanceTier(info) {
+  if (_isElectiveLike(info)) return 0;
+  if (_isFlexibleMandatory(info)) return 1;
+  return 2;
+}
+
+/**
+ * PART A — load-balancing repair. Greedily moves courses out of overloaded
+ * semesters into the least-loaded legal semester, preferring electives
+ * first (most flexible), then other movable courses. Stops when no semester
+ * exceeds `max` or no legal move remains.
+ */
 function repairPlanLoad(proposal, ctx) {
   const max = ctx.maxHoursPerSemester;
-  if (max == null) return { proposal, repaired: false };
+  if (max == null) return { proposal, repaired: false, unmovedOverloaded: [] };
 
   const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const allSemIds = sems.map(s => s.semester_id);
   const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
 
   let repaired = false;
   let guard = 0;
   while (guard++ < 50) {
-    let moved = false;
     const hours = sems.map(hoursOf);
     const overIdx = hours.findIndex(h => h > max);
     if (overIdx === -1) break;
 
     const sem = sems[overIdx];
-    for (let k = 0; k < sem.course_ids.length; k++) {
-      const cid = sem.course_ids[k];
-      const info = ctx.courses[cid] || {};
-      if (info.placement_policy === 'fixed') continue; // never move fixed-placement courses
-      if (ctx.pinnedCourseIds?.has(cid)) continue; // never move pinned ("אל תזיז") courses
+
+    // Order candidates: electives/flexible first, then other movable courses.
+    const candidates = sem.course_ids
+      .map((cid, k) => ({ cid, k, info: ctx.courses[cid] || {} }))
+      .filter(({ cid, info }) => _isMovableForBalance(cid, info, ctx))
+      .sort((a, b) => _balanceTier(a.info) - _balanceTier(b.info));
+
+    let moved = false;
+    for (const { cid, info } of candidates) {
       const ch = info.hours || 0;
-      if (!ch) continue;
+      // Electives without explicit allowed semesters may go to any other
+      // known board semester; other courses are restricted to their list.
+      const allowed = info.effective_allowed_semesters?.length
+        ? info.effective_allowed_semesters
+        : (_isElectiveLike(info) ? allSemIds : null);
+      if (!allowed) continue;
 
-      // pick the most underloaded valid target semester that stays within max
-      let bestJ = -1, bestRoom = -1;
-      for (let j = 0; j < sems.length; j++) {
-        if (j === overIdx) continue;
-        if (info.effective_allowed_semesters?.length && !info.effective_allowed_semesters.includes(sems[j].semester_id)) continue;
-        const room = max - hours[j];
-        if (room >= ch && room > bestRoom) { bestRoom = room; bestJ = j; }
-      }
-      if (bestJ === -1) continue;
+      const legalIdx = sems
+        .map((s, j) => j)
+        .filter(j => j !== overIdx && allowed.includes(sems[j].semester_id));
+      if (!legalIdx.length) continue;
 
+      // Prefer a target that fits within max; otherwise still move to the
+      // least-loaded legal semester to reduce the overload.
+      const fitting = legalIdx.filter(j => max - hoursOf(sems[j]) >= ch);
+      const pool = fitting.length ? fitting : legalIdx;
+      const bestJ = pool.sort((a, b) => hoursOf(sems[a]) - hoursOf(sems[b]))[0];
+
+      const k = sem.course_ids.indexOf(cid);
       sem.course_ids.splice(k, 1);
       sems[bestJ].course_ids.push(cid);
       moved = true;
@@ -4985,8 +5032,22 @@ function repairPlanLoad(proposal, ctx) {
     if (!moved) break;
   }
 
-  if (!repaired) return { proposal, repaired: false };
-  return { proposal: { ...proposal, semesters: sems }, repaired: true };
+  // Report any semesters still over max, and which of their courses were/weren't movable.
+  const unmovedOverloaded = sems
+    .map(sem => ({ sem, hours: hoursOf(sem) }))
+    .filter(({ hours }) => hours > max)
+    .map(({ sem, hours }) => {
+      const movable = [];
+      const notMovable = [];
+      for (const cid of sem.course_ids) {
+        const info = ctx.courses[cid] || {};
+        (_isMovableForBalance(cid, info, ctx) ? movable : notMovable).push(cid);
+      }
+      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable };
+    });
+
+  if (!repaired) return { proposal, repaired: false, unmovedOverloaded };
+  return { proposal: { ...proposal, semesters: sems }, repaired: true, unmovedOverloaded };
 }
 
 /**
@@ -5252,7 +5313,7 @@ async function requestPlanProposal(prefs, actionType) {
       showBoardNotify(`נוספו ${addedElectives.length} קורסי בחירה אוטומטית כדי להשלים דרישות תואר.`);
     }
 
-    const { proposal: repairedProposal, repaired } = repairPlanLoad(withElectives, ctx);
+    const { proposal: repairedProposal, repaired, unmovedOverloaded } = repairPlanLoad(withElectives, ctx);
     if (repaired) {
       repairedProposal.warnings_he = [
         ...(repairedProposal.warnings_he || []),
@@ -5270,6 +5331,22 @@ async function requestPlanProposal(prefs, actionType) {
       courseHours,
       movableCourseIds: ctx.movableCourseIds,
     });
+
+    // PART B: severe overload (> max + margin) that survived balancing —
+    // block Apply if movable courses exist (balancing should have helped),
+    // otherwise surface as a non-blocking warning.
+    for (const o of (unmovedOverloaded || [])) {
+      if (o.hours <= ctx.maxHoursPerSemester + SEVERE_OVERLOAD_MARGIN) continue;
+      if (o.movable.length > 0) {
+        completeness.reasons.push('הסמסטר עדיין עמוס מדי למרות שקיימים קורסים שניתן להעביר.');
+        completeness.incomplete = true;
+      } else {
+        repairedProposal.warnings_he = [
+          ...(repairedProposal.warnings_he || []),
+          'הסמסטר עמוס, אך לא נמצאו קורסים שניתן להעביר בלי לשבור אילוצים.',
+        ];
+      }
+    }
 
     _aiPlanLastProposal = repairedProposal;
     openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness);
@@ -5370,16 +5447,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     maxSemHours = Math.max(maxSemHours, hrs);
   }
 
-  const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'));
+  const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
+    || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
   const canApply = errors.length === 0 && !completeness?.incomplete;
   const statusLabel = canApply
-    ? '✓ ניתן להחיל את התוכנית'
-    : (severeOverload ? '✗ לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת' : '✗ לא ניתן להחיל — יש לתקן שגיאות');
+    ? 'ניתן להחיל'
+    : (severeOverload ? 'לא ניתן להחיל — עומס גבוה בסמסטר אחד' : 'לא ניתן להחיל — יש לתקן שגיאות');
   const statusHtml = `
     <div class="ai-plan-preview-status ${canApply ? 'status-ok' : 'status-bad'}">
-      <strong>${statusLabel}</strong>
-      <span class="ai-plan-status-pill">שגיאות חוסמות: ${errors.length}</span>
-      <span class="ai-plan-status-pill">עומס מרבי בסמסטר: ${maxSemHours} ש״ש</span>
+      <strong>${canApply ? '✓' : '✗'} ${statusLabel}</strong>
     </div>`;
 
   const autofixHtml = autofixed
@@ -5389,12 +5465,19 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   // ── Completeness summary: full vs. partial plan, missing requirements,
   // and how many electives were added beyond the requested courses.
   const isPartial = !!completeness?.incomplete;
-  const reasonsHtml = (completeness?.reasons || []).map(r => `<li>${esc(r)}</li>`).join('');
+  const allReasons = completeness?.reasons || [];
+  const MAX_REASONS_SHOWN = 3;
+  const shownReasons = allReasons.slice(0, MAX_REASONS_SHOWN);
+  const restReasons = allReasons.slice(MAX_REASONS_SHOWN);
+  const reasonsHtml = shownReasons.map(r => `<li>${esc(r)}</li>`).join('');
+  const restReasonsHtml = restReasons.length
+    ? `<details class="ai-plan-details"><summary>עוד ${restReasons.length} הערות</summary><ul>${restReasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></details>`
+    : '';
   const completenessHtml = `
     <div class="ai-plan-completeness">
-      <div>${isPartial ? '⚠ זוהי תוכנית חלקית — חלק מהדרישות לא מולאו.' : '✓ זוהי תוכנית מלאה לסמסטרים שנותרו.'}</div>
-      <div>קורסי בחירה שנוספו מעבר לקורסים שביקשת: ${completeness?.added_electives ?? 0}</div>
+      <div>${isPartial ? '⚠ תוכנית חלקית — חלק מהדרישות לא מולאו.' : '✓ תוכנית מלאה לסמסטרים שנותרו.'}</div>
       ${reasonsHtml ? `<ul>${reasonsHtml}</ul>` : ''}
+      ${restReasonsHtml}
     </div>`;
 
   // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
@@ -5458,9 +5541,12 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         <div class="ai-plan-rationale">${esc(proposal.rationale_he || '')}</div>
         ${errorsHtml}
         ${warningsHtml}
-        ${reqHtml ? `<div><div style="font-weight:600;margin-bottom:4px">סטטוס דרישות</div>${reqHtml}</div>` : ''}
       </div>
     </details>`;
+
+  const reqDetailsHtml = reqHtml
+    ? `<details class="ai-plan-details"><summary>דרישות תואר</summary><div style="margin-top:8px">${reqHtml}</div></details>`
+    : '';
 
   const movesDetailsHtml = `
     <details class="ai-plan-details">
@@ -5483,12 +5569,17 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       <div class="ai-plan-sems">${semestersHtml}</div>
       ${movesDetailsHtml}
       ${detailsHtml}
+      ${reqDetailsHtml}
       <div class="ai-plan-local-note">
         החלת התוכנית משנה רק את הלוח המקומי שלך, לא את תוכנית הלימודים הרשמית.<br>
         השינוי נשמר אצלך בלבד ואפשר לערוך אותו בגרירה.
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap">
         <button class="btn btn-primary" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל תוכנית</button>
+        ${!canApply ? `
+        <button class="btn" id="ai-plan-rebalance">נסה לאזן שוב</button>
+        ${severeOverload ? '<button class="btn" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
+        <button class="btn" id="ai-plan-back-prefs">חזור להעדפות</button>` : ''}
         <button class="btn" id="ai-plan-ask-changes">בקש שינויים</button>
         <button class="btn" id="ai-plan-reject">דחה</button>
       </div>
@@ -5503,6 +5594,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     showBoardNotify('התוכנית הוחלה על הלוח שלך');
   });
   document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
+    openPlanPreferencesModal();
+  });
+  document.getElementById('ai-plan-rebalance')?.addEventListener('click', () => {
+    requestPlanProposal({ ..._aiPlanLastPreferences, balance_load: true }, 'balance_load');
+  });
+  document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
+    requestPlanProposal({ ..._aiPlanLastPreferences, max_weekly_hours: maxSemHours }, _aiPlanLastPreferences?.action_type);
+  });
+  document.getElementById('ai-plan-back-prefs')?.addEventListener('click', () => {
     openPlanPreferencesModal();
   });
 }

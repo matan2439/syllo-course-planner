@@ -411,3 +411,129 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     added,
   };
 }
+
+export interface LoadBalanceCourseInfo {
+  hours?: number | null;
+  effective_allowed_semesters?: string[] | null;
+  placement_policy?: string | null;
+  course_type?: string | null;
+}
+
+export interface LoadBalanceContext {
+  courses: Record<string, LoadBalanceCourseInfo>;
+  maxHoursPerSemester: number | null | undefined;
+  pinnedCourseIds?: Set<string>;
+  completedCourseIds?: Set<string>;
+}
+
+export interface OverloadedSemesterReport {
+  semester_id: string;
+  hours: number;
+  movable: string[];
+  not_movable: string[];
+}
+
+export interface RepairLoadResult<P extends RepairProposalShape> {
+  proposal: P;
+  repaired: boolean;
+  unmovedOverloaded: OverloadedSemesterReport[];
+}
+
+/** Is this course movable for load-balancing — never fixed/pinned/completed. */
+export function isMovableForBalance(cid: string, info: LoadBalanceCourseInfo | undefined, ctx: LoadBalanceContext): boolean {
+  if (!info) return false;
+  if (info.placement_policy === 'fixed') return false;
+  if (ctx.pinnedCourseIds?.has(cid)) return false;
+  if (ctx.completedCourseIds?.has(cid)) return false;
+  return true;
+}
+
+/** True electives (by course_type or placement_policy) — moved first when balancing. */
+export function isElectiveLike(info: LoadBalanceCourseInfo | undefined): boolean {
+  return info?.course_type === 'elective' || info?.placement_policy === 'elective';
+}
+
+/** Flexible mandatory courses — moved only after electives are exhausted. */
+export function isFlexibleMandatory(info: LoadBalanceCourseInfo | undefined): boolean {
+  return !isElectiveLike(info) && info?.placement_policy === 'flexible';
+}
+
+/** Sort tier for balancing: 0 = elective, 1 = flexible mandatory, 2 = everything else movable. */
+function _balanceTier(info: LoadBalanceCourseInfo | undefined): number {
+  if (isElectiveLike(info)) return 0;
+  if (isFlexibleMandatory(info)) return 1;
+  return 2;
+}
+
+/**
+ * PART A — load-balancing repair. Greedily moves courses out of overloaded
+ * semesters into the least-loaded legal semester, preferring electives
+ * first (most flexible), then other movable courses. Stops when no semester
+ * exceeds `max` or no legal move remains. Mirrored client-side in
+ * app/web/semester_board_viewer.html (repairPlanLoad), kept in sync manually.
+ */
+export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: LoadBalanceContext): RepairLoadResult<P> {
+  const max = ctx.maxHoursPerSemester;
+  if (max == null) return { proposal, repaired: false, unmovedOverloaded: [] };
+
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  const allSemIds = sems.map(s => s.semester_id);
+  const hoursOf = (sem: { course_ids: string[] }) =>
+    sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+
+  let repaired = false;
+  let guard = 0;
+  while (guard++ < 50) {
+    const hours = sems.map(hoursOf);
+    const overIdx = hours.findIndex(h => h > max);
+    if (overIdx === -1) break;
+
+    const sem = sems[overIdx];
+
+    const candidates = sem.course_ids
+      .map(cid => ({ cid, info: ctx.courses[cid] }))
+      .filter(({ cid, info }) => isMovableForBalance(cid, info, ctx))
+      .sort((a, b) => (isElectiveLike(a.info) === isElectiveLike(b.info)) ? 0 : (isElectiveLike(a.info) ? -1 : 1));
+
+    let moved = false;
+    for (const { cid, info } of candidates) {
+      const ch = info?.hours || 0;
+      const allowed = info?.effective_allowed_semesters?.length
+        ? info.effective_allowed_semesters
+        : (isElectiveLike(info) ? allSemIds : null);
+      if (!allowed) continue;
+
+      const legalIdx = sems
+        .map((_, j) => j)
+        .filter(j => j !== overIdx && allowed.includes(sems[j].semester_id));
+      if (!legalIdx.length) continue;
+
+      const fitting = legalIdx.filter(j => max - hoursOf(sems[j]) >= ch);
+      const pool = fitting.length ? fitting : legalIdx;
+      const bestJ = pool.sort((a, b) => hoursOf(sems[a]) - hoursOf(sems[b]))[0];
+
+      const k = sem.course_ids.indexOf(cid);
+      sem.course_ids.splice(k, 1);
+      sems[bestJ].course_ids.push(cid);
+      moved = true;
+      repaired = true;
+      break;
+    }
+    if (!moved) break;
+  }
+
+  const unmovedOverloaded: OverloadedSemesterReport[] = sems
+    .map(sem => ({ sem, hours: hoursOf(sem) }))
+    .filter(({ hours }) => hours > max)
+    .map(({ sem, hours }) => {
+      const movable: string[] = [];
+      const notMovable: string[] = [];
+      for (const cid of sem.course_ids) {
+        (isMovableForBalance(cid, ctx.courses[cid], ctx) ? movable : notMovable).push(cid);
+      }
+      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable };
+    });
+
+  if (!repaired) return { proposal, repaired: false, unmovedOverloaded };
+  return { proposal: { ...proposal, semesters: sems }, repaired: true, unmovedOverloaded };
+}
