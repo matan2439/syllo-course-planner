@@ -123,9 +123,9 @@ const requestSchema = z.object({
 
 // ── Model selection ───────────────────────────────────────────────────────────
 
-type AiProvider = 'anthropic' | 'openai' | 'google';
+export type AiProvider = 'anthropic' | 'openai' | 'google';
 
-interface ModelConfig { model: LanguageModel; name: string; provider: AiProvider }
+export interface ModelConfig { model: LanguageModel; name: string; provider: AiProvider }
 
 /** Low-cost default model per provider. */
 const PROVIDER_MODEL: Record<AiProvider, string> = {
@@ -134,7 +134,7 @@ const PROVIDER_MODEL: Record<AiProvider, string> = {
   google:    'gemini-1.5-flash',
 };
 
-const PROVIDER_KEY_ENV: Record<AiProvider, string> = {
+export const PROVIDER_KEY_ENV: Record<AiProvider, string> = {
   openai:    'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
   google:    'GOOGLE_GENERATIVE_AI_API_KEY',
@@ -164,7 +164,7 @@ function buildModel(p: AiProvider): ModelConfig | null {
  * picking the first provider with an API key configured. OpenAI's
  * gpt-4o-mini is the recommended default: low cost and good Hebrew quality.
  */
-function resolveModel(): ModelConfig | null {
+export function resolveModel(): ModelConfig | null {
   const requested = (process.env.AI_PROVIDER ?? '').trim().toLowerCase();
   if (requested) {
     if (requested !== 'anthropic' && requested !== 'openai' && requested !== 'google') {
@@ -176,7 +176,7 @@ function resolveModel(): ModelConfig | null {
   return buildModel('openai') ?? buildModel('anthropic') ?? buildModel('google');
 }
 
-const PROVIDER_LABEL: Record<AiProvider, string> = {
+export const PROVIDER_LABEL: Record<AiProvider, string> = {
   openai:    'OpenAI',
   anthropic: 'Anthropic',
   google:    'Google',
@@ -184,12 +184,12 @@ const PROVIDER_LABEL: Record<AiProvider, string> = {
 
 // ── Dev mode ──────────────────────────────────────────────────────────────────
 
-function isDevMode(): boolean {
+export function isDevMode(): boolean {
   if (process.env.VERCEL_ENV === 'production') return false;
   return process.env.AI_DEV_MODE === 'true';
 }
 
-function isBypassQuota(): boolean {
+export function isBypassQuota(): boolean {
   return isDevMode() && process.env.AI_DEV_BYPASS_QUOTA === 'true';
 }
 
@@ -200,13 +200,13 @@ function isBypassQuota(): boolean {
  * still run as normal). Defaults to false. MUST be unset before public
  * release — see docs/vercel-ai-integration.md.
  */
-function isTestModeBypass(): boolean {
+export function isTestModeBypass(): boolean {
   return process.env.AI_TEST_MODE === 'true';
 }
 
 // ── Response helpers ──────────────────────────────────────────────────────────
 
-function sendError(
+export function sendError(
   res: VercelResponse,
   status: number,
   message: string,

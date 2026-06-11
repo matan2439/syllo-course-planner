@@ -603,11 +603,29 @@ body.prog-modal-open .workspace {
   margin-top: 8px; width: 100%;
   font-size: .72rem; font-weight: 600;
   padding: 6px 10px; border-radius: 7px;
-  border: 1.5px solid var(--border2); background: var(--surface2);
-  color: var(--text-faint); cursor: not-allowed;
-  opacity: .7;
+  border: 1.5px solid var(--accent, #4f8cff); background: var(--surface2);
+  color: var(--text); cursor: pointer;
 }
-.btn-auto-plan:disabled { pointer-events: auto; }
+.btn-auto-plan:hover { background: var(--surface3, var(--surface2)); }
+
+/* AI personalized plan modal */
+.ai-plan-field { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; }
+.ai-plan-field input, .ai-plan-field select, .ai-plan-field textarea {
+  background: var(--bg-2, #1c1f26); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; font-size: .8rem; font-family: inherit;
+}
+.ai-plan-check { display: flex; align-items: center; gap: 6px; font-size: .82rem; cursor: pointer; }
+.ai-plan-checks { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; }
+.ai-plan-hint { font-size: .72rem; color: var(--text-muted); }
+.ai-plan-sems { display: flex; flex-direction: column; gap: 8px; }
+.ai-plan-sem { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.ai-plan-sem-title { font-weight: 600; font-size: .8rem; margin-bottom: 4px; }
+.ai-plan-sem-courses { margin: 0; padding-inline-start: 18px; font-size: .76rem; }
+.ai-plan-moves, .ai-plan-reqs { margin: 0; padding-inline-start: 18px; font-size: .78rem; }
+.ai-plan-rationale { font-size: .8rem; line-height: 1.5; background: var(--bg-2, #1c1f26); border-radius: 8px; padding: 8px 10px; }
+.ai-plan-errors { background: rgba(220,53,69,.12); border: 1px solid rgba(220,53,69,.4); border-radius: 8px; padding: 8px 10px; font-size: .78rem; }
+.ai-plan-warnings { background: rgba(255,193,7,.12); border: 1px solid rgba(255,193,7,.4); border-radius: 8px; padding: 8px 10px; font-size: .78rem; }
+.ai-plan-errors ul, .ai-plan-warnings ul { margin: 4px 0 0; padding-inline-start: 18px; }
 .sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; overscroll-behavior: contain; }
 
 /* Repo group accordion */
@@ -1111,6 +1129,11 @@ body.prog-modal-open .workspace {
 <!-- ── Board notification toast ───────────────────────────────────────────── -->
 <!-- hidden by default; shown by showBoardNotify() -->
 
+<!-- ── AI personalized plan modal ──────────────────────────────────────────── -->
+<div id="ai-plan-overlay" class="detail-overlay" hidden aria-modal="true" role="dialog" aria-label="בניית תוכנית מותאמת אישית">
+  <div id="ai-plan-panel" class="detail-panel" style="max-width:640px"></div>
+</div>
+
 <!-- ── Course details modal ────────────────────────────────────────────────── -->
 <div id="detail-overlay" class="detail-overlay" hidden aria-modal="true" role="dialog" aria-label="פרטי קורס">
   <div id="detail-panel" class="detail-panel"></div>
@@ -1143,8 +1166,8 @@ body.prog-modal-open .workspace {
           <button class="repo-search-clear" id="repo-search-clear" title="נקה חיפוש">✕</button>
         </div>
         <div class="repo-search-status" id="repo-search-status"></div>
-        <button class="btn btn-auto-plan" id="btn-auto-plan" disabled
-          title="בשלב זה בניית תוכנית אוטומטית עדיין לא מחוברת. בהמשך ניתן יהיה להזין העדפות אישיות וה-AI יבנה תוכנית שעומדת בדרישות התואר.">🤖 בנה תוכנית עם AI — בקרוב</button>
+        <button class="btn btn-auto-plan" id="btn-auto-plan"
+          title="הזינו העדפות אישיות וה-AI יציע תוכנית סמסטרים מותאמת אישית לתצוגה מקדימה ואישור">🤖 בנה מערכת מותאמת אישית</button>
       </div>
       <div class="sb-body" id="repo-body"></div>
     </aside>
@@ -1562,7 +1585,10 @@ async function main() {
   document.getElementById('btn-reset').addEventListener('click', resetBoard);
   document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
   document.getElementById('btn-my-courses').addEventListener('click', openMyCoursesModal);
-  /* btn-auto-plan is disabled — no click handler until AI is connected */
+  document.getElementById('btn-auto-plan').addEventListener('click', openPlanPreferencesModal);
+  document.getElementById('ai-plan-overlay').addEventListener('click', e => {
+    if (e.target.id === 'ai-plan-overlay') closeAiPlanModal();
+  });
 
   buildProgModal();
 
@@ -4174,6 +4200,381 @@ async function fetchBoardJSON(prog) {
   // Fallback: load from the local static JSON file
   console.log(`[board] source: static-json | program: ${prog.program_id} | path: ${prog.board_json}`);
   return fetchJSON(prog.board_json);
+}
+
+/* ── AI personalized plan: preferences → preview → apply ───────────────────
+ * The proposal is PREVIEW ONLY until the user clicks "החל תוכנית" — applying
+ * mutates local board state (state.semesters / localStorage) only, never
+ * board_json / Supabase. */
+
+let _aiPlanLastPreferences = null;
+let _aiPlanLastProposal    = null;
+
+function closeAiPlanModal() {
+  const overlay = document.getElementById('ai-plan-overlay');
+  overlay.setAttribute('hidden', '');
+  document.getElementById('ai-plan-panel').innerHTML = '';
+}
+
+function openPlanPreferencesModal() {
+  const categories = (programRequirements?.categories || [])
+    .map(cat => cat.name_he || cat.category_id)
+    .filter(Boolean);
+
+  const repoCourses = Object.values(courseMap)
+    .filter(c => c.course_type !== 'mandatory' && c.status !== 'missing_from_db')
+    .sort((a, b) => (a.name_he || '').localeCompare(b.name_he || '', 'he'));
+
+  const courseOptions = repoCourses
+    .map(c => `<option value="${esc(c.course_id)}">${esc(c.name_he || c.course_id)} (${esc(c.course_id)})</option>`)
+    .join('');
+
+  const categoryCheckboxes = categories.length
+    ? categories.map(cat => `
+        <label class="ai-plan-check">
+          <input type="checkbox" name="preferred_category" value="${esc(cat)}">
+          ${esc(cat)}
+        </label>`).join('')
+    : '<div class="ai-plan-hint">לא נמצאו קטגוריות בחירה לתוכנית זו.</div>';
+
+  const panel = document.getElementById('ai-plan-panel');
+  panel.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-head-row">
+        <h2 style="margin:0;font-size:1.1rem">בנה מערכת מותאמת אישית</h2>
+        <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
+      </div>
+      <p style="margin:4px 0 0;font-size:.8rem;color:var(--text-muted)">
+        ה-AI יציע תוכנית סמסטרים מבוססת על ההעדפות שלך. התוכנית תוצג לתצוגה מקדימה ולא תיכנס לתוקף עד שתאשר אותה.
+      </p>
+    </div>
+    <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;direction:rtl">
+      <label class="ai-plan-field">
+        עומס מקסימלי לשבוע בכל סמסטר (שעות)
+        <input type="number" id="ai-pref-max-hours" min="1" max="40" placeholder="לדוגמה: 18">
+      </label>
+
+      <label class="ai-plan-check">
+        <input type="checkbox" id="ai-pref-balance" checked>
+        להעדיף איזון עומס בין הסמסטרים
+      </label>
+
+      <label class="ai-plan-check">
+        <input type="checkbox" id="ai-pref-avoid-labs">
+        להימנע משילוב הרבה מעבדות באותו סמסטר
+      </label>
+
+      <label class="ai-plan-check">
+        <input type="checkbox" id="ai-pref-avoid-projects">
+        להימנע משילוב הרבה קורסים עם פרויקט/דוחות באותו סמסטר
+      </label>
+
+      <div>
+        <div style="font-size:.85rem;margin-bottom:6px">העדפת קטגוריות בחירה</div>
+        <div class="ai-plan-checks">${categoryCheckboxes}</div>
+      </div>
+
+      <label class="ai-plan-field">
+        קורסים שברצונך לכלול (Ctrl/Cmd לבחירה מרובה)
+        <select id="ai-pref-wanted" multiple size="4">${courseOptions}</select>
+      </label>
+
+      <label class="ai-plan-field">
+        קורסים שברצונך להימנע מהם, אם ניתן
+        <select id="ai-pref-unwanted" multiple size="4">${courseOptions}</select>
+      </label>
+
+      <label class="ai-plan-field">
+        בקשות/הערות נוספות (חופשי)
+        <textarea id="ai-pref-extra" rows="2" placeholder="לדוגמה: עדיפות לקורסים עם עומס נמוך בסמסטר האחרון"></textarea>
+      </label>
+
+      <div class="ai-plan-hint">
+        קורסים שסומנו כ"הושלם" לא ישובצו מחדש; קורסים "בלימוד כעת"/"מתוכננים" יישמרו בהתאם לסטטוס האישי שלך.
+      </div>
+
+      <div id="ai-plan-status" class="ai-plan-hint" hidden></div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-start">
+        <button class="btn btn-primary" id="ai-plan-generate">בנה תוכנית</button>
+        <button class="btn" id="ai-plan-cancel">ביטול</button>
+      </div>
+    </div>`;
+
+  document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
+  document.getElementById('ai-plan-cancel').addEventListener('click', closeAiPlanModal);
+  document.getElementById('ai-plan-generate').addEventListener('click', () => {
+    const prefs = {
+      max_weekly_hours: (() => {
+        const v = parseFloat(document.getElementById('ai-pref-max-hours').value);
+        return Number.isFinite(v) && v > 0 ? v : null;
+      })(),
+      balance_load:            document.getElementById('ai-pref-balance').checked,
+      avoid_multiple_labs:     document.getElementById('ai-pref-avoid-labs').checked,
+      avoid_multiple_projects: document.getElementById('ai-pref-avoid-projects').checked,
+      preferred_categories: Array.from(document.querySelectorAll('input[name="preferred_category"]:checked')).map(el => el.value),
+      wanted_course_ids:    Array.from(document.getElementById('ai-pref-wanted').selectedOptions).map(o => o.value),
+      unwanted_course_ids:  Array.from(document.getElementById('ai-pref-unwanted').selectedOptions).map(o => o.value),
+      extra_request_he:     document.getElementById('ai-pref-extra').value.trim() || undefined,
+    };
+    _aiPlanLastPreferences = prefs;
+    requestPlanProposal(prefs);
+  });
+
+  const overlay = document.getElementById('ai-plan-overlay');
+  overlay.classList.remove('hiding');
+  overlay.removeAttribute('hidden');
+}
+
+/** Build the per-course validation context (hours, allowed semesters, missing prereqs, completed). */
+function buildPlanValidationInputs() {
+  const completedCourseIds = new Set(
+    Object.entries(userCourseStatuses)
+      .filter(([, us]) => us.status === 'completed')
+      .map(([cid]) => cid)
+  );
+
+  const courses = {};
+  for (const c of Object.values(courseMap)) {
+    courses[c.course_id] = {
+      hours: c.weekly_hours ?? c.semester_hours ?? null,
+      effective_allowed_semesters: c.effective_allowed_semesters || null,
+      missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
+    };
+  }
+
+  const categoryRequirements = (programRequirements?.categories || [])
+    .map(cat => ({ name: cat.name_he || cat.category_id, required: cat.min_courses || 0 }));
+
+  return { completedCourseIds, courses, categoryRequirements };
+}
+
+/**
+ * Validate a plan proposal against the user's real constraints.
+ * Mirrors api/ai/plan_validation.ts (validatePlanProposal) — kept in sync
+ * manually since this runs client-side without a build step.
+ */
+function validatePlanProposalLocal(proposal, ctx) {
+  const errors = [];
+  const warnings = [];
+  const seen = new Map();
+  const placedCourseIds = new Set();
+
+  for (const sem of (proposal.semesters || [])) {
+    let semHours = 0;
+    for (const courseId of (sem.course_ids || [])) {
+      if (seen.has(courseId)) {
+        errors.push(`קורס ${courseId} משובץ פעמיים — גם ב-${seen.get(courseId)} וגם ב-${sem.semester_id}.`);
+      } else {
+        seen.set(courseId, sem.semester_id);
+      }
+      placedCourseIds.add(courseId);
+
+      if (ctx.completedCourseIds.has(courseId)) {
+        errors.push(`קורס ${courseId} כבר הושלם על ידי המשתמש ולא ניתן לשבץ אותו מחדש (ב-${sem.semester_id}).`);
+      }
+
+      const info = ctx.courses[courseId];
+      if (info?.effective_allowed_semesters?.length) {
+        if (!info.effective_allowed_semesters.includes(sem.semester_id)) {
+          errors.push(`קורס ${courseId} משובץ ב-${sem.semester_id} אך מותר רק ב-${info.effective_allowed_semesters.join(', ')}.`);
+        }
+      }
+
+      if (info?.missing_prerequisites?.length) {
+        const stillMissing = info.missing_prerequisites.filter(p => !placedCourseIds.has(p) && !ctx.completedCourseIds.has(p));
+        if (stillMissing.length) {
+          warnings.push(`לקורס ${courseId} (ב-${sem.semester_id}) חסרות דרישות קדם: ${stillMissing.join(', ')}.`);
+        }
+      }
+
+      semHours += info?.hours || 0;
+    }
+    if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
+      warnings.push(`בסמסטר ${sem.semester_id} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`);
+    }
+  }
+
+  for (const status of (proposal.requirements_status || [])) {
+    if (!status.satisfied && status.placed < status.required) {
+      warnings.push(`דרישת "${status.name}" אינה מתמלאת במלואה: ${status.placed}/${status.required}.`);
+    }
+  }
+
+  return { errors, warnings };
+}
+
+async function requestPlanProposal(prefs) {
+  const statusEl = document.getElementById('ai-plan-status');
+  const genBtn   = document.getElementById('ai-plan-generate');
+  statusEl.removeAttribute('hidden');
+  statusEl.textContent = 'בונה תוכנית מותאמת אישית… זה עשוי לקחת כמה שניות.';
+  genBtn.disabled = true;
+
+  try {
+    const resp = await fetch('/api/ai/generate-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        program_id:    selectedProg?.program_id,
+        plan_context:  buildPlanContext(),
+        preferences:   prefs,
+        session_token: getOrCreateSessionToken(),
+      }),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      statusEl.textContent = data?.error || 'שגיאה ביצירת התוכנית. נסה שוב.';
+      genBtn.disabled = false;
+      return;
+    }
+
+    const ctx = buildPlanValidationInputs();
+    ctx.maxHoursPerSemester = prefs.max_weekly_hours ?? null;
+    const { errors, warnings } = validatePlanProposalLocal(data, ctx);
+
+    _aiPlanLastProposal = data;
+    openPlanPreviewModal(data, errors, warnings);
+  } catch (err) {
+    statusEl.textContent = 'שגיאת רשת — נסה שוב.';
+    genBtn.disabled = false;
+  }
+}
+
+/** Compute course moves between the current board state and a proposal. */
+function computePlanMoves(proposal) {
+  const moves = [];
+  const newPlacement = {};
+  for (const sem of (proposal.semesters || [])) {
+    for (const cid of (sem.course_ids || [])) newPlacement[cid] = sem.semester_id;
+  }
+  const allCids = new Set([
+    ...Object.values(state.semesters).flat(),
+    ...Object.keys(newPlacement),
+  ]);
+  for (const cid of allCids) {
+    const from = findCoursePlacementSemId(cid);
+    const to   = newPlacement[cid] || null;
+    if (from !== to) moves.push({ course_id: cid, from, to });
+  }
+  return moves;
+}
+
+function findCoursePlacementSemId(cid) {
+  for (const [semId, ids] of Object.entries(state.semesters)) {
+    if ((ids || []).includes(cid)) return semId;
+  }
+  return null;
+}
+
+function openPlanPreviewModal(proposal, errors, warnings) {
+  const semestersHtml = (proposal.semesters || []).map(sem => {
+    const courses = (sem.course_ids || []).map(cid => {
+      const c = courseMap[cid];
+      return `<li>${esc(c?.name_he || cid)} <span style="color:var(--text-muted);font-size:.7rem">(${esc(cid)})</span></li>`;
+    }).join('');
+    return `<div class="ai-plan-sem">
+      <div class="ai-plan-sem-title">${esc(SEM_HE[sem.semester_id] || sem.semester_id)}</div>
+      <ul class="ai-plan-sem-courses">${courses || '<li>אין קורסים</li>'}</ul>
+    </div>`;
+  }).join('');
+
+  const moves = computePlanMoves(proposal);
+  const movesHtml = moves.length
+    ? `<ul class="ai-plan-moves">${moves.map(m => {
+        const name = esc(courseMap[m.course_id]?.name_he || m.course_id);
+        const from = m.from ? esc(SEM_HE[m.from] || m.from) : 'מאגר הקורסים';
+        const to   = m.to   ? esc(SEM_HE[m.to]   || m.to)   : 'מאגר הקורסים';
+        return `<li>${name}: ${from} ← ${to}</li>`;
+      }).join('')}</ul>`
+    : '<div class="ai-plan-hint">אין שינויים לעומת התוכנית הנוכחית.</div>';
+
+  const errorsHtml = errors.length
+    ? `<div class="ai-plan-errors"><strong>⚠ התוכנית אינה תקינה ולא ניתן להחיל אותה:</strong>
+        <ul>${errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`
+    : '';
+
+  const warningsHtml = warnings.length
+    ? `<div class="ai-plan-warnings"><strong>שימו לב:</strong>
+        <ul>${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`
+    : '';
+
+  const reqHtml = (proposal.requirements_status || []).length
+    ? `<ul class="ai-plan-reqs">${proposal.requirements_status.map(r =>
+        `<li>${esc(r.name)}: ${esc(r.placed)}/${esc(r.required)} ${r.satisfied ? '✓' : '⚠'}</li>`).join('')}</ul>`
+    : '';
+
+  const panel = document.getElementById('ai-plan-panel');
+  panel.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-head-row">
+        <h2 style="margin:0;font-size:1.1rem">תצוגה מקדימה — תוכנית מותאמת אישית</h2>
+        <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
+      </div>
+    </div>
+    <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
+      ${errorsHtml}
+      <div>
+        <div style="font-weight:600;margin-bottom:6px">נימוק התוכנית</div>
+        <div class="ai-plan-rationale">${esc(proposal.rationale_he || '')}</div>
+      </div>
+      <div>
+        <div style="font-weight:600;margin-bottom:6px">סמסטרים מוצעים</div>
+        <div class="ai-plan-sems">${semestersHtml}</div>
+      </div>
+      <div>
+        <div style="font-weight:600;margin-bottom:6px">שינויים לעומת התוכנית הנוכחית</div>
+        ${movesHtml}
+      </div>
+      ${reqHtml ? `<div><div style="font-weight:600;margin-bottom:6px">סטטוס דרישות</div>${reqHtml}</div>` : ''}
+      ${warningsHtml}
+      <div style="display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap">
+        <button class="btn btn-primary" id="ai-plan-apply" ${errors.length ? 'disabled' : ''}>החל תוכנית</button>
+        <button class="btn" id="ai-plan-ask-changes">בקש שינויים</button>
+        <button class="btn" id="ai-plan-reject">דחה</button>
+      </div>
+    </div>`;
+
+  document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
+  document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
+  document.getElementById('ai-plan-apply').addEventListener('click', () => {
+    if (errors.length) return; // safety: never apply an invalid plan
+    applyPlanProposal(proposal);
+    closeAiPlanModal();
+    showBoardNotify('התוכנית הותאמה אישית הוחלה על הלוח שלך');
+  });
+  document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
+    openPlanPreferencesModal();
+    if (_aiPlanLastPreferences) {
+      const extra = document.getElementById('ai-pref-extra');
+      if (extra) extra.value = _aiPlanLastPreferences.extra_request_he || '';
+    }
+  });
+}
+
+/**
+ * Apply a validated plan proposal to LOCAL board state only.
+ * Does not touch board_json / Supabase — only state.semesters / state.repo
+ * (persisted to localStorage via saveState()).
+ */
+function applyPlanProposal(proposal) {
+  const moves = computePlanMoves(proposal);
+  for (const m of moves) {
+    const c = courseMap[m.course_id];
+    if (isLocked(c)) continue; // never move locked/completed courses
+    if (m.from) state.semesters[m.from] = (state.semesters[m.from] || []).filter(x => x !== m.course_id);
+    else        state.repo = state.repo.filter(x => x !== m.course_id);
+
+    if (m.to) {
+      if (!state.semesters[m.to]) state.semesters[m.to] = [];
+      if (!state.semesters[m.to].includes(m.course_id)) state.semesters[m.to].push(m.course_id);
+    } else if (!state.repo.includes(m.course_id)) {
+      state.repo.push(m.course_id);
+    }
+  }
+  saveState();
+  renderAll();
 }
 
 main();
