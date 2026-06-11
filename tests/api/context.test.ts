@@ -134,6 +134,30 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('קורס ייחודי עם מעבדה');
   });
 
+  it('renders semester/lecture/tutorial/lab hours and teaching format from course_context', () => {
+    const courseContext = [
+      'קוד קורס: 0512-1202',
+      'שם קורס: אלקטרוניקה בסיסית',
+      'שעות שבועיות: לא ידוע (שעות סמסטריאליות: 2)',
+      'שעות מעבדה: 4',
+      'אופן הוראה: הרצאה + מעבדה',
+    ].join('\n');
+    const prompt = buildSystemPrompt({
+      program_id: 'mechanical_2027',
+      plan_context: PLAN_CONTEXT,
+      course_context: courseContext,
+    });
+    expect(prompt).toContain('שעות סמסטריאליות: 2');
+    expect(prompt).toContain('שעות מעבדה: 4');
+    expect(prompt).toContain('אופן הוראה: הרצאה + מעבדה');
+  });
+
+  it('instructs the model not to treat missing difficulty_score as missing workload evidence', () => {
+    const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: PLAN_CONTEXT });
+    expect(prompt).toContain('אין מדד קושי מספרי');
+    expect(prompt).toContain('אין מידע על העומס');
+  });
+
   it('does not contain any API keys or secrets', () => {
     const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: PLAN_CONTEXT });
     expect(prompt).not.toMatch(/sk-ant-/);
