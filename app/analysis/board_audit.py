@@ -66,7 +66,8 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
             issues.append(AuditIssue("error", "missing_course_id", None, f"course in {sem_id} has no course_id"))
             continue
         if not c.get("name_he"):
-            issues.append(AuditIssue("warning", "missing_name", cid, "course has no name_he"))
+            issues.append(AuditIssue("warning", "missing_name", cid,
+                                      f"course has no name_he (name_source={c.get('name_source')!r})"))
 
     # 2. mandatory courses have placement_policy
     # 3. flexible mandatory courses have program_allowed_semesters
@@ -165,6 +166,16 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
         if c.get("syllabus_parse_error"):
             issues.append(AuditIssue("warning", "syllabus_parse_failed", cid,
                                       str(c["syllabus_parse_error"])))
+
+    # 12. repository courses where syllabus_summary_he exists but the AI
+    # context would still be thin (missing topics/assessment)
+    for sem_id, c in all_courses:
+        cid = c.get("course_id")
+        if c.get("syllabus_summary_he") and sem_id is None:
+            if not c.get("syllabus_topics_he") and not c.get("syllabus_assessment_he"):
+                issues.append(AuditIssue("warning", "syllabus_summary_thin", cid,
+                                          "has syllabus_summary_he but no topics/assessment fields — "
+                                          "AI context for this elective may be thin"))
 
     return issues
 

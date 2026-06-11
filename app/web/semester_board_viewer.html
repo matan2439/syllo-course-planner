@@ -1924,6 +1924,15 @@ function init(board, audit, programJson) {
         needs_verification:          false,
         source_note:                 '',
         selection_reason:            null,
+        name_source:                 name_he ? 'program_json' : 'not_found',
+        name_source_confidence:      name_he ? 'high' : 'none',
+        syllabus_summary_he:         null,
+        syllabus_topics_he:          [],
+        syllabus_prerequisites_he:   [],
+        syllabus_assessment_he:      null,
+        syllabus_structure_he:       null,
+        syllabus_source_url:         null,
+        syllabus_confidence:         null,
       };
     }
   };
@@ -1968,6 +1977,15 @@ function init(board, audit, programJson) {
       if (!_ce.grade_signal && rc.grade_signal)                _ce.grade_signal               = rc.grade_signal;
       if (_ce.official_details_available == null)              _ce.official_details_available = rc.official_details_available ?? null;
       if (!_ce.detail_source_type && rc.detail_source_type)   _ce.detail_source_type  = rc.detail_source_type;
+      if (!_ce.syllabus_summary_he && rc.syllabus_summary_he) _ce.syllabus_summary_he = rc.syllabus_summary_he;
+      if (!_ce.syllabus_topics_he?.length && rc.syllabus_topics_he?.length) _ce.syllabus_topics_he = rc.syllabus_topics_he;
+      if (!_ce.syllabus_prerequisites_he?.length && rc.syllabus_prerequisites_he?.length) _ce.syllabus_prerequisites_he = rc.syllabus_prerequisites_he;
+      if (!_ce.syllabus_assessment_he && rc.syllabus_assessment_he) _ce.syllabus_assessment_he = rc.syllabus_assessment_he;
+      if (!_ce.syllabus_structure_he && rc.syllabus_structure_he) _ce.syllabus_structure_he = rc.syllabus_structure_he;
+      if (!_ce.syllabus_source_url && rc.syllabus_source_url) _ce.syllabus_source_url = rc.syllabus_source_url;
+      if (_ce.syllabus_confidence == null && rc.syllabus_confidence != null) _ce.syllabus_confidence = rc.syllabus_confidence;
+      if (rc.name_source)                                     _ce.name_source            = rc.name_source;
+      if (rc.name_source_confidence)                          _ce.name_source_confidence = rc.name_source_confidence;
     }
   }
 
@@ -2451,6 +2469,15 @@ function semColHtml(sem) {
   </div>`;
 }
 
+/* Precise data-quality badge for repository/elective courses (replaces the
+ * generic "מידע חלקי"), based on syllabus availability and name recovery. */
+function syllabusBadgeHtml(c) {
+  if (!c.name_he) return `<span class="badge bdg-missing">שם חסר</span>`;
+  if (c.syllabus_summary_he) return `<span class="badge bdg-elective">סילבוס נותח</span>`;
+  if (!c.syllabus_url) return `<span class="badge bdg-partial">סילבוס חסר</span>`;
+  return `<span class="badge bdg-partial">סילבוס לא פורסם</span>`;
+}
+
 /* ── Course card HTML ───────────────────────────────────────────────────── */
 function cardHtml(c, placed) {
   if (!c) return '';
@@ -2486,7 +2513,7 @@ function cardHtml(c, placed) {
     : isNotOffered
     ? `<span class="badge bdg-not-offered">לא מוצע בתשפ"ז</span>`
     : isPartial
-    ? `<span class="badge bdg-partial">מידע חלקי</span>`
+    ? syllabusBadgeHtml(c)
     : status === 'blocked'
     ? `<span class="badge bdg-blocked">${STAT_HE.blocked}</span>`
     : isFlexMand && isOfferingRestrictedFlex(c)
@@ -2715,8 +2742,9 @@ function buildCourseContext(c) {
     if (c.syllabus_structure_he)
                            lines.push(`מבנה הקורס מהסילבוס: ${c.syllabus_structure_he}`);
   } else {
-    lines.push(`סילבוס זמין: ${hasSyllabus ? 'כן (קישור בלבד, ללא תוכן מנותח)' : 'לא — אין תוכן סילבוס זמין למערכת'}`);
+    lines.push('סילבוס זמין: לא — הסילבוס לא פורסם/לא זמין במערכת. יש להשתמש בנתונים אחרים (קטגוריה, שעות, ציונים, דרישות קדם) ולא להניח תוכן סילבוס.');
   }
+  if (!c.name_he) lines.push('⚠ שם הקורס חסר במידע הזמין (לא נמצא מקור אמין).');
   if (hasSyllabus && c.syllabus_url) lines.push(`קישור סילבוס: ${c.syllabus_url}`);
   if (c.assessment_type) lines.push(`סוג הערכה: ${c.assessment_type}`);
 
@@ -2866,6 +2894,24 @@ function openCourseDetails(cid) {
       ? mkRow('שים לב:', esc(`חובה גמיש בתוכנית, מוצע השנה רק בסמסטר ${SEM_HE[(c.effective_allowed_semesters||[])[0]]?.split(' ').pop() || ''}`))
       : '',
     c.needs_verification ? mkRow('אימות:', '<span style="color:var(--warning)">⚠ ממתין לאימות</span>') : '',
+  ].filter(Boolean).join('');
+
+  /* Data-quality section: name source confidence, syllabus availability, missing data */
+  const syllabusAvail = c.syllabus_summary_he ? 'סילבוס נותח'
+    : c.syllabus_url ? 'סילבוס לא פורסם'
+    : 'סילבוס חסר';
+  const missingData = [
+    !c.name_he ? 'שם קורס' : null,
+    c.weekly_hours == null ? 'שעות שבועיות' : null,
+    !c.syllabus_summary_he ? 'תקציר סילבוס' : null,
+    c.grade_signal == null ? 'נתוני ציונים' : null,
+  ].filter(Boolean);
+  const dataQualityRows = [
+    (c.name_source && c.name_source_confidence)
+      ? mkRow('מקור שם הקורס:', esc(`${c.name_source} (אמינות: ${c.name_source_confidence})`))
+      : '',
+    mkRow('זמינות סילבוס:', esc(syllabusAvail)),
+    missingData.length ? mkRow('מידע חסר:', esc(missingData.join(', '))) : '',
   ].filter(Boolean).join('');
 
   /* Difficulty breakdown section */
@@ -3172,6 +3218,7 @@ function openCourseDetails(cid) {
     <div class="detail-body tabbed">
       <div class="detail-tab-panel active" id="dtab-info">
         ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
+        ${mkSection('איכות מידע', dataQualityRows)}
         ${diffSection}
         ${gradeSection}
         ${instructorSection}

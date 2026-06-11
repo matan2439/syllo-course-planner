@@ -1410,7 +1410,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4123",
@@ -1490,7 +1492,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4320",
@@ -1574,7 +1578,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4352",
@@ -1655,7 +1661,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4220",
@@ -1726,7 +1734,9 @@
         "syllabus_confidence": 0.4,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4221",
@@ -1801,7 +1811,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4223",
@@ -1878,7 +1890,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4224",
@@ -1956,7 +1970,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4420",
@@ -2032,7 +2048,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4422",
@@ -2192,7 +2210,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4455",
@@ -2264,7 +2284,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4622",
@@ -2338,7 +2360,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4391",
@@ -2434,7 +2458,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4624",
@@ -2505,7 +2531,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0581-4131",
@@ -2581,7 +2609,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4093",
@@ -2635,7 +2665,9 @@
         "assessment_intensity_score": 3.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4094",
@@ -2702,7 +2734,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4124",
@@ -2734,7 +2768,9 @@
         "grade_signal": null,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "not_found",
+        "name_source_confidence": "none"
       },
       {
         "course_id": "0542-4125",
@@ -2800,7 +2836,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4131",
@@ -2848,7 +2886,9 @@
         },
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4132",
@@ -2898,7 +2938,9 @@
         },
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4135",
@@ -2930,7 +2972,9 @@
         "grade_signal": null,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4179",
@@ -2991,7 +3035,9 @@
         "syllabus_confidence": 0.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4191",
@@ -3023,7 +3069,9 @@
         "grade_signal": null,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "not_found",
+        "name_source_confidence": "none"
       },
       {
         "course_id": "0542-4226",
@@ -3070,7 +3118,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4275",
@@ -3114,7 +3164,9 @@
         "syllabus_confidence": 0.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4321",
@@ -3161,7 +3213,9 @@
         },
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4322",
@@ -3208,7 +3262,9 @@
         },
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4351",
@@ -3270,7 +3326,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4425",
@@ -3334,7 +3392,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4524",
@@ -3396,7 +3456,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4527",
@@ -3443,7 +3505,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4559",
@@ -3489,7 +3553,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4621",
@@ -3553,7 +3619,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4722",
@@ -3619,7 +3687,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0509-4010",
@@ -3678,7 +3748,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-1203",
@@ -3749,11 +3821,13 @@
         "syllabus_confidence": 0.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-1202",
-        "name_he": null,
+        "name_he": "אלקטרוניקה בסיסית",
         "weekly_hours": null,
         "offered_semesters": [],
         "offered_in_year": true,
@@ -3805,20 +3879,29 @@
         "prerequisites_url": "https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05121202&kv=13&sem=20252",
         "moodle_url": "https://moodle.tau.ac.il/course/view.php?id=0512120213",
         "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-1202-13.html",
-        "syllabus_summary_he": "נושאי הקורס 1. מגברי שרת",
-        "syllabus_topics_he": [],
+        "syllabus_summary_he": "הקורס עוסק במגברים אופרטיביים, רכיבי מוליכים למחצה ודיודות, ניתוח ותכנון מגברי טרנזיסטור מסוג BJT ו-MOSFET, אלגברה בוליאנית ושערים לוגיים, ותכנון מעגלים קומבינטוריים כולל ייצוגים קנוניים ומפות קרנו.",
+        "syllabus_topics_he": [
+          "מגברים אופרטיביים",
+          "דיודות ורכיבי מוליכים למחצה",
+          "מגברי טרנזיסטור BJT",
+          "מגברי טרנזיסטור MOSFET",
+          "אלגברה בוליאנית ושערים לוגיים",
+          "מעגלים קומבינטוריים, ייצוגים קנוניים ומפות קרנו"
+        ],
         "syllabus_prerequisites_he": [
           "מב' למערכות ומעגלים חשמל' (05121201) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת",
           "מופיעות בדף הידיעון של התוכנית"
         ],
-        "syllabus_assessment_he": "ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
-        "syllabus_structure_he": "2.0 שעות הרצאה",
+        "syllabus_assessment_he": "ייתכנו מטלות נוספות מעבר למבחן הסופי.",
+        "syllabus_structure_he": "2.0 שעות סמסטריאליות, מעבדה ביום רביעי 16:00-20:00",
         "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120213&year=2025",
         "syllabus_last_fetched_at": "2026-06-10T21:32:26.996804+00:00",
-        "syllabus_confidence": 0.8,
+        "syllabus_confidence": 0.7,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "syllabus_page",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-2508",
@@ -3900,7 +3983,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-4200",
@@ -3974,7 +4059,9 @@
         "syllabus_confidence": 0.4,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-4362",
@@ -4042,7 +4129,9 @@
         "syllabus_confidence": 0.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-4700",
@@ -4111,7 +4200,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0512-4702",
@@ -4174,7 +4265,9 @@
         "syllabus_confidence": 0.4,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0571-1818",
@@ -4272,7 +4365,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0571-3802",
@@ -4343,7 +4438,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0571-4174",
@@ -4405,7 +4502,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4000",
@@ -4447,7 +4546,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4432",
@@ -4489,7 +4590,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4555",
@@ -4536,7 +4639,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4562",
@@ -4597,7 +4702,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-3160",
@@ -4659,7 +4766,9 @@
         "syllabus_confidence": 0.4,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4630",
@@ -4721,7 +4830,9 @@
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0555-4550",
@@ -4782,7 +4893,9 @@
         "syllabus_confidence": 0.0,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4011",
@@ -4826,7 +4939,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-4012",
@@ -4870,7 +4985,9 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       },
       {
         "course_id": "0542-3112",
@@ -4912,10 +5029,12 @@
         "syllabus_confidence": 0.6,
         "is_mandatory": false,
         "placement_policy": "elective",
-        "recommended_semester": null
+        "recommended_semester": null,
+        "name_source": "program_json",
+        "name_source_confidence": "high"
       }
     ],
-    "board_data_version": "6453b3d75c5a811f"
+    "board_data_version": "4eac9b71718daacb"
   },
   "summary": {
     "total_courses": 12,
