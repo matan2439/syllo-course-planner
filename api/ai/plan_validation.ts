@@ -163,6 +163,10 @@ export interface PlanValidationContext {
   courseNames?: Record<string, string>;
   /** semester_id -> Hebrew label (e.g. SEM_HE), used to produce readable messages. */
   semesterLabels?: Record<string, string>;
+  /** course_ids the user pinned ("אל תזיז") — must stay in their current semester. */
+  pinnedCourseIds?: Set<string>;
+  /** course_id -> current semester_id on the live board (for pinned-course checks). */
+  currentSemesterByCourseId?: Record<string, string | null>;
 }
 
 /** Render a course as "שם הקורס (course_id)" if a Hebrew name is known, else just the id. */
@@ -233,6 +237,14 @@ export function validatePlanProposal(
       // 2. completed course must not be (re-)scheduled
       if (ctx.completedCourseIds.has(courseId)) {
         errors.push(`קורס ${cName} כבר הושלם על ידי המשתמש ולא ניתן לשבץ אותו מחדש (ב${semName}).`);
+      }
+
+      // 2b. pinned course must remain in its current semester
+      if (ctx.pinnedCourseIds?.has(courseId)) {
+        const currentSem = ctx.currentSemesterByCourseId?.[courseId];
+        if (currentSem && currentSem !== sem.semester_id) {
+          errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
+        }
       }
 
       const info = ctx.courses[courseId];

@@ -26,7 +26,7 @@ import {
 } from './course-planner';
 import { planProposalSchema, normalizePlanProposal, droppedPlacementWarnings } from './plan_validation';
 
-const preferencesSchema = z.object({
+export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
   balance_load:            z.boolean().optional(),
   avoid_multiple_labs:     z.boolean().optional(),
@@ -35,7 +35,17 @@ const preferencesSchema = z.object({
   wanted_course_ids:       z.array(z.string()).optional(),
   unwanted_course_ids:     z.array(z.string()).optional(),
   extra_request_he:        z.string().max(1000).optional(),
+  action_type:             z.enum(['full_plan', 'balance_load', 'add_electives', 'fix_prerequisites', 'minimal_changes']).optional(),
+  pinned_course_ids:       z.array(z.string()).optional(),
 });
+
+const ACTION_TYPE_HE: Record<string, string> = {
+  full_plan:          'בנה תוכנית מלאה ומאוזנת לכל הסמסטרים שנותרו, כולל כל קורסי החובה וכמה שיותר מדרישות הבחירה.',
+  balance_load:       'המטרה העיקרית היא איזון עומס השעות בין הסמסטרים על בסיס הלוח הנוכחי — העבר קורסים גמישים/בחירה בין סמסטרים כדי לאזן את העומס, מבלי להוסיף קורסים חדשים שלא נדרשים לכך.',
+  add_electives:      'המטרה העיקרית היא להשלים דרישות בחירה שטרם מולאו — הוסף קורסי בחירה מתאימים מבלי לשנות את שיבוץ הקורסים הקיימים אלא אם הכרחי.',
+  fix_prerequisites:  'המטרה העיקרית היא לתקן בעיות דרישות קדם — שנה את סדר/שיבוץ הקורסים כך שדרישות הקדם יתמלאו, עם כמה שפחות שינויים אחרים.',
+  minimal_changes:    'הצע שינוי מינימלי בלבד — בצע את כמות השינויים הקטנה ביותר האפשרית בלוח הנוכחי כדי לשפר אותו, ושמור על שאר השיבוצים כפי שהם.',
+};
 
 const requestSchema = z.object({
   program_id:    z.string().min(1, 'program_id is required'),
@@ -86,6 +96,7 @@ function preferencesToHebrew(prefs: z.infer<typeof preferencesSchema>): string {
   if (prefs.wanted_course_ids?.length) lines.push(`- קורסים שהמשתמש רוצה לכלול: ${prefs.wanted_course_ids.join(', ')}.`);
   if (prefs.unwanted_course_ids?.length) lines.push(`- קורסים שהמשתמש לא רוצה לכלול (אם אפשרי): ${prefs.unwanted_course_ids.join(', ')}.`);
   if (prefs.extra_request_he) lines.push(`- בקשה נוספת מהמשתמש: ${prefs.extra_request_he}`);
+  if (prefs.pinned_course_ids?.length) lines.push(`- קורסים מסומנים כ"אל תזיז" (אסור להזיז אותם מהסמסטר הנוכחי שלהם בלוח): ${prefs.pinned_course_ids.join(', ')}.`);
   return lines.length ? lines.join('\n') : 'לא הוגדרו העדפות מיוחדות.';
 }
 
@@ -164,7 +175,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
 ${preferencesToHebrew(preferences)}
 
-חשוב מאוד: עליך לבנות תוכנית מלאה להשלמת התואר עבור כל הסמסטרים שנותרו — לא רק להוסיף את הקורסים שהמשתמש ביקש. אסור להחזיר תוכנית חלקית שמכילה רק את הקורסים המבוקשים (wanted_course_ids) בתוספת הקורסים הקבועים שכבר משובצים. "קורסים שהמשתמש רוצה לכלול" הם העדפה בלבד, לא רשימת הקורסים המלאה.
+${preferences.action_type && preferences.action_type !== 'full_plan' ? `## סוג הפעולה המבוקשת\n${ACTION_TYPE_HE[preferences.action_type]}\n` : ''}
+${preferences.pinned_course_ids?.length ? `## קורסים מסומנים כ"אל תזיז"\nאסור בשום אופן להזיז את הקורסים הבאים מהסמסטר הנוכחי שלהם בלוח: ${preferences.pinned_course_ids.join(', ')}. אם קורס כזה משובץ כיום בסמסטר מסוים, הוא חייב להישאר באותו סמסטר בדיוק בתוכנית המוצעת.\n` : ''}
+${(!preferences.action_type || preferences.action_type === 'full_plan') ? `חשוב מאוד: עליך לבנות תוכנית מלאה להשלמת התואר עבור כל הסמסטרים שנותרו — לא רק להוסיף את הקורסים שהמשתמש ביקש. אסור להחזיר תוכנית חלקית שמכילה רק את הקורסים המבוקשים (wanted_course_ids) בתוספת הקורסים הקבועים שכבר משובצים. "קורסים שהמשתמש רוצה לכלול" הם העדפה בלבד, לא רשימת הקורסים המלאה.` : 'בהתאם לסוג הפעולה שצוין למעלה, התמקד בשינוי המבוקש בלבד והימנע משינויים נוספים שלא נדרשים.'}
 
 הנחיות מחייבות:
 - אסור לשבץ קורס שמופיע ב"סטטוס אישי" כ"הושלם" (completed) — קורסים אלה אינם חוזרים לתוכנית.

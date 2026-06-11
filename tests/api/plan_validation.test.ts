@@ -345,6 +345,28 @@ describe('validatePlanProposal', () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it('rejects a plan that moves a pinned course out of its current semester', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      pinnedCourseIds: new Set(['0542-4221']),
+      currentSemesterByCourseId: { '0542-4221': 'year_3_semester_a' },
+    };
+    // BASE_PROPOSAL places 0542-4221 in year_3_semester_b, but it's pinned to year_3_semester_a
+    const result = validatePlanProposal(BASE_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('0542-4221') && e.includes("אל תזיז"))).toBe(true);
+  });
+
+  it('allows a pinned course that stays in its current semester', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      pinnedCourseIds: new Set(['0542-4120']),
+      currentSemesterByCourseId: { '0542-4120': 'year_3_semester_a' },
+    };
+    // BASE_PROPOSAL places 0542-4120 in year_3_semester_a — matches its current semester
+    const result = validatePlanProposal(BASE_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes("אל תזיז"))).toBe(false);
+  });
+
   it('warns when a category requirement is not satisfied', () => {
     const proposal: PlanProposal = {
       ...BASE_PROPOSAL,
