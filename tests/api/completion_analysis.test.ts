@@ -25,6 +25,7 @@ import {
   DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN,
   MAX_REASONABLE_SEMESTER_HOURS,
 } from '../../api/ai/completion_analysis';
+import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
 
 function baseCtx(overrides: any = {}): any {
@@ -334,6 +335,127 @@ describe('repairAddMissingMandatory', () => {
     const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
     expect(result.added).toEqual([]);
     expect(result.unplaceable).toEqual([{ course_id: 'M4', name_he: 'חובה תקוע' }]);
+  });
+});
+
+describe('PART G — repairAddMissingMandatory additional coverage', () => {
+  it('inserts the three missing Mechanical Engineering mandatory courses (0542-3620/3780/3791) into a legal year-3 semester', () => {
+    const knownSemesterIds = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a'];
+    const proposal = {
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: [] },
+        { semester_id: 'year_3_semester_b', course_ids: [] },
+        { semester_id: 'year_4_semester_a', course_ids: [] },
+      ],
+    };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [
+        { course_id: '0542-3620', name_he: 'מעבר חם', hours: 3 },
+        { course_id: '0542-3780', name_he: 'תהליכי עיבוד', hours: 3 },
+        { course_id: '0542-3791', name_he: 'תהליכי עיבוד - מעבדה', hours: 1 },
+      ],
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const courses = {
+      '0542-3620': { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+      '0542-3780': { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+      '0542-3791': { hours: 1, placement_policy: 'flexible', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+    };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.unplaceable).toEqual([]);
+    expect(result.added.map(a => a.course_id).sort()).toEqual(['0542-3620', '0542-3780', '0542-3791']);
+    const allPlaced = result.proposal.semesters.flatMap((s: any) => s.course_ids);
+    for (const cid of ['0542-3620', '0542-3780', '0542-3791']) {
+      expect(allPlaced).toContain(cid);
+    }
+  });
+
+  it('repairPlanLoad never removes a mandatory course while resolving overload', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'E1', 'E2'] },
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses: any = {
+      M1: { hours: 4, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['s1'] },
+      E1: { hours: 4, effective_allowed_semesters: ['s1', 's2'] },
+      E2: { hours: 4, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const ctx: any = { courses, maxHoursPerSemester: 8, pinnedCourseIds: new Set(), movableCourseIds: new Set(['E1', 'E2']) };
+    const result = repairPlanLoad(proposal as any, ctx);
+    const allPlaced = result.proposal.semesters.flatMap((s: any) => s.course_ids);
+    expect(allPlaced).toContain('M1');
+    expect(allPlaced.sort()).toEqual(['E1', 'E2', 'M1'].sort());
+  });
+
+  it('category repair (repairAddMissingElectives) fills מערכות/מעבדות מתקדמות candidates after mandatory repair runs', () => {
+    const knownSemesterIds = ['s1', 's2'];
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [{ course_id: '0542-3620', name_he: 'מעבר חם', hours: 3 }],
+      categories: [
+        { name: 'קורסי ליבה — מערכות', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'SYS1', hours: 3, is_wanted: true }] },
+        { name: 'מעבדות מתקדמות', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'LAB1', hours: 2, is_wanted: true }] },
+      ],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const courses = {
+      '0542-3620': { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] },
+      SYS1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      LAB1: { hours: 2, effective_allowed_semesters: ['s1', 's2'] },
+    };
+
+    const afterMandatory = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    const afterElectives = repairAddMissingElectives(afterMandatory.proposal as any, analysis, { courses, knownSemesterIds });
+
+    const allPlaced = afterElectives.proposal.semesters.flatMap((s: any) => s.course_ids);
+    expect(allPlaced).toEqual(expect.arrayContaining(['0542-3620', 'SYS1', 'LAB1']));
+    expect(afterElectives.added.map(a => a.category).sort()).toEqual(['קורסי ליבה — מערכות', 'מעבדות מתקדמות'].sort());
+  });
+
+  it('after mandatory repair, validatePlanProposal no longer reports a generic mandatory-missing message', () => {
+    const ctx: any = {
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['0542-3620'],
+      courses: { '0542-3620': { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1'] } },
+    };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [{ course_id: '0542-3620', name_he: 'מעבר חם', hours: 3 }],
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses: ctx.courses, knownSemesterIds: ['s1'] });
+    expect(result.added.map(a => a.course_id)).toEqual(['0542-3620']);
+
+    const proposalProposal = { semesters: result.proposal.semesters, requirements_status: [] };
+    const { errors } = validatePlanProposal(proposalProposal as any, ctx);
+    expect(errors.some(e => e.includes('קורס חובה חסר'))).toBe(false);
+  });
+
+  it('a mandatory course that has no legal semester gets an exact blocking reason', () => {
+    const knownSemesterIds = ['s1', 's2'];
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [{ course_id: 'M5', name_he: 'קורס חסום', hours: 3 }],
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const courses = { M5: { hours: 3, placement_policy: 'fixed', effective_allowed_semesters: ['s9'] } };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.unplaceable).toEqual([{ course_id: 'M5', name_he: 'קורס חסום' }]);
+    const msg = `קורס חובה ${result.unplaceable[0].name_he || result.unplaceable[0].course_id} לא ניתן לשיבוץ חוקי.`;
+    expect(msg).toBe('קורס חובה קורס חסום לא ניתן לשיבוץ חוקי.');
   });
 });
 

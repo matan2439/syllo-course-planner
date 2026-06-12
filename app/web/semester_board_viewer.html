@@ -5018,6 +5018,22 @@ function normalizePlanProposalLocal(proposal) {
     }
     bySemester.set(normalized, existing);
   }
+
+  // PART B (pipeline order) step 1 — baseline: carry forward any not-yet-
+  // completed course currently on the live board that the AI proposal didn't
+  // place anywhere, so untouched mandatory courses aren't silently dropped
+  // from the final plan (they remain in their current live-board semester).
+  for (const [semId, courseIds] of Object.entries(state?.semesters || {})) {
+    if (!SEMESTERS.some(s => s.id === semId)) continue;
+    for (const cid of (courseIds || [])) {
+      if (placedSoFar.has(cid) || isCourseCompleted(cid) || !courseMap[cid]) continue;
+      placedSoFar.add(cid);
+      const existing = bySemester.get(semId) || [];
+      existing.push(cid);
+      bySemester.set(semId, existing);
+    }
+  }
+
   return {
     proposal: {
       ...proposal,
