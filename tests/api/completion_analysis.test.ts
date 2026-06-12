@@ -19,6 +19,9 @@ import {
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
   SEVERE_OVERLOAD_MARGIN,
+  MAX_ADDED_ELECTIVES_FOR_HOURS,
+  DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN,
+  MAX_REASONABLE_SEMESTER_HOURS,
 } from '../../api/ai/completion_analysis';
 import type { PlanContext } from '../../api/ai/_context';
 
@@ -1037,5 +1040,144 @@ describe('repairAddHoursToDegree and degree-hours completeness (PART G)', () => 
 
     const completeness = evaluatePlanCompleteness(proposalSemesters, analysis as any);
     expect(completeness.incomplete).toBe(true);
+  });
+});
+
+describe('completed-degree-hours model (PART H)', () => {
+  function ctxWith(totalHoursProgress: any, semesters: PlanContext['semesters'] = []): PlanContext {
+    return {
+      semesters,
+      personal_status: { completed: [], currently_taking: [], planned: [] },
+      total_hours_progress: totalHoursProgress,
+    } as any;
+  }
+
+  it('1. manual completed_degree_hours is used as known_completed_hours and marks prior hours as known', () => {
+    const analysis = buildCompletionAnalysis(ctxWith({ manual_completed_degree_hours: 115, known_completed_hours: 30 }));
+    expect(analysis.hours.known_completed_hours).toBe(115);
+    expect(analysis.hours.prior_hours_known).toBe(true);
+  });
+
+  it('2. without manual hours, completed-course-status hours are used and prior hours are unknown', () => {
+    const analysis = buildCompletionAnalysis(ctxWith({ known_completed_hours: 30 }));
+    expect(analysis.hours.known_completed_hours).toBe(30);
+    expect(analysis.hours.prior_hours_known).toBe(false);
+  });
+
+  it('3. completed_degree_hours=115 leaves only ~70 remaining_hours toward the degree', () => {
+    const analysis = buildCompletionAnalysis(ctxWith({ manual_completed_degree_hours: 115 }));
+    expect(analysis.hours.remaining_hours).toBe(70);
+  });
+
+  it('4. program A and program B can have different degree_required_hours', () => {
+    const a = buildCompletionAnalysis(ctxWith({ degree_required_hours: 160, manual_completed_degree_hours: 100 }));
+    const b = buildCompletionAnalysis(ctxWith({ degree_required_hours: 200, manual_completed_degree_hours: 100 }));
+    expect(a.hours.required_total).toBe(160);
+    expect(a.hours.remaining_hours).toBe(60);
+    expect(b.hours.required_total).toBe(200);
+    expect(b.hours.remaining_hours).toBe(100);
+  });
+
+  it('5. Mechanical Engineering uses 185 from its program config, not a hard-coded global', () => {
+    // No degree_required_hours supplied -> falls back to DEGREE_REQUIRED_HOURS (185).
+    const analysis = buildCompletionAnalysis(ctxWith({ manual_completed_degree_hours: 0 }));
+    expect(analysis.hours.required_total).toBe(DEGREE_REQUIRED_HOURS);
+    expect(analysis.hours.required_total).toBe(185);
+  });
+
+  it('6. missing general/humanities hours remain a separate requirement, not filled by technical electives', () => {
+    const courses: Record<string, any> = {
+      E1: { hours: 30, effective_allowed_semesters: ['s1'] },
+    };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', category_id: 'other', required: 0, placed: 0, missing: 0, candidates: [{ course_id: 'E1', hours: 30 }] }],
+      elective_pool: [{ course_id: 'E1', hours: 30 }],
+      hours: {
+        required_total: 185, known_completed_hours: 150, known_scheduled_hours: 0, known_total_hours: 150,
+        remaining_hours: 35, unknown_hour_courses: 0, approximate: false,
+        completed_general_hours: 0, required_general_hours: 10, general_hours_shortfall: 10,
+        prior_hours_known: true,
+      },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    // target = required_total(185) - general_hours_shortfall(10) = 175; total starts at 150 -> needs 25, E1=30 is enough
+    expect(result.proposed_total_hours).toBe(180);
+
+    const completeness = evaluatePlanCompleteness(proposal.semesters, analysis);
+    expect(completeness.reasons.some(r => r.includes('שער/רוח'))).toBe(true);
+  });
+
+  it('7. repairAddHoursToDegree adds at most DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN electives when prior hours are unknown', () => {
+    const courses: Record<string, any> = {};
+    const elective_pool = [];
+    for (let i = 1; i <= 10; i++) {
+      const id = `X${i}`;
+      courses[id] = { hours: 1, effective_allowed_semesters: ['s1'] };
+      elective_pool.push({ course_id: id, hours: 1 });
+    }
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [], elective_pool,
+      hours: {
+        required_total: 185, known_completed_hours: 0, known_scheduled_hours: 50, known_total_hours: 50,
+        remaining_hours: 135, unknown_hour_courses: 0, approximate: false,
+        completed_general_hours: 0, required_general_hours: 0, general_hours_shortfall: 0,
+        prior_hours_known: false,
+      },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN);
+    expect(result.added.length).toBeLessThan(10);
+  });
+
+  it('8. repairAddHoursToDegree stops at MAX_ADDED_ELECTIVES_FOR_HOURS and reports capped when prior hours are known', () => {
+    const courses: Record<string, any> = {};
+    const elective_pool = [];
+    for (let i = 1; i <= 20; i++) {
+      const id = `Y${i}`;
+      courses[id] = { hours: 1, effective_allowed_semesters: ['s1'] };
+      elective_pool.push({ course_id: id, hours: 1 });
+    }
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [], elective_pool,
+      hours: {
+        required_total: 185, known_completed_hours: 0, known_scheduled_hours: 50, known_total_hours: 50,
+        remaining_hours: 135, unknown_hour_courses: 0, approximate: false,
+        completed_general_hours: 0, required_general_hours: 0, general_hours_shortfall: 0,
+        prior_hours_known: true,
+      },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(MAX_ADDED_ELECTIVES_FOR_HOURS);
+    expect(result.capped).toBe(true);
+    expect(result.proposed_total_hours).toBeLessThan(185);
+  });
+
+  it('9. a semester exceeding MAX_REASONABLE_SEMESTER_HOURS blocks the plan as unreasonable', () => {
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [], elective_pool: [],
+      hours: {
+        required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0,
+        remaining_hours: 185, unknown_hour_courses: 0, approximate: false,
+        completed_general_hours: 0, required_general_hours: 0, general_hours_shortfall: 0,
+        prior_hours_known: false,
+      },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const courseHours: Record<string, number> = { C1: 18, C2: 18 };
+    const proposalSemesters = [{ semester_id: 's1', course_ids: ['C1', 'C2'] }];
+    const completeness = evaluatePlanCompleteness(proposalSemesters, analysis, { courseHours });
+    expect(completeness.reasons.some(r => r.includes('עומס לא סביר'))).toBe(true);
+    expect(completeness.incomplete).toBe(true);
+    expect(pickPrimaryBlockingReason(completeness, [])).toBe('לא ניתן להחיל — נוצר עומס לא סביר');
   });
 });

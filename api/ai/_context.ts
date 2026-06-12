@@ -100,8 +100,18 @@ export interface PlanContext {
       is_wanted?: boolean;
     }>;
   }>;
-  /** Progress toward the 185 ש"ש degree-hour requirement. */
-  total_hours_progress?: { known_completed_hours: number };
+  /** Progress toward the degree-hour requirement. */
+  total_hours_progress?: {
+    known_completed_hours: number;
+    /** Program-specific total degree hours; defaults to 185 if omitted. */
+    degree_required_hours?: number;
+    /** Manually entered total completed-degree hours — preferred over known_completed_hours if present. */
+    manual_completed_degree_hours?: number;
+    /** קורסי שער/רוח hours required by the degree. */
+    required_general_hours?: number;
+    /** קורסי שער/רוח hours already completed. */
+    completed_general_hours?: number;
+  };
   /** Courses that may legally be moved between semesters (not pinned, not completed). */
   movable_courses?: Array<{
     course_id: string;
