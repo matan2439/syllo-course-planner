@@ -312,6 +312,40 @@ export interface MissingRequirementCard {
   candidates: CompletionCandidate[];
 }
 
+export interface CategoryStatus {
+  category_id: string | null;
+  name: string;
+  satisfied: boolean;
+  placed_course_ids: string[];
+  missing: number;
+  candidates: CompletionCandidate[];
+}
+
+/**
+ * PART D — for every required elective category, report whether it's already
+ * satisfied by courses in `placedIds` (with the placed course ids), or — if
+ * not — the remaining shortfall and up to 3 best candidates.
+ */
+export function getCategoryStatusReport(
+  analysis: CompletionAnalysis,
+  placedIds: Set<string>,
+): CategoryStatus[] {
+  return analysis.categories.map(cat => {
+    const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id));
+    const stillMissing = Math.max(0, cat.missing - placedFromCategory.length);
+    const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
+    const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+    return {
+      category_id: cat.category_id ?? null,
+      name: cat.name,
+      satisfied: stillMissing === 0,
+      placed_course_ids: placedFromCategory.map(c => c.course_id),
+      missing: stillMissing,
+      candidates: sorted.slice(0, 3),
+    };
+  });
+}
+
 /**
  * PART B — for each elective category still unmet by the proposal, return a
  * compact card with up to 3 best candidates. Only includes categories that
@@ -322,20 +356,9 @@ export function getMissingRequirementCards(
   analysis: CompletionAnalysis,
   placedIds: Set<string>,
 ): MissingRequirementCard[] {
-  return analysis.categories
-    .map(cat => {
-      const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id)).length;
-      const stillMissing = Math.max(0, cat.missing - placedFromCategory);
-      const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
-      const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
-      return {
-        category_id: cat.category_id ?? null,
-        name: cat.name,
-        missing: stillMissing,
-        candidates: sorted.slice(0, 3),
-      };
-    })
-    .filter(c => c.missing > 0);
+  return getCategoryStatusReport(analysis, placedIds)
+    .filter(c => c.missing > 0)
+    .map(({ category_id, name, missing, candidates }) => ({ category_id, name, missing, candidates }));
 }
 
 /**
@@ -349,20 +372,17 @@ export function pickPrimaryBlockingReason(
 ): string {
   if (!completeness.incomplete) {
     return completeness.reasons.length > 0
-      ? 'ניתן להחיל — נותרו אזהרות בלבד'
-      : 'ניתן להחיל';
+      ? 'תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד'
+      : 'תוכנית חוקית ומאוזנת';
   }
 
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
-    const total = missingWithCandidates.reduce((sum, c) => sum + c.missing, 0);
-    return total === 1
-      ? 'לא ניתן להחיל — חסרה דרישת בחירה אחת'
-      : `לא ניתן להחיל — חסרות ${total} דרישות בחירה`;
+    return 'לא ניתן להחיל — חסרות דרישות תואר';
   }
 
   if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
-    return 'לא ניתן להחיל — עומס גבוה מדי בסמסטר';
+    return 'לא ניתן להחיל — עומס גבוה מדי';
   }
 
   if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {

@@ -7,6 +7,7 @@ import {
   repairAddMissingElectives,
   repairPlanLoad,
   getMissingRequirementCards,
+  getCategoryStatusReport,
   pickPrimaryBlockingReason,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
@@ -545,6 +546,87 @@ describe('getMissingRequirementCards', () => {
   });
 });
 
+describe('getCategoryStatusReport', () => {
+  const baseAnalysis = {
+    completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+    hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+    overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+  };
+
+  it('reports satisfied=true with the placed course id when a category is filled', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{
+        name: 'קורסי ליבה — מוצקים', category_id: 'solids', required: 1, placed: 0, missing: 1,
+        candidates: [{ course_id: 'S1', name_he: 'מוצקים מתקדם', hours: 3 }],
+      }],
+    };
+    const report = getCategoryStatusReport(analysis as any, new Set(['S1']));
+    expect(report).toEqual([{
+      category_id: 'solids', name: 'קורסי ליבה — מוצקים', satisfied: true,
+      placed_course_ids: ['S1'], missing: 0, candidates: [],
+    }]);
+  });
+
+  it('reports satisfied=false with remaining candidates when a category is unfilled', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{
+        name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1,
+        candidates: [{ course_id: 'L1', name_he: 'מעבדה א', hours: 2 }],
+      }],
+    };
+    const report = getCategoryStatusReport(analysis as any, new Set());
+    expect(report[0].satisfied).toBe(false);
+    expect(report[0].missing).toBe(1);
+    expect(report[0].candidates.map(c => c.course_id)).toEqual(['L1']);
+  });
+});
+
+describe('repairAddMissingElectives: required-category auto-fill respects wanted/unwanted', () => {
+  const knownSemesterIds = ['s1', 's2'];
+
+  it('prefers a wanted candidate but still fills the required category if unwanted', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const courses = {
+      F1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      F2: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const analysis = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{
+        name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 0, missing: 1,
+        candidates: [
+          { course_id: 'F1', hours: 3, is_wanted: true },
+          { course_id: 'F2', hours: 3 },
+        ],
+      }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds });
+    expect(result.added.map(a => a.course_id)).toEqual(['F1']);
+  });
+
+  it('falls back to an avoided candidate to satisfy the required category when it is the only option', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const courses = { L1: { hours: 2, effective_allowed_semesters: ['s1'] } };
+    const analysis = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{
+        name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1,
+        candidates: [{ course_id: 'L1', hours: 2 }],
+      }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis as any, {
+      courses, knownSemesterIds: ['s1'], unwantedCourseIds: ['L1'],
+    });
+    expect(result.added.map(a => a.course_id)).toEqual(['L1']);
+  });
+});
+
 describe('pickPrimaryBlockingReason', () => {
   it('prefers missing-requirement cards over a generic blocking error', () => {
     const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
@@ -553,8 +635,7 @@ describe('pickPrimaryBlockingReason', () => {
       { category_id: 'solids', name: 'מוצקים', missing: 2, candidates: [{ course_id: 'S1' }] },
     ];
     const reason = pickPrimaryBlockingReason(completeness as any, missingCards as any);
-    expect(reason).toContain('4');
-    expect(reason).toContain('דרישות בחירה');
+    expect(reason).toContain('חסרות דרישות תואר');
   });
 
   it('falls back to overload reason when no missing-requirement candidates exist', () => {
@@ -566,11 +647,11 @@ describe('pickPrimaryBlockingReason', () => {
   it('returns a warnings-only message when the plan is applicable but has notes', () => {
     const completeness = { incomplete: false, reasons: ['הדרישה הושלמה: קטגוריית "בחירה".'], added_electives: 1 };
     const reason = pickPrimaryBlockingReason(completeness as any, []);
-    expect(reason).toBe('ניתן להחיל — נותרו אזהרות בלבד');
+    expect(reason).toBe('תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד');
   });
 
   it('returns a clean applicable message with no reasons at all', () => {
     const completeness = { incomplete: false, reasons: [], added_electives: 0 };
-    expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('ניתן להחיל');
+    expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('תוכנית חוקית ומאוזנת');
   });
 });

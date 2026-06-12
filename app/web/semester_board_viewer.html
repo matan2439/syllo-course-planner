@@ -4619,8 +4619,14 @@ function openPlanPreferencesModal() {
       </div>
 
       <div class="ai-plan-section">
-        <div class="ai-plan-section-title">קטגוריות בחירה</div>
-        <div class="ai-plan-checks">${categoryCheckboxes}</div>
+        <div class="ai-plan-hint">המערכת תבחר אוטומטית קורסים מכל קטגוריות החובה ותאזן את העומס לפי ההעדפות שלך.</div>
+        <details class="ai-plan-details">
+          <summary>העדפות מתקדמות בלבד</summary>
+          <div class="ai-plan-hint" style="margin:6px 0">
+            אלו העדפות בלבד, לא דרישות — דרישות התואר מתמלאות אוטומטית בכל מקרה.
+          </div>
+          <div class="ai-plan-checks">${categoryCheckboxes}</div>
+        </details>
       </div>
 
       <div class="ai-plan-section">
@@ -5256,40 +5262,44 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   return { incomplete: blocking.length > 0, reasons, added_electives };
 }
 
+/** Mirrors api/ai/completion_analysis.ts (getCategoryStatusReport). */
+function getCategoryStatusReportLocal(analysis, placedIds) {
+  return analysis.categories.map(cat => {
+    const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id));
+    const stillMissing = Math.max(0, cat.missing - placedFromCategory.length);
+    const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
+    const sorted = [...remaining].sort((a, b) => _scoreCandidateLocal(b) - _scoreCandidateLocal(a));
+    return {
+      category_id: cat.category_id ?? null,
+      name: cat.name,
+      satisfied: stillMissing === 0,
+      placed_course_ids: placedFromCategory.map(c => c.course_id),
+      missing: stillMissing,
+      candidates: sorted.slice(0, 3),
+    };
+  });
+}
+
 /** Mirrors api/ai/completion_analysis.ts (getMissingRequirementCards). */
 function getMissingRequirementCardsLocal(analysis, placedIds) {
-  return analysis.categories
-    .map(cat => {
-      const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id)).length;
-      const stillMissing = Math.max(0, cat.missing - placedFromCategory);
-      const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
-      const sorted = [...remaining].sort((a, b) => _scoreCandidateLocal(b) - _scoreCandidateLocal(a));
-      return {
-        category_id: cat.category_id ?? null,
-        name: cat.name,
-        missing: stillMissing,
-        candidates: sorted.slice(0, 3),
-      };
-    })
-    .filter(c => c.missing > 0);
+  return getCategoryStatusReportLocal(analysis, placedIds)
+    .filter(c => c.missing > 0)
+    .map(({ category_id, name, missing, candidates }) => ({ category_id, name, missing, candidates }));
 }
 
 /** Mirrors api/ai/completion_analysis.ts (pickPrimaryBlockingReason). */
 function pickPrimaryBlockingReasonLocal(completeness, missingCards) {
   if (!completeness.incomplete) {
     return completeness.reasons.length > 0
-      ? 'ניתן להחיל — נותרו אזהרות בלבד'
-      : 'ניתן להחיל';
+      ? 'תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד'
+      : 'תוכנית חוקית ומאוזנת';
   }
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
-    const total = missingWithCandidates.reduce((sum, c) => sum + c.missing, 0);
-    return total === 1
-      ? 'לא ניתן להחיל — חסרה דרישת בחירה אחת'
-      : `לא ניתן להחיל — חסרות ${total} דרישות בחירה`;
+    return 'לא ניתן להחיל — חסרות דרישות תואר';
   }
   if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
-    return 'לא ניתן להחיל — עומס גבוה מדי בסמסטר';
+    return 'לא ניתן להחיל — עומס גבוה מדי';
   }
   if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {
     return 'לא ניתן להחיל — קורס נעוץ הוזז';
@@ -5545,9 +5555,22 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const restReasonsHtml = restReasons.length
     ? `<details class="ai-plan-details"><summary>עוד ${restReasons.length} הערות</summary><ul>${restReasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></details>`
     : '';
+  // ── PART D: per-category requirement status (with chosen course names). ──
+  const categoryStatus = _aiPlanLastAnalysis ? getCategoryStatusReportLocal(_aiPlanLastAnalysis, placedIdsForCards) : [];
+  const categoryStatusHtml = categoryStatus.length
+    ? `<ul class="ai-plan-cat-status">${categoryStatus.map(cat => {
+        if (cat.satisfied) {
+          const names = cat.placed_course_ids.map(cid => courseMap[cid]?.name_he || cid).join(', ');
+          return `<li>✓ ${esc(cat.name)}: הושלם${names ? ` — ${esc(names)}` : ''}</li>`;
+        }
+        return `<li>⚠ ${esc(cat.name)}: ${cat.candidates.length} / ${cat.missing} מועמדים זמינים</li>`;
+      }).join('')}</ul>`
+    : '';
+
   const completenessHtml = `
     <div class="ai-plan-completeness">
       <div>${isPartial ? '⚠ תוכנית חלקית — חלק מהדרישות לא מולאו.' : '✓ תוכנית מלאה לסמסטרים שנותרו.'}</div>
+      ${categoryStatusHtml}
       ${reasonsHtml ? `<ul>${reasonsHtml}</ul>` : ''}
       ${restReasonsHtml}
     </div>`;
