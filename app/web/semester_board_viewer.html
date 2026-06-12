@@ -5371,8 +5371,16 @@ function repairPlanLoad(proposal, ctx) {
  * (buildCompletionAnalysis), kept in sync manually.
  */
 const DEGREE_REQUIRED_HOURS = 185;
-const DEFAULT_MAX_HOURS_PER_SEMESTER = 18;
+/** Matches MAX_HOURS (board semester-card cap) — single default for board/AI/validation. */
+const DEFAULT_MAX_HOURS_PER_SEMESTER = MAX_HOURS;
 const SEVERE_OVERLOAD_MARGIN = 3;
+
+/** PART A — mirrors api/ai/completion_analysis.ts (getEffectiveMaxHoursPreference). */
+function getEffectiveMaxHoursPreferenceLocal(maxWeeklyHoursPreference) {
+  return (maxWeeklyHoursPreference != null && maxWeeklyHoursPreference > 0)
+    ? maxWeeklyHoursPreference
+    : DEFAULT_MAX_HOURS_PER_SEMESTER;
+}
 const MAX_ADDED_ELECTIVES_FOR_HOURS = 12;
 const DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN = 6;
 const MAX_REASONABLE_SEMESTER_HOURS = 30;
@@ -6013,13 +6021,16 @@ function getPlanPreviewStatusLocal(validationErrors, completeness, statusText) {
 const PLAN_STATUS_CLASS = { success: 'status-ok', warning: 'status-warn', error: 'status-bad' };
 
 /** Mirrors api/ai/completion_analysis.ts (buildPreviewChangeBullets). PART C: max 4 bullets. */
-function buildPreviewChangeBulletsLocal({ addedElectives, maxSemHours, allCategoriesSatisfied, warningCount }) {
+function buildPreviewChangeBulletsLocal({ addedElectives, peakSemHours, effectiveMaxHours, allCategoriesSatisfied, warningCount }) {
   const bullets = [];
   if (addedElectives > 0) {
     bullets.push(addedElectives === 1 ? 'נוסף קורס בחירה אחד' : `נוספו ${addedElectives} קורסי בחירה`);
   }
-  if (maxSemHours > 0) {
-    bullets.push(`עומס מקסימלי: ${maxSemHours} ש״ש`);
+  if (peakSemHours > 0) {
+    bullets.push(`העומס הגבוה ביותר בתוכנית: ${peakSemHours} ש״ש`);
+  }
+  if (effectiveMaxHours > 0) {
+    bullets.push(`המגבלה שנבדקה בתוכנית זו: ${effectiveMaxHours} ש״ש`);
   }
   if (allCategoriesSatisfied) {
     bullets.push('הושלמו כל קטגוריות החובה');
@@ -6052,8 +6063,11 @@ function pickPrimaryBlockingReasonLocal(completeness, missingCards) {
   if (completeness.reasons.some(r => r.startsWith('חסרות כ-') && r.endsWith('להשלמת התואר.'))) {
     return 'לא ניתן להחיל — חסרות שעות להשלמת התואר';
   }
-  if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
-    return 'לא ניתן להחיל — עומס גבוה מדי';
+  // PART C — show the exact overloaded semester/load/cap instead of a
+  // generic "עומס גבוה מדי" message.
+  const overloadReason = completeness.reasons.find(r => r.includes('עמוס'));
+  if (overloadReason) {
+    return `לא ניתן להחיל — ${overloadReason}`;
   }
   if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {
     return 'לא ניתן להחיל — קורס נעוץ הוזז';
@@ -6123,7 +6137,7 @@ async function requestPlanProposal(prefs, actionType) {
     const ctx = buildPlanValidationInputs();
     // PART F: when the user hasn't set a cap, fall back to a default so severe
     // overload (e.g. 27 ש"ש) is still detected and repaired/blocked.
-    ctx.maxHoursPerSemester = prefs.max_weekly_hours ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+    ctx.maxHoursPerSemester = getEffectiveMaxHoursPreferenceLocal(prefs.max_weekly_hours);
     ctx.balanceLoad = !!prefs.balance_load;
     ctx.wantedCourseIds = prefs.wanted_course_ids || [];
 
@@ -6330,13 +6344,16 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const allWarnings = [...(proposal.warnings_he || []), ...warnings];
 
   // ── Top summary (status / blocking errors / max load only) ─────────────────
-  let maxSemHours = 0;
+  let peakSemHours = 0;
   const semHoursById = {};
   for (const sem of (proposal.semesters || [])) {
     const hrs = getSemesterLoadLocal(sem, _aiPlanLastCtx?.courses || {});
     semHoursById[sem.semester_id] = hrs;
-    maxSemHours = Math.max(maxSemHours, hrs);
+    peakSemHours = Math.max(peakSemHours, hrs);
   }
+  // PART A/D — the single effective cap checked for this plan (board default
+  // unless the user set an explicit AI-planner preference).
+  const effectiveMaxHours = _aiPlanLastCtx?.maxHoursPerSemester ?? getEffectiveMaxHoursPreferenceLocal(_aiPlanLastPreferences?.max_weekly_hours);
 
   const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
     || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
@@ -6423,7 +6440,8 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const allReasons = completeness?.reasons || [];
   const changeBullets = buildPreviewChangeBulletsLocal({
     addedElectives: completeness?.added_electives || 0,
-    maxSemHours,
+    peakSemHours,
+    effectiveMaxHours,
     allCategoriesSatisfied,
     warningCount: allReasons.length,
   });
@@ -6466,10 +6484,9 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
 
   // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
   const MAX_COURSES_SHOWN = 5;
-  const maxHours = _aiPlanLastPreferences?.max_weekly_hours;
   const semestersHtml = (proposal.semesters || []).map(sem => {
     const hrs = semHoursById[sem.semester_id] || 0;
-    const overloaded = maxHours != null && hrs > maxHours;
+    const overloaded = hrs > effectiveMaxHours;
     const cids = sem.course_ids || [];
     const shown = cids.slice(0, MAX_COURSES_SHOWN).map(cid => {
       const c = courseMap[cid];
@@ -6534,6 +6551,14 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         ${reasonsDetailsHtml}
         ${reqHtml ? `<div><strong>דרישות תואר (פירוט מלא)</strong>${reqHtml}</div>` : ''}
         <div>
+          <strong>עומס לפי סמסטר (מגבלה שנבדקה: ${effectiveMaxHours} ש״ש)</strong>
+          <ul>${(proposal.semesters || []).map(sem => {
+            const hrs = semHoursById[sem.semester_id] || 0;
+            const over = hrs > effectiveMaxHours;
+            return `<li>${esc(SEM_HE[sem.semester_id] || sem.semester_id)}: ${(sem.course_ids || []).length} קורסים, עומס ${hrs} ש״ש, מגבלה ${effectiveMaxHours} ש״ש — ${over ? 'עומס חורג' : 'תקין'}</li>`;
+          }).join('')}</ul>
+        </div>
+        <div>
           <strong>מה זוז</strong>
           ${movesHtml}
         </div>
@@ -6596,9 +6621,6 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   // preview with that flag so the blocking error is replaced by a warning.
   document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
     requestPlanProposal({ ..._aiPlanLastPreferences, overload_accepted: true }, 'overload_accepted');
-  });
-  document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
-    requestPlanProposal({ ..._aiPlanLastPreferences, max_weekly_hours: maxSemHours }, _aiPlanLastPreferences?.action_type);
   });
   document.getElementById('ai-plan-back-prefs')?.addEventListener('click', () => {
     openPlanPreferencesModal();

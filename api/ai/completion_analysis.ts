@@ -17,11 +17,26 @@ import type { PlanContext } from './_context';
 /** Total credit-hours required for the degree (ש״ש). */
 export const DEGREE_REQUIRED_HOURS = 185;
 
-/** Fallback per-semester hour cap used when the user hasn't set one. */
-export const DEFAULT_MAX_HOURS_PER_SEMESTER = 18;
+/** Fallback per-semester hour cap used when the user hasn't set one — matches
+ *  the board's semester-card display cap so the same number is shown
+ *  everywhere (board header, AI preferences, validation, preview). */
+export const DEFAULT_MAX_HOURS_PER_SEMESTER = 20;
 
 /** How far over the cap counts as "severe" overload (blocking if movable courses exist). */
 export const SEVERE_OVERLOAD_MARGIN = 3;
+
+/**
+ * PART A — single source of truth for the effective per-semester hour cap:
+ * the user's explicit AI-planner preference if set, otherwise the board
+ * default. Used by the board header, AI planner preferences, generate-plan
+ * request body, repairPlanLoad, validation/applyability, preview top status
+ * and warning messages — never a stale/separate default.
+ */
+export function getEffectiveMaxHoursPreference(maxWeeklyHoursPreference?: number | null): number {
+  return (maxWeeklyHoursPreference != null && maxWeeklyHoursPreference > 0)
+    ? maxWeeklyHoursPreference
+    : DEFAULT_MAX_HOURS_PER_SEMESTER;
+}
 
 /** Hard cap on how many electives repairAddHoursToDegree may add (PART E). */
 export const MAX_ADDED_ELECTIVES_FOR_HOURS = 12;
@@ -417,7 +432,10 @@ export function getPlanPreviewStatus(
  */
 export function buildPreviewChangeBullets(opts: {
   addedElectives: number;
-  maxSemHours: number;
+  /** The highest semester load actually occurring in the proposed plan (not a limit). */
+  peakSemHours: number;
+  /** PART A/D — the effective cap that was checked for this plan (getEffectiveMaxHoursPreference). */
+  effectiveMaxHours: number;
   allCategoriesSatisfied: boolean;
   warningCount: number;
 }): string[] {
@@ -425,8 +443,11 @@ export function buildPreviewChangeBullets(opts: {
   if (opts.addedElectives > 0) {
     bullets.push(opts.addedElectives === 1 ? 'נוסף קורס בחירה אחד' : `נוספו ${opts.addedElectives} קורסי בחירה`);
   }
-  if (opts.maxSemHours > 0) {
-    bullets.push(`עומס מקסימלי: ${opts.maxSemHours} ש״ש`);
+  if (opts.peakSemHours > 0) {
+    bullets.push(`העומס הגבוה ביותר בתוכנית: ${opts.peakSemHours} ש״ש`);
+  }
+  if (opts.effectiveMaxHours > 0) {
+    bullets.push(`המגבלה שנבדקה בתוכנית זו: ${opts.effectiveMaxHours} ש״ש`);
   }
   if (opts.allCategoriesSatisfied) {
     bullets.push('הושלמו כל קטגוריות החובה');
@@ -736,8 +757,11 @@ export function pickPrimaryBlockingReason(
     return 'לא ניתן להחיל — חסרות שעות להשלמת התואר';
   }
 
-  if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
-    return 'לא ניתן להחיל — עומס גבוה מדי';
+  // PART C — show the exact overloaded semester/load/cap instead of a
+  // generic "עומס גבוה מדי" message.
+  const overloadReason = completeness.reasons.find(r => r.includes('עמוס'));
+  if (overloadReason) {
+    return `לא ניתן להחיל — ${overloadReason}`;
   }
 
   if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {

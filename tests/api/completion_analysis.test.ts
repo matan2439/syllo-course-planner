@@ -28,6 +28,7 @@ import {
   getLegalSemesters,
   isCourseAllowedInSemester,
   getCourseSemesterLegalityReason,
+  getEffectiveMaxHoursPreference,
 } from '../../api/ai/completion_analysis';
 import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
@@ -1104,27 +1105,29 @@ describe('buildPreviewChangeBullets', () => {
   it('returns at most 4 bullets even when all conditions apply', () => {
     const bullets = buildPreviewChangeBullets({
       addedElectives: 2,
-      maxSemHours: 18,
+      peakSemHours: 18,
+      effectiveMaxHours: 20,
       allCategoriesSatisfied: true,
       warningCount: 1,
     });
     expect(bullets.length).toBeLessThanOrEqual(4);
     expect(bullets).toEqual([
       'נוספו 2 קורסי בחירה',
-      'עומס מקסימלי: 18 ש״ש',
+      'העומס הגבוה ביותר בתוכנית: 18 ש״ש',
+      'המגבלה שנבדקה בתוכנית זו: 20 ש״ש',
       'הושלמו כל קטגוריות החובה',
-      'נותרה אזהרה אחת',
     ]);
   });
 
   it('omits bullets for conditions that do not apply', () => {
     const bullets = buildPreviewChangeBullets({
       addedElectives: 0,
-      maxSemHours: 16,
+      peakSemHours: 16,
+      effectiveMaxHours: 0,
       allCategoriesSatisfied: false,
       warningCount: 0,
     });
-    expect(bullets).toEqual(['עומס מקסימלי: 16 ש״ש']);
+    expect(bullets).toEqual(['העומס הגבוה ביותר בתוכנית: 16 ש״ש']);
   });
 });
 
@@ -1152,7 +1155,8 @@ describe('pickPrimaryBlockingReason', () => {
   it('falls back to overload reason when no missing-requirement candidates exist', () => {
     const completeness = { incomplete: true, reasons: ['סמסטר א עמוס מדי (24 ש"ש) למרות שניתן להעביר קורסים גמישים.'], added_electives: 0 };
     const reason = pickPrimaryBlockingReason(completeness as any, []);
-    expect(reason).toContain('עומס');
+    expect(reason).toContain('עמוס');
+    expect(reason).toContain('24 ש"ש');
   });
 
   it('returns a warnings-only message when the plan is applicable but has notes', () => {
@@ -1897,5 +1901,60 @@ describe('TASK 4 — PART F: course-semester legality helper', () => {
     expect(reason.allowed).toBe(true);
     expect(reason.confident).toBe(true);
     expect(reason.reason).not.toContain('אי אפשר');
+  });
+});
+
+describe('TASK 5 — PART F: max-load consistency and overload boundary', () => {
+  it('1. load equal to max is not overloaded', () => {
+    const sem = { semester_id: 'year_3_semester_a', course_ids: ['c1', 'c2'] };
+    const courses = { c1: { hours: 10 }, c2: { hours: 10 } };
+    const load = getSemesterLoad(sem, courses);
+    expect(load).toBe(20);
+    expect(load > getEffectiveMaxHoursPreference(20)).toBe(false);
+  });
+
+  it('3. load 26 with max 25 is overloaded', () => {
+    const load = 26;
+    const max = getEffectiveMaxHoursPreference(25);
+    expect(load > max).toBe(true);
+  });
+
+  it('5. main board max (default) and AI preference max are not mixed in validation', () => {
+    expect(getEffectiveMaxHoursPreference(null)).toBe(DEFAULT_MAX_HOURS_PER_SEMESTER);
+    expect(getEffectiveMaxHoursPreference(25)).toBe(25);
+    expect(getEffectiveMaxHoursPreference(undefined)).toBe(DEFAULT_MAX_HOURS_PER_SEMESTER);
+  });
+
+  it('6. overload message includes exact semester load and max', () => {
+    const completeness = {
+      incomplete: true,
+      reasons: ['סמסטר ג׳ ב׳ עמוס מדי (27/25 ש"ש) למרות שקיימים קורסים שניתן להעביר.'],
+      added_electives: 0,
+    };
+    const reason = pickPrimaryBlockingReason(completeness as any, []);
+    expect(reason).toContain('27');
+    expect(reason).toContain('25');
+    expect(reason).toContain('סמסטר ג׳ ב׳');
+  });
+
+  it('7. getEffectiveMaxHoursPreference returns the same value used in preview and validation', () => {
+    const prefs = { max_weekly_hours: 22 };
+    const validationMax = getEffectiveMaxHoursPreference(prefs.max_weekly_hours);
+    const previewMax = getEffectiveMaxHoursPreference(prefs.max_weekly_hours);
+    expect(validationMax).toBe(previewMax);
+    expect(validationMax).toBe(22);
+  });
+
+  it('4. preview top status does not block when all semester loads <= max', () => {
+    const proposalSemesters = [{ semester_id: 'year_3_semester_a', course_ids: [] }];
+    const analysis: any = {
+      missing_mandatory: [], scheduled_course_ids: [], completed_course_ids: [], categories: [],
+      hours: { remaining_hours: 0, required_total: 185, prior_hours_known: true },
+      general_requirement: null,
+    };
+    const completeness = evaluatePlanCompleteness(proposalSemesters, analysis, { courseHours: {} });
+    expect(completeness.incomplete).toBe(false);
+    const status = getPlanPreviewStatus([], completeness, 'תוכנית חוקית — ניתן להחיל');
+    expect(status.kind).toBe('success');
   });
 });
