@@ -453,13 +453,25 @@ export function evaluatePlanCompleteness(
   let generalShortfall = analysis.hours.general_hours_shortfall ?? 0;
   if (generalStatus) {
     generalShortfall = generalStatus.missing;
+    const gr = analysis.general_requirement;
+    const before = (gr?.placed ?? 0) + (analysis.hours.completed_general_hours ?? 0);
+    const addedGeneralCredits = Math.max(0, (generalStatus.placed ?? 0) - before);
     if (generalStatus.missing > 0) {
       if (generalStatus.candidates.length > 0) {
-        const msg = `קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז.`;
+        // PART E — שער רוח is its own shortfall, never the generic "חסרות X ש"ש להשלמת התואר" message.
+        const msg = `יש להשלים עוד ${generalStatus.missing} נק"ז שער רוח, אך לא נמצאו קורסי שער רוח חוקיים נוספים לשיבוץ.`;
         reasons.push(msg);
         blocking.push(msg);
       } else {
         reasons.push(`קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז — מאגר קורסי שער רוח אינו זמין, יש להשלים ידנית או להוסיף מאגר קורסים מתאים.`);
+      }
+    } else if (before < (generalStatus.required ?? 0)) {
+      // PART A/E — שער רוח shortfall fully filled by repairAddGeneralCourses.
+      const required = generalStatus.required ?? 0;
+      if (addedGeneralCredits > 0) {
+        reasons.push(`קורסי שער רוח: ${before}/${required} הושלם, נוספו ${addedGeneralCredits} נק"ז — קורסי שער רוח: ${required}/${required} לאחר התוכנית.`);
+      } else {
+        reasons.push(`קורסי שער רוח: ${required}/${required} לאחר התוכנית.`);
       }
     }
   }
@@ -967,13 +979,19 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
   }
   let total = analysis.hours.known_total_hours + addedHours;
 
-  // PART D/G — the part of the shortfall that may legally be filled by
-  // technical electives excludes the general/humanities shortfall, and the
-  // target is the program-specific required_total (not a hard-coded 185).
-  const generalShortfall = analysis.hours.general_hours_shortfall ?? 0;
-  const target = analysis.hours.required_total - generalShortfall;
+  // PART B/C — target is simply the program-specific required_total (not a
+  // hard-coded 185). Any שער רוח courses already added by
+  // repairAddGeneralCourses are part of `placed`/`addedHours` above and so
+  // already count toward `total` here — do NOT subtract the general shortfall
+  // again, that would double-count it and leave the plan 4 ש"ש short of 185.
+  const target = analysis.hours.required_total;
+  // PART B/C — generic electives must not be added while the שער רוח
+  // requirement is still unmet (it must be filled first, by
+  // repairAddGeneralCourses, never by engineering electives).
+  const generalStatusForGate = getGeneralRequirementStatusReport(analysis, placed);
+  const generalShortfall = generalStatusForGate ? generalStatusForGate.missing : (analysis.hours.general_hours_shortfall ?? 0);
   const priorKnown = analysis.hours.prior_hours_known !== false;
-  const maxAdditions = priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN;
+  const maxAdditions = generalShortfall > 0 ? 0 : (priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN);
 
   // PART A — the candidate pool for remaining hours spans ALL of
   // analysis.elective_pool, including courses from categories that are

@@ -15,6 +15,7 @@ import {
   getMandatoryStatusReport,
   repairAddHoursToDegree,
   repairAddGeneralCourses,
+  getGeneralRequirementStatusReport,
   getHoursStatusReport,
   buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
@@ -1104,8 +1105,10 @@ describe('completed-degree-hours model (PART H)', () => {
     };
     const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
     const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
-    // target = required_total(185) - general_hours_shortfall(10) = 175; total starts at 150 -> needs 25, E1=30 is enough
-    expect(result.proposed_total_hours).toBe(180);
+    // PART B/C — the שער/רוח shortfall (10) must be filled by general-requirement
+    // courses, not by the engineering elective E1, so no electives are added here.
+    expect(result.added.length).toBe(0);
+    expect(result.proposed_total_hours).toBe(150);
 
     const completeness = evaluatePlanCompleteness(proposal.semesters, analysis);
     expect(completeness.reasons.some(r => r.includes('שער/רוח'))).toBe(true);
@@ -1432,4 +1435,149 @@ describe('remaining-hours pool spans already-satisfied categories (PART A/B/D)',
     expect(result.debug.chosen.map(c => c.course_id).sort()).toEqual(['F2', 'S2']);
     expect(result.debug.remaining_hours_needed).toBe(15);
   });
+});
+
+describe('missing 4 hours are a שער רוח shortfall, not a generic degree-hour gap (PART A-F)', () => {
+  function ctxWithGeneral(generalReq: any, totalHoursProgress: any = {}, semesters: any[] = [], personalStatus: any = undefined) {
+    return {
+      semesters,
+      personal_status: personalStatus,
+      general_course_requirements: generalReq,
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 100, ...totalHoursProgress },
+    } as any;
+  }
+
+  const candidates = [
+    { course_id: 'G1', name_he: 'תולדות האנושות', hours: 2 },
+    { course_id: 'G2', name_he: 'מהי תרבות', hours: 2 },
+    { course_id: 'G3', name_he: 'ללמוד איך ללמוד', hours: 2 },
+  ];
+
+  const courses: Record<string, any> = {
+    G1: { hours: 2, effective_allowed_semesters: ['s1'] },
+    G2: { hours: 2, effective_allowed_semesters: ['s1'] },
+    G3: { hours: 2, effective_allowed_semesters: ['s1'] },
+  };
+
+  it('1. one completed שער רוח course means 2/6 completed and 4 missing', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 2 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.hours.general_hours_shortfall).toBe(4);
+    const status = getGeneralRequirementStatusReportSafe(analysis);
+    expect(status?.placed).toBe(2);
+    expect(status?.required).toBe(6);
+    expect(status?.missing).toBe(4);
+  });
+
+  it('2. repairAddGeneralCourses adds exactly two 2-credit שער רוח courses when one is already completed', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 2 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(2);
+    expect(result.added.every(a => a.hours === 2)).toBe(true);
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('3. completed שער רוח course is not scheduled again', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 2 },
+      [],
+      { completed: [{ course_id: 'G1', hours: 2 }] },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.some(a => a.course_id === 'G1')).toBe(false);
+    expect(result.added.length).toBe(2);
+  });
+
+  it('4. missing שער רוח hours are not filled by engineering electives', () => {
+    const ctx: any = {
+      semesters: [],
+      general_course_requirements: { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      category_requirements: [
+        { name: 'בחירה כללית', category_id: 'elective', required: 1, placed: 0, candidates: [{ course_id: 'E1', name_he: 'בחירה הנדסית', hours: 3 }] },
+      ],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 179, completed_general_hours: 2 },
+    };
+    const analysis = buildCompletionAnalysis(ctx);
+    const eCourses: Record<string, any> = { ...courses, E1: { hours: 3, effective_allowed_semesters: ['s1'] } };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses: eCourses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    // 185 - 179 = 6 ש"ש short, but all of it is the שער רוח shortfall — E1 must not be added here.
+    expect(result.added.some(a => a.course_id === 'E1')).toBe(false);
+    expect(result.added.length).toBe(0);
+  });
+
+  it('5. generic repairAddHoursToDegree runs only after שער רוח reaches 6/6', () => {
+    const ctx: any = {
+      semesters: [],
+      general_course_requirements: { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      category_requirements: [
+        { name: 'בחירה כללית', category_id: 'elective', required: 1, placed: 0, candidates: [{ course_id: 'E1', name_he: 'בחירה הנדסית', hours: 3 }] },
+      ],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 179, completed_general_hours: 2 },
+    };
+    const analysis = buildCompletionAnalysis(ctx);
+    const eCourses: Record<string, any> = { ...courses, E1: { hours: 3, effective_allowed_semesters: ['s1'] } };
+
+    // Step 1: fill שער רוח first (as the apply pipeline does).
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const generalResult = repairAddGeneralCourses(proposal as any, analysis, { courses: eCourses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(generalResult.added.length).toBe(2); // 4 more נק"ז -> 2 courses
+
+    // Step 2: now generic hours repair sees שער רוח at 6/6 and may add E1.
+    const hoursResult = repairAddHoursToDegree(generalResult.proposal as any, analysis, { courses: eCourses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(hoursResult.added.some(a => a.course_id === 'E1')).toBe(true);
+  });
+
+  it('6. preview says missing שער רוח, not generic missing degree hours, when the shortfall source is שער רוח', () => {
+    const ctx: any = {
+      semesters: [],
+      general_course_requirements: { name: 'קורסי שער רוח', required_credits: 6, candidates: [] },
+      category_requirements: [],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 181, completed_general_hours: 2 },
+    };
+    const analysis = buildCompletionAnalysis(ctx);
+    const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis, {});
+    expect(completeness.reasons.some(r => r.includes('שער רוח'))).toBe(true);
+    expect(completeness.reasons.some(r => r.includes('להשלמת התואר'))).toBe(false);
+  });
+
+  it('7. if one completed + one planned שער רוח exists, only one more is added', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 2 },
+      [{ semester_id: 's1', courses: [{ course_id: 'G2', hours: 2 }] }], // G2 already planned/scheduled on the board
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['G2'] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(1);
+    expect(result.added[0].hours).toBe(2);
+  });
+
+  it('8. if 6/6 שער רוח is completed/planned, no more שער רוח is added', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 2 },
+      [{ semester_id: 's1', courses: [{ course_id: 'G2', hours: 2 }, { course_id: 'G3', hours: 2 }] }], // 2 + 2 + 2 = 6/6
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['G2', 'G3'] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(0);
+  });
+
+  function getGeneralRequirementStatusReportSafe(analysis: any) {
+    return getGeneralRequirementStatusReport(analysis, new Set<string>());
+  }
 });
