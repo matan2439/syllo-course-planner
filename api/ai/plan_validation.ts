@@ -167,6 +167,13 @@ export interface PlanValidationContext {
   pinnedCourseIds?: Set<string>;
   /** course_id -> current semester_id on the live board (for pinned-course checks). */
   currentSemesterByCourseId?: Record<string, string | null>;
+  /**
+   * PART A/B — single source of truth for the 185-ש"ש degree-hour
+   * requirement (getDegreeHoursStatus). When satisfied, stale "remaining
+   * hours/points" requirement buckets reported by the AI (requirements_status
+   * entries about שעות/נקודות שנותרו) must not be surfaced as unmet.
+   */
+  degreeHoursSatisfied?: boolean;
 }
 
 /** Render a course as "שם הקורס (course_id)" if a Hebrew name is known, else just the id. */
@@ -296,11 +303,15 @@ export function validatePlanProposal(
     }
   }
 
-  // 6. partial-plan check — every not-completed mandatory course must appear.
+  // 6. partial-plan check — every not-completed mandatory course must appear,
+  // reported with the exact missing course IDs/names (PART C) — never a
+  // generic "missing mandatory" message without a concrete list.
   if (ctx.requiredMandatoryCourseIds) {
-    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(cid => !placedCourseIds.has(cid));
-    if (missingMandatory.length > 0) {
-      errors.push('התוכנית לא כוללת את כל קורסי החובה שלא הושלמו.');
+    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(
+      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid),
+    );
+    for (const cid of missingMandatory) {
+      errors.push(`קורס חובה חסר: ${courseLabel(cid, ctx.courseNames)}.`);
     }
   }
 
@@ -334,8 +345,12 @@ export function validatePlanProposal(
     }
   }
 
-  // also surface any AI-reported unmet requirements directly
+  // also surface any AI-reported unmet requirements directly — except a
+  // generic "remaining hours/points" bucket, which the 185-ש"ש degree-hour
+  // model (getDegreeHoursStatus) already covers and supersedes (PART A/B/E).
+  const isGenericHoursBucket = (name: string) => /שעות|נק["'׳]?ז|נקוד/.test(name);
   for (const status of proposal.requirements_status) {
+    if (ctx.degreeHoursSatisfied && isGenericHoursBucket(status.name)) continue;
     if (!status.satisfied && status.placed < status.required) {
       const already = warnings.find(w => w.includes(`"${status.name}"`));
       if (!already) {

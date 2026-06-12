@@ -7,6 +7,7 @@ import {
   type PlanProposal,
   type PlanValidationContext,
 } from '../../api/ai/plan_validation';
+import { getDegreeHoursStatus, isPlanApplyable, getPlanPreviewStatus } from '../../api/ai/completion_analysis';
 
 const BASE_PROPOSAL: PlanProposal = {
   semesters: [
@@ -254,7 +255,9 @@ describe('validatePlanProposal', () => {
       requiredMandatoryCourseIds: ['0542-4120', '0542-9001'], // 0542-9001 not in the plan
     };
     const result = validatePlanProposal(BASE_PROPOSAL, ctx);
-    expect(result.errors.some(e => e.includes('לא כוללת את כל קורסי החובה'))).toBe(true);
+    // PART C — exact missing mandatory course is named, no generic message.
+    expect(result.errors.some(e => e.includes('קורס חובה חסר') && e.includes('0542-9001'))).toBe(true);
+    expect(result.errors.some(e => e.includes('0542-4120'))).toBe(false);
   });
 
   it('rejects a plan that only adds wanted courses despite unmet category requirements', () => {
@@ -376,5 +379,104 @@ describe('validatePlanProposal', () => {
     };
     const result = validatePlanProposal(proposal, BASE_CTX);
     expect(result.warnings.some(w => w.includes('קורסי בחירה') && w.includes('4/10'))).toBe(true);
+  });
+
+  it('does not show a stale "שעות/נקודות שנותרו" requirement when the degree-hour model is satisfied (PART A/E)', () => {
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      requirements_status: [
+        { name: 'שעות/נקודות שנותרו', required: 49, placed: 0, satisfied: false },
+      ],
+    };
+    const ctx: PlanValidationContext = { ...BASE_CTX, degreeHoursSatisfied: true };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.warnings.some(w => w.includes('שנותרו') || w.includes('0/49'))).toBe(false);
+  });
+
+  it('still shows "שעות/נקודות שנותרו" when the degree-hour model is NOT satisfied', () => {
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      requirements_status: [
+        { name: 'שעות/נקודות שנותרו', required: 49, placed: 0, satisfied: false },
+      ],
+    };
+    const ctx: PlanValidationContext = { ...BASE_CTX, degreeHoursSatisfied: false };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.warnings.some(w => w.includes('שנותרו'))).toBe(true);
+  });
+});
+
+describe('PART B/F — getDegreeHoursStatus single source of truth', () => {
+  function makeAnalysis(overrides: any = {}): any {
+    return {
+      scheduled_course_ids: [],
+      hours: {
+        known_total_hours: 95,
+        required_total: 185,
+        ...overrides,
+      },
+    };
+  }
+
+  it('1. completed_degree_hours=95 and proposed_plan_hours=90 satisfies 185', () => {
+    const analysis = makeAnalysis();
+    const proposalSemesters = [{ course_ids: ['A', 'B'] }];
+    const courseHours = { A: 45, B: 45 };
+    const status = getDegreeHoursStatus(analysis, proposalSemesters, courseHours);
+    expect(status.completed_degree_hours).toBe(95);
+    expect(status.proposed_plan_hours).toBe(90);
+    expect(status.total_after_plan).toBe(185);
+    expect(status.degree_required_hours).toBe(185);
+    expect(status.missing_hours).toBe(0);
+    expect(status.satisfied).toBe(true);
+  });
+
+  it('4. if general requirement reaches 6/6, total_after_plan includes all 6 credits', () => {
+    // 89 known + 2 already-scheduled שער רוח (not double-counted) + 4 newly added = 95+... -> 185
+    const analysis = makeAnalysis({ known_total_hours: 181 });
+    const proposalSemesters = [{ course_ids: ['G1', 'G2'] }]; // 2 newly-added שער רוח courses, 2 נק"ז each
+    const courseHours = { G1: 2, G2: 2 };
+    const status = getDegreeHoursStatus(analysis, proposalSemesters, courseHours);
+    expect(status.total_after_plan).toBe(185);
+    expect(status.satisfied).toBe(true);
+    expect(status.missing_hours).toBe(0);
+  });
+
+  it('5. no double-counting when a שער רוח course is already scheduled (excluded via scheduled_course_ids)', () => {
+    const analysis: any = {
+      scheduled_course_ids: ['G1'],
+      hours: { known_total_hours: 183, required_total: 185 },
+    };
+    const proposalSemesters = [{ course_ids: ['G1', 'G2'] }];
+    const courseHours = { G1: 2, G2: 2 };
+    const status = getDegreeHoursStatus(analysis, proposalSemesters, courseHours);
+    // G1 already counted in known_total_hours (183); only G2's 2 credits are "new".
+    expect(status.proposed_plan_hours).toBe(2);
+    expect(status.total_after_plan).toBe(185);
+    expect(status.satisfied).toBe(true);
+  });
+});
+
+describe('PART D/F — applyability and top status with 185/185 + complete requirements', () => {
+  it('6/7. applyable plan with 185/185, mandatory complete, categories complete, שער רוח complete is applyable and not red', () => {
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      requirements_status: [
+        { name: 'שעות/נקודות שנותרו', required: 49, placed: 0, satisfied: false },
+      ],
+    };
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      requiredMandatoryCourseIds: ['0542-4120', '0542-4420', '0542-4221'], // all present in BASE_PROPOSAL
+      degreeHoursSatisfied: true,
+    };
+    const { errors, warnings } = validatePlanProposal(proposal, ctx);
+    expect(errors).toEqual([]);
+    expect(warnings.some(w => w.includes('שנותרו'))).toBe(false);
+
+    const completeness = { incomplete: false, reasons: [] as string[], added_electives: 0, proposed_total_hours: 185 };
+    expect(isPlanApplyable(errors, completeness)).toBe(true);
+    const status = getPlanPreviewStatus(errors, completeness, 'התוכנית מוכנה');
+    expect(status.kind).not.toBe('error');
   });
 });

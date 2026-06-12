@@ -336,6 +336,46 @@ export interface CompletenessResult {
   proposed_total_hours: number;
 }
 
+export interface DegreeHoursStatus {
+  completed_degree_hours: number;
+  proposed_plan_hours: number;
+  total_after_plan: number;
+  degree_required_hours: number;
+  missing_hours: number;
+  satisfied: boolean;
+}
+
+/**
+ * PART B — single source of truth for the 185-ש"ש degree-hour requirement.
+ * All validation/preview/applyability checks must use this instead of any
+ * separate "remaining points/hours" bucket.
+ */
+export function getDegreeHoursStatus(
+  analysis: CompletionAnalysis,
+  proposalSemesters: Array<{ course_ids: string[] }>,
+  courseHours: Record<string, number | null | undefined>,
+): DegreeHoursStatus {
+  const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
+  let proposed_plan_hours = 0;
+  for (const cid of placed) {
+    if (analysis.scheduled_course_ids.includes(cid)) continue;
+    const h = courseHours[cid];
+    if (typeof h === 'number') proposed_plan_hours += h;
+  }
+  const completed_degree_hours = analysis.hours.known_total_hours;
+  const total_after_plan = completed_degree_hours + proposed_plan_hours;
+  const degree_required_hours = analysis.hours.required_total;
+  const missing_hours = Math.max(0, degree_required_hours - total_after_plan);
+  return {
+    completed_degree_hours,
+    proposed_plan_hours,
+    total_after_plan,
+    degree_required_hours,
+    missing_hours,
+    satisfied: total_after_plan >= degree_required_hours,
+  };
+}
+
 /**
  * A plan is applyable if there are no blocking validation errors and no
  * blocking completeness reasons — i.e. at most warnings/info remain.

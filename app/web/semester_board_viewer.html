@@ -5106,11 +5106,14 @@ function validatePlanProposalLocal(proposal, ctx) {
     }
   }
 
-  // partial-plan check — every not-completed mandatory course must appear.
+  // partial-plan check — every not-completed mandatory course must appear,
+  // reported with exact missing course IDs/names (PART C).
   if (ctx.requiredMandatoryCourseIds) {
-    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(cid => !placedCourseIds.has(cid));
-    if (missingMandatory.length > 0) {
-      errors.push('התוכנית לא כוללת את כל קורסי החובה שלא הושלמו.');
+    const missingMandatory = ctx.requiredMandatoryCourseIds.filter(
+      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid),
+    );
+    for (const cid of missingMandatory) {
+      errors.push(`קורס חובה חסר: ${courseLabelLocal(cid)}.`);
     }
   }
 
@@ -5143,7 +5146,12 @@ function validatePlanProposalLocal(proposal, ctx) {
     }
   }
 
+  // PART A/B/E — a generic "remaining hours/points" bucket reported by the AI
+  // is superseded by the 185-ש"ש degree-hour model (getDegreeHoursStatusLocal);
+  // when that model says the degree is satisfied, don't show it as unmet.
+  const isGenericHoursBucketLocal = name => /שעות|נק["'׳]?ז|נקוד/.test(name);
   for (const status of (proposal.requirements_status || [])) {
+    if (ctx.degreeHoursSatisfied && isGenericHoursBucketLocal(status.name)) continue;
     if (!status.satisfied && status.placed < status.required) {
       const already = warnings.find(w => w.includes(`"${status.name}"`)) || errors.find(e => e.includes('התוכנית חלקית'));
       if (!already) {
@@ -5620,6 +5628,32 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   };
 }
 
+/**
+ * PART B — single source of truth for the 185-ש"ש degree-hour requirement.
+ * Mirrors api/ai/completion_analysis.ts (getDegreeHoursStatus).
+ */
+function getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours) {
+  const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
+  let proposed_plan_hours = 0;
+  for (const cid of placed) {
+    if (analysis.scheduled_course_ids.includes(cid)) continue;
+    const h = (courseHours || {})[cid];
+    if (typeof h === 'number') proposed_plan_hours += h;
+  }
+  const completed_degree_hours = analysis.hours.known_total_hours;
+  const total_after_plan = completed_degree_hours + proposed_plan_hours;
+  const degree_required_hours = analysis.hours.required_total;
+  const missing_hours = Math.max(0, degree_required_hours - total_after_plan);
+  return {
+    completed_degree_hours,
+    proposed_plan_hours,
+    total_after_plan,
+    degree_required_hours,
+    missing_hours,
+    satisfied: total_after_plan >= degree_required_hours,
+  };
+}
+
 /** Mirrors api/ai/completion_analysis.ts (getHoursStatusReport). */
 function getHoursStatusReportLocal(analysis, proposalSemesters, courseHours) {
   const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
@@ -6060,11 +6094,14 @@ async function requestPlanProposal(prefs, actionType) {
       ];
     }
 
-    const { errors, warnings } = validatePlanProposalLocal(repairedProposal, ctx);
-
-    // PART B/E: human-readable completeness check.
+    // PART B — single source of truth for the 185-ש"ש degree-hour requirement.
     const courseHours = {};
     for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+    const degreeHoursStatus = getDegreeHoursStatusLocal(analysis, repairedProposal.semesters || [], courseHours);
+
+    const { errors, warnings } = validatePlanProposalLocal(repairedProposal, { ...ctx, degreeHoursSatisfied: degreeHoursStatus.satisfied });
+
+    // PART B/E: human-readable completeness check.
     const completeness = evaluatePlanCompletenessLocal(repairedProposal.semesters || [], analysis, {
       wantedCourseIds: prefs.wanted_course_ids,
       courseHours,
@@ -6357,8 +6394,14 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     : '<div class="ai-plan-hint">אין שינויים לעומת התוכנית הנוכחית.</div>';
 
   // ── Requirements — compact checklist ────────────────────────────────────
-  const reqHtml = (proposal.requirements_status || []).length
-    ? `<ul class="ai-plan-reqs">${proposal.requirements_status.map(r =>
+  // PART E — a generic "remaining hours/points" requirement is superseded by
+  // the 185-ש"ש degree-hour status shown above; hide it once that's satisfied.
+  const isGenericHoursBucketLocal = name => /שעות|נק["'׳]?ז|נקוד/.test(name);
+  const visibleReqs = (proposal.requirements_status || []).filter(
+    r => !(hoursStatus?.remaining === 0 && isGenericHoursBucketLocal(r.name)),
+  );
+  const reqHtml = visibleReqs.length
+    ? `<ul class="ai-plan-reqs">${visibleReqs.map(r =>
         `<li>${r.satisfied ? '✓' : '⚠'} ${esc(r.name)}: ${esc(r.placed)}/${esc(r.required)}</li>`).join('')}</ul>`
     : '';
 
@@ -6466,9 +6509,10 @@ function refreshPlanPreviewWithProposal(proposal) {
   const ctx = _aiPlanLastCtx;
   const analysis = _aiPlanLastAnalysis;
   const { proposal: repaired, unmovedOverloaded } = repairPlanLoad(proposal, ctx);
-  const { errors, warnings } = validatePlanProposalLocal(repaired, ctx);
   const courseHours = {};
   for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  const degreeHoursStatus = getDegreeHoursStatusLocal(analysis, repaired.semesters || [], courseHours);
+  const { errors, warnings } = validatePlanProposalLocal(repaired, { ...ctx, degreeHoursSatisfied: degreeHoursStatus.satisfied });
   const completeness = evaluatePlanCompletenessLocal(repaired.semesters || [], analysis, {
     wantedCourseIds: _aiPlanLastPreferences?.wanted_course_ids,
     courseHours,
