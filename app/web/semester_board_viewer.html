@@ -5295,6 +5295,20 @@ function isPlanApplyableLocal(validationErrors, completeness) {
   return validationErrors.length === 0 && !completeness?.incomplete;
 }
 
+/** Mirrors api/ai/completion_analysis.ts (getPlanPreviewStatus). */
+function getPlanPreviewStatusLocal(validationErrors, completeness, statusText) {
+  const applyable = isPlanApplyableLocal(validationErrors, completeness);
+  if (!applyable) {
+    return { kind: 'error', icon: '✕', text: statusText };
+  }
+  if ((completeness?.reasons || []).length > 0) {
+    return { kind: 'warning', icon: '⚠', text: statusText };
+  }
+  return { kind: 'success', icon: '✓', text: statusText };
+}
+
+const PLAN_STATUS_CLASS = { success: 'status-ok', warning: 'status-warn', error: 'status-bad' };
+
 /** Mirrors api/ai/completion_analysis.ts (buildPreviewChangeBullets). PART C: max 4 bullets. */
 function buildPreviewChangeBulletsLocal({ addedElectives, maxSemHours, allCategoriesSatisfied, warningCount }) {
   const bullets = [];
@@ -5553,7 +5567,6 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
     || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
   const canApply = isPlanApplyableLocal(errors, completeness);
-  const hasWarningsOnly = canApply && (completeness?.reasons || []).length > 0;
 
   // PART A: primary blocking reason, computed from missing-requirement cards
   // (see below) so the top bar names the real cause instead of a generic message.
@@ -5562,11 +5575,11 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const statusLabel = canApply
     ? pickPrimaryBlockingReasonLocal(completeness || { incomplete: false, reasons: [] }, missingCards)
     : pickPrimaryBlockingReasonLocal(completeness || { incomplete: true, reasons: [] }, missingCards);
-  const statusClass = !canApply ? 'status-bad' : (hasWarningsOnly ? 'status-warn' : 'status-ok');
-  const statusIcon = !canApply ? '✗' : (hasWarningsOnly ? '⚠' : '✓');
+  const planStatus = getPlanPreviewStatusLocal(errors, completeness, statusLabel);
+  const statusClass = PLAN_STATUS_CLASS[planStatus.kind];
   const statusHtml = `
     <div class="ai-plan-preview-status ${statusClass}">
-      <strong>${statusIcon} ${esc(statusLabel)}</strong>
+      <strong>${planStatus.icon} ${esc(planStatus.text)}</strong>
     </div>`;
 
   const autofixHtml = autofixed

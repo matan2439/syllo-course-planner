@@ -231,6 +231,34 @@ export function isPlanApplyable(validationErrors: string[], completeness: Comple
   return validationErrors.length === 0 && !completeness?.incomplete;
 }
 
+export type PlanStatusKind = 'success' | 'warning' | 'error';
+
+export interface PlanPreviewStatus {
+  kind: PlanStatusKind;
+  icon: '✓' | '⚠' | '✕';
+  text: string;
+}
+
+/**
+ * Explicit status object for the preview status bar, so the visual class/icon
+ * is derived from the same applyability logic as the Apply button — never
+ * red unless the plan is genuinely blocked.
+ */
+export function getPlanPreviewStatus(
+  validationErrors: string[],
+  completeness: CompletenessResult | null | undefined,
+  statusText: string
+): PlanPreviewStatus {
+  const applyable = isPlanApplyable(validationErrors, completeness);
+  if (!applyable) {
+    return { kind: 'error', icon: '✕', text: statusText };
+  }
+  if ((completeness?.reasons || []).length > 0) {
+    return { kind: 'warning', icon: '⚠', text: statusText };
+  }
+  return { kind: 'success', icon: '✓', text: statusText };
+}
+
 /**
  * PART C: compact "מה השתנה?" summary for the preview — at most 4 bullets.
  */

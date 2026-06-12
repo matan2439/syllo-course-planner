@@ -10,6 +10,7 @@ import {
   getCategoryStatusReport,
   pickPrimaryBlockingReason,
   isPlanApplyable,
+  getPlanPreviewStatus,
   buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
@@ -648,6 +649,38 @@ describe('isPlanApplyable', () => {
   it('is false when completeness reports blocking reasons', () => {
     const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
     expect(isPlanApplyable([], completeness as any)).toBe(false);
+  });
+});
+
+describe('getPlanPreviewStatus', () => {
+  it('warnings-only plan is applyable, kind=warning, icon=⚠ (not error/✕)', () => {
+    const completeness = { incomplete: false, reasons: ['שים לב: סמסטר א חורג ב־2 ש"ש מהעדפת העומס שלך.'], added_electives: 1 };
+    expect(isPlanApplyable([], completeness as any)).toBe(true);
+    const status = getPlanPreviewStatus([], completeness as any, 'ניתן להחיל — נותרו אזהרות בלבד');
+    expect(status.kind).toBe('warning');
+    expect(status.icon).toBe('⚠');
+    expect(status.icon).not.toBe('✕');
+  });
+
+  it('clean applyable plan is kind=success with ✓', () => {
+    const completeness = { incomplete: false, reasons: [], added_electives: 0 };
+    const status = getPlanPreviewStatus([], completeness as any, 'תוכנית חוקית — ניתן להחיל');
+    expect(status.kind).toBe('success');
+    expect(status.icon).toBe('✓');
+  });
+
+  it('red/error status appears only for blocking validation errors', () => {
+    const completeness = { incomplete: false, reasons: [], added_electives: 0 };
+    const status = getPlanPreviewStatus(['קורס X מותר רק בסמסטר Y.'], completeness as any, 'לא ניתן להחיל — יש לתקן שגיאות');
+    expect(status.kind).toBe('error');
+    expect(status.icon).toBe('✕');
+  });
+
+  it('red/error status appears only for blocking completeness reasons', () => {
+    const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
+    const status = getPlanPreviewStatus([], completeness as any, 'לא ניתן להחיל — חסרות דרישות תואר');
+    expect(status.kind).toBe('error');
+    expect(status.icon).toBe('✕');
   });
 });
 
