@@ -1,0 +1,95 @@
+{
+  "_source": "https://humanities.tau.ac.il/shar_ruach/courses",
+  "_note": "Credit values (נק\"ז) are not published on the TAU שער רוח course list page itself. The value 2 below is the typical/standard credit value for a one-semester שער רוח seminar and should be verified against the official syllabus (ims.tau.ac.il) for each course before relying on it for degree-hour accounting.",
+  "category": "שער רוח",
+  "courses": [
+    {
+      "course_id": "0609-1005",
+      "name_he": "תולדות האנושות - 3,000 השנים הראשונות",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100501&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1003",
+      "name_he": "מהי תרבות? בין מערב למזרח",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100301&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1008",
+      "name_he": "מיינדפולנס ובודהיזם: פרקטיקה ותיאוריה אז והיום",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100801&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1007",
+      "name_he": "תעלומת הבלש",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100701&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1013",
+      "name_he": "מהי יהדות? מבוא למחשבת ישראל לדורותיה",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101301&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1014",
+      "name_he": "הבית והמשפחה בספרות",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101401&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "1880-0901",
+      "name_he": "משבר האקלים וקיימות: מבט רב תחומי",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880090101&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "1880-0710",
+      "name_he": "ללמוד איך ללמוד",
+      "credits": 2,
+      "semester": "א",
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880071001&year=2025",
+      "category": "שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    }
+  ]
+}

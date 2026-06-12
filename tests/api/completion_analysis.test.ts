@@ -14,6 +14,7 @@ import {
   repairAddMissingMandatory,
   getMandatoryStatusReport,
   repairAddHoursToDegree,
+  repairAddGeneralCourses,
   getHoursStatusReport,
   buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
@@ -1179,5 +1180,131 @@ describe('completed-degree-hours model (PART H)', () => {
     expect(completeness.reasons.some(r => r.includes('עומס לא סביר'))).toBe(true);
     expect(completeness.incomplete).toBe(true);
     expect(pickPrimaryBlockingReason(completeness, [])).toBe('לא ניתן להחיל — נוצר עומס לא סביר');
+  });
+});
+
+describe('קורסי שער רוח requirement (Mechanical Engineering = 6 נק"ז)', () => {
+  function ctxWithGeneral(generalReq: any, totalHoursProgress: any = {}, semesters: any[] = []) {
+    return {
+      semesters,
+      general_course_requirements: generalReq,
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 100, ...totalHoursProgress },
+    } as any;
+  }
+
+  const candidates = [
+    { course_id: 'G1', name_he: 'תולדות האנושות', hours: 2 },
+    { course_id: 'G2', name_he: 'מהי תרבות', hours: 2 },
+    { course_id: 'G3', name_he: 'ללמוד איך ללמוד', hours: 2 },
+  ];
+
+  it('1. Mechanical Engineering requires 6 נק"ז שער רוח', () => {
+    const ctx = ctxWithGeneral({ name: 'קורסי שער רוח', required_credits: 6, candidates });
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.general_requirement?.required).toBe(6);
+    expect(analysis.hours.required_general_hours).toBe(6);
+  });
+
+  it('2. completed שער רוח credits count toward the 185 total', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 6, manual_completed_degree_hours: 100 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.hours.known_completed_hours).toBe(100);
+    expect(analysis.hours.general_hours_shortfall).toBe(0);
+  });
+
+  it('3. missing שער רוח credits are scheduled separately via repairAddGeneralCourses', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 0 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const courses: Record<string, any> = {
+      G1: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G2: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G3: { hours: 2, effective_allowed_semesters: ['s1'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(3);
+    expect(result.added.every(a => a.course_id.startsWith('G'))).toBe(true);
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('4. engineering electives do not satisfy שער רוח (general_hours_shortfall stays unfilled by elective hours)', () => {
+    const ctx: any = {
+      semesters: [],
+      general_course_requirements: { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      category_requirements: [
+        { name: 'בחירה כללית', category_id: 'elective', required: 1, placed: 0, candidates: [{ course_id: 'E1', name_he: 'בחירה הנדסית', hours: 3 }] },
+      ],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 175, completed_general_hours: 0 },
+    };
+    const analysis = buildCompletionAnalysis(ctx);
+    // E1 (engineering elective) must not appear in the שער רוח candidate pool, and vice versa.
+    expect(analysis.general_requirement?.candidates.some(c => c.course_id === 'E1')).toBe(false);
+    expect(analysis.elective_pool.some(c => c.course_id === 'G1')).toBe(false);
+    expect(analysis.hours.general_hours_shortfall).toBe(6);
+  });
+
+  it('5. שער רוח courses do not satisfy engineering elective categories', () => {
+    const ctx: any = {
+      semesters: [],
+      general_course_requirements: { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      category_requirements: [
+        { name: 'בחירה כללית', category_id: 'elective', required: 1, placed: 0, candidates: [...candidates, { course_id: 'E1', name_he: 'בחירה הנדסית', hours: 3 }] },
+      ],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: 175 },
+    };
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.elective_pool.map(c => c.course_id)).toEqual(['E1']);
+  });
+
+  it('6. if user already completed 6 נק"ז שער רוח, no extra שער רוח is added', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 6 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const courses: Record<string, any> = {
+      G1: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G2: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G3: { hours: 2, effective_allowed_semesters: ['s1'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(0);
+  });
+
+  it('7. if user completed 3 נק"ז שער רוח, planner adds about 3 more (1.5 credits short rounds up to a 2-credit course)', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 3 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const courses: Record<string, any> = {
+      G1: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G2: { hours: 2, effective_allowed_semesters: ['s1'] },
+      G3: { hours: 2, effective_allowed_semesters: ['s1'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddGeneralCourses(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    // need 3 more credits; 2-credit courses are added until >= 6 total (2 courses = 4 -> 3+4=7 >= 6)
+    expect(result.added.length).toBe(2);
+  });
+
+  it('8. if שער רוח repository is unavailable (no candidates), planner shows a clear warning instead of pretending it is complete', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates: [] },
+      { completed_general_hours: 0 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    const messages = formatCompletionMessages(analysis);
+    expect(messages.some(m => m.includes('שער רוח') && m.includes('אינו זמין'))).toBe(true);
+
+    const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis, {});
+    expect(completeness.reasons.some(r => r.includes('שער רוח') && r.includes('אינו זמין'))).toBe(true);
   });
 });

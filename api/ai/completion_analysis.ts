@@ -91,6 +91,8 @@ export interface CompletionAnalysis {
   categories: CompletionCategory[];
   /** Union of all category candidates (incl. already-satisfied categories), deduped — used to fill remaining degree hours (PART D). */
   elective_pool: CompletionCandidate[];
+  /** קורסי שער רוח requirement — separate from engineering elective categories. Null if the program has no such requirement. */
+  general_requirement: CompletionCategory | null;
   hours: CompletionHours;
   overloaded_semesters: CompletionOverloadedSemester[];
   movable_courses: CompletionMovableCourse[];
@@ -142,10 +144,45 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     };
   });
 
+  // ── קורסי שער רוח requirement — separate category, never mixed into the
+  // engineering elective pool (program-specific; null if not configured) ────
+  const generalReq = (ctx as any).general_course_requirements;
+  const generalCandidateIds = new Set<string>();
+  let general_requirement: CompletionCategory | null = null;
+  if (generalReq) {
+    const candidates: CompletionCandidate[] = (generalReq.candidates ?? [])
+      .filter((c: any) => !scheduledSet.has(c.course_id) && !completedSet.has(c.course_id))
+      .map((c: any) => ({
+        course_id:            c.course_id,
+        name_he:              c.name_he,
+        hours:                c.hours ?? null,
+        has_syllabus_summary: !!c.has_syllabus_summary,
+        grade_average:        c.grade_average ?? null,
+        is_wanted:            !!c.is_wanted,
+      }));
+    for (const c of candidates) generalCandidateIds.add(c.course_id);
+    for (const c of (generalReq.candidates ?? [])) generalCandidateIds.add(c.course_id);
+
+    // placed credits = candidates already scheduled/placed on the board.
+    const placedCredits = (generalReq.candidates ?? [])
+      .filter((c: any) => scheduledSet.has(c.course_id))
+      .reduce((sum: number, c: any) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
+
+    general_requirement = {
+      name: generalReq.name,
+      category_id: 'general_shaar_ruach',
+      required: Number(generalReq.required_credits) || 0,
+      placed: placedCredits,
+      missing: Math.max(0, (Number(generalReq.required_credits) || 0) - placedCredits),
+      candidates,
+    };
+  }
+
   // ── Elective pool for filling remaining degree hours (PART D) ────────────
   const electivePoolMap = new Map<string, CompletionCandidate>();
   for (const cat of categories) {
     for (const c of cat.candidates) {
+      if (generalCandidateIds.has(c.course_id)) continue; // שער רוח courses never satisfy engineering elective categories
       if (!electivePoolMap.has(c.course_id)) electivePoolMap.set(c.course_id, c);
     }
   }
@@ -166,8 +203,12 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     ? totalHoursProgress.degree_required_hours
     : DEGREE_REQUIRED_HOURS;
 
-  // ── קורסי שער/רוח (general/humanities) requirement ────────────────────────
-  const required_general_hours = typeof totalHoursProgress?.required_general_hours === 'number'
+  // ── קורסי שער/רוח (general/humanities) requirement — program-specific
+  // general_course_requirements (if configured) takes precedence over the
+  // generic total_hours_progress.required_general_hours fallback ──────────
+  const required_general_hours = typeof generalReq?.required_credits === 'number'
+    ? generalReq.required_credits
+    : typeof totalHoursProgress?.required_general_hours === 'number'
     ? totalHoursProgress.required_general_hours : 0;
   const completed_general_hours = typeof totalHoursProgress?.completed_general_hours === 'number'
     ? totalHoursProgress.completed_general_hours : 0;
@@ -219,6 +260,7 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     missing_mandatory,
     categories,
     elective_pool,
+    general_requirement,
     hours,
     overloaded_semesters,
     movable_courses,
@@ -244,6 +286,22 @@ export function formatCompletionMessages(a: CompletionAnalysis): string[] {
     }
   } else if (a.categories.length) {
     lines.push('כל דרישות קטגוריות הבחירה הידועות מולאות.');
+  }
+
+  if (a.general_requirement) {
+    const gr = a.general_requirement;
+    if (gr.missing > 0) {
+      if (gr.candidates.length > 0) {
+        const cands = gr.candidates.slice(0, 6).map(c => `${c.name_he || c.course_id} (${c.course_id})`).join(', ');
+        lines.push(`קורסי שער רוח: שובצו ${gr.placed}/${gr.required} נק"ז. מועמדים אפשריים: ${cands}.`);
+      } else {
+        lines.push(`קורסי שער רוח: שובצו ${gr.placed}/${gr.required} נק"ז, וחסרות ${gr.missing} נק"ז — מאגר קורסי שער רוח אינו זמין, יש להשלים ידנית.`);
+      }
+    } else {
+      lines.push(`קורסי שער רוח: דרישת ${gr.required} נק"ז הושלמה.`);
+    }
+  } else if (a.hours.required_general_hours > 0) {
+    lines.push(`דרישת קורסי שער/רוח (${a.hours.required_general_hours} נק"ז) קיימת אך מאגר הקורסים אינו זמין במערכת.`);
   }
 
   if (a.hours.approximate) {
@@ -389,7 +447,23 @@ export function evaluatePlanCompleteness(
   }
   const hoursShort = Math.max(0, analysis.hours.remaining_hours - addedHours);
   const proposed_total_hours = analysis.hours.required_total - hoursShort;
-  const generalShortfall = analysis.hours.general_hours_shortfall ?? 0;
+
+  // 2b. קורסי שער רוח — separate requirement, never filled by/with engineering electives.
+  const generalStatus = getGeneralRequirementStatusReport(analysis, placed);
+  let generalShortfall = analysis.hours.general_hours_shortfall ?? 0;
+  if (generalStatus) {
+    generalShortfall = generalStatus.missing;
+    if (generalStatus.missing > 0) {
+      if (generalStatus.candidates.length > 0) {
+        const msg = `קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז.`;
+        reasons.push(msg);
+        blocking.push(msg);
+      } else {
+        reasons.push(`קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז — מאגר קורסי שער רוח אינו זמין, יש להשלים ידנית או להוסיף מאגר קורסים מתאים.`);
+      }
+    }
+  }
+
   // Of the overall shortfall, the part that may legally be filled by technical
   // electives excludes the general/humanities shortfall (PART G.3).
   const electiveShort = Math.max(0, hoursShort - generalShortfall);
@@ -411,7 +485,7 @@ export function evaluatePlanCompleteness(
     }
   }
 
-  if (generalShortfall > 0) {
+  if (!generalStatus && generalShortfall > 0) {
     reasons.push(`חסרות ${generalShortfall} ש"ס בקורסי שער/רוח — יש להשלים ידנית או להוסיף מאגר קורסים מתאים.`);
   }
 
@@ -469,6 +543,9 @@ export interface CategoryStatus {
   placed_course_ids: string[];
   missing: number;
   candidates: CompletionCandidate[];
+  /** Total credits/courses required and currently placed (used by the שער רוח report). */
+  required?: number;
+  placed?: number;
 }
 
 /**
@@ -496,6 +573,35 @@ export function getMandatoryStatusReport(
     required: analysis.missing_mandatory.length,
     placed,
     missing: missing.map(c => ({ course_id: c.course_id, name_he: c.name_he })),
+  };
+}
+
+/**
+ * PART (שער רוח) — status of the program's general/humanities credit
+ * requirement, counted in נק"ז (credits) rather than course count. Returns
+ * null if the program has no such requirement configured.
+ */
+export function getGeneralRequirementStatusReport(
+  analysis: CompletionAnalysis,
+  placedIds: Set<string>,
+): CategoryStatus | null {
+  const gr = analysis.general_requirement;
+  if (!gr) return null;
+  const placedFromGeneral = gr.candidates.filter(c => placedIds.has(c.course_id));
+  const placedCredits = placedFromGeneral.reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
+  const totalPlaced = gr.placed + placedCredits + (analysis.hours.completed_general_hours ?? 0);
+  const missing = Math.max(0, gr.required - totalPlaced);
+  const remaining = gr.candidates.filter(c => !placedIds.has(c.course_id));
+  const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+  return {
+    category_id: gr.category_id ?? null,
+    name: gr.name,
+    satisfied: missing === 0,
+    placed_course_ids: placedFromGeneral.map(c => c.course_id),
+    missing,
+    candidates: sorted.slice(0, 3),
+    required: gr.required,
+    placed: totalPlaced,
   };
 }
 
@@ -892,6 +998,89 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
     proposed_total_hours: total,
     exhausted,
     capped,
+  };
+}
+
+export interface RepairGeneralResult<P extends RepairProposalShape> {
+  proposal: P;
+  added: Array<{ course_id: string; semester_id: string; hours: number }>;
+  /** True if the requirement could not be fully filled because the candidate pool ran out. */
+  exhausted: boolean;
+}
+
+/**
+ * שער רוח repair — fills the program's general/humanities credit requirement
+ * (analysis.general_requirement) from its own candidate pool, completely
+ * separate from engineering elective categories. Must run BEFORE
+ * repairAddHoursToDegree so its added hours count toward the 185 total via
+ * the normal addedHours computation there.
+ *
+ * Pure function — does not mutate `proposal`.
+ */
+export function repairAddGeneralCourses<P extends RepairProposalShape>(
+  proposal: P,
+  analysis: CompletionAnalysis,
+  opts: {
+    courses: Record<string, RepairCourseInfo>;
+    maxHoursPerSemester?: number | null;
+    knownSemesterIds: string[];
+  },
+): RepairGeneralResult<P> {
+  const gr = analysis.general_requirement;
+  if (!gr) return { proposal, added: [], exhausted: false };
+
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  for (const id of opts.knownSemesterIds) {
+    if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
+  }
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const added: Array<{ course_id: string; semester_id: string; hours: number }> = [];
+
+  const hoursOf = (sem: { course_ids: string[] }) =>
+    sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+
+  let totalCredits = gr.placed + (analysis.hours.completed_general_hours ?? 0);
+  for (const c of gr.candidates) {
+    if (placed.has(c.course_id) && typeof c.hours === 'number') totalCredits += c.hours;
+  }
+  const target = gr.required;
+
+  let pool = gr.candidates.filter(c => !placed.has(c.course_id));
+  let exhausted = false;
+
+  while (totalCredits < target) {
+    const candidate = pickBestCandidate(pool);
+    if (!candidate) { exhausted = true; break; }
+    pool = pool.filter(c => c.course_id !== candidate.course_id);
+
+    const info = opts.courses[candidate.course_id] || {};
+    const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+    const legalSems = sems.filter(s => allowed.includes(s.semester_id));
+    if (!legalSems.length) continue;
+
+    let semTarget = legalSems
+      .filter(s => hoursOf(s) + (info.hours || 0) <= max)
+      .sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+    semTarget.course_ids.push(candidate.course_id);
+    placed.add(candidate.course_id);
+    const h = info.hours ?? candidate.hours ?? 0;
+    totalCredits += h;
+    added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h });
+  }
+
+  if (!added.length) return { proposal, added: [], exhausted };
+
+  return {
+    proposal: {
+      ...proposal,
+      semesters: sems.filter(s => s.course_ids.length > 0 || proposal.semesters.some(ps => ps.semester_id === s.semester_id)),
+      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'],
+    },
+    added,
+    exhausted,
   };
 }
 

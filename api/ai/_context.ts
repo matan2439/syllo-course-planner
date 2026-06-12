@@ -100,6 +100,20 @@ export interface PlanContext {
       is_wanted?: boolean;
     }>;
   }>;
+  /** קורסי שער רוח (humanities) requirement — program-specific, distinct from engineering electives. */
+  general_course_requirements?: {
+    name: string;
+    /** Required נק"ז for this category for the current program (e.g. 6 for Mechanical Engineering). */
+    required_credits: number;
+    candidates: Array<{
+      course_id: string;
+      name_he?: string;
+      hours?: number | null;
+      has_syllabus_summary?: boolean;
+      grade_average?: number | null;
+      is_wanted?: boolean;
+    }>;
+  };
   /** Progress toward the degree-hour requirement. */
   total_hours_progress?: {
     known_completed_hours: number;
