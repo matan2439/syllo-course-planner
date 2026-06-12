@@ -72,6 +72,8 @@ export interface CompletionAnalysis {
   scheduled_course_ids: string[];
   missing_mandatory: Array<{ course_id: string; name_he?: string; hours?: number }>;
   categories: CompletionCategory[];
+  /** Union of all category candidates (incl. already-satisfied categories), deduped — used to fill remaining degree hours (PART D). */
+  elective_pool: CompletionCandidate[];
   hours: CompletionHours;
   overloaded_semesters: CompletionOverloadedSemester[];
   movable_courses: CompletionMovableCourse[];
@@ -123,6 +125,15 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     };
   });
 
+  // ── Elective pool for filling remaining degree hours (PART D) ────────────
+  const electivePoolMap = new Map<string, CompletionCandidate>();
+  for (const cat of categories) {
+    for (const c of cat.candidates) {
+      if (!electivePoolMap.has(c.course_id)) electivePoolMap.set(c.course_id, c);
+    }
+  }
+  const elective_pool = [...electivePoolMap.values()];
+
   // ── Hours toward the 185 ש"ש degree requirement ──────────────────────────
   const known_scheduled_hours = (ctx.semesters ?? [])
     .flatMap(s => s.courses)
@@ -166,6 +177,7 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     scheduled_course_ids,
     missing_mandatory,
     categories,
+    elective_pool,
     hours,
     overloaded_semesters,
     movable_courses,
@@ -221,6 +233,8 @@ export interface CompletenessResult {
   reasons: string[];
   /** Number of non-wanted, non-mandatory electives the proposal added beyond the live board. */
   added_electives: number;
+  /** Total known credit-hours (board + proposal additions) toward the 185 ש"ש requirement (PART A). */
+  proposed_total_hours: number;
 }
 
 /**
@@ -323,18 +337,26 @@ export function evaluatePlanCompleteness(
     }
   }
 
-  // 3. remaining degree hours, with electives added on top of the live board
+  // 3. total degree hours (185 ש"ש) — hard requirement (PART A/B). The plan is
+  // not complete while proposed_total_hours < required_total, unless the
+  // elective pool is proven exhausted.
   let addedHours = 0;
   for (const cid of placed) {
     if (analysis.scheduled_course_ids.includes(cid)) continue; // already on the live board
     const h = opts.courseHours?.[cid];
     if (typeof h === 'number') addedHours += h;
   }
-  const remainingAfter = Math.max(0, analysis.hours.remaining_hours - addedHours);
-  if (remainingAfter > SEVERE_OVERLOAD_MARGIN * 2 && addedHours === 0 && analysis.hours.remaining_hours > 0) {
-    const msg = `חסרות כ-${remainingAfter} שעות מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר, ולא נוספו קורסי בחירה.`;
-    reasons.push(msg);
-    blocking.push(msg);
+  const hoursShort = Math.max(0, analysis.hours.remaining_hours - addedHours);
+  const proposed_total_hours = analysis.hours.required_total - hoursShort;
+  if (hoursShort > 0) {
+    const remainingCandidates = (analysis.elective_pool ?? []).filter(c => !placed.has(c.course_id));
+    if (remainingCandidates.length > 0) {
+      const msg = `חסרות כ-${hoursShort} ש"ש מתוך ${DEGREE_REQUIRED_HOURS} ש"ש להשלמת התואר.`;
+      reasons.push(msg);
+      blocking.push(msg);
+    } else {
+      reasons.push(`חסרות כ-${hoursShort} ש"ש מתוך ${DEGREE_REQUIRED_HOURS} ש"ש, ולא נמצאו קורסי בחירה חוקיים נוספים להשלמתן.`);
+    }
   }
 
   // 4. severe overload remains and movable courses exist
@@ -362,7 +384,7 @@ export function evaluatePlanCompleteness(
     added_electives++;
   }
 
-  return { incomplete: blocking.length > 0, reasons, added_electives };
+  return { incomplete: blocking.length > 0, reasons, added_electives, proposed_total_hours };
 }
 
 export interface MissingRequirementCard {
@@ -469,6 +491,11 @@ export function pickPrimaryBlockingReason(
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
     return 'לא ניתן להחיל — חסרות דרישות תואר';
+  }
+
+  // PART A — total degree-hours shortfall with legal candidates remaining.
+  if (completeness.reasons.some(r => r.startsWith('חסרות כ-') && r.endsWith('להשלמת התואר.'))) {
+    return 'לא ניתן להחיל — חסרות שעות להשלמת התואר';
   }
 
   if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
@@ -683,6 +710,126 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
       warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.', ...extraWarnings],
     },
     added,
+  };
+}
+
+export interface RepairHoursResult<P extends RepairProposalShape> {
+  proposal: P;
+  added: Array<{ course_id: string; semester_id: string; hours: number }>;
+  proposed_total_hours: number;
+  /** True if total < 185 and the elective pool was exhausted with no legal placement left. */
+  exhausted: boolean;
+}
+
+/**
+ * PART B — after mandatory courses and required categories are filled, keep
+ * inserting eligible elective/specialization courses (from
+ * `analysis.elective_pool`, which spans ALL categories, not just the four
+ * required ones) into the least-loaded legal semester until the proposal
+ * reaches `DEGREE_REQUIRED_HOURS` total known hours, or until no legal
+ * candidate remains (`exhausted: true`).
+ *
+ * Pure function — does not mutate `proposal`.
+ */
+export function repairAddHoursToDegree<P extends RepairProposalShape>(
+  proposal: P,
+  analysis: CompletionAnalysis,
+  opts: {
+    courses: Record<string, RepairCourseInfo>;
+    maxHoursPerSemester?: number | null;
+    unwantedCourseIds?: string[];
+    knownSemesterIds: string[];
+  },
+): RepairHoursResult<P> {
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const unwanted = new Set(opts.unwantedCourseIds ?? []);
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  for (const id of opts.knownSemesterIds) {
+    if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
+  }
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const added: Array<{ course_id: string; semester_id: string; hours: number }> = [];
+
+  const hoursOf = (sem: { course_ids: string[] }) =>
+    sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+
+  let addedHours = 0;
+  for (const cid of placed) {
+    if (analysis.scheduled_course_ids.includes(cid)) continue;
+    const h = opts.courses[cid]?.hours;
+    if (typeof h === 'number') addedHours += h;
+  }
+  let total = analysis.hours.known_total_hours + addedHours;
+
+  let pool = (analysis.elective_pool ?? []).filter(c => !placed.has(c.course_id));
+  let exhausted = false;
+
+  while (total < DEGREE_REQUIRED_HOURS && pool.length > 0) {
+    const candidate = pickBestCandidate(pool, unwanted);
+    if (!candidate) { exhausted = true; break; }
+    pool = pool.filter(c => c.course_id !== candidate.course_id);
+
+    const info = opts.courses[candidate.course_id] || {};
+    const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+    const legalSems = sems.filter(s => allowed.includes(s.semester_id));
+    if (!legalSems.length) continue;
+
+    let target = legalSems
+      .filter(s => hoursOf(s) + (info.hours || 0) <= max)
+      .sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+    target.course_ids.push(candidate.course_id);
+    placed.add(candidate.course_id);
+    const h = info.hours ?? candidate.hours ?? 0;
+    total += h;
+    added.push({ course_id: candidate.course_id, semester_id: target.semester_id, hours: h });
+  }
+
+  if (total < DEGREE_REQUIRED_HOURS && pool.length === 0) exhausted = true;
+
+  if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted };
+
+  return {
+    proposal: {
+      ...proposal,
+      semesters: sems.filter(s => s.course_ids.length > 0 || proposal.semesters.some(ps => ps.semester_id === s.semester_id)),
+      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להגיע ל-185 ש"ש.'],
+    },
+    added,
+    proposed_total_hours: total,
+    exhausted,
+  };
+}
+
+export interface HoursStatus {
+  proposed_total_hours: number;
+  required_total: number;
+  remaining: number;
+  unknown_hour_courses: number;
+  added_elective_hours: number;
+}
+
+/** PART C/F — compact "שעות בתוכנית: X/185" status for the preview. */
+export function getHoursStatusReport(
+  analysis: CompletionAnalysis,
+  proposalSemesters: Array<{ semester_id: string; course_ids: string[] }>,
+  courseHours: Record<string, number | null | undefined> = {},
+): HoursStatus {
+  const placed = new Set(proposalSemesters.flatMap(s => s.course_ids));
+  let added_elective_hours = 0;
+  for (const cid of placed) {
+    if (analysis.scheduled_course_ids.includes(cid)) continue;
+    const h = courseHours[cid];
+    if (typeof h === 'number') added_elective_hours += h;
+  }
+  const proposed_total_hours = analysis.hours.known_total_hours + added_elective_hours;
+  return {
+    proposed_total_hours,
+    required_total: DEGREE_REQUIRED_HOURS,
+    remaining: Math.max(0, DEGREE_REQUIRED_HOURS - proposed_total_hours),
+    unknown_hour_courses: analysis.hours.unknown_hour_courses,
+    added_elective_hours,
   };
 }
 

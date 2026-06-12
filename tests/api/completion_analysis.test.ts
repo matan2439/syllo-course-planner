@@ -13,6 +13,8 @@ import {
   getPlanPreviewStatus,
   repairAddMissingMandatory,
   getMandatoryStatusReport,
+  repairAddHoursToDegree,
+  getHoursStatusReport,
   buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
@@ -171,17 +173,23 @@ describe('evaluatePlanCompleteness', () => {
     expect(result.incomplete).toBe(false);
   });
 
-  it('flags remaining degree hours when no electives were added', () => {
-    const analysis = { ...baseAnalysis, hours: { ...baseAnalysis.hours, remaining_hours: 20 } };
+  it('flags remaining degree hours when no electives were added and candidates remain', () => {
+    const analysis = {
+      ...baseAnalysis,
+      hours: { ...baseAnalysis.hours, remaining_hours: 20 },
+      categories: [{ name: 'בחירה', required: 0, placed: 0, missing: 0, candidates: [{ course_id: 'E1', name_he: 'אלקטיב', hours: 3 }] }],
+      elective_pool: [{ course_id: 'E1', name_he: 'אלקטיב', hours: 3 }],
+    };
     const result = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis as any, { courseHours: {} });
     expect(result.incomplete).toBe(true);
-    expect(result.reasons.some(r => r.includes('שעות'))).toBe(true);
+    expect(result.reasons.some(r => r.includes('להשלמת התואר'))).toBe(true);
   });
 
-  it('does not flag remaining hours when electives were added', () => {
+  it('does not flag remaining hours once enough elective hours were added', () => {
     const analysis = { ...baseAnalysis, hours: { ...baseAnalysis.hours, remaining_hours: 20 } };
-    const result = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: ['E1'] }], analysis as any, { courseHours: { E1: 3 } });
-    expect(result.reasons.some(r => r.includes('שעות'))).toBe(false);
+    const result = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: ['E1'] }], analysis as any, { courseHours: { E1: 20 } });
+    expect(result.reasons.some(r => r.includes('להשלמת התואר'))).toBe(false);
+    expect(result.incomplete).toBe(false);
   });
 
   it('flags severe overload when movable courses remain in an overloaded semester', () => {
@@ -918,5 +926,116 @@ describe('pickPrimaryBlockingReason', () => {
   it('returns a clean applicable message with no reasons at all', () => {
     const completeness = { incomplete: false, reasons: [], added_electives: 0 };
     expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('תוכנית חוקית — ניתן להחיל');
+  });
+});
+
+describe('repairAddHoursToDegree and degree-hours completeness (PART G)', () => {
+  const knownSemesterIds = ['s1', 's2'];
+  const courses: Record<string, any> = {
+    SAT1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] }, // already-placed candidate of a satisfied category
+    EXTRA1: { hours: 4, effective_allowed_semesters: ['s1', 's2'] },
+    EXTRA2: { hours: 5, effective_allowed_semesters: ['s1', 's2'] },
+    EXTRA3: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+  };
+
+  function baseAnalysis(overrides: any = {}) {
+    return {
+      completed_course_ids: ['DONE1'],
+      scheduled_course_ids: [],
+      missing_mandatory: [],
+      categories: [
+        // satisfied category — but its candidates still count toward the elective pool (PART D.3)
+        { name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 1, missing: 0, candidates: [{ course_id: 'SAT1', name_he: 'זרימה נוספת', hours: 3 }] },
+        // generic "additional electives" category
+        { name: 'בחירה', category_id: 'other_specialization', required: 0, placed: 0, missing: 0, candidates: [
+          { course_id: 'EXTRA1', name_he: 'התמחות 1', hours: 4 },
+          { course_id: 'EXTRA2', name_he: 'התמחות 2', hours: 5 },
+          { course_id: 'EXTRA3', name_he: 'התמחות 3', hours: 3 },
+        ] },
+      ],
+      elective_pool: [
+        { course_id: 'SAT1', name_he: 'זרימה נוספת', hours: 3 },
+        { course_id: 'EXTRA1', name_he: 'התמחות 1', hours: 4 },
+        { course_id: 'EXTRA2', name_he: 'התמחות 2', hours: 5 },
+        { course_id: 'EXTRA3', name_he: 'התמחות 3', hours: 3 },
+      ],
+      hours: { required_total: 185, known_completed_hours: 30, known_scheduled_hours: 145, known_total_hours: 175, remaining_hours: 10, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [],
+      movable_courses: [],
+      pinned_course_ids: [],
+      ...overrides,
+    };
+  }
+
+  it('1. a plan below 185 hours is not applyable if candidates remain', () => {
+    const analysis = baseAnalysis();
+    const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis as any);
+    expect(completeness.incomplete).toBe(true);
+    expect(completeness.reasons.some(r => r.includes('להשלמת התואר'))).toBe(true);
+    expect(isPlanApplyable([], completeness)).toBe(false);
+  });
+
+  it('2/4. repairAddHoursToDegree keeps adding electives after category requirements are satisfied, until 185 is reached', () => {
+    const analysis = baseAnalysis();
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis as any, { courses, knownSemesterIds, maxHoursPerSemester: 18 });
+    // remaining_hours=10 -> needs at least 10 more known hours
+    expect(result.added.length).toBeGreaterThan(1);
+    expect(result.proposed_total_hours).toBeGreaterThanOrEqual(185);
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('3. additional electives can come from an already-satisfied category (SAT1)', () => {
+    const analysis = baseAnalysis();
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis as any, { courses, knownSemesterIds, maxHoursPerSemester: 18 });
+    expect(result.added.some(a => a.course_id === 'SAT1')).toBe(true);
+  });
+
+  it('5. repair stops when the elective pool is exhausted before reaching 185', () => {
+    const analysis = baseAnalysis({ hours: { required_total: 185, known_completed_hours: 30, known_scheduled_hours: 100, known_total_hours: 130, remaining_hours: 55, unknown_hour_courses: 0, approximate: false } });
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis as any, { courses, knownSemesterIds, maxHoursPerSemester: 18 });
+    // pool only has 3+4+5+3=15 hours, can't cover 55
+    expect(result.proposed_total_hours).toBeLessThan(185);
+    expect(result.exhausted).toBe(true);
+  });
+
+  it('6. preview status says "חסרות שעות להשלמת התואר" when below 185 with candidates remaining', () => {
+    const analysis = baseAnalysis();
+    const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis as any);
+    const reason = pickPrimaryBlockingReason(completeness, []);
+    expect(reason).toContain('חסרות שעות להשלמת התואר');
+    expect(reason).not.toContain('תוכנית חוקית');
+  });
+
+  it('7. the elective pool used for hours is larger than just the missing-category candidates', () => {
+    const analysis = baseAnalysis();
+    const missingCategoryCandidates = analysis.categories.flatMap((c: any) => c.missing > 0 ? c.candidates : []);
+    expect(analysis.elective_pool.length).toBeGreaterThan(missingCategoryCandidates.length);
+  });
+
+  it('8. completed courses count toward known hours but are never re-scheduled', () => {
+    const analysis = baseAnalysis();
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis as any, { courses, knownSemesterIds, maxHoursPerSemester: 18 });
+    const placedIds = result.proposal.semesters.flatMap((s: any) => s.course_ids);
+    expect(placedIds).not.toContain('DONE1');
+    // 30 known_completed_hours contributed to the starting total without being placed
+    expect(result.proposed_total_hours).toBeGreaterThanOrEqual(analysis.hours.known_total_hours);
+  });
+
+  it('9. unknown-hour courses do not falsely satisfy the 185-hour requirement, and are surfaced with a warning count', () => {
+    const analysis = baseAnalysis({
+      hours: { required_total: 185, known_completed_hours: 30, known_scheduled_hours: 100, known_total_hours: 130, remaining_hours: 55, unknown_hour_courses: 2, approximate: true },
+    });
+    const proposalSemesters = [{ semester_id: 's1', course_ids: [] }];
+    const status = getHoursStatusReport(analysis as any, proposalSemesters, {});
+    expect(status.proposed_total_hours).toBe(130);
+    expect(status.remaining).toBe(55);
+    expect(status.unknown_hour_courses).toBe(2);
+
+    const completeness = evaluatePlanCompleteness(proposalSemesters, analysis as any);
+    expect(completeness.incomplete).toBe(true);
   });
 });
