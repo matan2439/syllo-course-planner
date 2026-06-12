@@ -710,8 +710,9 @@ describe('repairPlanLoad', () => {
     const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
     expect(result.repaired).toBe(false);
     const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
-    expect(s1Report.movable).toEqual(['E1']);
-    expect(s1Report.not_movable).toEqual([]);
+    expect(s1Report.movable).toEqual([]);
+    expect(s1Report.not_movable).toEqual(['E1']);
+    expect(s1Report.not_movable_reasons).toEqual([{ course_id: 'E1', reason: 'no_legal_target' }]);
   });
 
   it('never drops a mandatory course from the plan, even when overload cannot be fully fixed', () => {
@@ -746,6 +747,109 @@ describe('repairPlanLoad', () => {
     expect(result.repaired).toBe(true);
     const s1 = result.proposal.semesters.find((s: any) => s.semester_id === 's1')!;
     expect(s1.course_ids.length).toBe(1);
+  });
+
+  // PART F — movedCount/moveLog and final-message-related tests.
+
+  it('reports movedCount and an accepted moveLog entry when an elective is auto-moved', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'M2', 'E1'] }, // 12+12+3 = 27
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      M2: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      E1: { hours: 3, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.movedCount).toBe(1);
+    const accepted = result.moveLog.find(m => m.accepted && m.course_id === 'E1');
+    expect(accepted).toBeDefined();
+    expect(accepted!.from_semester).toBe('s1');
+    expect(accepted!.to_semester).toBe('s2');
+  });
+
+  it('reduces the maximum semester load when a legal move exists', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'M2', 'E1'] }, // 27
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      M2: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      E1: { hours: 3, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const before = Math.max(...proposal.semesters.map(s => getSemesterLoad(s as any, courses as any)));
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    const after = Math.max(...result.proposal.semesters.map((s: any) => getSemesterLoad(s, courses as any)));
+    expect(after).toBeLessThan(before);
+  });
+
+  it('does not report movable courses for an overload it never attempted to move (load equal to max is fine)', () => {
+    const proposal = {
+      semesters: [{ semester_id: 's1', course_ids: ['M1'] }],
+    };
+    const courses = { M1: { hours: 20, placement_policy: 'fixed', course_type: 'mandatory' } };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.unmovedOverloaded).toEqual([]);
+    expect(result.moveLog).toEqual([]);
+  });
+
+  it('when all legal moves fail to help, unmovedOverloaded still lists the course as movable (attempted, not helpful)', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] }, // 25
+        { semester_id: 's2', course_ids: ['E2'] }, // 25
+      ],
+    };
+    const courses = {
+      E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+      E2: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(false);
+    const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
+    expect(s1Report.movable).toEqual(['E1']);
+    expect(result.moveLog.some(m => !m.accepted)).toBe(true);
+  });
+
+  it('reports pinned courses as not_movable with reason pinned when balancing is blocked', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] },
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = { E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] } };
+    const result = repairPlanLoad(proposal as any, {
+      courses, maxHoursPerSemester: 20, pinnedCourseIds: new Set(['E1']),
+    });
+    expect(result.repaired).toBe(false);
+    const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
+    expect(s1Report.not_movable).toEqual(['E1']);
+    expect(s1Report.not_movable_reasons).toEqual([{ course_id: 'E1', reason: 'pinned' }]);
+  });
+
+  it('moving a course must not break mandatory requirements — fixed mandatory never moves even when it would balance load', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'M2'] }, // 12+12 = 24, both fixed
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+      M2: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory' },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(false);
+    const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
+    expect(s1Report.not_movable.sort()).toEqual(['M1', 'M2']);
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids.sort()).toEqual(['M1', 'M2']);
   });
 });
 

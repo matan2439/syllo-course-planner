@@ -1265,6 +1265,7 @@ export interface LoadBalanceCourseInfo {
   effective_allowed_semesters?: string[] | null;
   placement_policy?: string | null;
   course_type?: string | null;
+  name_he?: string | null;
 }
 
 export interface LoadBalanceContext {
@@ -1400,9 +1401,25 @@ export interface OverloadedSemesterReport {
   not_movable_reasons: Array<{ course_id: string; reason: string }>;
 }
 
+/** PART E — a single move attempt (accepted or rejected), for the debug report. */
+export interface LoadMoveLogEntry {
+  course_id: string;
+  course_name?: string | null;
+  from_semester: string;
+  to_semester: string;
+  accepted: boolean;
+  reason: string;
+  before_load: number;
+  after_load: number;
+}
+
 export interface RepairLoadResult<P extends RepairProposalShape> {
   proposal: P;
   repaired: boolean;
+  /** PART D — number of courses actually moved to reduce overload. */
+  movedCount: number;
+  /** PART E — every move attempted (accepted and rejected), in order. */
+  moveLog: LoadMoveLogEntry[];
   unmovedOverloaded: OverloadedSemesterReport[];
 }
 
@@ -1441,18 +1458,22 @@ function _balanceTier(info: LoadBalanceCourseInfo | undefined): number {
  */
 export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: LoadBalanceContext): RepairLoadResult<P> {
   const max = ctx.maxHoursPerSemester;
-  if (max == null) return { proposal, repaired: false, unmovedOverloaded: [] };
+  if (max == null) return { proposal, repaired: false, movedCount: 0, moveLog: [], unmovedOverloaded: [] };
 
   const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
   const allSemIds = sems.map(s => s.semester_id);
   const hoursOf = (sem: { course_ids: string[] }) => getSemesterLoad(sem, ctx.courses);
 
-  // PART B — minimize the maximum load, then variance: each pass, target the
-  // globally heaviest over-max semester (not just the first), try to move
-  // its best candidate (electives → flexible mandatory → general/other) to
-  // the least-loaded legal semester, and only commit the move if it actually
-  // reduces (or doesn't worsen) the current maximum load.
+  // PART A/B — minimize the maximum load, then variance: each pass, target
+  // the globally heaviest over-max semester (not just the first), try to
+  // move its best candidate (electives → general/שער רוח → flexible
+  // mandatory → other movable) to the least-loaded legal semester, and only
+  // commit the move if it actually reduces (or doesn't worsen) the current
+  // maximum load. Every attempt — accepted or rejected — is logged for the
+  // PART E debug report and PART D final message.
   let repaired = false;
+  let movedCount = 0;
+  const moveLog: LoadMoveLogEntry[] = [];
   let guard = 0;
   while (guard++ < 200) {
     const hours = sems.map(hoursOf);
@@ -1491,43 +1512,79 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
       // creating a worse one elsewhere).
       const newOverHours = hoursOf(sem) - ch;
       const newTargetHours = hoursOf(sems[bestJ]) + ch;
-      if (Math.max(newOverHours, newTargetHours) >= maxHours && newOverHours >= maxHours) continue;
+      const helps = newTargetHours < maxHours;
+
+      if (!helps) {
+        moveLog.push({
+          course_id: cid,
+          course_name: info?.name_he ?? null,
+          from_semester: sem.semester_id,
+          to_semester: sems[bestJ].semester_id,
+          accepted: false,
+          reason: `נדחה כי הסמסטר היה מגיע ל-${newTargetHours}/${max}`,
+          before_load: maxHours,
+          after_load: newTargetHours,
+        });
+        continue;
+      }
 
       const k = sem.course_ids.indexOf(cid);
       sem.course_ids.splice(k, 1);
       sems[bestJ].course_ids.push(cid);
+      moveLog.push({
+        course_id: cid,
+        course_name: info?.name_he ?? null,
+        from_semester: sem.semester_id,
+        to_semester: sems[bestJ].semester_id,
+        accepted: true,
+        reason: `התקבל, עומס ${sem.semester_id} ירד מ-${maxHours} ל-${newOverHours}`,
+        before_load: maxHours,
+        after_load: newOverHours,
+      });
       moved = true;
       repaired = true;
+      movedCount++;
       break;
     }
     if (!moved) break;
   }
 
   const unmovedOverloaded: OverloadedSemesterReport[] = sems
-    .map(sem => ({ sem, hours: hoursOf(sem) }))
+    .map((sem, idx) => ({ sem, idx, hours: hoursOf(sem) }))
     .filter(({ hours }) => hours > max)
-    .map(({ sem, hours }) => {
+    .map(({ sem, idx, hours }) => {
       const movable: string[] = [];
       const notMovable: string[] = [];
       const notMovableReasons: Array<{ course_id: string; reason: string }> = [];
       for (const cid of sem.course_ids) {
         const info = ctx.courses[cid];
-        if (isMovableForBalance(cid, info, ctx)) {
-          movable.push(cid);
+        if (!isMovableForBalance(cid, info, ctx)) {
+          notMovable.push(cid);
+          let reason: string;
+          if (!info) reason = 'אין מידע על הקורס';
+          else if (ctx.completedCourseIds?.has(cid)) reason = 'completed';
+          else if (ctx.pinnedCourseIds?.has(cid)) reason = 'pinned';
+          else if (info.placement_policy === 'fixed') reason = 'fixed_mandatory';
+          else reason = 'no_legal_target';
+          notMovableReasons.push({ course_id: cid, reason });
           continue;
         }
-        notMovable.push(cid);
-        let reason: string;
-        if (!info) reason = 'אין מידע על הקורס';
-        else if (ctx.completedCourseIds?.has(cid)) reason = 'completed';
-        else if (ctx.pinnedCourseIds?.has(cid)) reason = 'pinned';
-        else if (info.placement_policy === 'fixed') reason = 'fixed_mandatory';
-        else reason = 'no_legal_target';
-        notMovableReasons.push({ course_id: cid, reason });
+        // PART A — "movable" here means a legal target semester actually
+        // exists (already tried and exhausted above), not just movable by
+        // policy — otherwise the caller would report "movable courses exist"
+        // even though no legal move was ever possible.
+        const allowed = info?.effective_allowed_semesters?.length ? info.effective_allowed_semesters : allSemIds;
+        const hasLegalTarget = sems.some((other, j) => j !== idx && allowed.includes(other.semester_id));
+        if (hasLegalTarget) {
+          movable.push(cid);
+        } else {
+          notMovable.push(cid);
+          notMovableReasons.push({ course_id: cid, reason: 'no_legal_target' });
+        }
       }
       return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable, not_movable_reasons: notMovableReasons };
     });
 
-  if (!repaired) return { proposal, repaired: false, unmovedOverloaded };
-  return { proposal: { ...proposal, semesters: sems }, repaired: true, unmovedOverloaded };
+  if (!repaired) return { proposal, repaired: false, movedCount, moveLog, unmovedOverloaded };
+  return { proposal: { ...proposal, semesters: sems }, repaired: true, movedCount, moveLog, unmovedOverloaded };
 }
