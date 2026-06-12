@@ -1417,6 +1417,19 @@ const SHAAR_RUACH_COURSES = [
   { course_id: '1880-0710', name_he: 'ללמוד איך ללמוד', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880071001&year=2025' },
 ];
 
+/**
+ * PART B — every שער רוח course counts as exactly 2 נק"ז toward the 185 total,
+ * regardless of which hour-like field is populated. Never returns 0/unknown
+ * for a שער רוח course.
+ */
+function getCourseHours(course) {
+  if (!course) return null;
+  if (course.source_type === 'shaar_ruach' || course.is_general_requirement) {
+    return course.credits ?? course.hours ?? course.weekly_hours ?? course.semester_hours ?? 2;
+  }
+  return course.hours ?? course.weekly_hours ?? course.semester_hours ?? null;
+}
+
 /** קורסי שער רוח required credits, by program prefix. Mechanical Engineering = 6 נק"ז. */
 const SHAAR_RUACH_REQUIRED_CREDITS_PREFIX = { mechanical_engineering: 6 };
 function shaarRuachRequiredCreditsFor(programId) {
@@ -4896,13 +4909,28 @@ function buildPlanValidationInputs() {
   const courses = {};
   for (const c of Object.values(courseMap)) {
     courses[c.course_id] = {
-      hours: c.weekly_hours ?? c.semester_hours ?? null,
+      hours: getCourseHours(c),
       effective_allowed_semesters: c.effective_allowed_semesters || null,
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
       is_mandatory: c.course_type === 'mandatory' || !!c.is_mandatory,
       placement_policy: c.placement_policy || null,
       course_type: c.course_type || null,
     };
+  }
+  // PART B — שער רוח repository courses are not part of courseMap (separate
+  // repository); add them here so repairAddGeneralCoursesLocal /
+  // repairAddHoursToDegreeLocal can resolve their hours (always 2).
+  for (const g of SHAAR_RUACH_COURSES) {
+    if (!courses[g.course_id]) {
+      courses[g.course_id] = {
+        hours: getCourseHours(g),
+        effective_allowed_semesters: null,
+        missing_prerequisites: [],
+        is_mandatory: false,
+        placement_policy: null,
+        course_type: 'general_shaar_ruach',
+      };
+    }
   }
 
   const categoryRequirements = (programRequirements?.categories || [])
@@ -5509,10 +5537,18 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   }
   let total = analysis.hours.known_total_hours + addedHours;
 
-  const generalShortfall = analysis.hours.general_hours_shortfall || 0;
-  const target = analysis.hours.required_total - generalShortfall;
+  // PART B/C — target is the program-specific required_total (185). שער רוח
+  // courses already added by repairAddGeneralCoursesLocal are part of
+  // `placed`/`addedHours` above and already count toward `total` — do NOT
+  // subtract the general shortfall again (that double-counts and leaves the
+  // plan 4 ש"ש short).
+  const target = analysis.hours.required_total;
+  // PART B/C — generic electives must not be added while שער רוח is still
+  // unmet; it must be filled first by repairAddGeneralCoursesLocal.
+  const generalStatusForGate = getGeneralRequirementStatusReportLocal(analysis, placed);
+  const generalShortfall = generalStatusForGate ? generalStatusForGate.missing : (analysis.hours.general_hours_shortfall || 0);
   const priorKnown = analysis.hours.prior_hours_known !== false;
-  const maxAdditions = priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN;
+  const maxAdditions = generalShortfall > 0 ? 0 : (priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN);
 
   // PART A — the candidate pool for remaining hours spans ALL of
   // analysis.elective_pool, including courses from already-satisfied
@@ -5650,13 +5686,23 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   let generalShortfall = analysis.hours.general_hours_shortfall || 0;
   if (generalStatus) {
     generalShortfall = generalStatus.missing;
+    const gr = analysis.general_requirement;
+    const before = (gr?.placed ?? 0) + (analysis.hours.completed_general_hours ?? 0);
+    const addedGeneralCredits = Math.max(0, (generalStatus.placed ?? 0) - before);
     if (generalStatus.missing > 0) {
       if (generalStatus.candidates.length > 0) {
-        const msg = `קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז.`;
+        const msg = `יש להשלים עוד ${generalStatus.missing} נק"ז שער רוח, אך לא נמצאו קורסי שער רוח חוקיים נוספים לשיבוץ.`;
         reasons.push(msg);
         blocking.push(msg);
       } else {
         reasons.push(`קורסי שער רוח: שובצו ${generalStatus.placed}/${generalStatus.required} נק"ז, חסרות ${generalStatus.missing} נק"ז — מאגר קורסי שער רוח אינו זמין, יש להשלים ידנית או להוסיף מאגר קורסים מתאים.`);
+      }
+    } else if (before < (generalStatus.required ?? 0)) {
+      const required = generalStatus.required ?? 0;
+      if (addedGeneralCredits > 0) {
+        reasons.push(`קורסי שער רוח: ${before}/${required} הושלם, נוספו ${addedGeneralCredits} נק"ז — קורסי שער רוח: ${required}/${required} לאחר התוכנית.`);
+      } else {
+        reasons.push(`קורסי שער רוח: ${required}/${required} לאחר התוכנית.`);
       }
     }
   }
