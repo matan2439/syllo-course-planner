@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { getSemesterLoad } from './completion_analysis';
 
 export const planMoveSchema = z.object({
   course_id: z.string(),
@@ -224,7 +225,7 @@ export function validatePlanProposal(
   const placedCourseIds = new Set<string>();
 
   for (const sem of proposal.semesters) {
-    let semHours = 0;
+    const semHours = getSemesterLoad(sem, ctx.courses);
     const semName = semesterLabel(sem.semester_id, ctx.semesterLabels);
 
     for (const courseId of sem.course_ids) {
@@ -275,7 +276,6 @@ export function validatePlanProposal(
         }
       }
 
-      semHours += info?.hours ?? 0;
     }
 
     // 5. semester hour limit — severe overload (or any overload when the user

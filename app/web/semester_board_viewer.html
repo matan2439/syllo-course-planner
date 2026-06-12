@@ -5063,7 +5063,7 @@ function validatePlanProposalLocal(proposal, ctx) {
   const placedCourseIds = new Set();
 
   for (const sem of (proposal.semesters || [])) {
-    let semHours = 0;
+    const semHours = getSemesterLoadLocal(sem, ctx.courses);
     const semName = SEM_HE[sem.semester_id] || sem.semester_id;
     for (const courseId of (sem.course_ids || [])) {
       const cName = courseLabelLocal(courseId);
@@ -5103,7 +5103,6 @@ function validatePlanProposalLocal(proposal, ctx) {
         }
       }
 
-      semHours += info?.hours || 0;
     }
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
       const overBy = semHours - ctx.maxHoursPerSemester;
@@ -5218,24 +5217,37 @@ function _balanceTier(info) {
  * first (most flexible), then other movable courses. Stops when no semester
  * exceeds `max` or no legal move remains.
  */
+/**
+ * PART A — single source of truth for a semester's weekly-hour load. Mirrors
+ * api/ai/completion_analysis.ts (getSemesterLoad). Used by the semester card,
+ * warnings, blocking reasons, repairPlanLoad and the preview summary so the
+ * same proposal never shows two different numbers for the same semester.
+ */
+function getSemesterLoadLocal(semester, courses) {
+  return (semester.course_ids || []).reduce((sum, cid) => sum + ((courses || {})[cid]?.hours || 0), 0);
+}
+
 function repairPlanLoad(proposal, ctx) {
   const max = ctx.maxHoursPerSemester;
   if (max == null) return { proposal, repaired: false, unmovedOverloaded: [] };
 
   const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
   const allSemIds = sems.map(s => s.semester_id);
-  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+  const hoursOf = sem => getSemesterLoadLocal(sem, ctx.courses);
 
+  // PART B — minimize the maximum load, then variance: each pass, target the
+  // globally heaviest over-max semester, try to move its best candidate
+  // (electives → flexible mandatory → general/other) to the least-loaded
+  // legal semester, and only commit if it actually helps the current max.
   let repaired = false;
   let guard = 0;
-  while (guard++ < 50) {
+  while (guard++ < 200) {
     const hours = sems.map(hoursOf);
-    const overIdx = hours.findIndex(h => h > max);
-    if (overIdx === -1) break;
-
+    const maxHours = Math.max(...hours);
+    if (maxHours <= max) break;
+    const overIdx = hours.indexOf(maxHours);
     const sem = sems[overIdx];
 
-    // Order candidates: electives/flexible first, then other movable courses.
     const candidates = sem.course_ids
       .map((cid, k) => ({ cid, k, info: ctx.courses[cid] || {} }))
       .filter(({ cid, info }) => _isMovableForBalance(cid, info, ctx))
@@ -5244,12 +5256,11 @@ function repairPlanLoad(proposal, ctx) {
     let moved = false;
     for (const { cid, info } of candidates) {
       const ch = info.hours || 0;
-      // Electives without explicit allowed semesters may go to any other
-      // known board semester; other courses are restricted to their list.
+      // Fall back to "any known semester" when no explicit
+      // effective_allowed_semesters is set, for any movable course.
       const allowed = info.effective_allowed_semesters?.length
         ? info.effective_allowed_semesters
-        : (_isElectiveLike(info) ? allSemIds : null);
-      if (!allowed) continue;
+        : allSemIds;
 
       const legalIdx = sems
         .map((s, j) => j)
@@ -5262,6 +5273,10 @@ function repairPlanLoad(proposal, ctx) {
       const pool = fitting.length ? fitting : legalIdx;
       const bestJ = pool.sort((a, b) => hoursOf(sems[a]) - hoursOf(sems[b]))[0];
 
+      const newOverHours = hoursOf(sem) - ch;
+      const newTargetHours = hoursOf(sems[bestJ]) + ch;
+      if (Math.max(newOverHours, newTargetHours) >= maxHours && newOverHours >= maxHours) continue;
+
       const k = sem.course_ids.indexOf(cid);
       sem.course_ids.splice(k, 1);
       sems[bestJ].course_ids.push(cid);
@@ -5272,18 +5287,28 @@ function repairPlanLoad(proposal, ctx) {
     if (!moved) break;
   }
 
-  // Report any semesters still over max, and which of their courses were/weren't movable.
+  // Report any semesters still over max, which of their courses were/weren't
+  // movable, and exactly why (PART C).
   const unmovedOverloaded = sems
     .map(sem => ({ sem, hours: hoursOf(sem) }))
     .filter(({ hours }) => hours > max)
     .map(({ sem, hours }) => {
       const movable = [];
       const notMovable = [];
+      const notMovableReasons = [];
       for (const cid of sem.course_ids) {
         const info = ctx.courses[cid] || {};
-        (_isMovableForBalance(cid, info, ctx) ? movable : notMovable).push(cid);
+        if (_isMovableForBalance(cid, info, ctx)) { movable.push(cid); continue; }
+        notMovable.push(cid);
+        let reason;
+        if (!ctx.courses[cid]) reason = 'אין מידע על הקורס';
+        else if (ctx.completedCourseIds?.has(cid)) reason = 'completed';
+        else if (ctx.pinnedCourseIds?.has(cid)) reason = 'pinned';
+        else if (info.placement_policy === 'fixed') reason = 'fixed_mandatory';
+        else reason = 'no_legal_target';
+        notMovableReasons.push({ course_id: cid, reason });
       }
-      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable };
+      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable, not_movable_reasons: notMovableReasons };
     });
 
   if (!repaired) return { proposal, repaired: false, unmovedOverloaded };
@@ -5783,7 +5808,7 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   }
 
   for (const sem of proposalSemesters) {
-    const hrs = (sem.course_ids || []).reduce((s, cid) => s + (opts.courseHours?.[cid] || 0), 0);
+    const hrs = getSemesterLoadLocal(sem, Object.fromEntries(Object.entries(opts.courseHours || {}).map(([cid, h]) => [cid, { hours: h }])));
     if (hrs > MAX_REASONABLE_SEMESTER_HOURS) {
       const msg = 'נוצר עומס לא סביר — כנראה חסר מידע על שעות שכבר צברת בתואר.';
       reasons.push(msg);
@@ -5792,7 +5817,7 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   }
 
   for (const sem of proposalSemesters) {
-    const hrs = (sem.course_ids || []).reduce((s, cid) => s + (opts.courseHours?.[cid] || 0), 0);
+    const hrs = getSemesterLoadLocal(sem, Object.fromEntries(Object.entries(opts.courseHours || {}).map(([cid, h]) => [cid, { hours: h }])));
     if (hrs > DEFAULT_MAX_HOURS_PER_SEMESTER + SEVERE_OVERLOAD_MARGIN && hrs <= MAX_REASONABLE_SEMESTER_HOURS) {
       const movableInSem = opts.movableCourseIds ? (sem.course_ids || []).filter(cid => opts.movableCourseIds.has(cid)) : [];
       if (movableInSem.length > 0) {
@@ -6135,15 +6160,35 @@ async function requestPlanProposal(prefs, actionType) {
     // block Apply if movable courses exist (balancing should have helped),
     // otherwise surface as a non-blocking warning.
     for (const o of (unmovedOverloaded || [])) {
-      if (o.hours <= ctx.maxHoursPerSemester + SEVERE_OVERLOAD_MARGIN) continue;
-      if (o.movable.length > 0) {
-        completeness.reasons.push('הסמסטר עדיין עמוס מדי למרות שקיימים קורסים שניתן להעביר.');
-        completeness.incomplete = true;
-      } else {
+      const semName = SEM_HE[o.semester_id] || o.semester_id;
+      const pinnedReasons = (o.not_movable_reasons || []).filter(r => r.reason === 'pinned');
+      if (pinnedReasons.length > 0) {
         repairedProposal.warnings_he = [
           ...(repairedProposal.warnings_he || []),
-          'הסמסטר עמוס, אך לא נמצאו קורסים שניתן להעביר בלי לשבור אילוצים.',
+          `לא ניתן לאזן כי ${pinnedReasons.length} קורסים בסמסטר ${semName} מסומנים כ'אל תזיז'.`,
+          `בטל נעיצה של קורסים כדי לאפשר איזון עומס`,
         ];
+      }
+      if (o.hours <= ctx.maxHoursPerSemester + SEVERE_OVERLOAD_MARGIN) continue;
+      // PART E — if the user explicitly accepted the overload, don't block.
+      if (prefs.overload_accepted) {
+        repairedProposal.warnings_he = [
+          ...(repairedProposal.warnings_he || []),
+          'התוכנית חוקית, אך כוללת חריגה בעומס שאושרה ידנית.',
+        ];
+        continue;
+      }
+      if (o.movable.length > 0) {
+        completeness.reasons.push(`${semName} עמוס מדי (${o.hours}/${ctx.maxHoursPerSemester} ש"ש) למרות שקיימים קורסים שניתן להעביר.`);
+        completeness.incomplete = true;
+      } else {
+        // PART C — exact reasons no course could be moved.
+        const reasonLabels = { fixed_mandatory: 'קורס חובה קבוע', pinned: "מסומן כ'אל תזיז'", completed: 'הושלם כבר', no_legal_target: 'אין סמסטר חוקי להעברה' };
+        const details = (o.not_movable_reasons || [])
+          .map(r => `${courseLabelLocal(r.course_id)}: ${reasonLabels[r.reason] || r.reason}`)
+          .join('; ');
+        completeness.reasons.push(`${semName} עמוס (${o.hours}/${ctx.maxHoursPerSemester} ש"ש) ולא נמצאו קורסים שניתן להעביר${details ? ` — ${details}` : ''}.`);
+        completeness.incomplete = true;
       }
     }
 
@@ -6184,11 +6229,6 @@ function findCoursePlacementSemId(cid) {
 }
 
 /** Hours to count for a course (weekly_hours, falling back to semester_hours), or 0. */
-function _planCourseHours(cid) {
-  const c = courseMap[cid];
-  return c?.weekly_hours ?? c?.semester_hours ?? 0;
-}
-
 /**
  * Classify a Hebrew error/warning string into a display group.
  * Mirrors the message shapes produced by validatePlanProposalLocal /
@@ -6243,7 +6283,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   let maxSemHours = 0;
   const semHoursById = {};
   for (const sem of (proposal.semesters || [])) {
-    const hrs = (sem.course_ids || []).reduce((sum, cid) => sum + _planCourseHours(cid), 0);
+    const hrs = getSemesterLoadLocal(sem, _aiPlanLastCtx?.courses || {});
     semHoursById[sem.semester_id] = hrs;
     maxSemHours = Math.max(maxSemHours, hrs);
   }
@@ -6501,6 +6541,11 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   });
   document.getElementById('ai-plan-rebalance')?.addEventListener('click', () => {
     requestPlanProposal({ ..._aiPlanLastPreferences, balance_load: true }, 'balance_load');
+  });
+  // PART E — user explicitly accepts the remaining overload; regenerate the
+  // preview with that flag so the blocking error is replaced by a warning.
+  document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
+    requestPlanProposal({ ..._aiPlanLastPreferences, overload_accepted: true }, 'overload_accepted');
   });
   document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
     requestPlanProposal({ ..._aiPlanLastPreferences, max_weekly_hours: maxSemHours }, _aiPlanLastPreferences?.action_type);

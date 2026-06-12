@@ -551,7 +551,7 @@ export function evaluatePlanCompleteness(
   // hours model is missing prior-credit info and over-filled the visible
   // board (PART E).
   for (const sem of proposalSemesters) {
-    const hrs = sem.course_ids.reduce((s, cid) => s + (opts.courseHours?.[cid] || 0), 0);
+    const hrs = getSemesterLoad(sem, Object.fromEntries(Object.entries(opts.courseHours || {}).map(([cid, h]) => [cid, { hours: h }])));
     if (hrs > MAX_REASONABLE_SEMESTER_HOURS) {
       const msg = 'נוצר עומס לא סביר — כנראה חסר מידע על שעות שכבר צברת בתואר.';
       reasons.push(msg);
@@ -561,7 +561,7 @@ export function evaluatePlanCompleteness(
 
   // 4. severe overload remains and movable courses exist
   for (const sem of proposalSemesters) {
-    const hrs = sem.course_ids.reduce((s, cid) => s + (opts.courseHours?.[cid] || 0), 0);
+    const hrs = getSemesterLoad(sem, Object.fromEntries(Object.entries(opts.courseHours || {}).map(([cid, h]) => [cid, { hours: h }])));
     if (hrs > DEFAULT_MAX_HOURS_PER_SEMESTER + SEVERE_OVERLOAD_MARGIN && hrs <= MAX_REASONABLE_SEMESTER_HOURS) {
       const movableInSem = opts.movableCourseIds
         ? sem.course_ids.filter(cid => opts.movableCourseIds!.has(cid))
@@ -1250,11 +1250,26 @@ export interface LoadBalanceContext {
   completedCourseIds?: Set<string>;
 }
 
+/**
+ * PART A — single source of truth for a semester's weekly-hour load. Used by
+ * the semester card, warnings, blocking reasons, repairPlanLoad, and the
+ * preview summary so the same proposal can never show two different numbers
+ * for the same semester. Mirrored client-side (getSemesterLoadLocal).
+ */
+export function getSemesterLoad(
+  semester: { course_ids: string[] },
+  courses: Record<string, { hours?: number | null }>,
+): number {
+  return semester.course_ids.reduce((sum, cid) => sum + (courses[cid]?.hours || 0), 0);
+}
+
 export interface OverloadedSemesterReport {
   semester_id: string;
   hours: number;
   movable: string[];
   not_movable: string[];
+  /** PART C — exact reason each non-movable course stayed put. */
+  not_movable_reasons: Array<{ course_id: string; reason: string }>;
 }
 
 export interface RepairLoadResult<P extends RepairProposalShape> {
@@ -1302,30 +1317,37 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
 
   const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
   const allSemIds = sems.map(s => s.semester_id);
-  const hoursOf = (sem: { course_ids: string[] }) =>
-    sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+  const hoursOf = (sem: { course_ids: string[] }) => getSemesterLoad(sem, ctx.courses);
 
+  // PART B — minimize the maximum load, then variance: each pass, target the
+  // globally heaviest over-max semester (not just the first), try to move
+  // its best candidate (electives → flexible mandatory → general/other) to
+  // the least-loaded legal semester, and only commit the move if it actually
+  // reduces (or doesn't worsen) the current maximum load.
   let repaired = false;
   let guard = 0;
-  while (guard++ < 50) {
+  while (guard++ < 200) {
     const hours = sems.map(hoursOf);
-    const overIdx = hours.findIndex(h => h > max);
-    if (overIdx === -1) break;
-
+    const maxHours = Math.max(...hours);
+    if (maxHours <= max) break;
+    const overIdx = hours.indexOf(maxHours);
     const sem = sems[overIdx];
 
     const candidates = sem.course_ids
       .map(cid => ({ cid, info: ctx.courses[cid] }))
       .filter(({ cid, info }) => isMovableForBalance(cid, info, ctx))
-      .sort((a, b) => (isElectiveLike(a.info) === isElectiveLike(b.info)) ? 0 : (isElectiveLike(a.info) ? -1 : 1));
+      .sort((a, b) => _balanceTier(a.info) - _balanceTier(b.info));
 
     let moved = false;
     for (const { cid, info } of candidates) {
       const ch = info?.hours || 0;
+      // PART B.7 — fall back to "any known semester" when no explicit
+      // effective_allowed_semesters is set (electives and unrestricted
+      // flexible/general courses alike), but never invent a target for a
+      // course that genuinely has a restricted allowed-semester list.
       const allowed = info?.effective_allowed_semesters?.length
         ? info.effective_allowed_semesters
-        : (isElectiveLike(info) ? allSemIds : null);
-      if (!allowed) continue;
+        : allSemIds;
 
       const legalIdx = sems
         .map((_, j) => j)
@@ -1335,6 +1357,13 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
       const fitting = legalIdx.filter(j => max - hoursOf(sems[j]) >= ch);
       const pool = fitting.length ? fitting : legalIdx;
       const bestJ = pool.sort((a, b) => hoursOf(sems[a]) - hoursOf(sems[b]))[0];
+
+      // Only commit if it actually helps: the new max load must not exceed
+      // the current max (i.e. it lowers this semester's load without
+      // creating a worse one elsewhere).
+      const newOverHours = hoursOf(sem) - ch;
+      const newTargetHours = hoursOf(sems[bestJ]) + ch;
+      if (Math.max(newOverHours, newTargetHours) >= maxHours && newOverHours >= maxHours) continue;
 
       const k = sem.course_ids.indexOf(cid);
       sem.course_ids.splice(k, 1);
@@ -1352,10 +1381,23 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
     .map(({ sem, hours }) => {
       const movable: string[] = [];
       const notMovable: string[] = [];
+      const notMovableReasons: Array<{ course_id: string; reason: string }> = [];
       for (const cid of sem.course_ids) {
-        (isMovableForBalance(cid, ctx.courses[cid], ctx) ? movable : notMovable).push(cid);
+        const info = ctx.courses[cid];
+        if (isMovableForBalance(cid, info, ctx)) {
+          movable.push(cid);
+          continue;
+        }
+        notMovable.push(cid);
+        let reason: string;
+        if (!info) reason = 'אין מידע על הקורס';
+        else if (ctx.completedCourseIds?.has(cid)) reason = 'completed';
+        else if (ctx.pinnedCourseIds?.has(cid)) reason = 'pinned';
+        else if (info.placement_policy === 'fixed') reason = 'fixed_mandatory';
+        else reason = 'no_legal_target';
+        notMovableReasons.push({ course_id: cid, reason });
       }
-      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable };
+      return { semester_id: sem.semester_id, hours, movable, not_movable: notMovable, not_movable_reasons: notMovableReasons };
     });
 
   if (!repaired) return { proposal, repaired: false, unmovedOverloaded };

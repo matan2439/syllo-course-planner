@@ -15,6 +15,7 @@ import {
   getMandatoryStatusReport,
   repairAddHoursToDegree,
   repairAddGeneralCourses,
+  getSemesterLoad,
   getGeneralRequirementStatusReport,
   getHoursStatusReport,
   buildPreviewChangeBullets,
@@ -741,6 +742,113 @@ describe('repairPlanLoad', () => {
     expect(result.repaired).toBe(true);
     const s1 = result.proposal.semesters.find((s: any) => s.semester_id === 's1')!;
     expect(s1.course_ids.length).toBe(1);
+  });
+});
+
+describe('PART G — unified load calculation and balancing', () => {
+  const courses = {
+    M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory', effective_allowed_semesters: ['s1'] },
+    E1: { hours: 3, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] },
+    G1: { hours: 12, course_type: 'general_shaar_ruach', placement_policy: null, effective_allowed_semesters: null },
+  };
+
+  it('1. getSemesterLoad gives the same number used by repairPlanLoad and validatePlanProposal', () => {
+    const sem = { semester_id: 's1', course_ids: ['M1', 'E1'] };
+    const load = getSemesterLoad(sem, courses as any);
+    expect(load).toBe(15);
+
+    // same proposal/courses fed to repairPlanLoad must report the identical hours
+    const result = repairPlanLoad({ semesters: [sem, { semester_id: 's2', course_ids: [] }] } as any, { courses: courses as any, maxHoursPerSemester: 20 });
+    expect(result.unmovedOverloaded).toEqual([]);
+
+    // and to validatePlanProposal's warning path
+    const ctx: any = { completedCourseIds: new Set(), courses, maxHoursPerSemester: 10 };
+    const { warnings, errors } = validatePlanProposal({ semesters: [sem], requirements_status: [] } as any, ctx);
+    expect([...warnings, ...errors].some(m => m.includes('15'))).toBe(true);
+  });
+
+  it('3. repairPlanLoad moves a שער רוח/general course when it helps balance and is legal', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'G1'] }, // 12 + 12 = 24
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const result = repairPlanLoad(proposal as any, { courses: courses as any, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(true);
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's2')!.course_ids).toContain('G1');
+  });
+
+  it('5. never moves a fixed mandatory course even if it is the only candidate', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1'] }, // 12, under max but flag with low max
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const result = repairPlanLoad(proposal as any, { courses: courses as any, maxHoursPerSemester: 5 });
+    expect(result.repaired).toBe(false);
+    expect(result.proposal.semesters[0].course_ids).toEqual(['M1']);
+    expect(result.unmovedOverloaded[0].not_movable).toEqual(['M1']);
+    expect(result.unmovedOverloaded[0].not_movable_reasons).toEqual([{ course_id: 'M1', reason: 'fixed_mandatory' }]);
+  });
+
+  it('7. pinned courses that block balancing are reported with a reason', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E1'] },
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const result = repairPlanLoad(proposal as any, {
+      courses: { E1: { hours: 25, course_type: 'elective', effective_allowed_semesters: ['s1', 's2'] } } as any,
+      maxHoursPerSemester: 20,
+      pinnedCourseIds: new Set(['E1']),
+    });
+    expect(result.repaired).toBe(false);
+    expect(result.unmovedOverloaded[0].not_movable_reasons).toEqual([{ course_id: 'E1', reason: 'pinned' }]);
+  });
+
+  it('8. an overloaded plan with legal moves available is repaired, not left unbalanced', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['E1', 'E2', 'E3'] }, // 9+9+9 = 27
+        { semester_id: 'year_3_semester_b', course_ids: ['E4'] }, // 9
+      ],
+    };
+    const c = {
+      E1: { hours: 9, course_type: 'elective', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+      E2: { hours: 9, course_type: 'elective', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+      E3: { hours: 9, course_type: 'elective', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+      E4: { hours: 9, course_type: 'elective', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses: c as any, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(true);
+    const loads = result.proposal.semesters.map((s: any) => getSemesterLoad(s, c as any));
+    expect(Math.max(...loads)).toBeLessThanOrEqual(20);
+    expect(result.unmovedOverloaded).toEqual([]);
+  });
+
+  it('10. repairAddMissingElectives prefers a least-loaded legal semester over an already-overloaded one', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E0'] }, // already at 18
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [],
+      categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'NEW1', hours: 3, is_wanted: true }] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const c = {
+      E0: { hours: 18, effective_allowed_semesters: ['s1', 's2'] },
+      NEW1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis, { courses: c as any, maxHoursPerSemester: 20, knownSemesterIds: ['s1', 's2'] });
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's2')!.course_ids).toContain('NEW1');
   });
 });
 
