@@ -670,6 +670,9 @@ body.prog-modal-open .workspace {
 /* Preferences summary */
 .ai-plan-summary { font-size: .78rem; line-height: 1.5; background: var(--bg-2, #1c1f26); border-radius: 8px; padding: 8px 10px; }
 .ai-plan-completeness { font-size: .76rem; line-height: 1.6; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; }
+.ai-plan-missing-cards { display: flex; flex-direction: column; gap: 8px; }
+.ai-plan-missing-card { font-size: .8rem; background: var(--bg-2, #1c1f26); border-radius: 8px; padding: 8px 10px; }
+.btn-sm { font-size: .74rem; padding: 4px 8px; }
 
 /* Preview modal — top status bar */
 .ai-plan-preview-status {
@@ -4384,6 +4387,8 @@ async function fetchBoardJSON(prog) {
 
 let _aiPlanLastPreferences = null;
 let _aiPlanLastProposal    = null;
+let _aiPlanLastAnalysis    = null;
+let _aiPlanLastCtx         = null;
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
@@ -5251,6 +5256,66 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
   return { incomplete: blocking.length > 0, reasons, added_electives };
 }
 
+/** Mirrors api/ai/completion_analysis.ts (getMissingRequirementCards). */
+function getMissingRequirementCardsLocal(analysis, placedIds) {
+  return analysis.categories
+    .map(cat => {
+      const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id)).length;
+      const stillMissing = Math.max(0, cat.missing - placedFromCategory);
+      const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
+      const sorted = [...remaining].sort((a, b) => _scoreCandidateLocal(b) - _scoreCandidateLocal(a));
+      return {
+        category_id: cat.category_id ?? null,
+        name: cat.name,
+        missing: stillMissing,
+        candidates: sorted.slice(0, 3),
+      };
+    })
+    .filter(c => c.missing > 0);
+}
+
+/** Mirrors api/ai/completion_analysis.ts (pickPrimaryBlockingReason). */
+function pickPrimaryBlockingReasonLocal(completeness, missingCards) {
+  if (!completeness.incomplete) {
+    return completeness.reasons.length > 0
+      ? 'ניתן להחיל — נותרו אזהרות בלבד'
+      : 'ניתן להחיל';
+  }
+  const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
+  if (missingWithCandidates.length) {
+    const total = missingWithCandidates.reduce((sum, c) => sum + c.missing, 0);
+    return total === 1
+      ? 'לא ניתן להחיל — חסרה דרישת בחירה אחת'
+      : `לא ניתן להחיל — חסרות ${total} דרישות בחירה`;
+  }
+  if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
+    return 'לא ניתן להחיל — עומס גבוה מדי בסמסטר';
+  }
+  if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {
+    return 'לא ניתן להחיל — קורס נעוץ הוזז';
+  }
+  return 'לא ניתן להחיל — יש לתקן שגיאות';
+}
+
+/**
+ * PART B — insert a single recommended candidate into the least-loaded
+ * legal semester of `proposal`. Pure-ish: returns a new proposal object
+ * (semesters array is copied), or the same proposal if no legal target.
+ */
+function insertCandidateIntoProposalLocal(proposal, courseId, ctx) {
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const info = ctx.courses[courseId] || {};
+  const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : SEMESTERS.map(s => s.id);
+  const legalSems = sems.filter(s => allowed.includes(s.semester_id));
+  if (!legalSems.length) return proposal;
+  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+  const max = ctx.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  let target = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+  if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+  target.course_ids.push(courseId);
+  return { ...proposal, semesters: sems };
+}
+
 async function requestPlanProposal(prefs, actionType) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
   const statusEl = document.getElementById('ai-plan-status');
@@ -5349,6 +5414,8 @@ async function requestPlanProposal(prefs, actionType) {
     }
 
     _aiPlanLastProposal = repairedProposal;
+    _aiPlanLastAnalysis = analysis;
+    _aiPlanLastCtx = ctx;
     openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness);
   } catch (err) {
     statusEl.textContent = 'שגיאת רשת — נסה שוב.';
@@ -5450,12 +5517,17 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
     || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
   const canApply = errors.length === 0 && !completeness?.incomplete;
+
+  // PART A: primary blocking reason, computed from missing-requirement cards
+  // (see below) so the top bar names the real cause instead of a generic message.
+  const placedIdsForCards = new Set((proposal.semesters || []).flatMap(s => s.course_ids || []));
+  const missingCards = _aiPlanLastAnalysis ? getMissingRequirementCardsLocal(_aiPlanLastAnalysis, placedIdsForCards) : [];
   const statusLabel = canApply
-    ? 'ניתן להחיל'
-    : (severeOverload ? 'לא ניתן להחיל — עומס גבוה בסמסטר אחד' : 'לא ניתן להחיל — יש לתקן שגיאות');
+    ? pickPrimaryBlockingReasonLocal(completeness || { incomplete: false, reasons: [] }, missingCards)
+    : pickPrimaryBlockingReasonLocal(completeness || { incomplete: true, reasons: [] }, missingCards);
   const statusHtml = `
     <div class="ai-plan-preview-status ${canApply ? 'status-ok' : 'status-bad'}">
-      <strong>${canApply ? '✓' : '✗'} ${statusLabel}</strong>
+      <strong>${canApply ? '✓' : '✗'} ${esc(statusLabel)}</strong>
     </div>`;
 
   const autofixHtml = autofixed
@@ -5479,6 +5551,20 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       ${reasonsHtml ? `<ul>${reasonsHtml}</ul>` : ''}
       ${restReasonsHtml}
     </div>`;
+
+  // ── PART B: missing-requirement action cards ────────────────────────────
+  const missingCardsHtml = missingCards.length
+    ? `<div class="ai-plan-missing-cards">${missingCards.map(card => {
+        const top = card.candidates[0];
+        const candHtml = top
+          ? `<button class="btn btn-sm ai-plan-add-recommended" data-course-id="${esc(top.course_id)}" data-category="${esc(card.name)}">הוסף מומלץ: ${esc(top.name_he || top.course_id)}</button>`
+          : `<span class="ai-plan-hint">אין קורס זמין במאגר לדרישה זו</span>`;
+        return `<div class="ai-plan-missing-card">
+          <div><strong>${esc(card.name)}</strong> — חסרים ${card.missing}</div>
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${candHtml}</div>
+        </div>`;
+      }).join('')}</div>`
+    : '';
 
   // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
   const MAX_COURSES_SHOWN = 5;
@@ -5566,6 +5652,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       ${statusHtml}
       ${autofixHtml}
       ${completenessHtml}
+      ${missingCardsHtml}
       <div class="ai-plan-sems">${semestersHtml}</div>
       ${movesDetailsHtml}
       ${detailsHtml}
@@ -5605,6 +5692,40 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   document.getElementById('ai-plan-back-prefs')?.addEventListener('click', () => {
     openPlanPreferencesModal();
   });
+  panel.querySelectorAll('.ai-plan-add-recommended').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const courseId = btn.getAttribute('data-course-id');
+      const updated = insertCandidateIntoProposalLocal(proposal, courseId, _aiPlanLastCtx);
+      refreshPlanPreviewWithProposal(updated);
+    });
+  });
+}
+
+/**
+ * PART B — recompute repair/validation/completeness for an updated proposal
+ * (e.g. after "הוסף מומלץ") and re-render the preview modal.
+ */
+function refreshPlanPreviewWithProposal(proposal) {
+  const ctx = _aiPlanLastCtx;
+  const analysis = _aiPlanLastAnalysis;
+  const { proposal: repaired, unmovedOverloaded } = repairPlanLoad(proposal, ctx);
+  const { errors, warnings } = validatePlanProposalLocal(repaired, ctx);
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  const completeness = evaluatePlanCompletenessLocal(repaired.semesters || [], analysis, {
+    wantedCourseIds: _aiPlanLastPreferences?.wanted_course_ids,
+    courseHours,
+    movableCourseIds: ctx.movableCourseIds,
+  });
+  for (const o of (unmovedOverloaded || [])) {
+    if (o.hours <= ctx.maxHoursPerSemester + SEVERE_OVERLOAD_MARGIN) continue;
+    if (o.movable.length > 0) {
+      completeness.reasons.push('הסמסטר עדיין עמוס מדי למרות שקיימים קורסים שניתן להעביר.');
+      completeness.incomplete = true;
+    }
+  }
+  _aiPlanLastProposal = repaired;
+  openPlanPreviewModal(repaired, errors, warnings, false, completeness);
 }
 
 /**

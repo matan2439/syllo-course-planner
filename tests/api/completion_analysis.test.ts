@@ -6,8 +6,11 @@ import {
   pickBestCandidate,
   repairAddMissingElectives,
   repairPlanLoad,
+  getMissingRequirementCards,
+  pickPrimaryBlockingReason,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
+  SEVERE_OVERLOAD_MARGIN,
 } from '../../api/ai/completion_analysis';
 import type { PlanContext } from '../../api/ai/_context';
 
@@ -478,5 +481,96 @@ describe('PART B integration: severe overload + completeness', () => {
       movableCourseIds: new Set(),
     });
     expect(result.incomplete).toBe(false);
+  });
+
+  it('18 ש"ש with a max of 20 is not flagged as overload at all', () => {
+    const proposalSemesters = [{ semester_id: 's1', course_ids: ['F1'] }];
+    const courseHours = { F1: 18 };
+    const result = evaluatePlanCompleteness(proposalSemesters, baseAnalysis as any, {
+      courseHours,
+      movableCourseIds: new Set(['F1']),
+    });
+    expect(result.incomplete).toBe(false);
+    expect(result.reasons.some(r => r.includes('עמוס'))).toBe(false);
+    expect(18).toBeLessThanOrEqual(DEFAULT_MAX_HOURS_PER_SEMESTER + SEVERE_OVERLOAD_MARGIN);
+  });
+});
+
+describe('getMissingRequirementCards', () => {
+  const baseAnalysis = {
+    completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+    hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+    overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+  };
+
+  it('exposes recommended candidates for a missing requirement', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{
+        name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 0, missing: 1,
+        candidates: [
+          { course_id: 'F1', name_he: 'מכניקת זורמים', hours: 3 },
+          { course_id: 'F2', name_he: 'זרימה מתקדמת', hours: 3, is_wanted: true },
+        ],
+      }],
+    };
+    const cards = getMissingRequirementCards(analysis as any, new Set());
+    expect(cards).toHaveLength(1);
+    expect(cards[0].missing).toBe(1);
+    // F2 scores higher (is_wanted), so it should be the top recommendation.
+    expect(cards[0].candidates[0].course_id).toBe('F2');
+  });
+
+  it('reduces the missing count once a candidate is placed', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{
+        name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1,
+        candidates: [{ course_id: 'L1', name_he: 'מעבדה', hours: 2 }],
+      }],
+    };
+    const before = getMissingRequirementCards(analysis as any, new Set());
+    expect(before).toHaveLength(1);
+
+    const after = getMissingRequirementCards(analysis as any, new Set(['L1']));
+    expect(after).toHaveLength(0);
+  });
+
+  it('omits categories with no remaining shortfall', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [{ name: 'בחירה', category_id: 'other', required: 1, placed: 1, missing: 0, candidates: [] }],
+    };
+    expect(getMissingRequirementCards(analysis as any, new Set())).toEqual([]);
+  });
+});
+
+describe('pickPrimaryBlockingReason', () => {
+  it('prefers missing-requirement cards over a generic blocking error', () => {
+    const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
+    const missingCards = [
+      { category_id: 'fluids', name: 'זורמים', missing: 2, candidates: [{ course_id: 'F1' }] },
+      { category_id: 'solids', name: 'מוצקים', missing: 2, candidates: [{ course_id: 'S1' }] },
+    ];
+    const reason = pickPrimaryBlockingReason(completeness as any, missingCards as any);
+    expect(reason).toContain('4');
+    expect(reason).toContain('דרישות בחירה');
+  });
+
+  it('falls back to overload reason when no missing-requirement candidates exist', () => {
+    const completeness = { incomplete: true, reasons: ['סמסטר א עמוס מדי (24 ש"ש) למרות שניתן להעביר קורסים גמישים.'], added_electives: 0 };
+    const reason = pickPrimaryBlockingReason(completeness as any, []);
+    expect(reason).toContain('עומס');
+  });
+
+  it('returns a warnings-only message when the plan is applicable but has notes', () => {
+    const completeness = { incomplete: false, reasons: ['הדרישה הושלמה: קטגוריית "בחירה".'], added_electives: 1 };
+    const reason = pickPrimaryBlockingReason(completeness as any, []);
+    expect(reason).toBe('ניתן להחיל — נותרו אזהרות בלבד');
+  });
+
+  it('returns a clean applicable message with no reasons at all', () => {
+    const completeness = { incomplete: false, reasons: [], added_electives: 0 };
+    expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('ניתן להחיל');
   });
 });

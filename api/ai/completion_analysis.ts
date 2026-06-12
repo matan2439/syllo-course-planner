@@ -305,6 +305,73 @@ export function evaluatePlanCompleteness(
   return { incomplete: blocking.length > 0, reasons, added_electives };
 }
 
+export interface MissingRequirementCard {
+  category_id: string | null;
+  name: string;
+  missing: number;
+  candidates: CompletionCandidate[];
+}
+
+/**
+ * PART B — for each elective category still unmet by the proposal, return a
+ * compact card with up to 3 best candidates. Only includes categories that
+ * are still actually missing (i.e. `missing > 0` after subtracting placed
+ * candidates).
+ */
+export function getMissingRequirementCards(
+  analysis: CompletionAnalysis,
+  placedIds: Set<string>,
+): MissingRequirementCard[] {
+  return analysis.categories
+    .map(cat => {
+      const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id)).length;
+      const stillMissing = Math.max(0, cat.missing - placedFromCategory);
+      const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
+      const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+      return {
+        category_id: cat.category_id ?? null,
+        name: cat.name,
+        missing: stillMissing,
+        candidates: sorted.slice(0, 3),
+      };
+    })
+    .filter(c => c.missing > 0);
+}
+
+/**
+ * PART A — pick the single most important Hebrew reason to show in the top
+ * status bar, so the user immediately understands why a plan can/can't be
+ * applied — instead of a generic "יש לתקן שגיאות".
+ */
+export function pickPrimaryBlockingReason(
+  completeness: CompletenessResult,
+  missingCards: MissingRequirementCard[],
+): string {
+  if (!completeness.incomplete) {
+    return completeness.reasons.length > 0
+      ? 'ניתן להחיל — נותרו אזהרות בלבד'
+      : 'ניתן להחיל';
+  }
+
+  const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
+  if (missingWithCandidates.length) {
+    const total = missingWithCandidates.reduce((sum, c) => sum + c.missing, 0);
+    return total === 1
+      ? 'לא ניתן להחיל — חסרה דרישת בחירה אחת'
+      : `לא ניתן להחיל — חסרות ${total} דרישות בחירה`;
+  }
+
+  if (completeness.reasons.some(r => r.includes('עמוס מדי'))) {
+    return 'לא ניתן להחיל — עומס גבוה מדי בסמסטר';
+  }
+
+  if (completeness.reasons.some(r => r.includes('אל תזיז') || r.includes('נעוץ'))) {
+    return 'לא ניתן להחיל — קורס נעוץ הוזז';
+  }
+
+  return 'לא ניתן להחיל — יש לתקן שגיאות';
+}
+
 /** Score a candidate elective for repair-insertion (higher = preferred). */
 export function scoreCandidate(c: CompletionCandidate): number {
   let score = 0;
