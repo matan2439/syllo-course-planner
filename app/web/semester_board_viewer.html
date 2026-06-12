@@ -680,7 +680,10 @@ body.prog-modal-open .workspace {
   border-radius: 8px; padding: 8px 10px; border: 1px solid var(--border);
 }
 .ai-plan-preview-status.status-ok   { background: rgba(40,167,69,.12); border-color: rgba(40,167,69,.4); }
+.ai-plan-preview-status.status-warn { background: rgba(234,179,8,.14); border-color: rgba(234,179,8,.45); }
 .ai-plan-preview-status.status-bad  { background: rgba(220,53,69,.12); border-color: rgba(220,53,69,.4); }
+.ai-plan-apply-reason { font-size: .74rem; color: var(--text-muted); margin-top: -4px; }
+.ai-plan-changes { font-size: .8rem; line-height: 1.6; padding-inline-start: 18px; margin: 0; }
 .ai-plan-status-pill {
   font-size: .7rem; padding: 2px 8px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border);
 }
@@ -4896,7 +4899,7 @@ function validatePlanProposalLocal(proposal, ctx) {
           errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
         }
       } else {
-        warnings.push(`ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`);
+        warnings.push(`שים לב: ${semName} חורג ב־${overBy} ש"ש מהעדפת העומס שלך.`);
       }
     }
   }
@@ -5220,9 +5223,9 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
       blocking.push(msg);
     } else if (stillMissing > 0) {
       reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
-    } else if (cat.missing > 0 && placedFromCategory >= cat.missing) {
-      reasons.push(`הדרישה הושלמה: קטגוריית "${cat.name}".`);
     }
+    // Satisfied categories are surfaced via getCategoryStatusReportLocal's
+    // compact status list — no redundant "הדרישה הושלמה" line here.
   }
 
   let addedHours = 0;
@@ -5287,12 +5290,35 @@ function getMissingRequirementCardsLocal(analysis, placedIds) {
     .map(({ category_id, name, missing, candidates }) => ({ category_id, name, missing, candidates }));
 }
 
+/** Mirrors api/ai/completion_analysis.ts (isPlanApplyable). */
+function isPlanApplyableLocal(validationErrors, completeness) {
+  return validationErrors.length === 0 && !completeness?.incomplete;
+}
+
+/** Mirrors api/ai/completion_analysis.ts (buildPreviewChangeBullets). PART C: max 4 bullets. */
+function buildPreviewChangeBulletsLocal({ addedElectives, maxSemHours, allCategoriesSatisfied, warningCount }) {
+  const bullets = [];
+  if (addedElectives > 0) {
+    bullets.push(addedElectives === 1 ? 'נוסף קורס בחירה אחד' : `נוספו ${addedElectives} קורסי בחירה`);
+  }
+  if (maxSemHours > 0) {
+    bullets.push(`עומס מקסימלי: ${maxSemHours} ש״ש`);
+  }
+  if (allCategoriesSatisfied) {
+    bullets.push('הושלמו כל קטגוריות החובה');
+  }
+  if (warningCount > 0) {
+    bullets.push(warningCount === 1 ? 'נותרה אזהרה אחת' : `נותרו ${warningCount} אזהרות`);
+  }
+  return bullets.slice(0, 4);
+}
+
 /** Mirrors api/ai/completion_analysis.ts (pickPrimaryBlockingReason). */
 function pickPrimaryBlockingReasonLocal(completeness, missingCards) {
   if (!completeness.incomplete) {
     return completeness.reasons.length > 0
-      ? 'תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד'
-      : 'תוכנית חוקית ומאוזנת';
+      ? 'ניתן להחיל — נותרו אזהרות בלבד'
+      : 'תוכנית חוקית — ניתן להחיל';
   }
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
@@ -5526,7 +5552,8 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
 
   const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
     || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
-  const canApply = errors.length === 0 && !completeness?.incomplete;
+  const canApply = isPlanApplyableLocal(errors, completeness);
+  const hasWarningsOnly = canApply && (completeness?.reasons || []).length > 0;
 
   // PART A: primary blocking reason, computed from missing-requirement cards
   // (see below) so the top bar names the real cause instead of a generic message.
@@ -5535,26 +5562,17 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const statusLabel = canApply
     ? pickPrimaryBlockingReasonLocal(completeness || { incomplete: false, reasons: [] }, missingCards)
     : pickPrimaryBlockingReasonLocal(completeness || { incomplete: true, reasons: [] }, missingCards);
+  const statusClass = !canApply ? 'status-bad' : (hasWarningsOnly ? 'status-warn' : 'status-ok');
+  const statusIcon = !canApply ? '✗' : (hasWarningsOnly ? '⚠' : '✓');
   const statusHtml = `
-    <div class="ai-plan-preview-status ${canApply ? 'status-ok' : 'status-bad'}">
-      <strong>${canApply ? '✓' : '✗'} ${esc(statusLabel)}</strong>
+    <div class="ai-plan-preview-status ${statusClass}">
+      <strong>${statusIcon} ${esc(statusLabel)}</strong>
     </div>`;
 
   const autofixHtml = autofixed
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
 
-  // ── Completeness summary: full vs. partial plan, missing requirements,
-  // and how many electives were added beyond the requested courses.
-  const isPartial = !!completeness?.incomplete;
-  const allReasons = completeness?.reasons || [];
-  const MAX_REASONS_SHOWN = 3;
-  const shownReasons = allReasons.slice(0, MAX_REASONS_SHOWN);
-  const restReasons = allReasons.slice(MAX_REASONS_SHOWN);
-  const reasonsHtml = shownReasons.map(r => `<li>${esc(r)}</li>`).join('');
-  const restReasonsHtml = restReasons.length
-    ? `<details class="ai-plan-details"><summary>עוד ${restReasons.length} הערות</summary><ul>${restReasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></details>`
-    : '';
   // ── PART D: per-category requirement status (with chosen course names). ──
   const categoryStatus = _aiPlanLastAnalysis ? getCategoryStatusReportLocal(_aiPlanLastAnalysis, placedIdsForCards) : [];
   const categoryStatusHtml = categoryStatus.length
@@ -5566,14 +5584,34 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         return `<li>⚠ ${esc(cat.name)}: ${cat.candidates.length} / ${cat.missing} מועמדים זמינים</li>`;
       }).join('')}</ul>`
     : '';
+  const allCategoriesSatisfied = categoryStatus.length > 0 && categoryStatus.every(c => c.satisfied);
 
-  const completenessHtml = `
-    <div class="ai-plan-completeness">
-      <div>${isPartial ? '⚠ תוכנית חלקית — חלק מהדרישות לא מולאו.' : '✓ תוכנית מלאה לסמסטרים שנותרו.'}</div>
-      ${categoryStatusHtml}
-      ${reasonsHtml ? `<ul>${reasonsHtml}</ul>` : ''}
-      ${restReasonsHtml}
-    </div>`;
+  // ── PART C: "מה השתנה?" — compact summary, max 4 bullets ────────────────
+  const allReasons = completeness?.reasons || [];
+  const changeBullets = buildPreviewChangeBulletsLocal({
+    addedElectives: completeness?.added_electives || 0,
+    maxSemHours,
+    allCategoriesSatisfied,
+    warningCount: allReasons.length,
+  });
+  const changesHtml = changeBullets.length
+    ? `<div class="ai-plan-changes-box"><strong>מה השתנה?</strong><ul class="ai-plan-changes">${changeBullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>`
+    : '';
+
+  const reqStatusHtml = categoryStatusHtml
+    ? `<div class="ai-plan-completeness"><strong>דרישות תואר</strong>${categoryStatusHtml}</div>`
+    : '';
+
+  const MAX_REASONS_SHOWN = 3;
+  const shownReasons = allReasons.slice(0, MAX_REASONS_SHOWN);
+  const restReasons = allReasons.slice(MAX_REASONS_SHOWN);
+  const reasonsHtml = shownReasons.map(r => `<li>${esc(r)}</li>`).join('');
+  const restReasonsHtml = restReasons.length
+    ? `<ul>${restReasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`
+    : '';
+  const reasonsDetailsHtml = allReasons.length
+    ? `<details class="ai-plan-details"><summary>אזהרות (${allReasons.length})</summary><div style="margin-top:8px"><ul>${reasonsHtml}</ul>${restReasonsHtml}</div></details>`
+    : '';
 
   // ── PART B: missing-requirement action cards ────────────────────────────
   const missingCardsHtml = missingCards.length
@@ -5650,18 +5688,19 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         <div class="ai-plan-rationale">${esc(proposal.rationale_he || '')}</div>
         ${errorsHtml}
         ${warningsHtml}
+        ${reasonsDetailsHtml}
+        ${reqHtml ? `<div><strong>דרישות תואר (פירוט מלא)</strong>${reqHtml}</div>` : ''}
+        <div>
+          <strong>מה זוז</strong>
+          ${movesHtml}
+        </div>
       </div>
     </details>`;
 
-  const reqDetailsHtml = reqHtml
-    ? `<details class="ai-plan-details"><summary>דרישות תואר</summary><div style="margin-top:8px">${reqHtml}</div></details>`
+  // PART E: short reason shown next to a disabled Apply button.
+  const applyReasonHtml = !canApply
+    ? `<div class="ai-plan-apply-reason">אי אפשר להחיל: ${esc(statusLabel.replace(/^לא ניתן להחיל\s*—\s*/, ''))}</div>`
     : '';
-
-  const movesDetailsHtml = `
-    <details class="ai-plan-details">
-      <summary>מה השתנה?</summary>
-      <div style="margin-top:8px">${movesHtml}</div>
-    </details>`;
 
   const panel = document.getElementById('ai-plan-panel');
   panel.innerHTML = `
@@ -5674,23 +5713,23 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
       ${autofixHtml}
-      ${completenessHtml}
+      ${changesHtml}
       ${missingCardsHtml}
       <div class="ai-plan-sems">${semestersHtml}</div>
-      ${movesDetailsHtml}
+      ${reqStatusHtml}
       ${detailsHtml}
-      ${reqDetailsHtml}
       <div class="ai-plan-local-note">
         החלת התוכנית משנה רק את הלוח המקומי שלך, לא את תוכנית הלימודים הרשמית.<br>
         השינוי נשמר אצלך בלבד ואפשר לערוך אותו בגרירה.
       </div>
+      ${applyReasonHtml}
       <div style="display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap">
         <button class="btn btn-primary" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל תוכנית</button>
+        <button class="btn" id="ai-plan-ask-changes">בקש שינויים</button>
         ${!canApply ? `
         <button class="btn" id="ai-plan-rebalance">נסה לאזן שוב</button>
         ${severeOverload ? '<button class="btn" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
         <button class="btn" id="ai-plan-back-prefs">חזור להעדפות</button>` : ''}
-        <button class="btn" id="ai-plan-ask-changes">בקש שינויים</button>
         <button class="btn" id="ai-plan-reject">דחה</button>
       </div>
     </div>`;

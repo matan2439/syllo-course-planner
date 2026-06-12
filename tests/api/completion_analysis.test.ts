@@ -9,6 +9,8 @@ import {
   getMissingRequirementCards,
   getCategoryStatusReport,
   pickPrimaryBlockingReason,
+  isPlanApplyable,
+  buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
   SEVERE_OVERLOAD_MARGIN,
@@ -156,13 +158,14 @@ describe('evaluatePlanCompleteness', () => {
     expect(result.reasons.some(r => r.includes('בחירה'))).toBe(true);
   });
 
-  it('reports satisfied category when placed covers the missing count', () => {
+  it('does not report a redundant "הדרישה הושלמה" line when a category is satisfied', () => {
     const analysis = {
       ...baseAnalysis,
       categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'E1', name_he: 'אלקטיב' }] }],
     };
     const result = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: ['E1'] }], analysis as any);
-    expect(result.reasons.some(r => r.includes('הדרישה הושלמה'))).toBe(true);
+    expect(result.reasons.some(r => r.includes('הדרישה הושלמה'))).toBe(false);
+    expect(result.incomplete).toBe(false);
   });
 
   it('flags remaining degree hours when no electives were added', () => {
@@ -627,6 +630,55 @@ describe('repairAddMissingElectives: required-category auto-fill respects wanted
   });
 });
 
+describe('isPlanApplyable', () => {
+  it('is true when only warnings/info remain (no errors, not incomplete)', () => {
+    const completeness = { incomplete: false, reasons: ['הדרישה הושלמה: קטגוריית "בחירה".'], added_electives: 1 };
+    expect(isPlanApplyable([], completeness as any)).toBe(true);
+  });
+
+  it('is true with no completeness object at all and no errors', () => {
+    expect(isPlanApplyable([], null)).toBe(true);
+  });
+
+  it('is false when validation errors exist, even if completeness is fine', () => {
+    const completeness = { incomplete: false, reasons: [], added_electives: 0 };
+    expect(isPlanApplyable(['קורס X מותר רק בסמסטר Y.'], completeness as any)).toBe(false);
+  });
+
+  it('is false when completeness reports blocking reasons', () => {
+    const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
+    expect(isPlanApplyable([], completeness as any)).toBe(false);
+  });
+});
+
+describe('buildPreviewChangeBullets', () => {
+  it('returns at most 4 bullets even when all conditions apply', () => {
+    const bullets = buildPreviewChangeBullets({
+      addedElectives: 2,
+      maxSemHours: 18,
+      allCategoriesSatisfied: true,
+      warningCount: 1,
+    });
+    expect(bullets.length).toBeLessThanOrEqual(4);
+    expect(bullets).toEqual([
+      'נוספו 2 קורסי בחירה',
+      'עומס מקסימלי: 18 ש״ש',
+      'הושלמו כל קטגוריות החובה',
+      'נותרה אזהרה אחת',
+    ]);
+  });
+
+  it('omits bullets for conditions that do not apply', () => {
+    const bullets = buildPreviewChangeBullets({
+      addedElectives: 0,
+      maxSemHours: 16,
+      allCategoriesSatisfied: false,
+      warningCount: 0,
+    });
+    expect(bullets).toEqual(['עומס מקסימלי: 16 ש״ש']);
+  });
+});
+
 describe('pickPrimaryBlockingReason', () => {
   it('prefers missing-requirement cards over a generic blocking error', () => {
     const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
@@ -645,13 +697,13 @@ describe('pickPrimaryBlockingReason', () => {
   });
 
   it('returns a warnings-only message when the plan is applicable but has notes', () => {
-    const completeness = { incomplete: false, reasons: ['הדרישה הושלמה: קטגוריית "בחירה".'], added_electives: 1 };
+    const completeness = { incomplete: false, reasons: ['שים לב: עומס מעט גבוה בסמסטר א.'], added_electives: 1 };
     const reason = pickPrimaryBlockingReason(completeness as any, []);
-    expect(reason).toBe('תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד');
+    expect(reason).toBe('ניתן להחיל — נותרו אזהרות בלבד');
   });
 
   it('returns a clean applicable message with no reasons at all', () => {
     const completeness = { incomplete: false, reasons: [], added_electives: 0 };
-    expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('תוכנית חוקית ומאוזנת');
+    expect(pickPrimaryBlockingReason(completeness as any, [])).toBe('תוכנית חוקית — ניתן להחיל');
   });
 });

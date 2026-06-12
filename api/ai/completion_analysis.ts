@@ -224,6 +224,39 @@ export interface CompletenessResult {
 }
 
 /**
+ * A plan is applyable if there are no blocking validation errors and no
+ * blocking completeness reasons — i.e. at most warnings/info remain.
+ */
+export function isPlanApplyable(validationErrors: string[], completeness: CompletenessResult | null | undefined): boolean {
+  return validationErrors.length === 0 && !completeness?.incomplete;
+}
+
+/**
+ * PART C: compact "מה השתנה?" summary for the preview — at most 4 bullets.
+ */
+export function buildPreviewChangeBullets(opts: {
+  addedElectives: number;
+  maxSemHours: number;
+  allCategoriesSatisfied: boolean;
+  warningCount: number;
+}): string[] {
+  const bullets: string[] = [];
+  if (opts.addedElectives > 0) {
+    bullets.push(opts.addedElectives === 1 ? 'נוסף קורס בחירה אחד' : `נוספו ${opts.addedElectives} קורסי בחירה`);
+  }
+  if (opts.maxSemHours > 0) {
+    bullets.push(`עומס מקסימלי: ${opts.maxSemHours} ש״ש`);
+  }
+  if (opts.allCategoriesSatisfied) {
+    bullets.push('הושלמו כל קטגוריות החובה');
+  }
+  if (opts.warningCount > 0) {
+    bullets.push(opts.warningCount === 1 ? 'נותרה אזהרה אחת' : `נותרו ${opts.warningCount} אזהרות`);
+  }
+  return bullets.slice(0, 4);
+}
+
+/**
  * Decide whether a (already normalized/repaired) proposal still represents an
  * incomplete plan, per PART B's rules, and produce human-readable Hebrew
  * explanations (PART E) — replacing cryptic "0/1" displays.
@@ -247,7 +280,6 @@ export function evaluatePlanCompleteness(
 
   // 2. unmet elective categories with available candidates
   for (const cat of analysis.categories) {
-    const placedFromCategory = cat.candidates.filter(c => placed.has(c.course_id)).length + (cat.placed - cat.candidates.length > 0 ? 0 : 0);
     const stillMissing = Math.max(0, cat.missing - cat.candidates.filter(c => placed.has(c.course_id)).length);
     if (stillMissing > 0 && cat.candidates.some(c => !placed.has(c.course_id))) {
       const msg = stillMissing === 1
@@ -258,9 +290,9 @@ export function evaluatePlanCompleteness(
     } else if (stillMissing > 0) {
       // Category still unmet, but no eligible candidates exist — informational only.
       reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
-    } else if (cat.missing > 0 && placedFromCategory >= cat.missing) {
-      reasons.push(`הדרישה הושלמה: קטגוריית "${cat.name}".`);
     }
+    // Satisfied categories are surfaced via getCategoryStatusReport's compact
+    // status list (PART D) — no redundant "הדרישה הושלמה" line here.
   }
 
   // 3. remaining degree hours, with electives added on top of the live board
@@ -372,8 +404,8 @@ export function pickPrimaryBlockingReason(
 ): string {
   if (!completeness.incomplete) {
     return completeness.reasons.length > 0
-      ? 'תוכנית חוקית ומאוזנת — נותרו אזהרות בלבד'
-      : 'תוכנית חוקית ומאוזנת';
+      ? 'ניתן להחיל — נותרו אזהרות בלבד'
+      : 'תוכנית חוקית — ניתן להחיל';
   }
 
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
