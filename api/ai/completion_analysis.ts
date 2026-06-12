@@ -475,13 +475,19 @@ export function evaluatePlanCompleteness(
       reasons.push('לא הוזנו שעות שכבר צברת, לכן חישוב 185 ש"ש אינו מדויק.');
     }
   } else if (electiveShort > 0) {
+    // PART D — the remaining-hours pool is NOT restricted to categories with
+    // missing > 0: any unscheduled/uncompleted course from elective_pool
+    // (which spans all categories, including already-satisfied ones) is a
+    // valid candidate to fill the remaining degree hours (PART A/B).
     const remainingCandidates = (analysis.elective_pool ?? []).filter(c => !placed.has(c.course_id));
+    const msg = `חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר.`;
+    reasons.push(msg);
+    blocking.push(msg);
     if (remainingCandidates.length > 0) {
-      const msg = `חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר.`;
-      reasons.push(msg);
-      blocking.push(msg);
+      // PART F — do not falsely claim no candidates exist when the pool is non-empty.
+      reasons.push('נמצאו קורסי בחירה נוספים שאפשר לשבץ להשלמת השעות.');
     } else {
-      reasons.push(`חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש, ולא נמצאו קורסי בחירה חוקיים נוספים להשלמתן.`);
+      reasons.push('לא נמצאו קורסים חוקיים נוספים במאגר. פירוט הסיבות מופיע בהסברים.');
     }
   }
 
@@ -893,6 +899,22 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
   };
 }
 
+/** PART C — one rejected candidate + why it couldn't be used to fill remaining hours. */
+export interface RepairHoursRejection {
+  course_id: string;
+  reason: 'already_scheduled' | 'completed' | 'no_legal_semester' | 'not_countable_toward_degree';
+}
+
+/** PART C — debug/reporting for repairAddHoursToDegree. */
+export interface RepairHoursDebug {
+  remaining_hours_needed: number;
+  candidates_before_filter: number;
+  candidates_after_filter: number;
+  rejected: RepairHoursRejection[];
+  chosen: Array<{ course_id: string; hours: number; semester_id: string }>;
+  candidates_still_available: number;
+}
+
 export interface RepairHoursResult<P extends RepairProposalShape> {
   proposal: P;
   added: Array<{ course_id: string; semester_id: string; hours: number }>;
@@ -901,6 +923,8 @@ export interface RepairHoursResult<P extends RepairProposalShape> {
   exhausted: boolean;
   /** True if the addition cap (MAX_ADDED_ELECTIVES_FOR_HOURS / unknown-prior-hours default) was hit before reaching the target. */
   capped: boolean;
+  /** PART C — debug/reporting: pool sizes, rejection reasons, and what remains. */
+  debug: RepairHoursDebug;
 }
 
 /**
@@ -951,7 +975,27 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
   const priorKnown = analysis.hours.prior_hours_known !== false;
   const maxAdditions = priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN;
 
+  // PART A — the candidate pool for remaining hours spans ALL of
+  // analysis.elective_pool, including courses from categories that are
+  // already satisfied (cat.missing === 0). The only filters here are: not
+  // already placed, not already scheduled/completed (elective_pool already
+  // excludes scheduled/completed candidates), and — per-candidate during the
+  // loop — legal semester / countable hours.
+  const candidates_before_filter = (analysis.elective_pool ?? []).length;
   let pool = (analysis.elective_pool ?? []).filter(c => !placed.has(c.course_id));
+  const candidates_after_filter = pool.length;
+  const rejected: RepairHoursRejection[] = [];
+  for (const c of (analysis.elective_pool ?? [])) {
+    if (placed.has(c.course_id)) {
+      rejected.push({ course_id: c.course_id, reason: analysis.scheduled_course_ids.includes(c.course_id) ? 'already_scheduled' : 'already_scheduled' });
+    }
+  }
+  for (const cid of analysis.completed_course_ids ?? []) {
+    if ((analysis.elective_pool ?? []).some(c => c.course_id === cid) && !placed.has(cid)) {
+      rejected.push({ course_id: cid, reason: 'completed' });
+    }
+  }
+
   let exhausted = false;
   let capped = false;
 
@@ -964,7 +1008,10 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
     const info = opts.courses[candidate.course_id] || {};
     const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
     const legalSems = sems.filter(s => allowed.includes(s.semester_id));
-    if (!legalSems.length) continue;
+    if (!legalSems.length) {
+      rejected.push({ course_id: candidate.course_id, reason: 'no_legal_semester' });
+      continue;
+    }
 
     let semTarget = legalSems
       .filter(s => hoursOf(s) + (info.hours || 0) <= max)
@@ -981,7 +1028,16 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
   if (priorKnown && total < target && pool.length === 0) exhausted = true;
   if (priorKnown && total < target && added.length >= maxAdditions && pool.length > 0) capped = true;
 
-  if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped };
+  const debug: RepairHoursDebug = {
+    remaining_hours_needed: Math.max(0, target - (analysis.hours.known_total_hours + addedHours)),
+    candidates_before_filter,
+    candidates_after_filter,
+    rejected,
+    chosen: added.map(a => ({ course_id: a.course_id, hours: a.hours, semester_id: a.semester_id })),
+    candidates_still_available: pool.length,
+  };
+
+  if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped, debug };
 
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
   if (capped) {
@@ -996,6 +1052,7 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
     },
     added,
     proposed_total_hours: total,
+    debug,
     exhausted,
     capped,
   };

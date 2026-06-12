@@ -1323,3 +1323,113 @@ describe('קורסי שער רוח requirement (Mechanical Engineering = 6 נק"
     expect(hoursStatus.unknown_hour_courses).toBe(0);
   });
 });
+
+describe('remaining-hours pool spans already-satisfied categories (PART A/B/D)', () => {
+  // Three required categories (each min 1, already satisfied via 1 placed
+  // course), each with one extra unscheduled candidate that could still
+  // count toward the remaining degree-hour quota.
+  function buildCtx(opts: { manualCompleted: number; semesters?: any[]; extraCandidates?: Record<string, any> }) {
+    const extra = opts.extraCandidates ?? {};
+    return {
+      semesters: opts.semesters ?? [],
+      category_requirements: [
+        { name: 'קורסי ליבה — זורמים', category_id: 'fluids', required: 1, placed: 1, candidates: [{ course_id: 'F2', name_he: 'זורמים 2', hours: 5, ...(extra.F2 || {}) }] },
+        { name: 'קורסי ליבה — מוצקים', category_id: 'solids', required: 1, placed: 1, candidates: [{ course_id: 'S2', name_he: 'מוצקים 2', hours: 5, ...(extra.S2 || {}) }] },
+        { name: 'קורסי ליבה — מערכות', category_id: 'systems', required: 1, placed: 1, candidates: [{ course_id: 'Y2', name_he: 'מערכות 2', hours: 5, ...(extra.Y2 || {}) }] },
+      ],
+      total_hours_progress: { known_completed_hours: 0, degree_required_hours: 185, manual_completed_degree_hours: opts.manualCompleted },
+    } as any;
+  }
+
+  const courses: Record<string, any> = {
+    F2: { hours: 5, effective_allowed_semesters: ['s1'] },
+    S2: { hours: 5, effective_allowed_semesters: ['s1'] },
+    Y2: { hours: 5, effective_allowed_semesters: ['s1'] },
+  };
+
+  it('1. after זורמים is satisfied, another זורמים elective can still fill remaining hours', () => {
+    const ctx = buildCtx({ manualCompleted: 180 }); // remaining = 5
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.categories.find(c => c.category_id === 'fluids')?.missing).toBe(0);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.some(a => a.course_id === 'F2')).toBe(true);
+  });
+
+  it('2. after מוצקים is satisfied, another מוצקים elective can still fill remaining hours', () => {
+    const ctx = buildCtx({ manualCompleted: 170 }); // remaining = 15 -> all three (incl. S2) get added
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.categories.find(c => c.category_id === 'solids')?.missing).toBe(0);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.some(a => a.course_id === 'S2')).toBe(true);
+  });
+
+  it('3. elective_pool includes candidates from already-satisfied categories', () => {
+    const ctx = buildCtx({ manualCompleted: 180 });
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.categories.every(c => c.missing === 0)).toBe(true);
+    const poolIds = analysis.elective_pool.map(c => c.course_id);
+    expect(poolIds).toEqual(expect.arrayContaining(['F2', 'S2', 'Y2']));
+  });
+
+  it('4. repairAddHoursToDegree does not require category.missing > 0', () => {
+    const ctx = buildCtx({ manualCompleted: 170 }); // remaining = 15 -> all three needed
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.categories.every(c => c.missing === 0)).toBe(true);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.added.length).toBe(3);
+    expect(result.proposed_total_hours).toBe(185);
+  });
+
+  it('5. exhausted=false when valid electives remain in already-satisfied categories', () => {
+    const ctx = buildCtx({ manualCompleted: 180 }); // remaining = 5, F2 (5h) covers it
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.exhausted).toBe(false);
+  });
+
+  it('6. exhausted=true only when all valid electives are scheduled/completed/illegal', () => {
+    // F2 and S2 already placed on the board (10h); Y2 already completed before
+    // the plan, so it's excluded from elective_pool too. Remaining hours (185-170-10=5)
+    // can't be filled -> elective_pool is empty and exhausted becomes true.
+    const ctx: any = buildCtx({
+      manualCompleted: 170,
+      semesters: [{ id: 's1', label: 's1', courses: [{ course_id: 'F2', hours: 5 }, { course_id: 'S2', hours: 5 }], total_hours: 10 }],
+    });
+    ctx.personal_status = { completed: [{ course_id: 'Y2', hours: 5 }] };
+    const analysis = buildCompletionAnalysis(ctx);
+    expect(analysis.elective_pool.length).toBe(0);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['F2', 'S2'] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    expect(result.exhausted).toBe(true);
+    expect(result.added.length).toBe(0);
+  });
+
+  it('7. additional electives from multiple categories can be added until remaining hours are met', () => {
+    const ctx = buildCtx({ manualCompleted: 170 }); // remaining = 15, need F2+S2+Y2 (5 each)
+    const analysis = buildCompletionAnalysis(ctx);
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+    const addedIds = result.added.map(a => a.course_id).sort();
+    expect(addedIds).toEqual(['F2', 'S2', 'Y2']);
+    expect(result.proposed_total_hours).toBe(185);
+  });
+
+  it('8. debug report includes rejection reasons for excluded candidates', () => {
+    // Y2 has no legal semester (only offered in "s2", but the proposal/known semesters are only "s1").
+    const ctx = buildCtx({ manualCompleted: 170 }, );
+    const analysis = buildCompletionAnalysis(ctx);
+    const coursesWithIllegalY2 = { ...courses, Y2: { hours: 5, effective_allowed_semesters: ['s2'] } };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses: coursesWithIllegalY2, knownSemesterIds: ['s1'], maxHoursPerSemester: 30 });
+
+    expect(result.debug.candidates_before_filter).toBe(3);
+    expect(result.debug.candidates_after_filter).toBe(3);
+    expect(result.debug.rejected.some(r => r.course_id === 'Y2' && r.reason === 'no_legal_semester')).toBe(true);
+    expect(result.debug.chosen.map(c => c.course_id).sort()).toEqual(['F2', 'S2']);
+    expect(result.debug.remaining_hours_needed).toBe(15);
+  });
+});

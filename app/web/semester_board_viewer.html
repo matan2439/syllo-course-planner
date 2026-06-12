@@ -5514,7 +5514,16 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   const priorKnown = analysis.hours.prior_hours_known !== false;
   const maxAdditions = priorKnown ? MAX_ADDED_ELECTIVES_FOR_HOURS : DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN;
 
+  // PART A — the candidate pool for remaining hours spans ALL of
+  // analysis.elective_pool, including courses from already-satisfied
+  // categories (cat.missing === 0). Only filtered by: not already placed.
+  const candidates_before_filter = (analysis.elective_pool || []).length;
   let pool = (analysis.elective_pool || []).filter(c => !placed.has(c.course_id));
+  const candidates_after_filter = pool.length;
+  const rejected = [];
+  for (const c of (analysis.elective_pool || [])) {
+    if (placed.has(c.course_id)) rejected.push({ course_id: c.course_id, reason: 'already_scheduled' });
+  }
   let exhausted = false;
   let capped = false;
 
@@ -5527,7 +5536,10 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
     const info = opts.courses[candidate.course_id] || {};
     const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
     const legalSems = sems.filter(s => allowed.includes(s.semester_id));
-    if (!legalSems.length) continue;
+    if (!legalSems.length) {
+      rejected.push({ course_id: candidate.course_id, reason: 'no_legal_semester' });
+      continue;
+    }
 
     let semTarget = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
     if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
@@ -5542,7 +5554,16 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   if (priorKnown && total < target && pool.length === 0) exhausted = true;
   if (priorKnown && total < target && added.length >= maxAdditions && pool.length > 0) capped = true;
 
-  if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped };
+  const debug = {
+    remaining_hours_needed: Math.max(0, target - (analysis.hours.known_total_hours + addedHours)),
+    candidates_before_filter,
+    candidates_after_filter,
+    rejected,
+    chosen: added.map(a => ({ course_id: a.course_id, hours: a.hours, semester_id: a.semester_id })),
+    candidates_still_available: pool.length,
+  };
+
+  if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped, debug };
 
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
   if (capped) {
@@ -5557,6 +5578,7 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
     },
     added,
     proposed_total_hours: total,
+    debug,
     exhausted,
     capped,
   };
@@ -5645,13 +5667,18 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
       reasons.push('לא הוזנו שעות שכבר צברת, לכן חישוב 185 ש"ש אינו מדויק.');
     }
   } else if (electiveShort > 0) {
+    // PART A/D — the remaining-hours pool spans ALL of elective_pool,
+    // including courses from already-satisfied categories, not just
+    // categories with missing > 0.
     const remainingCandidates = (analysis.elective_pool || []).filter(c => !placed.has(c.course_id));
+    const msg = `חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר.`;
+    reasons.push(msg);
+    blocking.push(msg);
     if (remainingCandidates.length > 0) {
-      const msg = `חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש להשלמת התואר.`;
-      reasons.push(msg);
-      blocking.push(msg);
+      // PART F — do not falsely claim no candidates exist when the pool is non-empty.
+      reasons.push('נמצאו קורסי בחירה נוספים שאפשר לשבץ להשלמת השעות.');
     } else {
-      reasons.push(`חסרות כ-${electiveShort} ש"ש מתוך ${analysis.hours.required_total} ש"ש, ולא נמצאו קורסי בחירה חוקיים נוספים להשלמתן.`);
+      reasons.push('לא נמצאו קורסים חוקיים נוספים במאגר. פירוט הסיבות מופיע בהסברים.');
     }
   }
 
