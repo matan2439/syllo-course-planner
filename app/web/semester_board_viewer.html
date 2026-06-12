@@ -929,6 +929,18 @@ body.prog-modal-open .workspace {
   background: rgba(239,68,68,.06);
   border: 1.5px dashed var(--danger);
 }
+/* PART D — hover hint shown anywhere in the semester column while a course
+   is dragged over it (not just over individual cards) */
+.sem-zone.drag-over:not(.drag-invalid)::before {
+  content: 'שחרר כאן כדי להעביר לסמסטר זה';
+  display: block; padding: 5px 8px; border-radius: 6px;
+  font-size: .67rem; color: var(--blue);
+  background: rgba(37,99,235,.08); margin-bottom: 4px;
+  text-align: center; line-height: 1.4;
+}
+.sem-zone.drag-valid:not(.drag-invalid)::before {
+  color: var(--success); background: rgba(16,185,129,.08);
+}
 .sem-zone.drag-invalid::before {
   content: attr(data-drag-err);
   display: block; padding: 5px 8px; border-radius: 6px;
@@ -2468,7 +2480,7 @@ function normalizeCourse(c, status) {
     selection_reason:            c.selection_reason            || null,
     allowed_semesters:           c.allowed_semesters           || [],
     program_allowed_semesters:   c.program_allowed_semesters   || c.allowed_semesters || [],
-    effective_allowed_semesters: c.effective_allowed_semesters || c.allowed_semesters || [],
+    effective_allowed_semesters: getLegalSemestersLocal(c).semesters,
     offering_source_url:         c.offering_source_url         || null,
     offering_source_confidence:  c.offering_source_confidence  || null,
     locked_by_default:           c.locked_by_default           ?? true,
@@ -3783,29 +3795,69 @@ function isFlexibleMandatory(c) {
   return c?.placement_policy === 'flexible';
 }
 
-/* False when drop target semester is outside the course's effective allowed semesters
-   (program allowed_semesters narrowed by this year's actual offering, if known) */
-function isSemesterAllowed(c, semId) {
-  const allowed = c?.effective_allowed_semesters || c?.allowed_semesters || [];
-  return allowed.length === 0 || allowed.includes(semId);
+/* PART B — single source of truth for course-semester legality (mirrors
+   getLegalSemesters/isCourseAllowedInSemester in api/ai/completion_analysis.ts).
+   Priority: fixed → recommended/required semester only; flexible/mandatory →
+   union(program_allowed_semesters||allowed_semesters, effective_allowed_semesters)
+   (effective may only ADD a semester, never silently remove a program-allowed one);
+   elective → effective_allowed_semesters, else offered_semesters, else any known
+   semester (not confident — warning, not block). */
+function getLegalSemestersLocal(c, knownSemesterIds) {
+  knownSemesterIds = knownSemesterIds || SEMESTERS.map(s => s.id);
+  const effective = (c?.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : null;
+  const program = (c?.program_allowed_semesters && c.program_allowed_semesters.length) ? c.program_allowed_semesters
+    : ((c?.allowed_semesters && c.allowed_semesters.length) ? c.allowed_semesters : null);
+
+  if (c?.placement_policy === 'fixed') {
+    const fixed = c?.recommended_semester ? [c.recommended_semester] : (effective || program || []);
+    return { semesters: fixed, confident: true };
+  }
+  if (c?.placement_policy === 'flexible' || c?.course_type === 'mandatory') {
+    if (program) {
+      const semesters = effective ? [...new Set([...program, ...effective])] : program;
+      return { semesters, confident: true };
+    }
+    if (effective) return { semesters: effective, confident: true };
+    if (c?.offered_semesters && c.offered_semesters.length) return { semesters: c.offered_semesters, confident: false };
+    return { semesters: knownSemesterIds, confident: false };
+  }
+  if (effective) return { semesters: effective, confident: true };
+  if (c?.offered_semesters && c.offered_semesters.length) return { semesters: c.offered_semesters, confident: false };
+  return { semesters: knownSemesterIds, confident: false };
 }
 
 /* True when a course is officially flexible in the program but this year's actual
    offering restricts it to a single semester (effective narrower than program-level) */
 function isOfferingRestrictedFlex(c) {
   const program = c?.program_allowed_semesters || c?.allowed_semesters || [];
-  const effective = c?.effective_allowed_semesters || program;
+  const effective = (c?.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : program;
   return c?.placement_policy === 'flexible'
     && program.length > 1
     && effective.length === 1;
 }
 
-/* False when the course's offered_semesters (A/B) excludes the target semester's A/B slot */
-function isOfferedInSemester(c, semId) {
-  const offered = c?.offered_semesters || [];
-  if (!offered.length) return true;
-  const part = semId.endsWith('_semester_a') ? 'A' : semId.endsWith('_semester_b') ? 'B' : null;
-  return !part || offered.includes(part);
+function isCourseAllowedInSemesterLocal(c, semId, knownSemesterIds) {
+  const { semesters } = getLegalSemestersLocal(c, knownSemesterIds);
+  return semesters.length === 0 || semesters.includes(semId);
+}
+
+/* Hebrew debug/explanatory reason for a legality result (PART B/C). */
+function getCourseSemesterLegalityReasonLocal(c, semId, knownSemesterIds) {
+  const name = c?.name_he || c?.course_id || 'הקורס';
+  const { semesters, confident } = getLegalSemestersLocal(c, knownSemesterIds);
+  const allowed = semesters.length === 0 || semesters.includes(semId);
+  const label = id => (SEMESTERS.find(s => s.id === id)?.label) || id;
+
+  if (!confident) {
+    return { allowed: true, confident: false, reason: `לא נמצאה ודאות מלאה לגבי סמסטר ההיצע של ${name}` };
+  }
+  if (allowed) {
+    return { allowed: true, confident: true, reason: `${name} מותר בסמסטר זה לפי program_allowed_semesters` };
+  }
+  if (c?.placement_policy === 'fixed') {
+    return { allowed: false, confident: true, reason: `לא מותר כי placement_policy=fixed והסמסטר הנדרש הוא ${semesters.map(label).join(', ') || 'לא ידוע'}` };
+  }
+  return { allowed: false, confident: true, reason: `${name} אינו מותר בסמסטר זה — הסמסטרים המותרים הם: ${semesters.map(label).join(', ')}` };
 }
 
 /* ── Prerequisite validation (client-side mirror of plan_validator.py) ──── */
@@ -3971,16 +4023,17 @@ function setupDragDelegation() {
     if (dragId && zone.dataset.zone === 'semester') {
       const vr         = validatePlacement(dragId, zone.dataset.sem);
       const dragCourse = courseMap[dragId];
-      const semBlocked = !isSemesterAllowed(dragCourse, zone.dataset.sem);
-      const notOffered = !semBlocked && !isOfferedInSemester(dragCourse, zone.dataset.sem);
-      zone.classList.toggle('drag-valid',   vr.valid && !semBlocked && !notOffered);
-      zone.classList.toggle('drag-invalid', !vr.valid || semBlocked || notOffered);
+      const legality   = getCourseSemesterLegalityReasonLocal(dragCourse, zone.dataset.sem);
+      const semBlocked = legality.confident && !legality.allowed;
+      const semWarning = !legality.confident;
+      zone.classList.toggle('drag-valid',   vr.valid && !semBlocked);
+      zone.classList.toggle('drag-invalid', !vr.valid || semBlocked);
       if (semBlocked) {
-        zone.dataset.dragErr = 'הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה';
+        zone.dataset.dragErr = legality.reason;
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
-      } else if (notOffered) {
-        zone.dataset.dragErr = 'הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים';
-        e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
+      } else if (semWarning) {
+        zone.dataset.dragErr = legality.reason;
+        e.dataTransfer.dropEffect = 'move';
       } else if (!vr.valid) {
         zone.dataset.dragErr = validationMessages(vr).join(' | ');
         e.dataTransfer.dropEffect = allowInvalidPlacement ? 'move' : 'none';
@@ -4014,19 +4067,16 @@ function setupDragDelegation() {
 
     if (id && toSem) {
       const dropCourse = courseMap[id];
-      /* Mandatory course semester restriction */
-      if (!isSemesterAllowed(dropCourse, toSem)) {
+      /* Mandatory course semester restriction (PART B/C — unified legality helper) */
+      const legality = getCourseSemesterLegalityReasonLocal(dropCourse, toSem);
+      if (legality.confident && !legality.allowed) {
         if (!allowInvalidPlacement) {
-          showBoardNotify('הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה');
+          showBoardNotify(legality.reason);
           return;
         }
-        showBoardNotify('⚠ אזהרה: הקורס אינו ניתן לשיבוץ בסמסטר זה — אינו ברשימת הסמסטרים המותרים לקורס חובה זה');
-      } else if (!isOfferedInSemester(dropCourse, toSem)) {
-        if (!allowInvalidPlacement) {
-          showBoardNotify('הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים');
-          return;
-        }
-        showBoardNotify('⚠ אזהרה: הקורס אינו מוצע בסמסטר זה לפי תוכנית הלימודים');
+        showBoardNotify('⚠ אזהרה: ' + legality.reason);
+      } else if (!legality.confident) {
+        showBoardNotify('⚠ ' + legality.reason);
       }
       /* Prerequisite validation */
       const vr = validatePlacement(id, toSem);

@@ -1263,6 +1263,110 @@ export function getSemesterLoad(
   return semester.course_ids.reduce((sum, cid) => sum + (courses[cid]?.hours || 0), 0);
 }
 
+export interface CourseLegalityInfo {
+  course_id?: string;
+  name_he?: string | null;
+  placement_policy?: string | null;
+  course_type?: string | null;
+  recommended_semester?: string | null;
+  effective_allowed_semesters?: string[] | null;
+  program_allowed_semesters?: string[] | null;
+  allowed_semesters?: string[] | null;
+  offered_semesters?: string[] | null;
+}
+
+export interface LegalSemestersResult {
+  semesters: string[];
+  /** False when the result is a best-effort fallback (no program/effective data). */
+  confident: boolean;
+}
+
+/**
+ * PART A/B — single source of truth for which semesters a course may
+ * legally be placed in (priority model):
+ *  - fixed: only its recommended/required semester.
+ *  - flexible/mandatory: program_allowed_semesters (or allowed_semesters) is
+ *    the contractual list; effective_allowed_semesters is UNIONED in (it may
+ *    only ADD an offering-confirmed semester, never silently remove a
+ *    program-allowed one — syllabus offering data must not override a
+ *    program rule that allows multiple semesters).
+ *  - elective: effective_allowed_semesters / offered_semesters if known,
+ *    else any remaining known semester (not confident — warning, not block).
+ */
+export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: string[] = []): LegalSemestersResult {
+  const effective = course.effective_allowed_semesters?.length ? course.effective_allowed_semesters : null;
+  const program = course.program_allowed_semesters?.length
+    ? course.program_allowed_semesters
+    : (course.allowed_semesters?.length ? course.allowed_semesters : null);
+
+  if (course.placement_policy === 'fixed') {
+    const fixed = course.recommended_semester
+      ? [course.recommended_semester]
+      : (effective || program || []);
+    return { semesters: fixed, confident: true };
+  }
+
+  if (course.placement_policy === 'flexible' || course.course_type === 'mandatory') {
+    if (program) {
+      const semesters = effective ? [...new Set([...program, ...effective])] : program;
+      return { semesters, confident: true };
+    }
+    if (effective) return { semesters: effective, confident: true };
+    if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+    return { semesters: knownSemesterIds, confident: false };
+  }
+
+  // elective
+  if (effective) return { semesters: effective, confident: true };
+  if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+  return { semesters: knownSemesterIds, confident: false };
+}
+
+/** PART B — single helper for "is this course legal in this semester?". */
+export function isCourseAllowedInSemester(course: CourseLegalityInfo, semesterId: string, knownSemesterIds: string[] = []): boolean {
+  const { semesters } = getLegalSemesters(course, knownSemesterIds);
+  return semesters.length === 0 || semesters.includes(semesterId);
+}
+
+/** PART B — debug/explanatory reason for a legality result (Hebrew, user-facing). */
+export function getCourseSemesterLegalityReason(
+  course: CourseLegalityInfo,
+  semesterId: string,
+  semesterLabels?: Record<string, string>,
+  knownSemesterIds: string[] = [],
+): { allowed: boolean; confident: boolean; reason: string } {
+  const name = course.name_he || course.course_id || 'הקורס';
+  const { semesters, confident } = getLegalSemesters(course, knownSemesterIds);
+  const allowed = semesters.length === 0 || semesters.includes(semesterId);
+  const label = (id: string) => semesterLabels?.[id] || id;
+
+  if (!confident) {
+    return {
+      allowed: true,
+      confident: false,
+      reason: `לא נמצאה ודאות מלאה לגבי סמסטר ההיצע של ${name}`,
+    };
+  }
+  if (allowed) {
+    if (course.placement_policy === 'fixed') {
+      return { allowed: true, confident: true, reason: `${name} מותר בסמסטר זה (קורס חובה קבוע בסמסטר ${label(semesterId)})` };
+    }
+    return { allowed: true, confident: true, reason: `${name} מותר בסמסטר זה לפי program_allowed_semesters` };
+  }
+  if (course.placement_policy === 'fixed') {
+    return {
+      allowed: false,
+      confident: true,
+      reason: `לא מותר כי placement_policy=fixed והסמסטר הנדרש הוא ${semesters.map(label).join(', ') || 'לא ידוע'}`,
+    };
+  }
+  return {
+    allowed: false,
+    confident: true,
+    reason: `${name} אינו מותר בסמסטר זה — הסמסטרים המותרים הם: ${semesters.map(label).join(', ')}`,
+  };
+}
+
 export interface OverloadedSemesterReport {
   semester_id: string;
   hours: number;

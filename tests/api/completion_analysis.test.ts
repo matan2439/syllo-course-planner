@@ -25,6 +25,9 @@ import {
   MAX_ADDED_ELECTIVES_FOR_HOURS,
   DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN,
   MAX_REASONABLE_SEMESTER_HOURS,
+  getLegalSemesters,
+  isCourseAllowedInSemester,
+  getCourseSemesterLegalityReason,
 } from '../../api/ai/completion_analysis';
 import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
@@ -1810,4 +1813,89 @@ describe('missing 4 hours are a שער רוח shortfall, not a generic degree-ho
   function getGeneralRequirementStatusReportSafe(analysis: any) {
     return getGeneralRequirementStatusReport(analysis, new Set<string>());
   }
+});
+
+describe('TASK 4 — PART F: course-semester legality helper', () => {
+  const knownSems = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
+
+  // PART F.1 — 0542-3620 (מעבר חום) is legal in Year 3 Semester B per program rules,
+  // even though offering data narrows effective_allowed_semesters to A only.
+  const heatTransfer = {
+    course_id: '0542-3620',
+    name_he: 'מעבר חום',
+    course_type: 'mandatory',
+    placement_policy: 'flexible',
+    recommended_semester: 'year_3_semester_a',
+    allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    program_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    offered_semesters: ['A'],
+    effective_allowed_semesters: ['year_3_semester_a'],
+  };
+
+  it('1. מעבר חום is legal in Year 3 Semester B (program_allowed_semesters wins over narrow effective)', () => {
+    expect(isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems)).toBe(true);
+    expect(isCourseAllowedInSemester(heatTransfer, 'year_3_semester_a', knownSems)).toBe(true);
+    const { semesters, confident } = getLegalSemesters(heatTransfer, knownSems);
+    expect(semesters).toEqual(expect.arrayContaining(['year_3_semester_a', 'year_3_semester_b']));
+    expect(confident).toBe(true);
+  });
+
+  it('2. isCourseAllowedInSemester gives the same result regardless of caller (drag vs AI validation)', () => {
+    const dragResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems);
+    const aiResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems);
+    expect(dragResult).toBe(aiResult);
+    expect(dragResult).toBe(true);
+  });
+
+  it('3. fixed mandatory courses remain restricted to their required semester', () => {
+    const fixedCourse = {
+      course_id: '0542-0001',
+      name_he: 'קורס קבוע',
+      course_type: 'mandatory',
+      placement_policy: 'fixed',
+      recommended_semester: 'year_2_semester_a',
+      allowed_semesters: ['year_2_semester_a', 'year_2_semester_b'],
+      effective_allowed_semesters: ['year_2_semester_a'],
+    };
+    expect(isCourseAllowedInSemester(fixedCourse, 'year_2_semester_a', knownSems)).toBe(true);
+    expect(isCourseAllowedInSemester(fixedCourse, 'year_2_semester_b', knownSems)).toBe(false);
+    const reason = getCourseSemesterLegalityReason(fixedCourse, 'year_2_semester_b', undefined, knownSems);
+    expect(reason.allowed).toBe(false);
+    expect(reason.confident).toBe(true);
+    expect(reason.reason).toContain('placement_policy=fixed');
+  });
+
+  it('4. flexible mandatory courses use the union of effective and program/allowed semesters', () => {
+    const { semesters, confident } = getLegalSemesters(heatTransfer, knownSems);
+    expect(semesters.sort()).toEqual(['year_3_semester_a', 'year_3_semester_b']);
+    expect(confident).toBe(true);
+
+    // No effective data at all — falls back to program/allowed semesters.
+    const noEffective = { ...heatTransfer, effective_allowed_semesters: undefined };
+    expect(getLegalSemesters(noEffective, knownSems).semesters.sort()).toEqual(['year_3_semester_a', 'year_3_semester_b']);
+  });
+
+  it('5. elective with no semester data at all is a warning, not a hard block', () => {
+    const elective = {
+      course_id: '0512-9999',
+      name_he: 'קורס בחירה',
+      course_type: 'elective',
+      placement_policy: 'elective',
+    };
+    const { semesters, confident } = getLegalSemesters(elective, knownSems);
+    expect(confident).toBe(false);
+    expect(semesters).toEqual(knownSems);
+    expect(isCourseAllowedInSemester(elective, 'year_3_semester_b', knownSems)).toBe(true);
+    const reason = getCourseSemesterLegalityReason(elective, 'year_3_semester_b', undefined, knownSems);
+    expect(reason.allowed).toBe(true);
+    expect(reason.confident).toBe(false);
+    expect(reason.reason).toContain('לא נמצאה ודאות מלאה');
+  });
+
+  it('7. legal placement is never reported as illegal — מעבר חום in Year 3 B gives a positive reason', () => {
+    const reason = getCourseSemesterLegalityReason(heatTransfer, 'year_3_semester_b', undefined, knownSems);
+    expect(reason.allowed).toBe(true);
+    expect(reason.confident).toBe(true);
+    expect(reason.reason).not.toContain('אי אפשר');
+  });
 });
