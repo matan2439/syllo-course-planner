@@ -1307,4 +1307,19 @@ describe('קורסי שער רוח requirement (Mechanical Engineering = 6 נק"
     const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis, {});
     expect(completeness.reasons.some(r => r.includes('שער רוח') && r.includes('אינו זמין'))).toBe(true);
   });
+
+  it('9. שער רוח repository courses default to 2 נק"ז and are treated as known credits', () => {
+    const ctx = ctxWithGeneral(
+      { name: 'קורסי שער רוח', required_credits: 6, candidates },
+      { completed_general_hours: 0 },
+    );
+    const analysis = buildCompletionAnalysis(ctx);
+    // Each candidate from the repository carries hours: 2 (the שער רוח credits_rule), not null/undefined.
+    expect(analysis.general_requirement?.candidates.every(c => c.hours === 2)).toBe(true);
+
+    // Once placed on the board, its 2 נק"ז are known hours — not counted as "unknown_hour_courses".
+    const courseHours: Record<string, number> = { G1: 2 };
+    const hoursStatus = getHoursStatusReport(analysis, [{ semester_id: 's1', course_ids: ['G1'] }], courseHours);
+    expect(hoursStatus.unknown_hour_courses).toBe(0);
+  });
 });

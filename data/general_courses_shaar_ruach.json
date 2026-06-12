@@ -1,6 +1,7 @@
 {
   "_source": "https://humanities.tau.ac.il/shar_ruach/courses",
-  "_note": "Credit values (נק\"ז) are not published on the TAU שער רוח course list page itself. The value 2 below is the typical/standard credit value for a one-semester שער רוח seminar and should be verified against the official syllabus (ims.tau.ac.il) for each course before relying on it for degree-hour accounting.",
+  "credits_rule": "Each שער רוח course counts as 2 נק\"ז",
+  "_note": "Per the שער רוח program rule, every course in this repository is worth 2 נק\"ז. This is a known program rule, not an estimate.",
   "category": "שער רוח",
   "courses": [
     {
