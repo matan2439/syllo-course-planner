@@ -11,6 +11,8 @@ import {
   pickPrimaryBlockingReason,
   isPlanApplyable,
   getPlanPreviewStatus,
+  repairAddMissingMandatory,
+  getMandatoryStatusReport,
   buildPreviewChangeBullets,
   DEGREE_REQUIRED_HOURS,
   DEFAULT_MAX_HOURS_PER_SEMESTER,
@@ -259,6 +261,138 @@ describe('scoreCandidate / pickBestCandidate', () => {
   });
 });
 
+describe('repairAddMissingMandatory', () => {
+  const knownSemesterIds = ['s1', 's2'];
+
+  function analysisWith(missing_mandatory: any[]): any {
+    return {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory,
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+  }
+
+  it('inserts a remaining mandatory course before any other repair', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis = analysisWith([{ course_id: 'M1', name_he: 'חובה 1', hours: 3 }]);
+    const courses = { M1: { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] } };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.added).toEqual([{ course_id: 'M1', semester_id: 's1' }]);
+    expect(result.unplaceable).toEqual([]);
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids).toContain('M1');
+  });
+
+  it('fixed mandatory course goes only to its required/recommended semester', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['X', 'Y', 'Z'] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis = analysisWith([{ course_id: 'M2', name_he: 'חובה קבוע', hours: 3 }]);
+    const courses = {
+      M2: { hours: 3, placement_policy: 'fixed', effective_allowed_semesters: ['s2'] },
+      X: { hours: 4 }, Y: { hours: 4 }, Z: { hours: 4 },
+    };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.added).toEqual([{ course_id: 'M2', semester_id: 's2' }]);
+  });
+
+  it('flexible mandatory course goes to the least-loaded legal allowed semester', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['X'] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis = analysisWith([{ course_id: 'M3', name_he: 'חובה גמיש', hours: 3 }]);
+    const courses = {
+      M3: { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] },
+      X: { hours: 4 },
+    };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.added).toEqual([{ course_id: 'M3', semester_id: 's2' }]);
+  });
+
+  it('does not re-schedule a mandatory course already placed in the proposal', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: ['M1'] }] };
+    const analysis = analysisWith([{ course_id: 'M1', name_he: 'חובה 1', hours: 3 }]);
+    const courses = { M1: { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1'] } };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds: ['s1'] });
+    expect(result.added).toEqual([]);
+    expect(result.proposal.semesters[0].course_ids).toEqual(['M1']);
+  });
+
+  it('reports a mandatory course with no legal semester as unplaceable', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis = analysisWith([{ course_id: 'M4', name_he: 'חובה תקוע', hours: 3 }]);
+    const courses = { M4: { hours: 3, placement_policy: 'fixed', effective_allowed_semesters: ['s3'] } };
+    const result = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(result.added).toEqual([]);
+    expect(result.unplaceable).toEqual([{ course_id: 'M4', name_he: 'חובה תקוע' }]);
+  });
+});
+
+describe('getMandatoryStatusReport', () => {
+  it('reports placed vs missing mandatory courses', () => {
+    const analysis: any = {
+      missing_mandatory: [
+        { course_id: 'M1', name_he: 'חובה 1' },
+        { course_id: 'M2', name_he: 'חובה 2' },
+      ],
+    };
+    const status = getMandatoryStatusReport(analysis, new Set(['M1']));
+    expect(status).toEqual({ required: 2, placed: 1, missing: [{ course_id: 'M2', name_he: 'חובה 2' }] });
+  });
+});
+
+describe('PART A integration: mandatory-first planning order', () => {
+  it('electives are inserted only after mandatory completion fills the proposal', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [{ course_id: 'M1', name_he: 'חובה 1', hours: 3 }],
+      categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'E1', hours: 3, is_wanted: true }] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const courses = {
+      M1: { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] },
+      E1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const knownSemesterIds = ['s1', 's2'];
+
+    const afterMandatory = repairAddMissingMandatory(proposal as any, analysis, { courses, knownSemesterIds });
+    expect(afterMandatory.added.map(a => a.course_id)).toEqual(['M1']);
+
+    const afterElectives = repairAddMissingElectives(afterMandatory.proposal as any, analysis, { courses, knownSemesterIds });
+    expect(afterElectives.added.map(a => a.course_id)).toEqual(['E1']);
+
+    const allPlaced = afterElectives.proposal.semesters.flatMap((s: any) => s.course_ids);
+    expect(allPlaced).toEqual(expect.arrayContaining(['M1', 'E1']));
+  });
+
+  it('a plan with a missing mandatory course is not applyable', () => {
+    const proposalSemesters = [{ semester_id: 's1', course_ids: ['E1'] }];
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [],
+      missing_mandatory: [{ course_id: 'M1', name_he: 'חובה 1', hours: 3 }],
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const completeness = evaluatePlanCompleteness(proposalSemesters, analysis);
+    expect(completeness.incomplete).toBe(true);
+    expect(isPlanApplyable([], completeness)).toBe(false);
+  });
+
+  it('preview top status says "חסרים קורסי חובה" when mandatory missing exists, never "תוכנית חוקית"', () => {
+    const completeness = {
+      incomplete: true,
+      reasons: ['חסרים קורסי חובה: חובה 1, חובה 2.'],
+      added_electives: 0,
+    };
+    const reason = pickPrimaryBlockingReason(completeness as any, []);
+    expect(reason).toBe('לא ניתן להחיל — חסרים 2 קורסי חובה');
+    expect(reason).not.toContain('תוכנית חוקית');
+
+    const status = getPlanPreviewStatus([], completeness as any, reason);
+    expect(status.kind).toBe('error');
+    expect(status.icon).toBe('✕');
+  });
+});
+
 describe('repairAddMissingElectives', () => {
   const knownSemesterIds = ['s1', 's2'];
   const courses = {
@@ -438,6 +572,22 @@ describe('repairPlanLoad', () => {
     const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
     expect(s1Report.movable).toEqual(['E1']);
     expect(s1Report.not_movable).toEqual([]);
+  });
+
+  it('never drops a mandatory course from the plan, even when overload cannot be fully fixed', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['MF', 'M2'] }, // flexible mandatory 18 + fixed mandatory 6 = 24
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      MF: { hours: 18, course_type: 'mandatory', placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] },
+      M2: { hours: 6, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['s1'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    const allPlaced = result.proposal.semesters.flatMap((s: any) => s.course_ids);
+    expect(allPlaced.sort()).toEqual(['M2', 'MF']);
   });
 
   it('allows an elective without effective_allowed_semesters to move to any known semester', () => {
@@ -713,11 +863,21 @@ describe('buildPreviewChangeBullets', () => {
 });
 
 describe('pickPrimaryBlockingReason', () => {
-  it('prefers missing-requirement cards over a generic blocking error', () => {
+  it('prefers missing mandatory courses over missing-requirement cards', () => {
     const completeness = { incomplete: true, reasons: ['חסרים קורסי חובה: X.'], added_electives: 0 };
     const missingCards = [
       { category_id: 'fluids', name: 'זורמים', missing: 2, candidates: [{ course_id: 'F1' }] },
       { category_id: 'solids', name: 'מוצקים', missing: 2, candidates: [{ course_id: 'S1' }] },
+    ];
+    const reason = pickPrimaryBlockingReason(completeness as any, missingCards as any);
+    expect(reason).toContain('חסרים');
+    expect(reason).toContain('קורסי חובה');
+  });
+
+  it('falls back to missing-requirement cards when no mandatory courses are missing', () => {
+    const completeness = { incomplete: true, reasons: ['חסר קורס אחד מקורסי הקטגוריה "זורמים".'], added_electives: 0 };
+    const missingCards = [
+      { category_id: 'fluids', name: 'זורמים', missing: 1, candidates: [{ course_id: 'F1' }] },
     ];
     const reason = pickPrimaryBlockingReason(completeness as any, missingCards as any);
     expect(reason).toContain('חסרות דרישות תואר');

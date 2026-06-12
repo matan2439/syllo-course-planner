@@ -386,6 +386,29 @@ export interface CategoryStatus {
  * satisfied by courses in `placedIds` (with the placed course ids), or — if
  * not — the remaining shortfall and up to 3 best candidates.
  */
+export interface MandatoryStatus {
+  required: number;
+  placed: number;
+  missing: Array<{ course_id: string; name_he?: string }>;
+}
+
+/**
+ * PART D — compact mandatory-course completion status, shown above the
+ * elective category checklist in the preview's "דרישות תואר" section.
+ */
+export function getMandatoryStatusReport(
+  analysis: CompletionAnalysis,
+  placedIds: Set<string>,
+): MandatoryStatus {
+  const missing = analysis.missing_mandatory.filter(c => !placedIds.has(c.course_id));
+  const placed = analysis.missing_mandatory.length - missing.length;
+  return {
+    required: analysis.missing_mandatory.length,
+    placed,
+    missing: missing.map(c => ({ course_id: c.course_id, name_he: c.name_he })),
+  };
+}
+
 export function getCategoryStatusReport(
   analysis: CompletionAnalysis,
   placedIds: Set<string>,
@@ -436,6 +459,13 @@ export function pickPrimaryBlockingReason(
       : 'תוכנית חוקית — ניתן להחיל';
   }
 
+  // PART B/C — missing mandatory courses are the top-priority blocking reason.
+  const mandatoryReason = completeness.reasons.find(r => r.startsWith('חסרים קורסי חובה') || r.includes('לא ניתן לשיבוץ חוקי'));
+  if (mandatoryReason) {
+    const count = mandatoryReason.match(/חסרים קורסי חובה: (.+)\./)?.[1]?.split(', ').length;
+    return count ? `לא ניתן להחיל — חסרים ${count} קורסי חובה` : 'לא ניתן להחיל — חסרים קורסי חובה';
+  }
+
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
     return 'לא ניתן להחיל — חסרות דרישות תואר';
@@ -476,6 +506,7 @@ export function pickBestCandidate(
 export interface RepairCourseInfo {
   hours?: number | null;
   effective_allowed_semesters?: string[] | null;
+  placement_policy?: string | null;
 }
 
 export interface RepairProposalShape {
@@ -487,6 +518,98 @@ export interface RepairProposalShape {
 export interface RepairAddResult<P extends RepairProposalShape> {
   proposal: P;
   added: Array<{ course_id: string; category: string; semester_id: string }>;
+}
+
+export interface RepairMandatoryResult<P extends RepairProposalShape> {
+  proposal: P;
+  added: Array<{ course_id: string; semester_id: string }>;
+  /** Mandatory courses that have no legal semester to be placed in (PART A.4). */
+  unplaceable: Array<{ course_id: string; name_he?: string }>;
+}
+
+/**
+ * PART A (phase 1) — deterministic repair: for every remaining mandatory
+ * course not yet completed and not already scheduled in the proposal, insert
+ * it into a legal semester before any elective repair/balancing runs.
+ *
+ * - placement_policy === 'fixed'  → only its single allowed/recommended semester.
+ * - placement_policy === 'flexible' (or unset) → least-loaded legal semester
+ *   from effective_allowed_semesters (or any known semester if unset).
+ * - If no legal semester exists, the course is reported in `unplaceable`
+ *   (PART A.4) and left out of the proposal.
+ *
+ * Pure function — does not mutate `proposal`.
+ */
+export function repairAddMissingMandatory<P extends RepairProposalShape>(
+  proposal: P,
+  analysis: CompletionAnalysis,
+  opts: {
+    courses: Record<string, RepairCourseInfo>;
+    maxHoursPerSemester?: number | null;
+    knownSemesterIds: string[];
+  },
+): RepairMandatoryResult<P> {
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  for (const id of opts.knownSemesterIds) {
+    if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
+  }
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const added: Array<{ course_id: string; semester_id: string }> = [];
+  const unplaceable: Array<{ course_id: string; name_he?: string }> = [];
+
+  const hoursOf = (sem: { course_ids: string[] }) =>
+    sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+
+  for (const course of analysis.missing_mandatory) {
+    // 6. Completed (filtered upstream into missing_mandatory) and already-placed
+    // mandatory courses must not be scheduled again.
+    if (placed.has(course.course_id)) continue;
+
+    const info = opts.courses[course.course_id] || {};
+    const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : null;
+
+    let legalSems;
+    if (info.placement_policy === 'fixed') {
+      // 1. Fixed mandatory courses go only to their required/recommended semester(s).
+      legalSems = allowed ? sems.filter(s => allowed.includes(s.semester_id)) : [];
+    } else {
+      // 2/3. Flexible (or unspecified) mandatory courses go to the
+      // least-loaded legal semester among effective_allowed_semesters, or any
+      // known semester if no restriction is set.
+      legalSems = sems.filter(s => (allowed ? allowed.includes(s.semester_id) : true));
+    }
+
+    if (!legalSems.length) {
+      // 4. No legal semester exists — blocking reason, reported via `unplaceable`.
+      unplaceable.push({ course_id: course.course_id, name_he: course.name_he });
+      continue;
+    }
+
+    // 5. Do not skip for overload — prefer a semester that stays within the
+    // cap, but place the course regardless if every legal option is full.
+    const hrs = info.hours || course.hours || 0;
+    let target = legalSems
+      .filter(s => hoursOf(s) + hrs <= max)
+      .sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+    target.course_ids.push(course.course_id);
+    placed.add(course.course_id);
+    added.push({ course_id: course.course_id, semester_id: target.semester_id });
+  }
+
+  if (!added.length) return { proposal, added: [], unplaceable };
+
+  return {
+    proposal: {
+      ...proposal,
+      semesters: sems.filter(s => s.course_ids.length > 0 || proposal.semesters.some(ps => ps.semester_id === s.semester_id)),
+      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.'],
+    },
+    added,
+    unplaceable,
+  };
 }
 
 /**

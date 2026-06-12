@@ -683,6 +683,8 @@ body.prog-modal-open .workspace {
 .ai-plan-preview-status.status-warn { background: rgba(234,179,8,.14); border-color: rgba(234,179,8,.45); }
 .ai-plan-preview-status.status-bad  { background: rgba(220,53,69,.12); border-color: rgba(220,53,69,.4); }
 .ai-plan-apply-reason { font-size: .74rem; color: var(--text-muted); margin-top: -4px; }
+.ai-plan-mandatory-status { font-size: .76rem; line-height: 1.6; display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+.ai-plan-missing-mandatory { font-size: .8rem; line-height: 1.6; color: var(--text-muted); padding-inline-start: 18px; margin: 0; }
 .ai-plan-changes { font-size: .8rem; line-height: 1.6; padding-inline-start: 18px; margin: 0; }
 .ai-plan-status-pill {
   font-size: .7rem; padding: 2px 8px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border);
@@ -5148,6 +5150,72 @@ function _pickBestCandidateLocal(candidates, unwantedIds) {
  * still-unmet elective category into the least-loaded legal semester.
  * Mirrors api/ai/completion_analysis.ts (repairAddMissingElectives).
  */
+/**
+ * PART A (phase 1, client mirror) — deterministic insertion of remaining
+ * mandatory courses before any elective repair/balancing.
+ * Mirrors api/ai/completion_analysis.ts (repairAddMissingMandatory).
+ */
+function repairAddMissingMandatoryLocal(proposal, analysis, opts) {
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  for (const id of opts.knownSemesterIds) {
+    if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
+  }
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const added = [];
+  const unplaceable = [];
+  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+
+  for (const course of analysis.missing_mandatory) {
+    if (placed.has(course.course_id)) continue;
+
+    const info = opts.courses[course.course_id] || {};
+    const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : null;
+
+    let legalSems;
+    if (info.placement_policy === 'fixed') {
+      legalSems = allowed ? sems.filter(s => allowed.includes(s.semester_id)) : [];
+    } else {
+      legalSems = sems.filter(s => (allowed ? allowed.includes(s.semester_id) : true));
+    }
+
+    if (!legalSems.length) {
+      unplaceable.push({ course_id: course.course_id, name_he: course.name_he });
+      continue;
+    }
+
+    const hrs = info.hours || course.hours || 0;
+    let target = legalSems.filter(s => hoursOf(s) + hrs <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+    target.course_ids.push(course.course_id);
+    placed.add(course.course_id);
+    added.push({ course_id: course.course_id, semester_id: target.semester_id });
+  }
+
+  if (!added.length) return { proposal, added: [], unplaceable };
+  return {
+    proposal: {
+      ...proposal,
+      semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)),
+      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.'],
+    },
+    added,
+    unplaceable,
+  };
+}
+
+/** Mirrors api/ai/completion_analysis.ts (getMandatoryStatusReport). */
+function getMandatoryStatusReportLocal(analysis, placedIds) {
+  const missing = analysis.missing_mandatory.filter(c => !placedIds.has(c.course_id));
+  const placed = analysis.missing_mandatory.length - missing.length;
+  return {
+    required: analysis.missing_mandatory.length,
+    placed,
+    missing: missing.map(c => ({ course_id: c.course_id, name_he: c.name_he })),
+  };
+}
+
 function repairAddMissingElectivesLocal(proposal, analysis, opts) {
   const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
   const unwanted = new Set(opts.unwantedCourseIds || []);
@@ -5334,6 +5402,11 @@ function pickPrimaryBlockingReasonLocal(completeness, missingCards) {
       ? 'ניתן להחיל — נותרו אזהרות בלבד'
       : 'תוכנית חוקית — ניתן להחיל';
   }
+  const mandatoryReason = completeness.reasons.find(r => r.startsWith('חסרים קורסי חובה') || r.includes('לא ניתן לשיבוץ חוקי'));
+  if (mandatoryReason) {
+    const count = mandatoryReason.match(/חסרים קורסי חובה: (.+)\./)?.[1]?.split(', ').length;
+    return count ? `לא ניתן להחיל — חסרים ${count} קורסי חובה` : 'לא ניתן להחיל — חסרים קורסי חובה';
+  }
   const missingWithCandidates = missingCards.filter(c => c.missing > 0 && c.candidates.length > 0);
   if (missingWithCandidates.length) {
     return 'לא ניתן להחיל — חסרות דרישות תואר';
@@ -5416,9 +5489,20 @@ async function requestPlanProposal(prefs, actionType) {
     // PART A: deterministic completion analysis from the live board.
     const analysis = buildCompletionAnalysisLocal(planContext);
 
+    // PART A (phase 1): deterministically insert remaining mandatory courses
+    // before any elective repair/balancing.
+    const { proposal: withMandatory, added: addedMandatory, unplaceable: unplaceableMandatory } = repairAddMissingMandatoryLocal(normalized, analysis, {
+      courses: ctx.courses,
+      maxHoursPerSemester: ctx.maxHoursPerSemester,
+      knownSemesterIds: SEMESTERS.map(s => s.id),
+    });
+    if (addedMandatory.length) {
+      showBoardNotify(`נוספו ${addedMandatory.length} קורסי חובה שטרם שובצו.`);
+    }
+
     // PART D: deterministically insert candidates for unmet elective categories
     // before load-balancing, so newly-added electives get balanced too.
-    const { proposal: withElectives, added: addedElectives } = repairAddMissingElectivesLocal(normalized, analysis, {
+    const { proposal: withElectives, added: addedElectives } = repairAddMissingElectivesLocal(withMandatory, analysis, {
       courses: ctx.courses,
       maxHoursPerSemester: ctx.maxHoursPerSemester,
       unwantedCourseIds: prefs.unwanted_course_ids,
@@ -5446,6 +5530,13 @@ async function requestPlanProposal(prefs, actionType) {
       courseHours,
       movableCourseIds: ctx.movableCourseIds,
     });
+
+    // PART A.4: mandatory courses with no legal semester — always blocking.
+    for (const c of (unplaceableMandatory || [])) {
+      const msg = `קורס חובה ${c.name_he || c.course_id} לא ניתן לשיבוץ חוקי.`;
+      completeness.reasons.push(msg);
+      completeness.incomplete = true;
+    }
 
     // PART B: severe overload (> max + margin) that survived balancing —
     // block Apply if movable courses exist (balancing should have helped),
@@ -5586,6 +5677,24 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
 
+  // ── PART D: mandatory-course completion status (shown above categories). ──
+  const mandatoryStatus = _aiPlanLastAnalysis ? getMandatoryStatusReportLocal(_aiPlanLastAnalysis, placedIdsForCards) : { required: 0, placed: 0, missing: [] };
+  const mandatoryStatusHtml = mandatoryStatus.required > 0
+    ? `<div class="ai-plan-mandatory-status">
+        <strong>קורסי חובה</strong>
+        <div>${mandatoryStatus.missing.length ? '⚠' : '✓'} הושלמו/שובצו: ${mandatoryStatus.placed}/${mandatoryStatus.required}</div>
+        ${mandatoryStatus.missing.length
+          ? `<div>חסרים: ${mandatoryStatus.missing.map(c => esc(c.name_he || c.course_id)).join(', ')}</div>`
+          : ''}
+      </div>`
+    : '';
+
+  // PART C: explicit per-course "לא שובץ" list for missing mandatory courses.
+  const missingMandatoryListHtml = mandatoryStatus.missing.length
+    ? `<ul class="ai-plan-missing-mandatory">${mandatoryStatus.missing.map(c =>
+        `<li>קורס חובה ${esc(c.name_he || c.course_id)} — לא שובץ</li>`).join('')}</ul>`
+    : '';
+
   // ── PART D: per-category requirement status (with chosen course names). ──
   const categoryStatus = _aiPlanLastAnalysis ? getCategoryStatusReportLocal(_aiPlanLastAnalysis, placedIdsForCards) : [];
   const categoryStatusHtml = categoryStatus.length
@@ -5611,8 +5720,8 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     ? `<div class="ai-plan-changes-box"><strong>מה השתנה?</strong><ul class="ai-plan-changes">${changeBullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>`
     : '';
 
-  const reqStatusHtml = categoryStatusHtml
-    ? `<div class="ai-plan-completeness"><strong>דרישות תואר</strong>${categoryStatusHtml}</div>`
+  const reqStatusHtml = (mandatoryStatusHtml || categoryStatusHtml)
+    ? `<div class="ai-plan-completeness"><strong>דרישות תואר</strong>${mandatoryStatusHtml}${categoryStatusHtml}</div>`
     : '';
 
   const MAX_REASONS_SHOWN = 3;
@@ -5725,6 +5834,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
+      ${missingMandatoryListHtml}
       ${autofixHtml}
       ${changesHtml}
       ${missingCardsHtml}
