@@ -5225,6 +5225,7 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
   }
   const placed = new Set(sems.flatMap(s => s.course_ids));
   const added = [];
+  const extraWarnings = [];
   const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
 
   for (const cat of analysis.categories) {
@@ -5248,6 +5249,9 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
       target.course_ids.push(candidate.course_id);
       placed.add(candidate.course_id);
       added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id });
+      if (unwanted.has(candidate.course_id)) {
+        extraWarnings.push(`נבחר קורס שסומן ל"הימנעות" כדי למלא דרישת תואר חובה ב"${cat.name}" (${candidate.name_he || candidate.course_id}), כיוון שזהו הקורס החוקי היחיד שנותר.`);
+      }
       needed--;
     }
   }
@@ -5257,7 +5261,7 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
     proposal: {
       ...proposal,
       semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)),
-      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.'],
+      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.', ...extraWarnings],
     },
     added,
   };
@@ -5280,20 +5284,20 @@ function evaluatePlanCompletenessLocal(proposalSemesters, analysis, opts) {
     blocking.push(msg);
   }
 
-  for (const cat of analysis.categories) {
-    const placedFromCategory = cat.candidates.filter(c => placed.has(c.course_id)).length;
-    const stillMissing = Math.max(0, cat.missing - placedFromCategory);
-    if (stillMissing > 0 && cat.candidates.some(c => !placed.has(c.course_id))) {
-      const msg = stillMissing === 1
+  // Derived from the SAME getCategoryStatusReportLocal used to render the
+  // preview's category checklist, so the top status and the checklist can
+  // never disagree (PART B/F).
+  for (const cat of getCategoryStatusReportLocal(analysis, placed)) {
+    if (cat.satisfied) continue;
+    if (cat.candidates.length > 0) {
+      const msg = cat.missing === 1
         ? `חסר קורס אחד מקורסי הקטגוריה "${cat.name}".`
-        : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`;
+        : `חסרים ${cat.missing} קורסים מקטגוריית "${cat.name}".`;
       reasons.push(msg);
       blocking.push(msg);
-    } else if (stillMissing > 0) {
+    } else {
       reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
     }
-    // Satisfied categories are surfaced via getCategoryStatusReportLocal's
-    // compact status list — no redundant "הדרישה הושלמה" line here.
   }
 
   let addedHours = 0;

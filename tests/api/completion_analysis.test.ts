@@ -735,6 +735,26 @@ describe('getCategoryStatusReport', () => {
     expect(report[0].missing).toBe(1);
     expect(report[0].candidates.map(c => c.course_id)).toEqual(['L1']);
   });
+
+  it('a 0/1 required category with candidates makes the plan not applyable and never says "תוכנית חוקית"', () => {
+    const analysis = {
+      ...baseAnalysis,
+      categories: [
+        { name: 'קורסי ליבה — מערכות', category_id: 'systems', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'Y1', name_he: 'מערכות א', hours: 3 }] },
+        { name: 'מעבדות מתקדמות', category_id: 'advanced_labs', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'L1', name_he: 'מעבדה א', hours: 2 }] },
+      ],
+    };
+    const completeness = evaluatePlanCompleteness([{ semester_id: 's1', course_ids: [] }], analysis as any);
+    expect(completeness.incomplete).toBe(true);
+
+    const placedIds = new Set<string>();
+    const missingCards = getMissingRequirementCards(analysis as any, placedIds);
+    expect(isPlanApplyable([], completeness)).toBe(false);
+
+    const reason = pickPrimaryBlockingReason(completeness, missingCards);
+    expect(reason).not.toContain('תוכנית חוקית');
+    expect(reason).toContain('חסרות דרישות תואר');
+  });
 });
 
 describe('repairAddMissingElectives: required-category auto-fill respects wanted/unwanted', () => {

@@ -306,21 +306,21 @@ export function evaluatePlanCompleteness(
     blocking.push(msg);
   }
 
-  // 2. unmet elective categories with available candidates
-  for (const cat of analysis.categories) {
-    const stillMissing = Math.max(0, cat.missing - cat.candidates.filter(c => placed.has(c.course_id)).length);
-    if (stillMissing > 0 && cat.candidates.some(c => !placed.has(c.course_id))) {
-      const msg = stillMissing === 1
+  // 2. unmet required categories — derived from the SAME getCategoryStatusReport
+  // used to render the preview's category checklist, so the top status and the
+  // checklist can never disagree (PART B/F).
+  for (const cat of getCategoryStatusReport(analysis, placed)) {
+    if (cat.satisfied) continue;
+    if (cat.candidates.length > 0) {
+      const msg = cat.missing === 1
         ? `חסר קורס אחד מקורסי הקטגוריה "${cat.name}".`
-        : `חסרים ${stillMissing} קורסים מקטגוריית "${cat.name}".`;
+        : `חסרים ${cat.missing} קורסים מקטגוריית "${cat.name}".`;
       reasons.push(msg);
       blocking.push(msg);
-    } else if (stillMissing > 0) {
+    } else {
       // Category still unmet, but no eligible candidates exist — informational only.
       reasons.push(`אין קורס מועמד זמין בקטגוריה "${cat.name}".`);
     }
-    // Satisfied categories are surfaced via getCategoryStatusReport's compact
-    // status list (PART D) — no redundant "הדרישה הושלמה" line here.
   }
 
   // 3. remaining degree hours, with electives added on top of the live board
@@ -638,6 +638,7 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
   }
   const placed = new Set(sems.flatMap(s => s.course_ids));
   const added: Array<{ course_id: string; category: string; semester_id: string }> = [];
+  const extraWarnings: string[] = [];
 
   const hoursOf = (sem: { course_ids: string[] }) =>
     sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
@@ -666,6 +667,9 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
       target.course_ids.push(candidate.course_id);
       placed.add(candidate.course_id);
       added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id });
+      if (unwanted.has(candidate.course_id)) {
+        extraWarnings.push(`נבחר קורס שסומן ל"הימנעות" כדי למלא דרישת תואר חובה ב"${cat.name}" (${candidate.name_he || candidate.course_id}), כיוון שזהו הקורס החוקי היחיד שנותר.`);
+      }
       needed--;
     }
   }
@@ -676,7 +680,7 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     proposal: {
       ...proposal,
       semesters: sems.filter(s => s.course_ids.length > 0 || proposal.semesters.some(ps => ps.semester_id === s.semester_id)),
-      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.'],
+      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.', ...extraWarnings],
     },
     added,
   };
