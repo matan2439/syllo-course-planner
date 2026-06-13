@@ -1231,16 +1231,34 @@ body.prog-modal-open .workspace {
 }
 
 /* ── Board highlighting for an active "טיוטת שינויים" (PART E) ──────────── */
-.board-draft-note {
-  flex-basis: 100%; padding: 8px 14px; font-size: .8rem; direction: rtl;
+.board-draft-banner {
+  flex-basis: 100%; display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; padding: 8px 14px; font-size: .85rem; direction: rtl;
   background: var(--surface2); border: 1px dashed var(--mand-accent, var(--blue));
   border-radius: var(--radius); margin-bottom: 8px;
 }
-.course-card.card-draft-added { outline: 2px solid var(--success, #2ecc71); outline-offset: -2px; }
-.course-card.card-draft-moved { outline: 2px solid var(--blue); outline-offset: -2px; }
+.board-draft-banner-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.course-card-draft { opacity: .82; border-style: dashed !important; }
+.course-card.card-draft-added { outline: 2px solid var(--success, #2ecc71); outline-offset: -2px; animation: draft-pulse 1.6s ease-in-out infinite; }
+.course-card.card-draft-moved { outline: 2px solid var(--blue); outline-offset: -2px; animation: draft-pulse 1.6s ease-in-out infinite; }
+.course-card.course-card-draft-removed { opacity: .45; }
 .badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
 .badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
+.badge.bdg-draft-removed { background: var(--danger, #e74c3c); color: #fff; }
 .semester-col.sem-draft-overload .sem-hdr { outline: 2px solid var(--danger); outline-offset: -2px; }
+@keyframes draft-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
+  50% { box-shadow: 0 0 0 3px rgba(46,204,113,.25); }
+}
+
+/* ── "טיוטת שינויים" sidebar status (PART D) ─────────────────────────────── */
+.ai-plan-status { padding: 6px 10px; border-radius: var(--radius); font-size: .85rem; font-weight: 600; text-align: center; }
+.ai-plan-status.status-ok     { background: var(--success-bg, #d6f5e3); color: var(--success, #1f9d55); }
+.ai-plan-status.status-warn   { background: var(--warn-bg, #fdf3d6); color: var(--warn, #b9770e); }
+.ai-plan-status.status-blocked{ background: var(--danger-bg, #fbe1de); color: var(--danger, #c0392b); }
+.ai-plan-msg-list { margin: 0; padding: 0 18px; font-size: .8rem; direction: rtl; }
+.ai-plan-msg-list.msg-error { color: var(--danger, #c0392b); }
+.ai-plan-msg-list.msg-warn { color: var(--warn, #b9770e); }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1358,8 +1376,6 @@ body.prog-modal-open .workspace {
             <button class="repo-search-clear" id="repo-search-clear" title="נקה חיפוש">✕</button>
           </div>
           <div class="repo-search-status" id="repo-search-status"></div>
-          <button class="btn btn-auto-plan" id="btn-auto-plan"
-            title="הזינו העדפות אישיות וה-AI יציע תוכנית סמסטרים מותאמת אישית לתצוגה מקדימה ואישור">🤖 בנה מערכת מותאמת אישית (מתקדם)</button>
         </div>
         <div class="sb-body" id="repo-body"></div>
       </div>
@@ -1927,7 +1943,6 @@ async function main() {
   document.getElementById('btn-reset').addEventListener('click', resetBoard);
   document.getElementById('btn-change-prog').addEventListener('click', () => showModal());
   document.getElementById('btn-my-courses').addEventListener('click', openMyCoursesModal);
-  document.getElementById('btn-auto-plan').addEventListener('click', openPlanPreferencesModal);
   document.getElementById('ai-plan-overlay').addEventListener('click', e => {
     if (e.target.id === 'ai-plan-overlay') closeAiPlanModal();
   });
@@ -2855,19 +2870,19 @@ function renderAiTab() {
         <div>עומס שיא: ${s.peak} ש״ש</div>
       </div>
       <label class="ai-plan-field">
-        כתוב מה חשוב לך בתוכנית
+        מה תרצה לשפר בתוכנית?
         <textarea id="sidebar-ai-instruction" rows="2" dir="rtl"
-          placeholder="כתוב מה חשוב לך בתוכנית — למשל אנליזות, תכן, רובוטיקה...">${esc(lastInstr)}</textarea>
+          placeholder="מה תרצה לשפר בתוכנית? למשל: אנליזות, תכן, רובוטיקה, איזון עומס...">${esc(lastInstr)}</textarea>
       </label>
       <div style="display:flex;flex-direction:column;gap:4px">
         <button class="btn btn-sm" id="sidebar-quick-full">בנה תוכנית מלאה</button>
         <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
-        <button class="btn btn-sm" id="sidebar-quick-electives">השלם דרישות</button>
-        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן שיבוצים לא חוקיים</button>
+        <button class="btn btn-sm" id="sidebar-quick-electives">השלם דרישות תואר</button>
         <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
+        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן שיבוצים לא חוקיים</button>
       </div>
       <div id="sidebar-ai-status" class="ai-plan-hint" hidden></div>
-      <button class="btn btn-primary" id="sidebar-ai-generate">צור הצעה</button>
+      <button class="btn btn-primary" id="sidebar-ai-generate">צור טיוטה על הלוח</button>
     </div>`;
 
   const run = actionType => {
@@ -2883,38 +2898,142 @@ function renderAiTab() {
   document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
 }
 
-/** "טיוטת שינויים" tab — compact AI proposal, or an empty-state if none exists. */
+/** "טיוטת שינויים" tab — status + Apply/Reject for the active board draft, or an empty-state if none exists. */
 function renderDraftTab() {
   const panel = document.getElementById('sb-panel-draft');
-  if (!_aiPlanLastPreviewArgs) {
+  const draft = state.proposalDraft;
+  if (!draft) {
     panel.innerHTML = `
       <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
       <div class="sb-body">
-        <div class="ai-plan-hint">אין טיוטת שינויים פעילה. עברו לטאב "עוזר AI" וצרו הצעה.</div>
+        <div class="ai-plan-hint">אין טיוטת שינויים פעילה. עברו לטאב "עוזר AI" וצרו טיוטה.</div>
       </div>`;
     return;
   }
-  _aiPlanCompactMode = true;
-  openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
+
+  const evald = evaluateDraftProposal();
+  const errors   = evald?.errors   ?? _aiPlanLastValidation?.errors   ?? [];
+  const warnings = evald?.warnings ?? _aiPlanLastValidation?.warnings ?? [];
+  const completeness = evald?.completeness ?? _aiPlanLastValidation?.completeness ?? null;
+  const blocked = errors.length > 0 || !!completeness?.incomplete;
+  const hasWarnings = warnings.length > 0;
+
+  const diff = computeDraftDiff();
+  const addedCount = diff?.added.size ?? 0;
+  const movedCount = diff?.moved.size ?? 0;
+  const removedCount = diff?.removed.size ?? 0;
+
+  let statusLabel, statusCls;
+  if (blocked) { statusLabel = 'חסום — יש לתקן לפני אישור'; statusCls = 'status-blocked'; }
+  else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
+  else { statusLabel = 'ניתן להחיל'; statusCls = 'status-ok'; }
+
+  const listHtml = (items, cls) => items.length
+    ? `<ul class="ai-plan-msg-list ${cls}">${items.slice(0,5).map(m => `<li>${esc(m)}</li>`).join('')}</ul>`
+    : '';
+
+  const showOverloadBtn = !blocked && hasWarnings && !_aiPlanLastPreferences?.overload_accepted
+    && warnings.some(w => w.includes('עומס'));
+
+  panel.innerHTML = `
+    <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
+    <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
+      <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
+      <div class="sb-status-summary">
+        <div>נוספו: ${addedCount}</div>
+        <div>הועברו: ${movedCount}</div>
+        <div>הוסרו: ${removedCount}</div>
+      </div>
+      ${listHtml(errors, 'msg-error')}
+      ${listHtml(warnings, 'msg-warn')}
+      ${(completeness?.reasons?.length) ? listHtml(completeness.reasons, 'msg-warn') : ''}
+      <label class="ai-plan-field">
+        בקש שינויים בטיוטה
+        <textarea id="sidebar-draft-instruction" rows="2" dir="rtl"
+          placeholder="מה תרצה לשנות בטיוטה?"></textarea>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-primary" id="sb-draft-apply" ${blocked ? 'disabled' : ''}>החל טיוטה</button>
+        <button class="btn" id="sb-draft-reject">דחה טיוטה</button>
+        <button class="btn btn-sm" id="sb-draft-ask">בקש שינויים</button>
+        ${showOverloadBtn ? `<button class="btn btn-sm" id="sb-draft-allow-overload">אפשר חריגה בעומס</button>` : ''}
+        <button class="btn btn-sm" id="sb-draft-full">פתח תצוגה מלאה</button>
+      </div>
+    </div>`;
+
+  document.getElementById('sb-draft-apply').addEventListener('click', () => { if (!blocked) applyProposalDraft(); });
+  document.getElementById('sb-draft-reject').addEventListener('click', rejectProposalDraft);
+  document.getElementById('sb-draft-ask').addEventListener('click', () => {
+    const instr = document.getElementById('sidebar-draft-instruction')?.value?.trim();
+    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: instr || _aiPlanLastPreferences?.extra_request_he };
+    _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
+    requestPlanProposalFromDraft(prefs, 'minimal_changes');
+  });
+  document.getElementById('sb-draft-allow-overload')?.addEventListener('click', () => {
+    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
+    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+    renderDraftTab();
+  });
+  document.getElementById('sb-draft-full').addEventListener('click', () => {
+    const ev = evald || { proposal: _aiPlanLastProposal, errors, warnings, completeness };
+    openPlanPreviewModal(
+      ev.proposal,
+      ev.errors,
+      ev.warnings,
+      _aiPlanLastValidation?.autofixed,
+      ev.completeness,
+      _aiPlanLastValidation?.moveLog,
+      _aiPlanLastValidation?.electiveSelectionReasons
+    );
+  });
+}
+
+/** PART D — "בקש שינויים": send the edited draft back to the AI as the starting board. */
+function requestPlanProposalFromDraft(prefs, actionType) {
+  const draft = state.proposalDraft;
+  if (!draft) return;
+  const savedSemesters = state.semesters;
+  const savedRepo = state.repo;
+  state.semesters = draft.semesters;
+  state.repo = draft.repo || [];
+  return requestPlanProposal(prefs, actionType).finally(() => {
+    state.semesters = savedSemesters;
+    state.repo = savedRepo;
+  });
 }
 
 function renderBoard() {
   const emptyHint = allPlacedIds().size === 0
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
     : '';
-  const draftNote = _aiPlanProposalHighlight
-    ? `<div class="board-draft-note">📝 יש טיוטת שינויים פעילה — קורסים מסומנים מסמנים שינויים מוצעים. ראו טאב "טיוטת שינויים".</div>`
+  // PART E — banner shown above the board while an AI draft overlay is active.
+  const draftDiff = computeDraftDiff();
+  const draftBanner = draftDiff
+    ? `<div class="board-draft-banner">
+        <span>טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה</span>
+        <div class="board-draft-banner-actions">
+          <button class="btn btn-primary btn-sm" id="board-draft-apply">החל טיוטה</button>
+          <button class="btn btn-sm" id="board-draft-reject">דחה</button>
+          <button class="btn btn-sm" id="board-draft-back-ai">חזור לעוזר AI</button>
+        </div>
+      </div>`
     : '';
   const yearGroups = [
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = emptyHint + draftNote + yearGroups.map(yg =>
+  document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg =>
     `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
-      <div class="year-sems">${yg.sems.map(s => semColHtml(s)).join('')}</div>
+      <div class="year-sems">${yg.sems.map(s => semColHtml(s, draftDiff)).join('')}</div>
     </div>`
   ).join('');
+
+  if (draftDiff) {
+    document.getElementById('board-draft-apply').addEventListener('click', applyProposalDraft);
+    document.getElementById('board-draft-reject').addEventListener('click', rejectProposalDraft);
+    document.getElementById('board-draft-back-ai').addEventListener('click', () => setSidebarTab('ai'));
+  }
 }
 
 function computeProgramProgress() {
@@ -3004,8 +3123,8 @@ function renderProgramProgress(prog) {
   </div>`;
 }
 
-function semColHtml(sem) {
-  const ids     = (state.semesters[sem.id] || []).filter(id => !isCourseCompleted(id));
+function semColHtml(sem, draftDiff) {
+  const ids     = boardSemesterIds(sem.id);
   const courses = ids.map(id => courseMap[id]).filter(Boolean);
   let knownHrs  = 0, unknownCt = 0;
   for (const c of courses) {
@@ -3020,8 +3139,13 @@ function semColHtml(sem) {
   const hrsLbl = unknownCt > 0 ? `${knownHrs} שעות ידועות` : `${knownHrs} ש׳׳ש`;
   const unkNote = unknownCt > 0
     ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
-  const cards  = ids.map(id => cardHtml(courseMap[id], true)).join('');
-  const draftOverloadCls = _aiPlanProposalHighlight?.overloadedSemesters?.has(sem.id) ? ' sem-draft-overload' : '';
+  let cards = ids.map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
+  // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
+  if (draftDiff) {
+    const removedHere = (state.semesters[sem.id] || []).filter(cid => draftDiff.removed.has(cid));
+    cards += removedHere.map(cid => cardHtml(courseMap[cid], false, draftDiff, { removedHere: true })).join('');
+  }
+  const draftOverloadCls = knownHrs > MAX_HOURS && draftDiff ? ' sem-draft-overload' : '';
   return `<div class="semester-col ${esc(sem.css)}${draftOverloadCls}">
     <div class="sem-hdr">
       <div class="sem-title">${esc(SEM_HE[sem.id] || sem.id)}</div>
@@ -3053,7 +3177,7 @@ function syllabusBadgeHtml(c) {
 }
 
 /* ── Course card HTML ───────────────────────────────────────────────────── */
-function cardHtml(c, placed) {
+function cardHtml(c, placed, draftDiff, opts) {
   if (!c) return '';
   const type      = c.course_type || 'elective';
   const status    = c.status      || 'eligible';
@@ -3128,21 +3252,34 @@ function cardHtml(c, placed) {
   const warnIcon  = (c.warnings||[]).length
     ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
 
-  // PART E — highlight courses affected by the active AI proposal (טיוטת שינויים).
+  // PART B/E — draft-overlay markers: added/moved/removed relative to the committed board.
   let draftBdg = '';
-  if (_aiPlanProposalHighlight) {
-    if (_aiPlanProposalHighlight.added.has(c.course_id)) { cls += ' card-draft-added'; draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטת השינויים">+ טיוטה</span>`; }
-    else if (_aiPlanProposalHighlight.moved.has(c.course_id)) { cls += ' card-draft-moved'; draftBdg = `<span class="badge bdg-draft-moved" title="קורס שהועבר בטיוטת השינויים">↔ טיוטה</span>`; }
+  let removedHere = false;
+  if (draftDiff) {
+    if (opts?.removedHere) {
+      removedHere = true;
+      cls += ' course-card-draft course-card-draft-removed';
+      draftBdg = `<span class="badge bdg-draft-removed" title="קורס שיוסר אם תאשר את הטיוטה">יוסר</span>`;
+    } else if (draftDiff.added.has(c.course_id)) {
+      cls += ' course-card-draft card-draft-added';
+      draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטה">נוסף</span>`;
+    } else if (draftDiff.moved.has(c.course_id)) {
+      cls += ' course-card-draft card-draft-moved';
+      const fromSemId = draftDiff.movedFrom.get(c.course_id);
+      draftBdg = `<span class="badge bdg-draft-moved" title="הועבר מ-${esc(SEM_HE[fromSemId] || fromSemId)}">הועבר מ${esc((SEM_HE[fromSemId] || fromSemId || '').split(' ').pop())}</span>`;
+    }
   }
 
   const pinned = placed && (state?.pinnedCourseIds || []).includes(c.course_id);
   if (pinned) cls += ' card-pinned';
-  const pinBtn = placed
+  const pinBtn = (placed && !removedHere)
     ? `<button class="pin-btn ${pinned ? 'pinned' : ''}" data-pin="${esc(c.course_id)}" title="אל תזיז — ה-AI לא יזיז את הקורס הזה">${pinned ? '📌' : '📍'}</button>`
     : '';
 
   let actionBtn = '';
-  if (isFixedMandatory) {
+  if (removedHere) {
+    actionBtn = '';
+  } else if (isFixedMandatory) {
     actionBtn = `<span class="lock-btn" title="חובה קבוע — לא ניתן להזיז">🔒</span>`;
   } else if (isFlexMand) {
     actionBtn = `<span class="lock-btn" title="חובה גמיש — ניתן להזזה בין סמסטרים מותרים">↔</span>`;
@@ -3150,9 +3287,10 @@ function cardHtml(c, placed) {
     actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
   }
 
-  const dragHint = canDrag ? '<div class="card-drag-hint">⠿ גרירה</div>' : '';
+  const dragHint = (canDrag && !removedHere) ? '<div class="card-drag-hint">⠿ גרירה</div>' : '';
+  const draggableAttr = (canDrag && !removedHere) ? 'draggable="true"' : 'draggable="false"';
 
-  return `<div class="${cls}" ${canDrag?'draggable="true"':'draggable="false"'} data-cid="${esc(c.course_id)}">
+  return `<div class="${cls}" ${draggableAttr} data-cid="${esc(c.course_id)}">
   <div class="card-main">
     <div class="card-top">
       <span class="cid" dir="ltr">${esc(c.course_id)}</span>
@@ -4040,9 +4178,11 @@ function validatePlacement(courseId, targetSemId) {
   }
 
   // Build index: courseId → semesterIndex, excluding the course being validated
+  // PART G — validate against the active board (draft, if one is open).
+  const activeSems = activeSemestersMap();
   const courseSemIdx = {};
   for (let i = 0; i < semIds.length; i++) {
-    for (const cid of (state.semesters[semIds[i]] || [])) {
+    for (const cid of (activeSems[semIds[i]] || [])) {
       if (cid !== courseId) courseSemIdx[cid] = i;
     }
   }
@@ -4112,7 +4252,7 @@ function revalidateBoard() {
   const userCompleted = Object.keys(userCourseStatuses).filter(cid => userCourseStatuses[cid].status === 'completed');
   completedCourseIds = [...new Set([..._boardCompletedIds, ...userCompleted])];
   boardValidation = {};
-  for (const [semId, ids] of Object.entries(state.semesters)) {
+  for (const [semId, ids] of Object.entries(activeSemestersMap())) {
     for (const cid of (ids || [])) {
       boardValidation[cid] = validatePlacement(cid, semId);
     }
@@ -4275,11 +4415,119 @@ function setupCardClick() {
   });
 }
 
+/* ── PART G: committed board vs. AI proposal draft ──────────────────────── */
+function isDraftActive() { return !!state.proposalDraft; }
+/** Semester-id → course-id[] for whichever board is currently shown (draft if open, else committed). */
+function activeSemestersMap() { return state.proposalDraft ? state.proposalDraft.semesters : state.semesters; }
+function boardSemesterIds(semId) { return (activeSemestersMap()[semId] || []).filter(id => !isCourseCompleted(id)); }
+function boardRepoIds() { return state.proposalDraft ? (state.proposalDraft.repo || []) : state.repo; }
+
+function proposalSemestersToMap(semestersArr) {
+  const m = {};
+  for (const s of (semestersArr || [])) m[s.semester_id] = [...(s.course_ids || [])];
+  return m;
+}
+
+/** Inverse of proposalSemestersToMap — {semId: [cids]} → [{semester_id, course_ids}]. */
+function mapToProposalSemesters(map) {
+  return SEMESTERS.map(s => ({ semester_id: s.id, course_ids: [...(map[s.id] || [])] }));
+}
+
+/** PART D — recompute live validation/completeness for the active draft. */
+function evaluateDraftProposal() {
+  const draft = state.proposalDraft;
+  const ctx = _aiPlanLastCtx;
+  if (!draft || !ctx) return null;
+  const analysis = _aiPlanLastAnalysis;
+  const proposal = { ..._aiPlanLastProposal, semesters: mapToProposalSemesters(draft.semesters) };
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  const degreeHoursStatus = getDegreeHoursStatusLocal(analysis, proposal.semesters, courseHours);
+  const { errors, warnings } = validatePlanProposalLocal(proposal, { ...ctx, degreeHoursSatisfied: degreeHoursStatus.satisfied });
+  const completeness = evaluatePlanCompletenessLocal(proposal.semesters, analysis, {
+    wantedCourseIds: _aiPlanLastPreferences?.wanted_course_ids,
+    courseHours,
+    movableCourseIds: ctx.movableCourseIds,
+  });
+  return { proposal, errors, warnings, completeness };
+}
+
+/** PART E/B — diff the active draft against the committed board for board-overlay markers. */
+function computeDraftDiff() {
+  const draft = state.proposalDraft;
+  if (!draft) return null;
+  const committedPlaced = {};
+  for (const [semId, ids] of Object.entries(state.semesters)) for (const cid of ids) committedPlaced[cid] = semId;
+  const draftPlaced = {};
+  for (const [semId, ids] of Object.entries(draft.semesters)) for (const cid of ids) draftPlaced[cid] = semId;
+  const added = new Set(), moved = new Set(), removed = new Set(), movedFrom = new Map();
+  for (const [cid, semId] of Object.entries(draftPlaced)) {
+    if (!(cid in committedPlaced)) added.add(cid);
+    else if (committedPlaced[cid] !== semId) { moved.add(cid); movedFrom.set(cid, committedPlaced[cid]); }
+  }
+  for (const cid of Object.keys(committedPlaced)) if (!(cid in draftPlaced)) removed.add(cid);
+  return { added, moved, removed, movedFrom };
+}
+
+/** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */
+function activateProposalDraft(proposal) {
+  const semesters = proposalSemestersToMap(proposal.semesters);
+  const placed = new Set(Object.values(semesters).flat());
+  state.proposalDraft = { semesters, repo: state.repo.filter(cid => !placed.has(cid)) };
+  renderAll();
+  setSidebarTab('draft');
+}
+
+/** PART D — discard the active draft and return to the committed board. */
+function rejectProposalDraft() {
+  state.proposalDraft = null;
+  _aiPlanLastProposal = null;
+  _aiPlanLastPreviewArgs = null;
+  renderAll();
+  if (_sidebarTab === 'draft') renderDraftTab();
+}
+
+/** PART D — commit the edited draft into the real board state. */
+function applyProposalDraft() {
+  const draft = state.proposalDraft;
+  if (!draft) return;
+  const prevPlaced = new Set(Object.values(state.semesters).flat());
+  for (const sem of SEMESTERS) state.semesters[sem.id] = [...(draft.semesters[sem.id] || [])];
+  const newPlaced = new Set(Object.values(state.semesters).flat());
+  const repoSet = new Set(state.repo);
+  for (const cid of newPlaced) repoSet.delete(cid);
+  for (const cid of prevPlaced) if (!newPlaced.has(cid)) repoSet.add(cid);
+  state.repo = [...repoSet];
+  state.proposalDraft = null;
+  _aiPlanLastProposal = null;
+  _aiPlanLastPreviewArgs = null;
+  saveState();
+  renderAll();
+  showBoardNotify('הטיוטה הוחלה על הלוח שלך');
+}
+
 /* ── State mutations ────────────────────────────────────────────────────── */
 function moveCourse(id, fromSem, toSem) {
   if (!id || fromSem === toSem) return;
   const c = courseMap[id];
   if (isLocked(c)) return;
+
+  // PART C — while a draft is active, edits stay local to the draft overlay.
+  if (state.proposalDraft) {
+    const draft = state.proposalDraft;
+    if (fromSem) draft.semesters[fromSem] = (draft.semesters[fromSem]||[]).filter(x=>x!==id);
+    else         draft.repo = (draft.repo||[]).filter(x=>x!==id);
+    if (toSem) {
+      if (!draft.semesters[toSem]) draft.semesters[toSem] = [];
+      if (!draft.semesters[toSem].includes(id)) draft.semesters[toSem].push(id);
+    } else {
+      if (!draft.repo) draft.repo = [];
+      if (!draft.repo.includes(id)) draft.repo.push(id);
+    }
+    renderAll();
+    if (_sidebarTab === 'draft') renderDraftTab();
+    return;
+  }
 
   if (fromSem) state.semesters[fromSem] = (state.semesters[fromSem]||[]).filter(x=>x!==id);
   else         state.repo = state.repo.filter(x=>x!==id);
@@ -4404,7 +4652,8 @@ function reconcilePlacements() {
 function _lsStateKey() { return `${LS_STATE_PREFIX}_${selectedProg?.program_id || 'default'}`; }
 function saveState() {
   try {
-    localStorage.setItem(_lsStateKey(), JSON.stringify({ ...state, program_id: selectedProg?.program_id, state_version: selectedProg?.state_version ?? null }));
+    const { proposalDraft, ...persisted } = state;
+    localStorage.setItem(_lsStateKey(), JSON.stringify({ ...persisted, program_id: selectedProg?.program_id, state_version: selectedProg?.state_version ?? null }));
   } catch {}
 }
 function tryLoadState() {
@@ -4782,29 +5031,14 @@ let _aiPlanLastAnalysis    = null;
 let _aiPlanLastCtx         = null;
 let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הקורסים" toggle
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
-let _aiPlanCompactMode     = true;  // compact "טיוטת שינויים" card is the default; "הצג פירוט מלא" opens the full preview
-let _aiPlanLastPreviewArgs = null;  // cached openPlanPreviewModal args so compact<->full toggle can re-render without recompute
-let _aiPlanSidebarMode     = true;  // PART C/D — render the compact card inside the "טיוטת שינויים" side-panel tab (default); "פתח תצוגה מלאה" switches to the overlay
-let _aiPlanProposalHighlight = null; // PART E — { added: Set, moved: Set, overloadedSemesters: Set } for board highlighting while a proposal is active
+let _aiPlanLastPreviewArgs = null;  // cached openPlanPreviewModal args for "פתח פירוט מלא"
+let _aiPlanLastValidation  = null;  // {errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons} for the active draft
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
   overlay.setAttribute('hidden', '');
   overlay.classList.remove('ai-plan-compact');
   document.getElementById('ai-plan-panel').innerHTML = '';
-  _aiPlanCompactMode = true; // next proposal starts back in the compact card
-  _aiPlanSidebarMode = true;
-}
-
-/** Clear the active AI proposal entirely and return the side panel to its empty state. */
-function rejectAiPlanProposal() {
-  closeAiPlanModal();
-  _aiPlanLastProposal = null;
-  _aiPlanLastPreviewArgs = null;
-  document.getElementById('sb-draft-dot')?.setAttribute('hidden', '');
-  _aiPlanProposalHighlight = null;
-  renderBoard();
-  if (_sidebarTab === 'draft') renderDraftTab();
 }
 
 /* ── Searchable course picker (used for "wanted"/"unwanted" course lists) ──
@@ -6713,9 +6947,10 @@ async function requestPlanProposal(prefs, actionType) {
     _aiPlanLastProposal = repairedProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
+    _aiPlanLastValidation = { errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons };
     if (genBtn) genBtn.disabled = false;
     statusEl?.setAttribute('hidden', '');
-    openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
+    activateProposalDraft(repairedProposal);
   } catch (err) {
     if (statusEl) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;
@@ -7100,127 +7335,8 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const panel = document.getElementById('ai-plan-panel');
   const overlayEl = document.getElementById('ai-plan-overlay');
 
-  // PART B/C/D — compact "טיוטת שינויים" card is the default view: short
-  // status + a few summary bullets + the same action buttons, anchored to
-  // the side so the board stays visible/interactive. "הצג פירוט מלא" opens
-  // the full preview below (unchanged).
-  if (_aiPlanCompactMode) {
-    const addedList = electiveSelectionReasons || [];
-    const movedList = moveLog || [];
-    const addedCount = addedList.length;
-    const movedCount2 = movedList.length;
-    const bullets = [
-      addedCount ? `נוספו ${addedCount} קורסים` : null,
-      movedCount2 ? `הועברו ${movedCount2} קורסים` : null,
-      `עומס מקסימלי: ${peakSemHours} ש״ש`,
-      `התאמה מקצועית: ${esc(planQuality.labels.professional_fit)}`,
-      hoursStatus ? `שעות לאחר התוכנית: ${hoursStatus.proposed_total_hours}/${hoursStatus.required_total}` : null,
-    ].filter(Boolean).slice(0, 5);
-
-    // PART E — highlight affected courses/semesters on the board while this proposal is active.
-    const overloadedSemIds = new Set((proposal.semesters || [])
-      .filter(sem => (semHoursById[sem.semester_id] || 0) > effectiveMaxHours)
-      .map(sem => sem.semester_id));
-    _aiPlanProposalHighlight = {
-      added: new Set(addedList.map(r => r.course_id)),
-      moved: new Set(movedList.map(m => m.course_id)),
-      overloadedSemesters: overloadedSemIds,
-    };
-
-    const courseRow = (cid, reason) => {
-      const c = courseMap[cid];
-      return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>
-        — ${c?.hours != null ? `${c.hours} ש״ש` : '—'} — ${esc(courseTypeBadge(c))}
-        ${reason ? `<div class="ai-plan-hint">${esc(reason)}</div>` : ''}
-      </li>`;
-    };
-    const addedHtml = addedCount
-      ? `<details class="ai-plan-details"><summary>קורסים שנוספו (${addedCount})</summary><ul>${addedList.map(r => courseRow(r.course_id, r.selection_reason)).join('')}</ul></details>`
-      : '';
-    const movedHtml = movedCount2
-      ? `<details class="ai-plan-details"><summary>קורסים שהועברו (${movedCount2})</summary><ul>${movedList.map(m =>
-          courseRow(m.course_id, `${esc(SEM_HE[m.from_semester] || m.from_semester)} → ${esc(SEM_HE[m.to_semester] || m.to_semester)}: ${esc(m.reason)}`)).join('')}</ul></details>`
-      : '';
-    const issuesHtml = allWarnings.length
-      ? `<details class="ai-plan-details"><summary>בעיות ואזהרות (${allWarnings.length})</summary><ul>${allWarnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>`
-      : '';
-    const whyHtml = planQuality.bullets.length
-      ? `<details class="ai-plan-details"><summary>מדוע זו התוכנית שנבחרה?</summary><ul>${planQuality.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></details>`
-      : '';
-
-    const actionsHtml = `
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל שינויים</button>
-        <button class="btn btn-sm" id="ai-plan-ask-changes">בקש שינוי</button>
-        ${severeOverload ? '<button class="btn btn-sm" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
-        <button class="btn btn-sm" id="ai-plan-reject">דחה</button>
-        <button class="btn btn-sm" id="ai-plan-show-full">פתח תצוגה מלאה</button>
-      </div>`;
-
-    const cardBodyHtml = `
-      ${statusHtml}
-      ${infeasibleTargetHtml}
-      <ul style="margin:0;padding-inline-start:18px;font-size:.82rem">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
-      ${applyReasonHtml}
-      ${addedHtml}
-      ${movedHtml}
-      ${issuesHtml}
-      ${whyHtml}
-      ${actionsHtml}`;
-
-    const wireActions = () => {
-      document.getElementById('ai-plan-reject').addEventListener('click', rejectAiPlanProposal);
-      document.getElementById('ai-plan-apply').addEventListener('click', () => {
-        if (!canApply) return;
-        applyPlanProposal(proposal);
-        rejectAiPlanProposal();
-        showBoardNotify('התוכנית הוחלה על הלוח שלך');
-      });
-      document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
-        openPlanPreferencesModal();
-      });
-      document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
-        _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
-        if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
-        refreshPlanPreviewWithProposal(_aiPlanLastProposal);
-      });
-      document.getElementById('ai-plan-show-full').addEventListener('click', () => {
-        _aiPlanCompactMode = false;
-        _aiPlanSidebarMode = false;
-        document.getElementById('ai-plan-overlay')?.removeAttribute('hidden');
-        openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
-      });
-    };
-
-    renderBoard();
-
-    if (_aiPlanSidebarMode) {
-      overlayEl?.setAttribute('hidden', '');
-      overlayEl?.classList.remove('ai-plan-compact');
-      document.getElementById('sb-draft-dot')?.removeAttribute('hidden');
-      if (_sidebarTab !== 'draft') { setSidebarTab('draft'); return; }
-      const draftPanel = document.getElementById('sb-panel-draft');
-      draftPanel.innerHTML = `
-        <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
-        <div class="sb-body" style="display:flex;flex-direction:column;gap:8px">${cardBodyHtml}</div>`;
-      wireActions();
-      return;
-    }
-
-    overlayEl?.classList.add('ai-plan-compact');
-    overlayEl?.removeAttribute('hidden');
-    panel.innerHTML = `
-    <div class="detail-head">
-      <div class="detail-head-row">
-        <h2 style="margin:0;font-size:1rem">טיוטת שינויים</h2>
-        <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
-      </div>
-    </div>
-    <div class="detail-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;direction:rtl;overflow:auto">${cardBodyHtml}</div>`;
-    document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
-    wireActions();
-    return;
-  }
+  // PART F — this overlay is now a secondary "פירוט מלא" view of the active
+  // draft. The primary flow is the board overlay + "טיוטת שינויים" tab.
   overlayEl?.classList.remove('ai-plan-compact');
   overlayEl?.removeAttribute('hidden');
 
@@ -7229,7 +7345,6 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       <div class="detail-head-row">
         <h2 style="margin:0;font-size:1.1rem">תצוגה מקדימה — תוכנית מותאמת אישית</h2>
         <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
-        <button class="btn btn-sm" id="ai-plan-show-compact">הצג תקציר</button>
       </div>
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
@@ -7266,19 +7381,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     _aiPlanShowAllCourses = !_aiPlanShowAllCourses;
     openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
   });
-  document.getElementById('ai-plan-show-compact').addEventListener('click', () => {
-    _aiPlanCompactMode = true;
-    _aiPlanSidebarMode = true;
-    document.getElementById('ai-plan-overlay')?.setAttribute('hidden', '');
-    openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
-  });
   document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
-  document.getElementById('ai-plan-reject').addEventListener('click', rejectAiPlanProposal);
+  document.getElementById('ai-plan-reject').addEventListener('click', () => {
+    rejectProposalDraft();
+    closeAiPlanModal();
+  });
   document.getElementById('ai-plan-apply').addEventListener('click', () => {
     if (!canApply) return; // safety: never apply an invalid plan
-    applyPlanProposal(proposal);
-    rejectAiPlanProposal();
-    showBoardNotify('התוכנית הוחלה על הלוח שלך');
+    applyProposalDraft();
+    closeAiPlanModal();
   });
   document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
     openPlanPreferencesModal();
@@ -7334,6 +7445,15 @@ function refreshPlanPreviewWithProposal(proposal) {
     }
   }
   _aiPlanLastProposal = repaired;
+  _aiPlanLastValidation = { errors, warnings, autofixed: false, completeness, moveLog, electiveSelectionReasons: _aiPlanLastValidation?.electiveSelectionReasons };
+  // PART C — keep the board overlay in sync with the recomputed proposal.
+  if (state.proposalDraft) {
+    const semesters = proposalSemestersToMap(repaired.semesters);
+    const placed = new Set(Object.values(semesters).flat());
+    state.proposalDraft = { semesters, repo: state.repo.filter(cid => !placed.has(cid)) };
+    renderBoard();
+    if (_sidebarTab === 'draft') renderDraftTab();
+  }
   openPlanPreviewModal(repaired, errors, warnings, false, completeness, moveLog);
 }
 
