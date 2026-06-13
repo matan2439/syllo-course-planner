@@ -670,6 +670,8 @@ body.prog-modal-open .workspace {
 }
 .ai-course-chip.chip-want   { border-color: rgba(40,167,69,.5); }
 .ai-course-chip.chip-avoid  { border-color: rgba(220,53,69,.5); }
+.ai-course-chip.chip-avoid-strong { background: rgba(220,53,69,.18); border-color: rgba(220,53,69,.8); cursor: pointer; }
+.ai-course-chip[data-toggle-strong] { cursor: pointer; }
 .ai-course-chip-x {
   cursor: pointer; border: none; background: var(--surface3, var(--border)); color: var(--text);
   border-radius: 50%; width: 18px; height: 18px; line-height: 1; font-size: .7rem;
@@ -1219,6 +1221,9 @@ body.prog-modal-open .workspace {
   background: transparent; color: var(--text-muted); cursor: pointer; position: relative;
 }
 .sb-tab.active { background: var(--surface2); color: var(--text); font-weight: 600; }
+/* PART A — sidebar panels must be a flex column so .sb-body can flex/scroll
+ * instead of growing past the sidebar's fixed height. */
+.sb-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .sb-panel[hidden] { display: none; }
 .sb-draft-dot {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;
@@ -1259,6 +1264,10 @@ body.prog-modal-open .workspace {
 .ai-plan-msg-list { margin: 0; padding: 0 18px; font-size: .8rem; direction: rtl; }
 .ai-plan-msg-list.msg-error { color: var(--danger, #c0392b); }
 .ai-plan-msg-list.msg-warn { color: var(--warn, #b9770e); }
+.ai-plan-msg-list li.msg-error { color: var(--danger, #c0392b); }
+.ai-plan-msg-list li.msg-warn { color: var(--warn, #b9770e); }
+.ai-plan-issue-group { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; }
+.ai-plan-issue-group-title { font-weight: 600; font-size: .78rem; margin-bottom: 2px; }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -2843,15 +2852,28 @@ function buildSidebarStatusSummary() {
 
 function sidebarQuickActionPrefs() {
   const instr = document.getElementById('sidebar-ai-instruction')?.value?.trim();
+  const maxHoursEl = document.getElementById('sidebar-max-hours');
+  const maxHours = maxHoursEl ? parseFloat(maxHoursEl.value) : (_aiPlanLastPreferences?.max_weekly_hours ?? null);
+  const wanted = _aiPickerState.wanted || [];
+  const unwanted = _aiPickerState.unwanted || [];
+  const strongUnwanted = (_aiPickerState.strongUnwanted || []).filter(cid => unwanted.includes(cid));
+
+  let extra = instr || _aiPlanLastPreferences?.extra_request_he || '';
+  if (strongUnwanted.length) {
+    const names = strongUnwanted.map(cid => courseLabelLocal(cid)).join(', ');
+    extra = `${extra ? extra + ' ' : ''}ממש לא רוצה ללמוד: ${names} — אל תשבץ אלא אם נדרש לתואר ואין חלופה חוקית.`;
+  }
+
   return {
-    max_weekly_hours:        _aiPlanLastPreferences?.max_weekly_hours ?? null,
+    max_weekly_hours:        Number.isFinite(maxHours) ? maxHours : (_aiPlanLastPreferences?.max_weekly_hours ?? null),
     balance_load:            _aiPlanLastPreferences?.balance_load ?? true,
     avoid_multiple_labs:     _aiPlanLastPreferences?.avoid_multiple_labs ?? false,
     avoid_multiple_projects: _aiPlanLastPreferences?.avoid_multiple_projects ?? false,
     preferred_categories:    _aiPlanLastPreferences?.preferred_categories ?? [],
-    wanted_course_ids:       _aiPlanLastPreferences?.wanted_course_ids ?? [],
-    unwanted_course_ids:     _aiPlanLastPreferences?.unwanted_course_ids ?? [],
-    extra_request_he:        instr || _aiPlanLastPreferences?.extra_request_he,
+    wanted_course_ids:       wanted,
+    unwanted_course_ids:     unwanted,
+    strongly_avoided_course_ids: strongUnwanted,
+    extra_request_he:        extra,
   };
 }
 
@@ -2859,6 +2881,24 @@ function renderAiTab() {
   const panel = document.getElementById('sb-panel-ai');
   const s = buildSidebarStatusSummary();
   const lastInstr = _aiPlanLastPreferences?.extra_request_he || '';
+
+  // PART B/C — initialize the course picker + workload slider with whatever
+  // was set last time (persists across "בקש שינויים" rounds).
+  _aiPickerCourses = Object.values(courseMap)
+    .filter(c => c.course_type !== 'mandatory' && c.status !== 'missing_from_db')
+    .sort((a, b) => (a.name_he || '').localeCompare(b.name_he || '', 'he'));
+  if (!_aiPickerState._initialized) {
+    _aiPickerState = {
+      wanted:   (_aiPlanLastPreferences?.wanted_course_ids   || []).filter(cid => courseMap[cid]),
+      unwanted: (_aiPlanLastPreferences?.unwanted_course_ids || []).filter(cid => courseMap[cid]),
+      strongUnwanted: (_aiPlanLastPreferences?.strongly_avoided_course_ids || []).filter(cid => courseMap[cid]),
+      _initialized: true,
+    };
+  }
+
+  const maxHoursDefault = _aiPlanLastPreferences?.max_weekly_hours ?? 20;
+  const maxHoursMin = _aiPlanFeasibleMinLoad ?? 14;
+
   panel.innerHTML = `
     <div class="sb-head"><div class="sb-head-title">עוזר AI לתכנון תוכנית</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
@@ -2874,6 +2914,36 @@ function renderAiTab() {
         <textarea id="sidebar-ai-instruction" rows="2" dir="rtl"
           placeholder="מה תרצה לשפר בתוכנית? למשל: אנליזות, תכן, רובוטיקה, איזון עומס...">${esc(lastInstr)}</textarea>
       </label>
+
+      <div class="ai-plan-section">
+        <div class="ai-plan-section-title">עומס שבועי מקסימלי רצוי</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" id="sidebar-max-hours" min="${maxHoursMin}" max="30" step="1" value="${maxHoursDefault}">
+          <span id="sidebar-max-hours-value" class="ai-plan-hint"></span>
+        </div>
+        ${_aiPlanFeasibleMinLoad != null ? `<div class="ai-plan-hint">המינימום האפשרי לפי האילוצים הנוכחיים: ${_aiPlanFeasibleMinLoad} ש״ש</div>` : ''}
+        <div id="sidebar-max-hours-warn" class="ai-plan-hint" hidden></div>
+      </div>
+
+      <div class="ai-plan-section">
+        <div class="ai-plan-section-title">קורסים שאני רוצה לקחת</div>
+        <div class="ai-course-picker">
+          <input type="text" id="ai-pref-wanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
+          <div class="ai-course-picker-results" id="ai-pref-wanted-results" hidden></div>
+          <div class="ai-course-picker-chips" id="ai-pref-wanted-chips"></div>
+        </div>
+      </div>
+
+      <div class="ai-plan-section">
+        <div class="ai-plan-section-title">קורסים שאני רוצה להימנע מהם</div>
+        <div class="ai-course-picker">
+          <input type="text" id="ai-pref-unwanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
+          <div class="ai-course-picker-results" id="ai-pref-unwanted-results" hidden></div>
+          <div class="ai-course-picker-chips" id="ai-pref-unwanted-chips"></div>
+        </div>
+        <div class="ai-plan-hint">לחיצה על שבב מסומן תהפוך אותו בין "להימנע אם אפשר" ל"ממש לא רוצה — לא לשבץ בכלל".</div>
+      </div>
+
       <div style="display:flex;flex-direction:column;gap:4px">
         <button class="btn btn-sm" id="sidebar-quick-full">בנה תוכנית מלאה</button>
         <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
@@ -2884,6 +2954,28 @@ function renderAiTab() {
       <div id="sidebar-ai-status" class="ai-plan-hint" hidden></div>
       <button class="btn btn-primary" id="sidebar-ai-generate">צור טיוטה על הלוח</button>
     </div>`;
+
+  // PART C — workload slider live readout + infeasible-target hint.
+  const maxHoursEl = document.getElementById('sidebar-max-hours');
+  const maxHoursValueEl = document.getElementById('sidebar-max-hours-value');
+  const maxHoursWarnEl = document.getElementById('sidebar-max-hours-warn');
+  const updateMaxHoursDisplay = () => {
+    maxHoursValueEl.textContent = `עד ${maxHoursEl.value} ש״ש בסמסטר`;
+    const val = parseFloat(maxHoursEl.value);
+    if (_aiPlanFeasibleMinLoad != null && val < _aiPlanFeasibleMinLoad) {
+      maxHoursWarnEl.textContent = `לא ניתן להגיע ל־${val} ש״ש תחת האילוצים. המינימום שנמצא הוא ${_aiPlanFeasibleMinLoad} ש״ש.`;
+      maxHoursWarnEl.hidden = false;
+    } else {
+      maxHoursWarnEl.hidden = true;
+    }
+  };
+  maxHoursEl.addEventListener('input', updateMaxHoursDisplay);
+  updateMaxHoursDisplay();
+
+  // PART B — wanted/avoided course pickers.
+  setupCoursePicker('wanted');
+  setupCoursePicker('unwanted');
+  renderCoursePickerChips('unwanted'); // re-render with strength toggle wiring below
 
   const run = actionType => {
     const prefs = sidebarQuickActionPrefs();
@@ -2932,6 +3024,28 @@ function renderDraftTab() {
     ? `<ul class="ai-plan-msg-list ${cls}">${items.slice(0,5).map(m => `<li>${esc(m)}</li>`).join('')}</ul>`
     : '';
 
+  // PART F — group blockers/warnings by category for the draft status panel.
+  const allIssues = [...errors.map(m => ({ m, cls: 'msg-error' })), ...warnings.map(m => ({ m, cls: 'msg-warn' })), ...(completeness?.reasons || []).map(m => ({ m, cls: 'msg-warn' }))];
+  const groups = {
+    'דרישות קדם': [],
+    'עומס': [],
+    'קורסים שנמנעתי מהם': [],
+    'דרישות תואר': [],
+    'שיבוץ לא חוקי': [],
+  };
+  for (const issue of allIssues) {
+    if (issue.m.includes('דרישת הקדם') || issue.m.includes('דרישות קדם') || issue.m.includes('לפני') || issue.m.includes('באותו סמסטר')) groups['דרישות קדם'].push(issue);
+    else if (issue.m.includes('עומס') || issue.m.includes('ש"ש') || issue.m.includes('ש״ש')) groups['עומס'].push(issue);
+    else if (issue.m.includes('ממש לא רוצה') || issue.m.includes('להימנע')) groups['קורסים שנמנעתי מהם'].push(issue);
+    else if (issue.m.includes('קורס חובה') || issue.m.includes('דרישת') || issue.m.includes('דרישה') || issue.m.includes('קטגוריה') || issue.m.includes('בחירה') || issue.m.includes('שעות')) groups['דרישות תואר'].push(issue);
+    else groups['שיבוץ לא חוקי'].push(issue);
+  }
+  const groupedHtml = Object.entries(groups).filter(([, items]) => items.length).map(([title, items]) => `
+    <div class="ai-plan-issue-group">
+      <div class="ai-plan-issue-group-title">${esc(title)}</div>
+      <ul class="ai-plan-msg-list">${items.slice(0, 5).map(({ m, cls }) => `<li class="${cls}">${esc(m)}</li>`).join('')}</ul>
+    </div>`).join('');
+
   const showOverloadBtn = !blocked && hasWarnings && !_aiPlanLastPreferences?.overload_accepted
     && warnings.some(w => w.includes('עומס'));
 
@@ -2944,9 +3058,7 @@ function renderDraftTab() {
         <div>הועברו: ${movedCount}</div>
         <div>הוסרו: ${removedCount}</div>
       </div>
-      ${listHtml(errors, 'msg-error')}
-      ${listHtml(warnings, 'msg-warn')}
-      ${(completeness?.reasons?.length) ? listHtml(completeness.reasons, 'msg-warn') : ''}
+      ${groupedHtml}
       <label class="ai-plan-field">
         בקש שינויים בטיוטה
         <textarea id="sidebar-draft-instruction" rows="2" dir="rtl"
@@ -5061,8 +5173,11 @@ function renderCoursePickerChips(prefix) {
   chipsEl.innerHTML = ids.length
     ? ids.map(cid => {
         const c = courseMap[cid];
-        return `<span class="ai-course-chip ${chipClass}">
-          ${esc(c?.name_he || cid)}
+        // PART B — avoided courses can be toggled to "ממש לא רוצה" (strict exclude).
+        const strong = prefix === 'unwanted' && (_aiPickerState.strongUnwanted || []).includes(cid);
+        return `<span class="ai-course-chip ${chipClass}${strong ? ' chip-avoid-strong' : ''}"
+            ${prefix === 'unwanted' ? `data-toggle-strong="${esc(cid)}" title="${strong ? 'ממש לא רוצה — לא לשבץ בכלל (לחץ לשינוי)' : 'להימנע אם אפשר (לחץ ל\'ממש לא רוצה\')'}"` : ''}>
+          ${esc(c?.name_he || cid)}${strong ? ' 🚫' : ''}
           <button type="button" class="ai-course-chip-x" data-picker="${prefix}" data-cid="${esc(cid)}" aria-label="הסר">✕</button>
         </span>`;
       }).join('')
@@ -5072,10 +5187,24 @@ function renderCoursePickerChips(prefix) {
     btn.addEventListener('click', () => {
       const cid = btn.dataset.cid;
       _aiPickerState[prefix] = _aiPickerState[prefix].filter(x => x !== cid);
+      if (prefix === 'unwanted') _aiPickerState.strongUnwanted = (_aiPickerState.strongUnwanted || []).filter(x => x !== cid);
       renderCoursePickerChips(prefix);
-      updatePreferenceSummary();
+      updatePreferenceSummary?.();
     });
   });
+
+  if (prefix === 'unwanted') {
+    chipsEl.querySelectorAll('[data-toggle-strong]').forEach(chip => {
+      chip.addEventListener('click', e => {
+        if (e.target.closest('.ai-course-chip-x')) return;
+        const cid = chip.dataset.toggleStrong;
+        const cur = _aiPickerState.strongUnwanted || (_aiPickerState.strongUnwanted = []);
+        const i = cur.indexOf(cid);
+        if (i === -1) cur.push(cid); else cur.splice(i, 1);
+        renderCoursePickerChips(prefix);
+      });
+    });
+  }
 }
 
 function setupCoursePicker(prefix) {
@@ -5529,6 +5658,39 @@ function validatePlanProposalLocal(proposal, ctx) {
   const seen = new Map();
   const placedCourseIds = new Set();
 
+  // PART D — prerequisite ordering: build courseId → semester index for the proposal.
+  const propSemIdx = {};
+  for (const sem of (proposal.semesters || [])) {
+    const idx = _semIndexOf(sem.semester_id);
+    for (const cid of (sem.course_ids || [])) propSemIdx[cid] = idx;
+  }
+  for (const sem of (proposal.semesters || [])) {
+    const semIdx = _semIndexOf(sem.semester_id);
+    const semName = SEM_HE[sem.semester_id] || sem.semester_id;
+    for (const courseId of (sem.course_ids || [])) {
+      const cName = courseLabelLocal(courseId);
+      for (const prereq of (courseMap[courseId]?.prerequisites || [])) {
+        const status = userCourseStatuses[prereq]?.status || 'not_taken';
+        if (status === 'completed' || ctx.completedCourseIds.has(prereq)) continue;
+        if (status === 'currently_taking' || status === 'planned') {
+          const pIdx = propSemIdx[prereq] ?? _userSemesterIndex(prereq, {});
+          if (pIdx === -1 || pIdx == null || semIdx > pIdx) continue;
+          errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabelLocal(prereq)} מתוכננת/נלמדת באותו סמסטר או מאוחר ממנו.`);
+          continue;
+        }
+        const pIdx = propSemIdx[prereq];
+        if (pIdx == null) {
+          if (!courseMap[prereq]) continue; // unknown course — handled elsewhere
+          errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabelLocal(prereq)} אינה משובצת בתוכנית.`);
+        } else if (pIdx > semIdx) {
+          errors.push(`לא ניתן לשבץ את ${cName} לפני ${courseLabelLocal(prereq)}.`);
+        } else if (pIdx === semIdx) {
+          errors.push(`לא ניתן לשבץ את ${cName} ואת דרישת הקדם ${courseLabelLocal(prereq)} באותו סמסטר (${semName}).`);
+        }
+      }
+    }
+  }
+
   for (const sem of (proposal.semesters || [])) {
     const semHours = getSemesterLoadLocal(sem, ctx.courses);
     const semName = SEM_HE[sem.semester_id] || sem.semester_id;
@@ -5817,6 +5979,103 @@ function repairPlanLoad(proposal, ctx) {
 
   if (!repaired) return { proposal, repaired: false, movedCount, moveLog, unmovedOverloaded };
   return { proposal: { ...proposal, semesters: sems }, repaired: true, movedCount, moveLog, unmovedOverloaded };
+}
+
+/**
+ * PART D — fix prerequisite-ordering violations (e.g. "מעבדה ברובוטיקה"
+ * scheduled before "מבוא לרובוטיקה"): for each violation, try moving the
+ * dependent course to a later legal semester (after the prerequisite), and
+ * if that's impossible, try moving the prerequisite to an earlier legal
+ * semester (before the dependent). Never moves fixed/pinned/completed courses.
+ */
+function repairPrerequisiteOrder(proposal, ctx) {
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const allSemIds = sems.map(s => s.semester_id);
+  const semIdxOf = semId => allSemIds.indexOf(semId);
+  let repaired = false;
+  const moveLog = [];
+  let guard = 0;
+
+  while (guard++ < 200) {
+    const courseSemIdx = {};
+    for (const s of sems) for (const cid of s.course_ids) courseSemIdx[cid] = semIdxOf(s.semester_id);
+
+    let violation = null;
+    outer:
+    for (const sem of sems) {
+      const semIdx = semIdxOf(sem.semester_id);
+      for (const courseId of sem.course_ids) {
+        for (const prereq of (courseMap[courseId]?.prerequisites || [])) {
+          const status = userCourseStatuses[prereq]?.status || 'not_taken';
+          if (status === 'completed' || ctx.completedCourseIds.has(prereq)) continue;
+          if (status === 'currently_taking' || status === 'planned') continue;
+          const pIdx = courseSemIdx[prereq];
+          if (pIdx == null) { if (!courseMap[prereq]) continue; }
+          if (pIdx == null || pIdx >= semIdx) {
+            violation = { courseId, prereq, semIdx, pIdx };
+            break outer;
+          }
+        }
+      }
+    }
+    if (!violation) break;
+
+    const { courseId, prereq, semIdx, pIdx } = violation;
+    const cInfo = ctx.courses[courseId] || {};
+    const pInfo = ctx.courses[prereq] || {};
+
+    // Attempt 1: move the dependent course later (after the prerequisite).
+    let moved = false;
+    if (_isMovableForBalance(courseId, cInfo, ctx)) {
+      const allowed = cInfo.effective_allowed_semesters?.length ? cInfo.effective_allowed_semesters : allSemIds;
+      const minIdx = (pIdx ?? -1) + 1;
+      const targetJ = sems.findIndex((s, j) => j >= minIdx && j !== semIdx && allowed.includes(s.semester_id));
+      if (targetJ !== -1) {
+        const fromSem = sems[semIdx];
+        fromSem.course_ids = fromSem.course_ids.filter(c => c !== courseId);
+        sems[targetJ].course_ids.push(courseId);
+        moveLog.push({
+          course_id: courseId, course_name: cInfo.name_he || null,
+          from_semester: fromSem.semester_id, to_semester: sems[targetJ].semester_id,
+          accepted: true,
+          reason: `הועבר כדי לשמור על דרישת הקדם ${courseLabelLocal(prereq)} לפני ${courseLabelLocal(courseId)}`,
+        });
+        moved = true; repaired = true;
+      }
+    }
+
+    // Attempt 2: move the prerequisite earlier (before the dependent course).
+    if (!moved && pIdx != null && _isMovableForBalance(prereq, pInfo, ctx)) {
+      const allowed = pInfo.effective_allowed_semesters?.length ? pInfo.effective_allowed_semesters : allSemIds;
+      const targetJ = sems.findIndex((s, j) => j < semIdx && j !== pIdx && allowed.includes(s.semester_id));
+      if (targetJ !== -1) {
+        const fromSem = sems[pIdx];
+        fromSem.course_ids = fromSem.course_ids.filter(c => c !== prereq);
+        sems[targetJ].course_ids.push(prereq);
+        moveLog.push({
+          course_id: prereq, course_name: pInfo.name_he || null,
+          from_semester: fromSem.semester_id, to_semester: sems[targetJ].semester_id,
+          accepted: true,
+          reason: `הועבר מוקדם יותר כדי לשמש דרישת קדם ל${courseLabelLocal(courseId)}`,
+        });
+        moved = true; repaired = true;
+      }
+    }
+
+    if (!moved) {
+      // Can't fix this one — record it (will surface as a blocking error via validatePlanProposalLocal) and stop.
+      moveLog.push({
+        course_id: courseId, course_name: cInfo.name_he || null,
+        from_semester: sems[semIdx].semester_id, to_semester: sems[semIdx].semester_id,
+        accepted: false,
+        reason: `לא ניתן לתקן אוטומטית: ${courseLabelLocal(courseId)} לפני דרישת הקדם ${courseLabelLocal(prereq)}`,
+      });
+      break;
+    }
+  }
+
+  if (!repaired) return { proposal, repaired: false, moveLog };
+  return { proposal: { ...proposal, semesters: sems }, repaired: true, moveLog };
 }
 
 /**
@@ -6878,13 +7137,23 @@ async function requestPlanProposal(prefs, actionType) {
       movableCourseIds: ctx.movableCourseIds,
     });
 
-    const { proposal: repairedProposal, repaired, movedCount, moveLog, unmovedOverloaded } = repairPlanLoad(withMovedFoundations, ctx);
+    const { proposal: loadRepairedProposal, repaired, movedCount, moveLog: loadMoveLog, unmovedOverloaded } = repairPlanLoad(withMovedFoundations, ctx);
     if (repaired) {
-      repairedProposal.warnings_he = [
-        ...(repairedProposal.warnings_he || []),
+      loadRepairedProposal.warnings_he = [
+        ...(loadRepairedProposal.warnings_he || []),
         `העומס אוזן באמצעות העברת ${movedCount} קורסים.`,
       ];
     }
+
+    // PART D — fix prerequisite-ordering violations (e.g. lab scheduled before its intro course).
+    const { proposal: repairedProposal, repaired: prereqRepaired, moveLog: prereqMoveLog } = repairPrerequisiteOrder(loadRepairedProposal, ctx);
+    if (prereqRepaired) {
+      repairedProposal.warnings_he = [
+        ...(repairedProposal.warnings_he || []),
+        'התוכנית סודרה מחדש כדי לשמור על סדר דרישות הקדם.',
+      ];
+    }
+    const moveLog = [...loadMoveLog, ...prereqMoveLog];
 
     // PART B — single source of truth for the 185-ש"ש degree-hour requirement.
     const courseHours = {};
@@ -7425,7 +7694,9 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
 function refreshPlanPreviewWithProposal(proposal) {
   const ctx = _aiPlanLastCtx;
   const analysis = _aiPlanLastAnalysis;
-  const { proposal: repaired, moveLog, unmovedOverloaded } = repairPlanLoad(proposal, ctx);
+  const { proposal: loadRepaired, moveLog: loadMoveLog, unmovedOverloaded } = repairPlanLoad(proposal, ctx);
+  const { proposal: repaired, moveLog: prereqMoveLog } = repairPrerequisiteOrder(loadRepaired, ctx);
+  const moveLog = [...loadMoveLog, ...prereqMoveLog];
   const courseHours = {};
   for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
   const degreeHoursStatus = getDegreeHoursStatusLocal(analysis, repaired.semesters || [], courseHours);
