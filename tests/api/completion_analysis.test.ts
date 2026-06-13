@@ -31,6 +31,11 @@ import {
   getEffectiveMaxHoursPreference,
   scoreCareerRelevance,
   DEFAULT_WEAK_RELEVANCE_REASON,
+  scorePlan,
+  pickBestPlan,
+  replaceWeakElectives,
+  moveFoundationCoursesEarlier,
+  explainPlanQuality,
 } from '../../api/ai/completion_analysis';
 import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
@@ -2189,5 +2194,131 @@ describe('PART A/E/F/G — professional/career relevance scoring', () => {
     } as any);
     expect(result.added[0].semester_id).not.toBe('s3');
     expect(result.added[0].semester_id).toBe('s1');
+  });
+});
+
+describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives / moveFoundationCoursesEarlier / explainPlanQuality', () => {
+  const known = ['s1', 's2', 's3'];
+  const FEM_TEXT = 'אני מתעניין באנליזות ו-FEM';
+
+  it('1. scorePlan returns -Infinity (and legal:false) when ctx.legal is false, regardless of other factors', () => {
+    const proposal: any = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    const result = scorePlan(proposal, { courses: {}, knownSemesterIds: known, legal: false });
+    expect(result.legal).toBe(false);
+    expect(result.score).toBe(-Infinity);
+  });
+
+  it('2. scorePlan penalizes a plan with an over-max semester vs. a balanced one', () => {
+    const courses: any = { A: { hours: 20 }, B: { hours: 10 }, C: { hours: 10 } };
+    const overloaded: any = { semesters: [
+      { semester_id: 's1', course_ids: ['A'] },
+      { semester_id: 's2', course_ids: [] },
+    ] };
+    const balanced: any = { semesters: [
+      { semester_id: 's1', course_ids: ['B'] },
+      { semester_id: 's2', course_ids: ['C'] },
+    ] };
+    const ctx = { courses, knownSemesterIds: known, maxHoursPerSemester: 14, legal: true };
+    expect(scorePlan(overloaded, ctx).score).toBeLessThan(scorePlan(balanced, ctx).score);
+  });
+
+  it('3. scorePlan rewards professional relevance matching the user free-text request', () => {
+    const courses: any = {
+      FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' },
+      OTHER: { hours: 3, name_he: 'מבני נתונים' },
+    };
+    const ctx = { courses, knownSemesterIds: known, legal: true, userInterestText: FEM_TEXT };
+    const withFem: any = { semesters: [{ semester_id: 's1', course_ids: ['FEM1'] }] };
+    const withOther: any = { semesters: [{ semester_id: 's1', course_ids: ['OTHER'] }] };
+    expect(scorePlan(withFem, ctx).breakdown.relevance).toBeGreaterThan(scorePlan(withOther, ctx).breakdown.relevance);
+    expect(scorePlan(withFem, ctx).score).toBeGreaterThan(scorePlan(withOther, ctx).score);
+  });
+
+  it('4. scorePlan sequencing rewards FEM/analysis courses scheduled earlier', () => {
+    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' } };
+    const ctx = { courses, knownSemesterIds: known, legal: true, userInterestText: FEM_TEXT };
+    const early: any = { semesters: [{ semester_id: 's1', course_ids: ['FEM1'] }, { semester_id: 's2', course_ids: [] }, { semester_id: 's3', course_ids: [] }] };
+    const late: any = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }, { semester_id: 's3', course_ids: ['FEM1'] }] };
+    expect(scorePlan(early, ctx).breakdown.sequencing).toBeGreaterThan(scorePlan(late, ctx).breakdown.sequencing);
+  });
+
+  it('5. scorePlan rewards wanted courses and penalizes avoided-but-selected courses', () => {
+    const courses: any = { W: { hours: 0 }, AVOID: { hours: 0 } };
+    const ctx = { courses, knownSemesterIds: known, legal: true, wantedCourseIds: ['W'], unwantedCourseIds: ['AVOID'] };
+    const withWanted: any = { semesters: [{ semester_id: 's1', course_ids: ['W'] }] };
+    const withAvoided: any = { semesters: [{ semester_id: 's1', course_ids: ['AVOID'] }] };
+    const neutral: any = { semesters: [{ semester_id: 's1', course_ids: [] }] };
+    expect(scorePlan(withWanted, ctx).score).toBeGreaterThan(scorePlan(neutral, ctx).score);
+    expect(scorePlan(withAvoided, ctx).score).toBeLessThan(scorePlan(neutral, ctx).score);
+  });
+
+  it('6. pickBestPlan chooses the highest-scoring legal candidate and ignores illegal ones', () => {
+    const courses: any = { A: { hours: 5 }, B: { hours: 30 } };
+    const good: any = { semesters: [{ semester_id: 's1', course_ids: ['A'] }] };
+    const bad: any = { semesters: [{ semester_id: 's1', course_ids: ['B'] }] };
+    const ctx = { courses, knownSemesterIds: known, maxHoursPerSemester: 14, legal: true };
+    const result = pickBestPlan([
+      { proposal: bad, legal: true, ctx },
+      { proposal: good, legal: false, ctx },
+    ]);
+    // good is illegal so the pool falls back to legal candidates only -> bad wins by being the sole legal one
+    expect(result?.proposal).toBe(bad);
+
+    const result2 = pickBestPlan([
+      { proposal: good, legal: true, ctx },
+      { proposal: bad, legal: true, ctx },
+    ]);
+    expect(result2?.proposal).toBe(good);
+  });
+
+  it('7. replaceWeakElectives swaps a weakly-related elective for a more relevant legal alternative', () => {
+    const courses: any = {
+      WEAK: { hours: 3, name_he: 'מבני נתונים' },
+      STRONG: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', effective_allowed_semesters: ['s1'] },
+    };
+    const proposal: any = { semesters: [{ semester_id: 's1', course_ids: ['WEAK'] }] };
+    const analysis: any = {
+      categories: [{ name: 'בחירה', required: 1, placed: 1, missing: 0, candidates: [
+        { course_id: 'WEAK', name_he: 'מבני נתונים', hours: 3 },
+        { course_id: 'STRONG', name_he: 'מבוא לאלמנטים סופיים', hours: 3, effective_allowed_semesters: ['s1'] },
+      ] }],
+    };
+    const { proposal: updated, replaced } = replaceWeakElectives(proposal, analysis, {
+      courses, knownSemesterIds: known, userInterestText: FEM_TEXT,
+    });
+    expect(replaced).toEqual([{ removed: 'WEAK', added: 'STRONG', semester_id: 's1', reason: expect.any(String) }]);
+    expect(updated.semesters[0].course_ids).toEqual(['STRONG']);
+  });
+
+  it('8. moveFoundationCoursesEarlier moves an FEM/analysis course to an earlier legal semester with room', () => {
+    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' } };
+    const proposal: any = { semesters: [
+      { semester_id: 's1', course_ids: [] },
+      { semester_id: 's2', course_ids: [] },
+      { semester_id: 's3', course_ids: ['FEM1'] },
+    ] };
+    const { proposal: updated, moved } = moveFoundationCoursesEarlier(proposal, {
+      courses, maxHoursPerSemester: 14, knownSemesterIds: known, userInterestText: FEM_TEXT,
+    });
+    expect(moved).toEqual([{ course_id: 'FEM1', from: 's3', to: 's1' }]);
+    expect(updated.semesters.find((s: any) => s.semester_id === 's1')!.course_ids).toContain('FEM1');
+    expect(updated.semesters.find((s: any) => s.semester_id === 's3')!.course_ids).not.toContain('FEM1');
+  });
+
+  it('9. explainPlanQuality produces bullets + qualitative labels reflecting the score breakdown', () => {
+    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' } };
+    const proposal: any = { semesters: [
+      { semester_id: 's1', course_ids: ['FEM1'] },
+      { semester_id: 's2', course_ids: [] },
+      { semester_id: 's3', course_ids: [] },
+    ] };
+    const ctx = { courses, knownSemesterIds: known, maxHoursPerSemester: 14, legal: true, userInterestText: FEM_TEXT };
+    const score = scorePlan(proposal, ctx);
+    const explanation = explainPlanQuality(score, { userInterestText: FEM_TEXT });
+    expect(explanation.bullets.length).toBeGreaterThan(0);
+    expect(explanation.labels.legality).toBe('תקין');
+    expect(['גבוהה', 'בינונית', 'נמוכה']).toContain(explanation.labels.professional_fit);
+    expect(['טוב', 'בינוני', 'חלש']).toContain(explanation.labels.load_balance);
+    expect(['טוב', 'בינוני', 'חלש']).toContain(explanation.labels.sequencing);
   });
 });

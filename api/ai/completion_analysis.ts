@@ -1714,3 +1714,248 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
   if (!repaired) return { proposal, repaired: false, movedCount, moveLog, unmovedOverloaded };
   return { proposal: { ...proposal, semesters: sems }, repaired: true, movedCount, moveLog, unmovedOverloaded };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Plan quality scoring & optimization (PARTS A-E of the optimization task)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ScorePlanContext {
+  /** course_id -> info used for load/relevance/legality lookups. */
+  courses: Record<string, RepairCourseInfo & CompletionCandidate>;
+  maxHoursPerSemester?: number | null;
+  knownSemesterIds: string[];
+  userInterestText?: string | null;
+  wantedCourseIds?: string[] | null;
+  unwantedCourseIds?: string[] | null;
+  /** If false, the plan is illegal and must score the worst regardless of other factors. */
+  legal: boolean;
+}
+
+export interface PlanScoreBreakdown {
+  loadBalance: number;
+  relevance: number;
+  sequencing: number;
+  preferences: number;
+}
+
+export interface PlanScoreResult {
+  score: number;
+  legal: boolean;
+  breakdown: PlanScoreBreakdown;
+}
+
+/**
+ * PART A — combine legality (hard gate, computed by the caller via
+ * validatePlanProposal/evaluatePlanCompleteness), load balance, professional
+ * relevance, sequencing and user preferences into a single comparable score.
+ * Higher is better. Illegal plans always score below legal ones.
+ */
+export function scorePlan<P extends RepairProposalShape>(proposal: P, ctx: ScorePlanContext): PlanScoreResult {
+  const max = ctx.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const known = ctx.knownSemesterIds;
+  const wanted = new Set(ctx.wantedCourseIds ?? []);
+  const avoided = new Set(ctx.unwantedCourseIds ?? []);
+
+  const loads = proposal.semesters.map(s => getSemesterLoad(s, ctx.courses));
+  const peak = loads.length ? Math.max(...loads) : 0;
+  const mean = loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0;
+  const variance = loads.length ? loads.reduce((a, b) => a + (b - mean) ** 2, 0) / loads.length : 0;
+  const overCount = loads.filter(h => h > max).length;
+  // PART 2 — penalize a high peak, variance between semesters, and any
+  // semester above the user's max.
+  const loadBalance = -(peak * 1) - (Math.sqrt(variance) * 2) - (overCount * 10);
+
+  let relevance = 0;
+  let sequencing = 0;
+  let preferences = 0;
+  for (const sem of proposal.semesters) {
+    const semIndex = known.indexOf(sem.semester_id);
+    for (const cid of sem.course_ids) {
+      const info = ctx.courses[cid];
+      if (!info) continue;
+
+      // PART 3 — professional relevance, reusing the career-relevance scorer.
+      const rel = scoreCareerRelevance(info, ctx.userInterestText);
+      relevance += rel.score;
+
+      // PART 4 — sequencing: foundational analysis courses (e.g. FEM) are
+      // worth more the earlier they're scheduled, so they can unlock labs.
+      if (rel.tag === 'fem_analysis' && semIndex >= 0 && known.length > 1) {
+        sequencing += (known.length - 1 - semIndex);
+      }
+
+      // PART 5 — user wanted/avoided preferences.
+      if (wanted.has(cid)) preferences += 2;
+      if (avoided.has(cid)) preferences -= 3;
+    }
+  }
+
+  const breakdown: PlanScoreBreakdown = { loadBalance, relevance, sequencing, preferences };
+  if (!ctx.legal) {
+    return { score: -Infinity, legal: false, breakdown };
+  }
+  return { score: loadBalance + relevance * 2 + sequencing + preferences, legal: true, breakdown };
+}
+
+/**
+ * PART B — pick the highest-scoring legal plan among candidates. Falls back
+ * to the first candidate if none are legal (caller still has to surface why).
+ */
+export function pickBestPlan<P extends RepairProposalShape>(
+  plans: Array<{ proposal: P; legal: boolean; ctx: ScorePlanContext }>,
+): { proposal: P; score: PlanScoreResult } | null {
+  if (!plans.length) return null;
+  const scored = plans.map(p => ({ proposal: p.proposal, score: scorePlan(p.proposal, { ...p.ctx, legal: p.legal }) }));
+  const legal = scored.filter(s => s.score.legal);
+  const pool = legal.length ? legal : scored;
+  return [...pool].sort((a, b) => b.score.score - a.score.score)[0];
+}
+
+/**
+ * PART C.1 — replace electives whose career relevance is negative (weak)
+ * with a same-category candidate that is legal in the same semester and has
+ * a higher relevance score, if one exists. Returns the updated proposal and
+ * a list of swaps made (for the preview's "מדוע זו התוכנית שנבחרה?" section).
+ */
+export function replaceWeakElectives<P extends RepairProposalShape>(
+  proposal: P,
+  analysis: CompletionAnalysis,
+  opts: {
+    courses: Record<string, RepairCourseInfo>;
+    knownSemesterIds: string[];
+    userInterestText?: string | null;
+  },
+): { proposal: P; replaced: Array<{ removed: string; added: string; semester_id: string; reason: string }> } {
+  if (!opts.userInterestText || !opts.userInterestText.trim()) return { proposal, replaced: [] };
+
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const replaced: Array<{ removed: string; added: string; semester_id: string; reason: string }> = [];
+
+  for (const cat of analysis.categories) {
+    const placedCandidates = cat.candidates.filter(c => placed.has(c.course_id));
+    const unplacedCandidates = cat.candidates.filter(c => !placed.has(c.course_id));
+    for (const current of placedCandidates) {
+      const currentRel = scoreCareerRelevance(current, opts.userInterestText);
+      if (currentRel.score >= 0) continue; // only swap weakly-related courses
+
+      const sem = sems.find(s => s.course_ids.includes(current.course_id));
+      if (!sem) continue;
+
+      const better = [...unplacedCandidates]
+        .filter(c => !placed.has(c.course_id))
+        .map(c => ({ c, rel: scoreCareerRelevance(c, opts.userInterestText) }))
+        .filter(({ rel }) => rel.score > currentRel.score)
+        .filter(({ c }) => {
+          const info = opts.courses[c.course_id];
+          const allowed = info?.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+          return allowed.includes(sem.semester_id);
+        })
+        .sort((a, b) => b.rel.score - a.rel.score)[0];
+
+      if (!better) continue;
+
+      const idx = sem.course_ids.indexOf(current.course_id);
+      sem.course_ids[idx] = better.c.course_id;
+      placed.delete(current.course_id);
+      placed.add(better.c.course_id);
+      replaced.push({ removed: current.course_id, added: better.c.course_id, semester_id: sem.semester_id, reason: better.rel.reason });
+    }
+  }
+
+  if (!replaced.length) return { proposal, replaced: [] };
+  return { proposal: { ...proposal, semesters: sems }, replaced };
+}
+
+/**
+ * PART C.2 — move courses tagged `fem_analysis` (e.g. מבוא לאלמנטים סופיים)
+ * to the earliest legal semester with room, if they're currently scheduled
+ * later than that. Pinned/completed courses are left untouched by the
+ * caller (they're filtered out of `movableCourseIds`).
+ */
+export function moveFoundationCoursesEarlier<P extends RepairProposalShape>(
+  proposal: P,
+  opts: {
+    courses: Record<string, RepairCourseInfo & CompletionCandidate>;
+    maxHoursPerSemester?: number | null;
+    knownSemesterIds: string[];
+    userInterestText?: string | null;
+    movableCourseIds?: Set<string>;
+  },
+): { proposal: P; moved: Array<{ course_id: string; from: string; to: string }> } {
+  if (!opts.userInterestText || !opts.userInterestText.trim()) return { proposal, moved: [] };
+
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  const hoursOf = (sem: { course_ids: string[] }) => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+  const moved: Array<{ course_id: string; from: string; to: string }> = [];
+
+  for (const sem of sems) {
+    for (const cid of [...sem.course_ids]) {
+      const info = opts.courses[cid];
+      if (!info) continue;
+      if (opts.movableCourseIds && !opts.movableCourseIds.has(cid)) continue;
+      const rel = scoreCareerRelevance(info, opts.userInterestText);
+      if (rel.tag !== 'fem_analysis') continue;
+
+      const currentIdx = opts.knownSemesterIds.indexOf(sem.semester_id);
+      const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+      const earlier = sems.find(s =>
+        opts.knownSemesterIds.indexOf(s.semester_id) < currentIdx
+        && allowed.includes(s.semester_id)
+        && hoursOf(s) + (info.hours || 0) <= max,
+      );
+      if (!earlier) continue;
+
+      sem.course_ids = sem.course_ids.filter(c => c !== cid);
+      earlier.course_ids.push(cid);
+      moved.push({ course_id: cid, from: sem.semester_id, to: earlier.semester_id });
+    }
+  }
+
+  if (!moved.length) return { proposal, moved: [] };
+  return { proposal: { ...proposal, semesters: sems }, moved };
+}
+
+export type QualityLabel = 'גבוהה' | 'בינונית' | 'נמוכה' | 'טוב' | 'בינוני' | 'חלש' | 'תקין' | 'חסום';
+
+export interface PlanQualityExplanation {
+  bullets: string[];
+  labels: {
+    professional_fit: QualityLabel;
+    load_balance: QualityLabel;
+    legality: QualityLabel;
+    sequencing: QualityLabel;
+  };
+}
+
+/**
+ * PART D — short, user-facing explanation of why the previewed plan looks
+ * the way it does, plus qualitative labels derived from the score breakdown.
+ */
+export function explainPlanQuality(score: PlanScoreResult, opts: { userInterestText?: string | null }): PlanQualityExplanation {
+  const bullets: string[] = [];
+  const hasInterest = !!(opts.userInterestText && opts.userInterestText.trim());
+
+  if (hasInterest && score.breakdown.relevance > 0) {
+    bullets.push('העדיפה קורסים בתחום אנליזות/תכן/רובוטיקה');
+  }
+  if (score.breakdown.sequencing > 0) {
+    bullets.push('שיבצה קורסי בסיס מוקדם ככל האפשר');
+  }
+  if (score.breakdown.loadBalance > -20) {
+    bullets.push('איזנה עומס עד למינימום האפשרי תחת האילוצים');
+  }
+  if (hasInterest && score.breakdown.relevance >= 0) {
+    bullets.push('נמנעה מקורסים פחות רלוונטיים כאשר היו חלופות');
+  }
+
+  const professional_fit: QualityLabel = !hasInterest
+    ? 'בינונית'
+    : score.breakdown.relevance > 3 ? 'גבוהה' : score.breakdown.relevance >= 0 ? 'בינונית' : 'נמוכה';
+  const load_balance: QualityLabel = score.breakdown.loadBalance > -10 ? 'טוב' : score.breakdown.loadBalance > -25 ? 'בינוני' : 'חלש';
+  const legality: QualityLabel = score.legal ? 'תקין' : 'חסום';
+  const sequencing: QualityLabel = score.breakdown.sequencing > 1 ? 'טוב' : score.breakdown.sequencing >= 0 ? 'בינוני' : 'חלש';
+
+  return { bullets, labels: { professional_fit, load_balance, legality, sequencing } };
+}

@@ -152,6 +152,8 @@ export interface PlanValidationContext {
   maxHoursPerSemester?: number;
   /** True if the user explicitly asked for a balanced load ("איזון עומס") — makes any overload blocking. */
   balanceLoad?: boolean;
+  /** PART A — user explicitly clicked "אפשר חריגה בעומס": downgrade severe-overload errors to a warning. */
+  overloadAccepted?: boolean;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
   /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
@@ -283,6 +285,11 @@ export function validatePlanProposal(
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
       const overBy = semHours - ctx.maxHoursPerSemester;
       if (overBy > 3 || ctx.balanceLoad) {
+        // PART A — user explicitly accepted this overload: do not block Apply,
+        // surface it as a warning instead (still legal otherwise).
+        if (ctx.overloadAccepted) {
+          warnings.push('התוכנית חוקית, אך כוללת חריגה בעומס שאושרה ידנית.');
+        } else {
         const movableInSem = ctx.movableCourseIds
           ? sem.course_ids.filter(cid => ctx.movableCourseIds!.has(cid))
           : [];
@@ -294,6 +301,7 @@ export function validatePlanProposal(
           errors.push(
             `לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`,
           );
+        }
         }
       } else {
         warnings.push(

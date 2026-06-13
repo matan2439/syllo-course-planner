@@ -480,3 +480,75 @@ describe('PART D/F — applyability and top status with 185/185 + complete requi
     expect(status.kind).not.toBe('error');
   });
 });
+
+describe('Request A PART E — "אפשר חריגה בעומס" override (overloadAccepted)', () => {
+  const OVERLOAD_CTX: PlanValidationContext = {
+    completedCourseIds: new Set(),
+    maxHoursPerSemester: 14,
+    courses: {
+      '0542-4120': { hours: 27 },
+      '0542-4221': { hours: 5 },
+    },
+  };
+  const OVERLOAD_PROPOSAL: PlanProposal = {
+    ...BASE_PROPOSAL,
+    semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
+      { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+    ],
+  };
+
+  it('1. enables Apply when overload is the only blocker and the user accepted it', () => {
+    const without = validatePlanProposal(OVERLOAD_PROPOSAL, OVERLOAD_CTX);
+    expect(without.errors.length).toBeGreaterThan(0); // blocked without override
+
+    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true };
+    const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('חריגה בעומס שאושרה ידנית'))).toBe(true);
+
+    const completeness = { incomplete: false, reasons: [] as string[], added_electives: 0, proposed_total_hours: 185 };
+    expect(isPlanApplyable(result.errors, completeness)).toBe(true);
+  });
+
+  it('2a. does not bypass a missing mandatory course even with overloadAccepted', () => {
+    const ctx: PlanValidationContext = {
+      ...OVERLOAD_CTX,
+      overloadAccepted: true,
+      requiredMandatoryCourseIds: ['0542-9001'],
+    };
+    const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('קורס חובה חסר') && e.includes('0542-9001'))).toBe(true);
+  });
+
+  it('2b. does not bypass illegal placement (outside effective_allowed_semesters) even with overloadAccepted', () => {
+    const ctx: PlanValidationContext = {
+      ...OVERLOAD_CTX,
+      overloadAccepted: true,
+      courses: {
+        ...OVERLOAD_CTX.courses,
+        '0542-4221': { hours: 5, effective_allowed_semesters: ['year_3_semester_a'] },
+      },
+    };
+    const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('0542-4221') && e.includes('year_3_semester_a'))).toBe(true);
+  });
+
+  it('2c. does not bypass a completed course scheduled again even with overloadAccepted', () => {
+    const ctx: PlanValidationContext = {
+      ...OVERLOAD_CTX,
+      overloadAccepted: true,
+      completedCourseIds: new Set(['0542-4221']),
+    };
+    const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('0542-4221') && e.includes('הושלם'))).toBe(true);
+  });
+
+  it('8. overloadAccepted is a per-request validation flag, not a permanent change to maxHoursPerSemester', () => {
+    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true };
+    const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
+    expect(result.errors).toEqual([]);
+    // the configured cap itself is untouched — only the error→warning downgrade changed
+    expect(ctx.maxHoursPerSemester).toBe(14);
+  });
+});

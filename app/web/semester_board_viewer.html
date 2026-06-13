@@ -712,6 +712,16 @@ body.prog-modal-open .workspace {
   font-size: .62rem; background: rgba(255,193,7,.18); border: 1px solid rgba(255,193,7,.5);
   border-radius: 999px; padding: 0 6px; margin-inline-start: 4px;
 }
+.ai-plan-badge-type {
+  font-size: .62rem; background: rgba(255,255,255,.08); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0 6px; margin-inline-start: 4px; color: var(--text-muted);
+}
+.ai-plan-sem-course-hours { font-size: .68rem; color: var(--text-muted); margin-inline-start: 4px; }
+.ai-plan-quality { margin: 8px 0; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.03); }
+.ai-plan-quality h4 { margin: 0 0 4px; font-size: .85rem; }
+.ai-plan-quality ul { margin: 0 0 6px; padding-inline-start: 18px; font-size: .8rem; }
+.ai-plan-quality-labels { display: flex; flex-wrap: wrap; gap: 6px; font-size: .72rem; color: var(--text-muted); }
+.ai-plan-quality-labels span { border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; }
 .sb-body { flex:1; overflow-y: auto; padding: 8px; min-height: 0; overscroll-behavior: contain; }
 
 /* Repo group accordion */
@@ -4629,6 +4639,8 @@ let _aiPlanLastPreferences = null;
 let _aiPlanLastProposal    = null;
 let _aiPlanLastAnalysis    = null;
 let _aiPlanLastCtx         = null;
+let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הקורסים" toggle
+let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
@@ -4808,10 +4820,17 @@ function openPlanPreferencesModal() {
       <div class="ai-plan-section">
         <div class="ai-plan-section-title">עומס וזמינות</div>
         <label class="ai-plan-field">
-          עומס מקסימלי לשבוע בכל סמסטר (שעות)
-          <input type="number" id="ai-pref-max-hours" min="1" max="40" placeholder="לדוגמה: 18"
-                 value="${lastPrefs?.max_weekly_hours ?? ''}">
+          עומס שבועי מקסימלי רצוי
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="ai-pref-max-hours"
+                   min="${_aiPlanFeasibleMinLoad ?? 14}" max="30" step="1"
+                   value="${lastPrefs?.max_weekly_hours ?? DEFAULT_MAX_HOURS_PER_SEMESTER}">
+            <span id="ai-pref-max-hours-value" class="ai-plan-hint"></span>
+          </div>
         </label>
+        <div class="ai-plan-hint">${_aiPlanFeasibleMinLoad != null
+          ? `המינימום האפשרי לפי האילוצים הנוכחיים: ${_aiPlanFeasibleMinLoad} ש״ש`
+          : 'המינימום האפשרי יחושב לפי הקורסים והאילוצים.'}</div>
         <details class="ai-plan-details">
           <summary>מה זה עושה?</summary>
           <div class="ai-plan-hint">קורסים שסומנו כ"הושלם" לא ישובצו מחדש; קורסים "בלימוד כעת"/"מתוכננים" יישמרו בהתאם לסטטוס האישי שלך.</div>
@@ -4919,7 +4938,12 @@ function openPlanPreferencesModal() {
   setupCoursePicker('wanted');
   setupCoursePicker('unwanted');
 
-  document.getElementById('ai-pref-max-hours').addEventListener('input', updatePreferenceSummary);
+  const maxHoursInput = document.getElementById('ai-pref-max-hours');
+  const maxHoursValueLabel = document.getElementById('ai-pref-max-hours-value');
+  const updateMaxHoursLabel = () => { maxHoursValueLabel.textContent = `עד ${maxHoursInput.value} ש״ש בסמסטר`; };
+  updateMaxHoursLabel();
+  maxHoursInput.addEventListener('input', updateMaxHoursLabel);
+  maxHoursInput.addEventListener('input', updatePreferenceSummary);
   document.getElementById('ai-pref-extra').addEventListener('input', updatePreferenceSummary);
   panel.querySelectorAll('#ai-pref-balance, #ai-pref-avoid-labs, #ai-pref-avoid-projects, input[name="preferred_category"]')
     .forEach(el => el.addEventListener('change', updatePreferenceSummary));
@@ -5157,6 +5181,9 @@ function validatePlanProposalLocal(proposal, ctx) {
     if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
       const overBy = semHours - ctx.maxHoursPerSemester;
       if (overBy > 3 || ctx.balanceLoad) {
+        if (ctx.overloadAccepted) {
+          warnings.push('התוכנית חוקית, אך כוללת חריגה בעומס שאושרה ידנית.');
+        } else {
         const movableInSem = ctx.movableCourseIds
           ? (sem.course_ids || []).filter(cid => ctx.movableCourseIds.has(cid))
           : [];
@@ -5164,6 +5191,7 @@ function validatePlanProposalLocal(proposal, ctx) {
           errors.push('התוכנית לא איזנה עומס למרות שקיימים קורסים גמישים/בחירה שניתן להזיז.');
         } else {
           errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
+        }
         }
       } else {
         warnings.push(`שים לב: ${semName} חורג ב־${overBy} ש"ש מהעדפת העומס שלך.`);
@@ -5802,6 +5830,161 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   };
 }
 
+// --- Request B optimization mirrors (scorePlan / pickBestPlan / replaceWeakElectives / moveFoundationCoursesEarlier / explainPlanQuality) ---
+
+function scorePlanLocal(proposal, ctx) {
+  const max = ctx.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const known = ctx.knownSemesterIds;
+  const wanted = new Set(ctx.wantedCourseIds || []);
+  const avoided = new Set(ctx.unwantedCourseIds || []);
+
+  const loads = proposal.semesters.map(s => getSemesterLoadLocal(s, ctx.courses));
+  const peak = loads.length ? Math.max(...loads) : 0;
+  const mean = loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0;
+  const variance = loads.length ? loads.reduce((a, b) => a + (b - mean) ** 2, 0) / loads.length : 0;
+  const overCount = loads.filter(h => h > max).length;
+  const loadBalance = -(peak * 1) - (Math.sqrt(variance) * 2) - (overCount * 10);
+
+  let relevance = 0;
+  let sequencing = 0;
+  let preferences = 0;
+  for (const sem of proposal.semesters) {
+    const semIndex = known.indexOf(sem.semester_id);
+    for (const cid of sem.course_ids) {
+      const info = ctx.courses[cid];
+      if (!info) continue;
+
+      const rel = _scoreCareerRelevanceLocal(info, ctx.userInterestText);
+      relevance += rel.score;
+
+      if (rel.tag === 'fem_analysis' && semIndex >= 0 && known.length > 1) {
+        sequencing += (known.length - 1 - semIndex);
+      }
+
+      if (wanted.has(cid)) preferences += 2;
+      if (avoided.has(cid)) preferences -= 3;
+    }
+  }
+
+  const breakdown = { loadBalance, relevance, sequencing, preferences };
+  if (!ctx.legal) {
+    return { score: -Infinity, legal: false, breakdown };
+  }
+  return { score: loadBalance + relevance * 2 + sequencing + preferences, legal: true, breakdown };
+}
+
+function pickBestPlanLocal(plans) {
+  if (!plans.length) return null;
+  const scored = plans.map(p => ({ proposal: p.proposal, score: scorePlanLocal(p.proposal, { ...p.ctx, legal: p.legal }) }));
+  const legal = scored.filter(s => s.score.legal);
+  const pool = legal.length ? legal : scored;
+  return [...pool].sort((a, b) => b.score.score - a.score.score)[0];
+}
+
+function replaceWeakElectivesLocal(proposal, analysis, opts) {
+  if (!opts.userInterestText || !opts.userInterestText.trim()) return { proposal, replaced: [] };
+
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const replaced = [];
+
+  for (const cat of analysis.categories) {
+    const placedCandidates = cat.candidates.filter(c => placed.has(c.course_id));
+    const unplacedCandidates = cat.candidates.filter(c => !placed.has(c.course_id));
+    for (const current of placedCandidates) {
+      const currentRel = _scoreCareerRelevanceLocal(current, opts.userInterestText);
+      if (currentRel.score >= 0) continue;
+
+      const sem = sems.find(s => s.course_ids.includes(current.course_id));
+      if (!sem) continue;
+
+      const better = [...unplacedCandidates]
+        .filter(c => !placed.has(c.course_id))
+        .map(c => ({ c, rel: _scoreCareerRelevanceLocal(c, opts.userInterestText) }))
+        .filter(({ rel }) => rel.score > currentRel.score)
+        .filter(({ c }) => {
+          const info = opts.courses[c.course_id];
+          const allowed = info && info.effective_allowed_semesters && info.effective_allowed_semesters.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+          return allowed.includes(sem.semester_id);
+        })
+        .sort((a, b) => b.rel.score - a.rel.score)[0];
+
+      if (!better) continue;
+
+      const idx = sem.course_ids.indexOf(current.course_id);
+      sem.course_ids[idx] = better.c.course_id;
+      placed.delete(current.course_id);
+      placed.add(better.c.course_id);
+      replaced.push({ removed: current.course_id, added: better.c.course_id, semester_id: sem.semester_id, reason: better.rel.reason });
+    }
+  }
+
+  if (!replaced.length) return { proposal, replaced: [] };
+  return { proposal: { ...proposal, semesters: sems }, replaced };
+}
+
+function moveFoundationCoursesEarlierLocal(proposal, opts) {
+  if (!opts.userInterestText || !opts.userInterestText.trim()) return { proposal, moved: [] };
+
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const sems = proposal.semesters.map(s => ({ ...s, course_ids: [...s.course_ids] }));
+  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + ((opts.courses[cid] && opts.courses[cid].hours) || 0), 0);
+  const moved = [];
+
+  for (const sem of sems) {
+    for (const cid of [...sem.course_ids]) {
+      const info = opts.courses[cid];
+      if (!info) continue;
+      if (opts.movableCourseIds && !opts.movableCourseIds.has(cid)) continue;
+      const rel = _scoreCareerRelevanceLocal(info, opts.userInterestText);
+      if (rel.tag !== 'fem_analysis') continue;
+
+      const currentIdx = opts.knownSemesterIds.indexOf(sem.semester_id);
+      const allowed = info.effective_allowed_semesters && info.effective_allowed_semesters.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+      const earlier = sems.find(s =>
+        opts.knownSemesterIds.indexOf(s.semester_id) < currentIdx
+        && allowed.includes(s.semester_id)
+        && hoursOf(s) + (info.hours || 0) <= max,
+      );
+      if (!earlier) continue;
+
+      sem.course_ids = sem.course_ids.filter(c => c !== cid);
+      earlier.course_ids.push(cid);
+      moved.push({ course_id: cid, from: sem.semester_id, to: earlier.semester_id });
+    }
+  }
+
+  if (!moved.length) return { proposal, moved: [] };
+  return { proposal: { ...proposal, semesters: sems }, moved };
+}
+
+function explainPlanQualityLocal(score, opts) {
+  const bullets = [];
+  const hasInterest = !!(opts.userInterestText && opts.userInterestText.trim());
+
+  if (hasInterest && score.breakdown.relevance > 0) {
+    bullets.push('העדיפה קורסים בתחום אנליזות/תכן/רובוטיקה');
+  }
+  if (score.breakdown.sequencing > 0) {
+    bullets.push('שיבצה קורסי בסיס מוקדם ככל האפשר');
+  }
+  if (score.breakdown.loadBalance > -20) {
+    bullets.push('איזנה עומס עד למינימום האפשרי תחת האילוצים');
+  }
+  if (hasInterest && score.breakdown.relevance >= 0) {
+    bullets.push('נמנעה מקורסים פחות רלוונטיים כאשר היו חלופות');
+  }
+
+  const professional_fit = !hasInterest
+    ? 'בינונית'
+    : score.breakdown.relevance > 3 ? 'גבוהה' : score.breakdown.relevance >= 0 ? 'בינונית' : 'נמוכה';
+  const load_balance = score.breakdown.loadBalance > -10 ? 'טוב' : score.breakdown.loadBalance > -25 ? 'בינוני' : 'חלש';
+  const legality = score.legal ? 'תקין' : 'חסום';
+  const sequencing = score.breakdown.sequencing > 1 ? 'טוב' : score.breakdown.sequencing >= 0 ? 'בינוני' : 'חלש';
+
+  return { bullets, labels: { professional_fit, load_balance, legality, sequencing } };
+}
+
 /**
  * PART B — single source of truth for the 185-ש"ש degree-hour requirement.
  * Mirrors api/ai/completion_analysis.ts (getDegreeHoursStatus).
@@ -6214,6 +6397,7 @@ async function requestPlanProposal(prefs, actionType) {
     // overload (e.g. 27 ש"ש) is still detected and repaired/blocked.
     ctx.maxHoursPerSemester = getEffectiveMaxHoursPreferenceLocal(prefs.max_weekly_hours);
     ctx.balanceLoad = !!prefs.balance_load;
+    ctx.overloadAccepted = !!prefs.overload_accepted;
     ctx.wantedCourseIds = prefs.wanted_course_ids || [];
 
     // PART A: deterministic completion analysis from the live board.
@@ -6273,7 +6457,33 @@ async function requestPlanProposal(prefs, actionType) {
     const electiveSelectionReasons = [...addedElectives, ...addedHoursCourses]
       .map(a => ({ course_id: a.course_id, selection_reason: a.selection_reason || DEFAULT_WEAK_RELEVANCE_REASON }));
 
-    const { proposal: repairedProposal, repaired, movedCount, moveLog, unmovedOverloaded } = repairPlanLoad(withHours, ctx);
+    // Request B PART C — local improvement passes: swap weakly-relevant
+    // electives for legal, more-relevant alternatives, then move foundational
+    // (FEM/analysis) courses earlier where legal. Each pass keeps the
+    // proposal shape intact so the existing load-balance repair below still runs.
+    const { proposal: withReplacedElectives, replaced: replacedElectives } = replaceWeakElectivesLocal(withHours, analysis, {
+      courses: ctx.courses,
+      knownSemesterIds: SEMESTERS.map(s => s.id),
+      userInterestText: prefs.extra_request_he,
+    });
+    for (const r of replacedElectives) {
+      const idx = electiveSelectionReasons.findIndex(e => e.course_id === r.removed);
+      const entry = { course_id: r.added, selection_reason: r.reason };
+      if (idx >= 0) electiveSelectionReasons[idx] = entry; else electiveSelectionReasons.push(entry);
+    }
+    if (replacedElectives.length) {
+      showBoardNotify(`הוחלפו ${replacedElectives.length} קורסי בחירה בקורסים רלוונטיים יותר.`);
+    }
+
+    const { proposal: withMovedFoundations, moved: movedFoundations } = moveFoundationCoursesEarlierLocal(withReplacedElectives, {
+      courses: ctx.courses,
+      maxHoursPerSemester: ctx.maxHoursPerSemester,
+      knownSemesterIds: SEMESTERS.map(s => s.id),
+      userInterestText: prefs.extra_request_he,
+      movableCourseIds: ctx.movableCourseIds,
+    });
+
+    const { proposal: repairedProposal, repaired, movedCount, moveLog, unmovedOverloaded } = repairPlanLoad(withMovedFoundations, ctx);
     if (repaired) {
       repairedProposal.warnings_he = [
         ...(repairedProposal.warnings_he || []),
@@ -6434,9 +6644,19 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     semHoursById[sem.semester_id] = hrs;
     peakSemHours = Math.max(peakSemHours, hrs);
   }
+  // PART C — remember the best peak load this (balanced) proposal achieved,
+  // so the preferences slider can show a realistic minimum next time.
+  _aiPlanFeasibleMinLoad = peakSemHours;
   // PART A/D — the single effective cap checked for this plan (board default
   // unless the user set an explicit AI-planner preference).
   const effectiveMaxHours = _aiPlanLastCtx?.maxHoursPerSemester ?? getEffectiveMaxHoursPreferenceLocal(_aiPlanLastPreferences?.max_weekly_hours);
+
+  // PART D — if the user asked for a lower cap than what's actually achievable,
+  // say so explicitly instead of just showing a generic overload error.
+  const requestedMax = _aiPlanLastPreferences?.max_weekly_hours;
+  const infeasibleTargetHtml = (requestedMax != null && peakSemHours > requestedMax)
+    ? `<div class="ai-plan-warnings"><strong>שימו לב:</strong> לא ניתן להגיע ל-${requestedMax} ש״ש. המינימום שנמצא תחת האילוצים הנוכחיים הוא ${peakSemHours} ש״ש.</div>`
+    : '';
 
   const severeOverload = errors.some(e => e.includes('עומס חורג משמעותית'))
     || (completeness?.reasons || []).some(r => r.includes('עמוס מדי'));
@@ -6446,9 +6666,13 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   // (see below) so the top bar names the real cause instead of a generic message.
   const placedIdsForCards = new Set((proposal.semesters || []).flatMap(s => s.course_ids || []));
   const missingCards = _aiPlanLastAnalysis ? getMissingRequirementCardsLocal(_aiPlanLastAnalysis, placedIdsForCards) : [];
-  const statusLabel = canApply
+  let statusLabel = canApply
     ? pickPrimaryBlockingReasonLocal(completeness || { incomplete: false, reasons: [] }, missingCards)
     : pickPrimaryBlockingReasonLocal(completeness || { incomplete: true, reasons: [] }, missingCards);
+  // PART A — overload override accepted and that was the only remaining blocker.
+  if (canApply && _aiPlanLastPreferences?.overload_accepted && allWarnings.some(w => w.includes('חריגה בעומס שאושרה ידנית'))) {
+    statusLabel = 'ניתן להחיל — חריגת עומס אושרה ידנית';
+  }
   const planStatus = getPlanPreviewStatusLocal(errors, completeness, statusLabel);
   const statusClass = PLAN_STATUS_CLASS[planStatus.kind];
   const statusHtml = `
@@ -6459,6 +6683,33 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const autofixHtml = autofixed
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
+
+  // Request B PART D — "מדוע זו התוכנית שנבחרה?" explanation + quality labels.
+  const planScore = scorePlanLocal(proposal, {
+    courses: _aiPlanLastCtx?.courses || {},
+    maxHoursPerSemester: effectiveMaxHours,
+    knownSemesterIds: SEMESTERS.map(s => s.id),
+    userInterestText: _aiPlanLastPreferences?.extra_request_he,
+    wantedCourseIds: _aiPlanLastPreferences?.wanted_course_ids,
+    unwantedCourseIds: _aiPlanLastPreferences?.unwanted_course_ids,
+    legal: canApply,
+  });
+  const planQuality = explainPlanQualityLocal(planScore, { userInterestText: _aiPlanLastPreferences?.extra_request_he });
+  // Request B PART E — flag any remaining weakly-relevant choices that
+  // replaceWeakElectivesLocal couldn't swap (e.g. no legal alternative existed).
+  if (_aiPlanLastPreferences?.extra_request_he?.trim() && planScore.breakdown.relevance < 0) {
+    allWarnings.push('נבחר קורס פחות רלוונטי למרות שקיימות חלופות רלוונטיות יותר.');
+  }
+  const planQualityHtml = planQuality.bullets.length ? `<div class="ai-plan-quality">
+    <h4>מדוע זו התוכנית שנבחרה?</h4>
+    <ul>${planQuality.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+    <div class="ai-plan-quality-labels">
+      <span>התאמה מקצועית: ${esc(planQuality.labels.professional_fit)}</span>
+      <span>איזון עומס: ${esc(planQuality.labels.load_balance)}</span>
+      <span>חוקיות: ${esc(planQuality.labels.legality)}</span>
+      <span>רצף אקדמי: ${esc(planQuality.labels.sequencing)}</span>
+    </div>
+  </div>` : '';
 
   // ── PART D: mandatory-course completion status (shown above categories). ──
   const mandatoryStatus = _aiPlanLastAnalysis ? getMandatoryStatusReportLocal(_aiPlanLastAnalysis, placedIdsForCards) : { required: 0, placed: 0, missing: [] };
@@ -6566,17 +6817,38 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     : '';
 
   // ── Semester cards (compact: up to 5 course names, "ועוד X קורסים") ────────
+  // PART B — "הצג את כל הקורסים" toggle: when enabled, every course is shown
+  // with id/hours/type badge/selection reason instead of being truncated.
   const MAX_COURSES_SHOWN = 5;
+  const reasonByCourseId = {};
+  for (const r of (electiveSelectionReasons || [])) reasonByCourseId[r.course_id] = r.selection_reason;
+  const courseTypeBadge = c => {
+    if (!c) return 'בחירה';
+    if (c.source_type === 'shaar_ruach' || c.is_general_requirement) return 'שער רוח';
+    if (c.course_type === 'mandatory') return 'חובה';
+    return 'בחירה';
+  };
+  const showAllCourses = !!_aiPlanShowAllCourses;
   const semestersHtml = (proposal.semesters || []).map(sem => {
     const hrs = semHoursById[sem.semester_id] || 0;
     const overloaded = hrs > effectiveMaxHours;
     const cids = sem.course_ids || [];
-    const shown = cids.slice(0, MAX_COURSES_SHOWN).map(cid => {
+    const renderCourse = cid => {
       const c = courseMap[cid];
       const hasWarning = allWarnings.some(w => w.includes(`(${cid})`) || w.includes(cid));
-      return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>${hasWarning ? `<span class="ai-plan-badge-warn">⚠</span>` : ''}</li>`;
-    }).join('');
-    const more = cids.length > MAX_COURSES_SHOWN
+      if (!showAllCourses) {
+        return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>${hasWarning ? `<span class="ai-plan-badge-warn">⚠</span>` : ''}</li>`;
+      }
+      const reason = reasonByCourseId[cid];
+      return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>
+        <span class="ai-plan-badge-type">${esc(courseTypeBadge(c))}</span>
+        <span class="ai-plan-sem-course-hours">${c?.hours != null ? `${c.hours} ש״ש` : ''}</span>
+        ${hasWarning ? `<span class="ai-plan-badge-warn">⚠</span>` : ''}
+        ${reason ? `<div class="ai-plan-hint">${esc(reason)}</div>` : ''}
+      </li>`;
+    };
+    const shown = (showAllCourses ? cids : cids.slice(0, MAX_COURSES_SHOWN)).map(renderCourse).join('');
+    const more = (!showAllCourses && cids.length > MAX_COURSES_SHOWN)
       ? `<li class="ai-plan-hint">ועוד ${cids.length - MAX_COURSES_SHOWN} קורסים</li>`
       : '';
     return `<div class="ai-plan-sem ${overloaded ? 'sem-overload' : ''}">
@@ -6671,10 +6943,15 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
+      ${infeasibleTargetHtml}
+      ${planQualityHtml}
       ${missingMandatoryListHtml}
       ${autofixHtml}
       ${changesHtml}
       ${missingCardsHtml}
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-sm" id="ai-plan-toggle-all-courses">${showAllCourses ? 'הצג תקציר' : 'הצג את כל הקורסים'}</button>
+      </div>
       <div class="ai-plan-sems">${semestersHtml}</div>
       ${reqStatusHtml}
       ${detailsHtml}
@@ -6694,6 +6971,10 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       </div>
     </div>`;
 
+  document.getElementById('ai-plan-toggle-all-courses').addEventListener('click', () => {
+    _aiPlanShowAllCourses = !_aiPlanShowAllCourses;
+    openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
+  });
   document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
   document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
   document.getElementById('ai-plan-apply').addEventListener('click', () => {
