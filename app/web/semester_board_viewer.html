@@ -260,6 +260,25 @@ body.prog-modal-open .workspace {
 }
 .detail-overlay.hiding { animation: fadeOut 180ms ease forwards; }
 
+/* Compact "טיוטת שינויים" card — anchored to the side, board stays visible
+   and interactive behind it. Used as the default AI-plan preview; "הצג פירוט
+   מלא" switches back to the full centered modal. */
+.detail-overlay.ai-plan-compact {
+  background: transparent;
+  align-items: flex-start;
+  justify-content: flex-end;
+  pointer-events: none;
+  padding: 12px;
+}
+.detail-overlay.ai-plan-compact .detail-panel {
+  pointer-events: auto;
+  max-width: 360px;
+  width: 100%;
+  max-height: calc(100vh - 24px);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+}
+
 .detail-panel {
   background: var(--surface);
   border-radius: 16px;
@@ -4641,11 +4660,15 @@ let _aiPlanLastAnalysis    = null;
 let _aiPlanLastCtx         = null;
 let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הקורסים" toggle
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
+let _aiPlanCompactMode     = true;  // compact "טיוטת שינויים" card is the default; "הצג פירוט מלא" opens the full preview
+let _aiPlanLastPreviewArgs = null;  // cached openPlanPreviewModal args so compact<->full toggle can re-render without recompute
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
   overlay.setAttribute('hidden', '');
+  overlay.classList.remove('ai-plan-compact');
   document.getElementById('ai-plan-panel').innerHTML = '';
+  _aiPlanCompactMode = true; // next proposal starts back in the compact card
 }
 
 /* ── Searchable course picker (used for "wanted"/"unwanted" course lists) ──
@@ -6634,6 +6657,7 @@ function _renderGroupedList(messages, classify, groupLabels, order) {
 }
 
 function openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons) {
+  _aiPlanLastPreviewArgs = [proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons];
   const allWarnings = [...(proposal.warnings_he || []), ...warnings];
 
   // ── Top summary (status / blocking errors / max load only) ─────────────────
@@ -6934,11 +6958,74 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     : '';
 
   const panel = document.getElementById('ai-plan-panel');
+  const overlayEl = document.getElementById('ai-plan-overlay');
+
+  // PART B/C/D — compact "טיוטת שינויים" card is the default view: short
+  // status + a few summary bullets + the same action buttons, anchored to
+  // the side so the board stays visible/interactive. "הצג פירוט מלא" opens
+  // the full preview below (unchanged).
+  if (_aiPlanCompactMode) {
+    overlayEl?.classList.add('ai-plan-compact');
+    const addedCount = (electiveSelectionReasons || []).length;
+    const movedCount2 = (moveLog || []).length;
+    const bullets = [
+      addedCount ? `נוספו ${addedCount} קורסים` : null,
+      movedCount2 ? `הועברו ${movedCount2} קורסים` : null,
+      `עומס מקסימלי: ${peakSemHours} ש״ש`,
+      `התאמה מקצועית: ${esc(planQuality.labels.professional_fit)}`,
+    ].filter(Boolean);
+    panel.innerHTML = `
+    <div class="detail-head">
+      <div class="detail-head-row">
+        <h2 style="margin:0;font-size:1rem">טיוטת שינויים</h2>
+        <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
+      </div>
+    </div>
+    <div class="detail-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;direction:rtl;overflow:auto">
+      ${statusHtml}
+      ${infeasibleTargetHtml}
+      <ul style="margin:0;padding-inline-start:18px;font-size:.82rem">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+      ${allWarnings.length ? `<div class="ai-plan-warnings" style="font-size:.78rem">${allWarnings.slice(0, 3).map(w => esc(w)).join('<br>')}</div>` : ''}
+      ${applyReasonHtml}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל שינויים</button>
+        <button class="btn btn-sm" id="ai-plan-ask-changes">בקש שינוי</button>
+        ${severeOverload ? '<button class="btn btn-sm" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
+        <button class="btn btn-sm" id="ai-plan-reject">דחה</button>
+        <button class="btn btn-sm" id="ai-plan-show-full">פתח תצוגה מלאה</button>
+      </div>
+    </div>`;
+
+    document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
+    document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
+    document.getElementById('ai-plan-apply').addEventListener('click', () => {
+      if (!canApply) return;
+      applyPlanProposal(proposal);
+      closeAiPlanModal();
+      showBoardNotify('התוכנית הוחלה על הלוח שלך');
+    });
+    document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
+      openPlanPreferencesModal();
+    });
+    document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
+      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
+      if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+      refreshPlanPreviewWithProposal(_aiPlanLastProposal);
+    });
+    document.getElementById('ai-plan-show-full').addEventListener('click', () => {
+      _aiPlanCompactMode = false;
+      openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
+    });
+    return;
+  }
+  overlayEl?.classList.remove('ai-plan-compact');
+
   panel.innerHTML = `
     <div class="detail-head">
       <div class="detail-head-row">
         <h2 style="margin:0;font-size:1.1rem">תצוגה מקדימה — תוכנית מותאמת אישית</h2>
         <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
+        <button class="btn btn-sm" id="ai-plan-show-compact">הצג תקציר</button>
       </div>
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
@@ -6975,6 +7062,10 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     _aiPlanShowAllCourses = !_aiPlanShowAllCourses;
     openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
   });
+  document.getElementById('ai-plan-show-compact').addEventListener('click', () => {
+    _aiPlanCompactMode = true;
+    openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
+  });
   document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
   document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
   document.getElementById('ai-plan-apply').addEventListener('click', () => {
@@ -6989,10 +7080,14 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   document.getElementById('ai-plan-rebalance')?.addEventListener('click', () => {
     requestPlanProposal({ ..._aiPlanLastPreferences, balance_load: true }, 'balance_load');
   });
-  // PART E — user explicitly accepts the remaining overload; regenerate the
-  // preview with that flag so the blocking error is replaced by a warning.
+  // PART E — user explicitly accepts the remaining overload. This must be a
+  // preview-local recompute (no AI call): mark the flag on the current
+  // preferences/ctx and re-validate the SAME proposal so the severe-overload
+  // error becomes a warning and Apply unlocks immediately.
   document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
-    requestPlanProposal({ ..._aiPlanLastPreferences, overload_accepted: true }, 'overload_accepted');
+    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
+    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+    refreshPlanPreviewWithProposal(_aiPlanLastProposal);
   });
   document.getElementById('ai-plan-back-prefs')?.addEventListener('click', () => {
     openPlanPreferencesModal();
@@ -7025,6 +7120,8 @@ function refreshPlanPreviewWithProposal(proposal) {
   });
   for (const o of (unmovedOverloaded || [])) {
     if (o.hours <= ctx.maxHoursPerSemester + SEVERE_OVERLOAD_MARGIN) continue;
+    // PART A — user explicitly accepted this overload: don't block Apply.
+    if (_aiPlanLastPreferences?.overload_accepted) continue;
     if (o.movable.length > 0) {
       completeness.reasons.push('הסמסטר עדיין עמוס מדי — נמצאו קורסים גמישים, אך לא נמצא שיבוץ חוקי שמפחית את העומס.');
       completeness.incomplete = true;
