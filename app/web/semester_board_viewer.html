@@ -61,6 +61,8 @@
   --cat-systems-accent: #7C3AED; --cat-systems-bg: rgba(124,58,237,.06);
   --cat-labs-accent:    #059669; --cat-labs-bg:    rgba(5,150,105,.06);
   --cat-other-accent:   #64748B; --cat-other-bg:   rgba(100,116,139,.04);
+  --cat-specelective-accent: #DB2777; --cat-specelective-bg: rgba(219,39,119,.06);
+  --cat-shaarruach-accent:   #0D9488; --cat-shaarruach-bg:   rgba(13,148,136,.06);
 }
 
 [data-theme="dark"] {
@@ -89,6 +91,8 @@
   --cat-systems-accent: #A78BFA; --cat-systems-bg: rgba(124,58,237,.12);
   --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
   --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
+  --cat-specelective-accent: #F472B6; --cat-specelective-bg: rgba(219,39,119,.14);
+  --cat-shaarruach-accent:   #2DD4BF; --cat-shaarruach-bg:   rgba(13,148,136,.14);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -1151,21 +1155,29 @@ body.prog-modal-open .workspace {
 .card-cat-systems { border-inline-start-color: var(--cat-systems-accent) !important; }
 .card-cat-labs    { border-inline-start-color: var(--cat-labs-accent)    !important; }
 .card-cat-other   { border-inline-start-color: var(--cat-other-accent)   !important; }
+.card-cat-specelective { border-inline-start-color: var(--cat-specelective-accent) !important; }
+.card-cat-shaarruach    { border-inline-start-color: var(--cat-shaarruach-accent)   !important; }
 
 .bdg-cat-fluids  { background: var(--cat-fluids-bg);  color: var(--cat-fluids-accent);  border-color: var(--cat-fluids-accent); }
 .bdg-cat-solids  { background: var(--cat-solids-bg);  color: var(--cat-solids-accent);  border-color: var(--cat-solids-accent); }
 .bdg-cat-systems { background: var(--cat-systems-bg); color: var(--cat-systems-accent); border-color: var(--cat-systems-accent); }
 .bdg-cat-labs    { background: var(--cat-labs-bg);    color: var(--cat-labs-accent);    border-color: var(--cat-labs-accent); }
+.bdg-cat-specelective { background: var(--cat-specelective-bg); color: var(--cat-specelective-accent); border-color: var(--cat-specelective-accent); }
+.bdg-cat-shaarruach    { background: var(--cat-shaarruach-bg);   color: var(--cat-shaarruach-accent);   border-color: var(--cat-shaarruach-accent); }
 
 /* Category section header tints */
 .repo-group[data-group="fluids"]               > summary { background: var(--cat-fluids-bg); }
 .repo-group[data-group="solids"]               > summary { background: var(--cat-solids-bg); }
 .repo-group[data-group="systems"]              > summary { background: var(--cat-systems-bg); }
 .repo-group[data-group="advanced_labs"]        > summary { background: var(--cat-labs-bg); }
+.repo-group[data-group="other_specialization"] > summary { background: var(--cat-specelective-bg); }
+.repo-group[data-group="shaar_ruach"]          > summary { background: var(--cat-shaarruach-bg); }
 .repo-group[data-group="fluids"]               > summary .repo-group-count { color: var(--cat-fluids-accent); }
 .repo-group[data-group="solids"]               > summary .repo-group-count { color: var(--cat-solids-accent); }
 .repo-group[data-group="systems"]              > summary .repo-group-count { color: var(--cat-systems-accent); }
 .repo-group[data-group="advanced_labs"]        > summary .repo-group-count { color: var(--cat-labs-accent); }
+.repo-group[data-group="other_specialization"] > summary .repo-group-count { color: var(--cat-specelective-accent); }
+.repo-group[data-group="shaar_ruach"]          > summary .repo-group-count { color: var(--cat-shaarruach-accent); }
 
 .hrs-tag { font-size: .67rem; color: var(--text-muted); }
 .hrs-tag .v { font-weight: 700; color: var(--text); }
@@ -1235,6 +1247,23 @@ body.prog-modal-open .workspace {
   border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px;
 }
 
+/* ── Degree-progress summary block (PART A) ─────────────────────────────── */
+.degree-progress {
+  font-size: .78rem; color: var(--text); background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.degree-progress .dp-row { display: flex; justify-content: space-between; gap: 8px; }
+.degree-progress .dp-row .v { font-weight: 700; }
+.degree-progress .dp-total { border-top: 1px solid var(--border); margin-top: 3px; padding-top: 4px; }
+.degree-progress .dp-msg { margin-top: 4px; font-size: .74rem; border-radius: var(--radius); padding: 4px 8px; }
+.degree-progress .dp-msg.warn    { background: var(--warn-soft); color: #92400E; }
+.degree-progress .dp-msg.success { background: var(--success-bg, #d6f5e3); color: var(--success, #1f9d55); }
+[data-theme="dark"] .degree-progress .dp-msg.warn { color: var(--warning); }
+
+/* ── Compact summary chips row (PART E) ─────────────────────────────────── */
+.draft-chips-row { display: flex; flex-wrap: wrap; gap: 5px; }
+
 /* ── Board highlighting for an active "טיוטת שינויים" (PART E) ──────────── */
 .board-draft-banner {
   flex-basis: 100%; display: flex; align-items: center; justify-content: space-between;
@@ -1244,17 +1273,24 @@ body.prog-modal-open .workspace {
 }
 .board-draft-banner-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .course-card-draft { opacity: .82; border-style: dashed !important; }
-.course-card.card-draft-added { outline: 2px solid var(--success, #2ecc71); outline-offset: -2px; animation: draft-pulse 1.6s ease-in-out infinite; }
-.course-card.card-draft-moved { outline: 2px solid var(--blue); outline-offset: -2px; animation: draft-pulse 1.6s ease-in-out infinite; }
-.course-card.course-card-draft-removed { opacity: .45; }
+.course-card.card-draft-added {
+  outline: 1.5px dashed var(--success, #2ecc71); outline-offset: -2px;
+  box-shadow: 0 0 0 2px rgba(46,204,113,.10);
+}
+.course-card.card-draft-moved {
+  outline: 1.5px dashed var(--blue); outline-offset: -2px;
+  box-shadow: 0 0 0 2px rgba(96,165,250,.10);
+}
+.course-card.course-card-draft-removed {
+  opacity: .45; filter: grayscale(.4);
+  outline: 1px dashed var(--text-faint); outline-offset: -2px;
+}
 .badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
 .badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
 .badge.bdg-draft-removed { background: var(--danger, #e74c3c); color: #fff; }
+[data-theme="dark"] .badge.bdg-draft-added { color: #04321b; }
+[data-theme="dark"] .badge.bdg-draft-moved { color: #04203a; }
 .semester-col.sem-draft-overload .sem-hdr { outline: 2px solid var(--danger); outline-offset: -2px; }
-@keyframes draft-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
-  50% { box-shadow: 0 0 0 3px rgba(46,204,113,.25); }
-}
 
 /* ── "טיוטת שינויים" sidebar status (PART D) ─────────────────────────────── */
 .ai-plan-status { padding: 6px 10px; border-radius: var(--radius); font-size: .85rem; font-weight: 600; text-align: center; }
@@ -1491,13 +1527,19 @@ const CAT_CSS = {
   solids:               { card: 'card-cat-solids',  bdg: 'bdg-cat-solids',  label: 'מוצקים' },
   systems:              { card: 'card-cat-systems', bdg: 'bdg-cat-systems', label: 'מערכות' },
   advanced_labs:        { card: 'card-cat-labs',    bdg: 'bdg-cat-labs',    label: 'מעבדה' },
+  other_specialization: { card: 'card-cat-specelective', bdg: 'bdg-cat-specelective', label: 'התמחות / בחירה נוספים' },
+  shaar_ruach:           { card: 'card-cat-shaarruach',  bdg: 'bdg-cat-shaarruach',  label: 'שער רוח' },
 };
+
+/** Category to fall back to for elective courses without a recognized program_category_id. */
+const GENERAL_ELECTIVE_CAT_ID = 'other_specialization';
 
 const REPO_GROUPS = {
   mandatory:       { name_he: 'קורסי חובה',          open: true  },
   elective_avail:  { name_he: 'קורסי בחירה זמינים',  open: true  },
   elective_blocked:{ name_he: 'קורסי בחירה חסומים',  open: false },
   missing:         { name_he: 'חסר מידע',             open: false },
+  shaar_ruach:     { name_he: 'קורסי שער רוח',        open: false },
 };
 
 const SEMESTERS = [
@@ -2512,6 +2554,7 @@ function init(board, audit, programJson) {
       prerequisite_depth_score: null, assessment_intensity_score: null,
       difficulty_confidence: null, difficulty_warnings: [],
       course_type: 'general', category: 'שער רוח',
+      program_category_id: 'shaar_ruach', program_category_name_he: 'שער רוח',
       status: 'eligible', locked_by_user: false, source: 'shaar_ruach',
       placement_policy: 'flexible',
       effective_allowed_semesters: SEMESTERS.map(s => s.id),
@@ -2731,6 +2774,17 @@ function renderSidebar() {
   }
   if (missingIds.length) {
     sections += _buildRepoSection('_missing', 'חסר מידע במאגר', missingIds, false);
+  }
+
+  /* קורסי שער רוח — own collapsible section, separate from engineering electives */
+  const placedSet = allPlacedIds();
+  const shaarRuachRepoIds = SHAAR_RUACH_COURSES
+    .map(g => g.course_id)
+    .filter(cid => state.repo.includes(cid) && !placedSet.has(cid));
+  if (shaarRuachRepoIds.length || SHAAR_RUACH_COURSES.length) {
+    const required = shaarRuachRequiredCreditsFor(selectedProg?.program_id);
+    const suffix = required > 0 ? ` (${shaarRuachRepoIds.length}/${SHAAR_RUACH_COURSES.length}, נדרש ${required} נק"ז)` : ` — ${shaarRuachRepoIds.length} קורסים`;
+    sections += _buildRepoSection('shaar_ruach', REPO_GROUPS.shaar_ruach.name_he + suffix, shaarRuachRepoIds, false);
   }
 
   /* Toggles */
@@ -3015,6 +3069,36 @@ function renderDraftTab() {
   const movedCount = diff?.moved.size ?? 0;
   const removedCount = diff?.removed.size ?? 0;
 
+  // PART A — compact degree-progress summary.
+  const ctxForProgress = _aiPlanLastCtx;
+  const analysisForProgress = _aiPlanLastAnalysis;
+  let degreeProgressHtml = '';
+  let chipsHtml = '';
+  if (ctxForProgress && analysisForProgress) {
+    const courseHoursForProgress = {};
+    for (const [cid, info] of Object.entries(ctxForProgress.courses)) courseHoursForProgress[cid] = info.hours;
+    const proposalSemesters = (evald?.proposal?.semesters) || mapToProposalSemesters(draft.semesters);
+    const degreeStatus = getDegreeHoursStatusLocal(analysisForProgress, proposalSemesters, courseHoursForProgress);
+    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus);
+
+    // PART E — compact summary chips row.
+    const placedIdsChips = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
+    const generalStatus = getGeneralRequirementStatusReportLocal(analysisForProgress, placedIdsChips);
+    const categoryStatus = getCategoryStatusReportLocal(analysisForProgress, placedIdsChips);
+    const categoriesSatisfied = categoryStatus.filter(c => c.satisfied).length;
+    let peakSemHours = 0;
+    for (const sem of proposalSemesters) peakSemHours = Math.max(peakSemHours, getSemesterLoadLocal(sem, ctxForProgress.courses || {}));
+    chipsHtml = `<div class="draft-chips-row">
+      ${mkChip('סה״כ', `${degreeStatus.total_after_plan}/${degreeStatus.degree_required_hours}`, false)}
+      ${mkChip('נותרו', `${degreeStatus.missing_hours} ש״ש`, degreeStatus.missing_hours > 0)}
+      ${generalStatus ? mkChip('שער רוח', `${generalStatus.placed}/${generalStatus.required}`, !generalStatus.satisfied) : ''}
+      ${categoryStatus.length ? mkChip('קטגוריות', `${categoriesSatisfied}/${categoryStatus.length}`, categoriesSatisfied < categoryStatus.length) : ''}
+      ${mkChip('נוספו', addedCount, false)}
+      ${mkChip('הועברו', movedCount, false)}
+      ${mkChip('עומס שיא', `${peakSemHours} ש״ש`, false)}
+    </div>`;
+  }
+
   let statusLabel, statusCls;
   if (blocked) { statusLabel = 'חסום — יש לתקן לפני אישור'; statusCls = 'status-blocked'; }
   else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
@@ -3053,6 +3137,8 @@ function renderDraftTab() {
     <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
       <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
+      ${degreeProgressHtml}
+      ${chipsHtml}
       <div class="sb-status-summary">
         <div>נוספו: ${addedCount}</div>
         <div>הועברו: ${movedCount}</div>
@@ -3301,7 +3387,8 @@ function cardHtml(c, placed, draftDiff, opts) {
   const isPartial    = status === 'partial_info';
   const isNotOffered = status === 'not_offered';
 
-  const catId     = c.program_category_id || null;
+  const isElectiveLike = type !== 'mandatory';
+  const catId     = c.program_category_id || (isElectiveLike ? GENERAL_ELECTIVE_CAT_ID : null);
   const catStyles = CAT_CSS[catId] || null;
 
   let cls = 'course-card';
@@ -3312,7 +3399,9 @@ function cardHtml(c, placed, draftDiff, opts) {
   else if (type === 'mandatory')        cls += ' card-mandatory';
   else                                  cls += ' card-elective';
   if (placed && level && !locked)       cls += ` card-placed diff-${esc(level)}`;
-  /* Category border override — only in repo (not placed), only for known categories */
+  /* Category border override — only in repo (not placed). Every elective gets
+   * a category-based accent (falls back to GENERAL_ELECTIVE_CAT_ID) instead of
+   * the generic uniform orange card-elective color. */
   if (!placed && catStyles)             cls += ` ${catStyles.card}`;
 
   const isFixedMandatory = c.placement_policy === 'fixed' && type === 'mandatory';
@@ -6663,6 +6752,38 @@ function getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours) {
   };
 }
 
+/**
+ * PART A — compact degree-progress summary block (Hebrew), used in both the
+ * draft sidebar panel and the full preview modal. `status` is the result of
+ * getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours).
+ */
+function renderDegreeProgressHtml(analysis, status) {
+  if (!status || !analysis) return '';
+  const completed = analysis.hours.known_completed_hours;
+  const current   = analysis.hours.known_scheduled_hours;
+  const added     = status.proposed_plan_hours;
+  const total     = status.total_after_plan;
+  const required  = status.degree_required_hours;
+  const remaining = status.missing_hours;
+  const overshoot = Math.max(0, total - required);
+
+  let msgHtml = '';
+  if (overshoot > 0) {
+    msgHtml = `<div class="dp-msg warn">ההצעה עוברת את היקף התואר ב־${overshoot} ש״ש</div>`;
+  } else if (total === required) {
+    msgHtml = `<div class="dp-msg success">ההצעה משלימה את היקף התואר</div>`;
+  }
+
+  return `<div class="degree-progress">
+    <div class="dp-row"><span>נצברו</span><span class="v">${esc(completed)}</span></div>
+    <div class="dp-row"><span>במערכת הנוכחית</span><span class="v">${esc(current)}</span></div>
+    <div class="dp-row"><span>יתווספו בהצעה</span><span class="v">${esc(added)}</span></div>
+    <div class="dp-row dp-total"><span>סה״כ לאחר ההצעה</span><span class="v">${esc(total)}/${esc(required)}</span></div>
+    <div class="dp-row"><span>נותרו</span><span class="v">${esc(remaining)} ש״ש</span></div>
+    ${msgHtml}
+  </div>`;
+}
+
 /** Mirrors api/ai/completion_analysis.ts (getHoursStatusReport). */
 function getHoursStatusReportLocal(analysis, proposalSemesters, courseHours) {
   const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
@@ -7459,6 +7580,11 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     ? `<div class="ai-plan-completeness"><strong>דרישות תואר</strong>${mandatoryStatusHtml}${categoryStatusHtml}${generalStatusHtml}${hoursStatusHtml}</div>`
     : '';
 
+  // PART A — compact degree-progress summary (also shown in the sidebar draft panel).
+  const degreeProgressModalHtml = (_aiPlanLastAnalysis)
+    ? renderDegreeProgressHtml(_aiPlanLastAnalysis, getDegreeHoursStatusLocal(_aiPlanLastAnalysis, proposal.semesters || [], courseHoursForStatus))
+    : '';
+
   const MAX_REASONS_SHOWN = 3;
   const shownReasons = allReasons.slice(0, MAX_REASONS_SHOWN);
   const restReasons = allReasons.slice(MAX_REASONS_SHOWN);
@@ -7497,6 +7623,18 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     return 'בחירה';
   };
   const showAllCourses = !!_aiPlanShowAllCourses;
+  // PART F — proposal state per course (נוסף/הועבר/ללא שינוי) for the
+  // "הצג את כל הקורסים" view, derived from the active draft diff.
+  const previewDiff = computeDraftDiff();
+  const proposalStateBadge = cid => {
+    if (!previewDiff) return '';
+    if (previewDiff.added.has(cid)) return `<span class="badge bdg-draft-added">נוסף</span>`;
+    if (previewDiff.moved.has(cid)) {
+      const fromSemId = previewDiff.movedFrom.get(cid);
+      return `<span class="badge bdg-draft-moved" title="${esc('הועבר מ-' + (SEM_HE[fromSemId] || fromSemId))}">הועבר מ${esc((SEM_HE[fromSemId] || fromSemId || '').split(' ').pop())}</span>`;
+    }
+    return `<span class="badge bdg-not-offered">ללא שינוי</span>`;
+  };
   const semestersHtml = (proposal.semesters || []).map(sem => {
     const hrs = semHoursById[sem.semester_id] || 0;
     const overloaded = hrs > effectiveMaxHours;
@@ -7511,6 +7649,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>
         <span class="ai-plan-badge-type">${esc(courseTypeBadge(c))}</span>
         <span class="ai-plan-sem-course-hours">${c?.hours != null ? `${c.hours} ש״ש` : ''}</span>
+        ${proposalStateBadge(cid)}
         ${hasWarning ? `<span class="ai-plan-badge-warn">⚠</span>` : ''}
         ${reason ? `<div class="ai-plan-hint">${esc(reason)}</div>` : ''}
       </li>`;
@@ -7618,6 +7757,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
+      ${degreeProgressModalHtml}
       ${infeasibleTargetHtml}
       ${planQualityHtml}
       ${missingMandatoryListHtml}

@@ -514,3 +514,189 @@ def test_build_course_details_url_formats_id():
     assert url is not None and "05424320" in url
     url2 = _build_course_details_url("0001-0001")
     assert url2 is not None and "00010001" in url2
+
+
+# ---------------------------------------------------------------------------
+# Degree-progress summary, draft diff styling, category colors, שער רוח
+# repository, and summary chips (PART A-G)
+# ---------------------------------------------------------------------------
+
+def test_degree_progress_helper_exists_and_used_in_draft_and_modal(html):
+    """renderDegreeProgressHtml must exist and be called from both the draft
+    sidebar panel and the full preview modal."""
+    assert "function renderDegreeProgressHtml" in html
+
+    m = re.search(r"function renderDraftTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderDraftTab not found"
+    assert "renderDegreeProgressHtml(" in m.group(1), \
+        "renderDraftTab must render the degree-progress summary"
+
+    m2 = re.search(r"function openPlanPreviewModal\(.*?\)\s*\{(.*)", html, re.DOTALL)
+    assert m2, "openPlanPreviewModal not found"
+    assert "renderDegreeProgressHtml(" in m2.group(1)[:20000], \
+        "openPlanPreviewModal must render the degree-progress summary"
+
+
+def test_degree_progress_lines_present(html):
+    """The degree-progress block must include all five required Hebrew lines."""
+    m = re.search(r"function renderDegreeProgressHtml\(.*?\n}\n", html, re.DOTALL)
+    assert m, "renderDegreeProgressHtml not found"
+    body = m.group(0)
+    for label in ['נצברו', 'במערכת הנוכחית', 'יתווספו בהצעה', 'סה״כ לאחר ההצעה', 'נותרו']:
+        assert label in body, f"Degree-progress block missing line: {label}"
+
+
+def test_degree_progress_overshoot_warning(html):
+    """When total > required, an overshoot warning must be shown."""
+    m = re.search(r"function renderDegreeProgressHtml\(.*?\n}\n", html, re.DOTALL)
+    body = m.group(0)
+    assert "ההצעה עוברת את היקף התואר ב־" in body
+
+
+def test_degree_progress_exact_completion_success(html):
+    """When total == required, a success message must be shown."""
+    m = re.search(r"function renderDegreeProgressHtml\(.*?\n}\n", html, re.DOTALL)
+    body = m.group(0)
+    assert "ההצעה משלימה את היקף התואר" in body
+
+
+def test_degree_progress_calc_logic():
+    """The underlying degree-hours math (getDegreeHoursStatusLocal) is
+    structurally identical to the server-side mirror in completion_analysis.ts,
+    verified via its TS counterpart test suite. Here we just sanity check the
+    JS source computes total = completed + proposed and remaining = max(0, required-total)."""
+    import pathlib
+    html = pathlib.Path("app/web/semester_board_viewer.html").read_text(encoding="utf-8")
+    m = re.search(r"function getDegreeHoursStatusLocal\(.*?\n}\n", html, re.DOTALL)
+    assert m, "getDegreeHoursStatusLocal not found"
+    body = m.group(0)
+    assert "total_after_plan" in body and "completed_degree_hours + proposed_plan_hours" in body
+    assert "missing_hours" in body and "Math.max(0, degree_required_hours - total_after_plan)" in body
+
+
+# ---------------------------------------------------------------------------
+# Draft diff rendering — added/moved/removed/unchanged styling
+# ---------------------------------------------------------------------------
+
+def test_draft_added_uses_badge_and_subtle_style_not_pulse(html):
+    """Added cards get a 'נוסף' badge and a subtle (non-pulsing) outline."""
+    assert "bdg-draft-added\">נוסף<" in html
+    assert "draft-pulse" not in html, "Old noisy pulse animation must be removed"
+    m = re.search(r"\.course-card\.card-draft-added\s*\{[^}]*\}", html)
+    assert m, "card-draft-added style not found"
+    assert "animation" not in m.group(0)
+
+
+def test_draft_moved_uses_badge_with_source_semester(html):
+    """Moved cards get a 'הועבר' badge that includes the source semester."""
+    assert "bdg-draft-moved" in html
+    assert "הועבר מ" in html
+    m = re.search(r"\.course-card\.card-draft-moved\s*\{[^}]*\}", html)
+    assert m, "card-draft-moved style not found"
+    assert "animation" not in m.group(0)
+
+
+def test_draft_removed_faded_ghost_with_badge(html):
+    """Removed cards must be faded/ghosted and show a 'יוסר' badge."""
+    assert ">יוסר<" in html and "bdg-draft-removed" in html
+    m = re.search(r"\.course-card\.course-card-draft-removed\s*\{[^}]*\}", html)
+    assert m, "course-card-draft-removed style not found"
+    assert "opacity" in m.group(0)
+
+
+def test_proposal_state_distinguishes_added_moved_unchanged_in_preview(html):
+    """The 'הצג את כל הקורסים' view must label each course as נוסף/הועבר/ללא שינוי."""
+    m = re.search(r"const proposalStateBadge = cid =>.*?\n  \};", html, re.DOTALL)
+    assert m, "proposalStateBadge not found"
+    body = m.group(0)
+    assert "נוסף" in body and "הועבר מ" in body and "ללא שינוי" in body
+
+
+# ---------------------------------------------------------------------------
+# Category colors for electives (PART C)
+# ---------------------------------------------------------------------------
+
+def test_cat_css_has_general_elective_and_shaar_ruach_entries(html):
+    """CAT_CSS must include other_specialization (general elective) and shaar_ruach."""
+    m = re.search(r"const CAT_CSS = \{(.*?)\n\};", html, re.DOTALL)
+    assert m, "CAT_CSS not found"
+    body = m.group(1)
+    assert "other_specialization" in body and "התמחות / בחירה נוספים" in body
+    assert "shaar_ruach" in body and "שער רוח" in body
+
+
+def test_card_cat_specelective_and_shaarruach_css_vars_defined(html):
+    """New category color variables must be defined for light and dark themes."""
+    assert html.count("--cat-specelective-accent") >= 2
+    assert html.count("--cat-shaarruach-accent") >= 2
+    assert ".card-cat-specelective" in html and ".bdg-cat-specelective" in html
+    assert ".card-cat-shaarruach" in html and ".bdg-cat-shaarruach" in html
+
+
+def test_cardhtml_falls_back_to_general_elective_for_unrecognized_category(html):
+    """cardHtml must not leave electives on plain card-elective when no category
+    matches — it should fall back to GENERAL_ELECTIVE_CAT_ID."""
+    assert "GENERAL_ELECTIVE_CAT_ID" in html
+    m = re.search(r"function cardHtml\(c, placed, draftDiff, opts\) \{(.*?)\n  let cls = 'course-card';", html, re.DOTALL)
+    assert m, "cardHtml category resolution block not found"
+    body = m.group(1)
+    assert "GENERAL_ELECTIVE_CAT_ID" in body
+
+
+# ---------------------------------------------------------------------------
+# שער רוח repository section (PART D)
+# ---------------------------------------------------------------------------
+
+def test_repo_groups_has_shaar_ruach_entry(html):
+    """REPO_GROUPS must define a קורסי שער רוח group."""
+    m = re.search(r"const REPO_GROUPS = \{(.*?)\n\};", html, re.DOTALL)
+    assert m, "REPO_GROUPS not found"
+    assert "shaar_ruach" in m.group(1) and "קורסי שער רוח" in m.group(1)
+
+
+def test_render_sidebar_builds_shaar_ruach_section(html):
+    """renderSidebar must build a repo section for SHAAR_RUACH_COURSES."""
+    m = re.search(r"function renderSidebar\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderSidebar not found"
+    body = m.group(1)
+    assert "shaar_ruach" in body and "SHAAR_RUACH_COURSES" in body
+    assert "_buildRepoSection('shaar_ruach'" in body
+
+
+def test_shaar_ruach_courses_included_in_search(html):
+    """_repoSearchText must include the category label (e.g. 'שער רוח') so
+    שער רוח courses surface in search."""
+    m = re.search(r"function _repoSearchText\(c, nameHe\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "_repoSearchText not found"
+    assert "CAT_CSS[c.program_category_id]" in m.group(1)
+
+
+def test_shaar_ruach_courses_marked_with_program_category_id(html):
+    """SHAAR_RUACH_COURSES entries added to courseMap must get program_category_id
+    'shaar_ruach' so they render with the right colors/badges and are searchable."""
+    assert "program_category_id: 'shaar_ruach'" in html
+
+
+def test_shaar_ruach_courses_draggable_like_other_cards(html):
+    """שער רוח courses must be eligible/unlocked so cardHtml computes canDrag=true
+    like any other repo card (no special-case lockout)."""
+    m = re.search(r"for \(const g of SHAAR_RUACH_COURSES\) \{\s*if \(courseMap\[g\.course_id\]\) continue;(.*?)\n    \};", html, re.DOTALL)
+    assert m, "SHAAR_RUACH_COURSES courseMap init block not found"
+    body = m.group(1)
+    assert "status: 'eligible'" in body
+    assert "locked_by_user: false" in body
+
+
+# ---------------------------------------------------------------------------
+# Summary chips row (PART E)
+# ---------------------------------------------------------------------------
+
+def test_summary_chips_row_present_in_draft_tab(html):
+    """renderDraftTab must build a chips row with total/remaining/שער רוח/
+    categories/added/moved/peak-load."""
+    m = re.search(r"function renderDraftTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderDraftTab not found"
+    body = m.group(1)
+    assert "draft-chips-row" in body
+    for label in ['סה״כ', 'נותרו', 'שער רוח', 'קטגוריות', 'נוספו', 'הועברו', 'עומס שיא']:
+        assert label in body, f"Summary chips row missing: {label}"
