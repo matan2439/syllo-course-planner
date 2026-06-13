@@ -47,6 +47,102 @@ export const DEFAULT_ADDED_ELECTIVES_WHEN_PRIOR_HOURS_UNKNOWN = 6;
 /** Any semester above this weekly load is considered an unreasonable plan (PART E). */
 export const MAX_REASONABLE_SEMESTER_HOURS = 30;
 
+// ── Professional/career relevance scoring ───────────────────────────────────
+//
+// Tags a candidate course against career-direction groups based on keyword
+// matching of its name/syllabus text vs. the user's free-text request
+// (`extra_request_he`). A group is "active" if the user's text mentions any
+// of its trigger keywords; an active group then boosts any candidate whose
+// own text matches the same keyword set, and supplies the Hebrew reason
+// shown in the preview (PART B).
+export interface CareerRelevanceGroup {
+  tag: string;
+  reason: string;
+  keywords: string[];
+}
+
+export const CAREER_RELEVANCE_GROUPS: CareerRelevanceGroup[] = [
+  {
+    tag: 'fem_analysis',
+    reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM',
+    keywords: ['אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים', 'מכניקת המוצקים', 'מכניקה'],
+  },
+  {
+    tag: 'mechanical_design',
+    reason: 'נבחר כי הוא מחזק תכן מכני ופיתוח מוצר',
+    keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר'],
+  },
+  {
+    tag: 'robotics_control',
+    reason: 'נבחר כי הוא קשור לרובוטיקה/בקרה',
+    keywords: ['רובוטיקה', 'בקרה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'],
+  },
+  {
+    tag: 'industry_lab',
+    reason: 'נבחר כי הוא נותן ניסיון מעבדתי רלוונטי לתעשייה',
+    keywords: ['מעבדה', 'פרויקט'],
+  },
+];
+
+/** Keywords for courses that are usually weakly related to a mechanical design/analysis/robotics direction. */
+export const WEAK_RELEVANCE_KEYWORDS = [
+  'מבני נתונים', 'מיקרו אלקטרוניקה', 'ננו אלקטרוניקה', 'מיקרו וננו', 'אלקטרוניקה',
+  'מערכות לבישות', 'לביש', 'מדעי המחשב', 'אלגוריתמים',
+];
+
+export const DEFAULT_WEAK_RELEVANCE_REASON = 'נבחר בעיקר להשלמת דרישת תואר';
+
+export interface CareerRelevanceResult {
+  /** Added to the candidate's overall score (positive = boost, negative = penalty). */
+  score: number;
+  /** Hebrew reason shown to the user for why this course was selected (PART B). */
+  reason: string;
+  /** The matched relevance group, if any. */
+  tag: string | null;
+}
+
+/**
+ * PART A — score how relevant `candidate` is to the user's stated career
+ * direction (`interestText`, e.g. preferences.extra_request_he). Returns 0/
+ * neutral if `interestText` is empty — the relevance layer never overrides
+ * legal/category requirements, it only ranks among legal candidates.
+ */
+export function scoreCareerRelevance(
+  candidate: { name_he?: string | null; syllabus_summary_he?: string | null; syllabus_topics_he?: string[] | null },
+  interestText?: string | null,
+): CareerRelevanceResult {
+  const text = [
+    candidate.name_he || '',
+    candidate.syllabus_summary_he || '',
+    ...(candidate.syllabus_topics_he || []),
+  ].join(' ').toLowerCase();
+
+  if (!interestText || !interestText.trim()) {
+    return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+  const interest = interestText.toLowerCase();
+
+  // Active groups = groups the user's free-text request mentions.
+  const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
+  if (!activeGroups.length) {
+    return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+
+  for (const g of activeGroups) {
+    if (g.keywords.some(k => text.includes(k))) {
+      return { score: 3, reason: g.reason, tag: g.tag };
+    }
+  }
+
+  // No active-direction match — penalize courses that are characteristically
+  // unrelated to a mechanical design/analysis/robotics direction.
+  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) {
+    return { score: -2, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+
+  return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+}
+
 export interface CompletionCandidate {
   course_id: string;
   name_he?: string;
@@ -54,6 +150,9 @@ export interface CompletionCandidate {
   has_syllabus_summary?: boolean;
   grade_average?: number | null;
   is_wanted?: boolean;
+  /** Optional syllabus text used for career-relevance scoring (PART A), when available. */
+  syllabus_summary_he?: string | null;
+  syllabus_topics_he?: string[] | null;
 }
 
 export interface CompletionCategory {
@@ -772,12 +871,14 @@ export function pickPrimaryBlockingReason(
 }
 
 /** Score a candidate elective for repair-insertion (higher = preferred). */
-export function scoreCandidate(c: CompletionCandidate): number {
+export function scoreCandidate(c: CompletionCandidate, interestText?: string | null): number {
   let score = 0;
   if (c.is_wanted) score += 5;
   if (c.has_syllabus_summary) score += 2;
   if (c.hours != null) score += 1;
   if (c.grade_average != null) score += c.grade_average / 100;
+  // PART A/E — career-fit score, ranks among legal candidates only.
+  score += scoreCareerRelevance(c, interestText).score;
   return score;
 }
 
@@ -785,11 +886,12 @@ export function scoreCandidate(c: CompletionCandidate): number {
 export function pickBestCandidate(
   candidates: CompletionCandidate[],
   unwantedIds: Set<string> = new Set(),
+  interestText?: string | null,
 ): CompletionCandidate | null {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
   const pool = preferred.length ? preferred : candidates;
-  return [...pool].sort((a, b) => scoreCandidate(b) - scoreCandidate(a))[0];
+  return [...pool].sort((a, b) => scoreCandidate(b, interestText) - scoreCandidate(a, interestText))[0];
 }
 
 export interface RepairCourseInfo {
@@ -806,7 +908,7 @@ export interface RepairProposalShape {
 
 export interface RepairAddResult<P extends RepairProposalShape> {
   proposal: P;
-  added: Array<{ course_id: string; category: string; semester_id: string }>;
+  added: Array<{ course_id: string; category: string; semester_id: string; selection_reason?: string }>;
 }
 
 export interface RepairMandatoryResult<P extends RepairProposalShape> {
@@ -917,6 +1019,8 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     maxHoursPerSemester?: number | null;
     unwantedCourseIds?: string[];
     knownSemesterIds: string[];
+    /** PART A — user's free-text career-direction request (e.g. preferences.extra_request_he). */
+    userInterestText?: string | null;
   },
 ): RepairAddResult<P> {
   const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
@@ -926,7 +1030,7 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
   }
   const placed = new Set(sems.flatMap(s => s.course_ids));
-  const added: Array<{ course_id: string; category: string; semester_id: string }> = [];
+  const added: Array<{ course_id: string; category: string; semester_id: string; selection_reason?: string }> = [];
   const extraWarnings: string[] = [];
 
   const hoursOf = (sem: { course_ids: string[] }) =>
@@ -938,7 +1042,7 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     let remainingCandidates = cat.candidates.filter(c => !placed.has(c.course_id));
 
     while (needed > 0 && remainingCandidates.length > 0) {
-      const candidate = pickBestCandidate(remainingCandidates, unwanted);
+      const candidate = pickBestCandidate(remainingCandidates, unwanted, opts.userInterestText);
       if (!candidate) break;
       remainingCandidates = remainingCandidates.filter(c => c.course_id !== candidate.course_id);
 
@@ -948,14 +1052,22 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
       if (!legalSems.length) continue;
 
       // least-loaded legal semester that stays within the cap, if possible
-      let target = legalSems
-        .filter(s => hoursOf(s) + (info.hours || 0) <= max)
-        .sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
+      const relevance = scoreCareerRelevance(candidate, opts.userInterestText);
+      let target: typeof sems[number] | undefined;
+      // PART C — foundational analysis courses (e.g. FEM) are scheduled as
+      // early as legally possible so they can unlock later labs/projects,
+      // rather than the least-loaded semester.
+      if (relevance.tag === 'fem_analysis' && fitting.length) {
+        target = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
+      } else if (fitting.length) {
+        target = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      }
       if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
 
       target.course_ids.push(candidate.course_id);
       placed.add(candidate.course_id);
-      added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id });
+      added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id, selection_reason: relevance.reason });
       if (unwanted.has(candidate.course_id)) {
         extraWarnings.push(`נבחר קורס שסומן ל"הימנעות" כדי למלא דרישת תואר חובה ב"${cat.name}" (${candidate.name_he || candidate.course_id}), כיוון שזהו הקורס החוקי היחיד שנותר.`);
       }
@@ -993,7 +1105,7 @@ export interface RepairHoursDebug {
 
 export interface RepairHoursResult<P extends RepairProposalShape> {
   proposal: P;
-  added: Array<{ course_id: string; semester_id: string; hours: number }>;
+  added: Array<{ course_id: string; semester_id: string; hours: number; selection_reason?: string }>;
   proposed_total_hours: number;
   /** True if total < required and the elective pool was exhausted with no legal placement left. */
   exhausted: boolean;
@@ -1021,6 +1133,8 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
     maxHoursPerSemester?: number | null;
     unwantedCourseIds?: string[];
     knownSemesterIds: string[];
+    /** PART A — user's free-text career-direction request (e.g. preferences.extra_request_he). */
+    userInterestText?: string | null;
   },
 ): RepairHoursResult<P> {
   const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
@@ -1030,7 +1144,7 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
     if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
   }
   const placed = new Set(sems.flatMap(s => s.course_ids));
-  const added: Array<{ course_id: string; semester_id: string; hours: number }> = [];
+  const added: Array<{ course_id: string; semester_id: string; hours: number; selection_reason?: string }> = [];
 
   const hoursOf = (sem: { course_ids: string[] }) =>
     sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
@@ -1083,7 +1197,7 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
 
   while (pool.length > 0 && added.length < maxAdditions) {
     if (priorKnown && total >= target) break;
-    const candidate = pickBestCandidate(pool, unwanted);
+    const candidate = pickBestCandidate(pool, unwanted, opts.userInterestText);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
@@ -1095,16 +1209,23 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
       continue;
     }
 
-    let semTarget = legalSems
-      .filter(s => hoursOf(s) + (info.hours || 0) <= max)
-      .sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
+    const relevance = scoreCareerRelevance(candidate, opts.userInterestText);
+    let semTarget: typeof sems[number] | undefined;
+    // PART C — foundational analysis courses (e.g. FEM) are scheduled as
+    // early as legally possible so they can unlock later labs/projects.
+    if (relevance.tag === 'fem_analysis' && fitting.length) {
+      semTarget = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
+    } else if (fitting.length) {
+      semTarget = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    }
     if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
 
     semTarget.course_ids.push(candidate.course_id);
     placed.add(candidate.course_id);
     const h = info.hours ?? candidate.hours ?? 0;
     total += h;
-    added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h });
+    added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h, selection_reason: relevance.reason });
   }
 
   if (priorKnown && total < target && pool.length === 0) exhausted = true;
@@ -1122,6 +1243,11 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
   if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped, debug };
 
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
+  // PART F — if every addition was a low-relevance "filler" course (no
+  // career-direction match), say so explicitly rather than silently adding them.
+  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON)) {
+    warnings.push('נוספו קורסים פחות קשורים כדי להשלים שעות תואר.');
+  }
   if (capped) {
     warnings.push('המערכת ניסתה להוסיף יותר מדי קורסים. כנראה חסר מידע על שעות שכבר צברת.');
   }

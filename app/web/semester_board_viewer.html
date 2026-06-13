@@ -5514,19 +5514,44 @@ function buildCompletionAnalysisLocal(planContext) {
 }
 
 /** Mirrors api/ai/completion_analysis.ts (scoreCandidate / pickBestCandidate). */
-function _scoreCandidateLocal(c) {
+// PART A (client mirror) — career-relevance scoring. Mirrors
+// api/ai/completion_analysis.ts (CAREER_RELEVANCE_GROUPS / scoreCareerRelevance).
+const CAREER_RELEVANCE_GROUPS = [
+  { tag: 'fem_analysis', reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM', keywords: ['אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים', 'מכניקת המוצקים', 'מכניקה'] },
+  { tag: 'mechanical_design', reason: 'נבחר כי הוא מחזק תכן מכני ופיתוח מוצר', keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר'] },
+  { tag: 'robotics_control', reason: 'נבחר כי הוא קשור לרובוטיקה/בקרה', keywords: ['רובוטיקה', 'בקרה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'] },
+  { tag: 'industry_lab', reason: 'נבחר כי הוא נותן ניסיון מעבדתי רלוונטי לתעשייה', keywords: ['מעבדה', 'פרויקט'] },
+];
+const WEAK_RELEVANCE_KEYWORDS = ['מבני נתונים', 'מיקרו אלקטרוניקה', 'ננו אלקטרוניקה', 'מיקרו וננו', 'אלקטרוניקה', 'מערכות לבישות', 'לביש', 'מדעי המחשב', 'אלגוריתמים'];
+const DEFAULT_WEAK_RELEVANCE_REASON = 'נבחר בעיקר להשלמת דרישת תואר';
+
+function _scoreCareerRelevanceLocal(candidate, interestText) {
+  const text = [candidate.name_he || '', candidate.syllabus_summary_he || '', ...(candidate.syllabus_topics_he || [])].join(' ').toLowerCase();
+  if (!interestText || !interestText.trim()) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  const interest = interestText.toLowerCase();
+  const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
+  if (!activeGroups.length) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  for (const g of activeGroups) {
+    if (g.keywords.some(k => text.includes(k))) return { score: 3, reason: g.reason, tag: g.tag };
+  }
+  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) return { score: -2, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+}
+
+function _scoreCandidateLocal(c, interestText) {
   let score = 0;
   if (c.is_wanted) score += 5;
   if (c.has_syllabus_summary) score += 2;
   if (c.hours != null) score += 1;
   if (c.grade_average != null) score += c.grade_average / 100;
+  score += _scoreCareerRelevanceLocal(c, interestText).score;
   return score;
 }
-function _pickBestCandidateLocal(candidates, unwantedIds) {
+function _pickBestCandidateLocal(candidates, unwantedIds, interestText) {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
   const pool = preferred.length ? preferred : candidates;
-  return [...pool].sort((a, b) => _scoreCandidateLocal(b) - _scoreCandidateLocal(a))[0];
+  return [...pool].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText))[0];
 }
 
 /**
@@ -5618,7 +5643,7 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
     let remaining = cat.candidates.filter(c => !placed.has(c.course_id));
 
     while (needed > 0 && remaining.length > 0) {
-      const candidate = _pickBestCandidateLocal(remaining, unwanted);
+      const candidate = _pickBestCandidateLocal(remaining, unwanted, opts.userInterestText);
       if (!candidate) break;
       remaining = remaining.filter(c => c.course_id !== candidate.course_id);
 
@@ -5627,12 +5652,19 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
       const legalSems = sems.filter(s => allowed.includes(s.semester_id));
       if (!legalSems.length) continue;
 
-      let target = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
+      const relevance = _scoreCareerRelevanceLocal(candidate, opts.userInterestText);
+      let target;
+      if (relevance.tag === 'fem_analysis' && fitting.length) {
+        target = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
+      } else if (fitting.length) {
+        target = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      }
       if (!target) target = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
 
       target.course_ids.push(candidate.course_id);
       placed.add(candidate.course_id);
-      added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id });
+      added.push({ course_id: candidate.course_id, category: cat.name, semester_id: target.semester_id, selection_reason: relevance.reason });
       if (unwanted.has(candidate.course_id)) {
         extraWarnings.push(`נבחר קורס שסומן ל"הימנעות" כדי למלא דרישת תואר חובה ב"${cat.name}" (${candidate.name_he || candidate.course_id}), כיוון שזהו הקורס החוקי היחיד שנותר.`);
       }
@@ -5705,7 +5737,7 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
 
   while (pool.length > 0 && added.length < maxAdditions) {
     if (priorKnown && total >= target) break;
-    const candidate = _pickBestCandidateLocal(pool, unwanted);
+    const candidate = _pickBestCandidateLocal(pool, unwanted, opts.userInterestText);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
@@ -5717,14 +5749,21 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
       continue;
     }
 
-    let semTarget = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
+    const relevance = _scoreCareerRelevanceLocal(candidate, opts.userInterestText);
+    let semTarget;
+    if (relevance.tag === 'fem_analysis' && fitting.length) {
+      semTarget = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
+    } else if (fitting.length) {
+      semTarget = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    }
     if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
 
     semTarget.course_ids.push(candidate.course_id);
     placed.add(candidate.course_id);
     const h = info.hours ?? candidate.hours ?? 0;
     total += h;
-    added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h });
+    added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h, selection_reason: relevance.reason });
   }
 
   if (priorKnown && total < target && pool.length === 0) exhausted = true;
@@ -5742,6 +5781,9 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped, debug };
 
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
+  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON)) {
+    warnings.push('נוספו קורסים פחות קשורים כדי להשלים שעות תואר.');
+  }
   if (capped) {
     warnings.push('המערכת ניסתה להוסיף יותר מדי קורסים. כנראה חסר מידע על שעות שכבר צברת.');
   }
@@ -6195,6 +6237,7 @@ async function requestPlanProposal(prefs, actionType) {
       maxHoursPerSemester: ctx.maxHoursPerSemester,
       unwantedCourseIds: prefs.unwanted_course_ids,
       knownSemesterIds: SEMESTERS.map(s => s.id),
+      userInterestText: prefs.extra_request_he,
     });
     if (addedElectives.length) {
       showBoardNotify(`נוספו ${addedElectives.length} קורסי בחירה אוטומטית כדי להשלים דרישות תואר.`);
@@ -6219,10 +6262,16 @@ async function requestPlanProposal(prefs, actionType) {
       maxHoursPerSemester: ctx.maxHoursPerSemester,
       unwantedCourseIds: prefs.unwanted_course_ids,
       knownSemesterIds: SEMESTERS.map(s => s.id),
+      userInterestText: prefs.extra_request_he,
     });
     if (addedHoursCourses.length) {
       showBoardNotify(`נוספו ${addedHoursCourses.length} קורסי בחירה/התמחות נוספים להשלמת 185 ש"ש.`);
     }
+
+    // PART B — relevance reasons for every elective the planner added, shown
+    // under "פירוט והסברים" in the preview.
+    const electiveSelectionReasons = [...addedElectives, ...addedHoursCourses]
+      .map(a => ({ course_id: a.course_id, selection_reason: a.selection_reason || DEFAULT_WEAK_RELEVANCE_REASON }));
 
     const { proposal: repairedProposal, repaired, movedCount, moveLog, unmovedOverloaded } = repairPlanLoad(withHours, ctx);
     if (repaired) {
@@ -6293,7 +6342,7 @@ async function requestPlanProposal(prefs, actionType) {
     _aiPlanLastProposal = repairedProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
-    openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness, moveLog);
+    openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
   } catch (err) {
     statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     genBtn.disabled = false;
@@ -6374,7 +6423,7 @@ function _renderGroupedList(messages, classify, groupLabels, order) {
     .join('');
 }
 
-function openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog) {
+function openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons) {
   const allWarnings = [...(proposal.warnings_he || []), ...warnings];
 
   // ── Top summary (status / blocking errors / max load only) ─────────────────
@@ -6599,6 +6648,10 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         ${(moveLog && moveLog.length) ? `<div>
           <strong>ניסיונות איזון עומס</strong>
           <ul>${moveLog.map(m => `<li>${esc(m.course_name || courseLabelLocal(m.course_id))} ← ${esc(SEM_HE[m.from_semester] || m.from_semester)} → ${esc(SEM_HE[m.to_semester] || m.to_semester)}: ${esc(m.reason)}</li>`).join('')}</ul>
+        </div>` : ''}
+        ${(electiveSelectionReasons && electiveSelectionReasons.length) ? `<div>
+          <strong>קורסי בחירה שנבחרו ולמה</strong>
+          <ul>${electiveSelectionReasons.map(r => `<li>${esc(courseLabelLocal(r.course_id))}: ${esc(r.selection_reason)}</li>`).join('')}</ul>
         </div>` : ''}
       </div>
     </details>`;

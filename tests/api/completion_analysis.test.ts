@@ -29,6 +29,8 @@ import {
   isCourseAllowedInSemester,
   getCourseSemesterLegalityReason,
   getEffectiveMaxHoursPreference,
+  scoreCareerRelevance,
+  DEFAULT_WEAK_RELEVANCE_REASON,
 } from '../../api/ai/completion_analysis';
 import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
@@ -562,7 +564,7 @@ describe('repairAddMissingElectives', () => {
       overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
     };
     const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds });
-    expect(result.added).toEqual([{ course_id: 'E1', category: 'בחירה', semester_id: 's1' }]);
+    expect(result.added).toEqual([{ course_id: 'E1', category: 'בחירה', semester_id: 's1', selection_reason: DEFAULT_WEAK_RELEVANCE_REASON }]);
     expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids).toContain('E1');
     expect(result.proposal.warnings_he).toEqual(['נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.']);
   });
@@ -612,7 +614,7 @@ describe('repairAddMissingElectives', () => {
       overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
     };
     const result = repairAddMissingElectives(proposal as any, analysis as any, { courses, knownSemesterIds: ['s1'] });
-    expect(result.added).toEqual([{ course_id: 'U1', category: 'בחירה', semester_id: 's1' }]);
+    expect(result.added).toEqual([{ course_id: 'U1', category: 'בחירה', semester_id: 's1', selection_reason: DEFAULT_WEAK_RELEVANCE_REASON }]);
   });
 
   it('does not add a candidate already placed in the proposal', () => {
@@ -2060,5 +2062,132 @@ describe('TASK 5 — PART F: max-load consistency and overload boundary', () => 
     expect(completeness.incomplete).toBe(false);
     const status = getPlanPreviewStatus([], completeness, 'תוכנית חוקית — ניתן להחיל');
     expect(status.kind).toBe('success');
+  });
+});
+
+describe('PART A/E/F/G — professional/career relevance scoring', () => {
+  const interestText = 'אני מעוניין באנליזות, תכן, רובוטיקה ושימושים בתעשייה';
+  const knownSemesterIds = ['s1', 's2', 's3'];
+
+  it('1. user request "אנליזות תכן רובוטיקה" boosts FEM/design/robotics courses', () => {
+    const fem = { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 };
+    const design = { course_id: 'DES1', name_he: 'תכן מכני מתקדם', hours: 3 };
+    const robotics = { course_id: 'ROB1', name_he: 'מבוא לרובוטיקה ובקרה', hours: 3 };
+    const filler = { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 };
+    expect(scoreCandidate(fem as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
+    expect(scoreCandidate(design as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
+    expect(scoreCandidate(robotics as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
+  });
+
+  it('2. unrelated electronics/data courses are penalized unless required', () => {
+    const dataStructures = { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 };
+    const microNano = { course_id: 'GEN2', name_he: 'טכנולוגיות מיקרו וננו אלקטרוניקה', hours: 3 };
+    const wearables = { course_id: 'GEN3', name_he: 'מערכות מודעות לבישות', hours: 3 };
+    expect(scoreCareerRelevance(dataStructures as any, interestText).score).toBeLessThan(0);
+    expect(scoreCareerRelevance(microNano as any, interestText).score).toBeLessThan(0);
+    expect(scoreCareerRelevance(wearables as any, interestText).score).toBeLessThan(0);
+    // without any stated interest, these are neutral rather than penalized
+    expect(scoreCareerRelevance(dataStructures as any, '').score).toBe(0);
+  });
+
+  it('3. FEM-like course is scheduled earlier than a related lab/advanced course if legal', () => {
+    const courses: Record<string, any> = {
+      FEM1: { hours: 3, effective_allowed_semesters: ['s1', 's2', 's3'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }, { semester_id: 's3', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 }] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds, userInterestText: interestText } as any);
+    // earliest legal semester (s1), not the least-loaded-by-chance one
+    expect(result.added[0].semester_id).toBe('s1');
+  });
+
+  it('4. candidate with high career relevance beats generic filler candidate', () => {
+    const candidates = [
+      { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3, has_syllabus_summary: true, grade_average: 95 },
+      { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 },
+    ];
+    expect(pickBestCandidate(candidates as any, new Set(), interestText)?.course_id).toBe('FEM1');
+    // without a stated interest, the generic-but-data-rich course can still win
+    expect(pickBestCandidate(candidates as any, new Set(), '')?.course_id).toBe('GEN1');
+  });
+
+  it('5. avoided/unrelated course is not selected if a relevant legal alternative exists', () => {
+    const courses: Record<string, any> = {
+      GEN1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      DES1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [
+        { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 },
+        { course_id: 'DES1', name_he: 'תכן מכני מתקדם', hours: 3 },
+      ] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds: ['s1', 's2'], userInterestText: interestText } as any);
+    expect(result.added[0].course_id).toBe('DES1');
+  });
+
+  it('6. preview includes recommendation reasons', () => {
+    const courses: Record<string, any> = {
+      FEM1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+      GEN1: { hours: 3, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', required: 2, placed: 0, missing: 2, candidates: [
+        { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 },
+        { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 },
+      ] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds: ['s1', 's2'], userInterestText: interestText } as any);
+    const femAdd = result.added.find(a => a.course_id === 'FEM1');
+    expect(femAdd?.selection_reason).toBe('נבחר כי הוא רלוונטי לאנליזות/FEM');
+    expect(result.added.every(a => !!a.selection_reason)).toBe(true);
+  });
+
+  it('7. "מבוא לאלמנטים סופיים" is not placed in an illegal semester', () => {
+    // offered_semesters: ["A"] in board data -> only the "A" semester is legal
+    const course = { offered_semesters: ['A'] as string[], effective_allowed_semesters: null };
+    const allKnown = ['A', 'B'];
+    const { semesters, confident } = getLegalSemesters(course as any, allKnown);
+    expect(semesters).toEqual(['A']);
+    expect(confident).toBe(false); // offered_semesters-only -> warn, don't silently place
+    expect(isCourseAllowedInSemester(course as any, 'B', allKnown)).toBe(false);
+    expect(isCourseAllowedInSemester(course as any, 'A', allKnown)).toBe(true);
+  });
+
+  it('8. if FEM is legal early, it is not deferred to last semester without reason', () => {
+    const courses: Record<string, any> = {
+      FEM1: { hours: 3, effective_allowed_semesters: ['s1', 's2', 's3'] },
+    };
+    // s1 already has more load than s3, but FEM should still go earliest (s1) given its tag
+    const proposal = { semesters: [
+      { semester_id: 's1', course_ids: ['X1', 'X2'] },
+      { semester_id: 's2', course_ids: [] },
+      { semester_id: 's3', course_ids: [] },
+    ] };
+    const analysis: any = {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory: [],
+      categories: [{ name: 'בחירה', required: 1, placed: 0, missing: 1, candidates: [{ course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 }] }],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+    const result = repairAddMissingElectives(proposal as any, analysis, {
+      courses, knownSemesterIds, userInterestText: interestText,
+      courseHours: { X1: 10, X2: 10 }, maxHoursPerSemester: 30,
+    } as any);
+    expect(result.added[0].semester_id).not.toBe('s3');
+    expect(result.added[0].semester_id).toBe('s1');
   });
 });
