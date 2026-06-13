@@ -1212,6 +1212,36 @@ body.prog-modal-open .workspace {
   direction: ltr;
 }
 
+/* ── Side-panel tabs (Task 10) ───────────────────────────────────────────── */
+.sb-tabs { display: flex; gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--border); }
+.sb-tab {
+  flex: 1; padding: 8px 6px; font-size: .78rem; border: none; border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent; color: var(--text-muted); cursor: pointer; position: relative;
+}
+.sb-tab.active { background: var(--surface2); color: var(--text); font-weight: 600; }
+.sb-panel[hidden] { display: none; }
+.sb-draft-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent, #4c8dff); margin-inline-start: 4px; vertical-align: middle;
+}
+.sb-status-summary {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
+  font-size: .76rem; color: var(--text-muted); background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px;
+}
+
+/* ── Board highlighting for an active "טיוטת שינויים" (PART E) ──────────── */
+.board-draft-note {
+  flex-basis: 100%; padding: 8px 14px; font-size: .8rem; direction: rtl;
+  background: var(--surface2); border: 1px dashed var(--mand-accent, var(--blue));
+  border-radius: var(--radius); margin-bottom: 8px;
+}
+.course-card.card-draft-added { outline: 2px solid var(--success, #2ecc71); outline-offset: -2px; }
+.course-card.card-draft-moved { outline: 2px solid var(--blue); outline-offset: -2px; }
+.badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
+.badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
+.semester-col.sem-draft-overload .sem-hdr { outline: 2px solid var(--danger); outline-offset: -2px; }
+
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1312,19 +1342,30 @@ body.prog-modal-open .workspace {
 
   <div class="workspace">
     <aside class="sidebar">
-      <div class="sb-head">
-        <div class="sb-head-title">מאגר קורסים</div>
-        <div class="sb-head-sub" id="repo-sub">טוען…</div>
-        <div class="repo-search-box">
-          <input type="text" id="repo-search-input" class="repo-search-input" dir="rtl"
-            placeholder="חיפוש קורס לפי שם, קוד או נושא...">
-          <button class="repo-search-clear" id="repo-search-clear" title="נקה חיפוש">✕</button>
-        </div>
-        <div class="repo-search-status" id="repo-search-status"></div>
-        <button class="btn btn-auto-plan" id="btn-auto-plan"
-          title="הזינו העדפות אישיות וה-AI יציע תוכנית סמסטרים מותאמת אישית לתצוגה מקדימה ואישור">🤖 בנה מערכת מותאמת אישית</button>
+      <div class="sb-tabs" role="tablist">
+        <button class="sb-tab active" id="sb-tab-repo"  data-tab="repo">מאגר קורסים</button>
+        <button class="sb-tab"        id="sb-tab-ai"    data-tab="ai">עוזר AI</button>
+        <button class="sb-tab"        id="sb-tab-draft" data-tab="draft">טיוטת שינויים<span id="sb-draft-dot" class="sb-draft-dot" hidden></span></button>
       </div>
-      <div class="sb-body" id="repo-body"></div>
+
+      <div id="sb-panel-repo" class="sb-panel">
+        <div class="sb-head">
+          <div class="sb-head-title">מאגר קורסים</div>
+          <div class="sb-head-sub" id="repo-sub">טוען…</div>
+          <div class="repo-search-box">
+            <input type="text" id="repo-search-input" class="repo-search-input" dir="rtl"
+              placeholder="חיפוש קורס לפי שם, קוד או נושא...">
+            <button class="repo-search-clear" id="repo-search-clear" title="נקה חיפוש">✕</button>
+          </div>
+          <div class="repo-search-status" id="repo-search-status"></div>
+          <button class="btn btn-auto-plan" id="btn-auto-plan"
+            title="הזינו העדפות אישיות וה-AI יציע תוכנית סמסטרים מותאמת אישית לתצוגה מקדימה ואישור">🤖 בנה מערכת מותאמת אישית (מתקדם)</button>
+        </div>
+        <div class="sb-body" id="repo-body"></div>
+      </div>
+
+      <div id="sb-panel-ai" class="sb-panel" hidden></div>
+      <div id="sb-panel-draft" class="sb-panel" hidden></div>
     </aside>
 
     <main class="board-area">
@@ -2466,6 +2507,11 @@ function init(board, audit, programJson) {
   console.log('[init] planned courses:', _planned);
   console.log('[init] repository courses (state.repo):', state.repo.length);
   console.log('[init] PDF repository courses (board.metadata):', _pdfRepo);
+
+  // PART A — wire the side-panel tabs once.
+  document.querySelectorAll('.sb-tab').forEach(btn => {
+    btn.addEventListener('click', () => setSidebarTab(btn.dataset.tab));
+  });
 }
 
 function normalizeCourse(c, status) {
@@ -2679,29 +2725,7 @@ function renderSidebar() {
   const prog = computeProgramProgress();
   const progressHtml = prog ? renderProgramProgress(prog) : '';
 
-  /* AI panel — connected to /api/ai/course-planner via Vercel AI SDK */
-  const aiPanelHtml = `<details class="ai-panel" id="ai-panel">
-    <summary>🤖 <span>עוזר AI לתכנון מערכת</span>
-      <span style="font-size:.59rem;color:#22c55e;margin-inline-start:4px" id="ai-status-badge">מחובר</span>
-      <span class="ai-chevron">›</span>
-    </summary>
-    <div class="ai-body">
-      <div class="ai-note">💡 שאל שאלות על התוכנית שלך — האסיסטנט מבוסס על הנתונים המקומיים בלבד.</div>
-      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
-        <button class="ai-prompt-btn" data-sidebar-prompt="האם התוכנית שלי מאוזנת?">💬 האם התוכנית שלי מאוזנת?</button>
-        <button class="ai-prompt-btn" data-sidebar-prompt="איזה קורסי ליבה חסרים לי?">💬 איזה קורסי ליבה חסרים לי?</button>
-        <button class="ai-prompt-btn" data-sidebar-prompt="איך אפשר להוריד עומס בסמסטר הכבד ביותר?">💬 איך אפשר להוריד עומס?</button>
-        <button class="ai-prompt-btn" data-sidebar-prompt="האם יש בעיות דרישות קדם בתוכנית שלי?">💬 בעיות דרישות קדם?</button>
-        <button class="ai-prompt-btn" data-sidebar-prompt="איזה קורסים מתאימים אם אני מעדיף עומס נמוך?">💬 קורסים עם עומס נמוך?</button>
-      </div>
-      <textarea class="ai-textarea" rows="3" id="ai-sidebar-textarea"
-        placeholder="שאל שאלה על התוכנית…" dir="rtl"></textarea>
-      <button class="ai-send" id="ai-sidebar-send">שלח ›</button>
-      <div class="ai-response" id="ai-sidebar-response"></div>
-    </div>
-  </details>`;
-
-  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections + aiPanelHtml;
+  document.getElementById('repo-body').innerHTML = progressHtml + invalToggle + blkToggle + sections;
   document.getElementById('invalid-toggle-btn')?.addEventListener('click', () => {
     allowInvalidPlacement = !allowInvalidPlacement;
     renderSidebar();
@@ -2709,26 +2733,6 @@ function renderSidebar() {
   document.getElementById('blk-toggle-btn')?.addEventListener('click', () => {
     allowBlockedDrag = !allowBlockedDrag;
     renderSidebar();
-  });
-  /* Re-wire AI send + suggested prompt buttons (re-injected on each render) */
-  document.getElementById('ai-sidebar-send')?.addEventListener('click', () => {
-    const textarea = document.getElementById('ai-sidebar-textarea');
-    const respEl   = document.getElementById('ai-sidebar-response');
-    const sendBtn  = document.getElementById('ai-sidebar-send');
-    const msg      = textarea?.value?.trim();
-    if (!msg || !respEl || !sendBtn) return;
-    callAiStream(msg, buildPlanContext(), null, respEl, sendBtn);
-  });
-  document.querySelectorAll('[data-sidebar-prompt]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const msg    = btn.dataset.sidebarPrompt;
-      const respEl = document.getElementById('ai-sidebar-response');
-      const sendBtn = document.getElementById('ai-sidebar-send');
-      if (!msg || !respEl || !sendBtn) return;
-      const textarea = document.getElementById('ai-sidebar-textarea');
-      if (textarea) textarea.value = msg;
-      callAiStream(msg, buildPlanContext(), null, respEl, sendBtn);
-    });
   });
 
   /* Repository search */
@@ -2787,15 +2791,125 @@ function applyRepoSearch() {
   }
 }
 
+// ── Side-panel tabs: מאגר קורסים / עוזר AI / טיוטת שינויים ──────────────────
+
+let _sidebarTab = 'repo';
+
+function setSidebarTab(tab) {
+  _sidebarTab = tab;
+  document.querySelectorAll('.sb-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.getElementById('sb-panel-repo').hidden  = tab !== 'repo';
+  document.getElementById('sb-panel-ai').hidden    = tab !== 'ai';
+  document.getElementById('sb-panel-draft').hidden = tab !== 'draft';
+  if (tab === 'ai') renderAiTab();
+  if (tab === 'draft') renderDraftTab();
+}
+
+/** Compact status summary shown at the top of "עוזר AI" — current board state. */
+function buildSidebarStatusSummary() {
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const ctx = buildPlanValidationInputs();
+  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
+  const placedIds = new Set(semObjs.flatMap(s => s.course_ids));
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  const hours = getDegreeHoursStatusLocal(analysis, semObjs, courseHours);
+  const mandatory = getMandatoryStatusReportLocal(analysis, placedIds);
+  const categories = getCategoryStatusReportLocal(analysis, placedIds);
+  const catSatisfied = categories.filter(c => c.satisfied).length;
+  const general = getGeneralRequirementStatusReportLocal(analysis, placedIds);
+  let peak = 0;
+  for (const sem of semObjs) peak = Math.max(peak, getSemesterLoadLocal(sem, ctx.courses));
+  return { hours, mandatory, categories, catSatisfied, general, peak };
+}
+
+function sidebarQuickActionPrefs() {
+  const instr = document.getElementById('sidebar-ai-instruction')?.value?.trim();
+  return {
+    max_weekly_hours:        _aiPlanLastPreferences?.max_weekly_hours ?? null,
+    balance_load:            _aiPlanLastPreferences?.balance_load ?? true,
+    avoid_multiple_labs:     _aiPlanLastPreferences?.avoid_multiple_labs ?? false,
+    avoid_multiple_projects: _aiPlanLastPreferences?.avoid_multiple_projects ?? false,
+    preferred_categories:    _aiPlanLastPreferences?.preferred_categories ?? [],
+    wanted_course_ids:       _aiPlanLastPreferences?.wanted_course_ids ?? [],
+    unwanted_course_ids:     _aiPlanLastPreferences?.unwanted_course_ids ?? [],
+    extra_request_he:        instr || _aiPlanLastPreferences?.extra_request_he,
+  };
+}
+
+function renderAiTab() {
+  const panel = document.getElementById('sb-panel-ai');
+  const s = buildSidebarStatusSummary();
+  const lastInstr = _aiPlanLastPreferences?.extra_request_he || '';
+  panel.innerHTML = `
+    <div class="sb-head"><div class="sb-head-title">עוזר AI לתכנון תוכנית</div></div>
+    <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
+      <div class="sb-status-summary">
+        <div>שעות: ${s.hours.total_after_plan}/${s.hours.degree_required_hours}</div>
+        <div>קורסי חובה: ${s.mandatory.placed}/${s.mandatory.required}</div>
+        <div>קטגוריות: ${s.catSatisfied}/${s.categories.length}</div>
+        ${s.general ? `<div>שער רוח: ${s.general.placed}/${s.general.required}</div>` : ''}
+        <div>עומס שיא: ${s.peak} ש״ש</div>
+      </div>
+      <label class="ai-plan-field">
+        כתוב מה חשוב לך בתוכנית
+        <textarea id="sidebar-ai-instruction" rows="2" dir="rtl"
+          placeholder="כתוב מה חשוב לך בתוכנית — למשל אנליזות, תכן, רובוטיקה...">${esc(lastInstr)}</textarea>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-sm" id="sidebar-quick-full">בנה תוכנית מלאה</button>
+        <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
+        <button class="btn btn-sm" id="sidebar-quick-electives">השלם דרישות</button>
+        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן שיבוצים לא חוקיים</button>
+        <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
+      </div>
+      <div id="sidebar-ai-status" class="ai-plan-hint" hidden></div>
+      <button class="btn btn-primary" id="sidebar-ai-generate">צור הצעה</button>
+    </div>`;
+
+  const run = actionType => {
+    const prefs = sidebarQuickActionPrefs();
+    _aiPlanLastPreferences = { ...prefs, action_type: actionType };
+    requestPlanProposal(prefs, actionType);
+  };
+  document.getElementById('sidebar-ai-generate').addEventListener('click', () => run('full_plan'));
+  document.getElementById('sidebar-quick-full').addEventListener('click', () => run('full_plan'));
+  document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
+  document.getElementById('sidebar-quick-electives').addEventListener('click', () => run('add_electives'));
+  document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
+  document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
+}
+
+/** "טיוטת שינויים" tab — compact AI proposal, or an empty-state if none exists. */
+function renderDraftTab() {
+  const panel = document.getElementById('sb-panel-draft');
+  if (!_aiPlanLastPreviewArgs) {
+    panel.innerHTML = `
+      <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
+      <div class="sb-body">
+        <div class="ai-plan-hint">אין טיוטת שינויים פעילה. עברו לטאב "עוזר AI" וצרו הצעה.</div>
+      </div>`;
+    return;
+  }
+  _aiPlanCompactMode = true;
+  openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
+}
+
 function renderBoard() {
   const emptyHint = allPlacedIds().size === 0
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
+    : '';
+  const draftNote = _aiPlanProposalHighlight
+    ? `<div class="board-draft-note">📝 יש טיוטת שינויים פעילה — קורסים מסומנים מסמנים שינויים מוצעים. ראו טאב "טיוטת שינויים".</div>`
     : '';
   const yearGroups = [
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = emptyHint + yearGroups.map(yg =>
+  document.getElementById('board').innerHTML = emptyHint + draftNote + yearGroups.map(yg =>
     `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
       <div class="year-sems">${yg.sems.map(s => semColHtml(s)).join('')}</div>
@@ -2907,7 +3021,8 @@ function semColHtml(sem) {
   const unkNote = unknownCt > 0
     ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
   const cards  = ids.map(id => cardHtml(courseMap[id], true)).join('');
-  return `<div class="semester-col ${esc(sem.css)}">
+  const draftOverloadCls = _aiPlanProposalHighlight?.overloadedSemesters?.has(sem.id) ? ' sem-draft-overload' : '';
+  return `<div class="semester-col ${esc(sem.css)}${draftOverloadCls}">
     <div class="sem-hdr">
       <div class="sem-title">${esc(SEM_HE[sem.id] || sem.id)}</div>
       <div class="sem-stats">
@@ -3013,6 +3128,13 @@ function cardHtml(c, placed) {
   const warnIcon  = (c.warnings||[]).length
     ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
 
+  // PART E — highlight courses affected by the active AI proposal (טיוטת שינויים).
+  let draftBdg = '';
+  if (_aiPlanProposalHighlight) {
+    if (_aiPlanProposalHighlight.added.has(c.course_id)) { cls += ' card-draft-added'; draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטת השינויים">+ טיוטה</span>`; }
+    else if (_aiPlanProposalHighlight.moved.has(c.course_id)) { cls += ' card-draft-moved'; draftBdg = `<span class="badge bdg-draft-moved" title="קורס שהועבר בטיוטת השינויים">↔ טיוטה</span>`; }
+  }
+
   const pinned = placed && (state?.pinnedCourseIds || []).includes(c.course_id);
   if (pinned) cls += ' card-pinned';
   const pinBtn = placed
@@ -3037,7 +3159,7 @@ function cardHtml(c, placed) {
       ${warnIcon}${pinBtn}${actionBtn}
     </div>
     <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
-    <div class="card-row">${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
+    <div class="card-row">${draftBdg} ${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
   </div>${dragHint}
 </div>`;
 }
@@ -4662,6 +4784,8 @@ let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הק
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
 let _aiPlanCompactMode     = true;  // compact "טיוטת שינויים" card is the default; "הצג פירוט מלא" opens the full preview
 let _aiPlanLastPreviewArgs = null;  // cached openPlanPreviewModal args so compact<->full toggle can re-render without recompute
+let _aiPlanSidebarMode     = true;  // PART C/D — render the compact card inside the "טיוטת שינויים" side-panel tab (default); "פתח תצוגה מלאה" switches to the overlay
+let _aiPlanProposalHighlight = null; // PART E — { added: Set, moved: Set, overloadedSemesters: Set } for board highlighting while a proposal is active
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
@@ -4669,6 +4793,18 @@ function closeAiPlanModal() {
   overlay.classList.remove('ai-plan-compact');
   document.getElementById('ai-plan-panel').innerHTML = '';
   _aiPlanCompactMode = true; // next proposal starts back in the compact card
+  _aiPlanSidebarMode = true;
+}
+
+/** Clear the active AI proposal entirely and return the side panel to its empty state. */
+function rejectAiPlanProposal() {
+  closeAiPlanModal();
+  _aiPlanLastProposal = null;
+  _aiPlanLastPreviewArgs = null;
+  document.getElementById('sb-draft-dot')?.setAttribute('hidden', '');
+  _aiPlanProposalHighlight = null;
+  renderBoard();
+  if (_sidebarTab === 'draft') renderDraftTab();
 }
 
 /* ── Searchable course picker (used for "wanted"/"unwanted" course lists) ──
@@ -6377,11 +6513,13 @@ function insertCandidateIntoProposalLocal(proposal, courseId, ctx) {
 
 async function requestPlanProposal(prefs, actionType) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
-  const statusEl = document.getElementById('ai-plan-status');
-  const genBtn   = document.getElementById('ai-plan-generate');
-  statusEl.removeAttribute('hidden');
-  statusEl.textContent = 'בונה תוכנית מותאמת אישית… זה עשוי לקחת כמה שניות.';
-  genBtn.disabled = true;
+  // Falls back to the "עוזר AI" side-panel status/button when the old
+  // preferences modal isn't open (the compact sidebar flow is now primary).
+  const statusEl = document.getElementById('ai-plan-status') || document.getElementById('sidebar-ai-status');
+  const genBtn   = document.getElementById('ai-plan-generate') || document.getElementById('sidebar-ai-generate');
+  statusEl?.removeAttribute('hidden');
+  if (statusEl) statusEl.textContent = 'בונה תוכנית מותאמת אישית… זה עשוי לקחת כמה שניות.';
+  if (genBtn) genBtn.disabled = true;
 
   try {
     const planContext = buildPlanContext();
@@ -6398,8 +6536,8 @@ async function requestPlanProposal(prefs, actionType) {
 
     const data = await resp.json();
     if (!resp.ok) {
-      statusEl.textContent = data?.error || 'שגיאה ביצירת התוכנית. נסה שוב.';
-      genBtn.disabled = false;
+      if (statusEl) statusEl.textContent = data?.error || 'שגיאה ביצירת התוכנית. נסה שוב.';
+      if (genBtn) genBtn.disabled = false;
       return;
     }
 
@@ -6575,10 +6713,12 @@ async function requestPlanProposal(prefs, actionType) {
     _aiPlanLastProposal = repairedProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
+    if (genBtn) genBtn.disabled = false;
+    statusEl?.setAttribute('hidden', '');
     openPlanPreviewModal(repairedProposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
   } catch (err) {
-    statusEl.textContent = 'שגיאת רשת — נסה שוב.';
-    genBtn.disabled = false;
+    if (statusEl) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
+    if (genBtn) genBtn.disabled = false;
   }
 }
 
@@ -6965,15 +7105,110 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   // the side so the board stays visible/interactive. "הצג פירוט מלא" opens
   // the full preview below (unchanged).
   if (_aiPlanCompactMode) {
-    overlayEl?.classList.add('ai-plan-compact');
-    const addedCount = (electiveSelectionReasons || []).length;
-    const movedCount2 = (moveLog || []).length;
+    const addedList = electiveSelectionReasons || [];
+    const movedList = moveLog || [];
+    const addedCount = addedList.length;
+    const movedCount2 = movedList.length;
     const bullets = [
       addedCount ? `נוספו ${addedCount} קורסים` : null,
       movedCount2 ? `הועברו ${movedCount2} קורסים` : null,
       `עומס מקסימלי: ${peakSemHours} ש״ש`,
       `התאמה מקצועית: ${esc(planQuality.labels.professional_fit)}`,
-    ].filter(Boolean);
+      hoursStatus ? `שעות לאחר התוכנית: ${hoursStatus.proposed_total_hours}/${hoursStatus.required_total}` : null,
+    ].filter(Boolean).slice(0, 5);
+
+    // PART E — highlight affected courses/semesters on the board while this proposal is active.
+    const overloadedSemIds = new Set((proposal.semesters || [])
+      .filter(sem => (semHoursById[sem.semester_id] || 0) > effectiveMaxHours)
+      .map(sem => sem.semester_id));
+    _aiPlanProposalHighlight = {
+      added: new Set(addedList.map(r => r.course_id)),
+      moved: new Set(movedList.map(m => m.course_id)),
+      overloadedSemesters: overloadedSemIds,
+    };
+
+    const courseRow = (cid, reason) => {
+      const c = courseMap[cid];
+      return `<li>${esc(c?.name_he || cid)} <span class="ai-plan-sem-course-id">(${esc(cid)})</span>
+        — ${c?.hours != null ? `${c.hours} ש״ש` : '—'} — ${esc(courseTypeBadge(c))}
+        ${reason ? `<div class="ai-plan-hint">${esc(reason)}</div>` : ''}
+      </li>`;
+    };
+    const addedHtml = addedCount
+      ? `<details class="ai-plan-details"><summary>קורסים שנוספו (${addedCount})</summary><ul>${addedList.map(r => courseRow(r.course_id, r.selection_reason)).join('')}</ul></details>`
+      : '';
+    const movedHtml = movedCount2
+      ? `<details class="ai-plan-details"><summary>קורסים שהועברו (${movedCount2})</summary><ul>${movedList.map(m =>
+          courseRow(m.course_id, `${esc(SEM_HE[m.from_semester] || m.from_semester)} → ${esc(SEM_HE[m.to_semester] || m.to_semester)}: ${esc(m.reason)}`)).join('')}</ul></details>`
+      : '';
+    const issuesHtml = allWarnings.length
+      ? `<details class="ai-plan-details"><summary>בעיות ואזהרות (${allWarnings.length})</summary><ul>${allWarnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>`
+      : '';
+    const whyHtml = planQuality.bullets.length
+      ? `<details class="ai-plan-details"><summary>מדוע זו התוכנית שנבחרה?</summary><ul>${planQuality.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></details>`
+      : '';
+
+    const actionsHtml = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל שינויים</button>
+        <button class="btn btn-sm" id="ai-plan-ask-changes">בקש שינוי</button>
+        ${severeOverload ? '<button class="btn btn-sm" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
+        <button class="btn btn-sm" id="ai-plan-reject">דחה</button>
+        <button class="btn btn-sm" id="ai-plan-show-full">פתח תצוגה מלאה</button>
+      </div>`;
+
+    const cardBodyHtml = `
+      ${statusHtml}
+      ${infeasibleTargetHtml}
+      <ul style="margin:0;padding-inline-start:18px;font-size:.82rem">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+      ${applyReasonHtml}
+      ${addedHtml}
+      ${movedHtml}
+      ${issuesHtml}
+      ${whyHtml}
+      ${actionsHtml}`;
+
+    const wireActions = () => {
+      document.getElementById('ai-plan-reject').addEventListener('click', rejectAiPlanProposal);
+      document.getElementById('ai-plan-apply').addEventListener('click', () => {
+        if (!canApply) return;
+        applyPlanProposal(proposal);
+        rejectAiPlanProposal();
+        showBoardNotify('התוכנית הוחלה על הלוח שלך');
+      });
+      document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
+        openPlanPreferencesModal();
+      });
+      document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
+        _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
+        if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+        refreshPlanPreviewWithProposal(_aiPlanLastProposal);
+      });
+      document.getElementById('ai-plan-show-full').addEventListener('click', () => {
+        _aiPlanCompactMode = false;
+        _aiPlanSidebarMode = false;
+        document.getElementById('ai-plan-overlay')?.removeAttribute('hidden');
+        openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
+      });
+    };
+
+    renderBoard();
+
+    if (_aiPlanSidebarMode) {
+      overlayEl?.setAttribute('hidden', '');
+      overlayEl?.classList.remove('ai-plan-compact');
+      document.getElementById('sb-draft-dot')?.removeAttribute('hidden');
+      if (_sidebarTab !== 'draft') { setSidebarTab('draft'); return; }
+      const draftPanel = document.getElementById('sb-panel-draft');
+      draftPanel.innerHTML = `
+        <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
+        <div class="sb-body" style="display:flex;flex-direction:column;gap:8px">${cardBodyHtml}</div>`;
+      wireActions();
+      return;
+    }
+
+    overlayEl?.classList.add('ai-plan-compact');
+    overlayEl?.removeAttribute('hidden');
     panel.innerHTML = `
     <div class="detail-head">
       <div class="detail-head-row">
@@ -6981,44 +7216,13 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         <button class="prog-close-btn" id="ai-plan-close" aria-label="סגור">✕</button>
       </div>
     </div>
-    <div class="detail-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;direction:rtl;overflow:auto">
-      ${statusHtml}
-      ${infeasibleTargetHtml}
-      <ul style="margin:0;padding-inline-start:18px;font-size:.82rem">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
-      ${allWarnings.length ? `<div class="ai-plan-warnings" style="font-size:.78rem">${allWarnings.slice(0, 3).map(w => esc(w)).join('<br>')}</div>` : ''}
-      ${applyReasonHtml}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל שינויים</button>
-        <button class="btn btn-sm" id="ai-plan-ask-changes">בקש שינוי</button>
-        ${severeOverload ? '<button class="btn btn-sm" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
-        <button class="btn btn-sm" id="ai-plan-reject">דחה</button>
-        <button class="btn btn-sm" id="ai-plan-show-full">פתח תצוגה מלאה</button>
-      </div>
-    </div>`;
-
+    <div class="detail-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;direction:rtl;overflow:auto">${cardBodyHtml}</div>`;
     document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
-    document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
-    document.getElementById('ai-plan-apply').addEventListener('click', () => {
-      if (!canApply) return;
-      applyPlanProposal(proposal);
-      closeAiPlanModal();
-      showBoardNotify('התוכנית הוחלה על הלוח שלך');
-    });
-    document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
-      openPlanPreferencesModal();
-    });
-    document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
-      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
-      if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
-      refreshPlanPreviewWithProposal(_aiPlanLastProposal);
-    });
-    document.getElementById('ai-plan-show-full').addEventListener('click', () => {
-      _aiPlanCompactMode = false;
-      openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
-    });
+    wireActions();
     return;
   }
   overlayEl?.classList.remove('ai-plan-compact');
+  overlayEl?.removeAttribute('hidden');
 
   panel.innerHTML = `
     <div class="detail-head">
@@ -7064,14 +7268,16 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   });
   document.getElementById('ai-plan-show-compact').addEventListener('click', () => {
     _aiPlanCompactMode = true;
+    _aiPlanSidebarMode = true;
+    document.getElementById('ai-plan-overlay')?.setAttribute('hidden', '');
     openPlanPreviewModal(...(_aiPlanLastPreviewArgs));
   });
   document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
-  document.getElementById('ai-plan-reject').addEventListener('click', closeAiPlanModal);
+  document.getElementById('ai-plan-reject').addEventListener('click', rejectAiPlanProposal);
   document.getElementById('ai-plan-apply').addEventListener('click', () => {
     if (!canApply) return; // safety: never apply an invalid plan
     applyPlanProposal(proposal);
-    closeAiPlanModal();
+    rejectAiPlanProposal();
     showBoardNotify('התוכנית הוחלה על הלוח שלך');
   });
   document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
