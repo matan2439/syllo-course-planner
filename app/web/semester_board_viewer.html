@@ -927,23 +927,27 @@ body.prog-modal-open .workspace {
   display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
 }
 .my-courses-grid-col {
-  flex: 1 1 0; min-width: 150px; display: flex; flex-direction: column; gap: 6px;
+  flex: 1 1 0; min-width: 220px; display: flex; flex-direction: column; gap: 6px;
 }
 .my-courses-grid-col-hdr {
   font-size: .7rem; font-weight: 700; text-align: center; padding: 4px 6px;
   border-radius: 6px; background: var(--surface2); border: 1px solid var(--border);
 }
-.my-courses-grid-col-body { display: flex; flex-direction: column; gap: 5px; }
+.my-courses-grid-col-body { display: flex; flex-direction: column; gap: 5px; max-height: 420px; overflow-y: auto; }
 .mc-grid-chip {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  font-size: .68rem; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  font-size: .85rem; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--surface); cursor: pointer; text-align: right; width: 100%;
+  color: var(--text); line-height: 1.35;
 }
-.mc-grid-chip-name { font-weight: 600; }
-.mc-grid-chip-status { font-size: .62rem; color: var(--text-muted); }
-.mc-grid-status-done     { background: var(--success-bg, #e6f4ea); border-color: var(--success, #34a853); }
-.mc-grid-status-current  { background: var(--warning-bg, #fff4e0); border-color: var(--warning, #f9ab00); }
-.mc-grid-status-planned  { background: var(--info-bg, #e8f0fe); border-color: var(--info, #4285f4); }
+.mc-grid-chip-name { font-weight: 600; white-space: normal; word-break: break-word; color: var(--text); }
+.mc-grid-chip-status { font-size: .75rem; font-weight: 600; color: var(--text); opacity: .85; }
+.mc-grid-status-done     { background: var(--easy-bg); border-color: var(--easy-border); }
+.mc-grid-status-done .mc-grid-chip-name, .mc-grid-status-done .mc-grid-chip-status { color: var(--easy-text); }
+.mc-grid-status-current  { background: var(--med-bg); border-color: var(--med-border); }
+.mc-grid-status-current .mc-grid-chip-name, .mc-grid-status-current .mc-grid-chip-status { color: var(--med-text); }
+.mc-grid-status-planned  { background: var(--blue-soft); border-color: var(--blue); }
+.mc-grid-status-planned .mc-grid-chip-name, .mc-grid-status-planned .mc-grid-chip-status { color: var(--blue); }
 .mc-grid-status-none     { background: var(--surface); }
 
 /* ── Board area ──────────────────────────────────────────────────────────── */
@@ -1599,11 +1603,59 @@ const PROGRAM_FAMILIES = [
 
 /* ── Label maps ─────────────────────────────────────────────────────────── */
 const SEM_HE = {
+  year_1_semester_a: "שנה א׳ — סמסטר א׳",
+  year_1_semester_b: "שנה א׳ — סמסטר ב׳",
+  year_2_semester_a: "שנה ב׳ — סמסטר א׳",
+  year_2_semester_b: "שנה ב׳ — סמסטר ב׳",
   year_3_semester_a: "שנה ג׳ — סמסטר א׳",
   year_3_semester_b: "שנה ג׳ — סמסטר ב׳",
   year_4_semester_a: "שנה ד׳ — סמסטר א׳",
   year_4_semester_b: "שנה ד׳ — סמסטר ב׳",
 };
+
+/**
+ * PART B — Year 1/2 mandatory mechanical-engineering courses. The active
+ * board (SEMESTERS/courseMap) only covers years 3-4, but "הקורסים שלי" needs
+ * to let users mark year 1/2 mandatory courses (often postponed) as
+ * completed/current/planned/not-taken so prerequisite checks for year 3/4
+ * courses work correctly. Sourced from
+ * data/programs/mechanical_engineering_2025_from_tau_program_page.json
+ * (mandatory_courses.courses with year 1/2), TAU mechanical engineering
+ * program page snapshot for 2025.
+ */
+const YEAR_1_2_SEMESTERS = [
+  { id: 'year_1_semester_a', css: 'col-y1a' },
+  { id: 'year_1_semester_b', css: 'col-y1b' },
+  { id: 'year_2_semester_a', css: 'col-y2a' },
+  { id: 'year_2_semester_b', css: 'col-y2b' },
+];
+
+const YEAR_1_2_MANDATORY_COURSES = [
+  { course_id: '0509-1510', name_he: 'גרפיקה הנדסית', semester: 'year_1_semester_a', credit_hours: 4.0 },
+  { course_id: '0509-1624', name_he: 'אלגברה ליניארית להנדסה מכנית', semester: 'year_1_semester_a', credit_hours: 6.5 },
+  { course_id: '0509-1646', name_he: 'חשבון דיפרנציאלי ואינטגרלי 1ב\' להנדסה מכנית ומדע והנדסה של חומרים', semester: 'year_1_semester_a', credit_hours: 5.5 },
+  { course_id: '0509-1815', name_he: 'כימיה בסיסית להנדסה', semester: 'year_1_semester_a', credit_hours: 3.0 },
+  { course_id: '0509-1820', name_he: 'תכנות - (פייתון)', semester: 'year_1_semester_a', credit_hours: 3.5 },
+  { course_id: '0542-1800', name_he: 'מבוא להנדסה מכנית', semester: 'year_1_semester_a', credit_hours: 0.0 },
+  { course_id: '0509-1645', name_he: 'משוואות דיפרנציאליות רגילות להנדסה מכנית', semester: 'year_1_semester_b', credit_hours: 4.0 },
+  { course_id: '0509-1647', name_he: 'חשבון דיפרנציאלי ואינטגרלי 2ב\' למכנית', semester: 'year_1_semester_b', credit_hours: 5.5 },
+  { course_id: '0509-1834', name_he: 'מעבדה בפיזיקה', semester: 'year_1_semester_b', credit_hours: 2.0 },
+  { course_id: '0542-1810', name_he: 'מכניקה של חלקיקים', semester: 'year_1_semester_b', credit_hours: 4.5 },
+  { course_id: '0542-1820', name_he: 'סטטיקה של גוף קשיח', semester: 'year_1_semester_b', credit_hours: 4.0 },
+  { course_id: '0581-1111', name_he: 'מבוא למדע והנדסה של חומרים', semester: 'year_1_semester_b', credit_hours: 4.0 },
+  { course_id: '0581-1132', name_he: 'מבוא למדע והנדסה של חומרים - מעבדה', semester: 'year_1_semester_b', credit_hours: 0.5 },
+  { course_id: '0509-1829', name_he: 'פיזיקה (2)', semester: 'year_2_semester_a', credit_hours: 5.5 },
+  { course_id: '0509-2805', name_he: 'מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים', semester: 'year_2_semester_a', credit_hours: 4.0 },
+  { course_id: '0509-2844', name_he: 'פונקציות מרוכבות', semester: 'year_2_semester_a', credit_hours: 3.0 },
+  { course_id: '0542-2110', name_he: 'דינמיקה של גוף קשיח', semester: 'year_2_semester_a', credit_hours: 4.0 },
+  { course_id: '0542-2200', name_he: 'מכניקת המוצקים (1)', semester: 'year_2_semester_a', credit_hours: 5.0 },
+  { course_id: '0542-2600', name_he: 'תרמודינמיקה (1)', semester: 'year_2_semester_a', credit_hours: 5.0 },
+  { course_id: '0509-2804', name_he: 'אנליזה נומרית', semester: 'year_2_semester_b', credit_hours: 4.0 },
+  { course_id: '0509-2843', name_he: 'אנליזה הרמונית', semester: 'year_2_semester_b', credit_hours: 3.0 },
+  { course_id: '0509-2846', name_he: 'משוואות דיפרנציאליות חלקיות', semester: 'year_2_semester_b', credit_hours: 3.0 },
+  { course_id: '0512-1205', name_he: 'מבוא למעגלים מערכות ואותות חשמליים', semester: 'year_2_semester_b', credit_hours: 4.0 },
+  { course_id: '0542-2500', name_he: 'מכניקת הזורמים (1)', semester: 'year_2_semester_b', credit_hours: 5.0 },
+];
 const DIFF_HE  = { easy:'קל', medium:'בינוני', hard:'קשה', very_hard:'קשה מאוד' };
 const TYPE_HE  = { mandatory:'חובה', elective:'בחירה' };
 const STAT_HE  = { blocked:'חסום', missing_from_db:'חסר' };
@@ -1749,14 +1801,35 @@ function getCourseHours(course) {
 
 /** PART C/D — שער רוח-specific "preferred finish type" options for _aiPickerState.shaarRuachAssessmentPref. */
 const SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS = [
-  { value: 'none',             label: 'אין העדפה' },
-  { value: 'no_exam',          label: 'מעדיף ללא מבחן' },
-  { value: 'final_paper',      label: 'מעדיף עבודת גמר/מטלת סיום' },
-  { value: 'ongoing',          label: 'מעדיף מטלות שוטפות' },
-  { value: 'low_workload',     label: 'מעדיף קורס קל' },
-  { value: 'avoid_exam',       label: 'להימנע ממבחן' },
-  { value: 'avoid_attendance', label: 'להימנע מנוכחות חובה' },
+  { value: 'none',                  label: 'אין העדפה' },
+  { value: 'prefer_no_exam',        label: 'מעדיף ללא מבחן' },
+  { value: 'prefer_exam',           label: 'מעדיף מבחן' },
+  { value: 'prefer_assignments',    label: 'מעדיף מטלות/עבודה במקום מבחן' },
+  { value: 'prefer_light_workload', label: 'מעדיף קורס קל' },
+  { value: 'avoid_mandatory_attendance', label: 'להימנע מנוכחות חובה' },
 ];
+
+/**
+ * PART C — migrate old/overlapping שער רוח preference values (from before the
+ * 6-option consolidation) to their nearest equivalent in
+ * SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS, so stored localStorage/in-memory values
+ * from earlier sessions don't end up unmatched.
+ */
+function _migrateShaarRuachAssessmentPref(value) {
+  if (!value) return value;
+  const MIGRATION = {
+    avoid_exam: 'prefer_no_exam',
+    no_exam: 'prefer_no_exam',
+    prefer_final_paper: 'prefer_assignments',
+    prefer_final_paper_or_project: 'prefer_assignments',
+    light_workload: 'prefer_light_workload',
+    avoid_attendance: 'avoid_mandatory_attendance',
+    no_preference: 'none',
+  };
+  if (MIGRATION[value]) return MIGRATION[value];
+  if (SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS.some(o => o.value === value)) return value;
+  return 'none';
+}
 
 /** קורסי שער רוח required credits, by program prefix. Mechanical Engineering = 6 נק"ז. */
 const SHAAR_RUACH_REQUIRED_CREDITS_PREFIX = { mechanical_engineering: 6 };
@@ -1777,6 +1850,7 @@ const LS_MY_COURSES  = 'tau_my_courses';
 const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
+const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
 
 /* ── AI session token (quota) ────────────────────────────────────────────── */
 /**
@@ -2188,6 +2262,7 @@ async function main() {
   loadMyCoursesState();
   loadUserCourseStatuses();
   loadDegreeHoursProfile();
+  loadAiChatState();
   setupDragDelegation();
   setupCardClick();
   setupDetailOverlay();
@@ -3256,7 +3331,7 @@ function renderMissingRequirementsHtml(items) {
     : `${it.name} (חסרים ${it.missing})`);
 
   // Chat-first: no buttons here — ask the AI to complete missing
-  // requirements via the chat input, or use "הצע צעד הבא".
+  // requirements via the chat input.
   return `<div class="missing-reqs">
     <div class="missing-reqs-title">דרישות חסרות: ${esc(lines.join(', '))}</div>
   </div>`;
@@ -3499,8 +3574,14 @@ function renderAiTab() {
       wanted:   (_aiPlanLastPreferences?.wanted_course_ids   || []).filter(cid => courseMap[cid]),
       unwanted: (_aiPlanLastPreferences?.unwanted_course_ids || []).filter(cid => courseMap[cid]),
       strongUnwanted: (_aiPlanLastPreferences?.strongly_avoided_course_ids || []).filter(cid => courseMap[cid]),
+      shaarRuachAssessmentPref: _migrateShaarRuachAssessmentPref(_aiPlanLastPreferences?.shaarRuachAssessmentPref) === 'none'
+        ? null
+        : _migrateShaarRuachAssessmentPref(_aiPlanLastPreferences?.shaarRuachAssessmentPref),
       _initialized: true,
     };
+  } else if (_aiPickerState.shaarRuachAssessmentPref) {
+    _aiPickerState.shaarRuachAssessmentPref = _migrateShaarRuachAssessmentPref(_aiPickerState.shaarRuachAssessmentPref);
+    if (_aiPickerState.shaarRuachAssessmentPref === 'none') _aiPickerState.shaarRuachAssessmentPref = null;
   }
 
   const missingReqs = buildMissingRequirementsList(s);
@@ -3567,17 +3648,21 @@ function renderAiTab() {
       <div id="ai-chat-log" class="ai-chat-log"></div>
 
       <div class="ai-input-area">
-        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת..."></textarea>
+        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת...">${esc(_aiChatInputDraft)}</textarea>
         <div class="ai-send-row">
-          <button class="btn btn-sm" id="sidebar-suggest-next">הצע צעד הבא</button>
+          <button class="btn btn-sm btn-link" id="sidebar-clear-chat">איפוס שיחה</button>
           <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
         </div>
       </div>
 
+      ${(!state.proposalDraft && allPlacedIds().size <= 2) ? `
+      <button class="btn btn-primary" id="sidebar-build-from-scratch">בנה מערכת מ־0</button>
+      ` : ''}
+
       <details class="ai-plan-section ai-advanced-collapsible">
         <summary class="ai-plan-section-title">אפשרויות מתקדמות</summary>
         <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
-          <button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מחדש מאפס</button>
+          ${(state.proposalDraft || allPlacedIds().size > 2) ? '<button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מערכת מ־0</button>' : ''}
           <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
           <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
           <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
@@ -3620,7 +3705,8 @@ function renderAiTab() {
   }
   document.getElementById('ai-pref-edit-completed-hours')?.addEventListener('click', openMyCoursesModal);
   document.getElementById('ai-pref-shaar-ruach-assessment')?.addEventListener('change', (e) => {
-    _aiPickerState.shaarRuachAssessmentPref = e.target.value === 'none' ? null : e.target.value;
+    const v = _migrateShaarRuachAssessmentPref(e.target.value);
+    _aiPickerState.shaarRuachAssessmentPref = v === 'none' ? null : v;
   });
 
   renderAiChatLog();
@@ -3628,6 +3714,15 @@ function renderAiTab() {
   document.getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend);
   document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
+  });
+  // PART D — persist the input draft as the user types, and on tab switch.
+  document.getElementById('sidebar-chat-input').addEventListener('input', e => {
+    _aiChatInputDraft = e.target.value;
+    saveAiChatState();
+  });
+  // PART D — "איפוס שיחה" clears only chat history, not preferences/draft.
+  document.getElementById('sidebar-clear-chat')?.addEventListener('click', () => {
+    if (confirm('לאפס את היסטוריית השיחה?')) clearAiChatHistory();
   });
 
   const run = actionType => {
@@ -3650,15 +3745,35 @@ function renderAiTab() {
   document.getElementById('sidebar-missing-suggest-all')?.addEventListener('click', () => offerAllCategorySuggestions());
   document.getElementById('sidebar-missing-ask-first')?.addEventListener('click', () => askBeforeAllMissingRequirements());
 
-  // "הצע צעד הבא" — chat-first equivalent of the old primary-action
-  // branching: empty board → full plan, missing reqs → complete, else →
-  // incremental improvement.
-  document.getElementById('sidebar-suggest-next')?.addEventListener('click', () => runPrimaryAiAction());
+  // PARTS F/G — primary "בנה מערכת מ־0" button, visible by default when no
+  // draft exists and the board is mostly empty. Calls full_plan directly.
+  document.getElementById('sidebar-build-from-scratch')?.addEventListener('click', () => {
+    postUserMessage('בנה מערכת מ־0');
+    postAssistantMessage('בונה תוכנית...');
+    run('full_plan').then(() => {
+      if (state.proposalDraft) {
+        postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
+          { label: 'החל שינוי', action: 'apply-draft' },
+          { label: 'דחה', action: 'reject-draft' },
+        ]);
+      }
+    });
+  });
 
-  // PART B/E — advanced actions (collapsed by default).
-  document.getElementById('sidebar-rebuild-from-scratch').addEventListener('click', () => {
+  // PART B/E — advanced actions (collapsed by default). Same button, but
+  // destructive when a draft/board already exists — requires confirmation.
+  document.getElementById('sidebar-rebuild-from-scratch')?.addEventListener('click', () => {
     if (confirm('בניית תוכנית מלאה תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
-      run('full_plan');
+      postUserMessage('בנה מערכת מ־0');
+      postAssistantMessage('בונה תוכנית...');
+      run('full_plan').then(() => {
+        if (state.proposalDraft) {
+          postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
+            { label: 'החל שינוי', action: 'apply-draft' },
+            { label: 'דחה', action: 'reject-draft' },
+          ]);
+        }
+      });
     }
   });
   document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
@@ -3682,7 +3797,7 @@ function renderAiTab() {
   renderProposalCard();
 }
 
-/* ── PART A — primary-action dispatch logic (used by "הצע צעד הבא") ────────
+/* ── PART A/E — primary-action dispatch logic (used as the chat fallback) ──
  * Inspects the current board + missing-requirements state and dispatches to
  * the appropriate flow:
  *  - empty/mostly-empty board  → full-plan generation (action_type=full_plan)
@@ -3729,6 +3844,34 @@ function runPrimaryAiAction() {
  * Quick-reply clicks send `label` as the next chat message (after applying
  * any preference side-effects encoded in `action`/`payload`). */
 let _aiChatMessages = [];
+/** PART D — current draft text in the chat input, persisted across tab switches/reloads. */
+let _aiChatInputDraft = '';
+
+/** PART D — load persisted chat history + input draft from localStorage. */
+function loadAiChatState() {
+  try {
+    const raw = localStorage.getItem(LS_AI_CHAT);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      _aiChatMessages = Array.isArray(parsed.messages) ? parsed.messages : [];
+      _aiChatInputDraft = typeof parsed.inputDraft === 'string' ? parsed.inputDraft : '';
+    }
+  } catch { _aiChatMessages = []; _aiChatInputDraft = ''; }
+}
+
+/** PART D — persist chat history + input draft to localStorage. */
+function saveAiChatState() {
+  try {
+    localStorage.setItem(LS_AI_CHAT, JSON.stringify({ messages: _aiChatMessages, inputDraft: _aiChatInputDraft }));
+  } catch {}
+}
+
+/** PART D — "נקה שיחה" — clear chat history only (not preferences/draft text). */
+function clearAiChatHistory() {
+  _aiChatMessages = [];
+  saveAiChatState();
+  renderAiChatLog();
+}
 
 function renderAiChatLog() {
   const logEl = document.getElementById('ai-chat-log');
@@ -3759,12 +3902,14 @@ function renderAiChatLog() {
 /** Append an assistant message (optionally with quick-reply chips) and re-render the log. */
 function postAssistantMessage(text, quickReplies) {
   _aiChatMessages.push({ role: 'assistant', text, quickReplies: quickReplies || [] });
+  saveAiChatState();
   renderAiChatLog();
 }
 
 /** Append a user message and re-render the log. */
 function postUserMessage(text) {
   _aiChatMessages.push({ role: 'user', text });
+  saveAiChatState();
   renderAiChatLog();
 }
 
@@ -4287,6 +4432,17 @@ async function handleSidebarChatSend(providedMessage) {
     'full_plan', 'balance_load', 'balance_specific_semester', 'complete_requirements',
     'fix_legality', 'improve_career_fit', 'replace_course', 'add_avoided', 'improve_current',
   ]);
+
+  // PART E — fallback path: when the message doesn't match a specific intent
+  // (improve_current), dispatch via runPrimaryAiAction's branching logic
+  // (empty board → full_plan, missing reqs → complete_requirements,
+  // otherwise → incremental improvement). This replaces the old standalone
+  // suggest-next-step button.
+  if (intent.type === 'improve_current' && pending == null) {
+    postAssistantMessage('מבין — בודק מה הצעד הבא המתאים…');
+    await runPrimaryAiAction();
+    return;
+  }
 
   if (PLANNING_INTENTS.has(intent.type)) {
     // "add_avoided" — record the course as strongly avoided, then fall
@@ -6871,10 +7027,10 @@ function _renderMyCoursesGrid(gridEl) {
     planned: 'mc-grid-status-planned',
   };
 
-  const cols = SEMESTERS.map(s => {
-    const cids = (state.semesters[s.id] || []).filter(cid => courseMap[cid]?.course_type === 'mandatory');
-    const chips = cids.map(cid => {
-      const c = courseMap[cid];
+  const cols = YEAR_1_2_SEMESTERS.map(s => {
+    const courses = YEAR_1_2_MANDATORY_COURSES.filter(c => c.semester === s.id);
+    const chips = courses.map(c => {
+      const cid = c.course_id;
       const status = getUserStatus(cid).status;
       return `<button type="button" class="mc-grid-chip ${STATUS_CLS[status]}" data-mc-grid-toggle="${esc(cid)}"
                 title="${esc(c.name_he || cid)} — לחץ לשינוי סטטוס">
@@ -6889,16 +7045,13 @@ function _renderMyCoursesGrid(gridEl) {
   });
 
   gridEl.innerHTML = `
-    <div class="my-courses-grid-title">קורסי חובה לפי סמסטר — לחיצה משנה סטטוס</div>
+    <div class="my-courses-grid-title">קורסי חובה שנים א׳-ב׳ — לחיצה משנה סטטוס</div>
     <div class="my-courses-grid-cols">${cols.join('')}</div>`;
 }
 
 /** course_ids shown in the semester grid — excluded from the searchable list below. */
 function _myCoursesGridCourseIds() {
-  return new Set(
-    SEMESTERS.flatMap(s => (state.semesters[s.id] || []))
-      .filter(cid => courseMap[cid]?.course_type === 'mandatory')
-  );
+  return new Set(YEAR_1_2_MANDATORY_COURSES.map(c => c.course_id));
 }
 
 function _renderMyCoursesListContent(listEl, query) {
@@ -7356,7 +7509,8 @@ function openPlanPreferencesModal() {
   maxHoursInput.addEventListener('input', updatePreferenceSummary);
   document.getElementById('ai-pref-extra').addEventListener('input', updatePreferenceSummary);
   document.getElementById('ai-pref-shaar-ruach-assessment').addEventListener('change', (e) => {
-    _aiPickerState.shaarRuachAssessmentPref = e.target.value === 'none' ? null : e.target.value;
+    const v = _migrateShaarRuachAssessmentPref(e.target.value);
+    _aiPickerState.shaarRuachAssessmentPref = v === 'none' ? null : v;
     updatePreferenceSummary();
   });
   panel.querySelectorAll('#ai-pref-balance, #ai-pref-avoid-labs, #ai-pref-avoid-projects, input[name="preferred_category"]')
@@ -8156,24 +8310,23 @@ function _shaarRuachAssessmentScoreLocal(c, pref) {
   const WORKLOAD_RANK = { low: 2, medium: 1, high: 0 };
 
   switch (pref) {
-    case 'no_exam':
-    case 'avoid_exam':
+    case 'prefer_no_exam':
       if (c.has_exam === false) return 3;
       if (c.has_exam == null) return 1;
       return -3;
-    case 'final_paper':
-      if (c.has_final_paper === true || c.has_project === true) return 3;
-      if (c.has_final_paper == null && c.has_project == null) return 1;
+    case 'prefer_exam':
+      if (c.has_exam === true) return 3;
+      if (c.has_exam == null) return 1;
+      return -3;
+    case 'prefer_assignments':
+      if (c.has_final_paper === true || c.has_project === true || c.has_homework === true) return 3;
+      if (c.has_final_paper == null && c.has_project == null && c.has_homework == null) return 1;
       return 0;
-    case 'ongoing':
-      if (c.has_homework === true) return 3;
-      if (c.has_homework == null) return 1;
-      return 0;
-    case 'low_workload':
+    case 'prefer_light_workload':
       if (c.workload_level != null) return WORKLOAD_RANK[c.workload_level] ?? 0;
       return 1; // unknown ranks between low(2) and high(0)
-    case 'avoid_attendance':
-      if (c.requires_attendance === false) return 3;
+    case 'avoid_mandatory_attendance':
+      if (c.requires_attendance !== true) return 3;
       if (c.requires_attendance == null) return 1;
       return -3;
     default:

@@ -1076,20 +1076,23 @@ def test_parsed_syllabus_summary_used_in_context(html):
 
 
 def test_shaar_ruach_assessment_pref_options_exist(html):
-    """SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS must define the required preference
-    options, including 'no exam', 'final paper', 'ongoing', 'low workload',
-    'avoid exam' and 'avoid attendance'."""
+    """SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS must define exactly the 6 required
+    preference options, with no overlap between 'no exam' and 'avoid exam'."""
     assert "SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS" in html
     m = re.search(r"const SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS = \[(.*?)\];", html, re.DOTALL)
     assert m
     body = m.group(1)
-    for val in ["none", "no_exam", "final_paper", "ongoing", "low_workload", "avoid_exam", "avoid_attendance"]:
+    expected = ["none", "prefer_no_exam", "prefer_exam", "prefer_assignments", "prefer_light_workload", "avoid_mandatory_attendance"]
+    for val in expected:
         assert f"value: '{val}'" in body
+    entries = re.findall(r"\{ value: '([^']+)'", body)
+    assert len(entries) == 6
+    assert set(entries) == set(expected)
 
 
 def test_shaar_ruach_assessment_ranking_prefers_no_exam(html):
-    """_shaarRuachAssessmentScoreLocal: with pref='no_exam', a candidate with
-    has_exam===false must score higher than one with has_exam===true, and
+    """_shaarRuachAssessmentScoreLocal: with pref='prefer_no_exam', a candidate
+    with has_exam===false must score higher than one with has_exam===true, and
     higher than an unknown (null) candidate."""
     m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
     assert m, "_shaarRuachAssessmentScoreLocal not found"
@@ -1099,16 +1102,16 @@ def test_shaar_ruach_assessment_ranking_prefers_no_exam(html):
 
 
 def test_shaar_ruach_assessment_ranking_prefers_final_paper(html):
-    """_shaarRuachAssessmentScoreLocal: with pref='final_paper', a candidate
-    with has_final_paper/has_project===true ranks higher."""
+    """_shaarRuachAssessmentScoreLocal: with pref='prefer_assignments', a candidate
+    with has_final_paper/has_project/has_homework===true ranks higher."""
     m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
     assert m, "_shaarRuachAssessmentScoreLocal not found"
     body = m.group(1)
-    assert "has_final_paper === true || c.has_project === true" in body
+    assert "has_final_paper === true || c.has_project === true || c.has_homework === true" in body
 
 
 def test_shaar_ruach_unknown_assessment_ranks_below_known_match(html):
-    """For preferences with a binary signal (no_exam/avoid_exam/avoid_attendance),
+    """For preferences with a binary signal (prefer_no_exam/prefer_exam/avoid_attendance),
     a known-matching value must score strictly higher than an unknown (null) value,
     which must in turn score >= a known-non-matching value."""
     m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
@@ -1296,27 +1299,31 @@ def test_no_duplicate_top_level_full_plan_and_suggest_all_buttons(html):
 
 
 def test_primary_action_button_removed_suggest_next_present(html):
-    """The old always-visible 'הצע תוכנית / תיקון חכם' primary button must be
-    gone; a small optional 'הצע צעד הבא' button (using the same
-    runPrimaryAiAction dispatch) takes its place."""
+    """The old always-visible 'הצע תוכנית / תיקון חכם' primary button, and the
+    'הצע צעד הבא' button, must both be gone (PART E) — the runPrimaryAiAction
+    branching logic now lives as the fallback path inside
+    handleSidebarChatSend's intent dispatch instead of a separate button."""
     assert 'id="sidebar-primary-action"' not in html
     assert "הצע תוכנית / תיקון חכם" not in html
-    assert 'id="sidebar-suggest-next"' in html
-    assert "הצע צעד הבא" in html
+    assert 'id="sidebar-suggest-next"' not in html
+    assert "הצע צעד הבא" not in html
     assert re.search(r"function runPrimaryAiAction\(", html)
-    assert "getElementById('sidebar-suggest-next')?.addEventListener('click', () => runPrimaryAiAction())" in html
+    m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "handleSidebarChatSend not found"
+    assert "runPrimaryAiAction(" in m.group(1)
 
 
 def test_rebuild_from_scratch_in_advanced_actions_with_confirm(html):
-    """'בנה מחדש מאפס' must live under אפשרויות מתקדמות, with a confirm()
-    dialog, and call the (fixed) full-plan flow."""
+    """The full-plan rebuild button must live under אפשרויות מתקדמות when a
+    draft/board already exists, with a confirm() dialog, and call the (fixed)
+    full-plan flow."""
     m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
     assert m, "advanced actions <details> not found"
     assert 'id="sidebar-rebuild-from-scratch"' in m.group(1)
-    assert "בנה מחדש מאפס" in m.group(1)
+    assert "בנה" in m.group(1)
 
     m2 = re.search(
-        r"getElementById\('sidebar-rebuild-from-scratch'\)\.addEventListener\('click', \(\) => \{(.*?)\}\);",
+        r"getElementById\('sidebar-rebuild-from-scratch'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
         html, re.DOTALL,
     )
     assert m2, "sidebar-rebuild-from-scratch click handler not found"
@@ -1340,9 +1347,11 @@ def test_chat_free_text_routes_full_plan_request(html):
 
 
 def test_chat_first_default_visible_controls(html):
-    """Only the chat input + 'שלח' send button + optional 'הצע צעד הבא'
-    button should be visible by default (outside <details> / proposal card)
-    in the AI tab."""
+    """PART I — only the chat thread, input + 'שלח' send button, an optional
+    'נקה שיחה'/'איפוס שיחה' button, and either the prominent full-plan button
+    (no draft/empty board) or renderProposalCard's apply/reject (draft exists)
+    should be visible by default (outside <details> / proposal card) in the
+    AI tab. No 'הצע צעד הבא' button."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     body = m.group(1)
@@ -1354,11 +1363,12 @@ def test_chat_first_default_visible_controls(html):
     template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
     template_no_details = re.sub(r'<div id="ai-proposal-card"></div>', "", template_no_details)
 
-    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס']:
+    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא']:
         assert removed not in template_no_details, f"{removed} must not be default-visible"
 
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
-    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-suggest-next"}, visible_buttons
+    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-clear-chat", "sidebar-build-from-scratch"}, visible_buttons
+    assert len(visible_buttons) <= 3
 
 
 def test_full_plan_flow_no_undefined_function_references(html):
