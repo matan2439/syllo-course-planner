@@ -1031,3 +1031,123 @@ def test_followup_chat_message_extends_existing_draft(html):
     body = m.group(0)
     assert "state.proposalDraft" in body
     assert "requestPlanProposalFromDraft" in body
+
+
+def test_syllabus_url_without_parsed_text_does_not_say_unavailable(html):
+    """buildCourseContext: course with syllabus_url but no syllabus_summary_he
+    must say a syllabus link exists but is not yet analyzed, not 'no syllabus'."""
+    m = re.search(r"function buildCourseContext\(c\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m, "buildCourseContext not found"
+    body = m.group(1)
+    assert "קישור סילבוס קיים עבור קורס זה" in body
+    assert "עדיין לא נותח במערכת" in body
+    assert "אפשר לפתוח את הסילבוס כאן" in body
+
+
+def test_no_syllabus_url_says_link_not_found(html):
+    """buildCourseContext: course with no syllabus_url at all must say
+    'לא נמצא קישור סילבוס'."""
+    m = re.search(r"function buildCourseContext\(c\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m, "buildCourseContext not found"
+    body = m.group(1)
+    assert "לא נמצא קישור סילבוס לקורס הזה במערכת" in body
+
+
+def test_parsed_syllabus_summary_used_in_context(html):
+    """buildCourseContext: when syllabus_text_available && syllabus_summary_he,
+    the parsed summary/topics/assessment must be included in the context."""
+    m = re.search(r"function buildCourseContext\(c\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m, "buildCourseContext not found"
+    body = m.group(1)
+    assert "syllabus_text_available && c.syllabus_summary_he" in body
+    assert "תקציר סילבוס" in body
+    assert "syllabus_topics_he" in body
+    assert "syllabus_assessment_he" in body
+
+
+def test_shaar_ruach_assessment_pref_options_exist(html):
+    """SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS must define the required preference
+    options, including 'no exam', 'final paper', 'ongoing', 'low workload',
+    'avoid exam' and 'avoid attendance'."""
+    assert "SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS" in html
+    m = re.search(r"const SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS = \[(.*?)\];", html, re.DOTALL)
+    assert m
+    body = m.group(1)
+    for val in ["none", "no_exam", "final_paper", "ongoing", "low_workload", "avoid_exam", "avoid_attendance"]:
+        assert f"value: '{val}'" in body
+
+
+def test_shaar_ruach_assessment_ranking_prefers_no_exam(html):
+    """_shaarRuachAssessmentScoreLocal: with pref='no_exam', a candidate with
+    has_exam===false must score higher than one with has_exam===true, and
+    higher than an unknown (null) candidate."""
+    m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m, "_shaarRuachAssessmentScoreLocal not found"
+    body = m.group(1)
+    assert "has_exam === false" in body
+    assert "has_exam == null" in body
+
+
+def test_shaar_ruach_assessment_ranking_prefers_final_paper(html):
+    """_shaarRuachAssessmentScoreLocal: with pref='final_paper', a candidate
+    with has_final_paper/has_project===true ranks higher."""
+    m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m, "_shaarRuachAssessmentScoreLocal not found"
+    body = m.group(1)
+    assert "has_final_paper === true || c.has_project === true" in body
+
+
+def test_shaar_ruach_unknown_assessment_ranks_below_known_match(html):
+    """For preferences with a binary signal (no_exam/avoid_exam/avoid_attendance),
+    a known-matching value must score strictly higher than an unknown (null) value,
+    which must in turn score >= a known-non-matching value."""
+    m = re.search(r"function _shaarRuachAssessmentScoreLocal\(c, pref\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m
+    body = m.group(1)
+    # known match -> 3, unknown -> 1, non-match -> negative; 3 > 1 > -3
+    assert "return 3" in body
+    assert "return 1" in body
+    assert "return -3" in body
+
+
+def test_shaar_ruach_pref_used_only_in_general_courses_repair(html):
+    """_pickBestShaarRuachCandidateLocal must be used inside
+    repairAddGeneralCoursesLocal (שער רוח candidate selection), and must NOT
+    be used inside repairAddMissingElectivesLocal (engineering electives)."""
+    assert "_pickBestShaarRuachCandidateLocal" in html
+
+    m_general = re.search(r"function repairAddGeneralCoursesLocal\(.*?\n\}\n", html, re.DOTALL)
+    assert m_general
+    assert "_pickBestShaarRuachCandidateLocal" in m_general.group(0)
+
+    m_electives = re.search(r"function repairAddMissingElectivesLocal\(.*?\n\}\n", html, re.DOTALL)
+    assert m_electives
+    assert "_pickBestShaarRuachCandidateLocal" not in m_electives.group(0)
+    assert "shaarRuachAssessmentPref" not in m_electives.group(0)
+
+
+def test_shaar_ruach_no_match_fallback_message(html):
+    """repairAddGeneralCoursesLocal must communicate when no candidate matches
+    the requested assessment preference."""
+    m = re.search(r"function repairAddGeneralCoursesLocal\(.*?\n\}\n", html, re.DOTALL)
+    assert m
+    assert "לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת, לכן נבחרו החלופות הקרובות ביותר." in m.group(0)
+
+
+def test_course_modal_renders_shaar_ruach_info_section(html):
+    """The course detail modal must render a 'מידע שער רוח' section showing
+    נק"ז, סמסטר, סוג סיום, עומס משוער and סילבוס status for שער רוח courses."""
+    assert "מידע שער רוח" in html
+    m = re.search(r"const shaarRuachSection = \(\(\) => \{(.*?)\n  \}\)\(\);", html, re.DOTALL)
+    assert m, "shaarRuachSection not found"
+    body = m.group(1)
+    for label in ['נק"ז', "סמסטר", "סוג סיום", "עומס משוער", "סילבוס"]:
+        assert label in body
+
+
+def test_ai_plan_request_includes_shaar_ruach_pref(html):
+    """The AI plan request preferences payload must include
+    shaarRuachAssessmentPref when set."""
+    m = re.search(r"preferences: \(_aiPlanLastPreferences.*?\n      : undefined,", html, re.DOTALL)
+    assert m, "preferences payload not found"
+    assert "shaarRuachAssessmentPref" in m.group(0)

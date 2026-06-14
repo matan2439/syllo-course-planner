@@ -1711,6 +1711,17 @@ function getCourseHours(course) {
   return course.hours ?? course.weekly_hours ?? course.semester_hours ?? null;
 }
 
+/** PART C/D — שער רוח-specific "preferred finish type" options for _aiPickerState.shaarRuachAssessmentPref. */
+const SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS = [
+  { value: 'none',             label: 'אין העדפה' },
+  { value: 'no_exam',          label: 'מעדיף ללא מבחן' },
+  { value: 'final_paper',      label: 'מעדיף עבודת גמר/מטלת סיום' },
+  { value: 'ongoing',          label: 'מעדיף מטלות שוטפות' },
+  { value: 'low_workload',     label: 'מעדיף קורס קל' },
+  { value: 'avoid_exam',       label: 'להימנע ממבחן' },
+  { value: 'avoid_attendance', label: 'להימנע מנוכחות חובה' },
+];
+
 /** קורסי שער רוח required credits, by program prefix. Mechanical Engineering = 6 נק"ז. */
 const SHAAR_RUACH_REQUIRED_CREDITS_PREFIX = { mechanical_engineering: 6 };
 function shaarRuachRequiredCreditsFor(programId) {
@@ -1904,14 +1915,23 @@ function buildPlanContext() {
     required_credits: shaarRuachRequiredCredits,
     candidates: SHAAR_RUACH_COURSES
       .filter(c => !placedIds.has(c.course_id) && !completedIdsForAnalysis.has(c.course_id))
-      .map(c => ({
-        course_id: c.course_id,
-        name_he: c.name_he,
-        hours: c.credits,
-        has_syllabus_summary: false,
-        grade_average: null,
-        is_wanted: wantedIdsForAnalysis.has(c.course_id),
-      })),
+      .map(c => {
+        const cm = courseMap[c.course_id] || {};
+        return {
+          course_id: c.course_id,
+          name_he: c.name_he,
+          hours: c.credits,
+          has_syllabus_summary: false,
+          grade_average: null,
+          is_wanted: wantedIdsForAnalysis.has(c.course_id),
+          has_exam: cm.has_exam ?? null,
+          has_final_paper: cm.has_final_paper ?? null,
+          has_project: cm.has_project ?? null,
+          has_homework: cm.has_homework ?? null,
+          requires_attendance: cm.requires_attendance ?? null,
+          workload_level: cm.workload_level ?? null,
+        };
+      }),
   } : undefined;
 
   const total_hours_progress = {
@@ -1956,11 +1976,12 @@ function buildPlanContext() {
     program_name:         selectedProg?.program_name,
     semesters,
     pinned_course_ids:    (state.pinnedCourseIds && state.pinnedCourseIds.length) ? [...state.pinnedCourseIds] : undefined,
-    preferences: (_aiPlanLastPreferences?.wanted_course_ids?.length || _aiPlanLastPreferences?.unwanted_course_ids?.length || _aiPlanLastPreferences?.extra_request_he)
+    preferences: (_aiPlanLastPreferences?.wanted_course_ids?.length || _aiPlanLastPreferences?.unwanted_course_ids?.length || _aiPlanLastPreferences?.extra_request_he || _aiPickerState.shaarRuachAssessmentPref)
       ? {
           wanted_course_ids:   _aiPlanLastPreferences?.wanted_course_ids   || undefined,
           unwanted_course_ids: _aiPlanLastPreferences?.unwanted_course_ids || undefined,
           extra_request_he:    _aiPlanLastPreferences?.extra_request_he    || undefined,
+          shaarRuachAssessmentPref: _aiPickerState.shaarRuachAssessmentPref || undefined,
         }
       : undefined,
     overload_warnings:    overload_warnings.length ? overload_warnings : undefined,
@@ -2650,6 +2671,22 @@ function init(board, audit, programJson) {
       warnings: [], data_quality: { has_weekly_hours: true },
       syllabus_url: g.syllabus_url || null, syllabus_links: [], source_urls: [],
       semester_availability: null, grade_signal: null,
+      credits: g.credits ?? 2,
+      offered_semesters: g.offered_semesters || [],
+      syllabus_text_available: g.syllabus_text_available ?? false,
+      syllabus_summary_he: g.syllabus_summary_he || null,
+      syllabus_topics_he: g.syllabus_topics_he || [],
+      syllabus_assessment_he: g.syllabus_assessment_he || null,
+      syllabus_structure_he: g.syllabus_structure_he || null,
+      final_requirement_type: g.final_requirement_type || g.assessment_type || null,
+      assessment_type: g.assessment_type || null,
+      has_exam: g.has_exam ?? null,
+      has_final_paper: g.has_final_paper ?? null,
+      has_project: g.has_project ?? null,
+      has_homework: g.has_homework ?? null,
+      requires_attendance: g.requires_attendance ?? null,
+      workload_level: g.workload_level || null,
+      source_confidence: g.source_confidence || null,
     };
   }
 
@@ -4495,8 +4532,14 @@ function buildCourseContext(c) {
                            lines.push(`מטלות/הערכה מהסילבוס: ${c.syllabus_assessment_he}`);
     if (c.syllabus_structure_he)
                            lines.push(`מבנה הקורס מהסילבוס: ${c.syllabus_structure_he}`);
+  } else if (c.syllabus_url) {
+    lines.push('סילבוס זמין: קישור קיים, תוכן לא נותח');
+    lines.push(`קישור סילבוס קיים עבור קורס זה (syllabus_url: ${c.syllabus_url}), אך תוכן הסילבוס עדיין לא נותח במערכת.`);
+    lines.push('הוראה לתשובה על שאלות "מה לומדים בקורס": יש להשיב — "יש קישור לסילבוס, אבל התוכן שלו עדיין לא נותח במערכת. אפשר לפתוח את הסילבוס כאן, או לעדכן את פרטי הקורס ידנית." אין להניח תוכן סילבוס.');
+    lines.push('הוראה לתשובה על שאלות "באיזה סמסטר": יש להשתמש בנתוני offered_semesters/effective_allowed_semesters שלעיל, לא בסילבוס.');
   } else {
-    lines.push('סילבוס זמין: לא — הסילבוס לא פורסם/לא זמין במערכת. יש להשתמש בנתונים אחרים (קטגוריה, שעות, ציונים, דרישות קדם) ולא להניח תוכן סילבוס.');
+    lines.push('סילבוס זמין: לא');
+    lines.push('לא נמצא קישור סילבוס לקורס הזה במערכת. יש להשתמש בנתונים אחרים (קטגוריה, שעות, ציונים, דרישות קדם) ולא להניח תוכן סילבוס.');
   }
   if (!c.name_he) lines.push('⚠ שם הקורס חסר במידע הזמין (לא נמצא מקור אמין).');
   if (hasSyllabus && c.syllabus_url) lines.push(`קישור סילבוס: ${c.syllabus_url}`);
@@ -4918,6 +4961,28 @@ function openCourseDetails(cid) {
     ? mkSection('אזהרות', warns.map(w=>`<div class="detail-warn">⚠ ${esc(w)}</div>`).join(''))
     : '';
 
+  /* שער רוח info section (PART F) — for קורסי שער רוח courses only. */
+  const shaarRuachSection = (() => {
+    if (c.program_category_id !== 'shaar_ruach' && c.source !== 'shaar_ruach' && c.category !== 'שער רוח') return '';
+    const semLabel = (c.offered_semesters || []).length
+      ? c.offered_semesters.map(s => SEM_HE[s] || s).join(' / ')
+      : 'לא ידוע';
+    const finishType = c.final_requirement_type || c.assessment_type || 'לא ידוע';
+    const WORKLOAD_HE_LOCAL = { low: 'נמוך', medium: 'בינוני', high: 'גבוה' };
+    const workload = WORKLOAD_HE_LOCAL[c.workload_level] || 'לא ידוע';
+    const sylStatus = (c.syllabus_text_available && c.syllabus_summary_he) ? 'קיים / נותח'
+      : c.syllabus_url ? 'קיים / לא נותח'
+      : 'לא קיים';
+    const rows = [
+      mkRow('נק"ז:', esc(c.credits ?? c.weekly_hours ?? 2)),
+      mkRow('סמסטר:', esc(semLabel)),
+      mkRow('סוג סיום:', esc(finishType)),
+      mkRow('עומס משוער:', esc(workload)),
+      mkRow('סילבוס:', esc(sylStatus)),
+    ].join('');
+    return mkSection('מידע שער רוח', rows);
+  })();
+
   /* Source / quality section */
   const qualRows = [
     src  ? mkRow('מקור:', esc(src)) : '',
@@ -4984,6 +5049,7 @@ function openCourseDetails(cid) {
     <div class="detail-body tabbed">
       <div class="detail-tab-panel active" id="dtab-info">
         ${mkSection('פרטי קורס', basicRows || '<div class="detail-none">אין מידע</div>')}
+        ${shaarRuachSection}
         ${mkSection('איכות מידע', dataQualityRows, true)}
         ${diffSection}
         ${gradeSection}
@@ -6310,7 +6376,7 @@ function closeAiPlanModal() {
 /* ── Searchable course picker (used for "wanted"/"unwanted" course lists) ──
  * Two independent pickers ("wanted" and "unwanted") each maintain their own
  * selected-id list in _aiPickerState, persisted across "בקש שינויים" reopen. */
-let _aiPickerState = { wanted: [], unwanted: [] };
+let _aiPickerState = { wanted: [], unwanted: [], shaarRuachAssessmentPref: null };
 let _aiPickerCourses = []; // cached repo courses for the open modal
 
 function _aiPickerCourseLabel(c) {
@@ -6429,6 +6495,11 @@ function buildPreferenceSummaryHe() {
     parts.push(`להימנע: ${_aiPickerState.unwanted.map(cid => courseMap[cid]?.name_he || cid).join(', ')}`);
   }
 
+  if (_aiPickerState.shaarRuachAssessmentPref) {
+    const opt = SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS.find(o => o.value === _aiPickerState.shaarRuachAssessmentPref);
+    if (opt) parts.push(`שער רוח: ${opt.label}`);
+  }
+
   const extra = document.getElementById('ai-pref-extra')?.value.trim();
   if (extra) parts.push(`הערה: ${extra}`);
 
@@ -6530,6 +6601,16 @@ function openPlanPreferencesModal() {
       </div>
 
       <div class="ai-plan-section">
+        <div class="ai-plan-section-title">קורסי שער רוח — העדפת סוג סיום</div>
+        <div class="ai-plan-hint">משפיע רק על בחירת קורסי שער רוח, לא על קורסי בחירה הנדסיים.</div>
+        <select id="ai-pref-shaar-ruach-assessment" class="ai-plan-select">
+          ${SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS.map(o =>
+            `<option value="${o.value}" ${(_aiPickerState.shaarRuachAssessmentPref || 'none') === o.value ? 'selected' : ''}>${o.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+
+      <div class="ai-plan-section">
         <div class="ai-plan-section-title">קורסים מועדפים / לא רצויים</div>
         <details class="ai-plan-details" style="margin-bottom:6px">
           <summary>מה זה עושה?</summary>
@@ -6621,6 +6702,10 @@ function openPlanPreferencesModal() {
   maxHoursInput.addEventListener('input', updateMaxHoursLabel);
   maxHoursInput.addEventListener('input', updatePreferenceSummary);
   document.getElementById('ai-pref-extra').addEventListener('input', updatePreferenceSummary);
+  document.getElementById('ai-pref-shaar-ruach-assessment').addEventListener('change', (e) => {
+    _aiPickerState.shaarRuachAssessmentPref = e.target.value === 'none' ? null : e.target.value;
+    updatePreferenceSummary();
+  });
   panel.querySelectorAll('#ai-pref-balance, #ai-pref-avoid-labs, #ai-pref-avoid-projects, input[name="preferred_category"]')
     .forEach(el => el.addEventListener('change', updatePreferenceSummary));
   updatePreferenceSummary();
@@ -6637,6 +6722,7 @@ function openPlanPreferencesModal() {
       preferred_categories: Array.from(document.querySelectorAll('input[name="preferred_category"]:checked')).map(el => el.value),
       wanted_course_ids:    [..._aiPickerState.wanted],
       unwanted_course_ids:  [..._aiPickerState.unwanted],
+      shaarRuachAssessmentPref: _aiPickerState.shaarRuachAssessmentPref || null,
       extra_request_he:     document.getElementById('ai-pref-extra').value.trim() || undefined,
     };
     _aiPlanLastPreferences = prefs;
@@ -7405,6 +7491,65 @@ function _pickBestCandidateLocal(candidates, unwantedIds, interestText) {
   return [...pool].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText))[0];
 }
 
+/**
+ * PART D — שער רוח-only ranking bonus based on _aiPickerState.shaarRuachAssessmentPref.
+ * Returns 0 for non-שער-רוח candidates / no preference, so it never affects
+ * engineering elective selection.
+ *
+ * Ranking order: known-matching value > unknown value > known-non-matching.
+ */
+function _shaarRuachAssessmentScoreLocal(c, pref) {
+  if (!pref) return 0;
+  const WORKLOAD_RANK = { low: 2, medium: 1, high: 0 };
+
+  switch (pref) {
+    case 'no_exam':
+    case 'avoid_exam':
+      if (c.has_exam === false) return 3;
+      if (c.has_exam == null) return 1;
+      return -3;
+    case 'final_paper':
+      if (c.has_final_paper === true || c.has_project === true) return 3;
+      if (c.has_final_paper == null && c.has_project == null) return 1;
+      return 0;
+    case 'ongoing':
+      if (c.has_homework === true) return 3;
+      if (c.has_homework == null) return 1;
+      return 0;
+    case 'low_workload':
+      if (c.workload_level != null) return WORKLOAD_RANK[c.workload_level] ?? 0;
+      return 1; // unknown ranks between low(2) and high(0)
+    case 'avoid_attendance':
+      if (c.requires_attendance === false) return 3;
+      if (c.requires_attendance == null) return 1;
+      return -3;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * PART D — pick the best שער רוח candidate, ranking by:
+ * 1. shaarRuachAssessmentPref match (known-matching > unknown > known-non-matching)
+ * 2. workload_level (lower is better)
+ * 3. existing relevance/avoided-course score (_scoreCandidateLocal)
+ */
+function _pickBestShaarRuachCandidateLocal(candidates, unwantedIds, interestText, assessmentPref) {
+  if (!candidates.length) return null;
+  const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
+  const pool = preferred.length ? preferred : candidates;
+  const WORKLOAD_RANK = { low: 2, medium: 1, high: 0 };
+  return [...pool].sort((a, b) => {
+    const pa = _shaarRuachAssessmentScoreLocal(a, assessmentPref);
+    const pb = _shaarRuachAssessmentScoreLocal(b, assessmentPref);
+    if (pa !== pb) return pb - pa;
+    const wa = a.workload_level != null ? (WORKLOAD_RANK[a.workload_level] ?? 1) : 1;
+    const wb = b.workload_level != null ? (WORKLOAD_RANK[b.workload_level] ?? 1) : 1;
+    if (wa !== wb) return wb - wa;
+    return _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText);
+  })[0];
+}
+
 /* PART C (client mirror) — pick the candidate whose hours best close the
    remaining `gap` toward the 185-ש"ש degree total, minimizing overshoot:
    exact fit > smallest overshoot > largest undershoot. Mirrors
@@ -8083,9 +8228,14 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
 
   let pool = gr.candidates.filter(c => !placed.has(c.course_id));
   let exhausted = false;
+  const assessmentPref = _aiPickerState.shaarRuachAssessmentPref || null;
+  let prefUnmatched = false;
+  if (assessmentPref && pool.length) {
+    prefUnmatched = !pool.some(c => _shaarRuachAssessmentScoreLocal(c, assessmentPref) >= 3);
+  }
 
   while (totalCredits < target) {
-    const candidate = _pickBestCandidateLocal(pool, new Set());
+    const candidate = _pickBestShaarRuachCandidateLocal(pool, new Set(), opts.userInterestText, assessmentPref);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
@@ -8105,11 +8255,15 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
   }
 
   if (!added.length) return { proposal, added: [], exhausted };
+  const warnings_he = [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'];
+  if (assessmentPref && prefUnmatched) {
+    warnings_he.push('לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת, לכן נבחרו החלופות הקרובות ביותר.');
+  }
   return {
     proposal: {
       ...proposal,
       semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)),
-      warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'],
+      warnings_he,
     },
     added, exhausted,
   };
