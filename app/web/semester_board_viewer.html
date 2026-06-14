@@ -1226,6 +1226,20 @@ body.prog-modal-open .workspace {
 .course-menu-popover .menu-sep { border-top: 1px solid var(--border-color, #eee); margin: 3px 0; }
 .course-menu-popover .menu-info { padding: 7px 10px; color: var(--text-muted); white-space: normal; }
 
+/* PART E — sidebar diagnostic repair buttons */
+.repair-diagnostics {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border-color, #eee); border-radius: 8px;
+  padding: 6px; font-size: .82rem;
+}
+.repair-row {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 4px 6px; border-radius: 6px;
+  background: var(--bg-hover, rgba(0,0,0,.03));
+}
+.repair-row-text { color: var(--text-color, #222); white-space: normal; }
+.repair-btn { align-self: flex-start; }
+
 /* ── Board empty-state hint ──────────────────────────────────────────────── */
 .board-empty-hint {
   flex-basis: 100%;
@@ -1308,11 +1322,19 @@ body.prog-modal-open .workspace {
 .course-card.course-card-draft-removed {
   opacity: .45; filter: grayscale(.4);
 }
+.course-card.course-card-draft-replaced {
+  box-shadow: 0 0 0 2px rgba(241,196,15,.22);
+}
+.course-card.course-card-draft-removed.course-card-draft-replaced {
+  opacity: .6; filter: grayscale(.2);
+}
 .badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
 .badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
 .badge.bdg-draft-removed { background: var(--danger, #e74c3c); color: #fff; }
+.badge.bdg-draft-replaced { background: #f1c40f; color: #3a2d04; }
 [data-theme="dark"] .badge.bdg-draft-added { color: #04321b; }
 [data-theme="dark"] .badge.bdg-draft-moved { color: #04203a; }
+[data-theme="dark"] .badge.bdg-draft-replaced { color: #3a2d04; }
 .semester-col.sem-draft-overload .sem-hdr { outline: 2px solid var(--danger); outline-offset: -2px; }
 
 /* ── "טיוטת שינויים" sidebar status (PART D) ─────────────────────────────── */
@@ -3026,7 +3048,285 @@ function buildSidebarStatusSummary() {
   const general = getGeneralRequirementStatusReportLocal(analysis, placedIds);
   let peak = 0;
   for (const sem of semObjs) peak = Math.max(peak, getSemesterLoadLocal(sem, ctx.courses));
-  return { hours, mandatory, categories, catSatisfied, general, peak };
+
+  // PART E — per-diagnostic info needed to render one-click repair buttons:
+  // overloaded semesters (hours > MAX_HOURS) and illegally-placed courses
+  // (isCourseAllowedInSemesterLocal === false).
+  const knownSemesterIds = Object.keys(state.semesters);
+  const overloaded_semesters = semObjs
+    .map(sem => ({ semester_id: sem.semester_id, total_hours: getSemesterLoadLocal(sem, ctx.courses) }))
+    .filter(sem => sem.total_hours > MAX_HOURS);
+
+  const illegal_placements = [];
+  for (const sem of semObjs) {
+    for (const cid of sem.course_ids) {
+      const c = courseMap[cid];
+      if (!c) continue;
+      if (!isCourseAllowedInSemesterLocal(c, sem.semester_id, knownSemesterIds)) {
+        illegal_placements.push({ course_id: cid, semester_id: sem.semester_id, name_he: c.name_he || cid });
+      }
+    }
+  }
+
+  const overshoot_hours = Math.max(0, hours.total_after_plan - DEGREE_REQUIRED_HOURS);
+
+  return { hours, mandatory, categories, catSatisfied, general, peak, overloaded_semesters, illegal_placements, overshoot_hours };
+}
+
+/* ── PART E — one-click repair buttons based on current-board diagnostics ──
+   Each button populates state.proposalDraft via the existing draft/diff/apply
+   infrastructure (does not silently mutate state.semesters). Visual style
+   reuses the .course-menu-popover button conventions from PART B (e25d761). */
+function renderRepairDiagnosticsHtml(s) {
+  const rows = [];
+
+  // 1) Missing categories.
+  for (const cat of s.categories) {
+    if (cat.missing > 0) {
+      rows.push(`
+        <div class="repair-row">
+          <span class="repair-row-text">קטגוריה "${esc(cat.name)}" — חסרים ${cat.missing} קורסים</span>
+          <button class="btn btn-sm repair-btn" data-repair="category" data-category-id="${esc(cat.category_id ?? '')}">הוסף קורס ${esc(cat.name)} מתאים</button>
+        </div>`);
+    }
+  }
+
+  // 2) Overloaded semesters.
+  for (const sem of s.overloaded_semesters) {
+    const label = SEMESTERS.find(x => x.id === sem.semester_id)?.label || sem.semester_id;
+    rows.push(`
+      <div class="repair-row">
+        <span class="repair-row-text">סמסטר ${esc(label)} עמוס (${sem.total_hours}/${MAX_HOURS} ש״ש)</span>
+        <button class="btn btn-sm repair-btn" data-repair="balance" data-semester-id="${esc(sem.semester_id)}">אזן את הסמסטר</button>
+      </div>`);
+  }
+
+  // 3) Illegal placements.
+  for (const ip of s.illegal_placements) {
+    const label = SEMESTERS.find(x => x.id === ip.semester_id)?.label || ip.semester_id;
+    rows.push(`
+      <div class="repair-row">
+        <span class="repair-row-text">${esc(ip.name_he)} משובץ בסמסטר ${esc(label)} שאינו חוקי לקורס זה</span>
+        <button class="btn btn-sm repair-btn" data-repair="illegal" data-course-id="${esc(ip.course_id)}">תקן שיבוץ</button>
+      </div>`);
+  }
+
+  // 4) Missing prerequisite ordering.
+  if (_hasPrereqOrderViolationLocal()) {
+    rows.push(`
+      <div class="repair-row">
+        <span class="repair-row-text">קיימת הפרה של רצף דרישות קדם בלוח</span>
+        <button class="btn btn-sm repair-btn" data-repair="prereq-order">תקן רצף דרישות קדם</button>
+      </div>`);
+  }
+
+  // 5) Overshoot beyond DEGREE_REQUIRED_HOURS (185).
+  if (s.overshoot_hours > 0) {
+    rows.push(`
+      <div class="repair-row">
+        <span class="repair-row-text">חריגה של ${s.overshoot_hours} ש״ש מעל 185 הנדרשות</span>
+        <button class="btn btn-sm repair-btn" data-repair="overshoot">צמצם קורסים מיותרים</button>
+      </div>`);
+  }
+
+  if (!rows.length) return '';
+  return `<div class="repair-diagnostics">${rows.join('')}</div>`;
+}
+
+/** True when the current board has any prerequisite-ordering violation. */
+function _hasPrereqOrderViolationLocal() {
+  const ctx = buildPlanValidationInputs();
+  const semIds = Object.keys(state.semesters);
+  const courseSemIdx = {};
+  semIds.forEach((semId, idx) => {
+    for (const cid of (state.semesters[semId] || [])) courseSemIdx[cid] = idx;
+  });
+  for (const semId of semIds) {
+    const semIdx = semIds.indexOf(semId);
+    for (const courseId of (state.semesters[semId] || [])) {
+      for (const prereq of (courseMap[courseId]?.prerequisites || [])) {
+        const status = userCourseStatuses[prereq]?.status || 'not_taken';
+        if (status === 'completed' || ctx.completedCourseIds.has(prereq)) continue;
+        if (status === 'currently_taking' || status === 'planned') continue;
+        const pIdx = courseSemIdx[prereq];
+        if (pIdx == null) { if (!courseMap[prereq]) continue; }
+        if (pIdx == null || pIdx >= semIdx) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Ensure state.proposalDraft exists (initialized from current board), return it. */
+function _ensureProposalDraft() {
+  if (!state.proposalDraft) {
+    state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
+  }
+  return state.proposalDraft;
+}
+
+/** PART E #1 — "הוסף קורס X מתאים": find the best candidate for a missing
+ * category and add it (in the draft) to the least-loaded legal semester. */
+function repairCategoryToDraft(categoryId) {
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const ctx = buildPlanValidationInputs();
+  const draft = _ensureProposalDraft();
+  const placed = new Set(Object.values(draft.semesters).flat());
+
+  const cat = analysis.categories.find(c => (c.category_id ?? null) === (categoryId || null));
+  if (!cat) { showBoardNotify('לא נמצאה קטגוריה זו.'); return; }
+
+  const remaining = cat.candidates.filter(c => !placed.has(c.course_id));
+  const candidate = _pickBestCandidateLocal(remaining, new Set(), null);
+  if (!candidate) { showBoardNotify(`לא נמצא קורס מתאים להשלמת הקטגוריה "${cat.name}".`); return; }
+
+  const info = ctx.courses[candidate.course_id] || {};
+  const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : Object.keys(draft.semesters);
+  const knownSemIds = Object.keys(draft.semesters);
+  const hoursOf = semId => (draft.semesters[semId] || []).reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+  const legalSemIds = knownSemIds.filter(semId => allowed.includes(semId));
+  if (!legalSemIds.length) { showBoardNotify(`לא נמצא סמסטר חוקי להוספת ${candidate.name_he || candidate.course_id}.`); return; }
+
+  const target = [...legalSemIds].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+  draft.semesters[target] = [...(draft.semesters[target] || []), candidate.course_id];
+  draft.repo = (draft.repo || []).filter(cid => cid !== candidate.course_id);
+
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify(`הוצע להוסיף ${candidate.name_he || candidate.course_id} להשלמת קטגוריית "${cat.name}" — בדוק את הטיוטה.`);
+}
+
+/** PART E #2 — "אזן את הסמסטר": move course(s) out of an overloaded semester
+ * into a less-loaded legal semester. */
+function repairBalanceSemesterToDraft(semesterId) {
+  const ctx = buildPlanValidationInputs();
+  const draft = _ensureProposalDraft();
+  const knownSemIds = Object.keys(draft.semesters);
+  const pinned = new Set(state?.pinnedCourseIds || []);
+  const hoursOf = semId => (draft.semesters[semId] || []).reduce((sum, cid) => sum + (ctx.courses[cid]?.hours || 0), 0);
+
+  let moved = 0;
+  let guard = 0;
+  while (hoursOf(semesterId) > MAX_HOURS && guard++ < 20) {
+    const courses = [...(draft.semesters[semesterId] || [])]
+      .filter(cid => !pinned.has(cid) && !ctx.completedCourseIds.has(cid))
+      .map(cid => ({ cid, info: ctx.courses[cid] || {} }))
+      .filter(({ info }) => info.placement_policy !== 'fixed')
+      .sort((a, b) => _balanceTier(a.info) - _balanceTier(b.info));
+
+    let didMove = false;
+    for (const { cid, info } of courses) {
+      const c = courseMap[cid];
+      if (!c) continue;
+      const targets = knownSemIds
+        .filter(semId => semId !== semesterId)
+        .filter(semId => isCourseAllowedInSemesterLocal(c, semId, knownSemIds))
+        .filter(semId => hoursOf(semId) + (info.hours || 0) <= MAX_HOURS)
+        .sort((a, b) => hoursOf(a) - hoursOf(b));
+      if (!targets.length) continue;
+      const target = targets[0];
+      draft.semesters[semesterId] = draft.semesters[semesterId].filter(x => x !== cid);
+      draft.semesters[target] = [...(draft.semesters[target] || []), cid];
+      moved++;
+      didMove = true;
+      break;
+    }
+    if (!didMove) break;
+  }
+
+  if (!moved) { showBoardNotify('לא נמצאה דרך חוקית לאזן את הסמסטר הזה.'); return; }
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify(`הוצעה העברת ${moved} קורס/ים כדי לאזן את הסמסטר — בדוק את הטיוטה.`);
+}
+
+/** PART E #3 — "תקן שיבוץ": relocate an illegally-placed course to a legal semester. */
+function repairIllegalPlacementToDraft(cid) {
+  const c = courseMap[cid];
+  if (!c) return;
+  const ctx = buildPlanValidationInputs();
+  const draft = _ensureProposalDraft();
+  const knownSemIds = Object.keys(draft.semesters);
+  const fromSem = Object.entries(draft.semesters).find(([, ids]) => (ids || []).includes(cid))?.[0];
+  if (!fromSem) { showBoardNotify('הקורס אינו משובץ בלוח.'); return; }
+
+  const hoursOf = semId => (draft.semesters[semId] || []).reduce((sum, id) => sum + (ctx.courses[id]?.hours || 0), 0);
+  const legalTargets = knownSemIds
+    .filter(semId => semId !== fromSem)
+    .filter(semId => isCourseAllowedInSemesterLocal(c, semId, knownSemIds));
+  if (!legalTargets.length) { showBoardNotify(`לא נמצא סמסטר חוקי עבור ${c.name_he || cid}.`); return; }
+
+  const fitting = legalTargets.filter(semId => hoursOf(semId) + (ctx.courses[cid]?.hours || 0) <= MAX_HOURS);
+  const target = [...(fitting.length ? fitting : legalTargets)].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+  draft.semesters[fromSem] = draft.semesters[fromSem].filter(x => x !== cid);
+  draft.semesters[target] = [...(draft.semesters[target] || []), cid];
+
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify(`הוצעה העברת ${c.name_he || cid} לסמסטר חוקי — בדוק את הטיוטה.`);
+}
+
+/** PART E #4 — "תקן רצף דרישות קדם": run repairPrerequisiteOrder on the draft. */
+function repairPrereqOrderToDraft() {
+  const ctx = buildPlanValidationInputs();
+  const draft = _ensureProposalDraft();
+  const knownSemIds = Object.keys(draft.semesters);
+  const proposal = { semesters: knownSemIds.map(semId => ({ semester_id: semId, course_ids: [...(draft.semesters[semId] || [])] })) };
+
+  const { proposal: repaired, repaired: didRepair } = repairPrerequisiteOrder(proposal, ctx);
+  if (!didRepair) { showBoardNotify('לא נמצאה הפרה של רצף דרישות קדם שניתן לתקן אוטומטית.'); return; }
+
+  for (const sem of repaired.semesters) draft.semesters[sem.semester_id] = sem.course_ids;
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify('הוצע תיקון לרצף דרישות הקדם — בדוק את הטיוטה.');
+}
+
+/** PART E #5 — "צמצם קורסים מיותרים": remove lowest-relevance non-pinned
+ * filler courses until total hours <= DEGREE_REQUIRED_HOURS (185). */
+function repairOvershootToDraft() {
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const ctx = buildPlanValidationInputs();
+  const draft = _ensureProposalDraft();
+  const pinned = new Set(state?.pinnedCourseIds || []);
+
+  const semObjs = () => Object.entries(draft.semesters).map(([semId, ids]) => ({ semester_id: semId, course_ids: ids || [] }));
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+
+  let removed = [];
+  let guard = 0;
+  while (guard++ < 20) {
+    const hoursStatus = getDegreeHoursStatusLocal(analysis, semObjs(), courseHours);
+    const overshoot = hoursStatus.total_after_plan - DEGREE_REQUIRED_HOURS;
+    if (overshoot <= 0) break;
+
+    const placed = new Set(Object.values(draft.semesters).flat());
+    const fillerCandidates = [...placed]
+      .filter(cid => !pinned.has(cid) && !ctx.completedCourseIds.has(cid))
+      .map(cid => ({ cid, info: ctx.courses[cid] || {}, course: courseMap[cid] }))
+      .filter(({ info }) => !info.is_mandatory && info.course_type !== 'mandatory')
+      .filter(({ course }) => course)
+      .map(({ cid, info, course }) => ({ cid, hours: info.hours || 0, score: _scoreCareerRelevanceLocal(course, null).score }))
+      .sort((a, b) => a.score - b.score);
+
+    if (!fillerCandidates.length) break;
+    const toRemove = fillerCandidates[0];
+    const semId = Object.entries(draft.semesters).find(([, ids]) => (ids || []).includes(toRemove.cid))?.[0];
+    if (!semId) break;
+    draft.semesters[semId] = draft.semesters[semId].filter(x => x !== toRemove.cid);
+    if (!draft.repo.includes(toRemove.cid)) draft.repo.push(toRemove.cid);
+    removed.push(toRemove.cid);
+  }
+
+  if (!removed.length) { showBoardNotify('לא נמצאו קורסי מילוי להסרה לצמצום העומס.'); return; }
+  renderAll();
+  setSidebarTab('draft');
+  const names = removed.map(cid => courseMap[cid]?.name_he || cid).join(', ');
+  showBoardNotify(`הוצעה הסרת ${removed.length} קורס/ים לצמצום החריגה מ-185 ש״ש: ${names} — בדוק את הטיוטה.`);
 }
 
 function sidebarQuickActionPrefs() {
@@ -3088,6 +3388,7 @@ function renderAiTab() {
         ${s.general ? `<div>שער רוח: ${s.general.placed}/${s.general.required}</div>` : ''}
         <div>עומס שיא: ${s.peak} ש״ש</div>
       </div>
+      ${renderRepairDiagnosticsHtml(s)}
       <label class="ai-plan-field">
         מה תרצה לשפר בתוכנית?
         <textarea id="sidebar-ai-instruction" rows="2" dir="rtl"
@@ -3167,6 +3468,19 @@ function renderAiTab() {
   document.getElementById('sidebar-quick-electives').addEventListener('click', () => run('add_electives'));
   document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
   document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
+
+  // PART E — one-click repair buttons (diagnostics-driven, populate proposalDraft).
+  panel.querySelectorAll('.repair-btn[data-repair]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switch (btn.dataset.repair) {
+        case 'category':     repairCategoryToDraft(btn.dataset.categoryId || null); break;
+        case 'balance':      repairBalanceSemesterToDraft(btn.dataset.semesterId); break;
+        case 'illegal':      repairIllegalPlacementToDraft(btn.dataset.courseId); break;
+        case 'prereq-order': repairPrereqOrderToDraft(); break;
+        case 'overshoot':    repairOvershootToDraft(); break;
+      }
+    });
+  });
 }
 
 /** "טיוטת שינויים" tab — status + Apply/Reject for the active board draft, or an empty-state if none exists. */
@@ -3193,6 +3507,11 @@ function renderDraftTab() {
   const addedCount = diff?.added.size ?? 0;
   const movedCount = diff?.moved.size ?? 0;
   const removedCount = diff?.removed.size ?? 0;
+  const replacedCount = diff?.replaced.size ?? 0;
+  const replacedListHtml = replacedCount
+    ? `<ul class="ai-plan-msg-list">${[...diff.replaced.entries()].map(([fromCid, { to }]) =>
+        `<li>הוחלף: ${esc(courseMap[fromCid]?.name_he || fromCid)} ← ${esc(courseMap[to]?.name_he || to)}</li>`).join('')}</ul>`
+    : '';
 
   // PART A — compact degree-progress summary.
   const ctxForProgress = _aiPlanLastCtx;
@@ -3220,6 +3539,7 @@ function renderDraftTab() {
       ${categoryStatus.length ? mkChip('קטגוריות', `${categoriesSatisfied}/${categoryStatus.length}`, categoriesSatisfied < categoryStatus.length) : ''}
       ${mkChip('נוספו', addedCount, false)}
       ${mkChip('הועברו', movedCount, false)}
+      ${replacedCount ? mkChip('הוחלפו', replacedCount, false) : ''}
       ${mkChip('עומס שיא', `${peakSemHours} ש״ש`, false)}
     </div>`;
   }
@@ -3268,7 +3588,9 @@ function renderDraftTab() {
         <div>נוספו: ${addedCount}</div>
         <div>הועברו: ${movedCount}</div>
         <div>הוסרו: ${removedCount}</div>
+        ${replacedCount ? `<div>הוחלפו: ${replacedCount}</div>` : ''}
       </div>
+      ${replacedListHtml}
       ${groupedHtml}
       <label class="ai-plan-field">
         בקש שינויים בטיוטה
@@ -3585,10 +3907,19 @@ function cardHtml(c, placed, draftDiff, opts) {
   let draftBdg = '';
   let removedHere = false;
   if (draftDiff) {
-    if (opts?.removedHere) {
+    if (opts?.removedHere && draftDiff.replaced.has(c.course_id)) {
+      removedHere = true;
+      const toName = courseMap[draftDiff.replaced.get(c.course_id).to]?.name_he || draftDiff.replaced.get(c.course_id).to;
+      cls += ' course-card-draft course-card-draft-removed course-card-draft-replaced';
+      draftBdg = `<span class="badge bdg-draft-replaced" title="${esc('הוחלף ב-' + toName)}">הוחלף</span>`;
+    } else if (opts?.removedHere) {
       removedHere = true;
       cls += ' course-card-draft course-card-draft-removed';
       draftBdg = `<span class="badge bdg-draft-removed" title="קורס שיוסר אם תאשר את הטיוטה">יוסר</span>`;
+    } else if (draftDiff.replacedTo.has(c.course_id)) {
+      cls += ' course-card-draft card-draft-added course-card-draft-replaced';
+      const fromName = courseMap[draftDiff.replacedTo.get(c.course_id).from]?.name_he || draftDiff.replacedTo.get(c.course_id).from;
+      draftBdg = `<span class="badge bdg-draft-replaced" title="${esc('הוחלף: ' + fromName + ' ← ' + (c.name_he || c.course_id))}">הוחלף</span>`;
     } else if (draftDiff.added.has(c.course_id)) {
       cls += ' course-card-draft card-draft-added';
       draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטה">נוסף</span>`;
@@ -4831,7 +5162,36 @@ function computeDraftDiff() {
     else if (committedPlaced[cid] !== semId) { moved.add(cid); movedFrom.set(cid, committedPlaced[cid]); }
   }
   for (const cid of Object.keys(committedPlaced)) if (!(cid in draftPlaced)) removed.add(cid);
-  return { added, moved, removed, movedFrom };
+
+  // PART I — pair up a removed course with an added course in the same
+  // semester/category slot (e.g. via "מצא חלופה") and label them "הוחלף"
+  // instead of separate נוסף/יוסר badges.
+  const replaced = new Map();   // removed cid -> { to, semId }
+  const replacedTo = new Map(); // added cid -> { from, semId }
+  const categoryKey = cid => {
+    const c = courseMap[cid];
+    if (!c) return null;
+    const isElectiveLike = (c.course_type || 'elective') !== 'mandatory';
+    return c.program_category_id || (isElectiveLike ? GENERAL_ELECTIVE_CAT_ID : null);
+  };
+  const availableAdded = new Set(added);
+  for (const rcid of removed) {
+    const semId = committedPlaced[rcid];
+    const cat = categoryKey(rcid);
+    if (cat == null) continue;
+    for (const acid of availableAdded) {
+      if (draftPlaced[acid] === semId && categoryKey(acid) === cat) {
+        replaced.set(rcid, { to: acid, semId });
+        replacedTo.set(acid, { from: rcid, semId });
+        availableAdded.delete(acid);
+        added.delete(acid);
+        removed.delete(rcid);
+        break;
+      }
+    }
+  }
+
+  return { added, moved, removed, movedFrom, replaced, replacedTo };
 }
 
 /** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */
@@ -8050,6 +8410,10 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   const previewDiff = computeDraftDiff();
   const proposalStateBadge = cid => {
     if (!previewDiff) return '';
+    if (previewDiff.replacedTo.has(cid)) {
+      const fromName = courseMap[previewDiff.replacedTo.get(cid).from]?.name_he || previewDiff.replacedTo.get(cid).from;
+      return `<span class="badge bdg-draft-replaced" title="${esc('הוחלף: ' + fromName + ' ← ' + (courseMap[cid]?.name_he || cid))}">הוחלף</span>`;
+    }
     if (previewDiff.added.has(cid)) return `<span class="badge bdg-draft-added">נוסף</span>`;
     if (previewDiff.moved.has(cid)) {
       const fromSemId = previewDiff.movedFrom.get(cid);
