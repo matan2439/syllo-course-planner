@@ -1672,3 +1672,107 @@ def test_ask_before_choosing_button_fully_removed(html):
     """PART G — 'שאל אותי לפני בחירה' button/string fully removed."""
     assert 'שאל אותי לפני בחירה' not in html
     assert 'id="sidebar-missing-ask-first"' not in html
+
+
+# ---------------------------------------------------------------------------
+# PART H — re-verification tests for the build button, שלח, indicator,
+# unreadable panel and My Courses bulk actions.
+# ---------------------------------------------------------------------------
+
+def test_build_button_exists_and_visible_by_default(html):
+    """PART H.1 — 'בנה מערכת' button exists and has no hidden attribute."""
+    m = re.search(r'<button class="btn btn-primary" id="sidebar-build-from-scratch">[^<]*</button>', html)
+    assert m
+    assert 'hidden' not in m.group(0)
+
+
+def test_build_handler_loading_indicator_and_button_disable(html):
+    """PART H.3 — the build flow shows #ai-build-status while in flight and
+    disables/re-enables the build button."""
+    fn = _extract_fn(html, "runBuildFromScratch")
+    assert "ai-build-status" in fn
+    assert "btn.disabled = true" in fn
+    assert "btn.disabled = false" in fn
+    assert "statusEl.hidden = false" in fn
+    assert "statusEl.hidden = true" in fn
+
+
+def test_sidebar_chat_send_appends_user_message_and_handler_bound(html):
+    """PART H.6 — the שלח click handler is bound to handleSidebarChatSend,
+    which appends the user's message via postUserMessage immediately."""
+    assert "getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend)" in html
+    fn = _extract_fn(html, "handleSidebarChatSend")
+    assert "postUserMessage(message)" in fn
+
+
+def test_sidebar_chat_send_shows_loading_indicator_for_planning_intents(html):
+    """PART H.6 — planning-intent dispatch posts an in-progress assistant
+    message (the shared chat-based loading indicator) before awaiting the
+    plan request."""
+    fn = _extract_fn(html, "handleSidebarChatSend")
+    assert "postAssistantMessage('מבין" in fn
+    assert "postAssistantMessage(inProgressMsg)" in fn
+
+
+def test_sidebar_chat_send_has_error_branch_with_visible_text(html):
+    """PART H.7 — handleSidebarChatSend has catch branches that render a
+    visible error message via postAssistantMessage (not just console.log)."""
+    fn = _extract_fn(html, "handleSidebarChatSend")
+    assert re.search(r"catch \(err\) \{\s*postAssistantMessage\(`אירעה שגיאה", fn)
+
+
+def test_repair_row_text_uses_theme_text_color(html):
+    """PART D — the repair-diagnostics row text (rendered inside the AI
+    panel via renderRepairDiagnosticsHtml) must use var(--text) so it is
+    readable against the dark surface, not a hardcoded near-black fallback."""
+    m = re.search(r"\.repair-row-text\s*\{[^}]*\}", html)
+    assert m
+    assert "var(--text," in m.group(0) or "var(--text)" in m.group(0)
+    assert "var(--text-color" not in m.group(0)
+
+
+def test_mc_semester_bulk_completed_calls_setUserStatus_completed(html):
+    """PART H.9 — 'הושלם' bulk action loops over the semester's mandatory
+    courses and calls setUserStatus(cid, 'completed', ...)."""
+    fn = _extract_fn(html, "_showMcSemesterMenu")
+    assert "for (const c of courses)" in fn
+    assert re.search(r"setUserStatus\(cid, action,", fn)
+    bulk_actions = re.search(r"const MC_SEM_BULK_ACTIONS = \[.*?\n\];", html, re.DOTALL)
+    assert bulk_actions
+    assert "{ status: 'completed'" in bulk_actions.group(0)
+
+
+def test_mc_semester_bulk_not_taken_calls_setUserStatus_not_taken(html):
+    """PART H.10 — 'לא נלקח' bulk action maps to setUserStatus(cid, 'not_taken', ...)."""
+    fn = _extract_fn(html, "_showMcSemesterMenu")
+    bulk_actions = re.search(r"const MC_SEM_BULK_ACTIONS = \[.*?\n\];", html, re.DOTALL)
+    assert bulk_actions
+    assert "{ status: 'not_taken'" in bulk_actions.group(0)
+    # The '__clear__' action explicitly calls setUserStatus(cid, 'not_taken', null).
+    assert "setUserStatus(cid, 'not_taken', null)" in fn
+
+
+def test_mc_semester_bulk_action_persists_to_localstorage(html):
+    """PART H.11 — setUserStatus (called by the bulk menu) persists via
+    saveUserCourseStatuses, which writes to localStorage."""
+    set_status_fn = _extract_fn(html, "setUserStatus")
+    assert "saveUserCourseStatuses()" in set_status_fn
+    save_fn = _extract_fn(html, "saveUserCourseStatuses")
+    assert "localStorage" in save_fn
+
+
+def test_mc_semester_bulk_action_preserves_scroll_and_rerenders(html):
+    """PART H.12 — after a bulk action, _applyMyCoursesBulkRerender re-renders
+    the grid (which preserves scrollLeft via the existing save/restore)."""
+    fn = _extract_fn(html, "_showMcSemesterMenu")
+    assert "_applyMyCoursesBulkRerender()" in fn
+    rerender_fn = _extract_fn(html, "_applyMyCoursesBulkRerender")
+    assert "_renderMyCoursesGrid(gridEl)" in rerender_fn
+    assert "renderAll()" in rerender_fn
+
+
+def test_mc_semester_bulk_completed_recognized_by_prereq_check(html):
+    """PART H.13 — courses marked 'completed' via the bulk menu are recognized
+    by the prerequisite-violation check (status === 'completed')."""
+    prereq_check = _extract_fn(html, "_hasPrereqOrderViolationLocal")
+    assert "status === 'completed'" in prereq_check

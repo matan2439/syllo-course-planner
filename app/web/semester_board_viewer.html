@@ -1290,15 +1290,15 @@ body.prog-modal-open .workspace {
 /* PART E — sidebar diagnostic repair buttons */
 .repair-diagnostics {
   display: flex; flex-direction: column; gap: 6px;
-  border: 1px solid var(--border-color, #eee); border-radius: 8px;
+  border: 1px solid var(--border2, #eee); border-radius: 8px;
   padding: 6px; font-size: .82rem;
 }
 .repair-row {
   display: flex; flex-direction: column; gap: 4px;
   padding: 4px 6px; border-radius: 6px;
-  background: var(--bg-hover, rgba(0,0,0,.03));
+  background: var(--surface2, rgba(0,0,0,.03));
 }
-.repair-row-text { color: var(--text-color, #222); white-space: normal; }
+.repair-row-text { color: var(--text, #222); white-space: normal; }
 .repair-btn { align-self: flex-start; }
 
 /* ── Board empty-state hint ──────────────────────────────────────────────── */
@@ -4686,7 +4686,7 @@ let _aiPendingPlanningRequest = null;
  * proposal was applied.
  */
 function tryApplyProposalFromChatText(text) {
-  const match = text.match(/```jsons*([sS]*?)```/i);
+  const match = text.match(/```json\s*([\s\S]*?)```/i);
   if (!match) return { displayText: text, applied: false };
 
   let parsed;
