@@ -1205,6 +1205,27 @@ body.prog-modal-open .workspace {
 .pin-btn.pinned { opacity: 1; }
 .course-card.card-pinned { outline: 2px solid var(--mand-accent); outline-offset: -2px; }
 
+/* PART B — course action menu ("⋯") */
+.course-menu-btn {
+  font-size: .8rem; border: none; background: none; color: var(--text-faint);
+  cursor: pointer; padding: 0 3px; line-height: 1; flex-shrink: 0; opacity: .6;
+}
+.course-menu-btn:hover { opacity: 1; }
+.course-menu-popover {
+  position: fixed; z-index: 9999; background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border-color, #ccc); border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 4px; min-width: 170px;
+  font-size: .82rem; direction: rtl;
+}
+.course-menu-popover button {
+  display: block; width: 100%; text-align: right; padding: 7px 10px;
+  border: none; background: none; cursor: pointer; border-radius: 5px;
+  font-size: .82rem; color: var(--text-color, #222);
+}
+.course-menu-popover button:hover { background: var(--bg-hover, rgba(0,0,0,.06)); }
+.course-menu-popover .menu-sep { border-top: 1px solid var(--border-color, #eee); margin: 3px 0; }
+.course-menu-popover .menu-info { padding: 7px 10px; color: var(--text-muted); white-space: normal; }
+
 /* ── Board empty-state hint ──────────────────────────────────────────────── */
 .board-empty-hint {
   flex-basis: 100%;
@@ -3595,6 +3616,11 @@ function cardHtml(c, placed, draftDiff, opts) {
     actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
   }
 
+  // PART B — compact course action menu ("⋯") for placed, non-draft cards.
+  const menuBtn = (!removedHere && !draftDiff)
+    ? `<button class="course-menu-btn" data-menu="${esc(c.course_id)}" title="פעולות נוספות">⋯</button>`
+    : '';
+
   const dragHint = (canDrag && !removedHere) ? '<div class="card-drag-hint">⠿ גרירה</div>' : '';
   const draggableAttr = (canDrag && !removedHere) ? 'draggable="true"' : 'draggable="false"';
 
@@ -3602,7 +3628,7 @@ function cardHtml(c, placed, draftDiff, opts) {
   <div class="card-main">
     <div class="card-top">
       <span class="cid" dir="ltr">${esc(c.course_id)}</span>
-      ${warnIcon}${pinBtn}${actionBtn}
+      ${warnIcon}${pinBtn}${actionBtn}${menuBtn}
     </div>
     <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
     <div class="card-row">${draftBdg} ${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
@@ -4725,6 +4751,13 @@ function setupDragDelegation() {
       togglePin(pinBtn.dataset.pin);
       return;
     }
+    const menuBtn = e.target.closest('[data-menu]');
+    if (menuBtn) {
+      e.stopPropagation();
+      openCourseActionMenu(menuBtn.dataset.menu, menuBtn);
+      return;
+    }
+    if (!e.target.closest('.course-menu-popover')) closeCourseActionMenu();
   });
 
   /* Accordion toggle tracking (capture phase — toggle doesn't bubble) */
@@ -4884,6 +4917,221 @@ function moveCourse(id, fromSem, toSem) {
   }
 
   saveState(); renderAll();
+}
+
+/* ── PART B — course action menu ("⋯") ──────────────────────────────────── */
+function closeCourseActionMenu() {
+  document.querySelector('.course-menu-popover')?.remove();
+}
+
+function openCourseActionMenu(cid, btn) {
+  const existing = document.querySelector('.course-menu-popover');
+  if (existing) {
+    closeCourseActionMenu();
+    if (existing.dataset.cid === cid) return;
+  }
+  const c = courseMap[cid];
+  if (!c) return;
+  const pinned = (state?.pinnedCourseIds || []).includes(cid);
+  const reason = _aiPlanLastValidation?.electiveSelectionReasons?.find(r => r.course_id === cid)?.reason;
+
+  const pop = document.createElement('div');
+  pop.className = 'course-menu-popover';
+  pop.dataset.cid = cid;
+  const rect = btn.getBoundingClientRect();
+  pop.style.top  = `${rect.bottom + 4}px`;
+  pop.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+
+  pop.innerHTML = `
+    <button data-act="why">למה נבחר?</button>
+    <button data-act="alt">מצא חלופה</button>
+    <button data-act="avoid">אל תשבץ</button>
+    <button data-act="move">העבר לסמסטר אחר</button>
+    <button data-act="pin">${pinned ? 'בטל נעילה' : 'נעל / אל תזיז'}</button>
+    <div class="menu-sep"></div>
+    <button data-act="remove">הסר מהמערכת</button>
+    <button data-act="ask">שאל על הקורס</button>
+  `;
+  document.body.appendChild(pop);
+
+  pop.addEventListener('click', e => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    switch (act) {
+      case 'why':    showCourseWhyChosen(cid, reason); break;
+      case 'alt':    showCourseAlternatives(cid); break;
+      case 'avoid':  avoidCourse(cid); break;
+      case 'move':   showMoveCourseMenu(cid, pop); return; // keep popover open, replace content
+      case 'pin':    togglePin(cid); closeCourseActionMenu(); break;
+      case 'remove': removeCourseFromBoard(cid); break;
+      case 'ask':    closeCourseActionMenu(); openCourseDetails(cid); break;
+    }
+    if (act !== 'move') closeCourseActionMenu();
+  });
+}
+
+function showCourseWhyChosen(cid, reason) {
+  const c = courseMap[cid];
+  const msg = reason || `${c?.name_he || cid} משובץ בתוכנית כקורס ${TYPE_HE[c?.course_type] || 'בחירה'} בקטגוריה ${c?.program_category_name_he || c?.program_category_id || 'כללית'}.`;
+  showBoardNotify(msg);
+}
+
+/** Find legal same-category alternatives for a placed course (PART B "מצא חלופה"). */
+function findCourseAlternatives(cid, limit) {
+  limit = limit || 5;
+  const c = courseMap[cid];
+  if (!c) return [];
+  const semId = findCoursePlacementSemId(cid);
+  const catId = c.program_category_id || GENERAL_ELECTIVE_CAT_ID;
+  const placedSet = new Set(Object.values(activeSemestersMap()).flat());
+  const candidates = Object.values(courseMap).filter(o =>
+    o.course_id !== cid
+    && !placedSet.has(o.course_id)
+    && (o.program_category_id || GENERAL_ELECTIVE_CAT_ID) === catId
+    && o.course_type !== 'mandatory'
+    && o.status !== 'missing_from_db' && o.status !== 'blocked' && o.status !== 'not_offered'
+  );
+  const scored = candidates.map(o => {
+    let legal = true;
+    if (semId) {
+      try {
+        legal = isCourseAllowedInSemesterLocal(o, semId, Object.keys(state.semesters));
+      } catch {}
+    }
+    const relevance = (o.difficulty_score != null ? -Math.abs((o.difficulty_score||0) - (c.difficulty_score||0)) : 0)
+      + (o.weekly_hours === c.weekly_hours ? 1 : 0);
+    return { course: o, legal, score: relevance };
+  });
+  scored.sort((a, b) => (b.legal - a.legal) || (b.score - a.score));
+  return scored.filter(s => s.legal).slice(0, limit).map(s => s.course);
+}
+
+function showCourseAlternatives(cid) {
+  const alts = findCourseAlternatives(cid);
+  closeCourseActionMenu();
+  if (!alts.length) { showBoardNotify('לא נמצאו חלופות חוקיות מתאימות לקורס זה.'); return; }
+  const pop = document.createElement('div');
+  pop.className = 'course-menu-popover';
+  pop.style.top = '50%'; pop.style.right = '50%'; pop.style.transform = 'translate(50%,-50%)';
+  pop.innerHTML = `<div class="menu-info">בחר חלופה ל-${esc(courseMap[cid]?.name_he || cid)}:</div>` +
+    alts.map(a => `<button data-alt="${esc(a.course_id)}">${esc(a.name_he || a.course_id)}</button>`).join('') +
+    `<div class="menu-sep"></div><button data-act="cancel">ביטול</button>`;
+  document.body.appendChild(pop);
+  pop.addEventListener('click', e => {
+    const altId = e.target.closest('[data-alt]')?.dataset.alt;
+    if (altId) { swapCourseInDraft(cid, altId); closeCourseActionMenu(); return; }
+    if (e.target.closest('[data-act="cancel"]')) closeCourseActionMenu();
+  });
+}
+
+/** Build/extend a proposalDraft that removes `oldCid` and adds `newCid` in the same semester. */
+function swapCourseInDraft(oldCid, newCid) {
+  const semId = findCoursePlacementSemId(oldCid);
+  if (!semId) return;
+  if (!state.proposalDraft) {
+    state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
+  }
+  const draft = state.proposalDraft;
+  draft.semesters[semId] = (draft.semesters[semId] || []).filter(x => x !== oldCid);
+  if (!draft.semesters[semId].includes(newCid)) draft.semesters[semId].push(newCid);
+  draft.repo = (draft.repo || []).filter(x => x !== newCid);
+  if (!draft.repo.includes(oldCid)) draft.repo.push(oldCid);
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify('הוצעה החלפת קורס — בדוק את הטיוטה');
+}
+
+function showMoveCourseMenu(cid, pop) {
+  const c = courseMap[cid];
+  const curSem = findCoursePlacementSemId(cid);
+  const others = SEMESTERS.filter(s => s.id !== curSem);
+  pop.innerHTML = `<div class="menu-info">העבר ${esc(c?.name_he || cid)} לסמסטר:</div>` +
+    others.map(s => {
+      let legal = true, title = '';
+      try {
+        const lg = getCourseSemesterLegalityReasonLocal(c, s.id, Object.keys(state.semesters));
+        legal = lg.allowed !== false;
+        if (!legal) title = lg.reason || 'שיבוץ לא חוקי';
+        else if (lg.confident === false) title = lg.reason || 'לא ברור אם חוקי';
+      } catch {}
+      return `<button data-sem="${esc(s.id)}" ${legal ? '' : 'disabled'} title="${esc(title)}">${esc(s.label)}${title ? ' ⚠' : ''}</button>`;
+    }).join('') +
+    `<div class="menu-sep"></div><button data-act="cancel">ביטול</button>`;
+  pop.onclick = e => {
+    const sem = e.target.closest('[data-sem]')?.dataset.sem;
+    if (sem) { moveCourseToSemesterInDraft(cid, curSem, sem); closeCourseActionMenu(); return; }
+    if (e.target.closest('[data-act="cancel"]')) closeCourseActionMenu();
+  };
+}
+
+function moveCourseToSemesterInDraft(cid, fromSem, toSem) {
+  if (!state.proposalDraft) {
+    state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
+  }
+  const draft = state.proposalDraft;
+  if (fromSem) draft.semesters[fromSem] = (draft.semesters[fromSem] || []).filter(x => x !== cid);
+  if (!draft.semesters[toSem]) draft.semesters[toSem] = [];
+  if (!draft.semesters[toSem].includes(cid)) draft.semesters[toSem].push(cid);
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify('הוצעה העברת קורס — בדוק את הטיוטה');
+}
+
+/** "אל תשבץ" — add to avoided picker list (strongUnwanted) and remove from board via draft. */
+function avoidCourse(cid) {
+  if (!_aiPickerState.unwanted) _aiPickerState.unwanted = [];
+  if (!_aiPickerState.unwanted.includes(cid)) _aiPickerState.unwanted.push(cid);
+  if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
+  if (!_aiPickerState.strongUnwanted.includes(cid)) _aiPickerState.strongUnwanted.push(cid);
+  _aiPickerState.wanted = (_aiPickerState.wanted || []).filter(x => x !== cid);
+
+  const semId = findCoursePlacementSemId(cid);
+  if (semId) {
+    if (!state.proposalDraft) state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
+    const draft = state.proposalDraft;
+    draft.semesters[semId] = (draft.semesters[semId] || []).filter(x => x !== cid);
+    if (!draft.repo.includes(cid)) draft.repo.push(cid);
+  }
+  saveState();
+  renderAll();
+  if (semId) setSidebarTab('draft');
+  showBoardNotify('הקורס נוסף לרשימת "להימנע" — AI עתידי לא ישבץ אותו.' + (semId ? ' הוצעה הסרתו מהלוח (בטיוטה).' : ''));
+}
+
+/** "הסר מהמערכת" — propose removal and report what becomes unmet. */
+function removeCourseFromBoard(cid) {
+  const semId = findCoursePlacementSemId(cid);
+  if (!semId) { showBoardNotify('הקורס אינו משובץ בלוח.'); return; }
+  if (!state.proposalDraft) state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
+  const draft = state.proposalDraft;
+  draft.semesters[semId] = (draft.semesters[semId] || []).filter(x => x !== cid);
+  if (!draft.repo.includes(cid)) draft.repo.push(cid);
+
+  // Recompute degree-hours / category status for the draft to surface newly-missing requirements.
+  let msg = `${courseMap[cid]?.name_he || cid} יוסר מהלוח (בטיוטה).`;
+  try {
+    const planContext = buildPlanContext();
+    const analysis = buildCompletionAnalysisLocal(planContext);
+    const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: draft.semesters[s.id] || [] }));
+    const placedIds = new Set(semObjs.flatMap(s => s.course_ids));
+    const ctx = buildPlanValidationInputs();
+    const courseHours = {};
+    for (const [id, info] of Object.entries(ctx.courses)) courseHours[id] = info.hours;
+    const hours = getDegreeHoursStatusLocal(analysis, semObjs, courseHours);
+    const categories = getCategoryStatusReportLocal(analysis, placedIds);
+    const c = courseMap[cid];
+    const catId = c?.program_category_id;
+    const catReport = categories.find(cat => cat.category_id === catId);
+    if (catReport && !catReport.satisfied) {
+      msg += ` יחסרו קורסים בקטגוריית ${catReport.name || catId}.`;
+    } else if (hours.missing_hours > 0) {
+      msg += ` יחסרו ${hours.missing_hours} ש״ש לתואר.`;
+    }
+  } catch {}
+
+  renderAll();
+  setSidebarTab('draft');
+  showBoardNotify(msg);
 }
 
 function togglePin(id) {
