@@ -826,9 +826,9 @@ def test_draft_state_classes_do_not_override_category_background_or_border(html)
 # ---------------------------------------------------------------------------
 
 def test_repair_button_labels_present(html):
-    """The non-category PART E repair button labels must exist in the HTML."""
+    """The remaining non-category PART E repair button labels must exist.
+    'אזן את הסמסטר' was removed entirely (chat-first balance-load instead)."""
     for label in [
-        'אזן את הסמסטר',
         'תקן שיבוץ',
         'תקן רצף דרישות קדם',
         'צמצם קורסים מיותרים',
@@ -837,13 +837,15 @@ def test_repair_button_labels_present(html):
 
 
 def test_repair_diagnostics_render_function_exists(html):
-    """renderRepairDiagnosticsHtml must build repair rows/buttons for each
-    diagnostic type (except category, which is handled conversationally) and
-    be wired into the AI tab summary."""
+    """renderRepairDiagnosticsHtml must build repair rows/buttons for the
+    illegal-placement, prereq-order, and overshoot diagnostics (overloaded
+    semesters are now plain text — 'אזן את הסמסטר' was removed in favor of
+    chat-driven balancing) and be wired into the AI tab summary."""
     m = re.search(r"function renderRepairDiagnosticsHtml\(s\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderRepairDiagnosticsHtml not found"
     body = m.group(1)
-    assert "data-repair=\"balance\"" in body
+    assert "data-repair=\"balance\"" not in body
+    assert "אזן את הסמסטר" not in body
     assert "data-repair=\"illegal\"" in body
     assert "data-repair=\"prereq-order\"" in body
     assert "data-repair=\"overshoot\"" in body
@@ -852,6 +854,12 @@ def test_repair_diagnostics_render_function_exists(html):
     m2 = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m2, "renderAiTab not found"
     assert "renderRepairDiagnosticsHtml(s)" in m2.group(1)
+
+
+def test_balance_semester_button_removed_everywhere(html):
+    """'אזן את הסמסטר' must not appear anywhere in default-visible markup —
+    the balance-load chat intent / advanced 'אזן עומס' action replace it."""
+    assert "אזן את הסמסטר" not in html
 
 
 def test_repair_handler_functions_exist(html):
@@ -918,15 +926,16 @@ def test_no_separate_chat_tab_remains(html):
 
 
 def test_unified_ai_tab_has_chat_input_and_quick_actions(html):
-    """The unified 'עוזר AI' tab must contain both a chat input and the
-    planning quick-action buttons."""
+    """The unified 'עוזר AI' tab must contain a chat input, and the old
+    repair quick-actions must now live inside the collapsed 'אפשרויות
+    מתקדמות' section, not as default-visible buttons."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     body = m.group(1)
     assert "sidebar-chat-input" in body
     assert "sidebar-chat-send" in body
-    for label in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם']:
-        assert label in body, f"Quick action missing: {label}"
+    for label in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה']:
+        assert label in body, f"Advanced action missing: {label}"
 
 
 def test_mechanical_category_add_buttons_removed(html):
@@ -940,8 +949,8 @@ def test_mechanical_category_add_buttons_removed(html):
 
 
 def test_missing_requirements_rendered_as_diagnostics_list(html):
-    """Missing category/general requirements must render as a short bullet
-    list ('דרישות חסרות:') rather than as the old add-buttons."""
+    """Missing category/general requirements must render as plain text
+    ('דרישות חסרות:') rather than as the old add-buttons."""
     assert "function buildMissingRequirementsList" in html
     assert "function renderMissingRequirementsHtml" in html
     assert "דרישות חסרות:" in html
@@ -952,14 +961,15 @@ def test_missing_requirements_rendered_as_diagnostics_list(html):
     assert "buildMissingRequirementsList(" in m.group(1)
 
 
-def test_missing_requirements_have_smart_suggestion_buttons(html):
-    """Missing requirements must offer 'השלם דרישות חסרות' and
-    'שאל אותי לפני בחירה' actions."""
+def test_missing_requirements_no_attached_buttons(html):
+    """renderMissingRequirementsHtml must NOT render
+    'השלם דרישות חסרות'/'שאל אותי לפני בחירה' buttons directly — those moved
+    to the collapsed 'אפשרויות מתקדמות' section."""
     m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderMissingRequirementsHtml not found"
     body = m.group(1)
     for label in ['השלם דרישות חסרות', 'שאל אותי לפני בחירה']:
-        assert label in body, f"Missing-requirements action missing: {label}"
+        assert label not in body, f"Missing-requirements button should be moved out: {label}"
 
 
 def test_clarification_question_mechanism_exists(html):
@@ -1202,28 +1212,15 @@ def test_shaar_ruach_pref_control_in_ai_tab_and_payload(html):
     assert m2 and "shaarRuachAssessmentPref" in m2.group(0)
 
 
-def test_missing_requirements_render_once_not_per_category(html):
-    """renderMissingRequirementsHtml must produce a single list + global
-    action buttons, NOT a repeated per-category button group."""
-    assert "data-missing-action=\"suggest-all\"" in html
-    assert "data-missing-action=\"ask-first-all\"" in html
-    assert "data-missing-action=\"ignore-all\"" not in html
-    # The old per-category action attributes must no longer appear.
-    assert 'data-missing-action="suggest"' not in html
-    assert 'data-missing-action="ask-first"' not in html
-    assert 'data-missing-action="ignore"' not in html
-    # Per-category button group markup must not be duplicated per category —
-    # the actions block is built once, outside any per-item .map().
-    m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderMissingRequirementsHtml not found"
-    body = m.group(1)
-    assert body.count('data-missing-action="suggest-all"') == 1
-
-
-def test_global_smart_completion_button_exists(html):
-    """The global 'השלם דרישות חסרות' button + handler must exist."""
+def test_global_smart_completion_button_in_advanced_section(html):
+    """The global 'השלם דרישות חסרות' button + handler must exist, now
+    inside the collapsed 'אפשרויות מתקדמות' section."""
     assert "השלם דרישות חסרות" in html
     assert re.search(r"function offerAllCategorySuggestions\(", html)
+    m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
+    assert m, "advanced actions <details> not found"
+    assert 'id="sidebar-missing-suggest-all"' in m.group(1)
+    assert "השלם דרישות חסרות" in m.group(1)
 
 
 # ---------------------------------------------------------------------------
@@ -1251,11 +1248,12 @@ def test_plan_context_includes_board_draft_preferences_blockers_instruction(html
 
 def test_followup_chat_extends_draft_incrementally(html):
     """A follow-up chat message with an active draft must call
-    requestPlanProposalFromDraft (incremental), not a full rebuild, by default."""
+    requestPlanProposalFromDraft (incremental, using the dispatched
+    actionType), not a full rebuild, by default."""
     m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "handleSidebarChatSend not found"
     body = m.group(1)
-    assert "requestPlanProposalFromDraft(prefs, 'minimal_changes')" in body
+    assert "requestPlanProposalFromDraft(prefs, actionType)" in body
 
 
 # ---------------------------------------------------------------------------
@@ -1297,17 +1295,20 @@ def test_no_duplicate_top_level_full_plan_and_suggest_all_buttons(html):
     assert "הצע השלמה חכמה לכל הדרישות" not in body
 
 
-def test_main_primary_action_button_exists_with_handler(html):
-    """The new main button 'הצע תוכנית / תיקון חכם' must exist with a
-    working handler that references an existing dispatch function."""
-    assert 'id="sidebar-primary-action"' in html
-    assert "הצע תוכנית / תיקון חכם" in html
+def test_primary_action_button_removed_suggest_next_present(html):
+    """The old always-visible 'הצע תוכנית / תיקון חכם' primary button must be
+    gone; a small optional 'הצע צעד הבא' button (using the same
+    runPrimaryAiAction dispatch) takes its place."""
+    assert 'id="sidebar-primary-action"' not in html
+    assert "הצע תוכנית / תיקון חכם" not in html
+    assert 'id="sidebar-suggest-next"' in html
+    assert "הצע צעד הבא" in html
     assert re.search(r"function runPrimaryAiAction\(", html)
-    assert "getElementById('sidebar-primary-action').addEventListener('click', () => runPrimaryAiAction())" in html
+    assert "getElementById('sidebar-suggest-next')?.addEventListener('click', () => runPrimaryAiAction())" in html
 
 
 def test_rebuild_from_scratch_in_advanced_actions_with_confirm(html):
-    """'בנה מחדש מאפס' must live under פעולות מתקדמות, with a confirm()
+    """'בנה מחדש מאפס' must live under אפשרויות מתקדמות, with a confirm()
     dialog, and call the (fixed) full-plan flow."""
     m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
     assert m, "advanced actions <details> not found"
@@ -1324,34 +1325,27 @@ def test_rebuild_from_scratch_in_advanced_actions_with_confirm(html):
     assert "run('full_plan')" in handler_body
 
 
-def test_missing_requirements_has_single_completion_button(html):
-    """renderMissingRequirementsHtml must expose exactly one completion
-    button ('השלם דרישות חסרות'), not multiple per-category groups."""
-    m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderMissingRequirementsHtml not found"
-    body = m.group(1)
-    assert body.count('data-missing-action="suggest-all"') == 1
-    assert "השלם דרישות חסרות" in body
-    assert "התעלם כרגע" not in body
-
-
 def test_chat_free_text_routes_full_plan_request(html):
-    """Free-text 'תבנה לי תוכנית מלאה' must route to the full-plan flow."""
+    """Free-text 'תבנה לי תוכנית מלאה' must route to the full-plan flow via
+    detectAiIntent."""
     m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "handleSidebarChatSend not found"
     body = m.group(1)
-    assert "wantsFullPlan" in body
+    assert "detectAiIntent(" in body
     assert "requestPlanProposal(prefs, 'full_plan')" in body
-    assert re.search(r"תבנה.*תוכנית.*מלאה", body)
+
+    m2 = re.search(r"function detectAiIntent\(message\)(.*?)\n}\n", html, re.DOTALL)
+    assert m2, "detectAiIntent not found"
+    assert re.search(r"תבנה.*תוכנית.*מלאה", m2.group(1))
 
 
-def test_quick_actions_limited_to_three_plus_primary(html):
-    """At most 3 quick-action buttons plus the single primary action button
-    should be visible outside <details>/proposal card in the AI tab."""
+def test_chat_first_default_visible_controls(html):
+    """Only the chat input + 'שלח' send button + optional 'הצע צעד הבא'
+    button should be visible by default (outside <details> / proposal card)
+    in the AI tab."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     body = m.group(1)
-    # Only consider the panel.innerHTML template, not the JS wiring below it.
     template_match = re.search(r"panel\.innerHTML = `(.*?)`;", body, re.DOTALL)
     assert template_match, "renderAiTab template not found"
     template = template_match.group(1)
@@ -1360,17 +1354,11 @@ def test_quick_actions_limited_to_three_plus_primary(html):
     template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
     template_no_details = re.sub(r'<div id="ai-proposal-card"></div>', "", template_no_details)
 
-    quick_ids = ["sidebar-quick-balance", "sidebar-quick-career", "sidebar-quick-prereqs"]
-    for qid in quick_ids:
-        assert f'id="{qid}"' in template_no_details
-
-    assert 'id="sidebar-primary-action"' in template_no_details
+    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס']:
+        assert removed not in template_no_details, f"{removed} must not be default-visible"
 
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
-    # Exclude the chat-send button — it's part of the chat input row, not an
-    # AI action button.
-    action_buttons = [b for b in visible_buttons if b != "sidebar-chat-send"]
-    assert len(action_buttons) <= 4, f"too many visible top-level action buttons: {action_buttons}"
+    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-suggest-next"}, visible_buttons
 
 
 def test_full_plan_flow_no_undefined_function_references(html):
@@ -1401,3 +1389,147 @@ def test_primary_action_dispatches_based_on_board_state(html):
     assert "'full_plan'" in body
     assert "offerAllCategorySuggestions" in body
     assert "'minimal_changes'" in body
+
+
+# ---------------------------------------------------------------------------
+# PART E — detectAiIntent
+# ---------------------------------------------------------------------------
+
+def _extract_fn(html, name):
+    m = re.search(rf"function {name}\(.*?\n}}\n", html, re.DOTALL)
+    assert m, f"{name} not found"
+    return m.group(0)
+
+
+def test_detect_ai_intent_function_exists(html):
+    assert "function detectAiIntent(message)" in html
+
+
+def _run_detect_ai_intent(html, message):
+    """Extract detectAiIntent + its small dependencies and run them in node
+    against a stubbed environment, returning the parsed intent object."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available")
+
+    sem_he_m = re.search(r"const SEM_HE = \{.*?\n\};", html, re.DOTALL)
+    semesters_m = re.search(r"const SEMESTERS = \[.*?\n\];", html, re.DOTALL)
+    control_m = re.search(r"const CONTROL_HEAVY_KEYWORDS = \[.*?\];", html, re.DOTALL)
+    assert sem_he_m and semesters_m and control_m
+
+    detect_intent = _extract_fn(html, "detectAiIntent")
+    extract_sem = _extract_fn(html, "_extractSemesterIdFromText")
+    extract_course = _extract_fn(html, "_extractCourseIdFromText")
+    detect_clarification = _extract_fn(html, "detectClarificationNeeds")
+
+    script = f"""
+{sem_he_m.group(0)}
+{semesters_m.group(0)}
+{control_m.group(0)}
+const courseMap = {{}};
+{detect_clarification}
+{extract_sem}
+{extract_course}
+{detect_intent}
+console.log(JSON.stringify(detectAiIntent({json.dumps(message)})));
+"""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False, encoding="utf-8") as f:
+        f.write(script)
+        tmp_path = f.name
+    try:
+        result = subprocess.run([node, tmp_path], capture_output=True, text=True, encoding="utf-8")
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout.strip())
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+
+def test_detect_ai_intent_balance_load(html):
+    intent = _run_detect_ai_intent(html, "תאזן עומס")
+    assert intent["type"] == "balance_load"
+
+
+def test_detect_ai_intent_complete_requirements(html):
+    intent = _run_detect_ai_intent(html, "תשלים דרישות חסרות")
+    assert intent["type"] == "complete_requirements"
+
+
+def test_detect_ai_intent_full_plan(html):
+    intent = _run_detect_ai_intent(html, "בנה מערכת מלאה")
+    assert intent["type"] == "full_plan"
+
+
+def test_detect_ai_intent_fix_legality(html):
+    intent = _run_detect_ai_intent(html, "תקן בעיות חוקיות בשיבוץ")
+    assert intent["type"] == "fix_legality"
+
+
+def test_detect_ai_intent_balance_specific_semester(html):
+    intent = _run_detect_ai_intent(html, "תאזן את שנה ג׳ סמסטר א׳")
+    assert intent["type"] == "balance_specific_semester"
+    assert intent["semesterId"] == "year_3_semester_a"
+
+
+# ---------------------------------------------------------------------------
+# PART E — preferences (wanted/avoided/max-load) remain in "העדפות תכנון"
+# ---------------------------------------------------------------------------
+
+def test_planning_preferences_details_contains_pickers_and_max_hours(html):
+    """Wanted/avoided course pickers and the max-weekly-hours control must
+    remain inside the collapsed 'העדפות תכנון' <details>."""
+    m = re.search(r'<details class="ai-plan-section ai-prefs-collapsible">(.*?)</details>', html, re.DOTALL)
+    assert m, "'העדפות תכנון' <details> not found"
+    body = m.group(1)
+    assert "העדפות תכנון" in body
+    assert 'id="ai-pref-wanted-search"' in body
+    assert 'id="ai-pref-unwanted-search"' in body
+    assert 'id="sidebar-max-hours"' in body
+    assert 'id="ai-pref-shaar-ruach-assessment"' in body
+
+
+# ---------------------------------------------------------------------------
+# PART F/G/H — "הקורסים שלי" modal: semester grid + shared status model
+# ---------------------------------------------------------------------------
+
+def test_my_courses_modal_has_semester_grid_section(html):
+    """openMyCoursesModal must render a semester-grid section for mandatory
+    courses with status-toggle controls."""
+    assert 'id="my-courses-grid"' in html
+    assert re.search(r"function _renderMyCoursesGrid\(gridEl\)", html)
+    body = _extract_fn(html, "_renderMyCoursesGrid")
+    assert "data-mc-grid-toggle" in body
+    assert "SEMESTERS" in body
+
+
+def test_my_courses_grid_toggle_writes_shared_status_model(html):
+    """Toggling a status in the new grid must call setUserStatus/getUserStatus
+    — the SAME model read by getDegreeHoursStatusLocal and prerequisite checks."""
+    # The grid click handler (wired in openMyCoursesModal) must call setUserStatus.
+    m = re.search(r"function openMyCoursesModal\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "openMyCoursesModal not found"
+    body = m.group(1)
+    assert "setUserStatus(" in body
+    assert "getUserStatus(" in body
+    assert "data-mc-grid-toggle" in body
+
+    # getDegreeHoursStatusLocal / prerequisite checks must read via the same
+    # userCourseStatuses-backed accessor (getUserStatus / isCourseCompleted /
+    # completedCourseIds derived from it).
+    assert re.search(r"function getUserStatus\(cid\)", html)
+    assert "userCourseStatuses[cid]" in _extract_fn(html, "getUserStatus")
+
+
+def test_completed_course_via_grid_satisfies_prereq_and_excluded_from_scheduling(html):
+    """A course marked 'הושלם' via setUserStatus must (a) be excluded from
+    future-scheduling candidate pools (filtered via completedCourseIds /
+    isCourseCompleted) and (b) be treated as satisfying prerequisites
+    (_hasPrereqOrderViolationLocal skips completed prerequisites)."""
+    # (a) candidate-selection / repair logic excludes completed courses.
+    repair_overshoot = _extract_fn(html, "repairOvershootToDraft")
+    assert "ctx.completedCourseIds.has(cid)" in repair_overshoot
+
+    # (b) prereq-order check treats status === 'completed' (or
+    # completedCourseIds) as satisfying the prerequisite.
+    prereq_check = _extract_fn(html, "_hasPrereqOrderViolationLocal")
+    assert "status === 'completed'" in prereq_check or "completedCourseIds.has(prereq)" in prereq_check
+    assert "status === 'currently_taking'" in prereq_check

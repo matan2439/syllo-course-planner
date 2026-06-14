@@ -920,6 +920,32 @@ body.prog-modal-open .workspace {
 }
 .my-courses-summary span { display: flex; align-items: center; gap: 4px; }
 
+/* PART F — "הקורסים שלי" semester grid for mandatory courses */
+.my-courses-grid { margin-bottom: 10px; }
+.my-courses-grid-title { font-size: .72rem; color: var(--text-muted); margin-bottom: 6px; }
+.my-courses-grid-cols {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+}
+.my-courses-grid-col {
+  flex: 1 1 0; min-width: 150px; display: flex; flex-direction: column; gap: 6px;
+}
+.my-courses-grid-col-hdr {
+  font-size: .7rem; font-weight: 700; text-align: center; padding: 4px 6px;
+  border-radius: 6px; background: var(--surface2); border: 1px solid var(--border);
+}
+.my-courses-grid-col-body { display: flex; flex-direction: column; gap: 5px; }
+.mc-grid-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  font-size: .68rem; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; text-align: right; width: 100%;
+}
+.mc-grid-chip-name { font-weight: 600; }
+.mc-grid-chip-status { font-size: .62rem; color: var(--text-muted); }
+.mc-grid-status-done     { background: var(--success-bg, #e6f4ea); border-color: var(--success, #34a853); }
+.mc-grid-status-current  { background: var(--warning-bg, #fff4e0); border-color: var(--warning, #f9ab00); }
+.mc-grid-status-planned  { background: var(--info-bg, #e8f0fe); border-color: var(--info, #4285f4); }
+.mc-grid-status-none     { background: var(--surface); }
+
 /* ── Board area ──────────────────────────────────────────────────────────── */
 .board-area { flex: 1; overflow: auto; padding: 14px; transition: filter 250ms ease; }
 .board-grid {
@@ -1407,26 +1433,31 @@ body.prog-modal-open .workspace {
     </div>
     <div id="my-courses-summary" class="my-courses-summary"></div>
 
-    <div class="degree-hours-inputs">
-      <div class="degree-hours-field">
-        <label for="input-completed-degree-hours">שעות שכבר צברתי בתואר</label>
-        <input type="number" id="input-completed-degree-hours" min="0" max="400" placeholder="למשל 95" />
-        <div class="degree-hours-help">כולל שנה א׳, שנה ב׳ וקורסי שער/רוח שכבר הושלמו.</div>
-      </div>
-      <fieldset class="degree-hours-field">
-        <legend>קורסי שער/רוח</legend>
-        <label for="input-general-hours-required">שעות שער/רוח שנדרשות בתואר</label>
-        <input type="number" id="input-general-hours-required" min="0" max="60" placeholder="למשל 14" />
-        <label for="input-general-hours-completed">שעות שער/רוח שכבר השלמתי</label>
-        <input type="number" id="input-general-hours-completed" min="0" max="60" placeholder="למשל 6" />
-        <label for="input-general-hours-remaining">שעות שער/רוח שאני עדיין צריך להשלים</label>
-        <input type="number" id="input-general-hours-remaining" min="0" max="60" readonly />
-      </fieldset>
-    </div>
+    <div id="my-courses-grid" class="my-courses-grid"></div>
 
-    <div class="prog-search-wrap">
+    <details class="ai-plan-section" style="margin-top:10px">
+      <summary class="ai-plan-section-title">פרטים נוספים — שעות ושער רוח</summary>
+      <div class="degree-hours-inputs" style="margin-top:8px">
+        <div class="degree-hours-field">
+          <label for="input-completed-degree-hours">שעות שכבר צברתי בתואר</label>
+          <input type="number" id="input-completed-degree-hours" min="0" max="400" placeholder="למשל 95" />
+          <div class="degree-hours-help">כולל שנה א׳, שנה ב׳ וקורסי שער/רוח שכבר הושלמו.</div>
+        </div>
+        <fieldset class="degree-hours-field">
+          <legend>קורסי שער/רוח</legend>
+          <label for="input-general-hours-required">שעות שער/רוח שנדרשות בתואר</label>
+          <input type="number" id="input-general-hours-required" min="0" max="60" placeholder="למשל 14" />
+          <label for="input-general-hours-completed">שעות שער/רוח שכבר השלמתי</label>
+          <input type="number" id="input-general-hours-completed" min="0" max="60" placeholder="למשל 6" />
+          <label for="input-general-hours-remaining">שעות שער/רוח שאני עדיין צריך להשלים</label>
+          <input type="number" id="input-general-hours-remaining" min="0" max="60" readonly />
+        </fieldset>
+      </div>
+    </details>
+
+    <div class="prog-search-wrap" style="margin-top:10px">
       <input id="my-courses-search" class="prog-search" type="search" autocomplete="off"
-             placeholder="חיפוש לפי שם או קוד קורס" aria-label="חיפוש קורס" />
+             placeholder="חיפוש לפי שם או קוד קורס (קורסים נוספים)" aria-label="חיפוש קורס" />
       <span class="prog-search-icon" aria-hidden="true">🔍</span>
     </div>
     <div id="my-courses-list" class="prog-results" style="gap:0"></div>
@@ -3145,13 +3176,13 @@ function renderRepairDiagnosticsHtml(s) {
   // suggestion + quick replies, not as a mechanical category-add button.
   // See buildMissingRequirementsList().
 
-  // 2) Overloaded semesters.
+  // 2) Overloaded semesters — surfaced as plain text; use chat ("תאזן את
+  // הסמסטר X") or "אפשרויות מתקדמות" to fix.
   for (const sem of s.overloaded_semesters) {
     const label = SEMESTERS.find(x => x.id === sem.semester_id)?.label || sem.semester_id;
     rows.push(`
       <div class="repair-row">
         <span class="repair-row-text">סמסטר ${esc(label)} עמוס (${sem.total_hours}/${MAX_HOURS} ש״ש)</span>
-        <button class="btn btn-sm repair-btn" data-repair="balance" data-semester-id="${esc(sem.semester_id)}">אזן את הסמסטר</button>
       </div>`);
   }
 
@@ -3221,22 +3252,13 @@ function renderMissingRequirementsHtml(items) {
   if (_missingRequirementsFingerprint(items) === _missingReqsDismissedFingerprint) return '';
 
   const lines = items.map(it => it.kind === 'general'
-    ? `<li>- שער רוח ${it.placed}/${it.required}</li>`
-    : `<li>- ${esc(it.name)} (חסרים ${it.missing})</li>`);
+    ? `שער רוח ${it.placed}/${it.required}`
+    : `${it.name} (חסרים ${it.missing})`);
 
-  // PART B — ONE primary action covering ALL missing categories at once,
-  // plus one optional secondary "ask first" link.
-  const categoryItems = items.filter(it => it.kind === 'category');
-  const actionsHtml = `
-    <div class="missing-reqs-actions">
-      <button class="btn btn-sm missing-req-btn" data-missing-action="suggest-all">השלם דרישות חסרות</button>
-      <button class="btn btn-sm btn-link missing-req-btn" data-missing-action="ask-first-all">שאל אותי לפני בחירה</button>
-    </div>`;
-
+  // Chat-first: no buttons here — ask the AI to complete missing
+  // requirements via the chat input, or use "הצע צעד הבא".
   return `<div class="missing-reqs">
-    <div class="missing-reqs-title">דרישות חסרות:</div>
-    <ul class="ai-plan-msg-list">${lines.join('')}</ul>
-    ${actionsHtml}
+    <div class="missing-reqs-title">דרישות חסרות: ${esc(lines.join(', '))}</div>
   </div>`;
 }
 
@@ -3304,7 +3326,7 @@ function repairCategoryToDraft(categoryId) {
   showBoardNotify(`הוצע להוסיף ${candidate.name_he || candidate.course_id} להשלמת קטגוריית "${cat.name}" — בדוק את הטיוטה.`);
 }
 
-/** PART E #2 — "אזן את הסמסטר": move course(s) out of an overloaded semester
+/** PART E #2 — balance an overloaded semester: move course(s) out of it
  * into a less-loaded legal semester. */
 function repairBalanceSemesterToDraft(semesterId) {
   const ctx = buildPlanValidationInputs();
@@ -3342,10 +3364,10 @@ function repairBalanceSemesterToDraft(semesterId) {
     if (!didMove) break;
   }
 
-  if (!moved) { showBoardNotify('לא נמצאה דרך חוקית לאזן את הסמסטר הזה.'); return; }
+  if (!moved) { showBoardNotify('לא נמצאה דרך חוקית לאזן את העומס בסמסטר הזה.'); return; }
   renderAll();
   setSidebarTab('draft');
-  showBoardNotify(`הוצעה העברת ${moved} קורס/ים כדי לאזן את הסמסטר — בדוק את הטיוטה.`);
+  showBoardNotify(`הוצעה העברת ${moved} קורס/ים כדי לאזן את העומס — בדוק את הטיוטה.`);
 }
 
 /** PART E #3 — "תקן שיבוץ": relocate an illegally-placed course to a legal semester. */
@@ -3545,25 +3567,22 @@ function renderAiTab() {
       <div id="ai-chat-log" class="ai-chat-log"></div>
 
       <div class="ai-input-area">
-        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לשנות או לשפר במערכת..."></textarea>
+        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת..."></textarea>
         <div class="ai-send-row">
+          <button class="btn btn-sm" id="sidebar-suggest-next">הצע צעד הבא</button>
           <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <details class="ai-plan-section ai-advanced-collapsible">
+        <summary class="ai-plan-section-title">אפשרויות מתקדמות</summary>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
+          <button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מחדש מאפס</button>
           <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
           <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
           <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
-        </div>
-        <button class="btn btn-primary" id="sidebar-primary-action">הצע תוכנית / תיקון חכם</button>
-      </div>
-
-      <details class="ai-plan-section ai-advanced-collapsible">
-        <summary class="ai-plan-section-title">פעולות מתקדמות</summary>
-        <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
-          <button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מחדש מאפס</button>
+          <button class="btn btn-sm" id="sidebar-missing-suggest-all">השלם דרישות חסרות</button>
+          <button class="btn btn-sm btn-link" id="sidebar-missing-ask-first">שאל אותי לפני בחירה</button>
           <label class="ai-plan-check">
             <input type="checkbox" id="sidebar-allow-overload" ${_aiPlanLastPreferences?.overload_accepted ? 'checked' : ''}>
             אפשר חריגה בעומס
@@ -3583,21 +3602,6 @@ function renderAiTab() {
         case 'illegal':      repairIllegalPlacementToDraft(btn.dataset.courseId); break;
         case 'prereq-order': repairPrereqOrderToDraft(); break;
         case 'overshoot':    repairOvershootToDraft(); break;
-      }
-    });
-  });
-
-  // PART B — global "השלם דרישות חסרות" / "שאל אותי לפני בחירה" for ALL
-  // missing requirements at once.
-  panel.querySelectorAll('.missing-req-btn[data-missing-action]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      switch (btn.dataset.missingAction) {
-        case 'suggest-all':
-          offerAllCategorySuggestions();
-          break;
-        case 'ask-first-all':
-          askBeforeAllMissingRequirements();
-          break;
       }
     });
   });
@@ -3643,10 +3647,13 @@ function renderAiTab() {
   document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
   document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
   document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
+  document.getElementById('sidebar-missing-suggest-all')?.addEventListener('click', () => offerAllCategorySuggestions());
+  document.getElementById('sidebar-missing-ask-first')?.addEventListener('click', () => askBeforeAllMissingRequirements());
 
-  // PART A/E — single primary action: inspects board state and dispatches
-  // to the appropriate flow (full-plan / complete-requirements / improve).
-  document.getElementById('sidebar-primary-action').addEventListener('click', () => runPrimaryAiAction());
+  // "הצע צעד הבא" — chat-first equivalent of the old primary-action
+  // branching: empty board → full plan, missing reqs → complete, else →
+  // incremental improvement.
+  document.getElementById('sidebar-suggest-next')?.addEventListener('click', () => runPrimaryAiAction());
 
   // PART B/E — advanced actions (collapsed by default).
   document.getElementById('sidebar-rebuild-from-scratch').addEventListener('click', () => {
@@ -3675,7 +3682,7 @@ function renderAiTab() {
   renderProposalCard();
 }
 
-/* ── PART A — single primary action ("הצע תוכנית / תיקון חכם") ─────────────
+/* ── PART A — primary-action dispatch logic (used by "הצע צעד הבא") ────────
  * Inspects the current board + missing-requirements state and dispatches to
  * the appropriate flow:
  *  - empty/mostly-empty board  → full-plan generation (action_type=full_plan)
@@ -4098,6 +4105,121 @@ function tryAnswerWhyChosen(message) {
 }
 
 /**
+ * PART E — single intent-detection function for free-text chat messages.
+ * Returns { type, ...extra } where type is one of:
+ *   full_plan | balance_load | balance_specific_semester | complete_requirements |
+ *   fix_legality | improve_career_fit | replace_course | explain_course |
+ *   add_avoided | ask_clarification | improve_current
+ * Mapping (checked in order):
+ *  - "בנה לי מערכת מלאה"/"תבנה תוכנית מלאה"/"מאפס"/"בנה מחדש"      → full_plan
+ *  - "למה"/"מדוע" + course reference                                → explain_course
+ *  - "תאזן"/"תוריד עומס" + semester reference (סמסטר/שנה X)         → balance_specific_semester (semesterId)
+ *  - "תאזן"/"איזון" + "מערכת"/"עומס" (general)                      → balance_load
+ *  - "תשלים"/"השלם" + "דרישות"/"חסר"                                 → complete_requirements
+ *  - "תתקן"/"תקן" + "חוקי"/"בעיות חוקיות"/"שיבוץ"/"דרישות קדם"       → fix_legality
+ *  - "אל תשבץ"/"אל תכלול"/"תוריד את" + course                        → add_avoided
+ *  - "תחליף את"/"מצא חלופה ל" + course                                → replace_course
+ *  - "תשפר"/"שפר" + "התאמה"/"קריירה"/"תכן"/...                       → improve_career_fit (extra_request_he)
+ *  - fallback                                                          → ask_clarification or improve_current
+ */
+function detectAiIntent(message) {
+  const text = (message || '').trim();
+  const low = text.toLowerCase();
+
+  // full_plan
+  if (/בנה\s*(?:לי?\s*)?מערכת\s*מלאה|תבנה\s*(?:לי?\s*)?תוכנית\s*מלאה|בנה\s*תוכנית\s*מלאה|בנה\s*מחדש|מאפס/.test(text)) {
+    return { type: 'full_plan' };
+  }
+
+  // explain_course — "why" questions, delegate to tryAnswerWhyChosen.
+  if (/למה|מדוע|why/i.test(text)) {
+    return { type: 'explain_course' };
+  }
+
+  // balance_specific_semester — "תאזן"/"תוריד עומס" + a semester reference.
+  if (/תאזן|לאזן|תוריד\s*עומס|הקטן\s*עומס/.test(text)) {
+    const semesterId = _extractSemesterIdFromText(text);
+    if (semesterId) return { type: 'balance_specific_semester', semesterId };
+  }
+
+  // balance_load — general balance/load request without a specific semester.
+  if (/תאזן|איזון|לאזן/.test(text) && /מערכת|עומס|סמסטרים|לוח/.test(text)) {
+    return { type: 'balance_load' };
+  }
+  if (/תוריד\s*עומס|הקטן\s*עומס/.test(text)) {
+    return { type: 'balance_load' };
+  }
+
+  // complete_requirements
+  if (/(תשלים|השלם)/.test(text) && /(דרישות|חסר)/.test(text)) {
+    return { type: 'complete_requirements' };
+  }
+
+  // fix_legality
+  if (/(תתקן|תקן)/.test(text) && /(חוקי|בעיות חוקיות|שיבוץ|דרישות קדם|רצף)/.test(text)) {
+    return { type: 'fix_legality' };
+  }
+
+  // add_avoided — "אל תשבץ"/"אל תכלול"/"תוריד את" + course name/id.
+  if (/אל\s*תשבץ|אל\s*תכלול|תוריד\s*את|הסר\s*את/.test(text)) {
+    const courseId = _extractCourseIdFromText(text);
+    return { type: 'add_avoided', courseId };
+  }
+
+  // replace_course — "תחליף את"/"מצא חלופה ל" + course reference.
+  if (/תחליף\s*את|תחליף\b|מצא\s*חלופה\s*ל|החלף/.test(text)) {
+    const courseId = _extractCourseIdFromText(text);
+    return { type: 'replace_course', courseId };
+  }
+
+  // improve_career_fit — "תשפר"/"שפר" + career/fit-related descriptors.
+  if (/(תשפר|שפר)/.test(text) && /(התאמה|קריירה|תכן|אנליז|תעשיי|מחקר)/.test(text)) {
+    return { type: 'improve_career_fit', extra_request_he: text };
+  }
+
+  // fallback — ask for clarification if ambiguous, else minimal improvement.
+  if (detectClarificationNeeds(text)) {
+    return { type: 'ask_clarification' };
+  }
+  return { type: 'improve_current', extra_request_he: text };
+}
+
+/** Extract a semester_id (e.g. year_3_semester_a) from Hebrew text like
+ * "סמסטר ג׳ א׳" / "שנה ג סמסטר א" / "שנה ד׳ סמ׳ ב". Returns null if none found. */
+function _extractSemesterIdFromText(text) {
+  const yearMap = { 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4 };
+  const semMap = { 'א': 'a', 'ב': 'b' };
+  // Normalize: strip ׳/' geresh marks.
+  const norm = text.replace(/[׳']/g, '');
+  // Look for "שנה <X>" ... "סמ<סטר> <Y>" in either order within the text.
+  const yearMatch = norm.match(/שנה\s*([אבגד])/);
+  const semMatch = norm.match(/סמ(?:סטר)?\s*([אב])(?!\S)/);
+  if (yearMatch && semMatch) {
+    const year = yearMap[yearMatch[1]];
+    const sem = semMap[semMatch[1]];
+    if (year && sem) {
+      const semesterId = `year_${year}_semester_${sem}`;
+      if (SEMESTERS.some(s => s.id === semesterId)) return semesterId;
+    }
+  }
+  // Also try matching directly against known SEM_HE labels.
+  for (const [semId, label] of Object.entries(SEM_HE)) {
+    const labelNorm = label.replace(/[׳—]/g, '').replace(/\s+/g, ' ').trim();
+    if (norm.replace(/\s+/g, ' ').includes(labelNorm)) return semId;
+  }
+  return null;
+}
+
+/** Find a course_id mentioned in free text by name_he or course_id. */
+function _extractCourseIdFromText(text) {
+  for (const [cid, c] of Object.entries(courseMap)) {
+    if (c.name_he && text.includes(c.name_he)) return cid;
+    if (text.includes(cid)) return cid;
+  }
+  return null;
+}
+
+/**
  * Send the chat input (or a provided message, e.g. from a quick reply) to
  * the planning/chat flow. If the message is a planning-style request and the
  * heuristic detects ambiguity, asks a clarifying question first (with quick
@@ -4137,25 +4259,58 @@ async function handleSidebarChatSend(providedMessage) {
   _aiClarificationAnswered = false;
   const planningText = pending ? `${pending} (${message})` : message;
 
+  // PART E — single intent-detection entry point.
+  const intent = pending != null ? { type: 'improve_current', extra_request_he: planningText } : detectAiIntent(message);
+
   // PART F — "why was this chosen?" gets a SPECIFIC, non-generic answer from
   // electiveSelectionReasons + course metadata, without triggering a re-plan.
-  if (pending == null) {
+  if (intent.type === 'explain_course') {
     const whyAnswer = tryAnswerWhyChosen(message);
     if (whyAnswer) {
       postAssistantMessage(whyAnswer);
       return;
     }
+    // Falls through to general Q&A if no placed course matched.
   }
 
-  const looksLikePlanningRequest = /תוכנית|לשפר|שבץ|תחליף|להחליף|תוסיף|הוסף|איזון|אזן|תכנון|בנה|חלופ|במקום|צמצם|הקטן|הורד|תוריד/.test(message)
-    || pending != null;
+  if (intent.type === 'ask_clarification') {
+    const clar2 = detectClarificationNeeds(message);
+    if (clar2) {
+      _aiClarificationAnswered = true;
+      _aiPendingPlanningRequest = message;
+      postAssistantMessage(clar2.question, clar2.quickReplies);
+      return;
+    }
+  }
 
-  if (looksLikePlanningRequest) {
-    // PART D — explicit "build a full plan from scratch" requests route to
-    // the full-plan flow instead of incremental minimal_changes.
-    const wantsFullPlan = /תבנה\s*לי?\s*תוכנית\s*מלאה|בנה\s*תוכנית\s*מלאה|בנה\s*מחדש|מאפס/.test(message);
+  const PLANNING_INTENTS = new Set([
+    'full_plan', 'balance_load', 'balance_specific_semester', 'complete_requirements',
+    'fix_legality', 'improve_career_fit', 'replace_course', 'add_avoided', 'improve_current',
+  ]);
 
-    if (wantsFullPlan) {
+  if (PLANNING_INTENTS.has(intent.type)) {
+    // "add_avoided" — record the course as strongly avoided, then fall
+    // through to a repair proposal (complete_requirements if the avoided
+    // course leaves a category short, otherwise replace_course/minimal_changes).
+    if (intent.type === 'add_avoided') {
+      if (intent.courseId) {
+        if (!_aiPickerState.unwanted.includes(intent.courseId)) _aiPickerState.unwanted.push(intent.courseId);
+        if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
+        if (!_aiPickerState.strongUnwanted.includes(intent.courseId)) _aiPickerState.strongUnwanted.push(intent.courseId);
+        // Remove from the active draft (or board) so a repair proposal is needed.
+        const draft = _ensureProposalDraft();
+        for (const semId of Object.keys(draft.semesters)) {
+          if (draft.semesters[semId].includes(intent.courseId)) {
+            draft.semesters[semId] = draft.semesters[semId].filter(x => x !== intent.courseId);
+            if (!draft.repo.includes(intent.courseId)) draft.repo.push(intent.courseId);
+          }
+        }
+      }
+      intent.type = 'complete_requirements';
+    }
+
+    // full_plan
+    if (intent.type === 'full_plan') {
       postAssistantMessage('מבין — בונה תוכנית מלאה מאפס…');
       const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
       _aiPlanLastPreferences = { ...prefs, action_type: 'full_plan' };
@@ -4173,16 +4328,61 @@ async function handleSidebarChatSend(providedMessage) {
       return;
     }
 
-    postAssistantMessage('מבין — אני בודק את התוכנית הנוכחית ומכין הצעת שינוי…');
-    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
-    _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
+    // balance_specific_semester — repair locally first; if nothing moved,
+    // fall back to an AI balance_load proposal scoped to that semester.
+    if (intent.type === 'balance_specific_semester' && intent.semesterId) {
+      const before = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
+      repairBalanceSemesterToDraft(intent.semesterId);
+      const after = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
+      const moved = before && after && JSON.stringify(before.slice().sort()) !== JSON.stringify(after.slice().sort());
+      if (moved) {
+        postAssistantMessage('זו ההצעה המעודכנת — אפשר להחיל, לדחות, או לבקש עוד חלופות.', [
+          { label: 'החל שינוי', action: 'apply-draft' },
+          { label: 'דחה', action: 'reject-draft' },
+        ]);
+        return;
+      }
+      const label = SEM_HE[intent.semesterId] || intent.semesterId;
+      postAssistantMessage(`מבין — בודק איזון עומס עבור ${label}…`);
+      intent.extra_request_he = `${planningText} (התמקד באיזון העומס בסמסטר ${label})`;
+      intent.type = 'balance_load';
+    }
+
+    // action_type mapping for the remaining intents.
+    let actionType = 'minimal_changes';
+    let inProgressMsg = 'מבין — אני בודק את התוכנית הנוכחית ומכין הצעת שינוי…';
+    switch (intent.type) {
+      case 'balance_load':
+        actionType = 'balance_load';
+        inProgressMsg = 'מבין — בודק איזון עומס בין הסמסטרים…';
+        break;
+      case 'complete_requirements':
+        // Prefer the conversational completion flow (chat suggestions +
+        // quick replies) for missing categories.
+        offerAllCategorySuggestions();
+        return;
+      case 'fix_legality':
+        actionType = 'fix_prerequisites';
+        inProgressMsg = 'מבין — בודק ומתקן בעיות חוקיות בלוח…';
+        break;
+      case 'replace_course':
+      case 'improve_career_fit':
+      case 'improve_current':
+      default:
+        actionType = 'minimal_changes';
+        break;
+    }
+
+    postAssistantMessage(inProgressMsg);
+    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: intent.extra_request_he || planningText };
+    _aiPlanLastPreferences = { ...prefs, action_type: actionType };
     try {
       // PART F — always route through the INCREMENTAL planning call
       // ("שפר את המערכת הנוכחית"), never a full rebuild, for chat-driven edits.
       if (state.proposalDraft) {
-        await requestPlanProposalFromDraft(prefs, 'minimal_changes');
+        await requestPlanProposalFromDraft(prefs, actionType);
       } else {
-        await requestPlanProposal(prefs, 'minimal_changes');
+        await requestPlanProposal(prefs, actionType);
       }
       // PART F — follow the proposal with explicit ping-pong action chips.
       postAssistantMessage('זו ההצעה המעודכנת — אפשר להחיל, לדחות, לבקש עוד חלופות, או לבקש ממני לשאול לפני שיבוץ.', [
@@ -6523,7 +6723,10 @@ function openMyCoursesModal() {
 
   const searchEl = document.getElementById('my-courses-search');
   const listEl   = document.getElementById('my-courses-list');
+  const gridEl   = document.getElementById('my-courses-grid');
   searchEl.value = '';
+  _renderMyCoursesSummary();
+  _renderMyCoursesGrid(gridEl);
   _renderMyCoursesListContent(listEl, '');
   setTimeout(() => searchEl.focus(), 60);
 
@@ -6542,6 +6745,24 @@ function openMyCoursesModal() {
     } else {
       return;
     }
+    _renderMyCoursesSummary();
+    _renderMyCoursesGrid(gridEl);
+    _renderMyCoursesListContent(listEl, searchEl.value);
+    renderAll();
+  };
+
+  // Grid status-toggle clicks (delegated).
+  gridEl.onclick = e => {
+    const btn = e.target.closest('[data-mc-grid-toggle]');
+    if (!btn) return;
+    const cid = btn.dataset.mcGridToggle;
+    const cycle = ['not_taken', 'completed', 'currently_taking', 'planned'];
+    const cur = getUserStatus(cid).status;
+    const next = cycle[(cycle.indexOf(cur) + 1) % cycle.length];
+    const us = getUserStatus(cid);
+    setUserStatus(cid, next, next === 'currently_taking' || next === 'planned' ? (us.planned_semester || _defaultRestoreSemester(courseMap[cid], us)) : us.planned_semester);
+    _renderMyCoursesSummary();
+    _renderMyCoursesGrid(gridEl);
     _renderMyCoursesListContent(listEl, searchEl.value);
     renderAll();
   };
@@ -6599,10 +6820,93 @@ function closeMyCoursesModal() {
   }, 220);
 }
 
+/** PART F — compact top summary row: degree hours, completed/current/planned
+ * counts, and שער רוח progress. Reads from the SAME models the rest of the
+ * app reads (userCourseStatuses via getUserStatus, degreeHoursProfile). */
+function _renderMyCoursesSummary() {
+  const sumEl = document.getElementById('my-courses-summary');
+  if (!sumEl) return;
+
+  const counts = { completed: 0, currently_taking: 0, planned: 0 };
+  for (const us of Object.values(userCourseStatuses)) {
+    if (counts[us.status] != null) counts[us.status]++;
+  }
+
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
+  const ctx = buildPlanValidationInputs();
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  const hours = getDegreeHoursStatusLocal(analysis, semObjs, courseHours);
+  const general = getGeneralRequirementStatusReportLocal(analysis, new Set(semObjs.flatMap(s => s.course_ids)));
+
+  sumEl.innerHTML = `
+    <span>🎓 שעות שצברתי: ${hours.completed_degree_hours ?? 0}/${hours.degree_required_hours}</span>
+    <span>✅ ${counts.completed} הושלמו</span>
+    <span>📖 ${counts.currently_taking} נלמדים עכשיו</span>
+    <span>🗓 ${counts.planned} מתוכננים</span>
+    ${general ? `<span>שער רוח: ${general.placed}/${general.required}</span>` : ''}
+  `;
+}
+
+/** PART F — semester grid for mandatory courses (the program's early/core
+ * mandatory structure, from the board's own semester layout). Each course is
+ * a chip with a 4-way status toggle (לא נלקח / הושלם / נלמד עכשיו / מתוכנן)
+ * that writes through setUserStatus — the SAME model read by
+ * getDegreeHoursStatusLocal / prerequisite checks / repair functions. */
+function _renderMyCoursesGrid(gridEl) {
+  if (!gridEl) return;
+
+  const STATUS_SHORT = {
+    not_taken: 'לא נלקח',
+    completed: 'הושלם',
+    currently_taking: 'נלמד עכשיו',
+    planned: 'מתוכנן',
+  };
+  const STATUS_CLS = {
+    not_taken: 'mc-grid-status-none',
+    completed: 'mc-grid-status-done',
+    currently_taking: 'mc-grid-status-current',
+    planned: 'mc-grid-status-planned',
+  };
+
+  const cols = SEMESTERS.map(s => {
+    const cids = (state.semesters[s.id] || []).filter(cid => courseMap[cid]?.course_type === 'mandatory');
+    const chips = cids.map(cid => {
+      const c = courseMap[cid];
+      const status = getUserStatus(cid).status;
+      return `<button type="button" class="mc-grid-chip ${STATUS_CLS[status]}" data-mc-grid-toggle="${esc(cid)}"
+                title="${esc(c.name_he || cid)} — לחץ לשינוי סטטוס">
+          <span class="mc-grid-chip-name">${esc(c.name_he || cid)}</span>
+          <span class="mc-grid-chip-status">${STATUS_SHORT[status]}</span>
+        </button>`;
+    }).join('');
+    return `<div class="my-courses-grid-col">
+      <div class="my-courses-grid-col-hdr">${esc(SEM_HE[s.id] || s.id)}</div>
+      <div class="my-courses-grid-col-body">${chips || '<div class="ai-plan-hint">אין קורסי חובה</div>'}</div>
+    </div>`;
+  });
+
+  gridEl.innerHTML = `
+    <div class="my-courses-grid-title">קורסי חובה לפי סמסטר — לחיצה משנה סטטוס</div>
+    <div class="my-courses-grid-cols">${cols.join('')}</div>`;
+}
+
+/** course_ids shown in the semester grid — excluded from the searchable list below. */
+function _myCoursesGridCourseIds() {
+  return new Set(
+    SEMESTERS.flatMap(s => (state.semesters[s.id] || []))
+      .filter(cid => courseMap[cid]?.course_type === 'mandatory')
+  );
+}
+
 function _renderMyCoursesListContent(listEl, query) {
   const q = (query || '').toLowerCase().trim();
+  const gridIds = _myCoursesGridCourseIds();
 
   const courses = Object.values(courseMap)
+    .filter(c => !gridIds.has(c.course_id))
     .filter(c => !q ||
       c.course_id.toLowerCase().includes(q) ||
       (c.name_he || '').toLowerCase().includes(q))
@@ -6610,20 +6914,6 @@ function _renderMyCoursesListContent(listEl, query) {
       const an = a.name_he || a.course_id, bn = b.name_he || b.course_id;
       return an.localeCompare(bn, 'he');
     });
-
-  /* Update summary line */
-  const sumEl = document.getElementById('my-courses-summary');
-  if (sumEl) {
-    const counts = { completed: 0, currently_taking: 0, planned: 0 };
-    for (const us of Object.values(userCourseStatuses)) {
-      if (counts[us.status] != null) counts[us.status]++;
-    }
-    sumEl.innerHTML = `
-      <span>✅ ${counts.completed} הושלמו</span>
-      <span>📖 ${counts.currently_taking} נלמדים עכשיו</span>
-      <span>🗓 ${counts.planned} מתוכננים</span>
-    `;
-  }
 
   if (!courses.length) {
     listEl.innerHTML = '<div class="prog-empty">לא נמצאו קורסים</div>';
