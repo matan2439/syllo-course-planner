@@ -700,3 +700,81 @@ def test_summary_chips_row_present_in_draft_tab(html):
     assert "draft-chips-row" in body
     for label in ['סה״כ', 'נותרו', 'שער רוח', 'קטגוריות', 'נוספו', 'הועברו', 'עומס שיא']:
         assert label in body, f"Summary chips row missing: {label}"
+
+
+# ---------------------------------------------------------------------------
+# Category card backgrounds (PART A/D) — cards must not all be uniform orange
+# ---------------------------------------------------------------------------
+
+def test_card_cat_classes_have_background_declarations(html):
+    """Each card-cat-* rule must set a background, with enough specificity
+    to override .card-elective's background."""
+    for cls, var in [
+        ("card-cat-fluids", "--cat-fluids-bg"),
+        ("card-cat-solids", "--cat-solids-bg"),
+        ("card-cat-systems", "--cat-systems-bg"),
+        ("card-cat-labs", "--cat-labs-bg"),
+        ("card-cat-specelective", "--cat-specelective-bg"),
+        ("card-cat-shaarruach", "--cat-shaarruach-bg"),
+    ]:
+        m = re.search(r"\." + re.escape(cls) + r"\s*\{[^}]*\}", html)
+        assert m, f".{cls} rule not found"
+        rule = m.group(0)
+        assert "background" in rule, f".{cls} missing background declaration"
+        assert var in rule, f".{cls} background should use {var}"
+
+
+def test_card_cat_background_vars_distinct_in_light_and_dark_themes(html):
+    """--cat-*-bg vars must each have distinct color values, both in light
+    and dark theme blocks (so fluids/solids/systems/labs/shaarruach all
+    look visually different)."""
+    bg_vars = [
+        "--cat-fluids-bg", "--cat-solids-bg", "--cat-systems-bg",
+        "--cat-labs-bg", "--cat-shaarruach-bg",
+    ]
+    for var in bg_vars:
+        assert html.count(var) >= 2, f"{var} should be defined in both light and dark theme blocks"
+
+    def extract_value(theme_block_text, var):
+        m = re.search(re.escape(var) + r":\s*([^;]+);", theme_block_text)
+        assert m, f"{var} value not found"
+        return m.group(1).strip()
+
+    # split roughly: first occurrence block (light) vs second (dark)
+    values_first = {}
+    values_second = {}
+    for var in bg_vars:
+        occurrences = [m.group(1).strip() for m in re.finditer(re.escape(var) + r":\s*([^;]+);", html)]
+        assert len(occurrences) >= 2, f"{var} needs at least 2 definitions"
+        values_first[var] = occurrences[0]
+        values_second[var] = occurrences[1]
+
+    assert len(set(values_first.values())) == len(bg_vars), "light-theme cat-*-bg values must be distinct"
+    assert len(set(values_second.values())) == len(bg_vars), "dark-theme cat-*-bg values must be distinct"
+
+
+def test_fluids_solids_systems_labs_shaarruach_cards_get_distinct_cat_classes(html):
+    """cardHtml must assign distinct card-cat-* classes per program_category_id."""
+    m = re.search(r"const CAT_CSS = \{(.*?)\n\};", html, re.DOTALL)
+    assert m, "CAT_CSS not found"
+    body = m.group(1)
+    assert "card-cat-fluids" in body
+    assert "card-cat-solids" in body
+    assert "card-cat-systems" in body
+    assert "card-cat-labs" in body
+    assert "card-cat-shaarruach" in body
+
+    # cardHtml must use catStyles.card to append the category class
+    m2 = re.search(r"if \(isElectiveLike && catStyles.*?cls \+= ` \$\{catStyles\.card\}`", html)
+    assert m2, "cardHtml does not append catStyles.card class"
+
+
+def test_draft_state_classes_do_not_override_category_background_or_border(html):
+    """card-draft-added/moved/removed must not set background or
+    border-color (with !important) that would stomp card-cat-* styling."""
+    for cls in ["card-draft-added", "card-draft-moved", "course-card-draft-removed"]:
+        m = re.search(r"\.course-card\." + re.escape(cls) + r"\s*\{([^}]*)\}", html)
+        assert m, f".{cls} rule not found"
+        rule = m.group(1)
+        assert "background" not in rule, f".{cls} must not set background"
+        assert "border-color" not in rule, f".{cls} must not set border-color"
