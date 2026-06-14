@@ -2485,6 +2485,36 @@ function init(board, audit, programJson) {
     }
   }
 
+  /* ── קורסי שער רוח repository — separate category, never an engineering
+   * elective. Added so the "הקורסים שלי" status UI can mark them, even
+   * though they are not part of the board's official program board. ────
+   * NOTE: this must run BEFORE origRepo/state.repo are computed below, so
+   * that שער רוח courses are included in the repository (otherwise the
+   * "קורסי שער רוח" section renders with a header but no cards). ──────── */
+  for (const g of SHAAR_RUACH_COURSES) {
+    if (courseMap[g.course_id]) continue;
+    courseMap[g.course_id] = {
+      course_id: g.course_id,
+      name_he: g.name_he,
+      weekly_hours: g.credits,
+      semester_hours: g.credits,
+      difficulty_score: null, difficulty_level: null,
+      workload_score: null, conceptual_complexity_score: null,
+      prerequisite_depth_score: null, assessment_intensity_score: null,
+      difficulty_confidence: null, difficulty_warnings: [],
+      course_type: 'general', category: 'שער רוח',
+      program_category_id: 'shaar_ruach', program_category_name_he: 'שער רוח',
+      status: 'eligible', locked_by_user: false, source: 'shaar_ruach',
+      placement_policy: 'flexible',
+      effective_allowed_semesters: SEMESTERS.map(s => s.id),
+      missing_prerequisites: [], missing_prerequisite_details: [],
+      prerequisites: [], prerequisite_details: [],
+      warnings: [], data_quality: { has_weekly_hours: true },
+      syllabus_url: g.syllabus_url || null, syllabus_links: [], source_urls: [],
+      semester_availability: null, grade_signal: null,
+    };
+  }
+
   const origSems  = Object.fromEntries(SEMESTERS.map(s => [s.id, []]));
   const placedSet = new Set();
   for (const sem of (board.semesters || [])) {
@@ -2545,33 +2575,6 @@ function init(board, audit, programJson) {
       if (cat.min_courses > 0 && !cat.needs_review) openGroups.add(cat.category_id);
       if (cat.category_id === 'other_specialization') openGroups.add(cat.category_id);
     }
-  }
-
-  /* ── קורסי שער רוח repository — separate category, never an engineering
-   * elective. Added so the "הקורסים שלי" status UI can mark them, even
-   * though they are not part of the board's official program board. ──── */
-  for (const g of SHAAR_RUACH_COURSES) {
-    if (courseMap[g.course_id]) continue;
-    courseMap[g.course_id] = {
-      course_id: g.course_id,
-      name_he: g.name_he,
-      weekly_hours: g.credits,
-      semester_hours: g.credits,
-      difficulty_score: null, difficulty_level: null,
-      workload_score: null, conceptual_complexity_score: null,
-      prerequisite_depth_score: null, assessment_intensity_score: null,
-      difficulty_confidence: null, difficulty_warnings: [],
-      course_type: 'general', category: 'שער רוח',
-      program_category_id: 'shaar_ruach', program_category_name_he: 'שער רוח',
-      status: 'eligible', locked_by_user: false, source: 'shaar_ruach',
-      placement_policy: 'flexible',
-      effective_allowed_semesters: SEMESTERS.map(s => s.id),
-      missing_prerequisites: [], missing_prerequisite_details: [],
-      prerequisites: [], prerequisite_details: [],
-      warnings: [], data_quality: { has_weekly_hours: true },
-      syllabus_url: g.syllabus_url || null, syllabus_links: [], source_urls: [],
-      semester_availability: null, grade_signal: null,
-    };
   }
 
   /* ── Dev diagnostics (console only) ───────────────────────────────────── */
@@ -2729,6 +2732,9 @@ function renderSidebar() {
   for (const id of state.repo) {
     const c = courseMap[id];
     if (!c) continue;
+    /* קורסי שער רוח get their own dedicated section below — never bucket
+       them into mandatory/category/elective/blocked/missing groups. */
+    if (c.program_category_id === 'shaar_ruach' || c.source === 'shaar_ruach') continue;
     if (c.course_type === 'mandatory') { mandatoryIds.push(id); continue; }
 
     /* If the course belongs to a program category, always show it there —
