@@ -515,6 +515,11 @@ body.prog-modal-open .workspace {
 .ai-chat-msg { border-radius: 8px; padding: 8px 10px; font-size: .76rem; line-height: 1.6; white-space: pre-wrap; }
 .ai-chat-msg-user { background: var(--surface3, var(--surface2)); align-self: flex-end; }
 .ai-chat-msg-assistant { background: var(--surface2); border: 1px dashed var(--border2); }
+.ai-quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 4px; }
+.ai-quick-reply-btn { font-size: .72rem; padding: 4px 10px; border-radius: 999px; }
+.missing-reqs { font-size: .8rem; }
+.missing-reqs-title { font-weight: 600; margin-bottom: 4px; }
+.ai-proposal-card-inner { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px; }
 .ai-no-api-note {
   font-size: .7rem; color: var(--text-faint); line-height: 1.5;
   background: var(--surface2); border-radius: 7px; padding: 7px 10px;
@@ -1456,9 +1461,7 @@ body.prog-modal-open .workspace {
     <aside class="sidebar">
       <div class="sb-tabs" role="tablist">
         <button class="sb-tab active" id="sb-tab-repo"  data-tab="repo">מאגר קורסים</button>
-        <button class="sb-tab"        id="sb-tab-ai"    data-tab="ai">עוזר AI</button>
-        <button class="sb-tab"        id="sb-tab-draft" data-tab="draft">טיוטת שינויים<span id="sb-draft-dot" class="sb-draft-dot" hidden></span></button>
-        <button class="sb-tab"        id="sb-tab-chat"  data-tab="chat">שיחה עם AI</button>
+        <button class="sb-tab"        id="sb-tab-ai"    data-tab="ai">עוזר AI<span id="sb-draft-dot" class="sb-draft-dot" hidden></span></button>
       </div>
 
       <div id="sb-panel-repo" class="sb-panel">
@@ -1476,8 +1479,6 @@ body.prog-modal-open .workspace {
       </div>
 
       <div id="sb-panel-ai" class="sb-panel" hidden></div>
-      <div id="sb-panel-draft" class="sb-panel" hidden></div>
-      <div id="sb-panel-chat" class="sb-panel" hidden></div>
     </aside>
 
     <main class="board-area">
@@ -2789,7 +2790,11 @@ function normalizeCourse(c, status) {
 }
 
 /* ── Render ─────────────────────────────────────────────────────────────── */
-function renderAll() { revalidateBoard(); renderChips(); renderSidebar(); renderBoard(); }
+function renderAll() {
+  revalidateBoard(); renderChips(); renderSidebar(); renderBoard();
+  const dot = document.getElementById('sb-draft-dot');
+  if (dot) dot.hidden = !state.proposalDraft;
+}
 
 function renderChips() {
   const placed  = allPlacedIds().size;
@@ -3035,17 +3040,15 @@ function applyRepoSearch() {
 let _sidebarTab = 'repo';
 
 function setSidebarTab(tab) {
+  // "draft" and "chat" are legacy tab ids — both now live inside "עוזר AI".
+  if (tab === 'draft' || tab === 'chat') tab = 'ai';
   _sidebarTab = tab;
   document.querySelectorAll('.sb-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   document.getElementById('sb-panel-repo').hidden  = tab !== 'repo';
   document.getElementById('sb-panel-ai').hidden    = tab !== 'ai';
-  document.getElementById('sb-panel-draft').hidden = tab !== 'draft';
-  document.getElementById('sb-panel-chat').hidden  = tab !== 'chat';
   if (tab === 'ai') renderAiTab();
-  if (tab === 'chat') renderChatTab();
-  if (tab === 'draft') renderDraftTab();
 }
 
 /** Compact status summary shown at the top of "עוזר AI" — current board state. */
@@ -3096,16 +3099,9 @@ function buildSidebarStatusSummary() {
 function renderRepairDiagnosticsHtml(s) {
   const rows = [];
 
-  // 1) Missing categories.
-  for (const cat of s.categories) {
-    if (cat.missing > 0) {
-      rows.push(`
-        <div class="repair-row">
-          <span class="repair-row-text">קטגוריה "${esc(cat.name)}" — חסרים ${cat.missing} קורסים</span>
-          <button class="btn btn-sm repair-btn" data-repair="category" data-category-id="${esc(cat.category_id ?? '')}">הוסף קורס ${esc(cat.name)} מתאים</button>
-        </div>`);
-    }
-  }
+  // 1) Missing categories — handled conversationally (PART B/G) via a chat
+  // suggestion + quick replies, not as a mechanical category-add button.
+  // See buildMissingRequirementsList().
 
   // 2) Overloaded semesters.
   for (const sem of s.overloaded_semesters) {
@@ -3147,6 +3143,55 @@ function renderRepairDiagnosticsHtml(s) {
 
   if (!rows.length) return '';
   return `<div class="repair-diagnostics">${rows.join('')}</div>`;
+}
+
+/* ── PART G — missing requirements as a diagnostics list ───────────────────
+ * Returns [{ category_id, name, missing, kind }] for any unmet category or
+ * general (שער רוח) requirement, for display as a short bullet list, with a
+ * conversational suggestion flow taking the place of the old mechanical
+ * "הוסף קורס X מתאים" buttons. */
+function buildMissingRequirementsList(s) {
+  const items = [];
+  for (const cat of s.categories) {
+    if (cat.missing > 0) {
+      items.push({ category_id: cat.category_id ?? null, name: cat.name, missing: cat.missing, kind: 'category' });
+    }
+  }
+  if (s.general && !s.general.satisfied) {
+    const missing = Math.max(0, (s.general.required || 0) - (s.general.placed || 0));
+    if (missing > 0) {
+      items.push({ category_id: null, name: 'שער רוח', missing, kind: 'general', placed: s.general.placed, required: s.general.required });
+    }
+  }
+  return items;
+}
+
+function renderMissingRequirementsHtml(items) {
+  if (!items.length) return '';
+  const lines = items.map(it => it.kind === 'general'
+    ? `<li>- שער רוח ${it.placed}/${it.required}</li>`
+    : `<li>- ${esc(it.name)} (חסרים ${it.missing})</li>`);
+
+  // PART G — category-based suggestion buttons (general/שער-רוח items have no
+  // category_id and no candidate-selection logic here, so only category items
+  // get action buttons).
+  const categoryItems = items.filter(it => it.kind === 'category');
+  const actionsHtml = categoryItems.length ? `
+    <div class="missing-reqs-actions">
+      ${categoryItems.map(it => `
+        <div class="repair-row">
+          <span class="repair-row-text">${esc(it.name)}</span>
+          <button class="btn btn-sm missing-req-btn" data-missing-action="suggest" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">הצע השלמה חכמה</button>
+          <button class="btn btn-sm missing-req-btn" data-missing-action="ask-first" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">שאל אותי לפני שיבוץ</button>
+          <button class="btn btn-sm missing-req-btn" data-missing-action="ignore" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">התעלם כרגע</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  return `<div class="missing-reqs">
+    <div class="missing-reqs-title">דרישות חסרות:</div>
+    <ul class="ai-plan-msg-list">${lines.join('')}</ul>
+    ${actionsHtml}
+  </div>`;
 }
 
 /** True when the current board has any prerequisite-ordering violation. */
@@ -3375,7 +3420,6 @@ function sidebarQuickActionPrefs() {
 function renderAiTab() {
   const panel = document.getElementById('sb-panel-ai');
   const s = buildSidebarStatusSummary();
-  const lastInstr = _aiPlanLastPreferences?.extra_request_he || '';
 
   // PART B/C — initialize the course picker + workload slider with whatever
   // was set last time (persists across "בקש שינויים" rounds).
@@ -3391,105 +3435,46 @@ function renderAiTab() {
     };
   }
 
-  const maxHoursDefault = _aiPlanLastPreferences?.max_weekly_hours ?? 20;
-  const maxHoursMin = _aiPlanFeasibleMinLoad ?? 14;
+  const missingReqs = buildMissingRequirementsList(s);
 
   panel.innerHTML = `
-    <div class="sb-head"><div class="sb-head-title">עוזר AI לתכנון תוכנית</div></div>
+    <div class="sb-head"><div class="sb-head-title">עוזר AI</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
       <div class="sb-status-summary">
+        <div>חוקיות: ${s.illegal_placements.length === 0 && !_hasPrereqOrderViolationLocal() ? 'תקין' : 'נמצאו בעיות'}</div>
         <div>שעות: ${s.hours.total_after_plan}/${s.hours.degree_required_hours}</div>
-        <div>קורסי חובה: ${s.mandatory.placed}/${s.mandatory.required}</div>
-        <div>קטגוריות: ${s.catSatisfied}/${s.categories.length}</div>
         ${s.general ? `<div>שער רוח: ${s.general.placed}/${s.general.required}</div>` : ''}
+        <div>קטגוריות: ${s.catSatisfied}/${s.categories.length}</div>
         <div>עומס שיא: ${s.peak} ש״ש</div>
+        <div>בעיות קדם: ${_hasPrereqOrderViolationLocal() ? 'יש' : 'אין'}</div>
       </div>
+      ${renderMissingRequirementsHtml(missingReqs)}
       ${renderRepairDiagnosticsHtml(s)}
-      <label class="ai-plan-field">
-        מה תרצה לשפר בתוכנית?
-        <textarea id="sidebar-ai-instruction" rows="2" dir="rtl"
-          placeholder="מה תרצה לשפר בתוכנית? למשל: אנליזות, תכן, רובוטיקה, איזון עומס...">${esc(lastInstr)}</textarea>
-      </label>
 
-      <div class="ai-plan-section">
-        <div class="ai-plan-section-title">עומס שבועי מקסימלי רצוי</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input type="range" id="sidebar-max-hours" min="${maxHoursMin}" max="30" step="1" value="${maxHoursDefault}">
-          <span id="sidebar-max-hours-value" class="ai-plan-hint"></span>
-        </div>
-        ${_aiPlanFeasibleMinLoad != null ? `<div class="ai-plan-hint">המינימום האפשרי לפי האילוצים הנוכחיים: ${_aiPlanFeasibleMinLoad} ש״ש</div>` : ''}
-        <div id="sidebar-max-hours-warn" class="ai-plan-hint" hidden></div>
-      </div>
+      <div id="ai-chat-log" class="ai-chat-log"></div>
 
-      <div class="ai-plan-section">
-        <div class="ai-plan-section-title">קורסים שאני רוצה לקחת</div>
-        <div class="ai-course-picker">
-          <input type="text" id="ai-pref-wanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
-          <div class="ai-course-picker-results" id="ai-pref-wanted-results" hidden></div>
-          <div class="ai-course-picker-chips" id="ai-pref-wanted-chips"></div>
+      <div class="ai-input-area">
+        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לשנות או לשפר במערכת..."></textarea>
+        <div class="ai-send-row">
+          <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
         </div>
-      </div>
-
-      <div class="ai-plan-section">
-        <div class="ai-plan-section-title">קורסים שאני רוצה להימנע מהם</div>
-        <div class="ai-course-picker">
-          <input type="text" id="ai-pref-unwanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
-          <div class="ai-course-picker-results" id="ai-pref-unwanted-results" hidden></div>
-          <div class="ai-course-picker-chips" id="ai-pref-unwanted-chips"></div>
-        </div>
-        <div class="ai-plan-hint">לחיצה על שבב מסומן תהפוך אותו בין "להימנע אם אפשר" ל"ממש לא רוצה — לא לשבץ בכלל".</div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:4px">
         <button class="btn btn-sm" id="sidebar-quick-full">בנה תוכנית מלאה</button>
+        <button class="btn btn-sm" id="sidebar-quick-improve">שפר את המערכת הנוכחית</button>
         <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
-        <button class="btn btn-sm" id="sidebar-quick-electives">השלם דרישות תואר</button>
+        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
         <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
-        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן שיבוצים לא חוקיים</button>
       </div>
-      <div id="sidebar-ai-status" class="ai-plan-hint" hidden></div>
-      <button class="btn btn-primary" id="sidebar-ai-generate">צור טיוטה על הלוח</button>
+
+      <div id="ai-proposal-card"></div>
     </div>`;
-
-  // PART C — workload slider live readout + infeasible-target hint.
-  const maxHoursEl = document.getElementById('sidebar-max-hours');
-  const maxHoursValueEl = document.getElementById('sidebar-max-hours-value');
-  const maxHoursWarnEl = document.getElementById('sidebar-max-hours-warn');
-  const updateMaxHoursDisplay = () => {
-    maxHoursValueEl.textContent = `עד ${maxHoursEl.value} ש״ש בסמסטר`;
-    const val = parseFloat(maxHoursEl.value);
-    if (_aiPlanFeasibleMinLoad != null && val < _aiPlanFeasibleMinLoad) {
-      maxHoursWarnEl.textContent = `לא ניתן להגיע ל־${val} ש״ש תחת האילוצים. המינימום שנמצא הוא ${_aiPlanFeasibleMinLoad} ש״ש.`;
-      maxHoursWarnEl.hidden = false;
-    } else {
-      maxHoursWarnEl.hidden = true;
-    }
-  };
-  maxHoursEl.addEventListener('input', updateMaxHoursDisplay);
-  updateMaxHoursDisplay();
-
-  // PART B — wanted/avoided course pickers.
-  setupCoursePicker('wanted');
-  setupCoursePicker('unwanted');
-  renderCoursePickerChips('unwanted'); // re-render with strength toggle wiring below
-
-  const run = actionType => {
-    const prefs = sidebarQuickActionPrefs();
-    _aiPlanLastPreferences = { ...prefs, action_type: actionType };
-    requestPlanProposal(prefs, actionType);
-  };
-  document.getElementById('sidebar-ai-generate').addEventListener('click', () => run('full_plan'));
-  document.getElementById('sidebar-quick-full').addEventListener('click', () => run('full_plan'));
-  document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
-  document.getElementById('sidebar-quick-electives').addEventListener('click', () => run('add_electives'));
-  document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
-  document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
 
   // PART E — one-click repair buttons (diagnostics-driven, populate proposalDraft).
   panel.querySelectorAll('.repair-btn[data-repair]').forEach(btn => {
     btn.addEventListener('click', () => {
       switch (btn.dataset.repair) {
-        case 'category':     repairCategoryToDraft(btn.dataset.categoryId || null); break;
         case 'balance':      repairBalanceSemesterToDraft(btn.dataset.semesterId); break;
         case 'illegal':      repairIllegalPlacementToDraft(btn.dataset.courseId); break;
         case 'prereq-order': repairPrereqOrderToDraft(); break;
@@ -3497,175 +3482,347 @@ function renderAiTab() {
       }
     });
   });
+
+  // PART G — "הצע השלמה חכמה" / "שאל אותי לפני שיבוץ" / "התעלם כרגע" for missing reqs.
+  panel.querySelectorAll('.missing-req-btn[data-missing-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const categoryId = btn.dataset.categoryId || null;
+      const categoryName = btn.dataset.categoryName || '';
+      switch (btn.dataset.missingAction) {
+        case 'suggest':
+          offerCategorySuggestion(categoryId, categoryName);
+          break;
+        case 'ask-first':
+          postAssistantMessage(`בסדר, אשאל אותך לפני שיבוץ קורסים להשלמת "${categoryName}".`);
+          break;
+        case 'ignore':
+          postAssistantMessage(`בסדר, לא אטפל כרגע בהשלמת "${categoryName}".`);
+          break;
+      }
+    });
+  });
+
+  renderAiChatLog();
+
+  document.getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend);
+  document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
+  });
+
+  const run = actionType => {
+    const prefs = sidebarQuickActionPrefs();
+    _aiPlanLastPreferences = { ...prefs, action_type: actionType };
+    // "full_plan" rebuilds from scratch and must not reuse the existing draft.
+    if (state.proposalDraft && actionType !== 'full_plan') requestPlanProposalFromDraft(prefs, actionType);
+    else requestPlanProposal(prefs, actionType);
+  };
+  document.getElementById('sidebar-quick-full').addEventListener('click', () => {
+    if (confirm('בניית תוכנית מלאה תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
+      run('full_plan');
+    }
+  });
+  document.getElementById('sidebar-quick-improve').addEventListener('click', () => run('minimal_changes'));
+  document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
+  document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
+  document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
+
+  renderProposalCard();
 }
 
-/** "טיוטת שינויים" tab — status + Apply/Reject for the active board draft, or an empty-state if none exists. */
-function renderDraftTab() {
-  const panel = document.getElementById('sb-panel-draft');
-  const draft = state.proposalDraft;
-  if (!draft) {
-    panel.innerHTML = `
-      <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
-      <div class="sb-body">
-        <div class="ai-plan-hint">אין טיוטת שינויים פעילה. עברו לטאב "עוזר AI" וצרו טיוטה.</div>
-      </div>`;
+/* ── Unified עוזר AI chat thread (PARTS A/C/E/F/G) ──────────────────────────
+ * Each message: { role: 'user'|'assistant', text, quickReplies?: [{label, action, payload}] }
+ * Quick-reply clicks send `label` as the next chat message (after applying
+ * any preference side-effects encoded in `action`/`payload`). */
+let _aiChatMessages = [];
+
+function renderAiChatLog() {
+  const logEl = document.getElementById('ai-chat-log');
+  if (!logEl) return;
+  logEl.innerHTML = '';
+  for (const m of _aiChatMessages) {
+    const bubble = document.createElement('div');
+    bubble.className = `ai-chat-msg ai-chat-msg-${m.role}`;
+    bubble.textContent = m.text;
+    logEl.appendChild(bubble);
+
+    if (m.quickReplies && m.quickReplies.length) {
+      const row = document.createElement('div');
+      row.className = 'ai-quick-replies';
+      for (const qr of m.quickReplies) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm ai-quick-reply-btn';
+        btn.textContent = qr.label;
+        btn.addEventListener('click', () => handleQuickReply(qr));
+        row.appendChild(btn);
+      }
+      logEl.appendChild(row);
+    }
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/** Append an assistant message (optionally with quick-reply chips) and re-render the log. */
+function postAssistantMessage(text, quickReplies) {
+  _aiChatMessages.push({ role: 'assistant', text, quickReplies: quickReplies || [] });
+  renderAiChatLog();
+}
+
+/** Append a user message and re-render the log. */
+function postUserMessage(text) {
+  _aiChatMessages.push({ role: 'user', text });
+  renderAiChatLog();
+}
+
+/**
+ * Quick-reply click handler. Applies any preference side-effects (e.g.
+ * adding keywords to avoided/strongUnwanted in _aiPickerState) and then
+ * sends the quick-reply's label as the next chat message, continuing the
+ * conversational flow from the current board+draft state.
+ */
+function handleQuickReply(qr) {
+  switch (qr.action) {
+    case 'avoid-control': {
+      // "כן, להימנע מבקרה" — add בקרה-heavy course ids to unwanted/strongUnwanted.
+      const controlCourseIds = Object.values(courseMap)
+        .filter(c => CONTROL_HEAVY_KEYWORDS.some(k => (c.name_he || '').includes(k)))
+        .map(c => c.course_id);
+      _aiPickerState.unwanted = [...new Set([...(_aiPickerState.unwanted || []), ...controlCourseIds])];
+      _aiPickerState.strongUnwanted = [...new Set([...(_aiPickerState.strongUnwanted || []), ...controlCourseIds])];
+      break;
+    }
+    case 'allow-control':
+      break; // no preference change needed — control-heavy courses remain eligible.
+    case 'priority-grades':
+      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, priority: 'grade_average' };
+      break;
+    case 'priority-relevance':
+      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, priority: 'career_relevance' };
+      break;
+    case 'allow-overload':
+      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
+      if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+      break;
+    case 'keep-load':
+      break;
+    case 'suggest-category':
+      postUserMessage(qr.label);
+      offerCategorySuggestion(qr.payload?.categoryId || null, qr.payload?.categoryName || '');
+      return;
+    case 'suggest-first':
+      postUserMessage(qr.label);
+      applyCategorySuggestionFirst(qr.payload?.categoryId || null, qr.payload?.categoryName || '');
+      return;
+    case 'suggest-more':
+      postUserMessage(qr.label);
+      offerCategorySuggestion(qr.payload?.categoryId || null, qr.payload?.categoryName || '', (qr.payload?.skip || 0) + 1);
+      return;
+    case 'suggest-skip':
+      postUserMessage(qr.label);
+      postAssistantMessage('בסדר, לא אשבץ כרגע. אפשר לבקש זאת מאוחר יותר.');
+      return;
+    default:
+      break;
+  }
+
+  postUserMessage(qr.label);
+  handleSidebarChatSend(qr.label);
+}
+
+/* ── PART G — conversational missing-requirement suggestions ───────────────
+ * Generates 1-2 concrete course suggestions for a missing category using the
+ * existing repair*Local candidate-selection logic + career-relevance reasons,
+ * then posts a chat message with "שבץ את הראשון" / "הראה עוד חלופות" /
+ * "אל תשבץ כרגע" quick replies. */
+function offerCategorySuggestion(categoryId, categoryName, skip) {
+  skip = skip || 0;
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const draft = state.proposalDraft || { semesters: clone(state.semesters), repo: [...state.repo] };
+  const placed = new Set(Object.values(draft.semesters).flat());
+
+  const cat = analysis.categories.find(c => (c.category_id ?? null) === (categoryId || null));
+  if (!cat) {
+    postAssistantMessage(`לא מצאתי מועמדים להשלמת "${categoryName}" כרגע.`);
     return;
   }
 
-  const evald = evaluateDraftProposal();
-  const errors   = evald?.errors   ?? _aiPlanLastValidation?.errors   ?? [];
-  const warnings = evald?.warnings ?? _aiPlanLastValidation?.warnings ?? [];
-  const completeness = evald?.completeness ?? _aiPlanLastValidation?.completeness ?? null;
-  const blocked = errors.length > 0 || !!completeness?.incomplete;
-  const hasWarnings = warnings.length > 0;
-
-  const diff = computeDraftDiff();
-  const addedCount = diff?.added.size ?? 0;
-  const movedCount = diff?.moved.size ?? 0;
-  const removedCount = diff?.removed.size ?? 0;
-  const replacedCount = diff?.replaced.size ?? 0;
-  const replacedListHtml = replacedCount
-    ? `<ul class="ai-plan-msg-list">${[...diff.replaced.entries()].map(([fromCid, { to }]) =>
-        `<li>הוחלף: ${esc(courseMap[fromCid]?.name_he || fromCid)} ← ${esc(courseMap[to]?.name_he || to)}</li>`).join('')}</ul>`
-    : '';
-
-  // PART A — compact degree-progress summary.
-  const ctxForProgress = _aiPlanLastCtx;
-  const analysisForProgress = _aiPlanLastAnalysis;
-  let degreeProgressHtml = '';
-  let chipsHtml = '';
-  if (ctxForProgress && analysisForProgress) {
-    const courseHoursForProgress = {};
-    for (const [cid, info] of Object.entries(ctxForProgress.courses)) courseHoursForProgress[cid] = info.hours;
-    const proposalSemesters = (evald?.proposal?.semesters) || mapToProposalSemesters(draft.semesters);
-    const degreeStatus = getDegreeHoursStatusLocal(analysisForProgress, proposalSemesters, courseHoursForProgress);
-    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus);
-
-    // PART E — compact summary chips row.
-    const placedIdsChips = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
-    const generalStatus = getGeneralRequirementStatusReportLocal(analysisForProgress, placedIdsChips);
-    const categoryStatus = getCategoryStatusReportLocal(analysisForProgress, placedIdsChips);
-    const categoriesSatisfied = categoryStatus.filter(c => c.satisfied).length;
-    let peakSemHours = 0;
-    for (const sem of proposalSemesters) peakSemHours = Math.max(peakSemHours, getSemesterLoadLocal(sem, ctxForProgress.courses || {}));
-    chipsHtml = `<div class="draft-chips-row">
-      ${mkChip('סה״כ', `${degreeStatus.total_after_plan}/${degreeStatus.degree_required_hours}`, false)}
-      ${mkChip('נותרו', `${degreeStatus.missing_hours} ש״ש`, degreeStatus.missing_hours > 0)}
-      ${generalStatus ? mkChip('שער רוח', `${generalStatus.placed}/${generalStatus.required}`, !generalStatus.satisfied) : ''}
-      ${categoryStatus.length ? mkChip('קטגוריות', `${categoriesSatisfied}/${categoryStatus.length}`, categoriesSatisfied < categoryStatus.length) : ''}
-      ${mkChip('נוספו', addedCount, false)}
-      ${mkChip('הועברו', movedCount, false)}
-      ${replacedCount ? mkChip('הוחלפו', replacedCount, false) : ''}
-      ${mkChip('עומס שיא', `${peakSemHours} ש״ש`, false)}
-    </div>`;
+  const remaining = cat.candidates.filter(c => !placed.has(c.course_id));
+  if (!remaining.length) {
+    postAssistantMessage(`לא נמצאו קורסים פנויים להשלמת "${cat.name}".`);
+    return;
   }
 
-  let statusLabel, statusCls;
-  if (blocked) { statusLabel = 'חסום — יש לתקן לפני אישור'; statusCls = 'status-blocked'; }
-  else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
-  else { statusLabel = 'ניתן להחיל'; statusCls = 'status-ok'; }
+  const interestText = _aiPlanLastPreferences?.extra_request_he || '';
+  const unwanted = new Set(_aiPickerState.unwanted || []);
+  const ranked = [...remaining].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText));
+  const pool = ranked.filter(c => !unwanted.has(c.course_id));
+  const candidates = (pool.length ? pool : ranked).slice(skip, skip + 2);
 
-  const listHtml = (items, cls) => items.length
-    ? `<ul class="ai-plan-msg-list ${cls}">${items.slice(0,5).map(m => `<li>${esc(m)}</li>`).join('')}</ul>`
-    : '';
-
-  // PART F — group blockers/warnings by category for the draft status panel.
-  const allIssues = [...errors.map(m => ({ m, cls: 'msg-error' })), ...warnings.map(m => ({ m, cls: 'msg-warn' })), ...(completeness?.reasons || []).map(m => ({ m, cls: 'msg-warn' }))];
-  const groups = {
-    'דרישות קדם': [],
-    'עומס': [],
-    'קורסים שנמנעתי מהם': [],
-    'דרישות תואר': [],
-    'שיבוץ לא חוקי': [],
-  };
-  for (const issue of allIssues) {
-    if (issue.m.includes('דרישת הקדם') || issue.m.includes('דרישות קדם') || issue.m.includes('לפני') || issue.m.includes('באותו סמסטר')) groups['דרישות קדם'].push(issue);
-    else if (issue.m.includes('עומס') || issue.m.includes('ש"ש') || issue.m.includes('ש״ש')) groups['עומס'].push(issue);
-    else if (issue.m.includes('ממש לא רוצה') || issue.m.includes('להימנע')) groups['קורסים שנמנעתי מהם'].push(issue);
-    else if (issue.m.includes('קורס חובה') || issue.m.includes('דרישת') || issue.m.includes('דרישה') || issue.m.includes('קטגוריה') || issue.m.includes('בחירה') || issue.m.includes('שעות')) groups['דרישות תואר'].push(issue);
-    else groups['שיבוץ לא חוקי'].push(issue);
+  if (!candidates.length) {
+    postAssistantMessage(`לא נמצאו חלופות נוספות להשלמת "${cat.name}".`);
+    return;
   }
-  const groupedHtml = Object.entries(groups).filter(([, items]) => items.length).map(([title, items]) => `
-    <div class="ai-plan-issue-group">
-      <div class="ai-plan-issue-group-title">${esc(title)}</div>
-      <ul class="ai-plan-msg-list">${items.slice(0, 5).map(({ m, cls }) => `<li class="${cls}">${esc(m)}</li>`).join('')}</ul>
-    </div>`).join('');
 
-  const showOverloadBtn = !blocked && hasWarnings && !_aiPlanLastPreferences?.overload_accepted
-    && warnings.some(w => w.includes('עומס'));
+  const lines = candidates.map(c => {
+    const reason = _scoreCareerRelevanceLocal(c, interestText).reason || DEFAULT_WEAK_RELEVANCE_REASON;
+    return `${c.name_he || c.course_id} — ${reason}`;
+  });
 
-  panel.innerHTML = `
-    <div class="sb-head"><div class="sb-head-title">טיוטת שינויים</div></div>
-    <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
-      <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
-      ${degreeProgressHtml}
-      ${chipsHtml}
-      <div class="sb-status-summary">
-        <div>נוספו: ${addedCount}</div>
-        <div>הועברו: ${movedCount}</div>
-        <div>הוסרו: ${removedCount}</div>
-        ${replacedCount ? `<div>הוחלפו: ${replacedCount}</div>` : ''}
-      </div>
-      ${replacedListHtml}
-      ${groupedHtml}
-      <label class="ai-plan-field">
-        בקש שינויים בטיוטה
-        <textarea id="sidebar-draft-instruction" rows="2" dir="rtl"
-          placeholder="מה תרצה לשנות בטיוטה?"></textarea>
-      </label>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button class="btn btn-primary" id="sb-draft-apply" ${blocked ? 'disabled' : ''}>החל טיוטה</button>
-        <button class="btn" id="sb-draft-reject">דחה טיוטה</button>
-        <button class="btn btn-sm" id="sb-draft-ask">בקש שינויים</button>
-        ${showOverloadBtn ? `<button class="btn btn-sm" id="sb-draft-allow-overload">אפשר חריגה בעומס</button>` : ''}
-        <button class="btn btn-sm" id="sb-draft-full">פתח תצוגה מלאה</button>
-      </div>
-    </div>`;
+  const text = `קטגוריית "${cat.name}" עדיין חסרה ${cat.missing} קורסים. הצעות:\n${lines.map(l => `- ${l}`).join('\n')}`;
 
-  document.getElementById('sb-draft-apply').addEventListener('click', () => { if (!blocked) applyProposalDraft(); });
-  document.getElementById('sb-draft-reject').addEventListener('click', rejectProposalDraft);
-  document.getElementById('sb-draft-ask').addEventListener('click', () => {
-    const instr = document.getElementById('sidebar-draft-instruction')?.value?.trim();
-    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: instr || _aiPlanLastPreferences?.extra_request_he };
+  postAssistantMessage(text, [
+    { label: 'שבץ את הראשון', action: 'suggest-first', payload: { categoryId, categoryName: cat.name } },
+    { label: 'הראה עוד חלופות', action: 'suggest-more', payload: { categoryId, categoryName: cat.name, skip } },
+    { label: 'אל תשבץ כרגע', action: 'suggest-skip' },
+  ]);
+}
+
+/** "שבץ את הראשון" — extend state.proposalDraft with the top candidate for the category. */
+function applyCategorySuggestionFirst(categoryId, categoryName) {
+  const before = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat().length : null;
+  repairCategoryToDraft(categoryId);
+  const after = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat().length : null;
+  if (before != null && after != null && after > before) {
+    postAssistantMessage(`שיבצתי קורס להשלמת "${categoryName}" בטיוטה — אפשר לסקור ולאשר למטה.`);
+  }
+  renderAiTab();
+}
+
+/* ── PARTS C/E/F — conversational planning flow with clarification heuristic ─ */
+
+/**
+ * Lightweight client-side heuristic for clarifying questions. Looks for
+ * ambiguous/missing preference signals in the user's free-text request and,
+ * if found, returns a clarification prompt + quick-reply chips. Returns null
+ * when the request is specific enough to plan directly.
+ */
+function detectClarificationNeeds(message) {
+  const text = (message || '').toLowerCase();
+  const mentionsControl = CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k.toLowerCase()));
+  const mentionsLoad = /עומס|שעות|ש"ש|ש״ש|20/.test(text);
+  const mentionsPriority = /ממוצע|ציון|רלוונטי|קריירה|התאמה/.test(text);
+
+  // Only ask when the request looks like a planning instruction (not a
+  // simple question) and a meaningfully-different outcome is plausible.
+  const looksLikePlanningRequest = /תוכנית|לשפר|שבץ|תחליף|להחליף|תוסיף|הוסף|איזון|אזן|תכנון|בנה/.test(text);
+  if (!looksLikePlanningRequest) return null;
+
+  if (mentionsControl) {
+    return {
+      question: 'קורסי בקרה עשויים להתאים — לשבץ אותם אם רלוונטי, או להימנע מהם?',
+      quickReplies: [
+        { label: 'כן, להימנע מבקרה', action: 'avoid-control' },
+        { label: 'לא, אפשר לשבץ קורסי בקרה', action: 'allow-control' },
+      ],
+    };
+  }
+
+  if (mentionsPriority) {
+    return {
+      question: 'מה חשוב לך יותר — ממוצע ציונים גבוה או התאמה לתחום עניין/קריירה?',
+      quickReplies: [
+        { label: 'ממוצע ציונים', action: 'priority-grades' },
+        { label: 'התאמה לקריירה', action: 'priority-relevance' },
+      ],
+    };
+  }
+
+  if (mentionsLoad) {
+    return {
+      question: 'מוכן לחרוג מ-20 שעות שבועיות בסמסטר אם זה יוביל לתוכנית טובה יותר?',
+      quickReplies: [
+        { label: 'כן, אפשר לחרוג מ-20 שעות', action: 'allow-overload' },
+        { label: 'לא, השאר עד 20 שעות', action: 'keep-load' },
+      ],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Send the chat input (or a provided message, e.g. from a quick reply) to
+ * the planning/chat flow. If the message is a planning-style request and the
+ * heuristic detects ambiguity, asks a clarifying question first (with quick
+ * replies) instead of immediately calling the planning endpoint. Otherwise,
+ * falls back to the general AI chat (callAiStream) for Q&A, or — if a draft
+ * is active — re-runs the incremental planning endpoint using the message as
+ * the new instruction, extending state.proposalDraft rather than resetting it.
+ */
+async function handleSidebarChatSend(providedMessage) {
+  const input = document.getElementById('sidebar-chat-input');
+  const sendBtn = document.getElementById('sidebar-chat-send');
+  const message = providedMessage != null ? providedMessage.trim() : input?.value?.trim();
+  if (!message) return;
+
+  if (providedMessage == null) {
+    postUserMessage(message);
+    if (input) input.value = '';
+  }
+
+  // PART C — clarification heuristic. Only ask once per request: skip if this
+  // message *is itself* a reply to a clarifying question (no further planning text).
+  const clar = detectClarificationNeeds(message);
+  if (clar && !_aiClarificationAnswered) {
+    _aiClarificationAnswered = true;
+    _aiPendingPlanningRequest = message;
+    postAssistantMessage(clar.question, clar.quickReplies.map(qr => ({
+      ...qr,
+      action: qr.action, // preference side-effect handled in handleQuickReply
+    })));
+    // After the user answers the quick reply, handleQuickReply re-invokes
+    // handleSidebarChatSend with the pending request below.
+    return;
+  }
+
+  const pending = _aiPendingPlanningRequest;
+  _aiPendingPlanningRequest = null;
+  _aiClarificationAnswered = false;
+  const planningText = pending ? `${pending} (${message})` : message;
+
+  const looksLikePlanningRequest = /תוכנית|לשפר|שבץ|תחליף|להחליף|תוסיף|הוסף|איזון|אזן|תכנון|בנה/.test(message)
+    || pending != null;
+
+  if (looksLikePlanningRequest) {
+    postAssistantMessage('מבין — אני בודק את התוכנית הנוכחית ומכין הצעת שינוי…');
+    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
     _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
-    requestPlanProposalFromDraft(prefs, 'minimal_changes');
-  });
-  document.getElementById('sb-draft-allow-overload')?.addEventListener('click', () => {
-    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
-    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
-    renderDraftTab();
-  });
-  document.getElementById('sb-draft-full').addEventListener('click', () => {
-    const ev = evald || { proposal: _aiPlanLastProposal, errors, warnings, completeness };
-    openPlanPreviewModal(
-      ev.proposal,
-      ev.errors,
-      ev.warnings,
-      _aiPlanLastValidation?.autofixed,
-      ev.completeness,
-      _aiPlanLastValidation?.moveLog,
-      _aiPlanLastValidation?.electiveSelectionReasons
-    );
-  });
+    try {
+      if (state.proposalDraft) {
+        await requestPlanProposalFromDraft(prefs, 'minimal_changes');
+      } else {
+        await requestPlanProposal(prefs, 'minimal_changes');
+      }
+    } finally {
+      renderAiTab();
+    }
+    return;
+  }
+
+  // General Q&A — use the existing AI chat endpoint.
+  const logEl = document.getElementById('ai-chat-log');
+  const respBubble = document.createElement('div');
+  respBubble.className = 'ai-chat-msg ai-chat-msg-assistant ai-response-area ai-empty';
+  logEl.appendChild(respBubble);
+  logEl.scrollTop = logEl.scrollHeight;
+
+  const text = await callAiStream(message, buildPlanContext(), undefined, respBubble, sendBtn);
+  if (text == null) {
+    respBubble.remove();
+    return;
+  }
+
+  const { displayText, applied } = tryApplyProposalFromChatText(text);
+  const finalText = applied
+    ? `${displayText}\n\n(הוצעה טיוטת שינוי — ראה את כרטיס ההצעה למטה)`
+    : displayText;
+  respBubble.remove();
+  postAssistantMessage(finalText);
+  if (applied) renderAiTab();
 }
 
-/** PART D — "בקש שינויים": send the edited draft back to the AI as the starting board. */
-function requestPlanProposalFromDraft(prefs, actionType) {
-  const draft = state.proposalDraft;
-  if (!draft) return;
-  const savedSemesters = state.semesters;
-  const savedRepo = state.repo;
-  state.semesters = draft.semesters;
-  state.repo = draft.repo || [];
-  return requestPlanProposal(prefs, actionType).finally(() => {
-    state.semesters = savedSemesters;
-    state.repo = savedRepo;
-  });
-}
-
-/* ── PART F: iterative AI chat that can propose board changes ─────────────── */
-
-let _aiChatMessages = []; // [{ role: 'user'|'assistant', text }]
+let _aiClarificationAnswered = false;
+let _aiPendingPlanningRequest = null;
 
 /**
  * Look for a fenced ```json block in the AI's reply containing a proposal
@@ -3697,91 +3854,123 @@ function tryApplyProposalFromChatText(text) {
   return { displayText, applied: true };
 }
 
-/** Render the "שיחה עם AI" sidebar tab — iterative chat that can propose board changes (PART F). */
-function renderChatTab() {
-  const panel = document.getElementById('sb-panel-chat');
-  const hasUserMessage = _aiChatMessages.some(m => m.role === 'user');
+/* ── PART D #5 — compact proposal card embedded in עוזר AI ─────────────────
+ * Status + added/moved/removed/הוחלף counts + apply/reject/ask-again +
+ * "פתח תצוגה מלאה" link to the full preview modal. Renders nothing when no
+ * draft is active. */
+function renderProposalCard() {
+  const card = document.getElementById('ai-proposal-card');
+  if (!card) return;
+  const draft = state.proposalDraft;
+  if (!draft) { card.innerHTML = ''; return; }
 
-  panel.innerHTML = `
-    <div class="sb-head"><div class="sb-head-title">שיחה עם AI</div></div>
-    <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
-      <div class="ai-plan-hint">שאל שאלות או בקש שינויים בתוכנית, למשל: "תחליף לי את הקורס הזה במשהו יותר קשור לתכן" או "תוריד עומס מסמסטר ג׳ ב׳".</div>
-      <div id="ai-chat-log" class="ai-chat-log"></div>
-      <div class="ai-input-area">
-        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב הודעה…"></textarea>
-        <div class="ai-send-row">
-          <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
-        </div>
+  const evald = evaluateDraftProposal();
+  const errors   = evald?.errors   ?? _aiPlanLastValidation?.errors   ?? [];
+  const warnings = evald?.warnings ?? _aiPlanLastValidation?.warnings ?? [];
+  const completeness = evald?.completeness ?? _aiPlanLastValidation?.completeness ?? null;
+  const blocked = errors.length > 0 || !!completeness?.incomplete;
+  const hasWarnings = warnings.length > 0;
+
+  const diff = computeDraftDiff();
+  const addedCount = diff?.added.size ?? 0;
+  const movedCount = diff?.moved.size ?? 0;
+  const removedCount = diff?.removed.size ?? 0;
+  const replacedCount = diff?.replaced.size ?? 0;
+
+  // PART A — compact degree-progress summary + PART E summary chips row.
+  const ctxForProgress = _aiPlanLastCtx;
+  const analysisForProgress = _aiPlanLastAnalysis;
+  let degreeProgressHtml = '';
+  let chipsHtml = '';
+  if (ctxForProgress && analysisForProgress) {
+    const courseHoursForProgress = {};
+    for (const [cid, info] of Object.entries(ctxForProgress.courses)) courseHoursForProgress[cid] = info.hours;
+    const proposalSemesters = (evald?.proposal?.semesters) || mapToProposalSemesters(draft.semesters);
+    const degreeStatus = getDegreeHoursStatusLocal(analysisForProgress, proposalSemesters, courseHoursForProgress);
+    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus);
+
+    const placedIdsChips = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
+    const generalStatus = getGeneralRequirementStatusReportLocal(analysisForProgress, placedIdsChips);
+    const categoryStatus = getCategoryStatusReportLocal(analysisForProgress, placedIdsChips);
+    const categoriesSatisfied = categoryStatus.filter(c => c.satisfied).length;
+    let peakSemHours = 0;
+    for (const sem of proposalSemesters) peakSemHours = Math.max(peakSemHours, getSemesterLoadLocal(sem, ctxForProgress.courses || {}));
+    chipsHtml = `<div class="draft-chips-row">
+      ${mkChip('סה״כ', `${degreeStatus.total_after_plan}/${degreeStatus.degree_required_hours}`, false)}
+      ${mkChip('נותרו', `${degreeStatus.missing_hours} ש״ש`, degreeStatus.missing_hours > 0)}
+      ${generalStatus ? mkChip('שער רוח', `${generalStatus.placed}/${generalStatus.required}`, !generalStatus.satisfied) : ''}
+      ${categoryStatus.length ? mkChip('קטגוריות', `${categoriesSatisfied}/${categoryStatus.length}`, categoriesSatisfied < categoryStatus.length) : ''}
+      ${mkChip('נוספו', addedCount, false)}
+      ${mkChip('הועברו', movedCount, false)}
+      ${replacedCount ? mkChip('הוחלפו', replacedCount, false) : ''}
+      ${mkChip('עומס שיא', `${peakSemHours} ש״ש`, false)}
+    </div>`;
+  }
+
+  let statusLabel, statusCls;
+  if (blocked) { statusLabel = 'חסום — יש לתקן לפני אישור'; statusCls = 'status-blocked'; }
+  else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
+  else { statusLabel = 'ניתן להחיל'; statusCls = 'status-ok'; }
+
+  card.innerHTML = `
+    <div class="ai-proposal-card-inner">
+      <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
+      ${degreeProgressHtml}
+      ${chipsHtml}
+      <div class="sb-status-summary">
+        <div>נוספו: ${addedCount}</div>
+        <div>הועברו: ${movedCount}</div>
+        <div>הוסרו: ${removedCount}</div>
+        ${replacedCount ? `<div>הוחלפו: ${replacedCount}</div>` : ''}
       </div>
-      <button class="btn btn-sm" id="sidebar-chat-build-proposal" ${hasUserMessage ? '' : 'disabled'}>בנה הצעת שינוי מהשיחה</button>
+      <label class="ai-plan-field">
+        בקש שינויים בטיוטה
+        <textarea id="sidebar-draft-instruction" rows="2" dir="rtl"
+          placeholder="מה תרצה לשנות בטיוטה?"></textarea>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-primary" id="sb-draft-apply" ${blocked ? 'disabled' : ''}>החל טיוטה</button>
+        <button class="btn" id="sb-draft-reject">דחה טיוטה</button>
+        <button class="btn btn-sm" id="sb-draft-ask">בקש שינויים</button>
+        <button class="btn btn-sm" id="sb-draft-full">פתח תצוגה מלאה</button>
+      </div>
     </div>`;
 
-  const logEl = document.getElementById('ai-chat-log');
-  for (const m of _aiChatMessages) {
-    const bubble = document.createElement('div');
-    bubble.className = `ai-chat-msg ai-chat-msg-${m.role}`;
-    bubble.textContent = m.text;
-    logEl.appendChild(bubble);
-  }
-  logEl.scrollTop = logEl.scrollHeight;
-
-  document.getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend);
-  document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
+  document.getElementById('sb-draft-apply').addEventListener('click', () => { if (!blocked) applyProposalDraft(); });
+  document.getElementById('sb-draft-reject').addEventListener('click', () => { rejectProposalDraft(); renderAiTab(); });
+  document.getElementById('sb-draft-ask').addEventListener('click', () => {
+    const instr = document.getElementById('sidebar-draft-instruction')?.value?.trim();
+    if (instr) postUserMessage(instr);
+    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: instr || _aiPlanLastPreferences?.extra_request_he };
+    _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
+    requestPlanProposalFromDraft(prefs, 'minimal_changes').finally(() => renderAiTab());
   });
-  document.getElementById('sidebar-chat-build-proposal').addEventListener('click', buildProposalFromChat);
+  document.getElementById('sb-draft-full').addEventListener('click', () => {
+    const ev = evald || { proposal: _aiPlanLastProposal, errors, warnings, completeness };
+    openPlanPreviewModal(
+      ev.proposal,
+      ev.errors,
+      ev.warnings,
+      _aiPlanLastValidation?.autofixed,
+      ev.completeness,
+      _aiPlanLastValidation?.moveLog,
+      _aiPlanLastValidation?.electiveSelectionReasons
+    );
+  });
 }
 
-/** Send the chat input to the AI endpoint, with full board state + diagnostics + preferences as context. */
-async function handleSidebarChatSend() {
-  const input = document.getElementById('sidebar-chat-input');
-  const sendBtn = document.getElementById('sidebar-chat-send');
-  const message = input?.value?.trim();
-  if (!message || !sendBtn) return;
-
-  _aiChatMessages.push({ role: 'user', text: message });
-  input.value = '';
-
-  const logEl = document.getElementById('ai-chat-log');
-  const userBubble = document.createElement('div');
-  userBubble.className = 'ai-chat-msg ai-chat-msg-user';
-  userBubble.textContent = message;
-  logEl.appendChild(userBubble);
-
-  const respBubble = document.createElement('div');
-  respBubble.className = 'ai-chat-msg ai-chat-msg-assistant ai-response-area ai-empty';
-  logEl.appendChild(respBubble);
-  logEl.scrollTop = logEl.scrollHeight;
-
-  const text = await callAiStream(message, buildPlanContext(), undefined, respBubble, sendBtn);
-  if (text == null) {
-    _aiChatMessages.pop();
-    userBubble.remove();
-    return;
-  }
-
-  const { displayText, applied } = tryApplyProposalFromChatText(text);
-  respBubble.textContent = applied
-    ? `${displayText}
-
-(הוצעה טיוטת שינוי — ניתן לסקור אותה בטאב "טיוטת שינויים")`
-    : displayText;
-  _aiChatMessages.push({ role: 'assistant', text: respBubble.textContent });
-}
-
-/** "בנה הצעת שינוי מהשיחה" — re-run the planning endpoint in incremental mode using the last chat instruction as the directive. */
-function buildProposalFromChat() {
-  const lastUserMsg = [..._aiChatMessages].reverse().find(m => m.role === 'user');
-  if (!lastUserMsg) return;
-
-  const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: lastUserMsg.text };
-  _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
-
-  if (state.proposalDraft) {
-    requestPlanProposalFromDraft(prefs, 'minimal_changes');
-  } else {
-    requestPlanProposal(prefs, 'minimal_changes');
-  }
+/** PART D — "בקש שינויים": send the edited draft back to the AI as the starting board. */
+function requestPlanProposalFromDraft(prefs, actionType) {
+  const draft = state.proposalDraft;
+  if (!draft) return;
+  const savedSemesters = state.semesters;
+  const savedRepo = state.repo;
+  state.semesters = draft.semesters;
+  state.repo = draft.repo || [];
+  return requestPlanProposal(prefs, actionType).finally(() => {
+    state.semesters = savedSemesters;
+    state.repo = savedRepo;
+  });
 }
 
 function renderBoard() {
@@ -5346,7 +5535,7 @@ function rejectProposalDraft() {
   _aiPlanLastProposal = null;
   _aiPlanLastPreviewArgs = null;
   renderAll();
-  if (_sidebarTab === 'draft') renderDraftTab();
+  if (_sidebarTab === 'ai') renderAiTab();
 }
 
 /** PART D — commit the edited draft into the real board state. */
@@ -5387,7 +5576,7 @@ function moveCourse(id, fromSem, toSem) {
       if (!draft.repo.includes(id)) draft.repo.push(id);
     }
     renderAll();
-    if (_sidebarTab === 'draft') renderDraftTab();
+    if (_sidebarTab === 'ai') renderAiTab();
     return;
   }
 
@@ -8786,7 +8975,7 @@ function refreshPlanPreviewWithProposal(proposal) {
     const placed = new Set(Object.values(semesters).flat());
     state.proposalDraft = { semesters, repo: state.repo.filter(cid => !placed.has(cid)) };
     renderBoard();
-    if (_sidebarTab === 'draft') renderDraftTab();
+    if (_sidebarTab === 'ai') renderAiTab();
   }
   openPlanPreviewModal(repaired, errors, warnings, false, completeness, moveLog);
 }

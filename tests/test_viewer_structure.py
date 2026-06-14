@@ -489,7 +489,7 @@ def test_legend_workload_explanation_removed(html):
 def test_ai_panel_still_present(html):
     """AI assistant panel must still be present after legend removal."""
     assert "ai-panel" in html
-    assert "עוזר AI לתכנון מערכת" in html
+    assert "עוזר AI" in html
 
 
 # ---------------------------------------------------------------------------
@@ -567,10 +567,10 @@ def test_degree_progress_helper_exists_and_used_in_draft_and_modal(html):
     sidebar panel and the full preview modal."""
     assert "function renderDegreeProgressHtml" in html
 
-    m = re.search(r"function renderDraftTab\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderDraftTab not found"
+    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderProposalCard not found"
     assert "renderDegreeProgressHtml(" in m.group(1), \
-        "renderDraftTab must render the degree-progress summary"
+        "renderProposalCard must render the degree-progress summary"
 
     m2 = re.search(r"function openPlanPreviewModal\(.*?\)\s*\{(.*)", html, re.DOTALL)
     assert m2, "openPlanPreviewModal not found"
@@ -733,10 +733,10 @@ def test_shaar_ruach_courses_draggable_like_other_cards(html):
 # ---------------------------------------------------------------------------
 
 def test_summary_chips_row_present_in_draft_tab(html):
-    """renderDraftTab must build a chips row with total/remaining/שער רוח/
+    """renderProposalCard must build a chips row with total/remaining/שער רוח/
     categories/added/moved/peak-load."""
-    m = re.search(r"function renderDraftTab\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderDraftTab not found"
+    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderProposalCard not found"
     body = m.group(1)
     assert "draft-chips-row" in body
     for label in ['סה״כ', 'נותרו', 'שער רוח', 'קטגוריות', 'נוספו', 'הועברו', 'עומס שיא']:
@@ -826,9 +826,8 @@ def test_draft_state_classes_do_not_override_category_background_or_border(html)
 # ---------------------------------------------------------------------------
 
 def test_repair_button_labels_present(html):
-    """The five PART E repair button labels must exist in the HTML."""
+    """The non-category PART E repair button labels must exist in the HTML."""
     for label in [
-        'הוסף קורס',           # category repair (interpolated with category name)
         'אזן את הסמסטר',
         'תקן שיבוץ',
         'תקן רצף דרישות קדם',
@@ -839,11 +838,11 @@ def test_repair_button_labels_present(html):
 
 def test_repair_diagnostics_render_function_exists(html):
     """renderRepairDiagnosticsHtml must build repair rows/buttons for each
-    diagnostic type and be wired into the AI tab summary."""
+    diagnostic type (except category, which is handled conversationally) and
+    be wired into the AI tab summary."""
     m = re.search(r"function renderRepairDiagnosticsHtml\(s\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderRepairDiagnosticsHtml not found"
     body = m.group(1)
-    assert "data-repair=\"category\"" in body
     assert "data-repair=\"balance\"" in body
     assert "data-repair=\"illegal\"" in body
     assert "data-repair=\"prereq-order\"" in body
@@ -856,7 +855,8 @@ def test_repair_diagnostics_render_function_exists(html):
 
 
 def test_repair_handler_functions_exist(html):
-    """Each repair button must be backed by a dedicated handler function."""
+    """Each repair button (plus the conversational category-suggestion flow)
+    must be backed by a dedicated handler function."""
     for fn in [
         "repairCategoryToDraft",
         "repairBalanceSemesterToDraft",
@@ -888,16 +888,146 @@ def test_repair_handlers_use_proposal_draft_not_direct_mutation(html):
 
 def test_repair_buttons_wired_to_handlers_in_ai_tab(html):
     """The AI tab setup must attach click handlers for each data-repair button
-    that call the corresponding repair*ToDraft function."""
+    that call the corresponding repair*ToDraft function. The category repair
+    is wired via the conversational suggestion flow (applyCategorySuggestionFirst)."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     body = m.group(1)
     assert "data-repair" in body
     for fn in [
-        "repairCategoryToDraft",
         "repairBalanceSemesterToDraft",
         "repairIllegalPlacementToDraft",
         "repairPrereqOrderToDraft",
         "repairOvershootToDraft",
     ]:
         assert fn in body, f"{fn} not wired in renderAiTab"
+    assert "applyCategorySuggestionFirst" in html, \
+        "category repair must be reachable via the conversational suggestion flow"
+
+
+# ---------------------------------------------------------------------------
+# Unified "עוזר AI" tab — tab consolidation + conversational planning (PART H)
+# ---------------------------------------------------------------------------
+
+def test_no_separate_chat_tab_remains(html):
+    """The separate 'שיחה עם AI' sidebar tab/element must be removed (the
+    per-course detail-modal "🤖 שיחה עם AI" tab is unrelated and may remain)."""
+    assert "sb-tab-chat" not in html
+    assert "sb-panel-chat" not in html
+    assert 'data-tab="chat">שיחה עם AI' not in html
+
+
+def test_unified_ai_tab_has_chat_input_and_quick_actions(html):
+    """The unified 'עוזר AI' tab must contain both a chat input and the
+    planning quick-action buttons."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    assert "sidebar-chat-input" in body
+    assert "sidebar-chat-send" in body
+    for label in ['בנה תוכנית מלאה', 'שפר את המערכת הנוכחית', 'אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה']:
+        assert label in body, f"Quick action missing: {label}"
+
+
+def test_mechanical_category_add_buttons_removed(html):
+    """The old mechanical 'הוסף קורס קורסי ליבה — .../מוצקים/מערכות/מעבדות
+    מתאים' buttons must be removed entirely."""
+    assert 'data-repair="category"' not in html
+    assert "הוסף קורס מעבדות מתקדמות מתאים" not in html
+    m = re.search(r"function renderRepairDiagnosticsHtml\(s\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderRepairDiagnosticsHtml not found"
+    assert 'הוסף קורס' not in m.group(1)
+
+
+def test_missing_requirements_rendered_as_diagnostics_list(html):
+    """Missing category/general requirements must render as a short bullet
+    list ('דרישות חסרות:') rather than as the old add-buttons."""
+    assert "function buildMissingRequirementsList" in html
+    assert "function renderMissingRequirementsHtml" in html
+    assert "דרישות חסרות:" in html
+
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    assert "renderMissingRequirementsHtml(" in m.group(1)
+    assert "buildMissingRequirementsList(" in m.group(1)
+
+
+def test_missing_requirements_have_smart_suggestion_buttons(html):
+    """Each missing category requirement must offer 'הצע השלמה חכמה',
+    'שאל אותי לפני שיבוץ' and 'התעלם כרגע' actions."""
+    m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderMissingRequirementsHtml not found"
+    body = m.group(1)
+    for label in ['הצע השלמה חכמה', 'שאל אותי לפני שיבוץ', 'התעלם כרגע']:
+        assert label in body, f"Missing-requirements action missing: {label}"
+
+
+def test_clarification_question_mechanism_exists(html):
+    """A clarification-question heuristic must exist that can render
+    quick-reply chips before full plan generation."""
+    assert "function detectClarificationNeeds" in html
+    assert "quickReplies" in html
+    m = re.search(r"async function handleSidebarChatSend\(.*?\n}\n", html, re.DOTALL)
+    assert m, "handleSidebarChatSend not found"
+    assert "detectClarificationNeeds(" in m.group(0)
+
+
+def test_quick_reply_click_updates_preferences(html):
+    """Quick-reply click handlers must update _aiPickerState / preferences,
+    e.g. 'כן, להימנע מבקרה' adds courses to avoided/strongUnwanted."""
+    m = re.search(r"function handleQuickReply\(qr\)(.*?\n)\}\n", html, re.DOTALL)
+    assert m, "handleQuickReply not found"
+    body = m.group(1)
+    assert "_aiPickerState.unwanted" in body
+    assert "_aiPickerState.strongUnwanted" in body
+    assert "avoid-control" in body
+
+
+def test_proposal_card_renders_inside_unified_ai_tab(html):
+    """The proposal card must render inside the unified 'עוזר AI' tab, not as
+    a separate 'טיוטת שינויים' tab element."""
+    assert "function renderProposalCard" in html
+    assert "sb-tab-draft" not in html
+    assert "sb-panel-draft" not in html
+
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    assert "ai-proposal-card" in m.group(1)
+    assert "renderProposalCard()" in m.group(1)
+
+
+def test_proposal_card_has_apply_reject_ask_again_controls(html):
+    """The proposal card must offer apply/reject/ask-again and a link to the
+    full preview modal."""
+    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderProposalCard not found"
+    body = m.group(1)
+    assert "sb-draft-apply" in body
+    assert "sb-draft-reject" in body
+    assert "sb-draft-ask" in body
+    assert "sb-draft-full" in body
+    assert "applyProposalDraft" in body
+    assert "rejectProposalDraft" in body
+
+
+def test_planning_request_includes_current_semesters(html):
+    """The planning request payload must include the current state.semesters
+    (via buildPlanContext)."""
+    m = re.search(r"function buildPlanContext\(\)(.*?\n)\}\n", html, re.DOTALL)
+    assert m, "buildPlanContext not found"
+    assert "state.semesters" in m.group(1)
+
+    m2 = re.search(r"async function requestPlanProposal\(prefs, actionType\)(.*?)\n\}\n", html, re.DOTALL)
+    assert m2, "requestPlanProposal not found"
+    assert "buildPlanContext()" in m2.group(1)
+
+
+def test_followup_chat_message_extends_existing_draft(html):
+    """A follow-up chat message after a draft already exists must operate on
+    state.proposalDraft (via requestPlanProposalFromDraft) rather than
+    resetting it from scratch."""
+    m = re.search(r"async function handleSidebarChatSend\(.*?\n}\n", html, re.DOTALL)
+    assert m, "handleSidebarChatSend not found"
+    body = m.group(0)
+    assert "state.proposalDraft" in body
+    assert "requestPlanProposalFromDraft" in body

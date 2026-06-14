@@ -187,16 +187,16 @@ def test_full_plan_rebuild_does_not_reuse_existing_draft(html):
     not requestPlanProposalFromDraft, i.e. it rebuilds from scratch rather than
     iterating on the current draft — the property a confirmation guard protects."""
     m = re.search(
-        r"document\.getElementById\('sidebar-ai-generate'\)\.addEventListener\('click', \(\) => run\('full_plan'\)\);",
+        r"document\.getElementById\('sidebar-quick-full'\)\.addEventListener\('click', \(\) => \{",
         html,
     )
     assert m
-    run_body = _function_body(html, "run") if "function run(" in html else None
     # `run` is a local arrow fn; locate its definition explicitly.
     run_def = re.search(r"const run = actionType => \{(.*?)\n  \};", html, re.DOTALL)
     assert run_def, "sidebar `run` helper not found"
     assert "requestPlanProposal(prefs, actionType)" in run_def.group(1)
-    assert "requestPlanProposalFromDraft" not in run_def.group(1)
+    # full_plan must bypass requestPlanProposalFromDraft and rebuild from scratch.
+    assert "actionType !== 'full_plan'" in run_def.group(1)
 
 
 # ---------------------------------------------------------------------------
