@@ -1151,3 +1151,134 @@ def test_ai_plan_request_includes_shaar_ruach_pref(html):
     m = re.search(r"preferences: \(_aiPlanLastPreferences.*?\n      : undefined,", html, re.DOTALL)
     assert m, "preferences payload not found"
     assert "shaarRuachAssessmentPref" in m.group(0)
+
+
+# ---------------------------------------------------------------------------
+# PART A/B/H — "העדפות תכנון" section + collapsed missing-requirements block
+# ---------------------------------------------------------------------------
+
+def test_wanted_course_picker_in_ai_tab(html):
+    """The wanted-course picker must exist inside renderAiTab's markup."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    assert "ai-pref-wanted-search" in body
+    assert "ai-pref-wanted-chips" in body
+    assert "setupCoursePicker('wanted')" in body
+
+
+def test_avoided_course_picker_in_ai_tab(html):
+    """The avoided-course picker must exist inside renderAiTab's markup."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    assert "ai-pref-unwanted-search" in body
+    assert "ai-pref-unwanted-chips" in body
+    assert "setupCoursePicker('unwanted')" in body
+
+
+def test_max_weekly_hours_control_in_ai_tab_and_payload(html):
+    """The max-weekly-hours slider must exist and feed max_weekly_hours in the
+    planning request payload (sidebarQuickActionPrefs)."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    assert "sidebar-max-hours" in m.group(1)
+
+    m2 = re.search(r"function sidebarQuickActionPrefs\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m2, "sidebarQuickActionPrefs not found"
+    assert "sidebar-max-hours" in m2.group(1)
+    assert "max_weekly_hours" in m2.group(1)
+
+
+def test_shaar_ruach_pref_control_in_ai_tab_and_payload(html):
+    """The שער רוח assessment-preference dropdown must exist in the AI tab and
+    feed into the planning context preferences."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    assert "ai-pref-shaar-ruach-assessment" in m.group(1)
+    assert "SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS" in m.group(1)
+
+    m2 = re.search(r"preferences: \(_aiPlanLastPreferences.*?\n      : undefined,", html, re.DOTALL)
+    assert m2 and "shaarRuachAssessmentPref" in m2.group(0)
+
+
+def test_missing_requirements_render_once_not_per_category(html):
+    """renderMissingRequirementsHtml must produce a single list + three global
+    action buttons, NOT a repeated per-category button group."""
+    assert "data-missing-action=\"suggest-all\"" in html
+    assert "data-missing-action=\"ask-first-all\"" in html
+    assert "data-missing-action=\"ignore-all\"" in html
+    # The old per-category action attributes must no longer appear.
+    assert 'data-missing-action="suggest"' not in html
+    assert 'data-missing-action="ask-first"' not in html
+    assert 'data-missing-action="ignore"' not in html
+    # Per-category button group markup must not be duplicated per category —
+    # the actions block is built once, outside any per-item .map().
+    m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderMissingRequirementsHtml not found"
+    body = m.group(1)
+    assert body.count('data-missing-action="suggest-all"') == 1
+
+
+def test_global_smart_completion_button_exists(html):
+    """The global 'הצע השלמה חכמה לכל הדרישות' button + handler must exist."""
+    assert "הצע השלמה חכמה לכל הדרישות" in html
+    assert re.search(r"function offerAllCategorySuggestions\(", html)
+
+
+# ---------------------------------------------------------------------------
+# PART C/D/E/F/H — ping-pong planning context + incremental chat
+# ---------------------------------------------------------------------------
+
+def test_plan_context_includes_board_draft_preferences_blockers_instruction(html):
+    """buildPlanContext (board+preferences) and the chat-send flow (draft +
+    validation blockers + latest instruction) together must cover the full
+    context required for the planning/chat request."""
+    m = re.search(r"function buildPlanContext\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "buildPlanContext not found"
+    ctx_body = m.group(1)
+    assert "semesters" in ctx_body
+    assert "preferences" in ctx_body
+    assert "_aiPickerState" in ctx_body
+
+    m2 = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
+    assert m2, "handleSidebarChatSend not found"
+    chat_body = m2.group(1)
+    assert "proposalDraft" in chat_body
+    assert "sidebarQuickActionPrefs" in chat_body
+    assert "planningText" in chat_body or "message" in chat_body
+
+
+def test_followup_chat_extends_draft_incrementally(html):
+    """A follow-up chat message with an active draft must call
+    requestPlanProposalFromDraft (incremental), not a full rebuild, by default."""
+    m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "handleSidebarChatSend not found"
+    body = m.group(1)
+    assert "requestPlanProposalFromDraft(prefs, 'minimal_changes')" in body
+    assert "'full_plan'" not in body
+
+
+# ---------------------------------------------------------------------------
+# Regression guards + compact draft card
+# ---------------------------------------------------------------------------
+
+def test_no_separate_chat_tab_remains_regression(html):
+    assert "sb-tab-chat" not in html
+    assert "sb-panel-chat" not in html
+    assert 'data-tab="chat">שיחה עם AI' not in html
+
+
+def test_render_proposal_card_present_in_ai_tab(html):
+    """renderProposalCard must be called from renderAiTab and produce the
+    compact draft card markup (status, counts, action buttons)."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    assert "renderProposalCard()" in m.group(1)
+    assert 'id="ai-proposal-card"' in m.group(1)
+
+    m2 = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m2, "renderProposalCard not found"
+    body = m2.group(1)
+    for label in ["החל טיוטה", "דחה טיוטה", "בקש שינויים", "פתח תצוגה מלאה"]:
+        assert label in body, f"{label} missing from renderProposalCard"

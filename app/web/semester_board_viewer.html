@@ -519,6 +519,11 @@ body.prog-modal-open .workspace {
 .ai-quick-reply-btn { font-size: .72rem; padding: 4px 10px; border-radius: 999px; }
 .missing-reqs { font-size: .8rem; }
 .missing-reqs-title { font-weight: 600; margin-bottom: 4px; }
+.missing-reqs-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ai-prefs-collapsible > summary { cursor: pointer; list-style: none; }
+.ai-prefs-collapsible > summary::-webkit-details-marker { display: none; }
+.ai-prefs-collapsible > summary::before { content: '▸ '; }
+.ai-prefs-collapsible[open] > summary::before { content: '▾ '; }
 .ai-proposal-card-inner { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px; }
 .ai-no-api-note {
   font-size: .7rem; color: var(--text-faint); line-height: 1.5;
@@ -3203,26 +3208,31 @@ function buildMissingRequirementsList(s) {
   return items;
 }
 
+/** PART B — fingerprint of the current missing-requirements list, used so
+ * "התעלם כרגע" only suppresses the prompt until the board state changes. */
+function _missingRequirementsFingerprint(items) {
+  return items.map(it => `${it.kind}:${it.category_id ?? ''}:${it.missing}`).join('|');
+}
+
+let _missingReqsDismissedFingerprint = null;
+
 function renderMissingRequirementsHtml(items) {
   if (!items.length) return '';
+  if (_missingRequirementsFingerprint(items) === _missingReqsDismissedFingerprint) return '';
+
   const lines = items.map(it => it.kind === 'general'
     ? `<li>- שער רוח ${it.placed}/${it.required}</li>`
     : `<li>- ${esc(it.name)} (חסרים ${it.missing})</li>`);
 
-  // PART G — category-based suggestion buttons (general/שער-רוח items have no
-  // category_id and no candidate-selection logic here, so only category items
-  // get action buttons).
+  // PART B — ONE set of global actions covering ALL missing categories at
+  // once, instead of a repeated button-group per category.
   const categoryItems = items.filter(it => it.kind === 'category');
-  const actionsHtml = categoryItems.length ? `
+  const actionsHtml = `
     <div class="missing-reqs-actions">
-      ${categoryItems.map(it => `
-        <div class="repair-row">
-          <span class="repair-row-text">${esc(it.name)}</span>
-          <button class="btn btn-sm missing-req-btn" data-missing-action="suggest" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">הצע השלמה חכמה</button>
-          <button class="btn btn-sm missing-req-btn" data-missing-action="ask-first" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">שאל אותי לפני שיבוץ</button>
-          <button class="btn btn-sm missing-req-btn" data-missing-action="ignore" data-category-id="${esc(it.category_id ?? '')}" data-category-name="${esc(it.name)}">התעלם כרגע</button>
-        </div>`).join('')}
-    </div>` : '';
+      <button class="btn btn-sm missing-req-btn" data-missing-action="suggest-all">הצע השלמה חכמה לכל הדרישות</button>
+      <button class="btn btn-sm missing-req-btn" data-missing-action="ask-first-all">שאל אותי לפני שיבוץ</button>
+      <button class="btn btn-sm missing-req-btn" data-missing-action="ignore-all">התעלם כרגע</button>
+    </div>`;
 
   return `<div class="missing-reqs">
     <div class="missing-reqs-title">דרישות חסרות:</div>
@@ -3485,6 +3495,51 @@ function renderAiTab() {
         <div>עומס שיא: ${s.peak} ש״ש</div>
         <div>בעיות קדם: ${_hasPrereqOrderViolationLocal() ? 'יש' : 'אין'}</div>
       </div>
+      <details class="ai-plan-section ai-prefs-collapsible">
+        <summary class="ai-plan-section-title">העדפות תכנון</summary>
+        <div style="display:flex;flex-direction:column;gap:14px;padding-top:8px">
+          <div class="ai-plan-field">
+            קורסים שאני רוצה לקחת
+            <div class="ai-course-picker">
+              <input type="text" id="ai-pref-wanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
+              <div class="ai-course-picker-results" id="ai-pref-wanted-results" hidden></div>
+              <div class="ai-course-picker-chips" id="ai-pref-wanted-chips"></div>
+            </div>
+          </div>
+          <div class="ai-plan-field">
+            קורסים שאני רוצה להימנע מהם
+            <div class="ai-course-picker">
+              <input type="text" id="ai-pref-unwanted-search" placeholder="חיפוש לפי שם, קוד קורס או נושא...">
+              <div class="ai-course-picker-results" id="ai-pref-unwanted-results" hidden></div>
+              <div class="ai-course-picker-chips" id="ai-pref-unwanted-chips"></div>
+            </div>
+          </div>
+          <label class="ai-plan-field">
+            עומס שבועי מקסימלי רצוי
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="range" id="sidebar-max-hours" min="14" max="30" step="1"
+                     value="${_aiPlanLastPreferences?.max_weekly_hours ?? DEFAULT_MAX_HOURS_PER_SEMESTER}">
+              <input type="number" id="sidebar-max-hours-num" min="14" max="30" step="1"
+                     value="${_aiPlanLastPreferences?.max_weekly_hours ?? DEFAULT_MAX_HOURS_PER_SEMESTER}" style="width:4em">
+              <span class="ai-plan-hint">ש״ש</span>
+            </div>
+          </label>
+          <div class="ai-plan-field">
+            <span>שעות שצברתי בתואר: <strong>${s.hours.completed_degree_hours ?? 0}</strong> / ${s.hours.degree_required_hours}</span>
+            <button class="btn btn-sm" id="ai-pref-edit-completed-hours" type="button">ערוך הקורסים שלי / שעות שצברתי</button>
+          </div>
+          <div class="ai-plan-field">
+            קורסי שער רוח — העדפת סוג סיום
+            <div class="ai-plan-hint">משפיע רק על בחירת קורסי שער רוח, לא על קורסי בחירה הנדסיים.</div>
+            <select id="ai-pref-shaar-ruach-assessment" class="ai-plan-select">
+              ${SHAAR_RUACH_ASSESSMENT_PREF_OPTIONS.map(o =>
+                `<option value="${o.value}" ${(_aiPickerState.shaarRuachAssessmentPref || 'none') === o.value ? 'selected' : ''}>${o.label}</option>`
+              ).join('')}
+            </select>
+          </div>
+        </div>
+      </details>
+
       ${renderMissingRequirementsHtml(missingReqs)}
       ${renderRepairDiagnosticsHtml(s)}
 
@@ -3520,23 +3575,39 @@ function renderAiTab() {
     });
   });
 
-  // PART G — "הצע השלמה חכמה" / "שאל אותי לפני שיבוץ" / "התעלם כרגע" for missing reqs.
+  // PART B — global "הצע השלמה חכמה לכל הדרישות" / "שאל אותי לפני שיבוץ" /
+  // "התעלם כרגע" for ALL missing requirements at once.
   panel.querySelectorAll('.missing-req-btn[data-missing-action]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const categoryId = btn.dataset.categoryId || null;
-      const categoryName = btn.dataset.categoryName || '';
       switch (btn.dataset.missingAction) {
-        case 'suggest':
-          offerCategorySuggestion(categoryId, categoryName);
+        case 'suggest-all':
+          offerAllCategorySuggestions();
           break;
-        case 'ask-first':
-          postAssistantMessage(`בסדר, אשאל אותך לפני שיבוץ קורסים להשלמת "${categoryName}".`);
+        case 'ask-first-all':
+          askBeforeAllMissingRequirements();
           break;
-        case 'ignore':
-          postAssistantMessage(`בסדר, לא אטפל כרגע בהשלמת "${categoryName}".`);
+        case 'ignore-all':
+          dismissMissingRequirementsPrompt();
           break;
       }
     });
+  });
+
+  // PART A — "העדפות תכנון" controls.
+  setupCoursePicker('wanted');
+  setupCoursePicker('unwanted');
+  const maxHoursSlider = document.getElementById('sidebar-max-hours');
+  const maxHoursNum = document.getElementById('sidebar-max-hours-num');
+  if (maxHoursSlider && maxHoursNum) {
+    maxHoursSlider.addEventListener('input', () => { maxHoursNum.value = maxHoursSlider.value; });
+    maxHoursNum.addEventListener('input', () => {
+      const v = Math.min(30, Math.max(14, parseFloat(maxHoursNum.value) || DEFAULT_MAX_HOURS_PER_SEMESTER));
+      maxHoursSlider.value = v;
+    });
+  }
+  document.getElementById('ai-pref-edit-completed-hours')?.addEventListener('click', openMyCoursesModal);
+  document.getElementById('ai-pref-shaar-ruach-assessment')?.addEventListener('change', (e) => {
+    _aiPickerState.shaarRuachAssessmentPref = e.target.value === 'none' ? null : e.target.value;
   });
 
   renderAiChatLog();
@@ -3657,6 +3728,28 @@ function handleQuickReply(qr) {
       postUserMessage(qr.label);
       postAssistantMessage('בסדר, לא אשבץ כרגע. אפשר לבקש זאת מאוחר יותר.');
       return;
+    // PART F — ping-pong action chips after an incremental proposal.
+    case 'apply-draft':
+      postUserMessage(qr.label);
+      if (state.proposalDraft) applyProposalDraft();
+      else postAssistantMessage('אין טיוטה פעילה להחיל כרגע.');
+      return;
+    case 'reject-draft':
+      postUserMessage(qr.label);
+      if (state.proposalDraft) { rejectProposalDraft(); renderAiTab(); }
+      else postAssistantMessage('אין טיוטה פעילה לדחות כרגע.');
+      return;
+    case 'more-alternatives': {
+      postUserMessage(qr.label);
+      const excluded = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : [];
+      const extra = `${qr.payload?.previousRequest || ''} — תן חלופות אחרות, לא ${excluded.map(cid => courseLabelLocal(cid)).join(', ')}`.trim();
+      handleSidebarChatSend(extra);
+      return;
+    }
+    case 'ask-before-all':
+      postUserMessage(qr.label);
+      askBeforeAllMissingRequirements();
+      return;
     default:
       break;
   }
@@ -3725,6 +3818,113 @@ function applyCategorySuggestionFirst(categoryId, categoryName) {
   renderAiTab();
 }
 
+/* ── PART B — GLOBAL missing-requirements actions (cover ALL missing
+ * categories/general requirements at once, instead of one block per
+ * category). ────────────────────────────────────────────────────────────── */
+
+/** "הצע השלמה חכמה לכל הדרישות" — loop internally over every missing category
+ * (and שער רוח, if applicable) calling the existing repair logic, then post
+ * ONE consolidated chat message summarizing everything that was added. */
+function offerAllCategorySuggestions() {
+  const s = buildSidebarStatusSummary();
+  const items = buildMissingRequirementsList(s);
+  if (!items.length) {
+    postAssistantMessage('לא נמצאו דרישות חסרות כרגע.');
+    return;
+  }
+
+  const added = [];
+  const failed = [];
+
+  for (const it of items.filter(x => x.kind === 'category')) {
+    const before = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
+    repairCategoryToDraft(it.category_id);
+    const after = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
+    if (before && after && after.length > before.length) {
+      const newCid = after.find(cid => !before.includes(cid));
+      added.push({ name: it.name, course_id: newCid, course_name: courseMap[newCid]?.name_he || newCid });
+    } else {
+      failed.push(it.name);
+    }
+  }
+
+  // שער רוח (general requirement) has no category_id-based repair — surface
+  // it as a conversational suggestion instead of a mechanical add.
+  const generalItem = items.find(x => x.kind === 'general');
+
+  if (added.length) {
+    const lines = added.map(a => `- ${a.course_name} (${a.name})`);
+    let text = `הוספתי לטיוטה הצעות להשלמת הדרישות החסרות:\n${lines.join('\n')}`;
+    if (failed.length) text += `\n\nלא נמצאו מועמדים מתאימים עבור: ${failed.join(', ')}.`;
+    if (generalItem) text += `\n\nלגבי שער רוח (${generalItem.placed}/${generalItem.required}) — אפשר לבקש הצעה ייעודית בנפרד.`;
+    postAssistantMessage(text);
+    renderAiTab();
+    setSidebarTab('ai');
+  } else if (failed.length) {
+    postAssistantMessage(`לא נמצאו מועמדים מתאימים להשלמת: ${failed.join(', ')}.`);
+  } else if (generalItem) {
+    offerCategorySuggestion(null, 'שער רוח');
+  }
+}
+
+/** "שאל אותי לפני שיבוץ" — ONE conversational message covering all missing
+ * categories, with one suggestion per category and quick-reply chips. */
+function askBeforeAllMissingRequirements() {
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const s = buildSidebarStatusSummary();
+  const items = buildMissingRequirementsList(s);
+  const categoryItems = items.filter(x => x.kind === 'category');
+
+  if (!categoryItems.length) {
+    postAssistantMessage('לא נמצאו דרישות חסרות הדורשות בחירת קורס כרגע.');
+    return;
+  }
+
+  const draft = state.proposalDraft || { semesters: clone(state.semesters), repo: [...state.repo] };
+  const placed = new Set(Object.values(draft.semesters).flat());
+  const unwanted = new Set(_aiPickerState.unwanted || []);
+  const interestText = _aiPlanLastPreferences?.extra_request_he || '';
+
+  const recs = [];
+  for (const it of categoryItems) {
+    const cat = analysis.categories.find(c => (c.category_id ?? null) === (it.category_id ?? null));
+    if (!cat) continue;
+    const remaining = cat.candidates.filter(c => !placed.has(c.course_id));
+    if (!remaining.length) continue;
+    const ranked = [...remaining].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText));
+    const pool = ranked.filter(c => !unwanted.has(c.course_id));
+    const top = (pool.length ? pool : ranked)[0];
+    if (top) recs.push({ categoryId: it.category_id, categoryName: it.name, course: top });
+  }
+
+  const namesLine = categoryItems.map(it => it.name).join(', ');
+  if (!recs.length) {
+    postAssistantMessage(`חסרות לך הדרישות הבאות: ${namesLine}. לא מצאתי מועמדים פנויים כרגע להשלמתן.`);
+    return;
+  }
+
+  const recLines = recs.map(r => `${r.course.name_he || r.course.course_id} (${r.categoryName})`).join(' ו-');
+  const text = `חסרות לך הדרישות הבאות: ${namesLine}. לפי ההעדפות שלך, אני ממליץ על ${recLines}. מה להעדיף?`;
+
+  const quickReplies = recs.flatMap(r => [
+    { label: `שבץ ${r.course.name_he || r.course.course_id}`, action: 'suggest-first', payload: { categoryId: r.categoryId, categoryName: r.categoryName } },
+    { label: `הראה חלופות ל${r.categoryName}`, action: 'suggest-category', payload: { categoryId: r.categoryId, categoryName: r.categoryName } },
+  ]);
+  quickReplies.push({ label: 'אל תשבץ כרגע', action: 'suggest-skip' });
+
+  postAssistantMessage(text, quickReplies);
+}
+
+/** "התעלם כרגע" — suppress the missing-requirements prompt until the board
+ * state (i.e. the set of missing requirements) changes. */
+function dismissMissingRequirementsPrompt() {
+  const s = buildSidebarStatusSummary();
+  const items = buildMissingRequirementsList(s);
+  _missingReqsDismissedFingerprint = _missingRequirementsFingerprint(items);
+  renderAiTab();
+}
+
 /* ── PARTS C/E/F — conversational planning flow with clarification heuristic ─ */
 
 /**
@@ -3778,6 +3978,46 @@ function detectClarificationNeeds(message) {
 }
 
 /**
+ * PART F — "why was X chosen?" detector. Looks for a course name/id mentioned
+ * alongside a "why" phrasing, and if a placed course is matched, returns a
+ * SPECIFIC answer using electiveSelectionReasons (if available) plus the
+ * course's actual semester-offering constraints — never a generic reply.
+ * Returns null if the message doesn't look like a "why" question or no
+ * matching placed course is found (falls through to normal handling).
+ */
+function tryAnswerWhyChosen(message) {
+  const looksLikeWhy = /למה|מדוע|why/i.test(message);
+  if (!looksLikeWhy) return null;
+
+  const placedIds = Object.values(state.semesters).flat();
+  const cid = placedIds.find(id => {
+    const c = courseMap[id];
+    if (!c) return false;
+    return (c.name_he && message.includes(c.name_he)) || message.includes(id);
+  });
+  if (!cid) return null;
+
+  const c = courseMap[cid];
+  const semId = findCoursePlacementSemId(cid);
+  const semLabel = SEM_HE[semId] || semId;
+  const reason = _aiPlanLastValidation?.electiveSelectionReasons?.find(r => r.course_id === cid)?.reason;
+
+  const offered = c.offered_semesters?.length ? c.offered_semesters : null;
+  let offeringNote = '';
+  if (offered) {
+    const offeredLabels = offered.map(o => SEM_HE[o] || o).join(', ');
+    offeringNote = ` הקורס מוצע רק ב-${offeredLabels}, ולכן שובץ ל${semLabel}.`;
+  }
+
+  if (reason) {
+    return `${c.name_he || cid} שובץ ב${semLabel}: ${reason}${offeringNote}`;
+  }
+
+  const category = c.program_category_name_he || c.program_category_id || 'כללית';
+  return `${c.name_he || cid} שובץ ב${semLabel} כקורס ${TYPE_HE[c.course_type] || 'בחירה'} בקטגוריית "${category}".${offeringNote}`;
+}
+
+/**
  * Send the chat input (or a provided message, e.g. from a quick reply) to
  * the planning/chat flow. If the message is a planning-style request and the
  * heuristic detects ambiguity, asks a clarifying question first (with quick
@@ -3817,7 +4057,17 @@ async function handleSidebarChatSend(providedMessage) {
   _aiClarificationAnswered = false;
   const planningText = pending ? `${pending} (${message})` : message;
 
-  const looksLikePlanningRequest = /תוכנית|לשפר|שבץ|תחליף|להחליף|תוסיף|הוסף|איזון|אזן|תכנון|בנה/.test(message)
+  // PART F — "why was this chosen?" gets a SPECIFIC, non-generic answer from
+  // electiveSelectionReasons + course metadata, without triggering a re-plan.
+  if (pending == null) {
+    const whyAnswer = tryAnswerWhyChosen(message);
+    if (whyAnswer) {
+      postAssistantMessage(whyAnswer);
+      return;
+    }
+  }
+
+  const looksLikePlanningRequest = /תוכנית|לשפר|שבץ|תחליף|להחליף|תוסיף|הוסף|איזון|אזן|תכנון|בנה|חלופ|במקום|צמצם|הקטן|הורד|תוריד/.test(message)
     || pending != null;
 
   if (looksLikePlanningRequest) {
@@ -3825,11 +4075,20 @@ async function handleSidebarChatSend(providedMessage) {
     const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
     _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
     try {
+      // PART F — always route through the INCREMENTAL planning call
+      // ("שפר את המערכת הנוכחית"), never a full rebuild, for chat-driven edits.
       if (state.proposalDraft) {
         await requestPlanProposalFromDraft(prefs, 'minimal_changes');
       } else {
         await requestPlanProposal(prefs, 'minimal_changes');
       }
+      // PART F — follow the proposal with explicit ping-pong action chips.
+      postAssistantMessage('זו ההצעה המעודכנת — אפשר להחיל, לדחות, לבקש עוד חלופות, או לבקש ממני לשאול לפני שיבוץ.', [
+        { label: 'החל שינוי', action: 'apply-draft' },
+        { label: 'דחה', action: 'reject-draft' },
+        { label: 'תן עוד חלופות', action: 'more-alternatives', payload: { previousRequest: planningText } },
+        { label: 'שאל אותי לפני', action: 'ask-before-all' },
+      ]);
     } finally {
       renderAiTab();
     }
