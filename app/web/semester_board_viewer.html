@@ -1454,6 +1454,7 @@ body.prog-modal-open .workspace {
         <button class="sb-tab active" id="sb-tab-repo"  data-tab="repo">מאגר קורסים</button>
         <button class="sb-tab"        id="sb-tab-ai"    data-tab="ai">עוזר AI</button>
         <button class="sb-tab"        id="sb-tab-draft" data-tab="draft">טיוטת שינויים<span id="sb-draft-dot" class="sb-draft-dot" hidden></span></button>
+        <button class="sb-tab"        id="sb-tab-chat"  data-tab="chat">שיחה עם AI</button>
       </div>
 
       <div id="sb-panel-repo" class="sb-panel">
@@ -1472,6 +1473,7 @@ body.prog-modal-open .workspace {
 
       <div id="sb-panel-ai" class="sb-panel" hidden></div>
       <div id="sb-panel-draft" class="sb-panel" hidden></div>
+      <div id="sb-panel-chat" class="sb-panel" hidden></div>
     </aside>
 
     <main class="board-area">
@@ -1624,7 +1626,7 @@ const SHAAR_RUACH_COURSES = [
   { course_id: '0627-1010', name_he: 'מבוא לבלשנות: מבט פנורמי', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0627101001&year=2025' },
   { course_id: '0631-1130', name_he: 'מושגי יסוד באסלאם', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631113001&year=2025' },
   { course_id: '0631-2468', name_he: 'מבוא לפילוסופיה אסלאמית', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631246801&year=2025' },
-  { course_id: '0631-3496', name_he: 'תולדות הספרות הקלאסית א'', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631349601&year=2025' },
+  { course_id: '0631-3496', name_he: 'תולדות הספרות הקלאסית א', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631349601&year=2025' },
   { course_id: '0671-1045', name_he: 'מבוא לתרבות מצרים הפרעונית', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671104501&year=2025' },
   { course_id: '0671-2215', name_he: 'האלפבית והכתובות מדרום הלבנט', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671221501&year=2025' },
   { course_id: '0671-2331', name_he: 'ארכיאובוטניקה: שרידי צמחים ברקורד הארכיאולוגי', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671233101&year=2025' },
@@ -1632,8 +1634,8 @@ const SHAAR_RUACH_COURSES = [
   { course_id: '0671-2670', name_he: 'ראשית ישראל: היסטוריה וארכיאולוגיה', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671267001&year=2025' },
   { course_id: '0672-1102', name_he: 'המצאת הספרות: מבוא לספרות היוונית העתיקה', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110201&year=2025' },
   { course_id: '0677-1514', name_he: 'משפט אייכמן: הרקע ההיסטורי, המשפטי, הפוליטי והמדיני', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677151401&year=2025' },
-  { course_id: '0687-1113', name_he: 'מבוא יפן א'', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111301&year=2025' },
-  { course_id: '0687-1115', name_he: 'מבוא הודו א'', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111501&year=2025' },
+  { course_id: '0687-1113', name_he: 'מבוא יפן א', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111301&year=2025' },
+  { course_id: '0687-1115', name_he: 'מבוא הודו א', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111501&year=2025' },
   { course_id: '0616-1311', name_he: 'ארבעה נכנסו לפרדס: מבוא למיסטיקה יהודית', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0616131101&year=2025' },
   { course_id: '0672-1109', name_he: 'מבוא למיתולוגיה יוונית', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110901&year=2025' },
   { course_id: '0723-2047', name_he: 'הצטיינות ושינוי בחינוך', credits: 2, syllabus_url: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723204701&year=2025' },
@@ -1685,7 +1687,7 @@ const SHAAR_RUACH_COURSES = [
   { course_id: '0662-2253', name_he: 'תרבות הסייבר כתרבות נוער', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662225301&year=2025' },
   { course_id: '0662-2615', name_he: 'מרובין הוד עד הגנב הנדיב: מחאות, שינוי וצדק חברתי בספרות ילדים', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662261501&year=2025' },
   { course_id: '0662-2620', name_he: 'הבניית דימוי של אישי ציבור בתקשורת: צרפת, ארצות הברית וישראל', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662262001&year=2025' },
-  { course_id: '0662-2653', name_he: 'שמיעה גלובלית- ג'אז בעולם דיגיטלי וגלובלי', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265301&year=2025' },
+  { course_id: '0662-2653', name_he: 'שמיעה גלובלית- ג\'אז בעולם דיגיטלי וגלובלי', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265301&year=2025' },
   { course_id: '0662-2656', name_he: 'להיוולד מחדש - טקסי מסתורין בעת העתיקה', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265601&year=2025' },
   { course_id: '0608-1010', name_he: 'מבוא לתיאוריה קווירית', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608101001&year=2025' },
   { course_id: '0669-6203', name_he: 'חווית העצמי בעולם הדיגיטלי', credits: 2, syllabus_url: 'https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669620301&year=2025' },
@@ -1949,6 +1951,13 @@ function buildPlanContext() {
     program_name:         selectedProg?.program_name,
     semesters,
     pinned_course_ids:    (state.pinnedCourseIds && state.pinnedCourseIds.length) ? [...state.pinnedCourseIds] : undefined,
+    preferences: (_aiPlanLastPreferences?.wanted_course_ids?.length || _aiPlanLastPreferences?.unwanted_course_ids?.length || _aiPlanLastPreferences?.extra_request_he)
+      ? {
+          wanted_course_ids:   _aiPlanLastPreferences?.wanted_course_ids   || undefined,
+          unwanted_course_ids: _aiPlanLastPreferences?.unwanted_course_ids || undefined,
+          extra_request_he:    _aiPlanLastPreferences?.extra_request_he    || undefined,
+        }
+      : undefined,
     overload_warnings:    overload_warnings.length ? overload_warnings : undefined,
     category_requirements: category_requirements.length ? category_requirements : undefined,
     general_course_requirements,
@@ -2000,7 +2009,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
       ? '⚠ הבקשה לקחה יותר מדי זמן. נסה שוב.'
       : '⚠ שגיאת רשת — לא ניתן להגיע לשרת ה-AI.';
     sendBtn.disabled = false;
-    return;
+    return null;
   }
 
   if (!response.ok) {
@@ -2026,7 +2035,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
         wrap.appendChild(btn);
         targetEl.appendChild(wrap);
         sendBtn.disabled = false;
-        return;
+        return null;
       } else if (errBody.code === 'INVALID_REQUEST') {
         errMsg = '⚠ בקשת ה-AI לא תקינה. נסה לרענן את הדף (Ctrl+Shift+R).';
       } else if (errBody.code === 'DB_ERROR') {
@@ -2048,7 +2057,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
     targetEl.className = 'ai-response-area';
     targetEl.textContent = errMsg;
     sendBtn.disabled = false;
-    return;
+    return null;
   }
 
   // Dev mode indicator (console only — no UI change)
@@ -2087,6 +2096,7 @@ async function callAiStream(message, planContext, courseContext, targetEl, sendB
     clearTimeout(abortTimer);
     sendBtn.disabled = false;
   }
+  return text;
 }
 
 /* ── App state ──────────────────────────────────────────────────────────── */
@@ -3028,7 +3038,9 @@ function setSidebarTab(tab) {
   document.getElementById('sb-panel-repo').hidden  = tab !== 'repo';
   document.getElementById('sb-panel-ai').hidden    = tab !== 'ai';
   document.getElementById('sb-panel-draft').hidden = tab !== 'draft';
+  document.getElementById('sb-panel-chat').hidden  = tab !== 'chat';
   if (tab === 'ai') renderAiTab();
+  if (tab === 'chat') renderChatTab();
   if (tab === 'draft') renderDraftTab();
 }
 
@@ -3645,6 +3657,127 @@ function requestPlanProposalFromDraft(prefs, actionType) {
     state.semesters = savedSemesters;
     state.repo = savedRepo;
   });
+}
+
+/* ── PART F: iterative AI chat that can propose board changes ─────────────── */
+
+let _aiChatMessages = []; // [{ role: 'user'|'assistant', text }]
+
+/**
+ * Look for a fenced ```json block in the AI's reply containing a proposal
+ * ({ semesters: [{ semester_id, course_ids }], rationale_he }). If found and
+ * valid, normalize it (carries forward untouched courses, like
+ * requestPlanProposal) and activate it as a reviewable draft.
+ * Returns the display text with the JSON block stripped, plus whether a
+ * proposal was applied.
+ */
+function tryApplyProposalFromChatText(text) {
+  const match = text.match(/```jsons*([sS]*?)```/i);
+  if (!match) return { displayText: text, applied: false };
+
+  let parsed;
+  try {
+    parsed = JSON.parse(match[1]);
+  } catch {
+    return { displayText: text, applied: false };
+  }
+
+  if (!parsed || !Array.isArray(parsed.semesters)) {
+    return { displayText: text, applied: false };
+  }
+
+  const { proposal: normalized } = normalizePlanProposalLocal(parsed);
+  activateProposalDraft(normalized);
+
+  const displayText = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
+  return { displayText, applied: true };
+}
+
+/** Render the "שיחה עם AI" sidebar tab — iterative chat that can propose board changes (PART F). */
+function renderChatTab() {
+  const panel = document.getElementById('sb-panel-chat');
+  const hasUserMessage = _aiChatMessages.some(m => m.role === 'user');
+
+  panel.innerHTML = `
+    <div class="sb-head"><div class="sb-head-title">שיחה עם AI</div></div>
+    <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
+      <div class="ai-plan-hint">שאל שאלות או בקש שינויים בתוכנית, למשל: "תחליף לי את הקורס הזה במשהו יותר קשור לתכן" או "תוריד עומס מסמסטר ג׳ ב׳".</div>
+      <div id="ai-chat-log" class="ai-chat-log"></div>
+      <div class="ai-input-area">
+        <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב הודעה…"></textarea>
+        <div class="ai-send-row">
+          <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
+        </div>
+      </div>
+      <button class="btn btn-sm" id="sidebar-chat-build-proposal" ${hasUserMessage ? '' : 'disabled'}>בנה הצעת שינוי מהשיחה</button>
+    </div>`;
+
+  const logEl = document.getElementById('ai-chat-log');
+  for (const m of _aiChatMessages) {
+    const bubble = document.createElement('div');
+    bubble.className = `ai-chat-msg ai-chat-msg-${m.role}`;
+    bubble.textContent = m.text;
+    logEl.appendChild(bubble);
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+
+  document.getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend);
+  document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
+  });
+  document.getElementById('sidebar-chat-build-proposal').addEventListener('click', buildProposalFromChat);
+}
+
+/** Send the chat input to the AI endpoint, with full board state + diagnostics + preferences as context. */
+async function handleSidebarChatSend() {
+  const input = document.getElementById('sidebar-chat-input');
+  const sendBtn = document.getElementById('sidebar-chat-send');
+  const message = input?.value?.trim();
+  if (!message || !sendBtn) return;
+
+  _aiChatMessages.push({ role: 'user', text: message });
+  input.value = '';
+
+  const logEl = document.getElementById('ai-chat-log');
+  const userBubble = document.createElement('div');
+  userBubble.className = 'ai-chat-msg ai-chat-msg-user';
+  userBubble.textContent = message;
+  logEl.appendChild(userBubble);
+
+  const respBubble = document.createElement('div');
+  respBubble.className = 'ai-chat-msg ai-chat-msg-assistant ai-response-area ai-empty';
+  logEl.appendChild(respBubble);
+  logEl.scrollTop = logEl.scrollHeight;
+
+  const text = await callAiStream(message, buildPlanContext(), undefined, respBubble, sendBtn);
+  if (text == null) {
+    _aiChatMessages.pop();
+    userBubble.remove();
+    return;
+  }
+
+  const { displayText, applied } = tryApplyProposalFromChatText(text);
+  respBubble.textContent = applied
+    ? `${displayText}
+
+(הוצעה טיוטת שינוי — ניתן לסקור אותה בטאב "טיוטת שינויים")`
+    : displayText;
+  _aiChatMessages.push({ role: 'assistant', text: respBubble.textContent });
+}
+
+/** "בנה הצעת שינוי מהשיחה" — re-run the planning endpoint in incremental mode using the last chat instruction as the directive. */
+function buildProposalFromChat() {
+  const lastUserMsg = [..._aiChatMessages].reverse().find(m => m.role === 'user');
+  if (!lastUserMsg) return;
+
+  const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: lastUserMsg.text };
+  _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
+
+  if (state.proposalDraft) {
+    requestPlanProposalFromDraft(prefs, 'minimal_changes');
+  } else {
+    requestPlanProposal(prefs, 'minimal_changes');
+  }
 }
 
 function renderBoard() {

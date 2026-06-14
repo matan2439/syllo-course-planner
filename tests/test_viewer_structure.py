@@ -778,3 +778,85 @@ def test_draft_state_classes_do_not_override_category_background_or_border(html)
         rule = m.group(1)
         assert "background" not in rule, f".{cls} must not set background"
         assert "border-color" not in rule, f".{cls} must not set border-color"
+
+
+# ---------------------------------------------------------------------------
+# PART E — one-click repair buttons based on current-board diagnostics
+# ---------------------------------------------------------------------------
+
+def test_repair_button_labels_present(html):
+    """The five PART E repair button labels must exist in the HTML."""
+    for label in [
+        'הוסף קורס',           # category repair (interpolated with category name)
+        'אזן את הסמסטר',
+        'תקן שיבוץ',
+        'תקן רצף דרישות קדם',
+        'צמצם קורסים מיותרים',
+    ]:
+        assert label in html, f"Repair button label missing: {label}"
+
+
+def test_repair_diagnostics_render_function_exists(html):
+    """renderRepairDiagnosticsHtml must build repair rows/buttons for each
+    diagnostic type and be wired into the AI tab summary."""
+    m = re.search(r"function renderRepairDiagnosticsHtml\(s\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderRepairDiagnosticsHtml not found"
+    body = m.group(1)
+    assert "data-repair=\"category\"" in body
+    assert "data-repair=\"balance\"" in body
+    assert "data-repair=\"illegal\"" in body
+    assert "data-repair=\"prereq-order\"" in body
+    assert "data-repair=\"overshoot\"" in body
+    assert "repair-diagnostics" in body
+
+    m2 = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m2, "renderAiTab not found"
+    assert "renderRepairDiagnosticsHtml(s)" in m2.group(1)
+
+
+def test_repair_handler_functions_exist(html):
+    """Each repair button must be backed by a dedicated handler function."""
+    for fn in [
+        "repairCategoryToDraft",
+        "repairBalanceSemesterToDraft",
+        "repairIllegalPlacementToDraft",
+        "repairPrereqOrderToDraft",
+        "repairOvershootToDraft",
+    ]:
+        assert re.search(r"function " + fn + r"\(", html), f"{fn} not found"
+
+
+def test_repair_handlers_use_proposal_draft_not_direct_mutation(html):
+    """Repair handlers must populate state.proposalDraft (via _ensureProposalDraft
+    or direct assignment) rather than mutating state.semesters directly."""
+    for fn in [
+        "repairCategoryToDraft",
+        "repairBalanceSemesterToDraft",
+        "repairIllegalPlacementToDraft",
+        "repairPrereqOrderToDraft",
+        "repairOvershootToDraft",
+    ]:
+        m = re.search(r"function " + fn + r"\(.*?\n\}\n", html, re.DOTALL)
+        assert m, f"{fn} not found"
+        body = m.group(0)
+        assert "proposalDraft" in body or "_ensureProposalDraft" in body, \
+            f"{fn} must use state.proposalDraft"
+        # Must not assign directly into the live board's state.semesters.
+        assert "state.semesters[" not in body, f"{fn} must not mutate state.semesters directly"
+
+
+def test_repair_buttons_wired_to_handlers_in_ai_tab(html):
+    """The AI tab setup must attach click handlers for each data-repair button
+    that call the corresponding repair*ToDraft function."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    assert "data-repair" in body
+    for fn in [
+        "repairCategoryToDraft",
+        "repairBalanceSemesterToDraft",
+        "repairIllegalPlacementToDraft",
+        "repairPrereqOrderToDraft",
+        "repairOvershootToDraft",
+    ]:
+        assert fn in body, f"{fn} not wired in renderAiTab"
