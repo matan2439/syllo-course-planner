@@ -528,10 +528,27 @@ body.prog-modal-open .workspace {
 }
 .ai-response-area.ai-empty::before { content: 'תשובת ה-AI תופיע כאן…'; color: var(--text-faint); font-style: italic; }
 .ai-response-area.ai-loading { font-style: italic; color: var(--text-faint); }
-.ai-chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.ai-chat-log,
+.ai-chat-thread { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; }
 .ai-chat-msg { border-radius: 8px; padding: 8px 10px; font-size: .76rem; line-height: 1.6; white-space: pre-wrap; }
 .ai-chat-msg-user { background: var(--surface3, var(--surface2)); align-self: flex-end; }
 .ai-chat-msg-assistant { background: var(--surface2); border: 1px dashed var(--border2); }
+.ai-chat-bubble {
+  border-radius: 10px; padding: 8px 12px; font-size: .76rem; line-height: 1.6;
+  white-space: pre-wrap; max-width: 85%; color: var(--text);
+}
+.ai-chat-bubble.user {
+  align-self: flex-end; background: var(--purple-soft, var(--surface2));
+  border: 1px solid var(--purple, var(--border2));
+}
+.ai-chat-bubble.assistant {
+  align-self: flex-start; background: var(--surface2); border: 1px dashed var(--border2);
+}
+.ai-chat-bubble.assistant.loading { font-style: italic; color: var(--text-muted); }
+.ai-chat-bubble.assistant.error {
+  border: 1px solid var(--danger, #dc2626); color: var(--danger, #dc2626);
+  background: var(--danger-soft, rgba(220,38,38,.08));
+}
 .ai-quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 4px; }
 .ai-quick-reply-btn { font-size: .72rem; padding: 4px 10px; border-radius: 999px; }
 .missing-reqs { font-size: .8rem; }
@@ -3691,7 +3708,7 @@ function renderAiTab() {
         </div>
       </details>
 
-      <div id="ai-chat-log" class="ai-chat-log"></div>
+      <div id="ai-chat-log" class="ai-chat-log ai-chat-thread"></div>
 
       <div class="ai-input-area">
         <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת...">${esc(_aiChatInputDraft)}</textarea>
@@ -3761,7 +3778,7 @@ function renderAiTab() {
 
   renderAiChatLog();
 
-  document.getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend);
+  document.getElementById('sidebar-chat-send').addEventListener('click', () => handleSidebarChatSend());
   document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
   });
@@ -3807,20 +3824,24 @@ function renderAiTab() {
   function runBuildFromScratch() {
     const btn = document.getElementById('sidebar-build-from-scratch');
     const statusEl = document.getElementById('ai-build-status');
-    const stages = ['קורא העדפות…', 'משלים דרישות חובה…', 'בוחר קורסי בחירה…', 'מאזן עומס…', 'בודק חוקיות…'];
+    const stages = ['אוסף העדפות...', 'שולח בקשה ל-AI...', 'בודק דרישות...', 'בודק חוקיות...', 'יוצר טיוטה...', 'מסיים...'];
     let stageIdx = 0;
     if (btn) { btn.disabled = true; }
     if (statusEl) {
       statusEl.hidden = false;
-      statusEl.textContent = `בונה מערכת... ${stages[0]}`;
+      statusEl.textContent = stages[0];
     }
     const interval = setInterval(() => {
-      stageIdx = (stageIdx + 1) % stages.length;
-      if (statusEl) statusEl.textContent = `בונה מערכת... ${stages[stageIdx]}`;
-    }, 1500);
+      stageIdx = Math.min(stageIdx + 1, stages.length - 1);
+      if (statusEl) statusEl.textContent = stages[stageIdx];
+    }, 1300);
+    const slowTimer = setTimeout(() => {
+      if (statusEl) statusEl.textContent = `${stages[stageIdx]} זה לוקח יותר מהרגיל, עדיין מנסה...`;
+    }, 16000);
 
     return run('full_plan').then(() => {
       clearInterval(interval);
+      clearTimeout(slowTimer);
       if (statusEl) statusEl.hidden = true;
       if (btn) btn.disabled = false;
       if (state.proposalDraft) {
@@ -3831,6 +3852,7 @@ function renderAiTab() {
       }
     }).catch(err => {
       clearInterval(interval);
+      clearTimeout(slowTimer);
       if (statusEl) statusEl.hidden = true;
       if (btn) btn.disabled = false;
       postAssistantMessage(`אירעה שגיאה בעת בניית המערכת: ${err?.message || err}. אפשר לנסות שוב.`);
@@ -4006,7 +4028,7 @@ function renderAiChatLog() {
   logEl.innerHTML = '';
   for (const m of _aiChatMessages) {
     const bubble = document.createElement('div');
-    bubble.className = `ai-chat-msg ai-chat-msg-${m.role}`;
+    bubble.className = `ai-chat-msg ai-chat-msg-${m.role} ai-chat-bubble ${m.role}${m.isError ? ' error' : ''}`;
     bubble.textContent = m.text;
     logEl.appendChild(bubble);
 
@@ -4028,7 +4050,7 @@ function renderAiChatLog() {
 
 /** Append an assistant message (optionally with quick-reply chips) and re-render the log. */
 function postAssistantMessage(text, quickReplies) {
-  _aiChatMessages.push({ role: 'assistant', text, quickReplies: quickReplies || [] });
+  _aiChatMessages.push({ role: 'assistant', text, quickReplies: quickReplies || [], isError: /^שגיאה:/.test(text) });
   saveAiChatState();
   renderAiChatLog();
 }
@@ -4038,6 +4060,35 @@ function postUserMessage(text) {
   _aiChatMessages.push({ role: 'user', text });
   saveAiChatState();
   renderAiChatLog();
+}
+
+/* PART B/C — transient loading bubble shown while a chat/build request is
+ * in flight. Not part of _aiChatMessages (not persisted). Returns an object
+ * with `setText(text)` and `remove()`. Also schedules a "slow response"
+ * follow-up message after ~16s, cleared on remove(). */
+function showAiLoadingBubble(initialText) {
+  const logEl = document.getElementById('ai-chat-log');
+  const bubble = document.createElement('div');
+  bubble.className = 'ai-chat-bubble assistant loading';
+  bubble.textContent = initialText;
+  logEl?.appendChild(bubble);
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
+
+  const slowTimer = setTimeout(() => {
+    bubble.textContent = `${initialText} זה לוקח יותר מהרגיל, עדיין מנסה...`;
+  }, 16000);
+
+  return {
+    el: bubble,
+    setText(text) {
+      bubble.textContent = text;
+      if (logEl) logEl.scrollTop = logEl.scrollHeight;
+    },
+    remove() {
+      clearTimeout(slowTimer);
+      bubble.remove();
+    },
+  };
 }
 
 /**
@@ -4552,11 +4603,15 @@ async function handleSidebarChatSend(providedMessage) {
   // throw (e.g. in intent/preference helpers) doesn't silently abort the
   // flow leaving the button disabled or the user with no feedback at all.
   if (sendBtn) sendBtn.disabled = true;
+  const loading = showAiLoadingBubble('שולח בקשה...');
+  const thinkTimer = setTimeout(() => loading.setText('העוזר חושב...'), 800);
   try {
     return await _handleSidebarChatSendInner(message, providedMessage, input);
   } catch (err) {
     postAssistantMessage(`שגיאה: ${err?.message || err}`);
   } finally {
+    clearTimeout(thinkTimer);
+    loading.remove();
     if (sendBtn) sendBtn.disabled = false;
   }
 }
@@ -10317,7 +10372,30 @@ function applyPlanProposal(proposal) {
   renderAll();
 }
 
-main();
+// PART E — safety net: if the bootstrap throws (e.g. corrupted localStorage
+// state from a prior session causing a render-time error), show a recovery
+// UI instead of leaving a blank/broken page, and let the user reset local
+// state without losing data they don't intend to clear.
+main().catch(err => {
+  console.error('[main] fatal error during bootstrap:', err);
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);font-family:inherit;direction:rtl;';
+  box.innerHTML = `
+    <div style="background:var(--surface,#fff);color:var(--text,#111);border-radius:10px;padding:20px;max-width:420px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+      <div style="font-weight:700;margin-bottom:8px">אירעה שגיאה בטעינה</div>
+      <div style="font-size:.85rem;color:var(--text-muted,#666);margin-bottom:14px">${esc(err?.message || String(err))}</div>
+      <button id="ai-fatal-reset-btn" class="btn btn-primary">אפס נתונים מקומיים ונסה שוב</button>
+    </div>`;
+  document.body.appendChild(box);
+  document.getElementById('ai-fatal-reset-btn').addEventListener('click', () => {
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('tau_'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch {}
+    location.reload();
+  });
+});
 </script>
 </body>
 </html>

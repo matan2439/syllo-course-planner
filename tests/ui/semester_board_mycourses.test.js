@@ -285,7 +285,7 @@ describe('"בנה מערכת" build button', () => {
     // Loading indicator shown synchronously (before the await resolves).
     const statusEl = document.getElementById('ai-build-status');
     expect(statusEl.hidden).toBe(false);
-    expect(statusEl.textContent).toContain('בונה מערכת');
+    expect(statusEl.textContent).toContain('אוסף העדפות');
     expect(btn.disabled).toBe(true);
 
     // Let the (rejected) fetch settle.
