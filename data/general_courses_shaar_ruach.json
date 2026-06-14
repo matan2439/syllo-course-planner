@@ -1,93 +1,1603 @@
 {
   "_source": "https://humanities.tau.ac.il/shar_ruach/courses",
+  "_sources": [
+    "https://humanities.tau.ac.il/shar_ruach/courses",
+    "https://humanities.tau.ac.il/shar_ruach/courses?tab=1",
+    "https://humanities.tau.ac.il/shar_ruach/courses?tab=2",
+    "https://humanities.tau.ac.il/shar_ruach/courses?tab=3",
+    "https://humanities.tau.ac.il/shar_ruach/courses_2",
+    "https://humanities.tau.ac.il/shar_ruach/courses_2?tab=1",
+    "https://humanities.tau.ac.il/shar_ruach/courses_2?tab=2",
+    "https://humanities.tau.ac.il/shar_ruach/courses_2?tab=3"
+  ],
   "credits_rule": "Each שער רוח course counts as 2 נק\"ז",
   "_note": "Per the שער רוח program rule, every course in this repository is worth 2 נק\"ז. This is a known program rule, not an estimate.",
-  "category": "שער רוח",
+  "category": "קורסי שער רוח",
   "courses": [
     {
       "course_id": "0609-1005",
+      "course_id_base": "0609-1005",
+      "section_id": "01",
+      "course_id_display": "0609-1005-01",
       "name_he": "תולדות האנושות - 3,000 השנים הראשונות",
+      "teacher_he": "פרופ' יורם כהן",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100501&year=2025",
-      "category": "שער רוח",
+      "semester": "A,B",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "0609-1003",
-      "name_he": "מהי תרבות? בין מערב למזרח",
+      "course_id_base": "0609-1003",
+      "section_id": "01",
+      "course_id_display": "0609-1003-01",
+      "name_he": "מהי תרבות ? בין מערב למזרח",
+      "teacher_he": "ד\"ר אלמוג בהר",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100301&year=2025",
-      "category": "שער רוח",
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "0609-1008",
+      "course_id_base": "0609-1008",
+      "section_id": "01",
+      "course_id_display": "0609-1008-01",
       "name_he": "מיינדפולנס ובודהיזם: פרקטיקה ותיאוריה אז והיום",
+      "teacher_he": "פרופ' ריקרדו טרש וד\"ר רועי צהר",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100801&year=2025",
-      "category": "שער רוח",
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "0609-1007",
-      "name_he": "תעלומת הבלש",
+      "course_id_base": "0609-1007",
+      "section_id": "01",
+      "course_id_display": "0609-1007-01",
+      "name_he": "תעלומת הבלש: מה מסתירים מאיתנו ומה יכולים לגלות לנו בלשים ספרותיים",
+      "teacher_he": "מר דרור משעני",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100701&year=2025",
-      "category": "שער רוח",
+      "semester": "A,B",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "0609-1013",
+      "course_id_base": "0609-1013",
+      "section_id": "01",
+      "course_id_display": "0609-1013-01",
       "name_he": "מהי יהדות? מבוא למחשבת ישראל לדורותיה",
+      "teacher_he": "ד\"ר ג'רמי פוגל",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101301&year=2025",
-      "category": "שער רוח",
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "0609-1014",
+      "course_id_base": "0609-1014",
+      "section_id": "01",
+      "course_id_display": "0609-1014-01",
       "name_he": "הבית והמשפחה בספרות",
+      "teacher_he": "פרופ' איריס מילנר",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101401&year=2025",
-      "category": "שער רוח",
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "1880-0901",
+      "course_id_base": "1880-0901",
+      "section_id": "01",
+      "course_id_display": "1880-0901-01",
       "name_he": "משבר האקלים וקיימות: מבט רב תחומי",
+      "teacher_he": "פרופ' רות רונן",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880090101&year=2025",
-      "category": "שער רוח",
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
     },
     {
       "course_id": "1880-0710",
+      "course_id_base": "1880-0710",
+      "section_id": "01",
+      "course_id_display": "1880-0710-01",
       "name_he": "ללמוד איך ללמוד",
+      "teacher_he": "ד\"ר ננה אריאל",
       "credits": 2,
-      "semester": "א",
-      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880071001&year=2025",
-      "category": "שער רוח",
+      "semester": "A,B",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1002",
+      "course_id_base": "0609-1002",
+      "section_id": "01",
+      "course_id_display": "0609-1002-01",
+      "name_he": "מבוא לפילוסופיה של המדע",
+      "teacher_he": "ד\"ר אורי בלקינד",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1011",
+      "course_id_base": "0609-1011",
+      "section_id": "01",
+      "course_id_display": "0609-1011-01",
+      "name_he": "להיות פלסטיני: ספרות, היסטוריה ושאלת הזהות",
+      "teacher_he": "ד\"ר מנאר מח'ול",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1018",
+      "course_id_base": "0609-1018",
+      "section_id": "01",
+      "course_id_display": "0609-1018-01",
+      "name_he": "קשב ולמידה",
+      "teacher_he": "פרופ' לילך שלו",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1017",
+      "course_id_base": "0609-1017",
+      "section_id": "01",
+      "course_id_display": "0609-1017-01",
+      "name_he": "ארכיאולוגיה מהי?",
+      "teacher_he": "פרופ' עידו קוך",
+      "credits": 2,
+      "semester": "A,B",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1201",
+      "course_id_base": "0609-1201",
+      "section_id": "01",
+      "course_id_display": "0609-1201-01",
+      "name_he": "מיתולוגיות בתרבות העכשווית",
+      "teacher_he": "ד\"ר ג'רמי פוגל",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1225",
+      "course_id_base": "0609-1225",
+      "section_id": "01",
+      "course_id_display": "0609-1225-01",
+      "name_he": "צבע וצבען: סמליות ומשמעות",
+      "teacher_he": "דר' גילי שלום",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1226",
+      "course_id_base": "0609-1226",
+      "section_id": "01",
+      "course_id_display": "0609-1226-01",
+      "name_he": "הנפש והאהבה: סוגיות נבחרות במחשבת ישראל",
+      "teacher_he": "ד\"ר אשר אלבו",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1303",
+      "course_id_base": "0609-1303",
+      "section_id": "01",
+      "course_id_display": "0609-1303-01",
+      "name_he": "אלוהים מחפש משמעות: חקר הדת, מושג האל ותפיסת האדם במדעי הרוח והחברה",
+      "teacher_he": "ד\"ר ירון כהן צמח",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0612-6041",
+      "course_id_base": "0612-6041",
+      "section_id": "01",
+      "course_id_display": "0612-6041-01",
+      "name_he": "רטוריקה ומסר במקרא",
+      "teacher_he": "ד\"ר סוצקובר טליה",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0612604101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0612-6044",
+      "course_id_base": "0612-6044",
+      "section_id": "01",
+      "course_id_display": "0612-6044-01",
+      "name_he": "אהבה, חרדה ורגש במקרא",
+      "teacher_he": "פרופ פוליאק מאירה",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0612604401&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0618-1059",
+      "course_id_base": "0618-1059",
+      "section_id": "01",
+      "course_id_display": "0618-1059-01",
+      "name_he": "מבוא לאסתטיקה ולפילוסופיה של האמנות",
+      "teacher_he": "פרופ כנען חגי",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618105901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0622-1001",
+      "course_id_base": "0622-1001",
+      "section_id": "01",
+      "course_id_display": "0622-1001-01",
+      "name_he": "מבוא לתולדות המזה\"ת בעת החדישה",
+      "teacher_he": "פרופ אלון יואב",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622100101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0627-1010",
+      "course_id_base": "0627-1010",
+      "section_id": "01",
+      "course_id_display": "0627-1010-01",
+      "name_he": "מבוא לבלשנות: מבט פנורמי",
+      "teacher_he": "ד\"ר ראסין עזר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0627101001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0631-1130",
+      "course_id_base": "0631-1130",
+      "section_id": "01",
+      "course_id_display": "0631-1130-01",
+      "name_he": "מושגי יסוד באסלאם",
+      "teacher_he": "ד\"ר טל אבי, ד\"ר יולנדה יבור",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631113001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0631-2468",
+      "course_id_base": "0631-2468",
+      "section_id": "01",
+      "course_id_display": "0631-2468-01",
+      "name_he": "מבוא לפילוסופיה אסלאמית",
+      "teacher_he": "ד\"ר אגבאריה אחמד",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631246801&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0631-3496",
+      "course_id_base": "0631-3496",
+      "section_id": "01",
+      "course_id_display": "0631-3496-01",
+      "name_he": "תולדות הספרות הקלאסית א'",
+      "teacher_he": "פרופ לרנר אמיר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631349601&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-1045",
+      "course_id_base": "0671-1045",
+      "section_id": "01",
+      "course_id_display": "0671-1045-01",
+      "name_he": "מבוא לתרבות מצרים הפרעונית",
+      "teacher_he": "ד\"ר דבורה סויני",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671104501&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2215",
+      "course_id_base": "0671-2215",
+      "section_id": "01",
+      "course_id_display": "0671-2215-01",
+      "name_he": "האלפבית והכתובות מדרום הלבנט",
+      "teacher_he": "ד\"ר זאב סרגי עומר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671221501&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2331",
+      "course_id_base": "0671-2331",
+      "section_id": "01",
+      "course_id_display": "0671-2331-01",
+      "name_he": "ארכיאובוטניקה: שרידי צמחים ברקורד הארכיאולוגי",
+      "teacher_he": "פרופ' דפנה לנגוט",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671233101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2669",
+      "course_id_base": "0671-2669",
+      "section_id": "01",
+      "course_id_display": "0671-2669-01",
+      "name_he": "ארכיאולוגיה של חושים פרהיסטוריים",
+      "teacher_he": "ד\"ר אלה אסף שפייר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671266901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2670",
+      "course_id_base": "0671-2670",
+      "section_id": "01",
+      "course_id_display": "0671-2670-01",
+      "name_he": "ראשית ישראל: היסטוריה וארכיאולוגיה",
+      "teacher_he": "ד\"ר זאב סרגי עומר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671267001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0672-1102",
+      "course_id_base": "0672-1102",
+      "section_id": "01",
+      "course_id_display": "0672-1102-01",
+      "name_he": "המצאת הספרות: מבוא לספרות היוונית העתיקה",
+      "teacher_he": "ד\"ר טדי פסטברג",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0677-1514",
+      "course_id_base": "0677-1514",
+      "section_id": "01",
+      "course_id_display": "0677-1514-01",
+      "name_he": "משפט אייכמן: הרקע ההיסטורי, המשפטי, הפוליטי והמדיני",
+      "teacher_he": "ד\"ר רוני שטאובר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677151401&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0687-1113",
+      "course_id_base": "0687-1113",
+      "section_id": "01",
+      "course_id_display": "0687-1113-01",
+      "name_he": "מבוא יפן א'",
+      "teacher_he": "ד\"ר רעות הררי",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0687-1115",
+      "course_id_base": "0687-1115",
+      "section_id": "01",
+      "course_id_display": "0687-1115-01",
+      "name_he": "מבוא הודו א'",
+      "teacher_he": "ד\"ר אהוד הלפרין",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111501&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0616-1311",
+      "course_id_base": "0616-1311",
+      "section_id": "01",
+      "course_id_display": "0616-1311-01",
+      "name_he": "ארבעה נכנסו לפרדס: מבוא למיסטיקה יהודית",
+      "teacher_he": "ד\"ר אדם אפטרמן",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0616131101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0672-1109",
+      "course_id_base": "0672-1109",
+      "section_id": "01",
+      "course_id_display": "0672-1109-01",
+      "name_he": "מבוא למיתולוגיה יוונית",
+      "teacher_he": "ד\"ר מעיין מזור",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0723-2047",
+      "course_id_base": "0723-2047",
+      "section_id": "01",
+      "course_id_display": "0723-2047-01",
+      "name_he": "הצטיינות ושינוי בחינוך",
+      "teacher_he": "פרופ' יובל גובני",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723204701&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0723-2022",
+      "course_id_base": "0723-2022",
+      "section_id": "01",
+      "course_id_display": "0723-2022-01",
+      "name_he": "התפתחות זהות",
+      "teacher_he": "ד\"ר אסף צורף",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723202201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0621-1194",
+      "course_id_base": "0621-1194",
+      "section_id": "01",
+      "course_id_display": "0621-1194-01",
+      "name_he": "אמריקה הלטינית במאה ה- 20",
+      "teacher_he": "פרופ' חררדו ליבגר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621119401&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0621-1219",
+      "course_id_base": "0621-1219",
+      "section_id": "01",
+      "course_id_display": "0621-1219-01",
+      "name_he": "מבוא לאירופה הקדם מודרנית 1500-400",
+      "teacher_he": "פרופ' נעמה כהן הנגבי",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621121901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0669-6175",
+      "course_id_base": "0669-6175",
+      "section_id": "01",
+      "course_id_display": "0669-6175-01",
+      "name_he": "מבוא לימודי אדם-חיה",
+      "teacher_he": "ד\"ר טל קוגמן",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669617501&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-1011",
+      "course_id_base": "0662-1011",
+      "section_id": "01",
+      "course_id_display": "0662-1011-01",
+      "name_he": "מבוא למחשבה הומאניסטית",
+      "teacher_he": "ד\"ר שהם יקותיאל",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662101101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-1757",
+      "course_id_base": "0662-1757",
+      "section_id": "01",
+      "course_id_display": "0662-1757-01",
+      "name_he": "חשיבה ביקורתית: תיאוריה ומעשה",
+      "teacher_he": "ד\"ר שניר איתי",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662175701&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2642",
+      "course_id_base": "0662-2642",
+      "section_id": "01",
+      "course_id_display": "0662-2642-01",
+      "name_he": "צדק בעידן המודרני והדיגיטלי",
+      "teacher_he": "ד\"ר גדי נועה",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662264201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2649",
+      "course_id_base": "0662-2649",
+      "section_id": "01",
+      "course_id_display": "0662-2649-01",
+      "name_he": "שפת הפחד - אימה בספרות בתרבות ובמיתולוגיה",
+      "teacher_he": "ד\"ר חרש אמיר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662264901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0608-1110",
+      "course_id_base": "0608-1110",
+      "section_id": "01",
+      "course_id_display": "0608-1110-01",
+      "name_he": "מבוא לפילוסופיה פמיניסטית: מחשבות נשים",
+      "teacher_he": "פרופ' מרים רוזמרין",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608111001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0608-1177",
+      "course_id_base": "0608-1177",
+      "section_id": "01",
+      "course_id_display": "0608-1177-01",
+      "name_he": "כסף מסובב את העולם - אי שוויון מגדרי בעולם קפיטליסטי",
+      "teacher_he": "ד\"ר טליה פפרמן",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608117701&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0608-1152",
+      "course_id_base": "0608-1152",
+      "section_id": "01",
+      "course_id_display": "0608-1152-01",
+      "name_he": "תלמה ולואיז באקדמיה: כשקרימינולוגיה פוגשת מגדר",
+      "teacher_he": "ד\"ר ענבל וילמובסקי",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608115201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0608-1153",
+      "course_id_base": "0608-1153",
+      "section_id": "01",
+      "course_id_display": "0608-1153-01",
+      "name_he": "על רקע רומנטי? סוגיות מגדריות בספרות מתח",
+      "teacher_he": "ד\"ר חן אדלסבורג",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608115301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0669-6198",
+      "course_id_base": "0669-6198",
+      "section_id": "01",
+      "course_id_display": "0669-6198-01",
+      "name_he": "ספרות ילדים עברית א",
+      "teacher_he": "פרופ' יעל דר",
+      "credits": 2,
+      "semester": "A",
+      "offered_semesters": [
+        "A"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669619801&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1006",
+      "course_id_base": "0609-1006",
+      "section_id": "02",
+      "course_id_display": "0609.1006.02",
+      "name_he": "ישן וחדש במגילות במדבר יהודה",
+      "teacher_he": "פרופ' יונתן בן דב",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1021",
+      "course_id_base": "0609-1021",
+      "section_id": "01",
+      "course_id_display": "0609-1021-01",
+      "name_he": "חידה בדרך: מבוא לפילוסופיה סינית",
+      "teacher_he": "פרופ' גליה פת-שמיר",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1004",
+      "course_id_base": "0609-1004",
+      "section_id": "01",
+      "course_id_display": "0609-1004-01",
+      "name_he": "הוראה וטכנולוגיה בעידן הידע",
+      "teacher_he": "פרופ' ארנון הרשקוביץ",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://humanities.tau.ac.il/shar_ruach/courses_2?tab=0",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1009",
+      "course_id_base": "0609-1009",
+      "section_id": "01",
+      "course_id_display": "0609-1009-01",
+      "name_he": "עניין של חיים ומוות : רפואה ובריאות בתקופת הטרום מודרנית",
+      "teacher_he": "פרופ' מירי שפר-מוסנזון",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1015",
+      "course_id_base": "0609-1015",
+      "section_id": "01",
+      "course_id_display": "0609-1015-01",
+      "name_he": "מבוא לבלשנות : בונים תאוריה",
+      "teacher_he": "פרופ' איה מלצר - אשר",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1010",
+      "course_id_base": "0609-1010",
+      "section_id": "01",
+      "course_id_display": "0609-1010-01",
+      "name_he": "חברה דמוקרטית, תרבות וחינוך",
+      "teacher_he": "ד\"ר דן מקסים ממלוק",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1019",
+      "course_id_base": "0609-1019",
+      "section_id": "01",
+      "course_id_display": "0609-1019-01",
+      "name_he": "מטמורפוזות: גלגולים ומוטציות בספרות עולם",
+      "teacher_he": "פרופ' אורי ש. כהן וד\"ר טדי פסברג",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1020",
+      "course_id_base": "0609-1020",
+      "section_id": "01",
+      "course_id_display": "0609-1020-01",
+      "name_he": "מהי גזענות? היסטוריה, תאוריה ומאבקות",
+      "teacher_he": "ד\"ר גליה בונה ד\"ר שרף חסא",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1209",
+      "course_id_base": "0609-1209",
+      "section_id": "01",
+      "course_id_display": "0609-1209-01",
+      "name_he": "מדעי העבר : פענוח תרבות ואירועים מהעבר האנושי בעזרת המדעים המדוייקים",
+      "teacher_he": "פרופ' לידר ספיר-חן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1211",
+      "course_id_base": "0609-1211",
+      "section_id": "01",
+      "course_id_display": "0609-1211-01",
+      "name_he": "החייתי והאמנותי: בעלי חיים בספרות ובקולנוע לילדים ולנוער",
+      "teacher_he": "ד\"ר טל קוגמן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0609-1212",
+      "course_id_base": "0609-1212",
+      "section_id": "01",
+      "course_id_display": "0609.1212.01",
+      "name_he": "קורס חירום : מהי דמוקרטיה?",
+      "teacher_he": "ד\"ר ג'רמי פוגל",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0618-1016",
+      "course_id_base": "0618-1016",
+      "section_id": "01",
+      "course_id_display": "0618-1016-01",
+      "name_he": "מבוא לפילוסופיה של הדת",
+      "teacher_he": "פרופ ורבין נחמה",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618101601&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0618-1042",
+      "course_id_base": "0618-1042",
+      "section_id": "01",
+      "course_id_display": "0618-1042-01",
+      "name_he": "מבוא לפילוסופיה הודית",
+      "teacher_he": "פרופ רוה דניאל",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618104201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0622-1004",
+      "course_id_base": "0622-1004",
+      "section_id": "01",
+      "course_id_display": "0622-1004-01",
+      "name_he": "מבוא לתולדות האימפריה העוסמאנית",
+      "teacher_he": "פרופ שפר מוסנזון מרים",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622100401&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0622-2001",
+      "course_id_base": "0622-2001",
+      "section_id": "01",
+      "course_id_display": "0622-2001-01",
+      "name_he": "מבוא להיסטוריה חברתית",
+      "teacher_he": "פרופ ברק און",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0631-2503",
+      "course_id_base": "0631-2503",
+      "section_id": "01",
+      "course_id_display": "0631-2503-01",
+      "name_he": "רשתות חברתיות בעולם המוסלמי",
+      "teacher_he": "ד\"ר וינטר אופיר",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631250301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-1031",
+      "course_id_base": "0671-1031",
+      "section_id": "01",
+      "course_id_display": "0671-1031-01",
+      "name_he": "מבוא לתרבות אנטוליה: היסטוריה וארכיאולוגיה של אנטוליה",
+      "teacher_he": "פרופ' אמיר גילן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671103101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-1091",
+      "course_id_base": "0671-1091",
+      "section_id": "01",
+      "course_id_display": "0671-1091-01",
+      "name_he": "שפה חזותית בדרום-מערב אסיה: 3,500 - 500 לפני הספירה",
+      "teacher_he": "פרופ' עידו קוך",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671109101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-1130",
+      "course_id_base": "0671-1130",
+      "section_id": "01",
+      "course_id_display": "0671-1130-01",
+      "name_he": "מבוא לתקופה הביזנטית",
+      "teacher_he": "ד\"ר גיא שטיבל",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671113001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-1238",
+      "course_id_base": "0671-1238",
+      "section_id": "01",
+      "course_id_display": "0671-1238-01",
+      "name_he": "טקסט והקשר",
+      "teacher_he": "ד\"ר דבורה סויני",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671123801&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2383",
+      "course_id_base": "0671-2383",
+      "section_id": "01",
+      "course_id_display": "0671-2383-01",
+      "name_he": "תקופת האימפריות במזרח הקדום: האימפריה הניאו-אשורית והניאו-בבלית (האלף 1 לפנה\"ס)",
+      "teacher_he": "פרופ' יורם כהן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2649",
+      "course_id_base": "0671-2649",
+      "section_id": "01",
+      "course_id_display": "0671-2649-01",
+      "name_he": "עולמות הצבא הרומי",
+      "teacher_he": "ד\"ר גיא שטיבל",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671264901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-2668",
+      "course_id_base": "0671-2668",
+      "section_id": "01",
+      "course_id_display": "0671-2668-01",
+      "name_he": "תל עזקה ושפלת יהודה: 3500 שנות היסטוריה",
+      "teacher_he": "פרופ' עודד ליפשיץ",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671266801&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0671-4389",
+      "course_id_base": "0671-4389",
+      "section_id": "01",
+      "course_id_display": "0671-4389-01",
+      "name_he": "Biblical Animals",
+      "teacher_he": "ד\"ר לידר חן ספיר",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671438901&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0672-1202",
+      "course_id_base": "0672-1202",
+      "section_id": "01",
+      "course_id_display": "0672-1202-01",
+      "name_he": "המצאת הספרות: מבוא לספרות רומית",
+      "teacher_he": "מר ארואטי אברהם",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672120201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0672-1557",
+      "course_id_base": "0672-1557",
+      "section_id": "01",
+      "course_id_display": "0672-1557-01",
+      "name_he": "אמנות הנאום והשכנוע ביוון וברומא",
+      "teacher_he": "פרופ' יזרעלוביץ עדו",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672155701&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0677-1283",
+      "course_id_base": "0677-1283",
+      "section_id": "01",
+      "course_id_display": "0677-1283-01",
+      "name_he": "מבוא לברית החדשה",
+      "teacher_he": "ד\"ר יפעת מונקנדם",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677128301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "1673-4026",
+      "course_id_base": "1673-4026",
+      "section_id": "01",
+      "course_id_display": "1673-4026-01",
+      "name_he": "Urbanism, Ritual and Society: Case studies from the Middle Bronze Age",
+      "teacher_he": "ד\"ר קרן קובלו פראן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": null,
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0723-2052",
+      "course_id_base": "0723-2052",
+      "section_id": "01",
+      "course_id_display": "0723-2052-01",
+      "name_he": "בין השתתפות אזרחית להפרטה: ארגוני מגזר שלישי במערכת החינוך בישראל",
+      "teacher_he": "ד\"ר ערן תמיר",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723205201&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0621-1101",
+      "course_id_base": "0621-1101",
+      "section_id": "01",
+      "course_id_display": "0621-1101-01",
+      "name_he": "מרומא לביזנטיון: העולם היווני מדיוקלטיאנוס ועד תום המחלוקת האיקונוקלאסטית",
+      "teacher_he": "פרופ' אבשלום לניאדו",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621110101&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0621-1220",
+      "course_id_base": "0621-1220",
+      "section_id": "01",
+      "course_id_display": "0621-1220-01",
+      "name_he": "היסטוריה עולמית 1800-1300",
+      "teacher_he": "פרופ' עודד רבינוביץ",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621122001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-1180",
+      "course_id_base": "0662-1180",
+      "section_id": "01",
+      "course_id_display": "0662-1180-01",
+      "name_he": "זהות בעולם המודרני",
+      "teacher_he": "ד\"ר גדי נועה",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662118001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2253",
+      "course_id_base": "0662-2253",
+      "section_id": "01",
+      "course_id_display": "0662-2253-01",
+      "name_he": "תרבות הסייבר כתרבות נוער",
+      "teacher_he": "ד\"ר גוז'נסקי יובל",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662225301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2615",
+      "course_id_base": "0662-2615",
+      "section_id": "01",
+      "course_id_display": "0662-2615-01",
+      "name_he": "מרובין הוד עד הגנב הנדיב: מחאות, שינוי וצדק חברתי בספרות ילדים",
+      "teacher_he": "ד\"ר לבנת חנה",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662261501&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2620",
+      "course_id_base": "0662-2620",
+      "section_id": "01",
+      "course_id_display": "0662-2620-01",
+      "name_he": "הבניית דימוי של אישי ציבור בתקשורת: צרפת, ארצות הברית וישראל",
+      "teacher_he": "ד\"ר סדון קרן",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662262001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2653",
+      "course_id_base": "0662-2653",
+      "section_id": "01",
+      "course_id_display": "0662-2653-01",
+      "name_he": "שמיעה גלובלית- ג'אז בעולם דיגיטלי וגלובלי",
+      "teacher_he": "ד\"ר לבנת אביב",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265301&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0662-2656",
+      "course_id_base": "0662-2656",
+      "section_id": "01",
+      "course_id_display": "0662-2656-01",
+      "name_he": "להיוולד מחדש - טקסי מסתורין בעת העתיקה",
+      "teacher_he": "ד\"ר מזור מעין",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265601&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0608-1010",
+      "course_id_base": "0608-1010",
+      "section_id": "01",
+      "course_id_display": "0608-1010-01",
+      "name_he": "מבוא לתיאוריה קווירית",
+      "teacher_he": "ד\"ר תומר ששונקין",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608101001&year=2025",
+      "category": "קורסי שער רוח",
+      "is_general_requirement": true,
+      "counts_toward_degree_hours": true,
+      "does_not_count_as_engineering_elective": true
+    },
+    {
+      "course_id": "0669-6203",
+      "course_id_base": "0669-6203",
+      "section_id": "01",
+      "course_id_display": "0669-6203-01",
+      "name_he": "חווית העצמי בעולם הדיגיטלי",
+      "teacher_he": "ד\"ר רותם לשם",
+      "credits": 2,
+      "semester": "B",
+      "offered_semesters": [
+        "B"
+      ],
+      "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669620301&year=2025",
+      "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true
