@@ -925,7 +925,7 @@ def test_unified_ai_tab_has_chat_input_and_quick_actions(html):
     body = m.group(1)
     assert "sidebar-chat-input" in body
     assert "sidebar-chat-send" in body
-    for label in ['בנה תוכנית מלאה', 'שפר את המערכת הנוכחית', 'אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה']:
+    for label in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם']:
         assert label in body, f"Quick action missing: {label}"
 
 
@@ -953,12 +953,12 @@ def test_missing_requirements_rendered_as_diagnostics_list(html):
 
 
 def test_missing_requirements_have_smart_suggestion_buttons(html):
-    """Each missing category requirement must offer 'הצע השלמה חכמה',
-    'שאל אותי לפני שיבוץ' and 'התעלם כרגע' actions."""
+    """Missing requirements must offer 'השלם דרישות חסרות' and
+    'שאל אותי לפני בחירה' actions."""
     m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderMissingRequirementsHtml not found"
     body = m.group(1)
-    for label in ['הצע השלמה חכמה', 'שאל אותי לפני שיבוץ', 'התעלם כרגע']:
+    for label in ['השלם דרישות חסרות', 'שאל אותי לפני בחירה']:
         assert label in body, f"Missing-requirements action missing: {label}"
 
 
@@ -1203,11 +1203,11 @@ def test_shaar_ruach_pref_control_in_ai_tab_and_payload(html):
 
 
 def test_missing_requirements_render_once_not_per_category(html):
-    """renderMissingRequirementsHtml must produce a single list + three global
+    """renderMissingRequirementsHtml must produce a single list + global
     action buttons, NOT a repeated per-category button group."""
     assert "data-missing-action=\"suggest-all\"" in html
     assert "data-missing-action=\"ask-first-all\"" in html
-    assert "data-missing-action=\"ignore-all\"" in html
+    assert "data-missing-action=\"ignore-all\"" not in html
     # The old per-category action attributes must no longer appear.
     assert 'data-missing-action="suggest"' not in html
     assert 'data-missing-action="ask-first"' not in html
@@ -1221,8 +1221,8 @@ def test_missing_requirements_render_once_not_per_category(html):
 
 
 def test_global_smart_completion_button_exists(html):
-    """The global 'הצע השלמה חכמה לכל הדרישות' button + handler must exist."""
-    assert "הצע השלמה חכמה לכל הדרישות" in html
+    """The global 'השלם דרישות חסרות' button + handler must exist."""
+    assert "השלם דרישות חסרות" in html
     assert re.search(r"function offerAllCategorySuggestions\(", html)
 
 
@@ -1256,7 +1256,6 @@ def test_followup_chat_extends_draft_incrementally(html):
     assert m, "handleSidebarChatSend not found"
     body = m.group(1)
     assert "requestPlanProposalFromDraft(prefs, 'minimal_changes')" in body
-    assert "'full_plan'" not in body
 
 
 # ---------------------------------------------------------------------------
@@ -1282,3 +1281,123 @@ def test_render_proposal_card_present_in_ai_tab(html):
     body = m2.group(1)
     for label in ["החל טיוטה", "דחה טיוטה", "בקש שינויים", "פתח תצוגה מלאה"]:
         assert label in body, f"{label} missing from renderProposalCard"
+
+
+# ---------------------------------------------------------------------------
+# PART A/B/E/F/G — single primary action, advanced actions, fixed full-plan
+# ---------------------------------------------------------------------------
+
+def test_no_duplicate_top_level_full_plan_and_suggest_all_buttons(html):
+    """The old always-visible 'בנה תוכנית מלאה' and 'הצע השלמה חכמה לכל
+    הדרישות' top-level buttons must not both be present in the AI tab."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\nfunction ", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    assert 'id="sidebar-quick-full"' not in body
+    assert "הצע השלמה חכמה לכל הדרישות" not in body
+
+
+def test_main_primary_action_button_exists_with_handler(html):
+    """The new main button 'הצע תוכנית / תיקון חכם' must exist with a
+    working handler that references an existing dispatch function."""
+    assert 'id="sidebar-primary-action"' in html
+    assert "הצע תוכנית / תיקון חכם" in html
+    assert re.search(r"function runPrimaryAiAction\(", html)
+    assert "getElementById('sidebar-primary-action').addEventListener('click', () => runPrimaryAiAction())" in html
+
+
+def test_rebuild_from_scratch_in_advanced_actions_with_confirm(html):
+    """'בנה מחדש מאפס' must live under פעולות מתקדמות, with a confirm()
+    dialog, and call the (fixed) full-plan flow."""
+    m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
+    assert m, "advanced actions <details> not found"
+    assert 'id="sidebar-rebuild-from-scratch"' in m.group(1)
+    assert "בנה מחדש מאפס" in m.group(1)
+
+    m2 = re.search(
+        r"getElementById\('sidebar-rebuild-from-scratch'\)\.addEventListener\('click', \(\) => \{(.*?)\}\);",
+        html, re.DOTALL,
+    )
+    assert m2, "sidebar-rebuild-from-scratch click handler not found"
+    handler_body = m2.group(1)
+    assert "confirm(" in handler_body
+    assert "run('full_plan')" in handler_body
+
+
+def test_missing_requirements_has_single_completion_button(html):
+    """renderMissingRequirementsHtml must expose exactly one completion
+    button ('השלם דרישות חסרות'), not multiple per-category groups."""
+    m = re.search(r"function renderMissingRequirementsHtml\(items\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderMissingRequirementsHtml not found"
+    body = m.group(1)
+    assert body.count('data-missing-action="suggest-all"') == 1
+    assert "השלם דרישות חסרות" in body
+    assert "התעלם כרגע" not in body
+
+
+def test_chat_free_text_routes_full_plan_request(html):
+    """Free-text 'תבנה לי תוכנית מלאה' must route to the full-plan flow."""
+    m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "handleSidebarChatSend not found"
+    body = m.group(1)
+    assert "wantsFullPlan" in body
+    assert "requestPlanProposal(prefs, 'full_plan')" in body
+    assert re.search(r"תבנה.*תוכנית.*מלאה", body)
+
+
+def test_quick_actions_limited_to_three_plus_primary(html):
+    """At most 3 quick-action buttons plus the single primary action button
+    should be visible outside <details>/proposal card in the AI tab."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    # Only consider the panel.innerHTML template, not the JS wiring below it.
+    template_match = re.search(r"panel\.innerHTML = `(.*?)`;", body, re.DOTALL)
+    assert template_match, "renderAiTab template not found"
+    template = template_match.group(1)
+
+    # Strip out the collapsed <details> sections and the proposal card slot.
+    template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
+    template_no_details = re.sub(r'<div id="ai-proposal-card"></div>', "", template_no_details)
+
+    quick_ids = ["sidebar-quick-balance", "sidebar-quick-career", "sidebar-quick-prereqs"]
+    for qid in quick_ids:
+        assert f'id="{qid}"' in template_no_details
+
+    assert 'id="sidebar-primary-action"' in template_no_details
+
+    visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
+    # Exclude the chat-send button — it's part of the chat input row, not an
+    # AI action button.
+    action_buttons = [b for b in visible_buttons if b != "sidebar-chat-send"]
+    assert len(action_buttons) <= 4, f"too many visible top-level action buttons: {action_buttons}"
+
+
+def test_full_plan_flow_no_undefined_function_references(html):
+    """Static smoke check: functions referenced by the (fixed) full-plan flow
+    must be defined somewhere in the inline scripts."""
+    for fn in ["requestPlanProposal", "activateProposalDraft", "renderAiTab", "setSidebarTab", "runPrimaryAiAction"]:
+        assert re.search(rf"function {fn}\(", html), f"{fn} is not defined"
+
+
+def test_request_plan_proposal_rejects_on_error(html):
+    """requestPlanProposal must throw/reject on error responses and network
+    errors so callers' .catch()/try-catch can surface a chat error message
+    instead of silently failing."""
+    m = re.search(r"async function requestPlanProposal\(prefs, actionType\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "requestPlanProposal not found"
+    body = m.group(1)
+    assert "throw new Error" in body
+    assert "throw err" in body
+
+
+def test_primary_action_dispatches_based_on_board_state(html):
+    """runPrimaryAiAction must branch on board emptiness, missing
+    requirements, and otherwise fall back to incremental improvement."""
+    m = re.search(r"function runPrimaryAiAction\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "runPrimaryAiAction not found"
+    body = m.group(1)
+    assert "allPlacedIds" in body
+    assert "'full_plan'" in body
+    assert "offerAllCategorySuggestions" in body
+    assert "'minimal_changes'" in body

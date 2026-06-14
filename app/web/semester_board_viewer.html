@@ -3224,14 +3224,13 @@ function renderMissingRequirementsHtml(items) {
     ? `<li>- שער רוח ${it.placed}/${it.required}</li>`
     : `<li>- ${esc(it.name)} (חסרים ${it.missing})</li>`);
 
-  // PART B — ONE set of global actions covering ALL missing categories at
-  // once, instead of a repeated button-group per category.
+  // PART B — ONE primary action covering ALL missing categories at once,
+  // plus one optional secondary "ask first" link.
   const categoryItems = items.filter(it => it.kind === 'category');
   const actionsHtml = `
     <div class="missing-reqs-actions">
-      <button class="btn btn-sm missing-req-btn" data-missing-action="suggest-all">הצע השלמה חכמה לכל הדרישות</button>
-      <button class="btn btn-sm missing-req-btn" data-missing-action="ask-first-all">שאל אותי לפני שיבוץ</button>
-      <button class="btn btn-sm missing-req-btn" data-missing-action="ignore-all">התעלם כרגע</button>
+      <button class="btn btn-sm missing-req-btn" data-missing-action="suggest-all">השלם דרישות חסרות</button>
+      <button class="btn btn-sm btn-link missing-req-btn" data-missing-action="ask-first-all">שאל אותי לפני בחירה</button>
     </div>`;
 
   return `<div class="missing-reqs">
@@ -3484,16 +3483,16 @@ function renderAiTab() {
 
   const missingReqs = buildMissingRequirementsList(s);
 
+  const legalOk = s.illegal_placements.length === 0 && !_hasPrereqOrderViolationLocal();
+
   panel.innerHTML = `
     <div class="sb-head"><div class="sb-head-title">עוזר AI</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
-      <div class="sb-status-summary">
-        <div>חוקיות: ${s.illegal_placements.length === 0 && !_hasPrereqOrderViolationLocal() ? 'תקין' : 'נמצאו בעיות'}</div>
-        <div>שעות: ${s.hours.total_after_plan}/${s.hours.degree_required_hours}</div>
-        ${s.general ? `<div>שער רוח: ${s.general.placed}/${s.general.required}</div>` : ''}
-        <div>קטגוריות: ${s.catSatisfied}/${s.categories.length}</div>
-        <div>עומס שיא: ${s.peak} ש״ש</div>
-        <div>בעיות קדם: ${_hasPrereqOrderViolationLocal() ? 'יש' : 'אין'}</div>
+      <div class="sb-status-summary sb-status-summary-compact">
+        ${mkChip('חוקיות', legalOk ? 'תקין' : 'בעיות', !legalOk)}
+        ${mkChip('שעות', `${s.hours.total_after_plan}/${s.hours.degree_required_hours}`, false)}
+        ${s.general ? mkChip('שער רוח', `${s.general.placed}/${s.general.required}`, !s.general.satisfied) : ''}
+        ${mkChip('עומס', `${s.peak} ש״ש`, false)}
       </div>
       <details class="ai-plan-section ai-prefs-collapsible">
         <summary class="ai-plan-section-title">העדפות תכנון</summary>
@@ -3552,13 +3551,26 @@ function renderAiTab() {
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button class="btn btn-sm" id="sidebar-quick-full">בנה תוכנית מלאה</button>
-        <button class="btn btn-sm" id="sidebar-quick-improve">שפר את המערכת הנוכחית</button>
-        <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
-        <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
-        <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
+          <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
+          <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
+        </div>
+        <button class="btn btn-primary" id="sidebar-primary-action">הצע תוכנית / תיקון חכם</button>
       </div>
+
+      <details class="ai-plan-section ai-advanced-collapsible">
+        <summary class="ai-plan-section-title">פעולות מתקדמות</summary>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
+          <button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מחדש מאפס</button>
+          <label class="ai-plan-check">
+            <input type="checkbox" id="sidebar-allow-overload" ${_aiPlanLastPreferences?.overload_accepted ? 'checked' : ''}>
+            אפשר חריגה בעומס
+          </label>
+          ${state.proposalDraft ? '<button class="btn btn-sm" id="sidebar-open-full-preview">פתח פירוט מלא</button>' : ''}
+        </div>
+      </details>
 
       <div id="ai-proposal-card"></div>
     </div>`;
@@ -3575,8 +3587,8 @@ function renderAiTab() {
     });
   });
 
-  // PART B — global "הצע השלמה חכמה לכל הדרישות" / "שאל אותי לפני שיבוץ" /
-  // "התעלם כרגע" for ALL missing requirements at once.
+  // PART B — global "השלם דרישות חסרות" / "שאל אותי לפני בחירה" for ALL
+  // missing requirements at once.
   panel.querySelectorAll('.missing-req-btn[data-missing-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       switch (btn.dataset.missingAction) {
@@ -3585,9 +3597,6 @@ function renderAiTab() {
           break;
         case 'ask-first-all':
           askBeforeAllMissingRequirements();
-          break;
-        case 'ignore-all':
-          dismissMissingRequirementsPrompt();
           break;
       }
     });
@@ -3620,21 +3629,92 @@ function renderAiTab() {
   const run = actionType => {
     const prefs = sidebarQuickActionPrefs();
     _aiPlanLastPreferences = { ...prefs, action_type: actionType };
-    // "full_plan" rebuilds from scratch and must not reuse the existing draft.
-    if (state.proposalDraft && actionType !== 'full_plan') requestPlanProposalFromDraft(prefs, actionType);
-    else requestPlanProposal(prefs, actionType);
+    const promise = (state.proposalDraft && actionType !== 'full_plan')
+      ? requestPlanProposalFromDraft(prefs, actionType)
+      : requestPlanProposal(prefs, actionType);
+    return Promise.resolve(promise)
+      .then(() => { renderAiTab(); setSidebarTab('ai'); })
+      .catch(err => {
+        postAssistantMessage(`אירעה שגיאה בעת בניית ההצעה: ${err?.message || err}`);
+        renderAiTab();
+      });
   };
-  document.getElementById('sidebar-quick-full').addEventListener('click', () => {
-    if (confirm('בניית תוכנית מלאה תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
-      run('full_plan');
-    }
-  });
-  document.getElementById('sidebar-quick-improve').addEventListener('click', () => run('minimal_changes'));
+
   document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
   document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
   document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
 
+  // PART A/E — single primary action: inspects board state and dispatches
+  // to the appropriate flow (full-plan / complete-requirements / improve).
+  document.getElementById('sidebar-primary-action').addEventListener('click', () => runPrimaryAiAction());
+
+  // PART B/E — advanced actions (collapsed by default).
+  document.getElementById('sidebar-rebuild-from-scratch').addEventListener('click', () => {
+    if (confirm('בניית תוכנית מלאה תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
+      run('full_plan');
+    }
+  });
+  document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
+    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: !!e.target.checked };
+    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = !!e.target.checked;
+  });
+  document.getElementById('sidebar-open-full-preview')?.addEventListener('click', () => {
+    const evald = evaluateDraftProposal();
+    const ev = evald || { proposal: _aiPlanLastProposal, errors: _aiPlanLastValidation?.errors || [], warnings: _aiPlanLastValidation?.warnings || [], completeness: _aiPlanLastValidation?.completeness };
+    openPlanPreviewModal(
+      ev.proposal,
+      ev.errors,
+      ev.warnings,
+      _aiPlanLastValidation?.autofixed,
+      ev.completeness,
+      _aiPlanLastValidation?.moveLog,
+      _aiPlanLastValidation?.electiveSelectionReasons
+    );
+  });
+
   renderProposalCard();
+}
+
+/* ── PART A — single primary action ("הצע תוכנית / תיקון חכם") ─────────────
+ * Inspects the current board + missing-requirements state and dispatches to
+ * the appropriate flow:
+ *  - empty/mostly-empty board  → full-plan generation (action_type=full_plan)
+ *  - missing requirements      → consolidated completion flow
+ *  - otherwise                 → incremental improvement (minimal_changes)
+ */
+function runPrimaryAiAction() {
+  const placedCount = allPlacedIds().size;
+  const s = buildSidebarStatusSummary();
+  const missingReqs = buildMissingRequirementsList(s);
+
+  if (placedCount <= 2) {
+    const prefs = sidebarQuickActionPrefs();
+    _aiPlanLastPreferences = { ...prefs, action_type: 'full_plan' };
+    postAssistantMessage('הלוח ריק או כמעט ריק — בונה תוכנית מלאה מאפס…');
+    return Promise.resolve(requestPlanProposal(prefs, 'full_plan'))
+      .then(() => { renderAiTab(); setSidebarTab('ai'); })
+      .catch(err => {
+        postAssistantMessage(`אירעה שגיאה בבניית התוכנית: ${err?.message || err}`);
+        renderAiTab();
+      });
+  }
+
+  if (missingReqs.length) {
+    offerAllCategorySuggestions();
+    return Promise.resolve();
+  }
+
+  const prefs = sidebarQuickActionPrefs();
+  _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
+  const promise = state.proposalDraft
+    ? requestPlanProposalFromDraft(prefs, 'minimal_changes')
+    : requestPlanProposal(prefs, 'minimal_changes');
+  return Promise.resolve(promise)
+    .then(() => { renderAiTab(); setSidebarTab('ai'); })
+    .catch(err => {
+      postAssistantMessage(`אירעה שגיאה בעת בניית ההצעה: ${err?.message || err}`);
+      renderAiTab();
+    });
 }
 
 /* ── Unified עוזר AI chat thread (PARTS A/C/E/F/G) ──────────────────────────
@@ -4071,6 +4151,28 @@ async function handleSidebarChatSend(providedMessage) {
     || pending != null;
 
   if (looksLikePlanningRequest) {
+    // PART D — explicit "build a full plan from scratch" requests route to
+    // the full-plan flow instead of incremental minimal_changes.
+    const wantsFullPlan = /תבנה\s*לי?\s*תוכנית\s*מלאה|בנה\s*תוכנית\s*מלאה|בנה\s*מחדש|מאפס/.test(message);
+
+    if (wantsFullPlan) {
+      postAssistantMessage('מבין — בונה תוכנית מלאה מאפס…');
+      const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
+      _aiPlanLastPreferences = { ...prefs, action_type: 'full_plan' };
+      try {
+        await requestPlanProposal(prefs, 'full_plan');
+        postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
+          { label: 'החל שינוי', action: 'apply-draft' },
+          { label: 'דחה', action: 'reject-draft' },
+        ]);
+      } catch (err) {
+        postAssistantMessage(`אירעה שגיאה בבניית התוכנית: ${err?.message || err}`);
+      } finally {
+        renderAiTab();
+      }
+      return;
+    }
+
     postAssistantMessage('מבין — אני בודק את התוכנית הנוכחית ומכין הצעת שינוי…');
     const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
     _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
@@ -4089,6 +4191,8 @@ async function handleSidebarChatSend(providedMessage) {
         { label: 'תן עוד חלופות', action: 'more-alternatives', payload: { previousRequest: planningText } },
         { label: 'שאל אותי לפני', action: 'ask-before-all' },
       ]);
+    } catch (err) {
+      postAssistantMessage(`אירעה שגיאה בעת בניית ההצעה: ${err?.message || err}`);
     } finally {
       renderAiTab();
     }
@@ -6942,7 +7046,7 @@ function openPlanPreferencesModal() {
     document.getElementById(id).addEventListener('click', () => {
       const prefs = quickActionPrefs();
       _aiPlanLastPreferences = { ...prefs, action_type: actionType };
-      requestPlanProposal(prefs, actionType);
+      requestPlanProposal(prefs, actionType).catch(() => {});
     });
   };
   quickAction('ai-plan-quick-balance',   'balance_load');
@@ -6985,7 +7089,7 @@ function openPlanPreferencesModal() {
       extra_request_he:     document.getElementById('ai-pref-extra').value.trim() || undefined,
     };
     _aiPlanLastPreferences = prefs;
-    requestPlanProposal(prefs);
+    requestPlanProposal(prefs).catch(() => {});
   });
 
   const overlay = document.getElementById('ai-plan-overlay');
@@ -8671,9 +8775,10 @@ async function requestPlanProposal(prefs, actionType) {
 
     const data = await resp.json();
     if (!resp.ok) {
-      if (statusEl) statusEl.textContent = data?.error || 'שגיאה ביצירת התוכנית. נסה שוב.';
+      const errMsg = data?.error || 'שגיאה ביצירת התוכנית. נסה שוב.';
+      if (statusEl) statusEl.textContent = errMsg;
       if (genBtn) genBtn.disabled = false;
-      return;
+      throw new Error(errMsg);
     }
 
     const { proposal: normalized, dropped, autofixes } = normalizePlanProposalLocal(data);
@@ -8863,8 +8968,9 @@ async function requestPlanProposal(prefs, actionType) {
     statusEl?.setAttribute('hidden', '');
     activateProposalDraft(repairedProposal);
   } catch (err) {
-    if (statusEl) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
+    if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;
+    throw err;
   }
 }
 
