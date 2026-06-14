@@ -853,7 +853,9 @@ def test_repair_diagnostics_render_function_exists(html):
 
     m2 = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m2, "renderAiTab not found"
-    assert "renderRepairDiagnosticsHtml(s)" in m2.group(1)
+    # PART C — the static repair-diagnostics box was removed from the default
+    # AI panel; the function itself remains defined for potential reuse.
+    assert "renderRepairDiagnosticsHtml(s)" not in m2.group(1)
 
 
 def test_balance_semester_button_removed_everywhere(html):
@@ -949,15 +951,17 @@ def test_mechanical_category_add_buttons_removed(html):
 
 
 def test_missing_requirements_rendered_as_diagnostics_list(html):
-    """Missing category/general requirements must render as plain text
-    ('דרישות חסרות:') rather than as the old add-buttons."""
+    """PART C — the static 'דרישות חסרות:' box was removed from the default
+    AI panel. Missing requirements are now mentioned conversationally via a
+    chat message ('חסרות דרישות: ...')."""
     assert "function buildMissingRequirementsList" in html
     assert "function renderMissingRequirementsHtml" in html
-    assert "דרישות חסרות:" in html
 
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
-    assert "renderMissingRequirementsHtml(" in m.group(1)
+    assert "renderMissingRequirementsHtml(" not in m.group(1)
+    assert "buildMissingRequirementsList(" in m.group(1)
+    assert "חסרות דרישות:" in m.group(1)
     assert "buildMissingRequirementsList(" in m.group(1)
 
 
@@ -1512,6 +1516,18 @@ def test_planning_preferences_details_contains_pickers_and_max_hours(html):
 # ---------------------------------------------------------------------------
 # PART F/G/H — "הקורסים שלי" modal: semester grid + shared status model
 # ---------------------------------------------------------------------------
+
+def test_my_courses_modal_vertical_scroll(html):
+    """PART A — the My Courses dialog must scroll vertically as a whole so
+    the user can reach שער רוח below the semester grid, while the semester
+    grid keeps its own horizontal scroller."""
+    assert "#my-courses-modal .prog-dialog" in html
+    m = re.search(r"#my-courses-modal \.prog-dialog\s*\{([^}]*)\}", html)
+    assert m and "overflow-y: auto" in m.group(1)
+    # Horizontal grid scroller is untouched.
+    m2 = re.search(r"\.my-courses-grid-cols\s*\{([^}]*)\}", html)
+    assert m2 and "overflow-x: auto" in m2.group(1)
+
 
 def test_my_courses_modal_has_semester_grid_section(html):
     """openMyCoursesModal must render a semester-grid section for mandatory

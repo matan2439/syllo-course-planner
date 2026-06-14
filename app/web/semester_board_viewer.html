@@ -143,6 +143,18 @@ body.prog-modal-open .workspace {
   position: relative;
 }
 
+/* PART A — My Courses modal body must scroll vertically as a whole (the grid
+   + שער רוח details + search/list can together exceed 88vh). The horizontal
+   semester-grid scroller (.my-courses-grid-cols) keeps its own overflow-x. */
+#my-courses-modal .prog-dialog {
+  overflow-y: auto;
+  min-height: 0;
+}
+#my-courses-modal .prog-results {
+  flex: none;
+  overflow-y: visible;
+}
+
 .prog-close-btn {
   position: absolute; top: 14px; inset-inline-end: 14px;
   width: 28px; height: 28px; border-radius: 50%;
@@ -3664,9 +3676,6 @@ function renderAiTab() {
         </div>
       </details>
 
-      ${renderMissingRequirementsHtml(missingReqs)}
-      ${renderRepairDiagnosticsHtml(s)}
-
       <div id="ai-chat-log" class="ai-chat-log"></div>
 
       <div class="ai-input-area">
@@ -3724,6 +3733,16 @@ function renderAiTab() {
     const v = _migrateShaarRuachAssessmentPref(e.target.value);
     _aiPickerState.shaarRuachAssessmentPref = v === 'none' ? null : v;
   });
+
+  // PART C — mention missing requirements conversationally (once per board
+  // state) instead of a static "דרישות חסרות" box.
+  if (missingReqs.length && _missingRequirementsFingerprint(missingReqs) !== _missingReqsDismissedFingerprint) {
+    const lines = missingReqs.map(it => it.kind === 'general'
+      ? `שער רוח ${it.placed}/${it.required}`
+      : `${it.name} (חסרים ${it.missing})`);
+    postAssistantMessage(`חסרות דרישות: ${lines.join(', ')}. רוצה שאציע שיבוץ מתאים?`);
+    _missingReqsDismissedFingerprint = _missingRequirementsFingerprint(missingReqs);
+  }
 
   renderAiChatLog();
 
