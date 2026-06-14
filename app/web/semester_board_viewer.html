@@ -1272,18 +1272,20 @@ body.prog-modal-open .workspace {
   border-radius: var(--radius); margin-bottom: 8px;
 }
 .board-draft-banner-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.course-card-draft { opacity: .82; border-style: dashed !important; }
+/* PART G — proposal-state styling is additive: category accent colors
+   (card-cat-* / card-elective / card-mandatory etc.) remain the dominant
+   visual signal. Proposal state is conveyed via the נוסף/הועבר/יוסר badge
+   plus a slight opacity change and a subtle box-shadow glow — no dashed
+   border or outline that competes with the category accent. */
+.course-card-draft { opacity: .92; }
 .course-card.card-draft-added {
-  outline: 1.5px dashed var(--success, #2ecc71); outline-offset: -2px;
-  box-shadow: 0 0 0 2px rgba(46,204,113,.10);
+  box-shadow: 0 0 0 2px rgba(46,204,113,.18);
 }
 .course-card.card-draft-moved {
-  outline: 1.5px dashed var(--blue); outline-offset: -2px;
-  box-shadow: 0 0 0 2px rgba(96,165,250,.10);
+  box-shadow: 0 0 0 2px rgba(96,165,250,.18);
 }
 .course-card.course-card-draft-removed {
   opacity: .45; filter: grayscale(.4);
-  outline: 1px dashed var(--text-faint); outline-offset: -2px;
 }
 .badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
 .badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
@@ -1738,6 +1740,7 @@ function buildPlanContext() {
       .filter(cid => courseMap[cid] && !placedIds.has(cid) && !completedIdsForAnalysis.has(cid))
       .map(cid => {
         const c = courseMap[cid];
+        const legal = getLegalSemestersLocal(c);
         return {
           course_id:            cid,
           name_he:              c.name_he,
@@ -1745,6 +1748,11 @@ function buildPlanContext() {
           has_syllabus_summary: Boolean(c.syllabus_text_available && c.syllabus_summary_he),
           grade_average:        c.grade_signal?.average_grade ?? null,
           is_wanted:            wantedIdsForAnalysis.has(cid),
+          // PART A — semester-offering metadata, required so the AI never
+          // proposes placing a course in a semester it isn't offered in.
+          effective_allowed_semesters: legal.semesters?.length ? legal.semesters : null,
+          offered_semesters:    c.offered_semesters?.length ? c.offered_semesters : null,
+          offering_confident:   legal.confident,
         };
       });
     return { name: cat.name_he || cat.category_id, category_id: cat.category_id || null, required: cat.min_courses || 0, placed, candidates };
@@ -2783,7 +2791,17 @@ function renderSidebar() {
     .filter(cid => state.repo.includes(cid) && !placedSet.has(cid));
   if (shaarRuachRepoIds.length || SHAAR_RUACH_COURSES.length) {
     const required = shaarRuachRequiredCreditsFor(selectedProg?.program_id);
-    const suffix = required > 0 ? ` (${shaarRuachRepoIds.length}/${SHAAR_RUACH_COURSES.length}, נדרש ${required} נק"ז)` : ` — ${shaarRuachRepoIds.length} קורסים`;
+    // Progress toward the נק"ז requirement is driven by actual user state
+    // (completed + placed-in-plan שער רוח courses), not by the static repo
+    // catalog size — that size is shown separately as "available in repo".
+    const completedSetForShaar = new Set(completedCourseIds);
+    const progressCredits = SHAAR_RUACH_COURSES
+      .filter(g => placedSet.has(g.course_id) || completedSetForShaar.has(g.course_id))
+      .reduce((sum, g) => sum + (typeof g.hours === 'number' ? g.hours : 2), 0);
+    const progressLabel = required > 0
+      ? `${Math.min(progressCredits, required)}/${required} נק"ז`
+      : `${progressCredits} נק"ז`;
+    const suffix = ` — ${progressLabel} · ${shaarRuachRepoIds.length} זמינים במאגר`;
     sections += _buildRepoSection('shaar_ruach', REPO_GROUPS.shaar_ruach.name_he + suffix, shaarRuachRepoIds, false);
   }
 
@@ -3399,10 +3417,13 @@ function cardHtml(c, placed, draftDiff, opts) {
   else if (type === 'mandatory')        cls += ' card-mandatory';
   else                                  cls += ' card-elective';
   if (placed && level && !locked)       cls += ` card-placed diff-${esc(level)}`;
-  /* Category border override — only in repo (not placed). Every elective gets
-   * a category-based accent (falls back to GENERAL_ELECTIVE_CAT_ID) instead of
-   * the generic uniform orange card-elective color. */
-  if (!placed && catStyles)             cls += ` ${catStyles.card}`;
+  /* PART F — category border override applies both in the repository AND on
+   * the board/preview/draft overlay once placed. Every elective gets a
+   * category-based accent (falls back to GENERAL_ELECTIVE_CAT_ID) instead of
+   * the generic uniform orange card-elective color. diff-* (difficulty)
+   * border-color from card-placed wins via !important on card-cat-* so the
+   * category accent remains visible even when placed. */
+  if (isElectiveLike && catStyles && type !== 'mandatory') cls += ` ${catStyles.card}`;
 
   const isFixedMandatory = c.placement_policy === 'fixed' && type === 'mandatory';
   const isFlexMand       = c.placement_policy === 'flexible';
@@ -3642,6 +3663,30 @@ function buildCourseContext(c) {
 
   const placement = findCoursePlacement(c.course_id);
   lines.push(`שיבוץ נוכחי: ${placement || 'לא משובץ בתוכנית'}`);
+
+  // PART B — semester-offering metadata, grounded in syllabus/program data.
+  // The AI must answer "באיזה סמסטר אפשר לקחת את הקורס הזה?" using this
+  // information only — never invent an offering semester.
+  {
+    const legal = getLegalSemestersLocal(c);
+    const semLabel = id => (SEMESTERS.find(s => s.id === id)?.label) || id;
+    if (legal.semesters?.length) {
+      lines.push(`סמסטרי היצע מותרים (effective_allowed_semesters): ${legal.semesters.map(semLabel).join(', ')}`);
+    } else {
+      lines.push('סמסטרי היצע מותרים: לא ידוע');
+    }
+    if (c.offered_semesters?.length) {
+      lines.push(`היצע בפועל לפי נתוני התוכנית/הסילבוס (offered_semesters): ${c.offered_semesters.map(semLabel).join(', ')}`);
+    }
+    lines.push(`רמת ביטחון בנתוני ההיצע: ${legal.confident ? 'גבוהה (מקור: סילבוס/תוכנית)' : 'לא נמצאה ודאות מלאה'}`);
+    if (c.syllabus_url) lines.push(`מקור נתוני סילבוס: ${c.syllabus_url}`);
+    else if (c.syllabus_links?.length) lines.push(`מקור נתוני סילבוס: ${c.syllabus_links[0]}`);
+    if (legal.confident && legal.semesters?.length === 1) {
+      lines.push(`הוראה לתשובה על שאלות סמסטר: הקורס מוצע בסמסטר ${semLabel(legal.semesters[0])} בלבד לפי נתוני הסילבוס/ההיצע — אין להציע סמסטר אחר.`);
+    } else if (!legal.confident) {
+      lines.push('הוראה לתשובה על שאלות סמסטר: לא נמצאה ודאות מלאה לגבי סמסטר ההיצע של קורס זה — יש לציין זאת במפורש ולא לנחש סמסטר.');
+    }
+  }
 
   if (c.difficulty_level)
                          lines.push(`רמת קושי כוללת: ${DIFF_HE[c.difficulty_level] || c.difficulty_level} (ציון ${c.difficulty_score ?? 'לא ידוע'})`);
@@ -6286,25 +6331,42 @@ function buildCompletionAnalysisLocal(planContext) {
 // PART A (client mirror) — career-relevance scoring. Mirrors
 // api/ai/completion_analysis.ts (CAREER_RELEVANCE_GROUPS / scoreCareerRelevance).
 const CAREER_RELEVANCE_GROUPS = [
-  { tag: 'fem_analysis', reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM', keywords: ['אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים', 'מכניקת המוצקים', 'מכניקה'] },
-  { tag: 'mechanical_design', reason: 'נבחר כי הוא מחזק תכן מכני ופיתוח מוצר', keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר'] },
-  { tag: 'robotics_control', reason: 'נבחר כי הוא קשור לרובוטיקה/בקרה', keywords: ['רובוטיקה', 'בקרה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'] },
-  { tag: 'industry_lab', reason: 'נבחר כי הוא נותן ניסיון מעבדתי רלוונטי לתעשייה', keywords: ['מעבדה', 'פרויקט'] },
+  { tag: 'fem_analysis', reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM/תורת התנודות', keywords: ['אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים', 'מכניקת המוצקים', 'מכניקת מוצקים', 'מכניקה', 'תנודות', 'רעידות', 'דינמיקה'] },
+  { tag: 'mechanical_design', reason: 'נבחר כי הוא מחזק תכן מכני/הנדסי ופיתוח מוצר', keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר', 'הנדסי'] },
+  { tag: 'robotics_control', reason: 'נבחר כי הוא קשור לרובוטיקה', keywords: ['רובוטיקה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'] },
+  { tag: 'industry_lab', reason: 'נבחר כי הוא נותן ניסיון מעבדתי/פרויקטלי רלוונטי לתעשייה (סימולציות/תכן/אנליזה)', keywords: ['מעבדה', 'פרויקט'] },
 ];
 const WEAK_RELEVANCE_KEYWORDS = ['מבני נתונים', 'מיקרו אלקטרוניקה', 'ננו אלקטרוניקה', 'מיקרו וננו', 'אלקטרוניקה', 'מערכות לבישות', 'לביש', 'מדעי המחשב', 'אלגוריתמים'];
+const CONTROL_HEAVY_KEYWORDS = ['בקרה', 'מערכות בקרה', 'תורת הבקרה'];
+const CONTROL_INTEREST_KEYWORDS = ['בקרה', 'control'];
+const BIOMEDICAL_KEYWORDS = ['ביורפואה', 'ביורפואי', 'רפואי', 'רפואה', 'ביולוגי', 'ביולוגיה', 'תאים', 'רקמות', 'קליני', 'medical', 'biomedical', 'biology'];
+const BIOMEDICAL_INTEREST_KEYWORDS = ['ביורפואה', 'ביורפואי', 'רפואי', 'רפואה', 'ביולוגי', 'medical', 'biomedical', 'biology'];
 const DEFAULT_WEAK_RELEVANCE_REASON = 'נבחר בעיקר להשלמת דרישת תואר';
+const WEAK_MATCH_FILLER_REASON = 'נבחר בעיקר להשלמת דרישת תואר כי לא נמצאה חלופה רלוונטית יותר.';
 
 function _scoreCareerRelevanceLocal(candidate, interestText) {
   const text = [candidate.name_he || '', candidate.syllabus_summary_he || '', ...(candidate.syllabus_topics_he || [])].join(' ').toLowerCase();
+  const interest = (interestText || '').toLowerCase();
+
+  // PART D — biomedical/biology/medicine always penalized unless requested.
+  const wantsBiomedical = BIOMEDICAL_INTEREST_KEYWORDS.some(k => interest.includes(k));
+  if (!wantsBiomedical && BIOMEDICAL_KEYWORDS.some(k => text.includes(k))) {
+    return { score: -3, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+  // PART D — control-heavy courses penalized unless control was requested.
+  const wantsControl = CONTROL_INTEREST_KEYWORDS.some(k => interest.includes(k));
+  if (!wantsControl && CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k))) {
+    return { score: -1, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+
   if (!interestText || !interestText.trim()) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  const interest = interestText.toLowerCase();
   const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
   if (!activeGroups.length) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
   for (const g of activeGroups) {
     if (g.keywords.some(k => text.includes(k))) return { score: 3, reason: g.reason, tag: g.tag };
   }
-  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) return { score: -2, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) return { score: -2, reason: WEAK_MATCH_FILLER_REASON, tag: null };
+  return { score: 0, reason: WEAK_MATCH_FILLER_REASON, tag: null };
 }
 
 function _scoreCandidateLocal(c, interestText) {
@@ -6321,6 +6383,27 @@ function _pickBestCandidateLocal(candidates, unwantedIds, interestText) {
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
   const pool = preferred.length ? preferred : candidates;
   return [...pool].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText))[0];
+}
+
+/* PART C (client mirror) — pick the candidate whose hours best close the
+   remaining `gap` toward the 185-ש"ש degree total, minimizing overshoot:
+   exact fit > smallest overshoot > largest undershoot. Mirrors
+   api/ai/completion_analysis.ts (pickBestCandidateForGap). */
+function _pickBestCandidateForGapLocal(candidates, courses, gap, unwantedIds, interestText) {
+  if (!candidates.length) return null;
+  const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
+  const pool = preferred.length ? preferred : candidates;
+  const fitRank = c => {
+    const h = courses[c.course_id]?.hours ?? c.hours ?? 0;
+    if (h === gap) return 0;
+    if (h > gap) return 1 + (h - gap);
+    return 1000 + (gap - h);
+  };
+  return [...pool].sort((a, b) => {
+    const fa = fitRank(a), fb = fitRank(b);
+    if (fa !== fb) return fa - fb;
+    return _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText);
+  })[0];
 }
 
 /**
@@ -6506,7 +6589,12 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
 
   while (pool.length > 0 && added.length < maxAdditions) {
     if (priorKnown && total >= target) break;
-    const candidate = _pickBestCandidateLocal(pool, unwanted, opts.userInterestText);
+    // PART C — prefer the candidate whose hours best close the remaining gap
+    // (exact fit > smallest overshoot > largest undershoot).
+    const gap = target - total;
+    const candidate = priorKnown
+      ? _pickBestCandidateForGapLocal(pool, opts.courses, gap, unwanted, opts.userInterestText)
+      : _pickBestCandidateLocal(pool, unwanted, opts.userInterestText);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
@@ -6550,7 +6638,7 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   if (!added.length) return { proposal, added: [], proposed_total_hours: total, exhausted, capped, debug };
 
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
-  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON)) {
+  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON || a.selection_reason === WEAK_MATCH_FILLER_REASON)) {
     warnings.push('נוספו קורסים פחות קשורים כדי להשלים שעות תואר.');
   }
   if (capped) {

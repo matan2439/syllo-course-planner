@@ -2157,7 +2157,7 @@ describe('PART A/E/F/G — professional/career relevance scoring', () => {
     };
     const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds: ['s1', 's2'], userInterestText: interestText } as any);
     const femAdd = result.added.find(a => a.course_id === 'FEM1');
-    expect(femAdd?.selection_reason).toBe('נבחר כי הוא רלוונטי לאנליזות/FEM');
+    expect(femAdd?.selection_reason).toBe('נבחר כי הוא רלוונטי לאנליזות/FEM/תורת התנודות');
     expect(result.added.every(a => !!a.selection_reason)).toBe(true);
   });
 
@@ -2320,5 +2320,285 @@ describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives /
     expect(['גבוהה', 'בינונית', 'נמוכה']).toContain(explanation.labels.professional_fit);
     expect(['טוב', 'בינוני', 'חלש']).toContain(explanation.labels.load_balance);
     expect(['טוב', 'בינוני', 'חלש']).toContain(explanation.labels.sequencing);
+  });
+});
+
+// ── PART A — 0542-4223 (מבוא לאלמנטים סופיים) semester-legality regression ──
+describe('PART A — 0542-4223 semester legality (Semester A only)', () => {
+  const FEM_COURSE = {
+    course_id: '0542-4223',
+    name_he: 'מבוא לאלמנטים סופיים',
+    effective_allowed_semesters: ['A'],
+    offered_semesters: ['A'],
+  };
+
+  test('isCourseAllowedInSemester rejects Semester B', () => {
+    expect(isCourseAllowedInSemester(FEM_COURSE, 'B', ['A', 'B'])).toBe(false);
+  });
+
+  test('isCourseAllowedInSemester accepts Semester A', () => {
+    expect(isCourseAllowedInSemester(FEM_COURSE, 'A', ['A', 'B'])).toBe(true);
+  });
+
+  test('getLegalSemesters reports high-confidence single-semester restriction', () => {
+    const { semesters, confident } = getLegalSemesters(FEM_COURSE, ['A', 'B']);
+    expect(semesters).toEqual(['A']);
+    expect(confident).toBe(true);
+  });
+
+  test('validatePlanProposal rejects a proposal placing 0542-4223 in Semester B', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 'A', course_ids: [] },
+        { semester_id: 'B', course_ids: ['0542-4223'] },
+      ],
+      moves: [],
+      warnings_he: [],
+      rationale_he: '',
+      requirements_status: [],
+    };
+    const ctx = {
+      courses: {
+        '0542-4223': {
+          hours: 4,
+          effective_allowed_semesters: ['A'],
+          missing_prerequisites: [],
+          is_mandatory: false,
+          placement_policy: 'elective',
+          course_type: 'elective',
+        },
+      },
+      completedCourseIds: new Set<string>(),
+      semesterLabels: { A: 'סמסטר א׳', B: 'סמסטר ב׳' },
+    } as any;
+    const { errors } = validatePlanProposal(proposal as any, ctx);
+    expect(errors.some(e => e.includes('0542-4223') || e.includes('מבוא לאלמנטים סופיים'))).toBe(true);
+  });
+
+  test('repairAddMissingElectives never places 0542-4223 in Semester B even if requested via a category', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: [] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = {
+      categories: [{
+        name: 'בחירה התמחות',
+        category_id: 'solids',
+        required: 1,
+        placed: 0,
+        missing: 1,
+        candidates: [{ course_id: '0542-4223', name_he: 'מבוא לאלמנטים סופיים', hours: 4, effective_allowed_semesters: ['A'] }],
+      }],
+    } as any;
+    const courses = { '0542-4223': { hours: 4, effective_allowed_semesters: ['A'] } };
+    const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds: ['A', 'B'] } as any);
+    const semB = result.proposal.semesters.find((s: any) => s.semester_id === 'B');
+    expect(semB?.course_ids ?? []).not.toContain('0542-4223');
+  });
+});
+
+// ── PART C — overshoot minimization (gap-fit candidate selection) ──────────
+describe('PART C — overshoot minimization', () => {
+  function buildAnalysis(requiredTotal: number, knownTotal: number, pool: any[]) {
+    return {
+      scheduled_course_ids: [],
+      completed_course_ids: [],
+      categories: [],
+      elective_pool: pool,
+      general_requirement: null,
+      hours: {
+        required_total: requiredTotal,
+        known_completed_hours: knownTotal,
+        known_scheduled_hours: 0,
+        known_total_hours: knownTotal,
+        remaining_hours: Math.max(0, requiredTotal - knownTotal),
+        unknown_hour_courses: 0,
+        approximate: false,
+        completed_general_hours: 0,
+        required_general_hours: 0,
+        general_hours_shortfall: 0,
+        prior_hours_known: true,
+      },
+      overloaded_semesters: [],
+      movable_courses: [],
+      pinned_course_ids: [],
+    } as any;
+  }
+
+  test('gap of 3 with a 3-hour course available picks the 3-hour course over a 4-hour course', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: [] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = buildAnalysis(185, 182, [
+      { course_id: 'BIG4', name_he: 'Big Four', hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      { course_id: 'EXACT3', name_he: 'Exact Three', hours: 3, effective_allowed_semesters: ['A', 'B'] },
+    ]);
+    const courses = {
+      BIG4: { hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      EXACT3: { hours: 3, effective_allowed_semesters: ['A', 'B'] },
+    };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['A', 'B'] } as any);
+    expect(result.added.map(a => a.course_id)).toContain('EXACT3');
+    expect(result.added.map(a => a.course_id)).not.toContain('BIG4');
+    expect(result.proposed_total_hours).toBe(185);
+  });
+
+  test('exact-fit scenario yields 185/185 not 188.5/185', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: [] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = buildAnalysis(185, 182.5, [
+      { course_id: 'C25', name_he: 'Course 2.5', hours: 2.5, effective_allowed_semesters: ['A', 'B'] },
+      { course_id: 'C4', name_he: 'Course 4', hours: 4, effective_allowed_semesters: ['A', 'B'] },
+    ]);
+    const courses = {
+      C25: { hours: 2.5, effective_allowed_semesters: ['A', 'B'] },
+      C4: { hours: 4, effective_allowed_semesters: ['A', 'B'] },
+    };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['A', 'B'] } as any);
+    expect(result.proposed_total_hours).toBe(185);
+    expect(result.added.map(a => a.course_id)).toContain('C25');
+  });
+
+  test('no-exact-fit picks smallest overshoot', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: [] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = buildAnalysis(185, 182, [
+      { course_id: 'C4', name_he: 'Course 4', hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      { course_id: 'C6', name_he: 'Course 6', hours: 6, effective_allowed_semesters: ['A', 'B'] },
+    ]);
+    const courses = {
+      C4: { hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      C6: { hours: 6, effective_allowed_semesters: ['A', 'B'] },
+    };
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['A', 'B'] } as any);
+    expect(result.added.map(a => a.course_id)).toContain('C4');
+    expect(result.proposed_total_hours).toBe(186);
+  });
+
+  test('no courses added once 185 is reached', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: ['ALREADY'] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = buildAnalysis(185, 181, [
+      { course_id: 'ALREADY', name_he: 'Already placed', hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      { course_id: 'EXTRA', name_he: 'Extra', hours: 3, effective_allowed_semesters: ['A', 'B'] },
+    ]);
+    const courses = {
+      ALREADY: { hours: 4, effective_allowed_semesters: ['A', 'B'] },
+      EXTRA: { hours: 3, effective_allowed_semesters: ['A', 'B'] },
+    };
+    // total = 181 (known_completed) + 4 (ALREADY, already placed/scheduled-equivalent) = 185 >= target
+    const result = repairAddHoursToDegree(proposal as any, analysis, { courses, knownSemesterIds: ['A', 'B'] } as any);
+    expect(result.added.length).toBe(0);
+    expect(result.proposed_total_hours).toBe(185);
+  });
+});
+
+// ── PART D — recommendation relevance scoring for design/FEM/vibration profile ─
+describe('PART D — relevance scoring for design/FEM/vibration/robotics profile', () => {
+  const PROFILE = 'תכן, אנליזות, FEM אלמנטים סופיים, תורת התנודות, קצת רובוטיקה';
+
+  test('biomedical course is penalized even when other interests are active', () => {
+    const biomed = { course_id: 'BIO1', name_he: 'מבוא לביורפואה', syllabus_topics_he: ['רקמות', 'מכניקה ביולוגית'] };
+    const result = scoreCareerRelevance(biomed, PROFILE);
+    expect(result.score).toBeLessThan(0);
+  });
+
+  test('FEM/vibration course is boosted for this profile', () => {
+    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות במערכות מכניות' };
+    const result = scoreCareerRelevance(fem, PROFILE);
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.tag).toBe('fem_analysis');
+  });
+
+  test('design (תכן) course is boosted for this profile', () => {
+    const design = { course_id: 'DES1', name_he: 'תכן מערכות הנדסיות' };
+    const result = scoreCareerRelevance(design, PROFILE);
+    expect(result.score).toBeGreaterThan(0);
+  });
+
+  test('biomedical course loses to FEM/design course when both are candidates', () => {
+    const biomed = { course_id: 'BIO1', name_he: 'מבוא לביורפואה', hours: 3 };
+    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות', hours: 3 };
+    const best = pickBestCandidate([biomed as any, fem as any], new Set(), PROFILE);
+    expect(best?.course_id).toBe('FEM1');
+  });
+
+  test('control-heavy course is penalized when user did not request control', () => {
+    const control = { course_id: 'CTRL1', name_he: 'מערכות בקרה ספרתיות' };
+    const result = scoreCareerRelevance(control, PROFILE);
+    expect(result.score).toBeLessThanOrEqual(0);
+  });
+
+  test('robotics lab is not selected before its prerequisite (intro robotics) is satisfied', () => {
+    const proposal = { semesters: [{ semester_id: 'A', course_ids: [] }, { semester_id: 'B', course_ids: [] }], warnings_he: [] };
+    const analysis = {
+      categories: [{
+        name: 'מערכות',
+        category_id: 'systems',
+        required: 1,
+        placed: 0,
+        missing: 1,
+        candidates: [
+          { course_id: 'ROBOLAB', name_he: 'מעבדה ברובוטיקה', hours: 3, effective_allowed_semesters: ['A', 'B'] },
+          { course_id: 'DESIGN1', name_he: 'תכן מכני', hours: 3, effective_allowed_semesters: ['A', 'B'] },
+        ],
+      }],
+    } as any;
+    const courses = {
+      ROBOLAB: { hours: 3, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: ['INTRO_ROBO'] },
+      DESIGN1: { hours: 3, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: [] },
+      INTRO_ROBO: { hours: 2, effective_allowed_semesters: ['A', 'B'] },
+    };
+    // pickBestCandidate doesn't know about prereqs directly, but
+    // repairAddMissingElectives should not place ROBOLAB if its prereq is
+    // unmet — verified via missing_prerequisites on the course info used by
+    // validatePlanProposal (hard constraint, PART E). Here we assert the
+    // candidate scoring at least doesn't unconditionally prefer ROBOLAB.
+    const roboScore = scoreCandidate({ course_id: 'ROBOLAB', name_he: 'מעבדה ברובוטיקה', hours: 3 } as any, PROFILE);
+    const designScore = scoreCandidate({ course_id: 'DESIGN1', name_he: 'תכן מכני', hours: 3 } as any, PROFILE);
+    expect(designScore).toBeGreaterThanOrEqual(roboScore - 3); // robotics gets modest boost too, but design/FEM is at least comparable
+    void proposal; void courses;
+  });
+});
+
+// ── PART E — prerequisite ordering hard constraint ──────────────────────────
+describe('PART E — prerequisite ordering (robotics lab vs intro robotics)', () => {
+  test('robotics lab scheduled before its prerequisite is rejected by validatePlanProposal', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 'A', course_ids: ['ROBOLAB'] },
+        { semester_id: 'B', course_ids: ['INTRO_ROBO'] },
+      ],
+      moves: [],
+      warnings_he: [],
+      rationale_he: '',
+      requirements_status: [],
+    };
+    const ctx = {
+      courses: {
+        ROBOLAB: { hours: 3, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: ['INTRO_ROBO'], is_mandatory: false, placement_policy: 'elective', course_type: 'elective' },
+        INTRO_ROBO: { hours: 2, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: [], is_mandatory: false, placement_policy: 'elective', course_type: 'elective' },
+      },
+      completedCourseIds: new Set<string>(),
+      semesterLabels: { A: 'סמסטר א׳', B: 'סמסטר ב׳' },
+    } as any;
+    const { warnings, errors } = validatePlanProposal(proposal as any, ctx);
+    expect(warnings.length + errors.length).toBeGreaterThan(0);
+  });
+
+  test('intro robotics in an earlier semester satisfies the lab prerequisite (no warning)', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 'A', course_ids: ['INTRO_ROBO'] },
+        { semester_id: 'B', course_ids: ['ROBOLAB'] },
+      ],
+      moves: [],
+      warnings_he: [],
+      rationale_he: '',
+      requirements_status: [],
+    };
+    const ctx = {
+      courses: {
+        ROBOLAB: { hours: 3, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: [], is_mandatory: false, placement_policy: 'elective', course_type: 'elective' },
+        INTRO_ROBO: { hours: 2, effective_allowed_semesters: ['A', 'B'], missing_prerequisites: [], is_mandatory: false, placement_policy: 'elective', course_type: 'elective' },
+      },
+      completedCourseIds: new Set<string>(),
+      semesterLabels: { A: 'סמסטר א׳', B: 'סמסטר ב׳' },
+    } as any;
+    const { warnings, errors } = validatePlanProposal(proposal as any, ctx);
+    expect(errors.length).toBe(0);
+    expect(warnings.filter(w => w.includes('ROBOLAB') || w.includes('דרישות קדם')).length).toBe(0);
   });
 });

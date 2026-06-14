@@ -98,6 +98,12 @@ export interface PlanContext {
       has_syllabus_summary?: boolean;
       grade_average?: number | null;
       is_wanted?: boolean;
+      /** Semesters this course may legally be placed in (PART A). */
+      effective_allowed_semesters?: string[] | null;
+      /** Raw syllabus/program offering data, if known. */
+      offered_semesters?: string[] | null;
+      /** Whether effective_allowed_semesters is high-confidence (syllabus-sourced). */
+      offering_confident?: boolean;
     }>;
   }>;
   /** קורסי שער רוח (humanities) requirement — program-specific, distinct from engineering electives. */

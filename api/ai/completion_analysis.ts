@@ -64,33 +64,65 @@ export interface CareerRelevanceGroup {
 export const CAREER_RELEVANCE_GROUPS: CareerRelevanceGroup[] = [
   {
     tag: 'fem_analysis',
-    reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM',
-    keywords: ['אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים', 'מכניקת המוצקים', 'מכניקה'],
+    reason: 'נבחר כי הוא רלוונטי לאנליזות/FEM/תורת התנודות',
+    keywords: [
+      'אלמנטים סופיים', 'fem', 'אנליז', 'סימול', 'cae', 'חוזק', 'חומרים',
+      'מכניקת המוצקים', 'מכניקת מוצקים', 'מכניקה', 'תנודות', 'רעידות', 'דינמיקה',
+    ],
   },
   {
     tag: 'mechanical_design',
-    reason: 'נבחר כי הוא מחזק תכן מכני ופיתוח מוצר',
-    keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר'],
+    reason: 'נבחר כי הוא מחזק תכן מכני/הנדסי ופיתוח מוצר',
+    keywords: ['תכן', 'עיצוב', 'פיתוח מוצר', 'ייצור', 'מוצר', 'הנדסי'],
   },
   {
     tag: 'robotics_control',
-    reason: 'נבחר כי הוא קשור לרובוטיקה/בקרה',
-    keywords: ['רובוטיקה', 'בקרה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'],
+    reason: 'נבחר כי הוא קשור לרובוטיקה',
+    keywords: ['רובוטיקה', 'מכטרוניקה', 'מערכות מכניות', 'אוטומציה'],
   },
   {
     tag: 'industry_lab',
-    reason: 'נבחר כי הוא נותן ניסיון מעבדתי רלוונטי לתעשייה',
+    reason: 'נבחר כי הוא נותן ניסיון מעבדתי/פרויקטלי רלוונטי לתעשייה (סימולציות/תכן/אנליזה)',
     keywords: ['מעבדה', 'פרויקט'],
   },
 ];
 
-/** Keywords for courses that are usually weakly related to a mechanical design/analysis/robotics direction. */
+/**
+ * PART D — "בקרה" (control) is treated separately from רובוטיקה: the user's
+ * profile said "קצת רובוטיקה, not necessarily control" — so robotics courses
+ * match the robotics_control group above, but a course that is primarily
+ * about בקרה (control theory/systems) is penalized unless the user
+ * explicitly asked for control.
+ */
+export const CONTROL_HEAVY_KEYWORDS = ['בקרה', 'מערכות בקרה', 'תורת הבקרה'];
+export const CONTROL_INTEREST_KEYWORDS = ['בקרה', 'control'];
+
+/**
+ * Keywords for courses that are usually weakly related to a mechanical
+ * design/analysis/robotics direction. These are penalized whenever the
+ * user's free-text interest does not explicitly mention them, regardless of
+ * whether other interest groups are active (PART D).
+ */
 export const WEAK_RELEVANCE_KEYWORDS = [
   'מבני נתונים', 'מיקרו אלקטרוניקה', 'ננו אלקטרוניקה', 'מיקרו וננו', 'אלקטרוניקה',
   'מערכות לבישות', 'לביש', 'מדעי המחשב', 'אלגוריתמים',
 ];
 
+/**
+ * PART D — biomedical/biology/medicine-related keywords are always
+ * penalized unless the user's free-text request explicitly mentions them
+ * (ביורפואה, רפואה, ביולוגיה, פולימרים בהקשר רפואי, וכו').
+ */
+export const BIOMEDICAL_KEYWORDS = [
+  'ביורפואה', 'ביורפואי', 'רפואי', 'רפואה', 'ביולוגי', 'ביולוגיה',
+  'תאים', 'רקמות', 'קליני', 'medical', 'biomedical', 'biology',
+];
+export const BIOMEDICAL_INTEREST_KEYWORDS = ['ביורפואה', 'ביורפואי', 'רפואי', 'רפואה', 'ביולוגי', 'medical', 'biomedical', 'biology'];
+
 export const DEFAULT_WEAK_RELEVANCE_REASON = 'נבחר בעיקר להשלמת דרישת תואר';
+
+/** PART D — reason attached when a weak-match course is still chosen as a filler. */
+export const WEAK_MATCH_FILLER_REASON = 'נבחר בעיקר להשלמת דרישת תואר כי לא נמצאה חלופה רלוונטית יותר.';
 
 export interface CareerRelevanceResult {
   /** Added to the candidate's overall score (positive = boost, negative = penalty). */
@@ -117,10 +149,25 @@ export function scoreCareerRelevance(
     ...(candidate.syllabus_topics_he || []),
   ].join(' ').toLowerCase();
 
+  const interest = (interestText || '').toLowerCase();
+
+  // PART D — biomedical/biology/medicine courses are always penalized unless
+  // explicitly requested, regardless of whether other interest groups match.
+  const wantsBiomedical = BIOMEDICAL_INTEREST_KEYWORDS.some(k => interest.includes(k));
+  if (!wantsBiomedical && BIOMEDICAL_KEYWORDS.some(k => text.includes(k))) {
+    return { score: -3, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+
+  // PART D — control-heavy courses are penalized unless the user explicitly
+  // asked for control ("not necessarily control" in the user's profile).
+  const wantsControl = CONTROL_INTEREST_KEYWORDS.some(k => interest.includes(k));
+  if (!wantsControl && CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k))) {
+    return { score: -1, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  }
+
   if (!interestText || !interestText.trim()) {
     return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
   }
-  const interest = interestText.toLowerCase();
 
   // Active groups = groups the user's free-text request mentions.
   const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
@@ -137,10 +184,12 @@ export function scoreCareerRelevance(
   // No active-direction match — penalize courses that are characteristically
   // unrelated to a mechanical design/analysis/robotics direction.
   if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -2, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+    return { score: -2, reason: WEAK_MATCH_FILLER_REASON, tag: null };
   }
 
-  return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  // PART D — the user has an active interest profile but this course doesn't
+  // match any of it: still a weak match, chosen only as filler if needed.
+  return { score: 0, reason: WEAK_MATCH_FILLER_REASON, tag: null };
 }
 
 export interface CompletionCandidate {
@@ -153,6 +202,12 @@ export interface CompletionCandidate {
   /** Optional syllabus text used for career-relevance scoring (PART A), when available. */
   syllabus_summary_he?: string | null;
   syllabus_topics_he?: string[] | null;
+  /** Semesters this course may legally be placed in (PART A — semester legality). */
+  effective_allowed_semesters?: string[] | null;
+  /** Raw syllabus/program offering data, if known. */
+  offered_semesters?: string[] | null;
+  /** Whether effective_allowed_semesters is high-confidence (syllabus-sourced). */
+  offering_confident?: boolean;
 }
 
 export interface CompletionCategory {
@@ -245,6 +300,9 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
         has_syllabus_summary: !!c.has_syllabus_summary,
         grade_average:        c.grade_average ?? null,
         is_wanted:            !!c.is_wanted,
+        effective_allowed_semesters: c.effective_allowed_semesters ?? null,
+        offered_semesters:    c.offered_semesters ?? null,
+        offering_confident:   c.offering_confident ?? false,
       }));
     const placed = Number(cat.placed) || 0;
     const required = Number(cat.required) || 0;
@@ -383,6 +441,24 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
 }
 
 /** Render the analysis as Hebrew bullet lines for the AI prompt (PART C). */
+/**
+ * PART A — render a candidate label with an explicit semester restriction so
+ * the AI never proposes placing a course in a semester it isn't offered in
+ * (e.g. "מבוא לאלמנטים סופיים (0542-4223) [רק סמסטר א׳]").
+ */
+function candidateLabelWithSemesters(c: CompletionCandidate): string {
+  const base = `${c.name_he || c.course_id} (${c.course_id})`;
+  const allowed = c.effective_allowed_semesters;
+  if (allowed && allowed.length === 1) {
+    const semLabel = allowed[0] === 'A' ? 'סמסטר א׳' : allowed[0] === 'B' ? 'סמסטר ב׳' : allowed[0];
+    return `${base} [רק ${semLabel}${c.offering_confident ? '' : ' — לא מאומת'}]`;
+  }
+  if (allowed && allowed.length > 1) {
+    return `${base} [סמסטרים: ${allowed.join(', ')}]`;
+  }
+  return base;
+}
+
 export function formatCompletionMessages(a: CompletionAnalysis): string[] {
   const lines: string[] = [];
 
@@ -395,7 +471,7 @@ export function formatCompletionMessages(a: CompletionAnalysis): string[] {
   const missingCats = a.categories.filter(c => c.missing > 0);
   if (missingCats.length) {
     for (const cat of missingCats) {
-      const cands = cat.candidates.slice(0, 6).map(c => `${c.name_he || c.course_id} (${c.course_id})`).join(', ');
+      const cands = cat.candidates.slice(0, 6).map(c => candidateLabelWithSemesters(c)).join(', ');
       lines.push(`קטגוריית בחירה "${cat.name}": חסרים ${cat.missing} מתוך ${cat.required} קורסים. מועמדים אפשריים: ${cands || 'לא נמצאו מועמדים זמינים'}.`);
     }
   } else if (a.categories.length) {
@@ -894,6 +970,42 @@ export function pickBestCandidate(
   return [...pool].sort((a, b) => scoreCandidate(b, interestText) - scoreCandidate(a, interestText))[0];
 }
 
+/**
+ * PART C — pick the candidate that best closes the remaining hours `gap`
+ * toward the 185-ש"ש degree total, minimizing overshoot:
+ *   exact fit (hours === gap) > smallest overshoot (hours > gap) > largest
+ *   undershoot (hours < gap, picks the closest). Among equally-good fits,
+ *   falls back to scoreCandidate (career relevance, wanted, etc.).
+ * `gap` <= 0 means the degree total is already met — caller should stop
+ * adding courses entirely in that case (handled by the loop's `total >= target`
+ * check); this function is only consulted while gap > 0.
+ */
+export function pickBestCandidateForGap(
+  candidates: CompletionCandidate[],
+  courses: Record<string, RepairCourseInfo>,
+  gap: number,
+  unwantedIds: Set<string> = new Set(),
+  interestText?: string | null,
+): CompletionCandidate | null {
+  if (!candidates.length) return null;
+  const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
+  const pool = preferred.length ? preferred : candidates;
+
+  const fitRank = (c: CompletionCandidate): number => {
+    const h = courses[c.course_id]?.hours ?? c.hours ?? 0;
+    if (h === gap) return 0;            // exact fit
+    if (h > gap) return 1 + (h - gap);  // smallest overshoot wins (rank closest to 0)
+    return 1000 + (gap - h);            // undershoot — least preferred, smallest undershoot wins
+  };
+
+  return [...pool].sort((a, b) => {
+    const fa = fitRank(a);
+    const fb = fitRank(b);
+    if (fa !== fb) return fa - fb;
+    return scoreCandidate(b, interestText) - scoreCandidate(a, interestText);
+  })[0];
+}
+
 export interface RepairCourseInfo {
   hours?: number | null;
   effective_allowed_semesters?: string[] | null;
@@ -1197,7 +1309,13 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
 
   while (pool.length > 0 && added.length < maxAdditions) {
     if (priorKnown && total >= target) break;
-    const candidate = pickBestCandidate(pool, unwanted, opts.userInterestText);
+    // PART C — prefer the candidate whose hours best close the remaining
+    // gap (exact fit > smallest overshoot > largest undershoot), to minimize
+    // overshoot past the 185-ש"ש degree total.
+    const gap = target - total;
+    const candidate = priorKnown
+      ? pickBestCandidateForGap(pool, opts.courses, gap, unwanted, opts.userInterestText)
+      : pickBestCandidate(pool, unwanted, opts.userInterestText);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
@@ -1245,7 +1363,7 @@ export function repairAddHoursToDegree<P extends RepairProposalShape>(
   const warnings = [...(proposal.warnings_he || []), 'נוספו קורסי בחירה/התמחות נוספים כדי להשלים את שעות התואר.'];
   // PART F — if every addition was a low-relevance "filler" course (no
   // career-direction match), say so explicitly rather than silently adding them.
-  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON)) {
+  if (opts.userInterestText && added.every(a => a.selection_reason === DEFAULT_WEAK_RELEVANCE_REASON || a.selection_reason === WEAK_MATCH_FILLER_REASON)) {
     warnings.push('נוספו קורסים פחות קשורים כדי להשלים שעות תואר.');
   }
   if (capped) {
