@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -20,6 +23,44 @@ _HTML_PATH = Path("app/web/semester_board_viewer.html")
 @pytest.fixture(scope="module")
 def html() -> str:
     return _HTML_PATH.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Inline <script> syntax validity (catches errors that blank the whole page)
+# ---------------------------------------------------------------------------
+
+def test_inline_scripts_have_valid_js_syntax(html):
+    """Every inline <script> block (no src=) must be syntactically valid JS.
+
+    A syntax error in any of these blocks throws before any rendering code
+    runs, leaving the page blank. `node --check` parses without executing.
+    """
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available")
+
+    scripts = re.findall(
+        r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.DOTALL
+    )
+    assert scripts, "No inline <script> blocks found"
+
+    for i, script in enumerate(scripts):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".js", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(script)
+            tmp_path = f.name
+        try:
+            result = subprocess.run(
+                [node, "--check", tmp_path],
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, (
+                f"Inline <script> block {i} has a syntax error:\n{result.stderr}"
+            )
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------

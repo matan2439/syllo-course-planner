@@ -511,6 +511,10 @@ body.prog-modal-open .workspace {
 }
 .ai-response-area.ai-empty::before { content: 'תשובת ה-AI תופיע כאן…'; color: var(--text-faint); font-style: italic; }
 .ai-response-area.ai-loading { font-style: italic; color: var(--text-faint); }
+.ai-chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.ai-chat-msg { border-radius: 8px; padding: 8px 10px; font-size: .76rem; line-height: 1.6; white-space: pre-wrap; }
+.ai-chat-msg-user { background: var(--surface3, var(--surface2)); align-self: flex-end; }
+.ai-chat-msg-assistant { background: var(--surface2); border: 1px dashed var(--border2); }
 .ai-no-api-note {
   font-size: .7rem; color: var(--text-faint); line-height: 1.5;
   background: var(--surface2); border-radius: 7px; padding: 7px 10px;
