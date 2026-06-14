@@ -3844,6 +3844,7 @@ function renderAiTab() {
 
   // PARTS D/E/F/H — single primary "בנה מערכת" / "בנה מערכת מחדש" button.
   document.getElementById('sidebar-build-from-scratch')?.addEventListener('click', () => {
+    try {
     const hasExisting = !!state.proposalDraft || allPlacedIds().size > 2;
 
     const proceedWithBuild = () => {
@@ -3894,6 +3895,13 @@ function renderAiTab() {
     }
 
     proceedWithBuild();
+    } catch (err) {
+      const statusEl = document.getElementById('ai-build-status');
+      if (statusEl) { statusEl.hidden = false; statusEl.textContent = `שגיאה: ${err?.message || err}`; }
+      const btn = document.getElementById('sidebar-build-from-scratch');
+      if (btn) btn.disabled = false;
+      postAssistantMessage(`שגיאה: ${err?.message || err}`);
+    }
   });
   document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
     _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: !!e.target.checked };
@@ -4539,6 +4547,22 @@ async function handleSidebarChatSend(providedMessage) {
     postUserMessage(message);
     if (input) input.value = '';
   }
+
+  // Emergency runtime fix: wrap the entire handler body so any synchronous
+  // throw (e.g. in intent/preference helpers) doesn't silently abort the
+  // flow leaving the button disabled or the user with no feedback at all.
+  if (sendBtn) sendBtn.disabled = true;
+  try {
+    return await _handleSidebarChatSendInner(message, providedMessage, input);
+  } catch (err) {
+    postAssistantMessage(`שגיאה: ${err?.message || err}`);
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+async function _handleSidebarChatSendInner(message, providedMessage, input) {
+  const sendBtn = document.getElementById('sidebar-chat-send');
 
   // PART C — clarification heuristic. Only ask once per request: skip if this
   // message *is itself* a reply to a clarifying question (no further planning text).
