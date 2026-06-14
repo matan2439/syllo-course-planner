@@ -48,10 +48,10 @@ function loadPage({ fetchImpl } = {}) {
     return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('not found') });
   });
 
-  // jsdom does not implement confirm()/alert(); the app uses confirm() as a
-  // "are you sure?" gate for bulk actions on >3 courses and for rebuilding
-  // an existing plan. Default to "OK" so those flows can proceed in tests.
-  window.confirm = () => true;
+  // The app no longer relies on window.confirm()/confirm() for any critical
+  // flow — it uses in-app confirmation cards (requestUserConfirmation).
+  // Throw if confirm() is ever called, to prove these flows don't depend on it.
+  window.confirm = () => { throw new Error('confirm should not be called'); };
   window.alert = () => {};
 
   const scriptEl = window.document.createElement('script');
@@ -115,8 +115,17 @@ describe('My Courses semester bulk-status menu', () => {
       .find(b => b.dataset.mcSemAction === 'completed');
     expect(completeBtn).toBeTruthy();
 
-    // Click "סמן את כל הסמסטר כהושלם".
+    // Click "סמן את כל הסמסטר כהושלם" — should render an in-app confirmation,
+    // NOT call window.confirm.
     completeBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const confirmCard = hdr.querySelector('.uc-confirm-card') || gridEl.querySelector('.uc-confirm-card');
+    expect(confirmCard).toBeTruthy();
+    expect(confirmCard.textContent).toContain('להחיל');
+
+    const confirmBtn = confirmCard.querySelector('[data-uc-confirm]');
+    expect(confirmBtn).toBeTruthy();
+    confirmBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
     const courses = getMandatoryCourses(window).filter(c => c.semester === 'year_1_semester_a');
     expect(courses.length).toBeGreaterThan(0);
@@ -159,6 +168,33 @@ describe('My Courses semester bulk-status menu', () => {
     const clearBtn = [...popover.querySelectorAll('button')].find(b => b.dataset.mcSemAction === '__clear__');
     clearBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
+    const confirmCard = hdr.querySelector('.uc-confirm-card');
+    confirmCard.querySelector('[data-uc-confirm]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    for (const c of courses) {
+      expect(window.getUserStatus(c.course_id).status).toBe('not_taken');
+    }
+  });
+
+  test('clicking "בטל" on the in-app confirmation does not change any status', () => {
+    window.openMyCoursesModal();
+    const gridEl = document.getElementById('my-courses-grid');
+    const courses = getMandatoryCourses(window).filter(c => c.semester === 'year_1_semester_a');
+
+    // Ensure a known starting status.
+    for (const c of courses) window.setUserStatus(c.course_id, 'not_taken', null);
+
+    const hdr = gridEl.querySelector('[data-mc-sem-menu="year_1_semester_a"]');
+    hdr.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    const popover = gridEl.querySelector('.mc-sem-menu-popover');
+    const completeBtn = [...popover.querySelectorAll('button')].find(b => b.dataset.mcSemAction === 'completed');
+    completeBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const confirmCard = hdr.querySelector('.uc-confirm-card');
+    expect(confirmCard).toBeTruthy();
+    confirmCard.querySelector('[data-uc-cancel]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    expect(hdr.querySelector('.uc-confirm-card')).toBeFalsy();
     for (const c of courses) {
       expect(window.getUserStatus(c.course_id).status).toBe('not_taken');
     }
@@ -177,6 +213,9 @@ describe('My Courses semester bulk-status menu', () => {
       const popover = gridEl.querySelector('.mc-sem-menu-popover');
       const btn = [...popover.querySelectorAll('button')].find(b => b.dataset.mcSemAction === action);
       btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+      const confirmCard = hdr.querySelector('.uc-confirm-card');
+      confirmCard.querySelector('[data-uc-confirm]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
       const courses = getMandatoryCourses(window).filter(c => c.semester === semId);
       for (const c of courses) {
@@ -215,12 +254,33 @@ describe('"בנה מערכת" build button', () => {
     dom.window.close();
   });
 
-  test('clicking the build button shows the loading indicator and calls the AI endpoint with action_type=full_plan', async () => {
+  test('clicking the build button with an existing board renders an in-app confirmation card', () => {
     window.setSidebarTab('ai');
     const btn = document.getElementById('sidebar-build-from-scratch');
     expect(btn).toBeTruthy();
 
     btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const confirmCard = document.getElementById('ai-build-confirm')?.querySelector('.uc-confirm-card');
+    expect(confirmCard).toBeTruthy();
+    expect(confirmCard.textContent).toContain('להמשיך');
+
+    // No fetch to generate-plan yet — only after confirming.
+    expect(fetchCalls.find(c => c.url.includes('/api/ai/generate-plan'))).toBeFalsy();
+  });
+
+  test('confirming the build confirmation card starts loading and calls the AI endpoint with action_type=full_plan', async () => {
+    window.setSidebarTab('ai');
+    const btn = document.getElementById('sidebar-build-from-scratch');
+    expect(btn).toBeTruthy();
+
+    btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    const confirmCard = document.getElementById('ai-build-confirm').querySelector('.uc-confirm-card');
+    confirmCard.querySelector('[data-uc-confirm]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+
+    // Confirmation card removed.
+    expect(document.getElementById('ai-build-confirm')).toBeFalsy();
 
     // Loading indicator shown synchronously (before the await resolves).
     const statusEl = document.getElementById('ai-build-status');

@@ -542,6 +542,21 @@ body.prog-modal-open .workspace {
 .ai-prefs-collapsible > summary::before { content: '▸ '; }
 .ai-prefs-collapsible[open] > summary::before { content: '▾ '; }
 .ai-proposal-card-inner { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px; }
+.uc-confirm-card {
+  display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 10px; background: var(--surface2);
+}
+.uc-confirm-card-msg { font-size: .8rem; line-height: 1.5; }
+.uc-confirm-card-actions { display: flex; gap: 6px; }
+.uc-confirm-popover {
+  position: absolute; top: 100%; right: 0; left: 0; z-index: 60; margin-top: 4px;
+}
+.uc-confirm-popover .uc-confirm-card { box-shadow: var(--shadow-md); }
+.uc-toast {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius);
+  box-shadow: var(--shadow-md); padding: 8px 16px; font-size: .8rem; z-index: 100;
+}
 .ai-no-api-note {
   font-size: .7rem; color: var(--text-faint); line-height: 1.5;
   background: var(--surface2); border-radius: 7px; padding: 7px 10px;
@@ -3758,12 +3773,18 @@ function renderAiTab() {
   // PART G — "נקה שיחה והעדפות זמניות" clears chat history AND the temporary
   // _aiPickerState picker prefs (wanted/unwanted/strongUnwanted/shaarRuach),
   // but NOT persisted course statuses or the board itself.
-  document.getElementById('sidebar-clear-chat')?.addEventListener('click', () => {
-    if (confirm('לנקות את היסטוריית השיחה ואת ההעדפות הזמניות (קורסים מועדפים/לא מועדפים, העדפת שער רוח)?')) {
-      clearAiChatHistory();
-      _aiPickerState = { wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true };
-      renderAiTab();
-    }
+  document.getElementById('sidebar-clear-chat')?.addEventListener('click', (e) => {
+    requestUserConfirmation({
+      message: 'לנקות את היסטוריית השיחה ואת ההעדפות הזמניות (קורסים מועדפים/לא מועדפים, העדפת שער רוח)?',
+      confirmLabel: 'אשר',
+      cancelLabel: 'בטל',
+      anchorEl: e.target.closest('details') || e.target.parentElement,
+      onConfirm: () => {
+        clearAiChatHistory();
+        _aiPickerState = { wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true };
+        renderAiTab();
+      },
+    });
   });
 
   const run = actionType => {
@@ -3824,36 +3845,55 @@ function renderAiTab() {
   // PARTS D/E/F/H — single primary "בנה מערכת" / "בנה מערכת מחדש" button.
   document.getElementById('sidebar-build-from-scratch')?.addEventListener('click', () => {
     const hasExisting = !!state.proposalDraft || allPlacedIds().size > 2;
-    if (hasExisting && !confirm('בניית מערכת מחדש תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
+
+    const proceedWithBuild = () => {
+      const instruction = (document.getElementById('sidebar-chat-input')?.value || '').trim();
+
+      // PART H — natural clarification questions for ambiguous free-text input.
+      const questions = instruction ? detectAmbiguousPlanningInstruction(instruction) : [];
+      if (questions.length) {
+        postUserMessage(instruction);
+        document.getElementById('sidebar-chat-input').value = '';
+        _aiChatInputDraft = '';
+        saveAiChatState();
+        postAssistantMessage(questions.join('\n'));
+        _aiPendingPlanningRequest = instruction;
+        _aiClarificationAnswered = true;
+        renderAiChatLog();
+        return;
+      }
+
+      if (instruction) {
+        postUserMessage(instruction);
+        document.getElementById('sidebar-chat-input').value = '';
+        _aiChatInputDraft = '';
+        saveAiChatState();
+        _aiPlanLastPreferences = { ...sidebarQuickActionPrefs(), extra_request_he: instruction };
+      } else {
+        postUserMessage(hasExisting ? 'בנה מערכת מחדש' : 'בנה מערכת');
+      }
+
+      runBuildFromScratch();
+    };
+
+    if (hasExisting) {
+      document.getElementById('ai-build-confirm')?.remove();
+      const buildStatusEl = document.getElementById('ai-build-status');
+      const confirmContainer = document.createElement('div');
+      confirmContainer.id = 'ai-build-confirm';
+      buildStatusEl?.insertAdjacentElement('afterend', confirmContainer);
+      requestUserConfirmation({
+        message: 'פעולה זו תיצור טיוטת מערכת חדשה על בסיס ההעדפות והקורסים שסימנת. להמשיך?',
+        confirmLabel: 'בנה מערכת',
+        cancelLabel: 'ביטול',
+        container: confirmContainer,
+        onConfirm: () => { confirmContainer.remove(); proceedWithBuild(); },
+        onCancel: () => { confirmContainer.remove(); },
+      });
       return;
     }
-    const instruction = (document.getElementById('sidebar-chat-input')?.value || '').trim();
 
-    // PART H — natural clarification questions for ambiguous free-text input.
-    const questions = instruction ? detectAmbiguousPlanningInstruction(instruction) : [];
-    if (questions.length) {
-      postUserMessage(instruction);
-      document.getElementById('sidebar-chat-input').value = '';
-      _aiChatInputDraft = '';
-      saveAiChatState();
-      postAssistantMessage(questions.join('\n'));
-      _aiPendingPlanningRequest = instruction;
-      _aiClarificationAnswered = true;
-      renderAiChatLog();
-      return;
-    }
-
-    if (instruction) {
-      postUserMessage(instruction);
-      document.getElementById('sidebar-chat-input').value = '';
-      _aiChatInputDraft = '';
-      saveAiChatState();
-      _aiPlanLastPreferences = { ...sidebarQuickActionPrefs(), extra_request_he: instruction };
-    } else {
-      postUserMessage(hasExisting ? 'בנה מערכת מחדש' : 'בנה מערכת');
-    }
-
-    runBuildFromScratch();
+    proceedWithBuild();
   });
   document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
     _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: !!e.target.checked };
@@ -4724,6 +4764,74 @@ function tryApplyProposalFromChatText(text) {
 
   const displayText = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
   return { displayText, applied: true };
+}
+
+/** Shows a transient toast message at the bottom of the screen (replaces
+ * alert()/confirm()-style native dialogs for simple notifications). */
+function showUcToast(message) {
+  document.querySelectorAll('.uc-toast').forEach(el => el.remove());
+  const toast = document.createElement('div');
+  toast.className = 'uc-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+/** In-app replacement for window.confirm(). Renders a small confirmation
+ * card with אשר/בטל buttons into `container` (or as a popover anchored to
+ * `anchorEl` if no container is given), and invokes onConfirm/onCancel when
+ * the user clicks the respective button. The card removes itself afterwards.
+ *
+ * Options:
+ *  - message: string shown in the card.
+ *  - confirmLabel/cancelLabel: button text (defaults 'אשר'/'בטל').
+ *  - onConfirm/onCancel: callbacks.
+ *  - container: element to render the card into (its content is replaced).
+ *  - anchorEl: if no container, render an absolutely-positioned popover
+ *    appended to this element (which should have position:relative or will
+ *    be given it).
+ */
+function requestUserConfirmation({ message, confirmLabel, cancelLabel, onConfirm, onCancel, container, anchorEl }) {
+  confirmLabel = confirmLabel || 'אשר';
+  cancelLabel = cancelLabel || 'בטל';
+
+  const card = document.createElement('div');
+  card.className = 'uc-confirm-card';
+  card.innerHTML = `
+    <div class="uc-confirm-card-msg">${esc(message)}</div>
+    <div class="uc-confirm-card-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-uc-confirm>${esc(confirmLabel)}</button>
+      <button type="button" class="btn btn-sm" data-uc-cancel>${esc(cancelLabel)}</button>
+    </div>`;
+
+  let wrapper = card;
+  if (container) {
+    container.innerHTML = '';
+    container.appendChild(card);
+  } else if (anchorEl) {
+    document.querySelectorAll('.uc-confirm-popover').forEach(el => el.remove());
+    wrapper = document.createElement('div');
+    wrapper.className = 'uc-confirm-popover';
+    wrapper.appendChild(card);
+    anchorEl.style.position = 'relative';
+    anchorEl.appendChild(wrapper);
+  }
+
+  const cleanup = () => {
+    if (container) container.innerHTML = '';
+    else wrapper.remove();
+  };
+
+  card.querySelector('[data-uc-confirm]').addEventListener('click', () => {
+    cleanup();
+    onConfirm?.();
+  });
+  card.querySelector('[data-uc-cancel]').addEventListener('click', () => {
+    cleanup();
+    onCancel?.();
+  });
+
+  return card;
 }
 
 /* ── PART D #5 — compact proposal card embedded in עוזר AI ─────────────────
@@ -7192,6 +7300,23 @@ const MC_SEM_BULK_ACTIONS = [
   { status: '__clear__',        label: 'נקה סימונים בסמסטר' },
 ];
 
+/** Applies `status` (or the special '__clear__' which resets to not_taken)
+ * to every mandatory course of `semesterId`, persists to localStorage via
+ * setUserStatus, and re-renders the My Courses grid/list + board. */
+function applySemesterBulkStatus(semesterId, status) {
+  const courses = YEAR_1_2_MANDATORY_COURSES.filter(c => c.semester === semesterId);
+  for (const c of courses) {
+    const cid = c.course_id;
+    if (status === '__clear__') {
+      setUserStatus(cid, 'not_taken', null);
+    } else {
+      const us = getUserStatus(cid);
+      setUserStatus(cid, status, status === 'currently_taking' || status === 'planned' ? (us.planned_semester || _defaultRestoreSemester(courseMap[cid], us)) : us.planned_semester);
+    }
+  }
+  _applyMyCoursesBulkRerender();
+}
+
 function _showMcSemesterMenu(hdrEl, semesterId) {
   // Remove any existing popover.
   document.querySelectorAll('.mc-sem-menu-popover').forEach(el => el.remove());
@@ -7212,21 +7337,19 @@ function _showMcSemesterMenu(hdrEl, semesterId) {
     if (!btn) return;
     e.stopPropagation();
     const action = btn.dataset.mcSemAction;
-    if (courses.length > 3) {
-      const label = MC_SEM_BULK_ACTIONS.find(a => a.status === action)?.label || '';
-      if (!confirm(`${label} (${courses.length} קורסים)?`)) { menu.remove(); return; }
-    }
-    for (const c of courses) {
-      const cid = c.course_id;
-      if (action === '__clear__') {
-        setUserStatus(cid, 'not_taken', null);
-      } else {
-        const us = getUserStatus(cid);
-        setUserStatus(cid, action, action === 'currently_taking' || action === 'planned' ? (us.planned_semester || _defaultRestoreSemester(courseMap[cid], us)) : us.planned_semester);
-      }
-    }
+    const label = MC_SEM_BULK_ACTIONS.find(a => a.status === action)?.label || '';
+    const semesterName = SEM_HE[semesterId] || semesterId;
     menu.remove();
-    _applyMyCoursesBulkRerender();
+    requestUserConfirmation({
+      message: `להחיל '${label}' על ${courses.length} קורסים בסמסטר ${semesterName}?`,
+      confirmLabel: 'אשר',
+      cancelLabel: 'בטל',
+      anchorEl: hdrEl,
+      onConfirm: () => {
+        applySemesterBulkStatus(semesterId, action);
+        showUcToast(`עודכנו ${courses.length} קורסים`);
+      },
+    });
   };
   menu.addEventListener('click', onAction);
 
