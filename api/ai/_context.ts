@@ -83,6 +83,12 @@ export interface PlanContext {
   }>;
   /** course_ids the user marked as "אל תזיז" — must stay in their current semester. */
   pinned_course_ids?: string[];
+  /** User preferences carried over from the plan-generation UI, for chat context (PART F). */
+  preferences?: {
+    wanted_course_ids?: string[];
+    unwanted_course_ids?: string[];
+    extra_request_he?: string;
+  };
   /** Semesters whose total_hours already exceed a typical weekly cap. */
   overload_warnings?: Array<{ semester_id: string; label: string; total_hours: number }>;
   /** Elective category requirements with eligible (not yet completed/scheduled) candidates. */
@@ -253,6 +259,16 @@ function personalPrereqIssuesSection(issues: PersonalPrereqIssue[] | undefined):
     .join('\n');
 }
 
+function preferencesSection(prefs: PlanContext['preferences']): string | null {
+  if (!prefs) return null;
+  const lines: string[] = [];
+  if (prefs.wanted_course_ids?.length) lines.push(`קורסים שהמשתמש רוצה לקחת: ${prefs.wanted_course_ids.join(', ')}`);
+  if (prefs.unwanted_course_ids?.length) lines.push(`קורסים שהמשתמש מעדיף להימנע מהם: ${prefs.unwanted_course_ids.join(', ')}`);
+  if (prefs.extra_request_he) lines.push(`בקשה כללית אחרונה מהמשתמש: ${prefs.extra_request_he}`);
+  if (!lines.length) return null;
+  return lines.join('\n');
+}
+
 function gradeSignalsSection(
   signals: PlanContext['grade_signals'],
 ): string {
@@ -338,6 +354,11 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     sections.push('', gradeSignalsSection(ctx.grade_signals));
   }
 
+  const prefsSection = preferencesSection(ctx.preferences);
+  if (prefsSection) {
+    sections.push('', '### העדפות המשתמש', prefsSection);
+  }
+
   if (course_context) {
     const workloadSummary = buildWorkloadSummary(course_context);
     sections.push('', '### פרטי קורס ספציפי', course_context);
@@ -387,6 +408,16 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     לבין הסטטוס האישי של המשתמש (קורסים שהושלמו, נלמדים כעת, או מתוכננים אישית).
     אל תניח שקורס "הושלם" רק כי הוא מופיע בסמסטר מוקדם בלוח הרשמי — התבסס אך ורק
     על המידע בסעיף "סטטוס אישי".
+14. אם המשתמש מבקש במפורש שינוי קונקרטי בתוכנית (למשל "תחליף לי את הקורס הזה
+    במשהו יותר קשור לתכן", "תוריד עומס מסמסטר ג׳ ב׳", "הוסף לי קורס X"), הצע
+    שינוי קונקרטי: לאחר ההסבר בעברית, צרף בלוק קוד JSON יחיד בפורמט הבא,
+    עם השיבוץ המלא והמעודכן של *כל* הסמסטרים (כולל סמסטרים שלא השתנו):
+    \`\`\`json
+    {"semesters":[{"semester_id":"year_3_semester_a","course_ids":["..."]}, ...],"rationale_he":"הסבר קצר"}
+    \`\`\`
+    semester_id חייב להיות אחד מ: year_3_semester_a, year_3_semester_b, year_4_semester_a, year_4_semester_b.
+    course_ids הם מספרי קורס בלבד (כפי שהופיעו בנתוני התוכנית). אל תכלול את בלוק
+    ה-JSON אם המשתמש רק שואל שאלה ולא מבקש שינוי בתוכנית.
 
 ## נתוני התוכנית הנוכחית
 

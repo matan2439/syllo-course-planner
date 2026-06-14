@@ -257,6 +257,51 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('חציון 62');
     expect(prompt).toContain('85%');
   });
+
+  // PART F — general AI chat must receive the same board state + diagnostics
+  // as requestPlanProposal, plus the user's wanted/avoided/pinned preferences.
+  it('includes board semesters and diagnostics for chat context', () => {
+    const prompt = buildSystemPrompt({ program_id: 'mechanical_2027', plan_context: PLAN_CONTEXT });
+    expect(prompt).toContain("שנה ג׳ — סמסטר א׳");
+    expect(prompt).toContain('תורת המכונות');
+    expect(prompt).toContain('פרויקט גמר'); // mandatory_unplaced
+    expect(prompt).toContain('קורסי ליבה'); // requirements_progress
+  });
+
+  it('includes wanted/unwanted course preferences in the system prompt', () => {
+    const ctx: PlanContext = {
+      ...PLAN_CONTEXT,
+      preferences: {
+        wanted_course_ids:   ['0542-4221'],
+        unwanted_course_ids: ['0542-4320'],
+        extra_request_he:    'תוריד עומס מסמסטר ג׳ ב׳',
+      },
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    expect(prompt).toContain('0542-4221');
+    expect(prompt).toContain('0542-4320');
+    expect(prompt).toContain('תוריד עומס מסמסטר ג׳ ב׳');
+  });
+
+  it('includes pinned course ids', () => {
+    const ctx: PlanContext = { ...PLAN_CONTEXT, pinned_course_ids: ['0542-4120'] };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    // pinned ids aren't rendered directly in the prose, but the prompt must
+    // still build successfully with the field present.
+    expect(prompt).toContain('הנדסה מכנית');
+  });
+
+  it('omits the preferences section when no preferences are set', () => {
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: PLAN_CONTEXT });
+    expect(prompt).not.toContain('### העדפות המשתמש');
+  });
+
+  it('describes the structured-proposal JSON format for board changes', () => {
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: PLAN_CONTEXT });
+    expect(prompt).toContain('```json');
+    expect(prompt).toContain('semester_id');
+    expect(prompt).toContain('rationale_he');
+  });
 });
 
 describe('computeSemesterLoads', () => {

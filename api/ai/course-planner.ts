@@ -111,6 +111,14 @@ const planContextSchema = z.object({
       num_students_total: z.number().optional(),
     }))
     .optional(),
+  // PART F — user preferences carried over from the plan-generation UI, for chat context.
+  preferences: z
+    .object({
+      wanted_course_ids:   z.array(z.string()).optional(),
+      unwanted_course_ids: z.array(z.string()).optional(),
+      extra_request_he:    z.string().max(1000).optional(),
+    })
+    .optional(),
 });
 
 const requestSchema = z.object({

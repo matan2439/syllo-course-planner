@@ -171,6 +171,26 @@ describe('POST /api/ai/course-planner — input validation', () => {
     expect(res.json).not.toHaveBeenCalled();
   });
 
+  it('accepts plan_context.preferences (wanted/unwanted course ids + extra request) — PART F chat context', async () => {
+    const payloadWithPrefs = {
+      ...VALID_BODY,
+      plan_context: {
+        ...VALID_BODY.plan_context,
+        pinned_course_ids: ['0542-4120'],
+        preferences: {
+          wanted_course_ids:   ['0542-4221'],
+          unwanted_course_ids: ['0542-4320'],
+          extra_request_he:    'תוריד עומס מסמסטר ג׳ ב׳',
+        },
+      },
+    };
+    const res = makeRes();
+    await handler(makeReq(payloadWithPrefs), res as any);
+    expect(res.write).toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
   it('returns 400 INVALID_REQUEST with issue path for missing session_token', async () => {
     const { session_token: _, ...rest } = VALID_BODY;
     const res = makeRes();
