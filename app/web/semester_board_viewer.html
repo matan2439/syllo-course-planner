@@ -504,6 +504,11 @@ body.prog-modal-open .workspace {
 }
 .ai-send-btn:hover { opacity: .88; }
 .ai-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ai-build-status {
+  font-size: .76rem; color: var(--text-muted); text-align: center;
+  padding: 6px 8px; border-radius: var(--radius); background: var(--surface2);
+  border: 1px dashed var(--border2);
+}
 .ai-response-area {
   min-height: 72px; border-radius: 8px; border: 1px dashed var(--border2);
   padding: 10px 12px; font-size: .76rem; color: var(--text-muted); line-height: 1.65;
@@ -929,6 +934,18 @@ body.prog-modal-open .workspace {
 .my-courses-grid-col {
   flex: 1 1 0; min-width: 220px; display: flex; flex-direction: column; gap: 6px;
 }
+.my-courses-grid-col-hdr[data-mc-sem-menu] { cursor: pointer; }
+.my-courses-grid-col-hdr[data-mc-sem-menu]:hover { color: var(--blue); }
+.mc-sem-menu-popover {
+  position: absolute; top: 100%; right: 0; left: 0; z-index: 50;
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius);
+  box-shadow: var(--shadow-md); padding: 4px; display: flex; flex-direction: column; gap: 2px;
+}
+.mc-sem-menu-popover button {
+  text-align: right; font-size: .72rem; padding: 6px 8px; border: none; background: transparent;
+  color: var(--text); border-radius: 6px; cursor: pointer; font-family: inherit;
+}
+.mc-sem-menu-popover button:hover { background: var(--surface2); }
 .my-courses-grid-col-hdr {
   font-size: .7rem; font-weight: 700; text-align: center; padding: 4px 6px;
   border-radius: 6px; background: var(--surface2); border: 1px solid var(--border);
@@ -1337,8 +1354,9 @@ body.prog-modal-open .workspace {
 .degree-progress .dp-total { border-top: 1px solid var(--border); margin-top: 3px; padding-top: 4px; }
 .degree-progress .dp-msg { margin-top: 4px; font-size: .74rem; border-radius: var(--radius); padding: 4px 8px; }
 .degree-progress .dp-msg.warn    { background: var(--warn-soft); color: #92400E; }
-.degree-progress .dp-msg.success { background: var(--success-bg, #d6f5e3); color: var(--success, #1f9d55); }
+.degree-progress .dp-msg.success { background: var(--success-bg, #d6f5e3); color: #1f9d55; }
 [data-theme="dark"] .degree-progress .dp-msg.warn { color: var(--warning); }
+[data-theme="dark"] .degree-progress .dp-msg.success { background: rgba(52,211,153,.15); color: var(--success); }
 
 /* ── Compact summary chips row (PART E) ─────────────────────────────────── */
 .draft-chips-row { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -3597,6 +3615,10 @@ function renderAiTab() {
         ${s.general ? mkChip('שער רוח', `${s.general.placed}/${s.general.required}`, !s.general.satisfied) : ''}
         ${mkChip('עומס', `${s.peak} ש״ש`, false)}
       </div>
+
+      <button class="btn btn-primary" id="sidebar-build-from-scratch">${state.proposalDraft || allPlacedIds().size > 2 ? 'בנה מערכת מחדש' : 'בנה מערכת'}</button>
+      <div id="ai-build-status" class="ai-build-status" hidden></div>
+
       <details class="ai-plan-section ai-prefs-collapsible">
         <summary class="ai-plan-section-title">העדפות תכנון</summary>
         <div style="display:flex;flex-direction:column;gap:14px;padding-top:8px">
@@ -3650,29 +3672,23 @@ function renderAiTab() {
       <div class="ai-input-area">
         <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת...">${esc(_aiChatInputDraft)}</textarea>
         <div class="ai-send-row">
-          <button class="btn btn-sm btn-link" id="sidebar-clear-chat">איפוס שיחה</button>
           <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
         </div>
       </div>
 
-      ${(!state.proposalDraft && allPlacedIds().size <= 2) ? `
-      <button class="btn btn-primary" id="sidebar-build-from-scratch">בנה מערכת מ־0</button>
-      ` : ''}
-
       <details class="ai-plan-section ai-advanced-collapsible">
         <summary class="ai-plan-section-title">אפשרויות מתקדמות</summary>
         <div style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
-          ${(state.proposalDraft || allPlacedIds().size > 2) ? '<button class="btn btn-sm" id="sidebar-rebuild-from-scratch">בנה מערכת מ־0</button>' : ''}
           <button class="btn btn-sm" id="sidebar-quick-balance">אזן עומס</button>
           <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
           <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
           <button class="btn btn-sm" id="sidebar-missing-suggest-all">השלם דרישות חסרות</button>
-          <button class="btn btn-sm btn-link" id="sidebar-missing-ask-first">שאל אותי לפני בחירה</button>
           <label class="ai-plan-check">
             <input type="checkbox" id="sidebar-allow-overload" ${_aiPlanLastPreferences?.overload_accepted ? 'checked' : ''}>
             אפשר חריגה בעומס
           </label>
           ${state.proposalDraft ? '<button class="btn btn-sm" id="sidebar-open-full-preview">פתח פירוט מלא</button>' : ''}
+          <button class="btn btn-sm btn-link" id="sidebar-clear-chat">נקה שיחה והעדפות זמניות</button>
         </div>
       </details>
 
@@ -3720,9 +3736,15 @@ function renderAiTab() {
     _aiChatInputDraft = e.target.value;
     saveAiChatState();
   });
-  // PART D — "איפוס שיחה" clears only chat history, not preferences/draft.
+  // PART G — "נקה שיחה והעדפות זמניות" clears chat history AND the temporary
+  // _aiPickerState picker prefs (wanted/unwanted/strongUnwanted/shaarRuach),
+  // but NOT persisted course statuses or the board itself.
   document.getElementById('sidebar-clear-chat')?.addEventListener('click', () => {
-    if (confirm('לאפס את היסטוריית השיחה?')) clearAiChatHistory();
+    if (confirm('לנקות את היסטוריית השיחה ואת ההעדפות הזמניות (קורסים מועדפים/לא מועדפים, העדפת שער רוח)?')) {
+      clearAiChatHistory();
+      _aiPickerState = { wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true };
+      renderAiTab();
+    }
   });
 
   const run = actionType => {
@@ -3739,42 +3761,80 @@ function renderAiTab() {
       });
   };
 
-  document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
-  document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
-  document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
-  document.getElementById('sidebar-missing-suggest-all')?.addEventListener('click', () => offerAllCategorySuggestions());
-  document.getElementById('sidebar-missing-ask-first')?.addEventListener('click', () => askBeforeAllMissingRequirements());
+  /** PARTS D/E/F — primary "בנה מערכת" flow: disables the button, shows a
+   * cycling stage message in #ai-build-status, calls full_plan, then renders
+   * the resulting draft (or an error message in chat on failure). */
+  function runBuildFromScratch() {
+    const btn = document.getElementById('sidebar-build-from-scratch');
+    const statusEl = document.getElementById('ai-build-status');
+    const stages = ['קורא העדפות…', 'משלים דרישות חובה…', 'בוחר קורסי בחירה…', 'מאזן עומס…', 'בודק חוקיות…'];
+    let stageIdx = 0;
+    if (btn) { btn.disabled = true; }
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = `בונה מערכת... ${stages[0]}`;
+    }
+    const interval = setInterval(() => {
+      stageIdx = (stageIdx + 1) % stages.length;
+      if (statusEl) statusEl.textContent = `בונה מערכת... ${stages[stageIdx]}`;
+    }, 1500);
 
-  // PARTS F/G — primary "בנה מערכת מ־0" button, visible by default when no
-  // draft exists and the board is mostly empty. Calls full_plan directly.
-  document.getElementById('sidebar-build-from-scratch')?.addEventListener('click', () => {
-    postUserMessage('בנה מערכת מ־0');
-    postAssistantMessage('בונה תוכנית...');
-    run('full_plan').then(() => {
+    return run('full_plan').then(() => {
+      clearInterval(interval);
+      if (statusEl) statusEl.hidden = true;
+      if (btn) btn.disabled = false;
       if (state.proposalDraft) {
-        postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
+        postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
           { label: 'החל שינוי', action: 'apply-draft' },
           { label: 'דחה', action: 'reject-draft' },
         ]);
       }
+    }).catch(err => {
+      clearInterval(interval);
+      if (statusEl) statusEl.hidden = true;
+      if (btn) btn.disabled = false;
+      postAssistantMessage(`אירעה שגיאה בעת בניית המערכת: ${err?.message || err}. אפשר לנסות שוב.`);
     });
-  });
+  }
 
-  // PART B/E — advanced actions (collapsed by default). Same button, but
-  // destructive when a draft/board already exists — requires confirmation.
-  document.getElementById('sidebar-rebuild-from-scratch')?.addEventListener('click', () => {
-    if (confirm('בניית תוכנית מלאה תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
-      postUserMessage('בנה מערכת מ־0');
-      postAssistantMessage('בונה תוכנית...');
-      run('full_plan').then(() => {
-        if (state.proposalDraft) {
-          postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
-            { label: 'החל שינוי', action: 'apply-draft' },
-            { label: 'דחה', action: 'reject-draft' },
-          ]);
-        }
-      });
+  document.getElementById('sidebar-quick-balance').addEventListener('click', () => run('balance_load'));
+  document.getElementById('sidebar-quick-prereqs').addEventListener('click', () => run('fix_prerequisites'));
+  document.getElementById('sidebar-quick-career').addEventListener('click', () => run('minimal_changes'));
+  document.getElementById('sidebar-missing-suggest-all')?.addEventListener('click', () => offerAllCategorySuggestions());
+
+  // PARTS D/E/F/H — single primary "בנה מערכת" / "בנה מערכת מחדש" button.
+  document.getElementById('sidebar-build-from-scratch')?.addEventListener('click', () => {
+    const hasExisting = !!state.proposalDraft || allPlacedIds().size > 2;
+    if (hasExisting && !confirm('בניית מערכת מחדש תבנה מחדש את כל סידור הקורסים שלך, כולל קורסים שכבר שיבצת. להמשיך?')) {
+      return;
     }
+    const instruction = (document.getElementById('sidebar-chat-input')?.value || '').trim();
+
+    // PART H — natural clarification questions for ambiguous free-text input.
+    const questions = instruction ? detectAmbiguousPlanningInstruction(instruction) : [];
+    if (questions.length) {
+      postUserMessage(instruction);
+      document.getElementById('sidebar-chat-input').value = '';
+      _aiChatInputDraft = '';
+      saveAiChatState();
+      postAssistantMessage(questions.join('\n'));
+      _aiPendingPlanningRequest = instruction;
+      _aiClarificationAnswered = true;
+      renderAiChatLog();
+      return;
+    }
+
+    if (instruction) {
+      postUserMessage(instruction);
+      document.getElementById('sidebar-chat-input').value = '';
+      _aiChatInputDraft = '';
+      saveAiChatState();
+      _aiPlanLastPreferences = { ...sidebarQuickActionPrefs(), extra_request_he: instruction };
+    } else {
+      postUserMessage(hasExisting ? 'בנה מערכת מחדש' : 'בנה מערכת');
+    }
+
+    runBuildFromScratch();
   });
   document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
     _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: !!e.target.checked };
@@ -4165,6 +4225,43 @@ function dismissMissingRequirementsPrompt() {
  * if found, returns a clarification prompt + quick-reply chips. Returns null
  * when the request is specific enough to plan directly.
  */
+/** PART H — lightweight, deterministic, keyword-based heuristic used by the
+ * "בנה מערכת" button when the user typed free text in the chat input before
+ * clicking. Returns an array of 1-3 short clarifying questions (in Hebrew) if
+ * the instruction is ambiguous in known ways, or an empty array if the
+ * instruction is specific enough (or generic/empty) to build directly. */
+function detectAmbiguousPlanningInstruction(text) {
+  const t = (text || '').trim();
+  if (!t) return [];
+  const lower = t.toLowerCase();
+  const questions = [];
+
+  // Broad topic mentioned without specifying scope (e.g. "רובוטיקה"/"בקרה").
+  const BROAD_TOPICS = ['רובוטיקה', 'בקרה', 'אנרגיה', 'תרמודינמיקה', 'ייצור', 'חישוביות', 'בינה מלאכותית'];
+  const mentionedTopics = BROAD_TOPICS.filter(topic => lower.includes(topic));
+  const specifiesScope = /קורס|קורסים|שניים|שני|שלושה|אחד|כמה|רק/.test(lower);
+  if (mentionedTopics.length && !specifiesScope) {
+    questions.push(`כתבת "${mentionedTopics[0]}" — האם תרצה שכל קורסי הבחירה הרלוונטיים יהיו בנושא הזה, או רק חלק (כמה קורסים)?`);
+  }
+
+  // Vague tradeoff between high average and career/topic fit, no ranking given.
+  const mentionsAvg = /ממוצע גבוה|ציון גבוה|ממוצע/.test(lower);
+  const mentionsFit = /התאמה מקצועית|התאמה לקריירה|רלוונטי לקריירה|תחום מקצועי/.test(lower);
+  const givesPriority = /יותר חשוב|בעדיפות|קודם כל|חשוב מ|לפני/.test(lower);
+  if (mentionsAvg && mentionsFit && !givesPriority) {
+    questions.push('מה חשוב לך יותר — ממוצע גבוה או התאמה מקצועית לקריירה? אפשר גם "שני הדברים בערך באותה מידה".');
+  }
+
+  // Overload: wanted/avoided lists imply more than 20 ש"ש but acceptance not specified.
+  const impliesOverload = /20\s*ש[\"״]?ש|עומס גבוה|הרבה קורסים|כמה שיותר קורסים/.test(lower);
+  const specifiesOverloadAccept = /אפשר חריגה|לא אכפת לי מעומס|בלי הגבלת עומס|בלי חריגה|בלי עומס גבוה/.test(lower);
+  if (impliesOverload && !specifiesOverloadAccept) {
+    questions.push('ביקשת עומס גבוה — האם אפשר לחרוג מ-20 ש״ש בסמסטר אם צריך, או להישאר בגבול הרגיל?');
+  }
+
+  return questions.slice(0, 3);
+}
+
 function detectClarificationNeeds(message) {
   const text = (message || '').toLowerCase();
   const mentionsControl = CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k.toLowerCase()));
@@ -4670,6 +4767,7 @@ function renderProposalCard() {
 
   card.innerHTML = `
     <div class="ai-proposal-card-inner">
+      <div class="ai-plan-hint">זו טיוטה, עדיין לא אושרה.</div>
       <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
       ${degreeProgressHtml}
       ${chipsHtml}
@@ -6907,8 +7005,13 @@ function openMyCoursesModal() {
     renderAll();
   };
 
-  // Grid status-toggle clicks (delegated).
+  // Grid status-toggle clicks + semester-header bulk menu (delegated).
   gridEl.onclick = e => {
+    const hdr = e.target.closest('[data-mc-sem-menu]');
+    if (hdr) {
+      _showMcSemesterMenu(hdr, hdr.dataset.mcSemMenu);
+      return;
+    }
     const btn = e.target.closest('[data-mc-grid-toggle]');
     if (!btn) return;
     const cid = btn.dataset.mcGridToggle;
@@ -7027,6 +7130,12 @@ function _renderMyCoursesGrid(gridEl) {
     planned: 'mc-grid-status-planned',
   };
 
+  // PART B — preserve horizontal scroll position across re-renders: the
+  // re-render replaces the .my-courses-grid-cols container's innerHTML, which
+  // otherwise resets scrollLeft to 0 (the visible "jump back to Year 1" bug).
+  const prevScrollEl = gridEl.querySelector('.my-courses-grid-cols');
+  const prevScrollLeft = prevScrollEl ? prevScrollEl.scrollLeft : 0;
+
   const cols = YEAR_1_2_SEMESTERS.map(s => {
     const courses = YEAR_1_2_MANDATORY_COURSES.filter(c => c.semester === s.id);
     const chips = courses.map(c => {
@@ -7039,14 +7148,89 @@ function _renderMyCoursesGrid(gridEl) {
         </button>`;
     }).join('');
     return `<div class="my-courses-grid-col">
-      <div class="my-courses-grid-col-hdr">${esc(SEM_HE[s.id] || s.id)}</div>
+      <div class="my-courses-grid-col-hdr" data-mc-sem-menu="${esc(s.id)}" title="לחץ לפעולות סמסטר">
+        ${esc(SEM_HE[s.id] || s.id)}
+      </div>
       <div class="my-courses-grid-col-body">${chips || '<div class="ai-plan-hint">אין קורסי חובה</div>'}</div>
     </div>`;
   });
 
   gridEl.innerHTML = `
-    <div class="my-courses-grid-title">קורסי חובה שנים א׳-ב׳ — לחיצה משנה סטטוס</div>
+    <div class="my-courses-grid-title">קורסי חובה שנים א׳-ב׳ — לחיצה על קורס משנה סטטוס, לחיצה על כותרת סמסטר פותחת פעולות סמסטר</div>
     <div class="my-courses-grid-cols">${cols.join('')}</div>`;
+
+  // PART B — restore scroll position synchronously (before paint).
+  const newScrollEl = gridEl.querySelector('.my-courses-grid-cols');
+  if (newScrollEl && prevScrollLeft) newScrollEl.scrollLeft = prevScrollLeft;
+}
+
+/** PART A — bulk status menu for a semester header in הקורסים שלי. Applies
+ * setUserStatus to every mandatory course listed for that semester. */
+const MC_SEM_BULK_ACTIONS = [
+  { status: 'completed',        label: 'סמן את כל הסמסטר כהושלם' },
+  { status: 'not_taken',        label: 'סמן את כל הסמסטר כלא נלקח' },
+  { status: 'currently_taking', label: 'סמן את כל הסמסטר כלומד עכשיו' },
+  { status: '__clear__',        label: 'נקה סימונים בסמסטר' },
+];
+
+function _showMcSemesterMenu(hdrEl, semesterId) {
+  // Remove any existing popover.
+  document.querySelectorAll('.mc-sem-menu-popover').forEach(el => el.remove());
+
+  const courses = YEAR_1_2_MANDATORY_COURSES.filter(c => c.semester === semesterId);
+  if (!courses.length) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'mc-sem-menu-popover';
+  menu.innerHTML = MC_SEM_BULK_ACTIONS.map(a =>
+    `<button type="button" data-mc-sem-action="${esc(a.status)}">${esc(a.label)}</button>`
+  ).join('');
+  hdrEl.style.position = 'relative';
+  hdrEl.appendChild(menu);
+
+  const onAction = (e) => {
+    const btn = e.target.closest('[data-mc-sem-action]');
+    if (!btn) return;
+    e.stopPropagation();
+    const action = btn.dataset.mcSemAction;
+    if (courses.length > 3) {
+      const label = MC_SEM_BULK_ACTIONS.find(a => a.status === action)?.label || '';
+      if (!confirm(`${label} (${courses.length} קורסים)?`)) { menu.remove(); return; }
+    }
+    for (const c of courses) {
+      const cid = c.course_id;
+      if (action === '__clear__') {
+        setUserStatus(cid, 'not_taken', null);
+      } else {
+        const us = getUserStatus(cid);
+        setUserStatus(cid, action, action === 'currently_taking' || action === 'planned' ? (us.planned_semester || _defaultRestoreSemester(courseMap[cid], us)) : us.planned_semester);
+      }
+    }
+    menu.remove();
+    _applyMyCoursesBulkRerender();
+  };
+  menu.addEventListener('click', onAction);
+
+  // Close on outside click.
+  const closeOnOutside = (e) => {
+    if (!menu.contains(e.target) && e.target !== hdrEl) {
+      menu.remove();
+      document.removeEventListener('click', closeOnOutside, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeOnOutside, true), 0);
+}
+
+/** PART A/B — shared re-render after a bulk status change from My Courses,
+ * preserving scroll position (handled inside _renderMyCoursesGrid). */
+function _applyMyCoursesBulkRerender() {
+  const gridEl = document.getElementById('my-courses-grid');
+  const listEl = document.getElementById('my-courses-list');
+  const searchEl = document.getElementById('my-courses-search');
+  _renderMyCoursesSummary();
+  _renderMyCoursesGrid(gridEl);
+  _renderMyCoursesListContent(listEl, searchEl?.value || '');
+  renderAll();
 }
 
 /** course_ids shown in the semester grid — excluded from the searchable list below. */

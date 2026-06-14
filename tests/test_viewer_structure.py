@@ -1313,23 +1313,35 @@ def test_primary_action_button_removed_suggest_next_present(html):
     assert "runPrimaryAiAction(" in m.group(1)
 
 
-def test_rebuild_from_scratch_in_advanced_actions_with_confirm(html):
-    """The full-plan rebuild button must live under אפשרויות מתקדמות when a
-    draft/board already exists, with a confirm() dialog, and call the (fixed)
-    full-plan flow."""
-    m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
-    assert m, "advanced actions <details> not found"
-    assert 'id="sidebar-rebuild-from-scratch"' in m.group(1)
-    assert "בנה" in m.group(1)
+def test_single_build_button_visible_with_confirm_on_rebuild(html):
+    """PART D/I — exactly ONE 'בנה מערכת' primary button exists, always
+    visible by default (not inside a <details>), and it confirms before
+    rebuilding when a draft/board already exists."""
+    m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
+    assert m, "renderAiTab not found"
+    body = m.group(1)
+    template_match = re.search(r"panel\.innerHTML = `(.*?)`;", body, re.DOTALL)
+    assert template_match, "renderAiTab template not found"
+    template = template_match.group(1)
+
+    template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
+    assert 'id="sidebar-build-from-scratch"' in template_no_details
+    assert "בנה מערכת" in template_no_details
+
+    # Not present under אפשרויות מתקדמות as a second build trigger.
+    details_m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
+    assert details_m
+    assert 'id="sidebar-build-from-scratch"' not in details_m.group(1)
+    assert 'id="sidebar-rebuild-from-scratch"' not in details_m.group(1)
 
     m2 = re.search(
-        r"getElementById\('sidebar-rebuild-from-scratch'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
+        r"getElementById\('sidebar-build-from-scratch'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
         html, re.DOTALL,
     )
-    assert m2, "sidebar-rebuild-from-scratch click handler not found"
+    assert m2, "sidebar-build-from-scratch click handler not found"
     handler_body = m2.group(1)
     assert "confirm(" in handler_body
-    assert "run('full_plan')" in handler_body
+    assert "runBuildFromScratch(" in handler_body
 
 
 def test_chat_free_text_routes_full_plan_request(html):
@@ -1363,12 +1375,12 @@ def test_chat_first_default_visible_controls(html):
     template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
     template_no_details = re.sub(r'<div id="ai-proposal-card"></div>', "", template_no_details)
 
-    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא']:
+    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא', 'איפוס שיחה', 'שאל אותי לפני בחירה']:
         assert removed not in template_no_details, f"{removed} must not be default-visible"
 
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
-    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-clear-chat", "sidebar-build-from-scratch"}, visible_buttons
-    assert len(visible_buttons) <= 3
+    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-build-from-scratch"}, visible_buttons
+    assert len(visible_buttons) <= 2
 
 
 def test_full_plan_flow_no_undefined_function_references(html):
@@ -1543,3 +1555,120 @@ def test_completed_course_via_grid_satisfies_prereq_and_excluded_from_scheduling
     prereq_check = _extract_fn(html, "_hasPrereqOrderViolationLocal")
     assert "status === 'completed'" in prereq_check or "completedCourseIds.has(prereq)" in prereq_check
     assert "status === 'currently_taking'" in prereq_check
+
+
+def test_my_courses_semester_bulk_action_menu(html):
+    """PART A — semester headers in הקורסים שלי open a bulk-action menu wired
+    to setUserStatus for every course in that semester."""
+    assert 'data-mc-sem-menu' in html
+    fn = _extract_fn(html, "_showMcSemesterMenu")
+    assert "setUserStatus(" in fn
+    for label in [
+        'סמן את כל הסמסטר כהושלם',
+        'סמן את כל הסמסטר כלא נלקח',
+        'סמן את כל הסמסטר כלומד עכשיו',
+        'נקה סימונים בסמסטר',
+    ]:
+        assert label in html
+
+
+def test_my_courses_grid_scroll_position_preserved(html):
+    """PART B — _renderMyCoursesGrid must save scrollLeft before regenerating
+    its innerHTML and restore it synchronously afterwards (fixes the Year 1
+    scroll-jump bug when toggling Year 2 chips)."""
+    fn = _extract_fn(html, "_renderMyCoursesGrid")
+    assert "scrollLeft" in fn
+    # Save before innerHTML write, restore after.
+    save_idx = fn.index("scrollLeft")
+    inner_idx = fn.index("gridEl.innerHTML")
+    restore_idx = fn.rindex("scrollLeft")
+    assert save_idx < inner_idx < restore_idx
+
+
+def test_no_unreadable_dark_success_panel(html):
+    """PART C — the degree-progress success message must have explicit dark-mode
+    contrast styling (no light-mint-on-bright-green low-contrast combo)."""
+    assert '[data-theme="dark"] .degree-progress .dp-msg.success' in html
+
+
+def test_clarification_heuristic_ambiguous_returns_questions(html):
+    """PART H — detectAmbiguousPlanningInstruction returns 1-3 questions for a
+    known-ambiguous instruction (broad topic without scope)."""
+    assert "function detectAmbiguousPlanningInstruction" in html
+    fn = _extract_fn(html, "detectAmbiguousPlanningInstruction")
+    assert "רובוטיקה" in fn or "בקרה" in fn
+
+
+def test_clarification_heuristic_specific_returns_none(html):
+    """PART H — a sufficiently-specific instruction should not block direct
+    build; the heuristic function must support returning an empty array."""
+    fn = _extract_fn(html, "detectAmbiguousPlanningInstruction")
+    assert "return []" in fn or "return questions" in fn
+    assert "if (!t) return []" in fn
+
+
+def test_build_button_payload_full_plan(html):
+    """PART D — the בנה מערכת click handler ultimately calls run('full_plan')."""
+    m = re.search(
+        r"getElementById\('sidebar-build-from-scratch'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
+        html, re.DOTALL,
+    )
+    assert m
+    fn = _extract_fn(html, "runBuildFromScratch")
+    assert "run('full_plan')" in fn
+
+
+def test_build_loading_state_exists(html):
+    """PART D — a loading/progress element with 'בונה מערכת' text exists in
+    the build flow."""
+    assert 'id="ai-build-status"' in html
+    fn = _extract_fn(html, "runBuildFromScratch")
+    assert "בונה מערכת" in fn
+
+
+def test_build_error_path_renders_chat_message(html):
+    """PART D — failures during build surface an error message via
+    postAssistantMessage rather than leaving the UI stuck."""
+    fn = _extract_fn(html, "runBuildFromScratch")
+    assert "postAssistantMessage" in fn
+    assert "btn.disabled = false" in fn
+
+
+def test_build_success_sets_proposal_draft(html):
+    """PART D — successful build flows assign state.proposalDraft (via run ->
+    requestPlanProposal)."""
+    rpp = _extract_fn(html, "requestPlanProposal")
+    assert "state.proposalDraft" in rpp or "activateProposalDraft" in rpp
+    fn = _extract_fn(html, "runBuildFromScratch")
+    assert "state.proposalDraft" in fn
+
+
+def test_draft_summary_card_has_label_and_actions(html):
+    """PART D — the draft summary card includes the 'טיוטה' disclaimer and
+    Apply/Reject buttons."""
+    fn = _extract_fn(html, "renderProposalCard")
+    assert "טיוטה" in fn
+    assert 'id="sb-draft-apply"' in fn
+    assert 'id="sb-draft-reject"' in fn
+
+
+def test_reset_chat_not_in_default_view_moved_to_advanced(html):
+    """PART G — 'איפוס שיחה' removed from default UI; 'נקה שיחה והעדפות
+    זמניות' lives under אפשרויות מתקדמות and clears chat + _aiPickerState."""
+    assert 'איפוס שיחה' not in html
+    details_m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
+    assert details_m
+    assert 'נקה שיחה והעדפות זמניות' in details_m.group(1)
+    handler = re.search(
+        r"getElementById\('sidebar-clear-chat'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
+        html, re.DOTALL,
+    )
+    assert handler
+    assert "clearAiChatHistory(" in handler.group(1)
+    assert "_aiPickerState" in handler.group(1)
+
+
+def test_ask_before_choosing_button_fully_removed(html):
+    """PART G — 'שאל אותי לפני בחירה' button/string fully removed."""
+    assert 'שאל אותי לפני בחירה' not in html
+    assert 'id="sidebar-missing-ask-first"' not in html
