@@ -5169,17 +5169,63 @@ function computeDegreeProgress(context, boardState, draftState) {
     }
   }
 
+  // ── proposal_removed_hours ─────────────────────────────────────────
+  let proposal_removed_hours = 0;
+  for (const cid of draftRemoved) {
+    if (!boardPlacedIds.has(cid)) continue;
+    if (completedStatusIds.has(cid)) continue; // counted in `completed`, not `current_board`
+    const h = courseMap[cid]?.weekly_hours;
+    if (typeof h === 'number') proposal_removed_hours += h;
+  }
+
   const total_after = completed + current_board + proposed_added;
   const remaining = Math.max(0, required - total_after);
   const overshoot = Math.max(0, total_after - required);
+
+  // ── שער רוח (general/humanities) — counted exactly once across
+  // completed and scheduled (board + proposed-added, minus removed) ────
+  const shaarRuachRequired = shaarRuachRequiredCreditsFor(selectedProg?.program_id) || 0;
+  const shaarRuachIds = new Set(SHAAR_RUACH_COURSES.map(c => c.course_id));
+
+  let shaar_ruach_completed = 0;
+  for (const cid of completedStatusIds) {
+    if (!shaarRuachIds.has(cid)) continue;
+    const h = courseMap[cid]?.weekly_hours;
+    if (typeof h === 'number') shaar_ruach_completed += h;
+  }
+
+  const scheduledShaarRuachIds = new Set();
+  for (const cid of boardPlacedIds) {
+    if (completedStatusIds.has(cid) || draftRemoved.has(cid)) continue;
+    if (shaarRuachIds.has(cid)) scheduledShaarRuachIds.add(cid);
+  }
+  if (draftState) {
+    const draftAddedIds = new Set();
+    if (draftState.added) for (const cid of draftState.added) draftAddedIds.add(cid);
+    if (draftState.semesters) {
+      for (const ids of Object.values(draftState.semesters)) for (const cid of ids) draftAddedIds.add(cid);
+    }
+    for (const cid of draftAddedIds) {
+      if (boardPlacedIds.has(cid) || completedStatusIds.has(cid)) continue;
+      if (shaarRuachIds.has(cid)) scheduledShaarRuachIds.add(cid);
+    }
+  }
+  let shaar_ruach_scheduled = 0;
+  for (const cid of scheduledShaarRuachIds) {
+    const h = courseMap[cid]?.weekly_hours;
+    if (typeof h === 'number') shaar_ruach_scheduled += h;
+  }
+  const shaar_ruach_remaining = Math.max(0, shaarRuachRequired - shaar_ruach_completed - shaar_ruach_scheduled);
 
   if (unknown_hours_count > 0) {
     warnings.push(`${unknown_hours_count} קורסים ללא שעות ידועות לא נכללו בחישוב`);
   }
 
   return {
-    required, completed, current_board, proposed_added, total_after,
+    required, completed, current_board, proposed_added, proposal_removed_hours, total_after,
     remaining, overshoot, unknown_hours_count, warnings,
+    shaar_ruach_required: shaarRuachRequired,
+    shaar_ruach_completed, shaar_ruach_scheduled, shaar_ruach_remaining,
   };
 }
 function DEGREE_REQUIRED_HOURS_GLOBAL() {
@@ -9424,20 +9470,21 @@ function explainPlanQualityLocal(score, opts) {
 
 /**
  * PART B — single source of truth for the 185-ש"ש degree-hour requirement.
- * Mirrors api/ai/completion_analysis.ts (getDegreeHoursStatus).
+ * Thin wrapper around computeDegreeProgress() — kept for its return shape
+ * (used by many call sites) but the calculation itself now lives entirely
+ * in computeDegreeProgress(), so status chips, the AI panel, the draft
+ * panel and the full preview all derive their numbers from one place.
  */
 function getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours) {
-  const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
-  let proposed_plan_hours = 0;
-  for (const cid of placed) {
-    if (analysis.scheduled_course_ids.includes(cid)) continue;
-    const h = (courseHours || {})[cid];
-    if (typeof h === 'number') proposed_plan_hours += h;
-  }
-  const completed_degree_hours = analysis.hours.known_total_hours;
-  const total_after_plan = completed_degree_hours + proposed_plan_hours;
-  const degree_required_hours = analysis.hours.required_total;
-  const missing_hours = Math.max(0, degree_required_hours - total_after_plan);
+  const draftState = (proposalSemesters && proposalSemesters.length)
+    ? { semesters: Object.fromEntries(proposalSemesters.map(s => [s.semester_id, s.course_ids || []])) }
+    : null;
+  const dp = computeDegreeProgress({}, state, draftState);
+  const completed_degree_hours = dp.completed + dp.current_board;
+  const proposed_plan_hours = dp.proposed_added;
+  const total_after_plan = dp.total_after;
+  const degree_required_hours = dp.required;
+  const missing_hours = dp.remaining;
   return {
     completed_degree_hours,
     proposed_plan_hours,

@@ -602,17 +602,63 @@ def test_degree_progress_exact_completion_success(html):
 
 
 def test_degree_progress_calc_logic():
-    """The underlying degree-hours math (getDegreeHoursStatusLocal) is
-    structurally identical to the server-side mirror in completion_analysis.ts,
-    verified via its TS counterpart test suite. Here we just sanity check the
-    JS source computes total = completed + proposed and remaining = max(0, required-total)."""
+    """getDegreeHoursStatusLocal is now a thin wrapper around
+    computeDegreeProgress() — there must be exactly one calculation path for
+    degree-hour totals. This asserts the wrapper delegates to
+    computeDegreeProgress() and derives its legacy fields from its result."""
     import pathlib
     html = pathlib.Path("app/web/semester_board_viewer.html").read_text(encoding="utf-8")
     m = re.search(r"function getDegreeHoursStatusLocal\(.*?\n}\n", html, re.DOTALL)
     assert m, "getDegreeHoursStatusLocal not found"
     body = m.group(0)
-    assert "total_after_plan" in body and "completed_degree_hours + proposed_plan_hours" in body
-    assert "missing_hours" in body and "Math.max(0, degree_required_hours - total_after_plan)" in body
+    assert "computeDegreeProgress(" in body
+    assert "total_after_plan" in body and "dp.total_after" in body
+    assert "missing_hours" in body and "dp.remaining" in body
+
+
+def test_get_degree_hours_status_local_only_called_within_wrapper_or_call_sites():
+    """computeDegreeProgress is the single calculation; getDegreeHoursStatusLocal
+    must be a thin wrapper around it (no independent degree-hour math)."""
+    import pathlib
+    html = pathlib.Path("app/web/semester_board_viewer.html").read_text(encoding="utf-8")
+    m = re.search(r"function getDegreeHoursStatusLocal\(.*?\n}\n", html, re.DOTALL)
+    assert m, "getDegreeHoursStatusLocal not found"
+    body = m.group(0)
+    # The wrapper itself must not recompute known_total_hours/required_total directly.
+    assert "analysis.hours.known_total_hours" not in body
+    assert "analysis.hours.required_total" not in body
+
+
+def test_compute_degree_progress_exposes_extra_fields(html):
+    """computeDegreeProgress must expose proposal_removed_hours and the
+    שער רוח (general/humanities) buckets, counted exactly once, plus
+    unknown_hours_count surfaced via warnings."""
+    body = _extract_fn(html, "computeDegreeProgress")
+    assert "proposal_removed_hours" in body
+    assert "shaar_ruach_completed" in body
+    assert "shaar_ruach_scheduled" in body
+    assert "shaar_ruach_remaining" in body
+    assert "unknown_hours_count" in body and "warnings.push" in body
+
+
+def test_compute_program_progress_uses_compute_degree_progress(html):
+    """The top status chips (computeProgramProgress) must read from
+    computeDegreeProgress — the single calculation path."""
+    body = _extract_fn(html, "computeProgramProgress")
+    assert "computeDegreeProgress(" in body
+    assert "getDegreeHoursStatusLocal(" not in body
+
+
+def test_no_independent_degree_hours_calculation_outside_compute_degree_progress(html):
+    """All call sites of getDegreeHoursStatusLocal must go through the thin
+    wrapper, which itself delegates to computeDegreeProgress — i.e. there is
+    only ONE actual degree-hours calculation."""
+    wrapper_body = _extract_fn(html, "getDegreeHoursStatusLocal")
+    assert "computeDegreeProgress(" in wrapper_body
+
+    dp_body = _extract_fn(html, "computeDegreeProgress")
+    # computeDegreeProgress itself must not call back into the legacy wrapper.
+    assert "getDegreeHoursStatusLocal(" not in dp_body
 
 
 # ---------------------------------------------------------------------------
