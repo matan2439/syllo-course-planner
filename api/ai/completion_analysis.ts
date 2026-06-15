@@ -1004,6 +1004,39 @@ export function pickPrimaryBlockingReason(
   return 'לא ניתן להחיל — יש לתקן שגיאות';
 }
 
+/**
+ * PART F — parse a stated grade-average target (e.g. "חשוב לי ממוצע ציונים
+ * מעל 82" / "ממוצע מעל 85") from the user's free-text request. Returns null
+ * if no target is stated.
+ */
+export function parseGradeTarget(interestText?: string | null): number | null {
+  if (!interestText) return null;
+  const m = interestText.match(/ממוצע[^\d]{0,15}(\d{2,3})/);
+  if (!m) return null;
+  const val = parseInt(m[1], 10);
+  return Number.isFinite(val) && val >= 60 && val <= 100 ? val : null;
+}
+
+/**
+ * PART F — score how compatible a candidate's historical grade average is
+ * with the user's stated target. Courses with no published average are
+ * neutral. When the user cares about a high average, courses with a low
+ * historical average are mildly penalized and high-average courses are
+ * mildly boosted, so the planner leans toward courses where students
+ * historically score well.
+ */
+export function scoreGradeCompatibility(
+  candidate: { grade_average?: number | null },
+  interestText?: string | null,
+): number {
+  const target = parseGradeTarget(interestText);
+  if (target == null || candidate.grade_average == null) return 0;
+  const diff = candidate.grade_average - target;
+  // Scale to a small, bounded contribution (±1.5) so it nudges ranking
+  // without overriding career-relevance or legality.
+  return Math.max(-1.5, Math.min(1.5, diff / 10));
+}
+
 /** Score a candidate elective for repair-insertion (higher = preferred). */
 export function scoreCandidate(c: CompletionCandidate, interestText?: string | null): number {
   let score = 0;
@@ -1013,6 +1046,8 @@ export function scoreCandidate(c: CompletionCandidate, interestText?: string | n
   if (c.grade_average != null) score += c.grade_average / 100;
   // PART A/E — career-fit score, ranks among legal candidates only.
   score += scoreCareerRelevance(c, interestText).score;
+  // PART F — grade-average target compatibility.
+  score += scoreGradeCompatibility(c, interestText);
   return score;
 }
 
