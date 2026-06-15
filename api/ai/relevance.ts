@@ -33,7 +33,9 @@
  */
 const HEBREW_STOPWORDS = new Set([
   'אני', 'רוצה', 'מעדיף', 'מעדיפה', 'חשוב', 'לי', 'עם', 'בלי', 'כמה',
-  'שיותר', 'שפחות', 'קורסים', 'קורס', 'מסלול', 'תחום', 'בתחום', 'של',
+  'שיותר', 'שפחות', 'קורסים', 'קורס', 'כקורס', 'מסלול', 'תחום', 'בתחום', 'של',
+  // Generic curriculum words — never a topic the user wants to avoid/pursue.
+  'בחירה', 'חירה', 'כבחירה', 'בחירות', 'חובה', 'מקצוע', 'נקודות', 'נקז',
   'על', 'את', 'אם', 'יש', 'ולא', 'לא', 'גם', 'אבל', 'יותר', 'פחות',
   'גבוה', 'גבוהה', 'נמוך', 'נמוכה', 'ו', 'ה', 'או', 'כי', 'זה',
   'להימנע', 'להתמקד',
@@ -204,6 +206,9 @@ export function extractPreferenceTerms(text: string): PreferenceTerms {
   // stable list of lexemes regardless of incidental prefixes ל/ו/ב/...
   let avoidWindow = 0;
   const addTerm = (set: Set<string>, tok: string) => {
+    // Reject generic words in their raw form too (before normalization may
+    // mangle a non-prefixed word, e.g. "בחירה" -> "חירה").
+    if (HEBREW_STOPWORDS.has(tok)) return;
     const n = normalizeToken(tok);
     if (!n || n.length < 2) return;
     // Re-check stopword list against the *normalized* form too — otherwise

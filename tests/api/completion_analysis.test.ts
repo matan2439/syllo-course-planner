@@ -4,6 +4,7 @@ import {
   evaluatePlanCompleteness,
   scoreCandidate,
   pickBestCandidate,
+  pickBestCandidateForGap,
   repairAddMissingElectives,
   repairPlanLoad,
   getMissingRequirementCards,
@@ -2805,5 +2806,66 @@ describe('PART E — prerequisite ordering (robotics lab vs intro robotics)', ()
     const { warnings, errors } = validatePlanProposal(proposal as any, ctx);
     expect(errors.length).toBe(0);
     expect(warnings.filter(w => w.includes('ROBOLAB') || w.includes('דרישות קדם')).length).toBe(0);
+  });
+});
+
+describe('Issue 2 — avoid-term skip in pickBestCandidate(ForGap)', () => {
+  const avoidInterest = 'לא רוצה תרמודינמיקה כקורס בחירה';
+
+  it('pickBestCandidate skips an avoid-matching elective when a neutral one exists', () => {
+    const candidates: any[] = [
+      { course_id: 'THERMO', name_he: 'מבוא לתרמודינמיקה', hours: 3, syllabus_topics_he: ['תרמודינמיקה'] },
+      { course_id: 'NEUTRAL', name_he: 'מבוא לרובוטיקה', hours: 3, syllabus_topics_he: ['רובוטיקה'] },
+    ];
+    const picked = pickBestCandidate(candidates, new Set(), avoidInterest);
+    expect(picked).not.toBeNull();
+    expect(picked!.course_id).toBe('NEUTRAL');
+  });
+
+  it('pickBestCandidate falls back to the avoid-matching one if it is the ONLY candidate', () => {
+    const candidates: any[] = [
+      { course_id: 'THERMO', name_he: 'מבוא לתרמודינמיקה', hours: 3, syllabus_topics_he: ['תרמודינמיקה'] },
+    ];
+    const picked = pickBestCandidate(candidates, new Set(), avoidInterest);
+    expect(picked!.course_id).toBe('THERMO');
+  });
+
+  it('pickBestCandidateForGap skips an avoid-matching elective when a neutral one fits', () => {
+    const candidates: any[] = [
+      { course_id: 'THERMO', name_he: 'מבוא לתרמודינמיקה', hours: 3, syllabus_topics_he: ['תרמודינמיקה'] },
+      { course_id: 'NEUTRAL', name_he: 'מבוא לרובוטיקה', hours: 3, syllabus_topics_he: ['רובוטיקה'] },
+    ];
+    const courses = { THERMO: { hours: 3 }, NEUTRAL: { hours: 3 } } as any;
+    const picked = pickBestCandidateForGap(candidates, courses, 3, new Set(), avoidInterest);
+    expect(picked!.course_id).toBe('NEUTRAL');
+  });
+});
+
+describe('Issue 2 — mandatory course matching an avoid term is NEVER dropped', () => {
+  const knownSemesterIds = ['s1', 's2'];
+  function analysisWith(missing_mandatory: any[]): any {
+    return {
+      completed_course_ids: [], scheduled_course_ids: [], missing_mandatory,
+      categories: [],
+      hours: { required_total: 185, known_completed_hours: 0, known_scheduled_hours: 0, known_total_hours: 0, remaining_hours: 0, unknown_hour_courses: 0, approximate: false },
+      overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
+    };
+  }
+
+  it('places מעבר חום (avoid-matching mandatory) and emits a Hebrew "קורס חובה" rationale', () => {
+    const proposal = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }] };
+    // The avoid term "חום"/"תרמו" textually matches this mandatory course name.
+    const analysis = analysisWith([
+      { course_id: 'HEAT', name_he: 'מעבר חום', hours: 3, syllabus_topics_he: ['תרמודינמיקה', 'מעבר חום'] },
+    ]);
+    const courses = { HEAT: { hours: 3, placement_policy: 'flexible', effective_allowed_semesters: ['s1', 's2'] } };
+    const result = repairAddMissingMandatory(proposal as any, analysis, {
+      courses, knownSemesterIds,
+      userInterestText: 'לא רוצה תרמודינמיקה כקורס בחירה',
+    });
+    // It must STILL be placed (never dropped for an avoid match).
+    expect(result.added.map((a: any) => a.course_id)).toContain('HEAT');
+    // And a rationale explaining it stays as a mandatory course must surface.
+    expect(result.proposal.warnings_he!.some((w: string) => w.includes('קורס חובה'))).toBe(true);
   });
 });

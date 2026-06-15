@@ -1114,7 +1114,19 @@ export function scoreCandidate(c: CompletionCandidate, interestText?: string | n
   return score;
 }
 
-/** Pick the best candidate, preferring ones not in `unwantedIds` if alternatives exist. */
+/** Returns true if the candidate textually matches any avoid term from `interestText`. */
+function candidateMatchesAvoidTerm(c: CompletionCandidate & CourseLike, interestText?: string | null): boolean {
+  if (!interestText || !interestText.trim()) return false;
+  const rel = scoreCareerRelevance(c as CourseLike, interestText);
+  // scoreCareerRelevance returns tag === 'avoided' when avoided_terms is non-empty.
+  return rel.tag === 'avoided';
+}
+
+/** Pick the best candidate, preferring ones not in `unwantedIds` if alternatives exist.
+ *  Issue 2 — hard-skip candidates whose text matches the user's avoid terms when
+ *  at least one same-pool alternative does NOT match any avoid term. This applies
+ *  to ELECTIVE selection only — mandatory courses go through repairAddMissingMandatory
+ *  which does not call pickBestCandidate. */
 export function pickBestCandidate(
   candidates: CompletionCandidate[],
   unwantedIds: Set<string> = new Set(),
@@ -1122,7 +1134,12 @@ export function pickBestCandidate(
 ): CompletionCandidate | null {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  const pool = preferred.length ? preferred : candidates;
+  let pool = preferred.length ? preferred : candidates;
+  // Issue 2 — drop avoid-matching candidates if non-avoiding ones exist.
+  if (interestText && interestText.trim()) {
+    const nonAvoid = pool.filter(c => !candidateMatchesAvoidTerm(c as CompletionCandidate & CourseLike, interestText));
+    if (nonAvoid.length > 0) pool = nonAvoid;
+  }
   return [...pool].sort((a, b) => scoreCandidate(b, interestText) - scoreCandidate(a, interestText))[0];
 }
 
@@ -1145,7 +1162,12 @@ export function pickBestCandidateForGap(
 ): CompletionCandidate | null {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  const pool = preferred.length ? preferred : candidates;
+  let pool = preferred.length ? preferred : candidates;
+  // Issue 2 — hard-skip avoid-matching candidates if non-avoiding ones exist.
+  if (interestText && interestText.trim()) {
+    const nonAvoid = pool.filter(c => !candidateMatchesAvoidTerm(c as CompletionCandidate & CourseLike, interestText));
+    if (nonAvoid.length > 0) pool = nonAvoid;
+  }
 
   const fitRank = (c: CompletionCandidate): number => {
     const h = courses[c.course_id]?.hours ?? c.hours ?? 0;
@@ -1206,6 +1228,10 @@ export function repairAddMissingMandatory<P extends RepairProposalShape>(
     courses: Record<string, RepairCourseInfo>;
     maxHoursPerSemester?: number | null;
     knownSemesterIds: string[];
+    /** Issue 2 — user's free-text request, used ONLY to surface a rationale
+     *  when a mandatory course textually matches an avoid term. Mandatory
+     *  courses are never skipped/dropped based on avoid. */
+    userInterestText?: string | null;
   },
 ): RepairMandatoryResult<P> {
   const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
@@ -1258,13 +1284,28 @@ export function repairAddMissingMandatory<P extends RepairProposalShape>(
     added.push({ course_id: course.course_id, semester_id: target.semester_id });
   }
 
+  // Issue 2 — surface a rationale for any placed mandatory course whose name
+  // textually matches a user avoid term. Mandatory courses are NEVER dropped
+  // for matching an avoid term; we explain why they stay.
+  const avoidRationales: string[] = [];
+  if (opts.userInterestText && opts.userInterestText.trim()) {
+    for (const a of added) {
+      const course = analysis.missing_mandatory.find(m => m.course_id === a.course_id);
+      if (!course) continue;
+      const rel = scoreCareerRelevance(course as unknown as CourseLike, opts.userInterestText);
+      if (rel.tag === 'avoided') {
+        avoidRationales.push(`הקורס ${course.name_he || a.course_id} נשאר כי הוא קורס חובה בתוכנית, למרות שהוא קרוב לנושא שהמשתמש ביקש להימנע ממנו.`);
+      }
+    }
+  }
+
   if (!added.length) return { proposal, added: [], unplaceable };
 
   return {
     proposal: {
       ...proposal,
       semesters: sems.filter(s => s.course_ids.length > 0 || proposal.semesters.some(ps => ps.semester_id === s.semester_id)),
-      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.'],
+      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.', ...avoidRationales],
     },
     added,
     unplaceable,
@@ -2138,6 +2179,8 @@ export function replaceWeakElectives<P extends RepairProposalShape>(
         .filter(c => !placed.has(c.course_id))
         .map(c => ({ c, rel: scoreCareerRelevance(c, opts.userInterestText) }))
         .filter(({ rel }) => rel.score > currentRel.score)
+        // Issue 2 — never swap IN a candidate that matches an avoid term.
+        .filter(({ rel }) => rel.tag !== 'avoided')
         .filter(({ c }) => {
           const info = opts.courses[c.course_id];
           const allowed = info?.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;

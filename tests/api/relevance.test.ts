@@ -176,3 +176,51 @@ describe('buildSelectionReason — facts only, no static topic strings', () => {
     expect(r).toBe('נבחר על בסיס התאמה כללית');
   });
 });
+
+describe('Issue 2 — avoid-term parsing & penalty (general, no hardcoding)', () => {
+  it('"לא רוצה תרמודינמיקה כקורס בחירה": תרמודינמיקה is an avoid term; generic words (בחירה/קורס) do NOT leak', () => {
+    const out = extractPreferenceTerms('לא רוצה תרמודינמיקה כקורס בחירה');
+    expect(out.avoid_terms).toContain('תרמודינמיקה');
+    // Generic curriculum words must never become avoid terms — they would
+    // otherwise substring-match nearly every elective.
+    expect(out.avoid_terms).not.toContain('בחירה');
+    expect(out.avoid_terms).not.toContain('כקורס');
+    expect(out.avoid_terms).not.toContain('קורס');
+    // The prefix-stripping heuristic must not leak a mangled fragment of בחירה.
+    expect(out.avoid_terms).not.toContain('חירה');
+  });
+
+  it('an elective thermo course scores negative vs a neutral elective (lexicalRelevance)', () => {
+    const prefs = extractPreferenceTerms('לא רוצה תרמודינמיקה כקורס בחירה');
+    const thermo = lexicalRelevance(buildCourseSearchText(course({
+      name_he: 'מבוא לתרמודינמיקה',
+      syllabus_topics_he: ['תרמודינמיקה', 'אנתרופיה'],
+    })), prefs);
+    const neutral = lexicalRelevance(buildCourseSearchText(course({
+      name_he: 'מבוא לרובוטיקה',
+      syllabus_topics_he: ['רובוטיקה', 'בקרה'],
+    })), prefs);
+    expect(thermo.score).toBeLessThan(0);
+    expect(thermo.avoided_terms).toContain('תרמודינמיקה');
+    expect(neutral.score).toBeGreaterThanOrEqual(thermo.score);
+  });
+
+  it('GENERALITY — a different avoid topic (אלקטרוניקה) lands in avoid_terms and penalizes a matching elective', () => {
+    const prefs = extractPreferenceTerms('אני רוצה להימנע מאלקטרוניקה');
+    expect(prefs.avoid_terms).toContain('אלקטרוניקה');
+    const elec = lexicalRelevance(buildCourseSearchText(course({
+      name_he: 'אלקטרוניקה אנלוגית',
+      syllabus_topics_he: ['אלקטרוניקה', 'מעגלים'],
+    })), prefs);
+    expect(elec.score).toBeLessThan(0);
+  });
+
+  it('GENERALITY — "כמה שפחות ביולוגיה" penalizes a biology elective', () => {
+    const prefs = extractPreferenceTerms('כמה שפחות ביולוגיה');
+    const bio = lexicalRelevance(buildCourseSearchText(course({
+      name_he: 'מבוא לביולוגיה',
+      syllabus_topics_he: ['ביולוגיה', 'תאים'],
+    })), prefs);
+    expect(bio.score).toBeLessThan(0);
+  });
+});

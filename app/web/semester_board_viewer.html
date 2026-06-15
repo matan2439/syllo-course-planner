@@ -3900,10 +3900,25 @@ function renderAiTab() {
       if (statusEl) statusEl.hidden = true;
       if (btn) btn.disabled = false;
       if (state.proposalDraft) {
-        postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
-          { label: 'החל שינוי', action: 'apply-draft' },
-          { label: 'דחה', action: 'reject-draft' },
-        ]);
+        // Issue 3 — if the build was blocked by overload, replace the success
+        // message with a clear Hebrew blocking notice (no "אופטימלית"/"מומלצת"
+        // wording). Apply button is already disabled via isPlanApplyableLocal.
+        const v = _aiPlanLastValidation;
+        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length)));
+        if (blocked) {
+          // Find the overloaded semester for a more specific message, if any.
+          const overloadErr = (v.errors || []).find(e => /חריגה|עומס/.test(e));
+          const overloadInfo = overloadErr ? ` (${overloadErr})` : '';
+          postAssistantMessage(`המערכת שנוצרה לא תקינה כי סמסטר אחד חורג ממגבלת העומס. נסו לבנות מחדש עם עומס נמוך יותר או להפחית קורסים.${overloadInfo}`, [
+            { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
+            { label: 'דחה', action: 'reject-draft' },
+          ]);
+        } else {
+          postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
+            { label: 'החל שינוי', action: 'apply-draft' },
+            { label: 'דחה', action: 'reject-draft' },
+          ]);
+        }
       }
     }).catch(err => {
       clearInterval(interval);
@@ -4213,6 +4228,15 @@ function handleQuickReply(qr) {
       postUserMessage(qr.label);
       askBeforeAllMissingRequirements();
       return;
+    // Issue 1 — explicit build-now quick action. Triggers the same flow as
+    // clicking the "בנה מערכת מחדש" button.
+    case 'rebuild-plan':
+    case 'build-plan': {
+      postUserMessage(qr.label);
+      const btn = document.getElementById('sidebar-build-from-scratch');
+      if (btn) btn.click();
+      return;
+    }
     default:
       break;
   }
@@ -4656,15 +4680,18 @@ async function handleSidebarChatSend(providedMessage) {
   // throw (e.g. in intent/preference helpers) doesn't silently abort the
   // flow leaving the button disabled or the user with no feedback at all.
   if (sendBtn) sendBtn.disabled = true;
-  const loading = showAiLoadingBubble('שולח בקשה...');
-  const thinkTimer = setTimeout(() => loading.setText('העוזר חושב...'), 800);
+  // Issue 1 — loading spinner only appears for actual build/planning actions,
+  // not for every send. Plain preference text returns synchronously after
+  // persisting the message, so no spinner is needed there.
+  let loading = null;
+  let thinkTimer = null;
   try {
     return await _handleSidebarChatSendInner(message, providedMessage, input);
   } catch (err) {
     postAssistantMessage(`שגיאה: ${err?.message || err}`);
   } finally {
-    clearTimeout(thinkTimer);
-    loading.remove();
+    if (thinkTimer) clearTimeout(thinkTimer);
+    if (loading) loading.remove();
     if (sendBtn) sendBtn.disabled = false;
   }
 }
@@ -4695,6 +4722,17 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
   // PART E — single intent-detection entry point.
   const intent = pending != null ? { type: 'improve_current', extra_request_he: planningText } : detectAiIntent(message);
 
+  // Issue 1 — שלח must NOT auto-trigger a build on plain preference text.
+  // We persist the message as the user's preference / extra_request_he, then
+  // either answer a Q&A intent (explain_course, ask_clarification) or offer
+  // an explicit "build now" quick-action chip for imperative planning intents.
+  // The actual build path runs only when the user clicks "בנה מערכת מחדש" or
+  // an explicit "rebuild-plan" / "build-plan" quick action.
+  if (!pending) {
+    const basePrefs = { ...(_aiPlanLastPreferences || sidebarQuickActionPrefs()) };
+    _aiPlanLastPreferences = { ...basePrefs, extra_request_he: planningText };
+  }
+
   // PART F — "why was this chosen?" gets a SPECIFIC, non-generic answer from
   // electiveSelectionReasons + course metadata, without triggering a re-plan.
   if (intent.type === 'explain_course') {
@@ -4721,14 +4759,26 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     'fix_legality', 'improve_career_fit', 'replace_course', 'add_avoided', 'improve_current',
   ]);
 
-  // PART E — fallback path: when the message doesn't match a specific intent
-  // (improve_current), dispatch via runPrimaryAiAction's branching logic
-  // (empty board → full_plan, missing reqs → complete_requirements,
-  // otherwise → incremental improvement). This replaces the old standalone
-  // suggest-next-step button.
+  // Issue 1 — plain preference text (improve_current) must NEVER auto-build.
+  // The user's text is already persisted into _aiPlanLastPreferences.extra_request_he
+  // above. Acknowledge and offer the explicit build action; do not call
+  // runPrimaryAiAction here.
   if (intent.type === 'improve_current' && pending == null) {
-    postAssistantMessage('מבין — בודק מה הצעד הבא המתאים…');
-    await runPrimaryAiAction();
+    postAssistantMessage('שמרתי את ההעדפה. לחץ "בנה מערכת מחדש" כדי לבנות בפועל לפי הבקשה.', [
+      { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
+    ]);
+    return;
+  }
+
+  // Issue 1 — even imperative planning intents do NOT auto-build from שלח.
+  // We acknowledge, persist the request, and offer an explicit build chip.
+  // The actual build path is reachable only via the rebuild button or the
+  // 'rebuild-plan' / 'build-plan' quick action. Existing per-action chips
+  // (apply-draft, reject-draft, allow-overload) are unaffected.
+  if (PLANNING_INTENTS.has(intent.type) && pending == null) {
+    postAssistantMessage('הבנתי את הבקשה. לחץ "בנה מערכת מחדש" או על הכפתור כדי לבנות בפועל.', [
+      { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
+    ]);
     return;
   }
 
@@ -4760,10 +4810,22 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
       _aiPlanLastPreferences = { ...prefs, action_type: 'full_plan' };
       try {
         await requestPlanProposal(prefs, 'full_plan');
-        postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
-          { label: 'החל שינוי', action: 'apply-draft' },
-          { label: 'דחה', action: 'reject-draft' },
-        ]);
+        // Issue 3 — if blocked, show the blocking notice instead of "המוצעת".
+        const v = _aiPlanLastValidation;
+        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length)));
+        if (blocked) {
+          const overloadErr = (v.errors || []).find(e => /חריגה|עומס/.test(e));
+          const overloadInfo = overloadErr ? ` (${overloadErr})` : '';
+          postAssistantMessage(`המערכת שנוצרה לא תקינה כי סמסטר אחד חורג ממגבלת העומס. נסו לבנות מחדש עם עומס נמוך יותר או להפחית קורסים.${overloadInfo}`, [
+            { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
+            { label: 'דחה', action: 'reject-draft' },
+          ]);
+        } else {
+          postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
+            { label: 'החל שינוי', action: 'apply-draft' },
+            { label: 'דחה', action: 'reject-draft' },
+          ]);
+        }
       } catch (err) {
         postAssistantMessage(`אירעה שגיאה בבניית התוכנית: ${err?.message || err}`);
       } finally {
@@ -4843,14 +4905,22 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     return;
   }
 
-  // General Q&A — use the existing AI chat endpoint.
+  // General Q&A — use the existing AI chat endpoint. This is a genuine async
+  // network call (unlike plain preference text, which returns synchronously),
+  // so a loading spinner IS shown here while the request is pending.
   const logEl = document.getElementById('ai-chat-log');
+  const qaLoading = showAiLoadingBubble('העוזר חושב...');
   const respBubble = document.createElement('div');
   respBubble.className = 'ai-chat-msg ai-chat-msg-assistant ai-response-area ai-empty';
   logEl.appendChild(respBubble);
   logEl.scrollTop = logEl.scrollHeight;
 
-  const text = await callAiStream(message, buildPlanContext(), undefined, respBubble, sendBtn);
+  let text;
+  try {
+    text = await callAiStream(message, buildPlanContext(), undefined, respBubble, sendBtn);
+  } finally {
+    qaLoading.remove();
+  }
   if (text == null) {
     respBubble.remove();
     return;
@@ -9089,9 +9159,10 @@ const WEAK_MATCH_FILLER_REASON = 'נבחר בעיקר להשלמת דרישת ת
 // above is kept as a paper trail but is no longer consulted.
 const _HEBREW_STOPWORDS_LOCAL = new Set([
   'אני','רוצה','מעדיף','מעדיפה','חשוב','לי','עם','בלי','כמה','שיותר','שפחות',
-  'קורסים','קורס','מסלול','תחום','בתחום','של','על','את','אם','יש','ולא','לא',
+  'קורסים','קורס','כקורס','מסלול','תחום','בתחום','של','על','את','אם','יש','ולא','לא',
   'גם','אבל','יותר','פחות','גבוה','גבוהה','נמוך','נמוכה','ו','ה','או','כי','זה',
   'להימנע','להתמקד',
+  'בחירה','חירה','כבחירה','בחירות','חובה','מקצוע','נקודות','נקז',
   'a','an','the','and','or','but','with','without','no','i','me','my','want',
   'prefer','would','like','for','to','of','in','on','is','are',
 ]);
@@ -9154,9 +9225,11 @@ function extractPreferenceTermsLocal(text) {
   const avoidSet = new Set();
   let avoidWindow = 0;
   const addTerm = (set, tok) => {
+    // Reject generic words in raw form too (before normalization may mangle a
+    // non-prefixed word, e.g. "בחירה" -> "חירה"). Mirrors api/ai/relevance.ts.
+    if (_HEBREW_STOPWORDS_LOCAL.has(tok)) return;
     const n = _normalizeTokenLocal(tok);
     if (!n || n.length < 2) return;
-    // Re-check stopwords against the normalized form too — mirrors api/ai/relevance.ts.
     if (_HEBREW_STOPWORDS_LOCAL.has(n)) return;
     set.add(n);
   };
@@ -9293,10 +9366,21 @@ function _scoreCandidateLocal(c, interestText) {
   score += utilityWeight * util.score;
   return score;
 }
+/** Issue 2 (client mirror) — true if candidate matches a user avoid term. */
+function _candidateMatchesAvoidLocal(c, interestText) {
+  if (!interestText || !String(interestText).trim()) return false;
+  const rel = _scoreCareerRelevanceLocal(c, interestText);
+  return rel.tag === 'avoided';
+}
 function _pickBestCandidateLocal(candidates, unwantedIds, interestText) {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  const pool = preferred.length ? preferred : candidates;
+  let pool = preferred.length ? preferred : candidates;
+  // Issue 2 — hard-skip avoid-matching candidates if non-avoiding alternatives exist.
+  if (interestText && String(interestText).trim()) {
+    const nonAvoid = pool.filter(c => !_candidateMatchesAvoidLocal(c, interestText));
+    if (nonAvoid.length > 0) pool = nonAvoid;
+  }
   return [...pool].sort((a, b) => _scoreCandidateLocal(b, interestText) - _scoreCandidateLocal(a, interestText))[0];
 }
 
@@ -9365,7 +9449,12 @@ function _pickBestShaarRuachCandidateLocal(candidates, unwantedIds, interestText
 function _pickBestCandidateForGapLocal(candidates, courses, gap, unwantedIds, interestText) {
   if (!candidates.length) return null;
   const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  const pool = preferred.length ? preferred : candidates;
+  let pool = preferred.length ? preferred : candidates;
+  // Issue 2 — hard-skip avoid-matching candidates if alternatives exist.
+  if (interestText && String(interestText).trim()) {
+    const nonAvoid = pool.filter(c => !_candidateMatchesAvoidLocal(c, interestText));
+    if (nonAvoid.length > 0) pool = nonAvoid;
+  }
   const fitRank = c => {
     const h = courses[c.course_id]?.hours ?? c.hours ?? 0;
     if (h === gap) return 0;
@@ -9427,12 +9516,25 @@ function repairAddMissingMandatoryLocal(proposal, analysis, opts) {
     added.push({ course_id: course.course_id, semester_id: target.semester_id });
   }
 
+  // Issue 2 — surface a rationale when a placed mandatory matches an avoid term.
+  const avoidRationales = [];
+  if (opts.userInterestText && String(opts.userInterestText).trim()) {
+    for (const a of added) {
+      const course = analysis.missing_mandatory.find(m => m.course_id === a.course_id);
+      if (!course) continue;
+      const rel = _scoreCareerRelevanceLocal(course, opts.userInterestText);
+      if (rel.tag === 'avoided') {
+        avoidRationales.push(`הקורס ${course.name_he || a.course_id} נשאר כי הוא קורס חובה בתוכנית, למרות שהוא קרוב לנושא שהמשתמש ביקש להימנע ממנו.`);
+      }
+    }
+  }
+
   if (!added.length) return { proposal, added: [], unplaceable };
   return {
     proposal: {
       ...proposal,
       semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)),
-      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.'],
+      warnings_he: [...(proposal.warnings_he || []), 'קורסי חובה שלא היו משובצים בתוכנית הוספו אוטומטית.', ...avoidRationales],
     },
     added,
     unplaceable,
@@ -9714,6 +9816,8 @@ function replaceWeakElectivesLocal(proposal, analysis, opts) {
         .filter(c => !placed.has(c.course_id))
         .map(c => ({ c, rel: _scoreCareerRelevanceLocal(c, opts.userInterestText) }))
         .filter(({ rel }) => rel.score > currentRel.score)
+        // Issue 2 — never swap IN an avoid-matching candidate.
+        .filter(({ rel }) => rel.tag !== 'avoided')
         .filter(({ c }) => {
           const info = opts.courses[c.course_id];
           const allowed = info && info.effective_allowed_semesters && info.effective_allowed_semesters.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
@@ -10252,6 +10356,10 @@ async function requestPlanProposal(prefs, actionType) {
       throw new Error(errMsg);
     }
 
+    // Issue 3 — capture server-side blocked flag + blocking error messages so
+    // the chat/preview can present this as an invalid result rather than success.
+    const serverBlocked = data && data.blocked === true;
+    const serverBlockingErrors = Array.isArray(data && data.errors) ? data.errors.slice() : [];
     const { proposal: normalized, dropped, autofixes } = normalizePlanProposalLocal(data);
     if (dropped.length) {
       normalized.warnings_he = [
@@ -10435,10 +10543,17 @@ async function requestPlanProposal(prefs, actionType) {
       }
     }
 
+    // Issue 3 — propagate server-side blocking errors (e.g. overload over the
+    // hard cap without explicit user confirmation) into the validation result
+    // so the preview/apply gating and chat messaging treat the proposal as
+    // invalid rather than a successful "optimal" plan.
+    const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
+    const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
+
     _aiPlanLastProposal = repairedProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
-    _aiPlanLastValidation = { errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons };
+    _aiPlanLastValidation = { errors: combinedErrors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked };
     if (genBtn) genBtn.disabled = false;
     statusEl?.setAttribute('hidden', '');
     activateProposalDraft(repairedProposal);
@@ -10566,7 +10681,16 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   }
   const planStatus = getPlanPreviewStatusLocal(errors, completeness, statusLabel);
   const statusClass = PLAN_STATUS_CLASS[planStatus.kind];
+  // Issue 3 — top-level blocking banner when the proposal has any blocking
+  // overload error (server gate or client validator). Banner uses the spec
+  // Hebrew template; the apply button stays disabled via isPlanApplyableLocal.
+  const overloadBlocked = !!(_aiPlanLastValidation && (_aiPlanLastValidation.blocked || _aiPlanLastValidation.overloadBlocked))
+    || errors.some(e => /חריגה|עומס/.test(e));
+  const blockedBannerHtml = overloadBlocked
+    ? `<div class="ai-plan-preview-status status-bad" data-testid="overload-blocked-banner"><strong>⛔ המערכת שנוצרה לא תקינה כי סמסטר אחד חורג ממגבלת העומס. נסו לבנות מחדש עם עומס נמוך יותר או להפחית קורסים.</strong></div>`
+    : '';
   const statusHtml = `
+    ${blockedBannerHtml}
     <div class="ai-plan-preview-status ${statusClass}">
       <strong>${planStatus.icon} ${esc(planStatus.text)}</strong>
     </div>`;
