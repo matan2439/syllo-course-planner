@@ -225,6 +225,72 @@ describe('My Courses semester bulk-status menu', () => {
   });
 });
 
+describe('degree-hour accounting: computeDegreeProgress', () => {
+  let dom, window;
+
+  beforeEach(async () => {
+    dom = loadPage();
+    window = dom.window;
+    await waitForInit(window);
+  });
+
+  afterEach(() => {
+    dom.window.close();
+  });
+
+  test('counts completed + currently_taking YEAR_1_2 mandatory courses (not in courseMap) with no double counting', () => {
+    const y12 = getMandatoryCourses(window);
+    // Three Year-1 Sem A courses completed, one Year-2 Sem A currently_taking.
+    const completed = y12.filter(c => c.semester === 'year_1_semester_a').slice(0, 3);
+    const current = y12.find(c => c.semester === 'year_2_semester_a');
+    expect(completed.length).toBe(3);
+    expect(current).toBeTruthy();
+
+    // Ensure a clean slate, then set statuses via the real API.
+    window.eval('userCourseStatuses = {}');
+    for (const c of completed) window.setUserStatus(c.course_id, 'completed', null);
+    window.setUserStatus(current.course_id, 'currently_taking', null);
+
+    const dp = window.eval('computeDegreeProgress({}, state, null)');
+
+    const expectedCompleted = completed.reduce((s, c) => s + c.credit_hours, 0);
+    expect(dp.completed).toBeCloseTo(expectedCompleted, 5);
+    // currently_taking course's hours land in currently_planned, counted once.
+    expect(dp.currently_planned).toBeCloseTo(current.credit_hours, 5);
+    expect(dp.total_after).toBeCloseTo(
+      dp.completed + dp.current_board + dp.currently_planned + dp.proposed_added, 5,
+    );
+    // These YEAR_1_2 courses are not in courseMap, yet their hours are NOT
+    // dropped as "unknown" — the whole point of the fix.
+    for (const c of [...completed, current]) {
+      expect(window.eval(`typeof courseMap[${JSON.stringify(c.course_id)}]`)).toBe('undefined');
+    }
+  });
+
+  test('a proposal adding a real board course increases proposed_added once, not completed/currently_planned', () => {
+    window.eval('userCourseStatuses = {}');
+    // Pick a course present in courseMap (a real board/program course).
+    const cid = window.eval(`Object.keys(courseMap).find(id => typeof courseMap[id].weekly_hours === 'number')`);
+    expect(cid).toBeTruthy();
+    const hrs = window.eval(`courseMap[${JSON.stringify(cid)}].weekly_hours`);
+
+    const baseline = window.eval('computeDegreeProgress({}, state, null)');
+    const onBoardAlready = window.eval(
+      `Object.values(state.semesters).flat().includes(${JSON.stringify(cid)})`,
+    );
+
+    const draft = { semesters: { year_3_semester_a: [cid] } };
+    const dp = window.eval(`computeDegreeProgress({}, state, ${JSON.stringify(draft)})`);
+
+    if (onBoardAlready) {
+      // Already on the board → not added again.
+      expect(dp.proposed_added).toBeCloseTo(baseline.proposed_added, 5);
+    } else {
+      expect(dp.proposed_added).toBeCloseTo(hrs, 5);
+    }
+  });
+});
+
 describe('"בנה מערכת" build button', () => {
   let dom, window, document, fetchCalls;
 

@@ -1718,6 +1718,25 @@ const YEAR_1_2_MANDATORY_COURSES = [
   { course_id: '0512-1205', name_he: 'מבוא למעגלים מערכות ואותות חשמליים', semester: 'year_2_semester_b', credit_hours: 4.0 },
   { course_id: '0542-2500', name_he: 'מכניקת הזורמים (1)', semester: 'year_2_semester_b', credit_hours: 5.0 },
 ];
+/** Fast lookup of YEAR_1_2 mandatory courses' credit hours — these courses are
+ *  NOT registered in courseMap (which only holds year 3/4 program courses), so
+ *  any degree-hour accounting that marks them completed/currently_taking must
+ *  fall back to this map or their hours are silently dropped. */
+const YEAR_1_2_HOURS = Object.fromEntries(
+  YEAR_1_2_MANDATORY_COURSES.map(c => [c.course_id, c.credit_hours])
+);
+
+/** Single source of truth for a course's weekly/credit hours by id, used by
+ *  computeDegreeProgress and buildPlanContext. Prefers courseMap (board/audit/
+ *  program-repo courses), then YEAR_1_2 mandatory fallback. Returns null when
+ *  genuinely unknown so callers can count it as "unknown hours". */
+function hoursForCourseId(cid) {
+  const h = courseMap?.[cid]?.weekly_hours;
+  if (typeof h === 'number') return h;
+  const y = YEAR_1_2_HOURS[cid];
+  return typeof y === 'number' ? y : null;
+}
+
 const DIFF_HE  = { easy:'קל', medium:'בינוני', hard:'קשה', very_hard:'קשה מאוד' };
 const TYPE_HE  = { mandatory:'חובה', elective:'בחירה' };
 const STAT_HE  = { blocked:'חסום', missing_from_db:'חסר' };
@@ -1997,11 +2016,20 @@ function buildPlanContext() {
 
   // Personal status — completed / currently taking / planned, distinct from official board placement
   const personal_status = { completed: [], currently_taking: [], planned: [] };
+  const _year12ById = Object.fromEntries(YEAR_1_2_MANDATORY_COURSES.map(c => [c.course_id, c]));
   for (const [cid, us] of Object.entries(userCourseStatuses)) {
+    if (us.status === 'not_taken') continue;
     const c = courseMap[cid];
-    if (!c || us.status === 'not_taken') continue;
-    const entry = { course_id: cid, name_he: c.name_he };
-    if (us.status === 'completed') entry.hours = c.weekly_hours ?? c.semester_hours ?? null;
+    const y12 = _year12ById[cid];
+    // YEAR_1_2 mandatory courses are not in courseMap — fall back to their
+    // static metadata so completed/currently_taking year-1/2 courses are not
+    // silently dropped from the degree-hour accounting (root cause of the
+    // "total only counts the proposal board" bug).
+    if (!c && !y12) continue;
+    const name_he = c?.name_he || y12?.name_he || cid;
+    const entry = { course_id: cid, name_he };
+    // hoursForCourseId covers courseMap and YEAR_1_2 fallback consistently.
+    entry.hours = hoursForCourseId(cid);
     if ((us.status === 'currently_taking' || us.status === 'planned') && us.planned_semester) {
       entry.semester_label = SEM_HE[us.planned_semester] || us.planned_semester;
     }
@@ -2071,8 +2099,16 @@ function buildPlanContext() {
     return { name: cat.name_he || cat.category_id, category_id: cat.category_id || null, required: cat.min_courses || 0, placed, candidates };
   });
 
-  const known_completed_hours = personal_status.completed
+  const completed_status_hours = personal_status.completed
     .reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
+  // currently_taking / planned courses not yet on the board are prior progress
+  // too — fold them into the "known_completed_hours" baseline the API uses for
+  // the 185-ש"ש accounting, but only when not already placed on the board
+  // (board placement is counted separately by the API as scheduled hours).
+  const currently_planned_hours = [...personal_status.currently_taking, ...personal_status.planned]
+    .filter(c => !placedIds.has(c.course_id))
+    .reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
+  const known_completed_hours = completed_status_hours + currently_planned_hours;
 
   // קורסי שער רוח — program-specific requirement, separate from engineering
   // electives (PART: שער רוח). Candidates are the repository courses not yet
@@ -5109,6 +5145,14 @@ function computeDegreeProgress(context, boardState, draftState) {
       .filter(([, us]) => us?.status === 'completed')
       .map(([cid]) => cid)
   );
+  // currently_taking / planned courses from "הקורסים שלי" — these count toward
+  // the degree total (before any AI proposal) even when they are NOT placed on
+  // the board. Includes YEAR_1_2 mandatory courses (hours via hoursForCourseId).
+  const currentlyPlannedIds = new Set(
+    Object.entries(userCourseStatuses || {})
+      .filter(([, us]) => us?.status === 'currently_taking' || us?.status === 'planned')
+      .map(([cid]) => cid)
+  );
 
   // ── completed ───────────────────────────────────────────────────────
   const manualCompleted = typeof degreeHoursProfile?.completed_degree_hours === 'number'
@@ -5122,7 +5166,7 @@ function computeDegreeProgress(context, boardState, draftState) {
   } else {
     completed = 0;
     for (const cid of completedStatusIds) {
-      const h = courseMap[cid]?.weekly_hours;
+      const h = hoursForCourseId(cid);
       if (typeof h === 'number') completed += h;
       else unknown_hours_count++;
     }
@@ -5145,8 +5189,23 @@ function computeDegreeProgress(context, boardState, draftState) {
   for (const cid of boardPlacedIds) {
     if (completedStatusIds.has(cid)) continue; // already counted in `completed`
     if (draftRemoved.has(cid)) continue;
-    const h = courseMap[cid]?.weekly_hours;
+    const h = hoursForCourseId(cid);
     if (typeof h === 'number') current_board += h;
+    else unknown_hours_count++;
+  }
+
+  // ── currently_taking / planned (not on board, not completed) ─────────
+  // These hours are already partly accrued / committed-to before any AI
+  // proposal. Counted once: skip courses already on the board (counted in
+  // current_board) or completed (in `completed`). When a manual completed
+  // total is set we assume it covers prior progress, so we still add
+  // currently_taking/planned that aren't represented on the board.
+  let currently_planned = 0;
+  for (const cid of currentlyPlannedIds) {
+    if (completedStatusIds.has(cid)) continue;
+    if (boardPlacedIds.has(cid) && !draftRemoved.has(cid)) continue; // counted in current_board
+    const h = hoursForCourseId(cid);
+    if (typeof h === 'number') currently_planned += h;
     else unknown_hours_count++;
   }
 
@@ -5163,7 +5222,8 @@ function computeDegreeProgress(context, boardState, draftState) {
     for (const cid of draftAddedIds) {
       if (boardPlacedIds.has(cid)) continue;        // already on committed board
       if (completedStatusIds.has(cid)) continue;    // already completed
-      const h = courseMap[cid]?.weekly_hours;
+      if (currentlyPlannedIds.has(cid)) continue;   // already counted in currently_planned
+      const h = hoursForCourseId(cid);
       if (typeof h === 'number') proposed_added += h;
       else unknown_hours_count++;
     }
@@ -5174,11 +5234,11 @@ function computeDegreeProgress(context, boardState, draftState) {
   for (const cid of draftRemoved) {
     if (!boardPlacedIds.has(cid)) continue;
     if (completedStatusIds.has(cid)) continue; // counted in `completed`, not `current_board`
-    const h = courseMap[cid]?.weekly_hours;
+    const h = hoursForCourseId(cid);
     if (typeof h === 'number') proposal_removed_hours += h;
   }
 
-  const total_after = completed + current_board + proposed_added;
+  const total_after = completed + current_board + currently_planned + proposed_added;
   const remaining = Math.max(0, required - total_after);
   const overshoot = Math.max(0, total_after - required);
 
@@ -5222,7 +5282,7 @@ function computeDegreeProgress(context, boardState, draftState) {
   }
 
   return {
-    required, completed, current_board, proposed_added, proposal_removed_hours, total_after,
+    required, completed, current_board, currently_planned, proposed_added, proposal_removed_hours, total_after,
     remaining, overshoot, unknown_hours_count, warnings,
     shaar_ruach_required: shaarRuachRequired,
     shaar_ruach_completed, shaar_ruach_scheduled, shaar_ruach_remaining,
@@ -5239,7 +5299,7 @@ function computeProgramProgress() {
 
   // PART C — single unified degree-hours computation (status chip).
   const degreeProgress = computeDegreeProgress({}, state, null);
-  const plannedHours = Math.round((degreeProgress.completed + degreeProgress.current_board) * 10) / 10;
+  const plannedHours = Math.round((degreeProgress.completed + degreeProgress.current_board + degreeProgress.currently_planned) * 10) / 10;
   const unknownHoursCount = degreeProgress.unknown_hours_count;
 
   const total     = degreeProgress.required || null;
@@ -9480,7 +9540,7 @@ function getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours) {
     ? { semesters: Object.fromEntries(proposalSemesters.map(s => [s.semester_id, s.course_ids || []])) }
     : null;
   const dp = computeDegreeProgress({}, state, draftState);
-  const completed_degree_hours = dp.completed + dp.current_board;
+  const completed_degree_hours = dp.completed + dp.current_board + dp.currently_planned;
   const proposed_plan_hours = dp.proposed_added;
   const total_after_plan = dp.total_after;
   const degree_required_hours = dp.required;
@@ -9526,9 +9586,14 @@ function renderDegreeProgressHtml(analysis, status, proposalSemesters) {
   const warnHtml = dp.warnings.length
     ? `<div class="dp-msg warn">${dp.warnings.map(esc).join('; ')}</div>` : '';
 
+  const currentlyPlanned = dp.currently_planned;
+  const plannedRow = currentlyPlanned > 0
+    ? `<div class="dp-row"><span>בקורסים נוכחיים/מתוכננים</span><span class="v">${esc(currentlyPlanned)}</span></div>`
+    : '';
   return `<div class="degree-progress">
     <div class="dp-row"><span>נצברו</span><span class="v">${esc(completed)}</span></div>
     <div class="dp-row"><span>במערכת הנוכחית</span><span class="v">${esc(current)}</span></div>
+    ${plannedRow}
     <div class="dp-row"><span>יתווספו בהצעה</span><span class="v">${esc(added)}</span></div>
     <div class="dp-row dp-total"><span>סה״כ לאחר ההצעה</span><span class="v">${esc(total)}/${esc(required)}</span></div>
     <div class="dp-row"><span>נותרו</span><span class="v">${esc(remaining)} ש״ש</span></div>
