@@ -18,8 +18,43 @@ import {
   lexicalRelevance,
   courseUtility,
   buildSelectionReason,
+  resolveAvoidedCourseIds,
+  normalizeCourseName,
   type CourseLike,
 } from '../../api/ai/relevance';
+
+describe('Issue C — explicit course-name avoid resolution (general)', () => {
+  const courses = [
+    { course_id: 'T2', name_he: 'תרמודינמיקה (2)' },
+    { course_id: 'T1', name_he: 'תרמודינמיקה (1)' },
+    { course_id: 'HEAT', name_he: 'מעבר חום' },
+    { course_id: 'VIB', name_he: 'רעידות ותנודות' },
+  ];
+
+  it('resolves "לא רוצה תרמודינמיקה (2)" to T2 only (not T1, not מעבר חום)', () => {
+    const ids = resolveAvoidedCourseIds('לא רוצה תרמודינמיקה (2)', courses);
+    expect([...ids]).toEqual(['T2']);
+  });
+
+  it('tolerates "בלי תרמודינמיקה 2" suffix without parens', () => {
+    const ids = resolveAvoidedCourseIds('בלי תרמודינמיקה 2', courses);
+    expect([...ids]).toEqual(['T2']);
+  });
+
+  it('works for a different named course (general, not thermo-specific)', () => {
+    const ids = resolveAvoidedCourseIds('להימנע מרעידות ותנודות', courses);
+    expect([...ids]).toEqual(['VIB']);
+  });
+
+  it('returns empty when no avoid intent present', () => {
+    const ids = resolveAvoidedCourseIds('אני אוהב תרמודינמיקה (2)', courses);
+    expect(ids.size).toBe(0);
+  });
+
+  it('normalizeCourseName folds ב\' suffix to a digit', () => {
+    expect(normalizeCourseName("תרמודינמיקה ב'")).toBe(normalizeCourseName('תרמודינמיקה 2'));
+  });
+});
 
 function course(overrides: Partial<CourseLike>): CourseLike {
   return {

@@ -174,6 +174,108 @@ describe('Issue 1 — שלח does not auto-build', () => {
     expect(window.eval('JSON.stringify(state.proposalDraft || null)')).toBe(draftBefore);
   });
 
+  test('Issue A — REAL DOM click + general-intent message + LLM JSON proposal block does NOT auto-apply', async () => {
+    // Stub callAiStream to return a response containing a ```json proposal block
+    // (the exact manual bug — Q&A JSON auto-apply).
+    window.eval('window.__activateCalls = 0; activateProposalDraft = function(p){ window.__activateCalls++; };');
+    window.eval(`callAiStream = function(){ return Promise.resolve('בטח, הנה הצעה:\\n\\n\\u0060\\u0060\\u0060json\\n{"semesters":[{"semester_id":"year_3_semester_a","course_ids":["0542-2600"]}],"rationale_he":"x"}\\n\\u0060\\u0060\\u0060'); };`);
+    // A question-style message classifies as a general intent (not planning).
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    const draftBefore = window.eval('JSON.stringify(state.proposalDraft || null)');
+    input.value = 'מה ההבדל בין שני קורסי התרמודינמיקה?';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 80));
+
+    expect(window.eval('window.__rppCalls')).toBe(0);
+    expect(window.eval('window.__rpfdCalls')).toBe(0);
+    expect(window.eval('window.__activateCalls')).toBe(0);
+    expect(window.eval('JSON.stringify(state.proposalDraft || null)')).toBe(draftBefore);
+    // Raw JSON must not be shown; a rebuild chip is offered instead.
+    const logEl = document.getElementById('ai-chat-log');
+    const assistantTexts = Array.from(logEl.querySelectorAll('.ai-chat-bubble.assistant')).map(b => b.textContent).join('\n');
+    expect(assistantTexts).not.toContain('```json');
+    const chips = Array.from(logEl.querySelectorAll('button')).map(b => b.textContent);
+    expect(chips.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(true);
+  });
+
+  test('Issue B — איפוס שיחה reset clears AI/planning state but preserves board + course statuses', async () => {
+    // Seed stale state.
+    window.eval(`
+      _aiPendingPlanningRequest = 'x';
+      _aiClarificationAnswered = true;
+      _aiPlanLastValidation = { errors: ['e'] };
+      _aiPlanLastProposal = { semesters: [] };
+      _aiPickerState = { wanted: ['a'], unwanted: ['b'], strongUnwanted: ['b'], shaarRuachAssessmentPref: 'x', _initialized: true };
+      state.proposalDraft = { semesters: { year_3_semester_a: ['0542-2600'] }, repo: [] };
+      postAssistantMessage('stale message');
+    `);
+    // Commit some course statuses + capture board.
+    window.eval(`userCourseStatuses = { '0542-2600': { status: 'completed' } };`);
+    const boardBefore = window.eval('JSON.stringify(state.semesters)');
+    const statusesBefore = window.eval('JSON.stringify(userCourseStatuses)');
+
+    const resetBtn = document.getElementById('sidebar-reset-chat');
+    expect(resetBtn).toBeTruthy();
+    expect(resetBtn.textContent).toContain('איפוס שיחה');
+    // Auto-confirm requestUserConfirmation.
+    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
+    resetBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 40));
+
+    expect(window.eval('_aiPendingPlanningRequest')).toBeNull();
+    expect(window.eval('_aiClarificationAnswered')).toBe(false);
+    expect(window.eval('_aiPlanLastValidation')).toBeNull();
+    expect(window.eval('_aiPlanLastProposal')).toBeNull();
+    expect(window.eval('JSON.stringify(_aiPickerState)')).toBe(JSON.stringify({ wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true }));
+    expect(window.eval('state.proposalDraft')).toBeNull();
+    // The stale message is gone (a fresh greeting from renderAiTab is allowed).
+    expect(window.eval('_aiChatMessages.some(m => m.text === "stale message")')).toBe(false);
+    // Preserved.
+    expect(window.eval('JSON.stringify(state.semesters)')).toBe(boardBefore);
+    expect(window.eval('JSON.stringify(userCourseStatuses)')).toBe(statusesBefore);
+  });
+
+  test('Issue C — explicit avoid by name: resolves id, post-filter drops elective, keeps mandatory', async () => {
+    // resolveAvoidedCourseIdsLocal resolves "תרמודינמיקה (2)" to its id.
+    const ids = window.eval(`(function(){
+      var m = {};
+      m['T2'] = { course_id: 'T2', name_he: 'תרמודינמיקה (2)', course_type: 'elective' };
+      m['T1'] = { course_id: 'T1', name_he: 'תרמודינמיקה (1)', course_type: 'elective' };
+      m['HEAT'] = { course_id: 'HEAT', name_he: 'מעבר חום', course_type: 'mandatory' };
+      return JSON.stringify([...resolveAvoidedCourseIdsLocal('לא רוצה תרמודינמיקה (2)', m)]);
+    })()`);
+    expect(JSON.parse(ids)).toEqual(['T2']);
+
+    // pickBestCandidate skips it when an alternative exists.
+    const picked = window.eval(`(function(){
+      var cands = [
+        { course_id: 'T2', name_he: 'תרמודינמיקה (2)' },
+        { course_id: 'ALT', name_he: 'מכניקת הזורמים' },
+      ];
+      var unwanted = new Set(['T2']);
+      var c = _pickBestCandidateLocal(cands, unwanted, '');
+      return c && c.course_id;
+    })()`);
+    expect(picked).toBe('ALT');
+
+    // Final post-filter: elective avoided id removed, mandatory avoided kept w/ rationale.
+    const out = window.eval(`(function(){
+      var proposal = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['T2','HEAT','ALT'] }], warnings_he: [] };
+      var ctxCourses = { T2: { is_mandatory: false, course_type: 'elective' }, HEAT: { is_mandatory: true, course_type: 'mandatory' }, ALT: { is_mandatory: false } };
+      courseMap['T2'] = { course_id:'T2', name_he:'תרמודינמיקה (2)', course_type:'elective' };
+      courseMap['HEAT'] = { course_id:'HEAT', name_he:'מעבר חום', course_type:'mandatory' };
+      var r = applyExplicitAvoidPostFilterLocal(proposal, new Set(['T2','HEAT']), ctxCourses);
+      return JSON.stringify({ ids: r.proposal.semesters[0].course_ids, removed: r.removed, kept: r.keptMandatory, warns: r.proposal.warnings_he });
+    })()`);
+    const parsed = JSON.parse(out);
+    expect(parsed.ids).toContain('HEAT');
+    expect(parsed.ids).not.toContain('T2');
+    expect(parsed.removed).toEqual(['T2']);
+    expect(parsed.kept).toEqual(['HEAT']);
+    expect(parsed.warns.some(w => w.includes('מעבר חום') && w.includes('חובה'))).toBe(true);
+  });
+
   test("'rebuild-plan' quick action DOES reach the build path", async () => {
     // Avoid clarification questions diverting the flow.
     window.eval('detectAmbiguousPlanningInstruction = () => [];');

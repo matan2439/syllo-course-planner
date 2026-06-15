@@ -1438,12 +1438,14 @@ def test_chat_first_default_visible_controls(html):
     template_no_details = re.sub(r"<details.*?</details>", "", template, flags=re.DOTALL)
     template_no_details = re.sub(r'<div id="ai-proposal-card"></div>', "", template_no_details)
 
-    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא', 'איפוס שיחה', 'שאל אותי לפני בחירה']:
+    # Issue B — 'איפוס שיחה' is now an approved VISIBLE reset button, so it is
+    # no longer in the removed-from-default-view list.
+    for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא', 'שאל אותי לפני בחירה']:
         assert removed not in template_no_details, f"{removed} must not be default-visible"
 
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
-    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-build-from-scratch"}, visible_buttons
-    assert len(visible_buttons) <= 2
+    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-build-from-scratch", "sidebar-reset-chat"}, visible_buttons
+    assert len(visible_buttons) <= 3
 
 
 def test_full_plan_flow_no_undefined_function_references(html):
@@ -1734,14 +1736,16 @@ def test_draft_summary_card_has_label_and_actions(html):
 
 
 def test_reset_chat_not_in_default_view_moved_to_advanced(html):
-    """PART G — 'איפוס שיחה' removed from default UI; 'נקה שיחה והעדפות
-    זמניות' lives under אפשרויות מתקדמות and clears chat + _aiPickerState."""
-    assert 'איפוס שיחה' not in html
+    """Issue B — a VISIBLE 'איפוס שיחה' reset button is now expected (approved
+    requirement); the advanced 'נקה שיחה והעדפות זמניות' action still lives
+    under אפשרויות מתקדמות and clears chat + _aiPickerState."""
+    assert 'איפוס שיחה' in html
+    assert 'id="sidebar-reset-chat"' in html
     details_m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
     assert details_m
     assert 'נקה שיחה והעדפות זמניות' in details_m.group(1)
     handler = re.search(
-        r"getElementById\('sidebar-clear-chat'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
+        r"getElementById\('sidebar-clear-chat'\)\??\.addEventListener\('click', \([^)]*\) => \{(.*?)\n  \}\);",
         html, re.DOTALL,
     )
     assert handler

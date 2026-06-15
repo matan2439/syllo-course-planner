@@ -265,6 +265,57 @@ export function extractPreferenceTerms(text: string): PreferenceTerms {
   };
 }
 
+// ── 1b. explicit course-NAME avoid resolution ───────────────────────────────
+
+/**
+ * Issue C — normalize a course name for tolerant matching: lowercase, fold the
+ * common Hebrew level-letter suffixes (א'/ב'/ג'/ד') to digits, strip
+ * parentheses/quotes/punctuation, collapse whitespace. General — not specific
+ * to any course.
+ */
+export function normalizeCourseName(name?: string | null): string {
+  if (!name) return '';
+  let s = String(name).toLowerCase();
+  // Fold standalone Hebrew ordinal-letter level suffixes to digits. \b does not
+  // work for Hebrew letters, so anchor on a space/start boundary + optional
+  // geresh, treating the letter as a separate token.
+  s = s.replace(/(^|\s)ב['׳]?(?=\s|$)/g, ' 2 ').replace(/(^|\s)א['׳]?(?=\s|$)/g, ' 1 ')
+       .replace(/(^|\s)ג['׳]?(?=\s|$)/g, ' 3 ').replace(/(^|\s)ד['׳]?(?=\s|$)/g, ' 4 ');
+  s = s.replace(/[()[\]{}.,;:!?"״'׳`\-–—_]/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+const NAME_AVOID_TRIGGERS = [
+  'לא רוצה', 'לא מעוניין', 'לא מעוניינת', 'בלי', 'להימנע מ', 'להימנע',
+  'אל תשבץ', 'אל תכלול', 'לא', 'don\'t want', 'do not want', 'avoid', 'without', 'no ',
+];
+
+/**
+ * Issue C — detect explicit course-NAME avoid phrases in free text and resolve
+ * them to course_id(s) by matching against the provided course list's name_he,
+ * tolerant of the (2)/2/ב' suffix and parentheses. Returns the set of
+ * explicitly-avoided ids. General: matches any named course.
+ */
+export function resolveAvoidedCourseIds(
+  text: string | null | undefined,
+  courses: Array<{ course_id: string; name_he?: string | null }>,
+): Set<string> {
+  const result = new Set<string>();
+  if (!text || !courses?.length) return result;
+  const lower = String(text).toLowerCase();
+  if (!NAME_AVOID_TRIGGERS.some(t => lower.includes(t))) return result;
+
+  const normText = normalizeCourseName(text);
+  for (const c of courses) {
+    if (!c?.name_he) continue;
+    const norm = normalizeCourseName(c.name_he);
+    if (norm.length < 3) continue;
+    if (normText.includes(norm)) result.add(c.course_id);
+  }
+  return result;
+}
+
 // ── 2. buildCourseSearchText ────────────────────────────────────────────────
 
 export function buildCourseSearchText(course: CourseLike): string {

@@ -3770,6 +3770,7 @@ function renderAiTab() {
         <textarea id="sidebar-chat-input" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="כתוב מה תרצה לבנות, לשנות או לתקן במערכת...">${esc(_aiChatInputDraft)}</textarea>
         <div class="ai-send-row">
           <button id="sidebar-chat-send" class="ai-send-btn">שלח ›</button>
+          <button id="sidebar-reset-chat" class="btn btn-sm btn-link" type="button">איפוס שיחה</button>
         </div>
       </div>
 
@@ -3834,6 +3835,18 @@ function renderAiTab() {
   renderAiChatLog();
 
   document.getElementById('sidebar-chat-send').addEventListener('click', () => handleSidebarChatSend());
+  // Issue B — visible "איפוס שיחה" reset button. Clears AI chat + planning
+  // state and the proposal-draft overlay, but never the committed board or
+  // course statuses. Guarded by an in-app confirmation.
+  document.getElementById('sidebar-reset-chat')?.addEventListener('click', (e) => {
+    requestUserConfirmation({
+      message: 'לאפס את שיחת העוזר וההצעה הנוכחית? הלוח והקורסים שלך לא יושפעו.',
+      confirmLabel: 'אפס',
+      cancelLabel: 'בטל',
+      anchorEl: e.target.closest('.ai-input-area') || e.target.parentElement,
+      onConfirm: () => resetAiConversation(),
+    });
+  });
   document.getElementById('sidebar-chat-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSidebarChatSend();
   });
@@ -4088,6 +4101,48 @@ function clearAiChatHistory() {
   _aiChatMessages = [];
   saveAiChatState();
   renderAiChatLog();
+}
+
+/**
+ * Issue B — "איפוס שיחה" — full reset of the AI assistant conversation +
+ * planning state + the proposal-draft OVERLAY. It deliberately does NOT touch
+ * the committed board (state.semesters), state.repo, or any persisted course
+ * statuses (userCourseStatuses). Clearing proposalDraft only removes the
+ * *proposed* overlay; courses already applied into state.semesters stay.
+ */
+function resetAiConversation() {
+  // 1. Chat history + persisted chat state (messages + input draft).
+  _aiChatMessages = [];
+  _aiChatInputDraft = '';
+  const inputEl = document.getElementById('sidebar-chat-input');
+  if (inputEl) inputEl.value = '';
+  saveAiChatState();
+
+  // 2. Pending-clarification / planning continuation flags.
+  _aiPendingPlanningRequest = null;
+  _aiClarificationAnswered = false;
+
+  // 3. Cached planning artefacts.
+  _aiPlanLastPreferences = null;
+  _aiPlanLastProposal    = null;
+  _aiPlanLastValidation  = null;
+  _aiPlanLastCtx         = null;
+  _aiPlanLastAnalysis    = null;
+  _aiPlanLastPreviewArgs = null;
+
+  // 4. Temporary picker preferences back to initial.
+  _aiPickerState = { wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true };
+
+  // 5. Drop the proposal-draft OVERLAY (not committed courses) + stale chips,
+  //    blocked/overload state and loading bubbles, then re-render the board so
+  //    no draft courses show.
+  state.proposalDraft = null;
+  _missingReqsDismissedFingerprint = null;
+  document.getElementById('ai-build-confirm')?.remove();
+  document.querySelectorAll('.ai-chat-bubble.loading').forEach(el => el.remove());
+
+  renderAll();
+  if (_sidebarTab === 'ai') renderAiTab();
 }
 
 function renderAiChatLog() {
@@ -4814,46 +4869,50 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     return;
   }
 
-  const { displayText, applied } = tryApplyProposalFromChatText(text);
-  const finalText = applied
-    ? `${displayText}\n\n(הוצעה טיוטת שינוי — ראה את כרטיס ההצעה למטה)`
-    : displayText;
+  // Issue A — the chat-send Q&A path must NEVER auto-activate/build a proposal
+  // draft. We only display the assistant's text answer. If the LLM response
+  // happened to contain a ```json proposal block, we STRIP it (so raw JSON is
+  // not shown) and, instead of activating it, append a note + the explicit
+  // "בנה מערכת מחדש" rebuild chip. state.proposalDraft is never set from here.
+  const { displayText, hadProposalBlock } = stripProposalFromChatText(text);
   respBubble.remove();
-  postAssistantMessage(finalText);
-  if (applied) renderAiTab();
+  if (hadProposalBlock) {
+    postAssistantMessage(
+      `${displayText}\n\nכדי לבנות מערכת לפי זה, לחצי על "בנה מערכת מחדש".`,
+      [{ label: 'בנה מערכת מחדש', action: 'rebuild-plan' }],
+    );
+  } else {
+    postAssistantMessage(displayText);
+  }
 }
 
 let _aiClarificationAnswered = false;
 let _aiPendingPlanningRequest = null;
 
 /**
- * Look for a fenced ```json block in the AI's reply containing a proposal
- * ({ semesters: [{ semester_id, course_ids }], rationale_he }). If found and
- * valid, normalize it (carries forward untouched courses, like
- * requestPlanProposal) and activate it as a reviewable draft.
- * Returns the display text with the JSON block stripped, plus whether a
- * proposal was applied.
+ * Issue A — the chat-send Q&A path must never build a draft. This helper only
+ * STRIPS a fenced ```json proposal block out of the assistant's reply (so raw
+ * JSON isn't shown to the user) and reports whether one was present, so the
+ * caller can offer the explicit rebuild chip instead. It NEVER mutates
+ * state.proposalDraft or calls activateProposalDraft.
  */
-function tryApplyProposalFromChatText(text) {
+function stripProposalFromChatText(text) {
   const match = text.match(/```json\s*([\s\S]*?)```/i);
-  if (!match) return { displayText: text, applied: false };
+  if (!match) return { displayText: text, hadProposalBlock: false };
 
   let parsed;
   try {
     parsed = JSON.parse(match[1]);
   } catch {
-    return { displayText: text, applied: false };
+    // Not valid JSON — leave the text untouched.
+    return { displayText: text, hadProposalBlock: false };
   }
 
-  if (!parsed || !Array.isArray(parsed.semesters)) {
-    return { displayText: text, applied: false };
-  }
-
-  const { proposal: normalized } = normalizePlanProposalLocal(parsed);
-  activateProposalDraft(normalized);
-
+  const looksLikeProposal = !!parsed && Array.isArray(parsed.semesters);
+  // Strip the block regardless (raw JSON should never be shown), but only flag
+  // it as a proposal (→ rebuild chip) when it actually looks like one.
   const displayText = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
-  return { displayText, applied: true };
+  return { displayText: displayText || text, hadProposalBlock: looksLikeProposal };
 }
 
 /** Shows a transient toast message at the bottom of the screen (replaces
@@ -10213,8 +10272,122 @@ function insertCandidateIntoProposalLocal(proposal, courseId, ctx) {
   return { ...proposal, semesters: sems };
 }
 
+/**
+ * Issue C — normalize a course name for tolerant matching: lowercase, strip
+ * parentheses/quotes/punctuation, collapse whitespace, and fold the common
+ * level suffixes "(2)"/"2"/"ב'"/"ב" → a canonical "2", "(1)"/"1"/"א'"/"א" → "1".
+ * General — works for any named course, not just thermodynamics.
+ */
+function _normalizeCourseNameLocal(name) {
+  if (!name) return '';
+  let s = String(name).toLowerCase();
+  // Fold standalone Hebrew ordinal-letter level suffixes to digits. \b does not
+  // work for Hebrew letters, so anchor on a space/start boundary + optional geresh.
+  s = s.replace(/(^|\s)ב['׳]?(?=\s|$)/g, ' 2 ').replace(/(^|\s)א['׳]?(?=\s|$)/g, ' 1 ')
+       .replace(/(^|\s)ג['׳]?(?=\s|$)/g, ' 3 ').replace(/(^|\s)ד['׳]?(?=\s|$)/g, ' 4 ');
+  s = s.replace(/[()[\]{}.,;:!?"״'׳`\-–—_]/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+/**
+ * Issue C — detect EXPLICIT course-name avoid phrases in free text and resolve
+ * them to course_id(s) by matching against courseMap name_he. Handles "(2)"/
+ * "2"/"ב'" suffixes and parentheses. Returns a Set of explicitly-avoided ids.
+ * General: matches whatever named course the user typed.
+ */
+function resolveAvoidedCourseIdsLocal(text, map) {
+  const result = new Set();
+  if (!text) return result;
+  map = map || courseMap;
+  const lower = String(text).toLowerCase();
+  // Avoid-intent triggers that may precede a course NAME (not just a topic).
+  const triggers = [
+    'לא רוצה', 'לא מעוניין', 'לא מעוניינת', 'בלי', 'להימנע מ', 'להימנע',
+    'אל תשבץ', 'אל תכלול', 'לא', "don't want", 'do not want', 'avoid', 'without', 'no ',
+  ];
+  let hasAvoidIntent = triggers.some(t => lower.includes(t));
+  if (!hasAvoidIntent) return result;
+
+  // Build a normalized index of courseMap names → ids.
+  const byNorm = new Map();
+  for (const c of Object.values(map)) {
+    if (!c || !c.name_he) continue;
+    const norm = _normalizeCourseNameLocal(c.name_he);
+    if (!norm) continue;
+    if (!byNorm.has(norm)) byNorm.set(norm, []);
+    byNorm.get(norm).push(c.course_id);
+  }
+
+  const normText = _normalizeCourseNameLocal(text);
+  // For each known course name, check whether its full normalized name appears
+  // as a contiguous phrase in the normalized request text. Require the WHOLE
+  // course name to match so "תרמודינמיקה 2" does NOT match "מעבר חום" and
+  // "תרמודינמיקה 1" stays distinct from "תרמודינמיקה 2" (the trailing digit is
+  // part of the normalized name).
+  for (const [norm, ids] of byNorm) {
+    if (norm.length < 3) continue;
+    if (normText.includes(norm)) {
+      for (const id of ids) result.add(id);
+    }
+  }
+  return result;
+}
+
+/**
+ * Issue C — FINAL deterministic post-filter, run AFTER the LLM output and all
+ * repairs, BEFORE the proposal becomes an applicable draft. Removes any
+ * explicitly-avoided ELECTIVE course from the draft semesters. If the avoided
+ * course is MANDATORY it is KEPT and a Hebrew rationale is added. This
+ * guarantees an explicitly-named avoided elective cannot survive even if the
+ * LLM/scoring included it. Returns { proposal, removed, keptMandatory }.
+ */
+function applyExplicitAvoidPostFilterLocal(proposal, avoidedIds, ctxCourses) {
+  const removed = [];
+  const keptMandatory = [];
+  if (!avoidedIds || !avoidedIds.size) return { proposal, removed, keptMandatory };
+  const isMandatory = (cid) => {
+    const info = (ctxCourses && ctxCourses[cid]) || {};
+    const cm = courseMap[cid] || {};
+    return !!info.is_mandatory || info.course_type === 'mandatory' || cm.course_type === 'mandatory' || !!cm.is_mandatory;
+  };
+  const semesters = (proposal.semesters || []).map(s => {
+    const kept = (s.course_ids || []).filter(cid => {
+      if (!avoidedIds.has(cid)) return true;
+      if (isMandatory(cid)) {
+        keptMandatory.push(cid);
+        return true; // never drop a mandatory course
+      }
+      removed.push(cid);
+      return false;
+    });
+    return { ...s, course_ids: kept };
+  });
+  const rationales = keptMandatory.map(cid =>
+    `הקורס ${courseMap[cid]?.name_he || cid} נשאר כי הוא קורס חובה בתוכנית, למרות שביקשת להימנע ממנו.`
+  );
+  const next = { ...proposal, semesters };
+  if (rationales.length) next.warnings_he = [...(next.warnings_he || []), ...rationales];
+  return { proposal: next, removed, keptMandatory };
+}
+
 async function requestPlanProposal(prefs, actionType) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
+
+  // Issue C — resolve explicitly-named avoided courses from the free-text
+  // request and merge them into the strong-unwanted / unwanted preference sets
+  // so pickBestCandidate(ForGap) skips them when alternatives exist. The final
+  // deterministic post-filter below removes any that nonetheless survive.
+  const explicitlyAvoidedIds = resolveAvoidedCourseIdsLocal(prefs.extra_request_he);
+  if (explicitlyAvoidedIds.size) {
+    const ids = [...explicitlyAvoidedIds];
+    prefs.strongly_avoided_course_ids = [...new Set([...(prefs.strongly_avoided_course_ids || []), ...ids])];
+    prefs.unwanted_course_ids = [...new Set([...(prefs.unwanted_course_ids || []), ...ids])];
+    if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
+    if (!_aiPickerState.unwanted) _aiPickerState.unwanted = [];
+    _aiPickerState.strongUnwanted = [...new Set([..._aiPickerState.strongUnwanted, ...ids])];
+    _aiPickerState.unwanted = [...new Set([..._aiPickerState.unwanted, ...ids])];
+  }
   // Falls back to the "עוזר AI" side-panel status/button when the old
   // preferences modal isn't open (the compact sidebar flow is now primary).
   const statusEl = document.getElementById('ai-plan-status') || document.getElementById('sidebar-ai-status');
@@ -10438,13 +10611,22 @@ async function requestPlanProposal(prefs, actionType) {
     const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
     const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
 
-    _aiPlanLastProposal = repairedProposal;
+    // Issue C — FINAL deterministic post-filter: strip any explicitly-named
+    // avoided ELECTIVE that survived the LLM + repairs; keep mandatory ones
+    // with a Hebrew rationale. Runs after all repairs, before the draft.
+    const { proposal: avoidFilteredProposal, removed: avoidRemoved } =
+      applyExplicitAvoidPostFilterLocal(repairedProposal, explicitlyAvoidedIds, ctx.courses);
+    if (avoidRemoved.length) {
+      showBoardNotify(`הוסרו ${avoidRemoved.length} קורסי בחירה שביקשת להימנע מהם.`);
+    }
+
+    _aiPlanLastProposal = avoidFilteredProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
-    _aiPlanLastValidation = { errors: combinedErrors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked };
+    _aiPlanLastValidation = { errors: combinedErrors, warnings: avoidFilteredProposal.warnings_he ? [...new Set([...warnings, ...avoidFilteredProposal.warnings_he])] : warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked };
     if (genBtn) genBtn.disabled = false;
     statusEl?.setAttribute('hidden', '');
-    activateProposalDraft(repairedProposal);
+    activateProposalDraft(avoidFilteredProposal);
   } catch (err) {
     if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;
