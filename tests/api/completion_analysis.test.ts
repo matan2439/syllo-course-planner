@@ -2216,24 +2216,30 @@ describe('PART A/E/F/G — professional/career relevance scoring', () => {
   const interestText = 'אני מעוניין באנליזות, תכן, רובוטיקה ושימושים בתעשייה';
   const knownSemesterIds = ['s1', 's2', 's3'];
 
-  it('1. user request "אנליזות תכן רובוטיקה" boosts FEM/design/robotics courses', () => {
-    const fem = { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 };
-    const design = { course_id: 'DES1', name_he: 'תכן מכני מתקדם', hours: 3 };
-    const robotics = { course_id: 'ROB1', name_he: 'מבוא לרובוטיקה ובקרה', hours: 3 };
-    const filler = { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 };
+  it('1. user request boosts courses whose syllabus matches the request (generic, no keyword tables)', () => {
+    // Phase 2B — scoring is now driven by lexical overlap between the
+    // request and the course's full search text (name + syllabus), not by
+    // a hand-curated keyword table tied to one specific user profile.
+    const fem = { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, תכן מכני, סימולציות.', hours: 3 };
+    const design = { course_id: 'DES1', name_he: 'תכן מכני מתקדם', syllabus_summary_he: 'תכן מכני, פרויקט גמר, יישומים בתעשייה.', hours: 3 };
+    const robotics = { course_id: 'ROB1', name_he: 'מבוא לרובוטיקה', syllabus_summary_he: 'רובוטיקה, קינמטיקה, יישומים בתעשייה.', hours: 3 };
+    const filler = { course_id: 'GEN1', name_he: 'מבני נתונים', syllabus_summary_he: 'מבני נתונים, אלגוריתמים, סיבוכיות.', hours: 3 };
     expect(scoreCandidate(fem as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
     expect(scoreCandidate(design as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
     expect(scoreCandidate(robotics as any, interestText)).toBeGreaterThan(scoreCandidate(filler as any, interestText));
   });
 
-  it('2. unrelated electronics/data courses are penalized unless required', () => {
+  it('2. unrelated courses score neutral (not negative) when the user did not explicitly ask to avoid them', () => {
+    // Phase 2B — the old hardcoded "weak relevance" blacklist (electronics,
+    // data structures, wearables) is gone. Unrelated courses are simply
+    // neutral; only courses the user *explicitly* asked to avoid are
+    // penalized. This is the topic-agnostic behavior Phase 2A/2B introduces.
     const dataStructures = { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3 };
     const microNano = { course_id: 'GEN2', name_he: 'טכנולוגיות מיקרו וננו אלקטרוניקה', hours: 3 };
-    const wearables = { course_id: 'GEN3', name_he: 'מערכות מודעות לבישות', hours: 3 };
-    expect(scoreCareerRelevance(dataStructures as any, interestText).score).toBeLessThan(0);
-    expect(scoreCareerRelevance(microNano as any, interestText).score).toBeLessThan(0);
-    expect(scoreCareerRelevance(wearables as any, interestText).score).toBeLessThan(0);
-    // without any stated interest, these are neutral rather than penalized
+    expect(scoreCareerRelevance(dataStructures as any, interestText).score).toBeLessThanOrEqual(0);
+    expect(scoreCareerRelevance(microNano as any, interestText).score).toBeLessThanOrEqual(0);
+    // If the user explicitly excludes a topic, it now scores strictly negative.
+    expect(scoreCareerRelevance(microNano as any, 'בלי אלקטרוניקה').score).toBeLessThan(0);
     expect(scoreCareerRelevance(dataStructures as any, '').score).toBe(0);
   });
 
@@ -2254,9 +2260,11 @@ describe('PART A/E/F/G — professional/career relevance scoring', () => {
   });
 
   it('4. candidate with high career relevance beats generic filler candidate', () => {
+    // Phase 2B — give the relevant candidate enough syllabus text so its
+    // lexical overlap with the request beats a data-rich but unrelated one.
     const candidates = [
       { course_id: 'GEN1', name_he: 'מבני נתונים', hours: 3, has_syllabus_summary: true, grade_average: 95 },
-      { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', hours: 3 },
+      { course_id: 'FEM1', name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, תכן מכני, סימולציות, רובוטיקה.', syllabus_topics_he: ['אנליזות', 'תכן', 'רובוטיקה'], hours: 3 },
     ];
     expect(pickBestCandidate(candidates as any, new Set(), interestText)?.course_id).toBe('FEM1');
     // without a stated interest, the generic-but-data-rich course can still win
@@ -2298,8 +2306,9 @@ describe('PART A/E/F/G — professional/career relevance scoring', () => {
       overloaded_semesters: [], movable_courses: [], pinned_course_ids: [],
     };
     const result = repairAddMissingElectives(proposal as any, analysis, { courses, knownSemesterIds: ['s1', 's2'], userInterestText: interestText } as any);
-    const femAdd = result.added.find(a => a.course_id === 'FEM1');
-    expect(femAdd?.selection_reason).toBe('נבחר כי הוא רלוונטי לאנליזות/FEM/תורת התנודות');
+    // Phase 2B — reasons are now composed from actual matched terms / utility,
+    // not from a fixed topic-specific Hebrew string. The contract is just
+    // that every added course carries a non-empty selection_reason.
     expect(result.added.every(a => !!a.selection_reason)).toBe(true);
   });
 
@@ -2365,9 +2374,11 @@ describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives /
   });
 
   it('3. scorePlan rewards professional relevance matching the user free-text request', () => {
+    // Phase 2B — fixtures now include syllabus text so the generic
+    // lexicalRelevance scorer has actual content to overlap against.
     const courses: any = {
-      FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' },
-      OTHER: { hours: 3, name_he: 'מבני נתונים' },
+      FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, FEM, סימולציות.' },
+      OTHER: { hours: 3, name_he: 'מבני נתונים', syllabus_summary_he: 'מבני נתונים, אלגוריתמים, סיבוכיות.' },
     };
     const ctx = { courses, knownSemesterIds: known, legal: true, userInterestText: FEM_TEXT };
     const withFem: any = { semesters: [{ semester_id: 's1', course_ids: ['FEM1'] }] };
@@ -2377,7 +2388,7 @@ describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives /
   });
 
   it('4. scorePlan sequencing rewards FEM/analysis courses scheduled earlier', () => {
-    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' } };
+    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, FEM, סימולציות.' } };
     const ctx = { courses, knownSemesterIds: known, legal: true, userInterestText: FEM_TEXT };
     const early: any = { semesters: [{ semester_id: 's1', course_ids: ['FEM1'] }, { semester_id: 's2', course_ids: [] }, { semester_id: 's3', course_ids: [] }] };
     const late: any = { semesters: [{ semester_id: 's1', course_ids: [] }, { semester_id: 's2', course_ids: [] }, { semester_id: 's3', course_ids: ['FEM1'] }] };
@@ -2414,26 +2425,29 @@ describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives /
   });
 
   it('7. replaceWeakElectives swaps a weakly-related elective for a more relevant legal alternative', () => {
+    // Phase 2B — WEAK needs an avoid-term match to score < 0 so replaceWeakElectives
+    // considers it; STRONG needs syllabus terms that match the interest.
+    const interest = 'אנליזות FEM, בלי מבני נתונים';
     const courses: any = {
-      WEAK: { hours: 3, name_he: 'מבני נתונים' },
-      STRONG: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', effective_allowed_semesters: ['s1'] },
+      WEAK: { hours: 3, name_he: 'מבני נתונים', syllabus_summary_he: 'מבני נתונים, אלגוריתמים.' },
+      STRONG: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, FEM.', effective_allowed_semesters: ['s1'] },
     };
     const proposal: any = { semesters: [{ semester_id: 's1', course_ids: ['WEAK'] }] };
     const analysis: any = {
       categories: [{ name: 'בחירה', required: 1, placed: 1, missing: 0, candidates: [
-        { course_id: 'WEAK', name_he: 'מבני נתונים', hours: 3 },
-        { course_id: 'STRONG', name_he: 'מבוא לאלמנטים סופיים', hours: 3, effective_allowed_semesters: ['s1'] },
+        { course_id: 'WEAK', name_he: 'מבני נתונים', syllabus_summary_he: 'מבני נתונים, אלגוריתמים.', hours: 3 },
+        { course_id: 'STRONG', name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, FEM.', hours: 3, effective_allowed_semesters: ['s1'] },
       ] }],
     };
     const { proposal: updated, replaced } = replaceWeakElectives(proposal, analysis, {
-      courses, knownSemesterIds: known, userInterestText: FEM_TEXT,
+      courses, knownSemesterIds: known, userInterestText: interest,
     });
     expect(replaced).toEqual([{ removed: 'WEAK', added: 'STRONG', semester_id: 's1', reason: expect.any(String) }]);
     expect(updated.semesters[0].course_ids).toEqual(['STRONG']);
   });
 
   it('8. moveFoundationCoursesEarlier moves an FEM/analysis course to an earlier legal semester with room', () => {
-    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים' } };
+    const courses: any = { FEM1: { hours: 3, name_he: 'מבוא לאלמנטים סופיים', syllabus_summary_he: 'אנליזות חוזק, אלמנטים סופיים, FEM, סימולציות, תכן.', syllabus_topics_he: ['אנליזות', 'אלמנטים', 'תכן'] } };
     const proposal: any = { semesters: [
       { semester_id: 's1', course_ids: [] },
       { semester_id: 's2', course_ids: [] },
@@ -2631,33 +2645,42 @@ describe('PART C — overshoot minimization', () => {
 describe('PART D — relevance scoring for design/FEM/vibration/robotics profile', () => {
   const PROFILE = 'תכן, אנליזות, FEM אלמנטים סופיים, תורת התנודות, קצת רובוטיקה';
 
-  test('biomedical course is penalized even when other interests are active', () => {
+  test('biomedical course is only penalized when the user explicitly asks to avoid it (no implicit blacklist)', () => {
+    // Phase 2B — the previous hardcoded biomedical penalty is gone. A
+    // biomedical course is neutral unless the user wrote "בלי ביורפואה" or
+    // similar. This is the topic-agnostic design of the new scorer.
     const biomed = { course_id: 'BIO1', name_he: 'מבוא לביורפואה', syllabus_topics_he: ['רקמות', 'מכניקה ביולוגית'] };
-    const result = scoreCareerRelevance(biomed, PROFILE);
-    expect(result.score).toBeLessThan(0);
+    const neutral = scoreCareerRelevance(biomed, PROFILE);
+    expect(neutral.score).toBeLessThanOrEqual(0);
+    const explicit = scoreCareerRelevance(biomed, PROFILE + ', בלי ביורפואה');
+    expect(explicit.score).toBeLessThan(0);
   });
 
   test('FEM/vibration course is boosted for this profile', () => {
-    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות במערכות מכניות' };
+    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות במערכות מכניות', syllabus_summary_he: 'תנודות, אלמנטים סופיים, אנליזות חוזק, FEM.' };
     const result = scoreCareerRelevance(fem, PROFILE);
     expect(result.score).toBeGreaterThan(0);
-    expect(result.tag).toBe('fem_analysis');
+    // Phase 2B — tag is now the generic 'matched' (not the topic-specific
+    // legacy 'fem_analysis'), because the scorer is no longer keyword-table-based.
+    expect(result.tag).toBe('matched');
   });
 
   test('design (תכן) course is boosted for this profile', () => {
-    const design = { course_id: 'DES1', name_he: 'תכן מערכות הנדסיות' };
+    const design = { course_id: 'DES1', name_he: 'תכן מערכות הנדסיות', syllabus_summary_he: 'תכן הנדסי, פרויקט גמר.' };
     const result = scoreCareerRelevance(design, PROFILE);
     expect(result.score).toBeGreaterThan(0);
   });
 
   test('biomedical course loses to FEM/design course when both are candidates', () => {
-    const biomed = { course_id: 'BIO1', name_he: 'מבוא לביורפואה', hours: 3 };
-    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות', hours: 3 };
+    const biomed = { course_id: 'BIO1', name_he: 'מבוא לביורפואה', syllabus_summary_he: 'רקמות, ביולוגיה, רפואה.', hours: 3 };
+    const fem = { course_id: 'FEM1', name_he: 'תורת התנודות', syllabus_summary_he: 'תנודות, אלמנטים סופיים, FEM, אנליזות.', hours: 3 };
     const best = pickBestCandidate([biomed as any, fem as any], new Set(), PROFILE);
     expect(best?.course_id).toBe('FEM1');
   });
 
-  test('control-heavy course is penalized when user did not request control', () => {
+  test('control-heavy course is neutral (not implicitly penalized) when user did not request control', () => {
+    // Phase 2B — control courses are no longer auto-penalized; they're
+    // simply not boosted unless the user mentions them.
     const control = { course_id: 'CTRL1', name_he: 'מערכות בקרה ספרתיות' };
     const result = scoreCareerRelevance(control, PROFILE);
     expect(result.score).toBeLessThanOrEqual(0);

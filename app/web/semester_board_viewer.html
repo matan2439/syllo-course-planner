@@ -1981,6 +1981,10 @@ function buildPlanContext() {
       assessment_type:             c.assessment_type             ?? null,
       has_syllabus:                Boolean(c.syllabus_url || c.syllabus_links?.length),
       has_syllabus_summary:        Boolean(c.syllabus_text_available && c.syllabus_summary_he),
+      // Phase 2B — ship a concise syllabus slice up to the LLM so its
+      // semestersSection prompt can ground answers in actual topic text.
+      syllabus_summary_he:         c.syllabus_summary_he || null,
+      syllabus_topics_he:          c.syllabus_topics_he  || null,
     }));
     return {
       id:          sem.id,
@@ -3625,7 +3629,10 @@ function repairOvershootToDraft() {
       .map(cid => ({ cid, info: ctx.courses[cid] || {}, course: courseMap[cid] }))
       .filter(({ info }) => !info.is_mandatory && info.course_type !== 'mandatory')
       .filter(({ course }) => course)
-      .map(({ cid, info, course }) => ({ cid, hours: info.hours || 0, score: _scoreCareerRelevanceLocal(course, null).score }))
+      // Phase 2B — use the user's last preference text (if any) so the
+      // weakest-relevance candidate is judged against the actual request,
+      // not a null interest text.
+      .map(({ cid, info, course }) => ({ cid, hours: info.hours || 0, score: _scoreCareerRelevanceLocal(course, _aiPlanLastPreferences?.extra_request_he || null).score }))
       .sort((a, b) => a.score - b.score);
 
     if (!fillerCandidates.length) break;
@@ -9039,29 +9046,200 @@ const BIOMEDICAL_INTEREST_KEYWORDS = ['ביורפואה', 'ביורפואי', '�
 const DEFAULT_WEAK_RELEVANCE_REASON = 'נבחר בעיקר להשלמת דרישת תואר';
 const WEAK_MATCH_FILLER_REASON = 'נבחר בעיקר להשלמת דרישת תואר כי לא נמצאה חלופה רלוונטית יותר.';
 
+// ── Phase 2A/2B client mirror — generic, topic-agnostic relevance scoring.
+// Mirrors api/ai/relevance.ts (extractPreferenceTerms / buildCourseSearchText /
+// lexicalRelevance / courseUtility). The old CAREER_RELEVANCE_GROUPS table
+// above is kept as a paper trail but is no longer consulted.
+const _HEBREW_STOPWORDS_LOCAL = new Set([
+  'אני','רוצה','מעדיף','מעדיפה','חשוב','לי','עם','בלי','כמה','שיותר','שפחות',
+  'קורסים','קורס','מסלול','תחום','בתחום','של','על','את','אם','יש','ולא','לא',
+  'גם','אבל','יותר','פחות','גבוה','גבוהה','נמוך','נמוכה','ו','ה','או','כי','זה',
+  'להימנע','להתמקד',
+  'a','an','the','and','or','but','with','without','no','i','me','my','want',
+  'prefer','would','like','for','to','of','in','on','is','are',
+]);
+const _AVOID_TRIGGERS_LOCAL = ['בלי','להימנע','שפחות','פחות','לא','ולא','without','no','avoid','less'];
+const _AVOID_PHRASES_LOCAL = ['לא רוצה','לא מעוניין','לא מעוניינת','כמה שפחות','לא בא לי',"don't want",'do not want','not interested'];
+const _PRACTICAL_KW_LOCAL = ['תעשייה','תעשיית','תעשייתי','תעשייתית','פרקטי','פרקטיים','פרקטית','שימושי','יישומי','יישומית','כלים','סימולציה','סימולציות','תכן','תכנון','פרויקט','פרויקטים','מעבדה','מעבדות','מקצועי','applied','practical','industry','industrial','tools','hands-on','handson'];
+const _INDUSTRY_VALUE_KW_LOCAL = ['תעשייתי','תעשייה','תעשיית','מקצועי','מקצועית','industry','industrial','real-world','professional'];
+const _EASY_KW_LOCAL = ['קל','קלים','קלה','easy','light'];
+
+function _tokenizeLocal(text) {
+  if (!text) return [];
+  const cleaned = String(text).replace(/[.,;:!?\(\)\[\]\{\}״"׳'`]/g, ' ').replace(/[–—\-_]/g, ' ');
+  return cleaned.split(/\s+/).filter(Boolean).map(t => t.toLowerCase());
+}
+function _normalizeTokenLocal(t) {
+  if (!t) return t;
+  let s = t;
+  if (s.length >= 5 && /^[הובלמכש]/.test(s)) {
+    const stripped = s.slice(1);
+    if (stripped.length >= 4) s = stripped;
+  }
+  if (s.length >= 6) {
+    if (s.endsWith('ים')) s = s.slice(0, -2);
+    else if (s.endsWith('ות')) s = s.slice(0, -2);
+  }
+  return s;
+}
+function _isContentTokenLocal(t) {
+  if (!t || t.length < 2) return false;
+  if (_HEBREW_STOPWORDS_LOCAL.has(t)) return false;
+  if (/^\d+$/.test(t)) return false;
+  return true;
+}
+function _parseGradeTargetLocalRel(text) {
+  if (!text) return undefined;
+  const m = text.match(/ממוצע[^\d]{0,15}(\d{2,3})/);
+  let val;
+  if (m) val = parseInt(m[1], 10);
+  else {
+    const en = text.match(/\b(?:gpa|average)\b[^\d]{0,15}(\d{2,3})/i);
+    if (en) val = parseInt(en[1], 10);
+  }
+  if (val == null || !Number.isFinite(val) || val < 60 || val > 100) return undefined;
+  return val;
+}
+function extractPreferenceTermsLocal(text) {
+  const raw = text || '';
+  const lower = raw.toLowerCase();
+  let workingText = raw;
+  const avoidSpans = [];
+  for (const phrase of _AVOID_PHRASES_LOCAL) {
+    const idx = lower.indexOf(phrase);
+    if (idx >= 0) {
+      avoidSpans.push(raw.slice(idx + phrase.length, idx + phrase.length + 40));
+      workingText = workingText.replace(new RegExp(phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i'), ' ');
+    }
+  }
+  const tokens = _tokenizeLocal(workingText);
+  const interestSet = new Set();
+  const avoidSet = new Set();
+  let avoidWindow = 0;
+  const addTerm = (set, tok) => {
+    const n = _normalizeTokenLocal(tok);
+    if (!n || n.length < 2) return;
+    // Re-check stopwords against the normalized form too — mirrors api/ai/relevance.ts.
+    if (_HEBREW_STOPWORDS_LOCAL.has(n)) return;
+    set.add(n);
+  };
+  for (const tok of tokens) {
+    if (_AVOID_TRIGGERS_LOCAL.includes(tok)) { avoidWindow = 3; continue; }
+    if (!_isContentTokenLocal(tok)) continue;
+    if (avoidWindow > 0) { addTerm(avoidSet, tok); avoidWindow--; }
+    else { addTerm(interestSet, tok); }
+  }
+  for (const span of avoidSpans) for (const tok of _tokenizeLocal(span)) if (_isContentTokenLocal(tok)) addTerm(avoidSet, tok);
+  for (const a of avoidSet) interestSet.delete(a);
+  const grade_target = _parseGradeTargetLocalRel(raw);
+  const hasAny = kws => kws.some(k => lower.includes(k));
+  const wants_practical = hasAny(_PRACTICAL_KW_LOCAL);
+  const wants_industry_value = hasAny(_INDUSTRY_VALUE_KW_LOCAL);
+  const wants_easy = hasAny(_EASY_KW_LOCAL) || /ממוצע\s+גבוה/.test(lower);
+  return {
+    interest_terms: [...interestSet],
+    avoid_terms: [...avoidSet],
+    grade_target,
+    wants_practical: wants_practical || undefined,
+    wants_industry_value: wants_industry_value || undefined,
+    wants_easy: wants_easy || undefined,
+    raw_text: raw,
+  };
+}
+function buildCourseSearchTextLocal(course) {
+  if (!course) return '';
+  const parts = [];
+  if (course.name_he) parts.push(course.name_he);
+  if (course.syllabus_summary_he) parts.push(course.syllabus_summary_he);
+  if (course.syllabus_topics_he && course.syllabus_topics_he.length) parts.push(course.syllabus_topics_he.join(' '));
+  if (course.syllabus_assessment_he) parts.push(course.syllabus_assessment_he);
+  if (course.syllabus_structure_he) parts.push(course.syllabus_structure_he);
+  if (course.program_category_name_he) parts.push(course.program_category_name_he);
+  if (course.course_type) parts.push(course.course_type);
+  return parts.join(' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+function _matchTokenLocal(interestNorm, courseTokens, courseNormSet) {
+  if (courseNormSet.has(interestNorm)) return true;
+  if (interestNorm.length >= 4) {
+    for (const ct of courseTokens) if (ct.includes(interestNorm)) return true;
+    for (const ct of courseNormSet) if (ct.includes(interestNorm)) return true;
+  }
+  return false;
+}
+function lexicalRelevanceLocal(courseText, prefs) {
+  if (!courseText) return { score: 0, matched_terms: [], avoided_terms: [] };
+  const rawTokens = _tokenizeLocal(courseText);
+  const courseTokens = new Set(rawTokens);
+  const courseNormSet = new Set(rawTokens.map(_normalizeTokenLocal));
+  const matched = [], avoided = [];
+  for (const term of (prefs.interest_terms || [])) {
+    const n = _normalizeTokenLocal(term);
+    if (!n) continue;
+    if (_matchTokenLocal(n, courseTokens, courseNormSet)) matched.push(term);
+  }
+  for (const term of (prefs.avoid_terms || [])) {
+    const n = _normalizeTokenLocal(term);
+    if (!n) continue;
+    if (_matchTokenLocal(n, courseTokens, courseNormSet)) avoided.push(term);
+  }
+  const interestHits = Math.min(matched.length, 5);
+  return { score: interestHits - avoided.length * 1.5, matched_terms: matched, avoided_terms: avoided };
+}
+const _UTIL_PRIMARY_LOCAL = ['מעבדה','פרויקט','סדנה','תכן','ניסוי','יישום'];
+const _UTIL_SECONDARY_LOCAL = ['דוח','מצגת','יישומי','תעשייה','סימולציה'];
+const _UTIL_LABEL_LOCAL = { 'מעבדה':'מעבדה','פרויקט':'פרויקט','סדנה':'סדנה','תכן':'תכן/עיצוב','ניסוי':'ניסויים','יישום':'יישום','דוח':'דוחות','מצגת':'מצגת','יישומי':'תוכן יישומי','תעשייה':'זיקה לתעשייה','סימולציה':'סימולציות' };
+function courseUtilityLocal(course) {
+  const summary = (course.syllabus_summary_he || '').toLowerCase();
+  const assessment = (course.syllabus_assessment_he || '').toLowerCase();
+  const name = (course.name_he || '').toLowerCase();
+  const combined = `${name} ${summary} ${assessment}`;
+  let score = 0; const reasons = []; const seen = new Set();
+  for (const kw of _UTIL_PRIMARY_LOCAL) {
+    if (combined.includes(kw)) {
+      if (!seen.has('__p')) { score += 1.0; seen.add('__p'); }
+      const lab = _UTIL_LABEL_LOCAL[kw] || kw;
+      if (!reasons.includes(lab)) reasons.push(lab);
+    }
+  }
+  for (const kw of _UTIL_SECONDARY_LOCAL) {
+    if (summary.includes(kw) || assessment.includes(kw)) {
+      if (!seen.has('__s')) { score += 0.5; seen.add('__s'); }
+      const lab = _UTIL_LABEL_LOCAL[kw] || kw;
+      if (!reasons.includes(lab)) reasons.push(lab);
+    }
+  }
+  if ((course.syllabus_summary_he || '').length > 200) score += 0.5;
+  if ((course.syllabus_topics_he?.length ?? 0) >= 5) score += 0.3;
+  const summaryRaw = (course.syllabus_summary_he || '').trim();
+  if (summaryRaw.length > 0 && summaryRaw.length < 50) score -= 0.5;
+  if (/^שעות[: ]+\d/.test(summaryRaw)) score -= 0.5;
+  if (score > 2.5) score = 2.5;
+  if (score < -1) score = -1;
+  return { score, reasons };
+}
+
 function _scoreCareerRelevanceLocal(candidate, interestText) {
-  const text = [candidate.name_he || '', candidate.syllabus_summary_he || '', ...(candidate.syllabus_topics_he || [])].join(' ').toLowerCase();
-  const interest = (interestText || '').toLowerCase();
-
-  // PART D — biomedical/biology/medicine always penalized unless requested.
-  const wantsBiomedical = BIOMEDICAL_INTEREST_KEYWORDS.some(k => interest.includes(k));
-  if (!wantsBiomedical && BIOMEDICAL_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -3, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  }
-  // PART D — control-heavy courses penalized unless control was requested.
-  const wantsControl = CONTROL_INTEREST_KEYWORDS.some(k => interest.includes(k));
-  if (!wantsControl && CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -1, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  }
-
-  if (!interestText || !interestText.trim()) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
-  if (!activeGroups.length) return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  for (const g of activeGroups) {
-    if (g.keywords.some(k => text.includes(k))) return { score: 3, reason: g.reason, tag: g.tag };
-  }
-  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) return { score: -2, reason: WEAK_MATCH_FILLER_REASON, tag: null };
-  return { score: 0, reason: WEAK_MATCH_FILLER_REASON, tag: null };
+  // Phase 2B (client mirror) — generic relevance via lexicalRelevanceLocal +
+  // courseUtilityLocal. Same return shape as before (score/reason/tag) so all
+  // callers (_pickBestCandidateLocal, scorePlanLocal, replaceWeakElectivesLocal,
+  // moveFoundationCoursesEarlier mirror, repair paths) keep working unchanged.
+  const terms = extractPreferenceTermsLocal(interestText || '');
+  const courseText = buildCourseSearchTextLocal(candidate);
+  const lex = lexicalRelevanceLocal(courseText, terms);
+  const util = courseUtilityLocal(candidate);
+  const score = lex.score + 0.3 * util.score;
+  const reasonParts = [];
+  if (lex.matched_terms.length) reasonParts.push(`מתאים לבקשה (${lex.matched_terms.slice(0, 4).join(', ')})`);
+  if (lex.avoided_terms.length) reasonParts.push(`כולל נושאים שביקשת להימנע מהם (${lex.avoided_terms.slice(0, 3).join(', ')})`);
+  if (util.reasons.length && score > 0) reasonParts.push(`כולל ${util.reasons.slice(0, 3).join(', ')}`);
+  const reason = reasonParts.length
+    ? reasonParts.join(' • ')
+    : (terms.interest_terms.length ? WEAK_MATCH_FILLER_REASON : DEFAULT_WEAK_RELEVANCE_REASON);
+  let tag = null;
+  if (lex.avoided_terms.length) tag = 'avoided';
+  else if (lex.matched_terms.length) tag = 'matched';
+  else if (!terms.interest_terms.length) tag = 'general';
+  return { score, reason, tag };
 }
 
 function _scoreCandidateLocal(c, interestText) {
@@ -9071,6 +9249,11 @@ function _scoreCandidateLocal(c, interestText) {
   if (c.hours != null) score += 1;
   if (c.grade_average != null) score += c.grade_average / 100;
   score += _scoreCareerRelevanceLocal(c, interestText).score;
+  // Phase 2B — practicality bonus, weighted higher when the user asked for it.
+  const util = courseUtilityLocal(c);
+  const prefs = extractPreferenceTermsLocal(interestText || '');
+  const utilityWeight = (prefs.wants_practical || prefs.wants_industry_value) ? 1.0 : 0.5;
+  score += utilityWeight * util.score;
   return score;
 }
 function _pickBestCandidateLocal(candidates, unwantedIds, interestText) {
@@ -9260,7 +9443,8 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
       const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
       const relevance = _scoreCareerRelevanceLocal(candidate, opts.userInterestText);
       let target;
-      if (relevance.tag === 'fem_analysis' && fitting.length) {
+      // Phase 2B — generic "schedule strongly-matched courses earlier".
+      if (relevance.score >= 1 && fitting.length) {
         target = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
       } else if (fitting.length) {
         target = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
@@ -9362,7 +9546,8 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
     const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
     const relevance = _scoreCareerRelevanceLocal(candidate, opts.userInterestText);
     let semTarget;
-    if (relevance.tag === 'fem_analysis' && fitting.length) {
+    // Phase 2B — generic strong-match-earlier preference (no topic tag).
+    if (relevance.score >= 2 && fitting.length) {
       semTarget = [...fitting].sort((a, b) => opts.knownSemesterIds.indexOf(a.semester_id) - opts.knownSemesterIds.indexOf(b.semester_id))[0];
     } else if (fitting.length) {
       semTarget = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
@@ -9439,8 +9624,9 @@ function scorePlanLocal(proposal, ctx) {
       const rel = _scoreCareerRelevanceLocal(info, ctx.userInterestText);
       relevance += rel.score;
 
-      if (rel.tag === 'fem_analysis' && semIndex >= 0 && known.length > 1) {
-        sequencing += (known.length - 1 - semIndex);
+      // Phase 2B — generic "earlier-is-better for strongly-matched courses".
+      if (rel.score >= 1 && semIndex >= 0 && known.length > 1) {
+        sequencing += (known.length - 1 - semIndex) * 0.5;
       }
 
       if (wanted.has(cid)) preferences += 2;
@@ -9519,7 +9705,8 @@ function moveFoundationCoursesEarlierLocal(proposal, opts) {
       if (!info) continue;
       if (opts.movableCourseIds && !opts.movableCourseIds.has(cid)) continue;
       const rel = _scoreCareerRelevanceLocal(info, opts.userInterestText);
-      if (rel.tag !== 'fem_analysis') continue;
+      // Phase 2B — move any strongly-matched course earlier, not just one topic.
+      if (rel.score < 1) continue;
 
       const currentIdx = opts.knownSemesterIds.indexOf(sem.semester_id);
       const allowed = info.effective_allowed_semesters && info.effective_allowed_semesters.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
@@ -10050,6 +10237,9 @@ async function requestPlanProposal(prefs, actionType) {
       courses: ctx.courses,
       maxHoursPerSemester: ctx.maxHoursPerSemester,
       knownSemesterIds: SEMESTERS.map(s => s.id),
+      // Phase 2B — thread the user's preference text so any tie-breaking
+      // inside mandatory placement (or anything we add later) can use it.
+      userInterestText: prefs.extra_request_he,
     });
     if (addedMandatory.length) {
       showBoardNotify(`נוספו ${addedMandatory.length} קורסי חובה שטרם שובצו.`);

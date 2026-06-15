@@ -19,6 +19,10 @@ export interface CourseInPlan {
   assessment_type?: string | null;
   has_syllabus?: boolean;
   has_syllabus_summary?: boolean;
+  /** Phase 2B — concise syllabus content inlined into the prompt so the LLM
+   *  can ground its answers in actual topic text rather than a yes/no flag. */
+  syllabus_summary_he?: string | null;
+  syllabus_topics_he?: string[] | null;
 }
 
 export interface SemesterPlan {
@@ -174,6 +178,34 @@ function subScore(label: string, value: number | null | undefined): string | nul
   return value != null ? `${label} ${value}` : null;
 }
 
+/** Phase 2B — render a concise inline syllabus slice for a candidate course
+ *  line: first ~200 chars of summary (truncated at a word boundary) plus up
+ *  to 8 topics. Returns null when both inputs are empty. Total output is
+ *  kept under ~250 chars per course to control prompt size. */
+function renderInlineSyllabus(
+  summary: string | null | undefined,
+  topics: string[] | null | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (summary && summary.trim()) {
+    let s = summary.trim().replace(/\s+/g, ' ');
+    if (s.length > 200) {
+      const slice = s.slice(0, 200);
+      const lastSpace = slice.lastIndexOf(' ');
+      s = (lastSpace > 120 ? slice.slice(0, lastSpace) : slice) + '...';
+    }
+    parts.push(`סילבוס: ${s}`);
+  }
+  if (topics && topics.length) {
+    const shown = topics.slice(0, 8).map(t => t.trim()).filter(Boolean);
+    if (shown.length) parts.push(`נושאים: ${shown.join(', ')}`);
+  }
+  if (!parts.length) return null;
+  let joined = parts.join(' | ');
+  if (joined.length > 250) joined = joined.slice(0, 247) + '...';
+  return joined;
+}
+
 function semestersSection(semesters: SemesterPlan[]): string {
   if (!semesters.length) return 'אין קורסים משובצים עדיין.';
   return semesters.map(sem => {
@@ -195,7 +227,14 @@ function semestersSection(semesters: SemesterPlan[]): string {
 
       if (c.assessment_type) parts.push(`סוג הערכה: ${c.assessment_type}`);
       if (c.has_syllabus === false) parts.push('אין סילבוס זמין');
-      else if (c.has_syllabus_summary) parts.push('יש תקציר סילבוס זמין');
+      else {
+        // Phase 2B — inline a small slice of actual syllabus content rather
+        // than a bare "יש תקציר סילבוס זמין" flag. Capped at ~250 chars total
+        // so prompt size stays controlled.
+        const inlined = renderInlineSyllabus(c.syllabus_summary_he, c.syllabus_topics_he);
+        if (inlined) parts.push(inlined);
+        else if (c.has_syllabus_summary) parts.push('יש תקציר סילבוס זמין');
+      }
 
       if (c.difficulty_confidence != null && c.difficulty_confidence < 0.6)
         parts.push('⚠ נתוני קושי חלקיים — אמינות נמוכה');

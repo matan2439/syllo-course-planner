@@ -13,6 +13,14 @@
  */
 
 import type { PlanContext } from './_context';
+import {
+  extractPreferenceTerms,
+  buildCourseSearchText,
+  lexicalRelevance,
+  courseUtility,
+  type PreferenceTerms,
+  type CourseLike,
+} from './relevance';
 
 /** Total credit-hours required for the degree (ש״ש). */
 export const DEGREE_REQUIRED_HOURS = 185;
@@ -139,57 +147,56 @@ export interface CareerRelevanceResult {
  * neutral if `interestText` is empty — the relevance layer never overrides
  * legal/category requirements, it only ranks among legal candidates.
  */
+/**
+ * Phase 2B — generic, topic-agnostic relevance scoring backed by
+ * api/ai/relevance.ts (extractPreferenceTerms + lexicalRelevance +
+ * courseUtility). Replaces the previous hand-curated CAREER_RELEVANCE_GROUPS
+ * path which encoded one specific user's career profile (FEM/analysis +
+ * mechanical design + robotics minus biomedical/control). The legacy keyword
+ * tables above are KEPT for now (not deleted) but are no longer consulted
+ * here — they remain only as a paper trail for future cleanup.
+ *
+ * Return shape is preserved (score / reason / tag) so all callers — including
+ * scoreCandidate, scorePlan, replaceWeakElectives, pickBestCandidate*, and
+ * the deterministic repair paths — keep working unchanged. `tag` is now
+ * 'general' when interest_terms is empty, or 'matched' / 'avoided' otherwise;
+ * no topic-specific tags (no more 'fem_analysis' privileged path).
+ */
 export function scoreCareerRelevance(
-  candidate: { name_he?: string | null; syllabus_summary_he?: string | null; syllabus_topics_he?: string[] | null },
+  candidate: CourseLike & { name_he?: string | null; syllabus_summary_he?: string | null; syllabus_topics_he?: string[] | null },
   interestText?: string | null,
 ): CareerRelevanceResult {
-  const text = [
-    candidate.name_he || '',
-    candidate.syllabus_summary_he || '',
-    ...(candidate.syllabus_topics_he || []),
-  ].join(' ').toLowerCase();
+  const terms = extractPreferenceTerms(interestText || '');
+  const courseText = buildCourseSearchText(candidate);
+  const lex = lexicalRelevance(courseText, terms);
+  const util = courseUtility(candidate);
 
-  const interest = (interestText || '').toLowerCase();
+  // Blend lexical match + a small fraction of utility, so a course that
+  // matches a requested term AND offers a lab/project ranks higher than
+  // an equally-matched purely-theoretical course.
+  const score = lex.score + 0.3 * util.score;
 
-  // PART D — biomedical/biology/medicine courses are always penalized unless
-  // explicitly requested, regardless of whether other interest groups match.
-  const wantsBiomedical = BIOMEDICAL_INTEREST_KEYWORDS.some(k => interest.includes(k));
-  if (!wantsBiomedical && BIOMEDICAL_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -3, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  // Compose a reason from facts. No static topic-specific strings.
+  const reasonParts: string[] = [];
+  if (lex.matched_terms.length) {
+    reasonParts.push(`מתאים לבקשה (${lex.matched_terms.slice(0, 4).join(', ')})`);
   }
-
-  // PART D — control-heavy courses are penalized unless the user explicitly
-  // asked for control ("not necessarily control" in the user's profile).
-  const wantsControl = CONTROL_INTEREST_KEYWORDS.some(k => interest.includes(k));
-  if (!wantsControl && CONTROL_HEAVY_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -1, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  if (lex.avoided_terms.length) {
+    reasonParts.push(`כולל נושאים שביקשת להימנע מהם (${lex.avoided_terms.slice(0, 3).join(', ')})`);
   }
-
-  if (!interestText || !interestText.trim()) {
-    return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
+  if (util.reasons.length && score > 0) {
+    reasonParts.push(`כולל ${util.reasons.slice(0, 3).join(', ')}`);
   }
+  const reason = reasonParts.length
+    ? reasonParts.join(' • ')
+    : (terms.interest_terms.length ? WEAK_MATCH_FILLER_REASON : DEFAULT_WEAK_RELEVANCE_REASON);
 
-  // Active groups = groups the user's free-text request mentions.
-  const activeGroups = CAREER_RELEVANCE_GROUPS.filter(g => g.keywords.some(k => interest.includes(k)));
-  if (!activeGroups.length) {
-    return { score: 0, reason: DEFAULT_WEAK_RELEVANCE_REASON, tag: null };
-  }
+  let tag: string | null = null;
+  if (lex.avoided_terms.length) tag = 'avoided';
+  else if (lex.matched_terms.length) tag = 'matched';
+  else if (!terms.interest_terms.length) tag = 'general';
 
-  for (const g of activeGroups) {
-    if (g.keywords.some(k => text.includes(k))) {
-      return { score: 3, reason: g.reason, tag: g.tag };
-    }
-  }
-
-  // No active-direction match — penalize courses that are characteristically
-  // unrelated to a mechanical design/analysis/robotics direction.
-  if (WEAK_RELEVANCE_KEYWORDS.some(k => text.includes(k))) {
-    return { score: -2, reason: WEAK_MATCH_FILLER_REASON, tag: null };
-  }
-
-  // PART D — the user has an active interest profile but this course doesn't
-  // match any of it: still a weak match, chosen only as filler if needed.
-  return { score: 0, reason: WEAK_MATCH_FILLER_REASON, tag: null };
+  return { score, reason, tag };
 }
 
 export interface CompletionCandidate {
@@ -942,6 +949,7 @@ export function getMandatoryStatusReport(
 export function getGeneralRequirementStatusReport(
   analysis: CompletionAnalysis,
   placedIds: Set<string>,
+  interestText?: string | null,
 ): CategoryStatus | null {
   const gr = analysis.general_requirement;
   if (!gr) return null;
@@ -950,7 +958,7 @@ export function getGeneralRequirementStatusReport(
   const totalPlaced = gr.placed + placedCredits + (analysis.hours.completed_general_hours ?? 0);
   const missing = Math.max(0, gr.required - totalPlaced);
   const remaining = gr.candidates.filter(c => !placedIds.has(c.course_id));
-  const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+  const sorted = [...remaining].sort((a, b) => scoreCandidate(b, interestText) - scoreCandidate(a, interestText));
   return {
     category_id: gr.category_id ?? null,
     name: gr.name,
@@ -966,12 +974,13 @@ export function getGeneralRequirementStatusReport(
 export function getCategoryStatusReport(
   analysis: CompletionAnalysis,
   placedIds: Set<string>,
+  interestText?: string | null,
 ): CategoryStatus[] {
   return analysis.categories.map(cat => {
     const placedFromCategory = cat.candidates.filter(c => placedIds.has(c.course_id));
     const stillMissing = Math.max(0, cat.missing - placedFromCategory.length);
     const remaining = cat.candidates.filter(c => !placedIds.has(c.course_id));
-    const sorted = [...remaining].sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+    const sorted = [...remaining].sort((a, b) => scoreCandidate(b, interestText) - scoreCandidate(a, interestText));
     return {
       category_id: cat.category_id ?? null,
       name: cat.name,
@@ -992,8 +1001,9 @@ export function getCategoryStatusReport(
 export function getMissingRequirementCards(
   analysis: CompletionAnalysis,
   placedIds: Set<string>,
+  interestText?: string | null,
 ): MissingRequirementCard[] {
-  return getCategoryStatusReport(analysis, placedIds)
+  return getCategoryStatusReport(analysis, placedIds, interestText)
     .filter(c => c.missing > 0)
     .map(({ category_id, name, missing, candidates }) => ({ category_id, name, missing, candidates }));
 }
@@ -1094,6 +1104,13 @@ export function scoreCandidate(c: CompletionCandidate, interestText?: string | n
   score += scoreCareerRelevance(c, interestText).score;
   // PART F — grade-average target compatibility.
   score += scoreGradeCompatibility(c, interestText);
+  // Phase 2B — practicality bonus from syllabus structure (lab/project/etc).
+  // Weighted higher when the user explicitly asked for practical/industry-
+  // facing courses, otherwise a smaller nudge. Topic-agnostic.
+  const util = courseUtility(c as CourseLike);
+  const prefs = extractPreferenceTerms(interestText || '');
+  const utilityWeight = (prefs.wants_practical || prefs.wants_industry_value) ? 1.0 : 0.5;
+  score += utilityWeight * util.score;
   return score;
 }
 
@@ -2031,10 +2048,13 @@ export function scorePlan<P extends RepairProposalShape>(proposal: P, ctx: Score
       const rel = scoreCareerRelevance(info, ctx.userInterestText);
       relevance += rel.score;
 
-      // PART 4 — sequencing: foundational analysis courses (e.g. FEM) are
-      // worth more the earlier they're scheduled, so they can unlock labs.
-      if (rel.tag === 'fem_analysis' && semIndex >= 0 && known.length > 1) {
-        sequencing += (known.length - 1 - semIndex);
+      // PART 4 — sequencing: generic "earlier is better for strongly-matched
+      // courses" boost. No topic-specific privilege (the previous code
+      // hardcoded a `tag === 'fem_analysis'` boost — now any course with a
+      // strong lexical match gets a milder, weight-proportional nudge so
+      // foundational matches still tend to schedule earlier).
+      if (rel.score >= 1 && semIndex >= 0 && known.length > 1) {
+        sequencing += (known.length - 1 - semIndex) * 0.5;
       }
 
       // PART 5 — user wanted/avoided preferences.
@@ -2149,7 +2169,9 @@ export function moveFoundationCoursesEarlier<P extends RepairProposalShape>(
       if (!info) continue;
       if (opts.movableCourseIds && !opts.movableCourseIds.has(cid)) continue;
       const rel = scoreCareerRelevance(info, opts.userInterestText);
-      if (rel.tag !== 'fem_analysis') continue;
+      // Phase 2B — generic "move strongly-matched courses earlier" replaces
+      // the previous topic-specific `tag === 'fem_analysis'` gate.
+      if (rel.score < 1) continue;
 
       const currentIdx = opts.knownSemesterIds.indexOf(sem.semester_id);
       const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
