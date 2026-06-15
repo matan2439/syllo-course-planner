@@ -2101,6 +2101,60 @@ describe('PART C — computeDegreeProgress (unified degree-hours helper)', () =>
     expect(dp.remaining).toBe(0);
     expect(dp.overshoot).toBe(5);
   });
+
+  // ── Phase 1 canonical six-field model ──────────────────────────────────
+  it('Scenario A — six explicit buckets, every course counted at most once', () => {
+    // Year1/2 completed (50) + currently_taking/planned off-board (8) baseline,
+    // a current board (40), and a proposal adding new Year3/4 courses (3+4).
+    const analysis = analysisWith(
+      { known_completed_hours: 50, currently_planned_hours: 8, known_scheduled_hours: 40 },
+      ['c_on_board'],
+    );
+    const proposalSemesters = [{ course_ids: ['c_new1', 'c_new2'] }];
+    const courseHours = { c_new1: 3, c_new2: 4 };
+    const dp = computeDegreeProgress(analysis, proposalSemesters, courseHours);
+    expect(dp.completed_before_proposal).toBe(50);
+    expect(dp.current_board).toBe(40);
+    expect(dp.currently_planned_before_proposal).toBe(8);
+    expect(dp.proposed_added).toBe(7);
+    expect(dp.total_after_proposal).toBe(50 + 40 + 8 + 7);
+    expect(dp.remaining_to_degree).toBe(185 - 105);
+  });
+
+  it('Scenario B — a course both on the board and in the proposal is counted once (not in proposed_added)', () => {
+    const analysis = analysisWith(
+      { known_completed_hours: 0, currently_planned_hours: 0, known_scheduled_hours: 5 },
+      ['c_dup'],
+    );
+    const proposalSemesters = [{ course_ids: ['c_dup', 'c_new'] }];
+    const courseHours = { c_dup: 5, c_new: 6 };
+    const dp = computeDegreeProgress(analysis, proposalSemesters, courseHours);
+    expect(dp.current_board).toBe(5);
+    expect(dp.proposed_added).toBe(6); // c_dup excluded — already on board
+    expect(dp.total_after_proposal).toBe(11);
+  });
+
+  it('Scenario C — manual completed baseline + currently_planned + proposal all added once', () => {
+    // buildCompletionAnalysis: manual total used as the completed baseline,
+    // currently_planned_hours still added on top (not dropped).
+    const analysis = buildCompletionAnalysis({
+      semesters: [],
+      personal_status: { completed: [], currently_taking: [], planned: [] },
+      total_hours_progress: {
+        manual_completed_degree_hours: 100,
+        known_completed_hours: 30, // ignored when manual total set
+        currently_planned_hours: 12,
+      },
+    } as any);
+    expect(analysis.hours.known_completed_hours).toBe(100);
+    expect(analysis.hours.currently_planned_hours).toBe(12);
+    const dp = computeDegreeProgress(analysis, [{ course_ids: ['c_new'] }], { c_new: 5 });
+    expect(dp.completed_before_proposal).toBe(100);
+    expect(dp.currently_planned_before_proposal).toBe(12);
+    expect(dp.proposed_added).toBe(5);
+    expect(dp.total_after_proposal).toBe(117);
+    expect(dp.remaining_to_degree).toBe(185 - 117);
+  });
 });
 
 describe('TASK 5 — PART F: max-load consistency and overload boundary', () => {

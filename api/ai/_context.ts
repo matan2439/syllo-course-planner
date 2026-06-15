@@ -129,6 +129,14 @@ export interface PlanContext {
   /** Progress toward the degree-hour requirement. */
   total_hours_progress?: {
     known_completed_hours: number;
+    /**
+     * Hours of currently_taking/planned personal-status courses that are NOT
+     * placed on the board — prior progress accrued before any AI proposal.
+     * Tracked separately from known_completed_hours so the canonical
+     * degree-progress model can count them under
+     * `currently_planned_before_proposal` exactly once (Phase 1 unification).
+     */
+    currently_planned_hours?: number;
     /** Program-specific total degree hours; defaults to 185 if omitted. */
     degree_required_hours?: number;
     /** Manually entered total completed-degree hours — preferred over known_completed_hours if present. */

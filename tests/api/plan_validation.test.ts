@@ -154,6 +154,15 @@ describe('validatePlanProposal', () => {
     expect(result.errors.some(e => e.includes('0542-4120') && e.includes('הושלם'))).toBe(true);
   });
 
+  it('Scenario B — rejects a plan that re-proposes a currently_taking/planned course', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      currentlyPlannedCourseIds: new Set(['0542-4120']),
+    };
+    const result = validatePlanProposal(BASE_PROPOSAL, ctx);
+    expect(result.errors.some(e => e.includes('0542-4120') && e.includes('מתוכנן/נלמד'))).toBe(true);
+  });
+
   it('rejects placement outside effective_allowed_semesters', () => {
     const ctx: PlanValidationContext = {
       ...BASE_CTX,

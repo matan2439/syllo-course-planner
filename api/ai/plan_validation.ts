@@ -146,6 +146,12 @@ export interface PlanValidationCourseInfo {
 export interface PlanValidationContext {
   /** course_ids the user has marked as already completed (personal_status.completed). */
   completedCourseIds: Set<string>;
+  /**
+   * course_ids the user is currently_taking or has planned (personal_status).
+   * Such courses are already accounted for as prior progress and must not be
+   * (re-)proposed by the planner (Phase 1 proposal-dedup).
+   */
+  currentlyPlannedCourseIds?: Set<string>;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
   courses: Record<string, PlanValidationCourseInfo>;
   /** Maximum total weekly hours allowed per semester (from user preferences). */
@@ -247,6 +253,12 @@ export function validatePlanProposal(
       // 2. completed course must not be (re-)scheduled
       if (ctx.completedCourseIds.has(courseId)) {
         errors.push(`קורס ${cName} כבר הושלם על ידי המשתמש ולא ניתן לשבץ אותו מחדש (ב${semName}).`);
+      }
+
+      // 2a. currently_taking/planned course must not be (re-)proposed — it is
+      // already accounted for as prior progress (Phase 1 proposal-dedup).
+      else if (ctx.currentlyPlannedCourseIds?.has(courseId)) {
+        errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
       // 2b. pinned course must remain in its current semester

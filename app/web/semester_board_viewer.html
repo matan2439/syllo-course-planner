@@ -1991,7 +1991,8 @@ function buildPlanContext() {
   }).filter(sem => sem.courses.length > 0);
 
   const mandatory_unplaced = Object.values(courseMap)
-    .filter(c => c.course_type === 'mandatory' && !placedIds.has(c.course_id) && c.status !== 'missing_from_db')
+    .filter(c => c.course_type === 'mandatory' && !placedIds.has(c.course_id) && c.status !== 'missing_from_db'
+      && !isCourseCompleted(c.course_id) && !isCourseCurrentlyTakingOrPlanned(c.course_id))
     .map(c => ({ course_id: c.course_id, name_he: c.name_he, hours: c.weekly_hours }))
     .slice(0, 20);
 
@@ -2037,6 +2038,15 @@ function buildPlanContext() {
   }
 
   const completedIdsForAnalysis = new Set(personal_status.completed.map(c => c.course_id));
+  // Courses the user is currently_taking or has planned (off the board too) are
+  // already accrued as prior progress — exclude them from proposal candidate
+  // pools so the AI never re-proposes a course the user is already doing
+  // (Phase 1 proposal-dedup). Completed exclusion is kept as-is.
+  const currentlyPlannedIdsForAnalysis = new Set([
+    ...personal_status.currently_taking.map(c => c.course_id),
+    ...personal_status.planned.map(c => c.course_id),
+  ]);
+  const excludedFromProposalIds = new Set([...completedIdsForAnalysis, ...currentlyPlannedIdsForAnalysis]);
   const wantedIdsForAnalysis = new Set(_aiPlanLastPreferences?.wanted_course_ids || []);
 
   // A course satisfies a category if it's in the category's stable course_ids
@@ -2078,7 +2088,7 @@ function buildPlanContext() {
   const category_requirements = (programRequirements?.categories || []).map(cat => {
     const placed = _categoryPlacedCount(cat);
     const candidates = (cat.course_ids || [])
-      .filter(cid => courseMap[cid] && !placedIds.has(cid) && !completedIdsForAnalysis.has(cid))
+      .filter(cid => courseMap[cid] && !placedIds.has(cid) && !excludedFromProposalIds.has(cid))
       .map(cid => {
         const c = courseMap[cid];
         const legal = getLegalSemestersLocal(c);
@@ -2102,13 +2112,15 @@ function buildPlanContext() {
   const completed_status_hours = personal_status.completed
     .reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
   // currently_taking / planned courses not yet on the board are prior progress
-  // too — fold them into the "known_completed_hours" baseline the API uses for
-  // the 185-ש"ש accounting, but only when not already placed on the board
-  // (board placement is counted separately by the API as scheduled hours).
+  // too, but they are tracked SEPARATELY from completed hours (canonical
+  // currently_planned_before_proposal) so the API can count each bucket exactly
+  // once and never drop them when a manual completed total is set. Only count
+  // those not already placed on the board (board placement is counted by the
+  // API as scheduled hours).
   const currently_planned_hours = [...personal_status.currently_taking, ...personal_status.planned]
     .filter(c => !placedIds.has(c.course_id))
     .reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
-  const known_completed_hours = completed_status_hours + currently_planned_hours;
+  const known_completed_hours = completed_status_hours;
 
   // קורסי שער רוח — program-specific requirement, separate from engineering
   // electives (PART: שער רוח). Candidates are the repository courses not yet
@@ -2122,7 +2134,7 @@ function buildPlanContext() {
     name: 'קורסי שער רוח',
     required_credits: shaarRuachRequiredCredits,
     candidates: SHAAR_RUACH_COURSES
-      .filter(c => !placedIds.has(c.course_id) && !completedIdsForAnalysis.has(c.course_id))
+      .filter(c => !placedIds.has(c.course_id) && !excludedFromProposalIds.has(c.course_id))
       .map(c => {
         const cm = courseMap[c.course_id] || {};
         return {
@@ -2144,6 +2156,7 @@ function buildPlanContext() {
 
   const total_hours_progress = {
     known_completed_hours,
+    currently_planned_hours,
     degree_required_hours: programRequirements?.total_required_hours || undefined,
     manual_completed_degree_hours: typeof degreeHoursProfile.completed_degree_hours === 'number' ? degreeHoursProfile.completed_degree_hours : undefined,
     required_general_hours: typeof degreeHoursProfile.general_required_hours === 'number' ? degreeHoursProfile.general_required_hours : shaarRuachRequiredCredits || undefined,
@@ -5282,8 +5295,17 @@ function computeDegreeProgress(context, boardState, draftState) {
   }
 
   return {
-    required, completed, current_board, currently_planned, proposed_added, proposal_removed_hours, total_after,
-    remaining, overshoot, unknown_hours_count, warnings,
+    required,
+    // ── Canonical six-field model (Phase 1 unification) ──────────────────
+    completed_before_proposal: completed,
+    current_board,
+    currently_planned_before_proposal: currently_planned,
+    proposed_added,
+    total_after_proposal: total_after,
+    remaining_to_degree: remaining,
+    // ── Backward-compatible aliases (existing consumers read these) ───────
+    completed, currently_planned, total_after, remaining,
+    proposal_removed_hours, overshoot, unknown_hours_count, warnings,
     shaar_ruach_required: shaarRuachRequired,
     shaar_ruach_completed, shaar_ruach_scheduled, shaar_ruach_remaining,
   };
@@ -7338,6 +7360,14 @@ function isCourseCompleted(cid) {
   return getUserStatus(cid).status === 'completed';
 }
 
+/* True if the user marked this course as currently_taking or planned in
+ * "הקורסים שלי" — such courses are already accounted for as prior progress
+ * and must not be re-proposed by the AI planner (Phase 1 dedup). */
+function isCourseCurrentlyTakingOrPlanned(cid) {
+  const s = getUserStatus(cid).status;
+  return s === 'currently_taking' || s === 'planned';
+}
+
 /* Default semester to place a course back on the board: the user's planned
  * semester if set, otherwise the recommended/first effective semester. */
 function _defaultRestoreSemester(c, us) {
@@ -8179,6 +8209,13 @@ function buildPlanValidationInputs() {
       .filter(([, us]) => us.status === 'completed')
       .map(([cid]) => cid)
   );
+  // currently_taking/planned courses are already accrued as prior progress —
+  // the planner must not re-propose them (Phase 1 proposal-dedup).
+  const currentlyPlannedCourseIds = new Set(
+    Object.entries(userCourseStatuses)
+      .filter(([, us]) => us.status === 'currently_taking' || us.status === 'planned')
+      .map(([cid]) => cid)
+  );
 
   const courses = {};
   for (const c of Object.values(courseMap)) {
@@ -8231,7 +8268,7 @@ function buildPlanValidationInputs() {
     for (const cid of (ids || [])) currentSemesterByCourseId[cid] = semId;
   }
 
-  return { completedCourseIds, courses, categoryRequirements, requiredMandatoryCourseIds, movableCourseIds, pinnedCourseIds, currentSemesterByCourseId };
+  return { completedCourseIds, currentlyPlannedCourseIds, courses, categoryRequirements, requiredMandatoryCourseIds, movableCourseIds, pinnedCourseIds, currentSemesterByCourseId };
 }
 
 /**
@@ -8497,6 +8534,8 @@ function validatePlanProposalLocal(proposal, ctx) {
 
       if (ctx.completedCourseIds.has(courseId)) {
         errors.push(`קורס ${cName} כבר הושלם על ידי המשתמש ולא ניתן לשבץ אותו מחדש (ב${semName}).`);
+      } else if (ctx.currentlyPlannedCourseIds?.has(courseId)) {
+        errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
       if (ctx.pinnedCourseIds?.has(courseId)) {

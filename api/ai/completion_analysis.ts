@@ -238,6 +238,13 @@ export interface CompletionHours {
   required_total: number;
   known_completed_hours: number;
   known_scheduled_hours: number;
+  /**
+   * Hours of currently_taking/planned personal-status courses not on the
+   * board — prior progress, counted under `currently_planned_before_proposal`
+   * in the canonical degree-progress model. Excluded from known_completed_hours
+   * to avoid double counting (Phase 1 unification).
+   */
+  currently_planned_hours: number;
   known_total_hours: number;
   remaining_hours: number;
   unknown_hour_courses: number;
@@ -393,11 +400,20 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
   const prior_hours_known = typeof manualCompleted === 'number';
   const completedHoursFromStatuses = typeof totalHoursProgress?.known_completed_hours === 'number'
     ? totalHoursProgress.known_completed_hours : 0;
+  // Manual completed total handling (Phase 1): when a manual total exists it is
+  // used ONLY as the completed_before_proposal baseline (status-derived
+  // completed-course hours are not added on top, to avoid double counting).
+  // currently_planned_before_proposal and proposed_added are still computed and
+  // added on top — they are NOT dropped.
   const known_completed_hours = prior_hours_known ? manualCompleted : completedHoursFromStatuses;
+  // currently_taking/planned off-board hours are prior progress tracked
+  // separately from completed (canonical currently_planned_before_proposal).
+  const currently_planned_hours = typeof totalHoursProgress?.currently_planned_hours === 'number'
+    ? totalHoursProgress.currently_planned_hours : 0;
   const unknown_completed = (ctx.personal_status?.completed ?? [])
     .filter((c: any) => c.hours == null).length;
 
-  const known_total_hours = known_completed_hours + known_scheduled_hours;
+  const known_total_hours = known_completed_hours + currently_planned_hours + known_scheduled_hours;
   const unknown_hour_courses = unknown_scheduled + unknown_completed;
   const remaining_hours = Math.max(0, required_total - known_total_hours);
 
@@ -405,6 +421,7 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
     required_total,
     known_completed_hours,
     known_scheduled_hours,
+    currently_planned_hours,
     known_total_hours,
     remaining_hours,
     unknown_hour_courses,
@@ -568,10 +585,21 @@ export function getDegreeHoursStatus(
 
 export interface DegreeProgress {
   required: number;
-  completed: number;
+  // ── Canonical six-field model (Phase 1 unification) ──────────────────────
+  completed_before_proposal: number;
   current_board: number;
+  currently_planned_before_proposal: number;
   proposed_added: number;
+  total_after_proposal: number;
+  remaining_to_degree: number;
+  // ── Backward-compatible aliases (existing consumers read these names) ────
+  /** @deprecated alias of completed_before_proposal */
+  completed: number;
+  /** @deprecated alias of currently_planned_before_proposal */
+  currently_planned: number;
+  /** @deprecated alias of total_after_proposal */
   total_after: number;
+  /** @deprecated alias of remaining_to_degree */
   remaining: number;
   overshoot: number;
   unknown_hours_count: number;
@@ -595,23 +623,30 @@ export function computeDegreeProgress(
   proposalSemesters: Array<{ course_ids: string[] }> = [],
   courseHours: Record<string, number | null | undefined> = {},
 ): DegreeProgress {
+  const scheduledSet = new Set(analysis.scheduled_course_ids);
+  const completedSet = new Set(analysis.completed_course_ids);
   const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
   let proposed_added = 0;
   let unknown_hours_count = analysis.hours.unknown_hour_courses || 0;
   for (const cid of placed) {
-    if (analysis.scheduled_course_ids.includes(cid)) continue;
-    if (analysis.completed_course_ids.includes(cid)) continue;
+    // Global dedup: a proposed course counts once, only if it isn't already
+    // counted under completed / current_board (currently_planned ids are not
+    // tracked here — those off-board hours come from the analysis baseline).
+    if (scheduledSet.has(cid)) continue;     // already current_board
+    if (completedSet.has(cid)) continue;     // already completed_before_proposal
     const h = courseHours[cid];
     if (typeof h === 'number') proposed_added += h;
     else unknown_hours_count++;
   }
 
   const required = analysis.hours.required_total;
-  const completed = analysis.hours.known_completed_hours;
+  const completed_before_proposal = analysis.hours.known_completed_hours;
   const current_board = analysis.hours.known_scheduled_hours;
-  const total_after = completed + current_board + proposed_added;
-  const remaining = Math.max(0, required - total_after);
-  const overshoot = Math.max(0, total_after - required);
+  const currently_planned_before_proposal = analysis.hours.currently_planned_hours || 0;
+  const total_after_proposal =
+    completed_before_proposal + current_board + currently_planned_before_proposal + proposed_added;
+  const remaining_to_degree = Math.max(0, required - total_after_proposal);
+  const overshoot = Math.max(0, total_after_proposal - required);
 
   const warnings: string[] = [];
   if (unknown_hours_count > 0) {
@@ -619,8 +654,19 @@ export function computeDegreeProgress(
   }
 
   return {
-    required, completed, current_board, proposed_added, total_after,
-    remaining, overshoot, unknown_hours_count, warnings,
+    required,
+    completed_before_proposal,
+    current_board,
+    currently_planned_before_proposal,
+    proposed_added,
+    total_after_proposal,
+    remaining_to_degree,
+    // Backward-compatible aliases for existing consumers.
+    completed: completed_before_proposal,
+    currently_planned: currently_planned_before_proposal,
+    total_after: total_after_proposal,
+    remaining: remaining_to_degree,
+    overshoot, unknown_hours_count, warnings,
   };
 }
 
