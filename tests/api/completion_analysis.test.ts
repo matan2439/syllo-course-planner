@@ -36,6 +36,7 @@ import {
   replaceWeakElectives,
   moveFoundationCoursesEarlier,
   explainPlanQuality,
+  computeDegreeProgress,
 } from '../../api/ai/completion_analysis';
 import { validatePlanProposal } from '../../api/ai/plan_validation';
 import type { PlanContext } from '../../api/ai/_context';
@@ -1933,8 +1934,10 @@ describe('missing 4 hours are a שער רוח shortfall, not a generic degree-ho
 describe('TASK 4 — PART F: course-semester legality helper', () => {
   const knownSems = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
 
-  // PART F.1 — 0542-3620 (מעבר חום) is legal in Year 3 Semester B per program rules,
-  // even though offering data narrows effective_allowed_semesters to A only.
+  // PART F.1 — 0542-3620 (מעבר חום): program rules allow A or B, but this
+  // year's actual offering (effective_allowed_semesters) narrows it to A only.
+  // POLICY: effective_allowed_semesters wins when present and narrower —
+  // the course is legal ONLY in Year 3 Semester A this year.
   const heatTransfer = {
     course_id: '0542-3620',
     name_he: 'מעבר חום',
@@ -1947,17 +1950,17 @@ describe('TASK 4 — PART F: course-semester legality helper', () => {
     effective_allowed_semesters: ['year_3_semester_a'],
   };
 
-  it('1. מעבר חום is legal in Year 3 Semester B (program_allowed_semesters wins over narrow effective)', () => {
-    expect(isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems)).toBe(true);
+  it('1. מעבר חום is legal ONLY in Year 3 Semester A this year (effective_allowed_semesters wins over wider program)', () => {
     expect(isCourseAllowedInSemester(heatTransfer, 'year_3_semester_a', knownSems)).toBe(true);
+    expect(isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems)).toBe(false);
     const { semesters, confident } = getLegalSemesters(heatTransfer, knownSems);
-    expect(semesters).toEqual(expect.arrayContaining(['year_3_semester_a', 'year_3_semester_b']));
+    expect(semesters).toEqual(['year_3_semester_a']);
     expect(confident).toBe(true);
   });
 
   it('2. isCourseAllowedInSemester gives the same result regardless of caller (drag vs AI validation)', () => {
-    const dragResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems);
-    const aiResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_b', knownSems);
+    const dragResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_a', knownSems);
+    const aiResult = isCourseAllowedInSemester(heatTransfer, 'year_3_semester_a', knownSems);
     expect(dragResult).toBe(aiResult);
     expect(dragResult).toBe(true);
   });
@@ -1980,9 +1983,9 @@ describe('TASK 4 — PART F: course-semester legality helper', () => {
     expect(reason.reason).toContain('placement_policy=fixed');
   });
 
-  it('4. flexible mandatory courses use the union of effective and program/allowed semesters', () => {
+  it('4. flexible mandatory courses: effective_allowed_semesters wins when present; falls back to program/allowed otherwise', () => {
     const { semesters, confident } = getLegalSemesters(heatTransfer, knownSems);
-    expect(semesters.sort()).toEqual(['year_3_semester_a', 'year_3_semester_b']);
+    expect(semesters).toEqual(['year_3_semester_a']);
     expect(confident).toBe(true);
 
     // No effective data at all — falls back to program/allowed semesters.
@@ -2007,11 +2010,96 @@ describe('TASK 4 — PART F: course-semester legality helper', () => {
     expect(reason.reason).toContain('לא נמצאה ודאות מלאה');
   });
 
-  it('7. legal placement is never reported as illegal — מעבר חום in Year 3 B gives a positive reason', () => {
-    const reason = getCourseSemesterLegalityReason(heatTransfer, 'year_3_semester_b', undefined, knownSems);
+  it('7. legal placement is never reported as illegal — מעבר חום in Year 3 A gives a positive reason', () => {
+    const reason = getCourseSemesterLegalityReason(heatTransfer, 'year_3_semester_a', undefined, knownSems);
     expect(reason.allowed).toBe(true);
     expect(reason.confident).toBe(true);
     expect(reason.reason).not.toContain('אי אפשר');
+  });
+
+  // PART F.3 — 0542-4091 (מעבדה במכניקת המוצקים): program allows year_4_a or
+  // year_4_b, but this year it's only actually offered in year_4_b.
+  // effective_allowed_semesters wins → legal ONLY in year_4_b.
+  const solidMechanicsLab = {
+    course_id: '0542-4091',
+    name_he: 'מעבדה במכניקת המוצקים',
+    course_type: 'mandatory',
+    placement_policy: 'flexible',
+    program_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'],
+    allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'],
+    offered_semesters: ['B'],
+    effective_allowed_semesters: ['year_4_semester_b'],
+  };
+
+  it('8. מעבדה במכניקת המוצקים (0542-4091) is legal only in year_4_semester_b (effective wins over wider program)', () => {
+    const { semesters, confident } = getLegalSemesters(solidMechanicsLab, knownSems);
+    expect(semesters).toEqual(['year_4_semester_b']);
+    expect(confident).toBe(true);
+    expect(isCourseAllowedInSemester(solidMechanicsLab, 'year_4_semester_b', knownSems)).toBe(true);
+    expect(isCourseAllowedInSemester(solidMechanicsLab, 'year_4_semester_a', knownSems)).toBe(false);
+  });
+});
+
+describe('PART C — computeDegreeProgress (unified degree-hours helper)', () => {
+  function analysisWith(hours: any, scheduledIds: string[] = [], completedIds: string[] = []): any {
+    return {
+      completed_course_ids: completedIds,
+      scheduled_course_ids: scheduledIds,
+      hours: {
+        required_total: DEGREE_REQUIRED_HOURS,
+        known_completed_hours: 0,
+        known_scheduled_hours: 0,
+        known_total_hours: 0,
+        remaining_hours: DEGREE_REQUIRED_HOURS,
+        unknown_hour_courses: 0,
+        approximate: false,
+        ...hours,
+      },
+    };
+  }
+
+  it('9. proposed_added counts newly-added courses (incl. שער רוח) exactly once, not double-counted with current_board', () => {
+    const analysis = analysisWith(
+      { known_completed_hours: 100, known_scheduled_hours: 50 },
+      ['c_on_board'],
+    );
+    const proposalSemesters = [
+      { course_ids: ['c_on_board', 'c_new_elective', 'c_shaar_ruach'] },
+    ];
+    const courseHours = { c_on_board: 5, c_new_elective: 3, c_shaar_ruach: 2 };
+    const dp = computeDegreeProgress(analysis, proposalSemesters, courseHours);
+    expect(dp.proposed_added).toBe(5); // 3 + 2, c_on_board excluded
+    expect(dp.completed).toBe(100);
+    expect(dp.current_board).toBe(50);
+    expect(dp.total_after).toBe(155);
+    expect(dp.required).toBe(DEGREE_REQUIRED_HOURS);
+    expect(dp.remaining).toBe(DEGREE_REQUIRED_HOURS - 155);
+  });
+
+  it('8b. completed hours are not double-counted — a completed course is excluded from proposed_added', () => {
+    const analysis = analysisWith(
+      { known_completed_hours: 82.5, known_scheduled_hours: 0 },
+      [],
+      ['c_completed'],
+    );
+    const proposalSemesters = [{ course_ids: ['c_completed', 'c_new'] }];
+    const courseHours = { c_completed: 4, c_new: 6 };
+    const dp = computeDegreeProgress(analysis, proposalSemesters, courseHours);
+    expect(dp.proposed_added).toBe(6); // c_completed excluded
+    expect(dp.completed).toBe(82.5);
+    expect(dp.total_after).toBe(88.5);
+  });
+
+  it('10. overshoot is reported, not negative remaining', () => {
+    const analysis = analysisWith(
+      { known_completed_hours: 180, known_scheduled_hours: 0, required_total: 185 },
+    );
+    const proposalSemesters = [{ course_ids: ['c1'] }];
+    const courseHours = { c1: 10 };
+    const dp = computeDegreeProgress(analysis, proposalSemesters, courseHours);
+    expect(dp.total_after).toBe(190);
+    expect(dp.remaining).toBe(0);
+    expect(dp.overshoot).toBe(5);
   });
 });
 

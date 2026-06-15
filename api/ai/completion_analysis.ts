@@ -566,6 +566,64 @@ export function getDegreeHoursStatus(
   };
 }
 
+export interface DegreeProgress {
+  required: number;
+  completed: number;
+  current_board: number;
+  proposed_added: number;
+  total_after: number;
+  remaining: number;
+  overshoot: number;
+  unknown_hours_count: number;
+  warnings: string[];
+}
+
+/**
+ * PART C — single source of truth for degree-hour progress (TS mirror of
+ * computeDegreeProgress in app/web/semester_board_viewer.html). Used by
+ * both the status-chip render and the draft-summary render so all UI
+ * surfaces show the same numbers.
+ *
+ * `analysis.hours.known_completed_hours` already represents `completed`
+ * (manual total if known, else status-derived completed-course hours —
+ * computed without double counting in buildCompletionAnalysis).
+ * `analysis.hours.known_scheduled_hours` represents `current_board` (hours
+ * of courses currently on the board, from buildCompletionAnalysis).
+ */
+export function computeDegreeProgress(
+  analysis: CompletionAnalysis,
+  proposalSemesters: Array<{ course_ids: string[] }> = [],
+  courseHours: Record<string, number | null | undefined> = {},
+): DegreeProgress {
+  const placed = new Set((proposalSemesters || []).flatMap(s => s.course_ids || []));
+  let proposed_added = 0;
+  let unknown_hours_count = analysis.hours.unknown_hour_courses || 0;
+  for (const cid of placed) {
+    if (analysis.scheduled_course_ids.includes(cid)) continue;
+    if (analysis.completed_course_ids.includes(cid)) continue;
+    const h = courseHours[cid];
+    if (typeof h === 'number') proposed_added += h;
+    else unknown_hours_count++;
+  }
+
+  const required = analysis.hours.required_total;
+  const completed = analysis.hours.known_completed_hours;
+  const current_board = analysis.hours.known_scheduled_hours;
+  const total_after = completed + current_board + proposed_added;
+  const remaining = Math.max(0, required - total_after);
+  const overshoot = Math.max(0, total_after - required);
+
+  const warnings: string[] = [];
+  if (unknown_hours_count > 0) {
+    warnings.push(`${unknown_hours_count} קורסים ללא שעות ידועות לא נכללו בחישוב`);
+  }
+
+  return {
+    required, completed, current_board, proposed_added, total_after,
+    remaining, overshoot, unknown_hours_count, warnings,
+  };
+}
+
 /**
  * A plan is applyable if there are no blocking validation errors and no
  * blocking completeness reasons — i.e. at most warnings/info remain.
@@ -1554,11 +1612,10 @@ export interface LegalSemestersResult {
  * PART A/B — single source of truth for which semesters a course may
  * legally be placed in (priority model):
  *  - fixed: only its recommended/required semester.
- *  - flexible/mandatory: program_allowed_semesters (or allowed_semesters) is
- *    the contractual list; effective_allowed_semesters is UNIONED in (it may
- *    only ADD an offering-confirmed semester, never silently remove a
- *    program-allowed one — syllabus offering data must not override a
- *    program rule that allows multiple semesters).
+ *  - flexible/mandatory: effective_allowed_semesters (this year's actual
+ *    offering) is authoritative when present, even if narrower than
+ *    program_allowed_semesters/allowed_semesters; otherwise fall back to
+ *    program_allowed_semesters (or allowed_semesters).
  *  - elective: effective_allowed_semesters / offered_semesters if known,
  *    else any remaining known semester (not confident — warning, not block).
  */
@@ -1576,11 +1633,8 @@ export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: 
   }
 
   if (course.placement_policy === 'flexible' || course.course_type === 'mandatory') {
-    if (program) {
-      const semesters = effective ? [...new Set([...program, ...effective])] : program;
-      return { semesters, confident: true };
-    }
     if (effective) return { semesters: effective, confident: true };
+    if (program) return { semesters: program, confident: true };
     if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
     return { semesters: knownSemesterIds, confident: false };
   }

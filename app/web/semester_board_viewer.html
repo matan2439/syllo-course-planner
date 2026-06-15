@@ -4946,7 +4946,7 @@ function renderProposalCard() {
     for (const [cid, info] of Object.entries(ctxForProgress.courses)) courseHoursForProgress[cid] = info.hours;
     const proposalSemesters = (evald?.proposal?.semesters) || mapToProposalSemesters(draft.semesters);
     const degreeStatus = getDegreeHoursStatusLocal(analysisForProgress, proposalSemesters, courseHoursForProgress);
-    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus);
+    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus, proposalSemesters);
 
     const placedIdsChips = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
     const generalStatus = getGeneralRequirementStatusReportLocal(analysisForProgress, placedIdsChips);
@@ -4966,8 +4966,16 @@ function renderProposalCard() {
     </div>`;
   }
 
+  // PART E — grouped diagnostics (illegal placements / prereq issues / hours).
+  let groupedDiagHtml = '';
+  if (blocked && ctxForProgress) {
+    const proposalForDiag = evald?.proposal || { semesters: mapToProposalSemesters(draft.semesters) };
+    const diag = buildGroupedDiagnosticsLocal(proposalForDiag, ctxForProgress, evald?.degreeProgress);
+    groupedDiagHtml = renderGroupedDiagnosticsHtml(diag);
+  }
+
   let statusLabel, statusCls;
-  if (blocked) { statusLabel = 'חסום — יש לתקן לפני אישור'; statusCls = 'status-blocked'; }
+  if (blocked) { statusLabel = 'חסום — יש לתקן בעיות חוקיות'; statusCls = 'status-blocked'; }
   else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
   else { statusLabel = 'ניתן להחיל'; statusCls = 'status-ok'; }
 
@@ -4975,6 +4983,7 @@ function renderProposalCard() {
     <div class="ai-proposal-card-inner">
       <div class="ai-plan-hint">זו טיוטה, עדיין לא אושרה.</div>
       <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
+      ${groupedDiagHtml}
       ${degreeProgressHtml}
       ${chipsHtml}
       <div class="sb-status-summary">
@@ -5067,21 +5076,129 @@ function renderBoard() {
   }
 }
 
+/**
+ * PART C — single source of truth for degree-hour progress, used by the
+ * status chip, AI panel summary, draft/proposal summary card and full
+ * preview. Returns:
+ *   { required, completed, current_board, proposed_added, total_after,
+ *     remaining, overshoot, unknown_hours_count, warnings }
+ *
+ * - completed: manual completed-hours entry (degreeHoursProfile) PLUS hours
+ *   of courses with userCourseStatuses status==='completed' that have known
+ *   credit hours and are NOT already counted in the manual total. If a
+ *   manual total is set we assume it already reflects all completed courses
+ *   (it's a holistic self-reported number), so we do NOT add status-derived
+ *   hours on top — only when NO manual total is set do we sum status-derived
+ *   completed-course hours.
+ * - current_board: hours of courses on the committed board (state.semesters),
+ *   excluding any course whose status==='completed' (already in `completed`),
+ *   and excluding courses the active draft removes.
+ * - proposed_added: hours of courses newly added by the draft that are not
+ *   already on the committed board and not completed.
+ */
+function computeDegreeProgress(context, boardState, draftState) {
+  context = context || {};
+  boardState = boardState || state;
+  const required = programRequirements?.total_required_hours || DEGREE_REQUIRED_HOURS_GLOBAL();
+
+  const warnings = [];
+  let unknown_hours_count = 0;
+
+  const completedStatusIds = new Set(
+    Object.entries(userCourseStatuses || {})
+      .filter(([, us]) => us?.status === 'completed')
+      .map(([cid]) => cid)
+  );
+
+  // ── completed ───────────────────────────────────────────────────────
+  const manualCompleted = typeof degreeHoursProfile?.completed_degree_hours === 'number'
+    ? degreeHoursProfile.completed_degree_hours : null;
+
+  let completed;
+  if (manualCompleted != null) {
+    // Manual total is authoritative and assumed to already include
+    // status-derived completed courses — do not double count.
+    completed = manualCompleted;
+  } else {
+    completed = 0;
+    for (const cid of completedStatusIds) {
+      const h = courseMap[cid]?.weekly_hours;
+      if (typeof h === 'number') completed += h;
+      else unknown_hours_count++;
+    }
+  }
+
+  // ── current_board ───────────────────────────────────────────────────
+  const boardPlacedIds = new Set(Object.values(boardState?.semesters || {}).flat());
+  const draftRemoved = new Set();
+  if (draftState?.removed) for (const cid of draftState.removed) draftRemoved.add(cid);
+  // also support draft proposals expressed as full semester maps (cid present
+  // in board but absent from draft.semesters[sameSem]) — best-effort.
+  if (draftState?.semesters) {
+    for (const [semId, ids] of Object.entries(boardState?.semesters || {})) {
+      const draftIds = new Set(draftState.semesters[semId] || ids);
+      for (const cid of ids) if (!draftIds.has(cid)) draftRemoved.add(cid);
+    }
+  }
+
+  let current_board = 0;
+  for (const cid of boardPlacedIds) {
+    if (completedStatusIds.has(cid)) continue; // already counted in `completed`
+    if (draftRemoved.has(cid)) continue;
+    const h = courseMap[cid]?.weekly_hours;
+    if (typeof h === 'number') current_board += h;
+    else unknown_hours_count++;
+  }
+
+  // ── proposed_added ──────────────────────────────────────────────────
+  let proposed_added = 0;
+  if (draftState) {
+    const draftAddedIds = new Set();
+    if (draftState.added) for (const cid of draftState.added) draftAddedIds.add(cid);
+    if (draftState.semesters) {
+      for (const ids of Object.values(draftState.semesters)) {
+        for (const cid of ids) draftAddedIds.add(cid);
+      }
+    }
+    for (const cid of draftAddedIds) {
+      if (boardPlacedIds.has(cid)) continue;        // already on committed board
+      if (completedStatusIds.has(cid)) continue;    // already completed
+      const h = courseMap[cid]?.weekly_hours;
+      if (typeof h === 'number') proposed_added += h;
+      else unknown_hours_count++;
+    }
+  }
+
+  const total_after = completed + current_board + proposed_added;
+  const remaining = Math.max(0, required - total_after);
+  const overshoot = Math.max(0, total_after - required);
+
+  if (unknown_hours_count > 0) {
+    warnings.push(`${unknown_hours_count} קורסים ללא שעות ידועות לא נכללו בחישוב`);
+  }
+
+  return {
+    required, completed, current_board, proposed_added, total_after,
+    remaining, overshoot, unknown_hours_count, warnings,
+  };
+}
+function DEGREE_REQUIRED_HOURS_GLOBAL() {
+  return (typeof DEGREE_REQUIRED_HOURS !== 'undefined') ? DEGREE_REQUIRED_HOURS : 185;
+}
+
 function computeProgramProgress() {
   if (!programRequirements) return null;
   const allPlaced  = allPlacedIds();
   const allCounted = new Set([...allPlaced, ...completedCourseIds]);
 
-  let plannedHours = 0, unknownHoursCount = 0;
-  for (const cid of allPlaced) {
-    const c = courseMap[cid];
-    if (c?.weekly_hours != null) plannedHours += c.weekly_hours;
-    else unknownHoursCount++;
-  }
+  // PART C — single unified degree-hours computation (status chip).
+  const degreeProgress = computeDegreeProgress({}, state, null);
+  const plannedHours = Math.round((degreeProgress.completed + degreeProgress.current_board) * 10) / 10;
+  const unknownHoursCount = degreeProgress.unknown_hours_count;
 
-  const total     = programRequirements.total_required_hours || null;
+  const total     = degreeProgress.required || null;
   const pct       = total ? Math.min(100, Math.round((plannedHours / total) * 100)) : 0;
-  const remaining = total != null ? Math.max(0, total - plannedHours) : null;
+  const remaining = total != null ? degreeProgress.remaining : null;
 
   const categories = (programRequirements.categories || []).map(cat => {
     const catSet  = new Set(cat.course_ids || []);
@@ -5108,6 +5225,7 @@ function computeProgramProgress() {
     total, plannedHours: Math.round(plannedHours * 10) / 10,
     pct, remaining, unknownHoursCount, categories,
     coreTotalMin, coreSelected, coreSatisfied,
+    degreeProgress,
   };
 }
 
@@ -6191,10 +6309,10 @@ function isFlexibleMandatory(c) {
 /* PART B — single source of truth for course-semester legality (mirrors
    getLegalSemesters/isCourseAllowedInSemester in api/ai/completion_analysis.ts).
    Priority: fixed → recommended/required semester only; flexible/mandatory →
-   union(program_allowed_semesters||allowed_semesters, effective_allowed_semesters)
-   (effective may only ADD a semester, never silently remove a program-allowed one);
-   elective → effective_allowed_semesters, else offered_semesters, else any known
-   semester (not confident — warning, not block). */
+   effective_allowed_semesters wins when present (this year's actual offering is
+   authoritative, even if narrower than program_allowed_semesters/allowed_semesters);
+   else program_allowed_semesters/allowed_semesters; elective → effective_allowed_semesters,
+   else offered_semesters, else any known semester (not confident — warning, not block). */
 function getLegalSemestersLocal(c, knownSemesterIds) {
   knownSemesterIds = knownSemesterIds || SEMESTERS.map(s => s.id);
   const effective = (c?.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : null;
@@ -6206,11 +6324,8 @@ function getLegalSemestersLocal(c, knownSemesterIds) {
     return { semesters: fixed, confident: true };
   }
   if (c?.placement_policy === 'flexible' || c?.course_type === 'mandatory') {
-    if (program) {
-      const semesters = effective ? [...new Set([...program, ...effective])] : program;
-      return { semesters, confident: true };
-    }
     if (effective) return { semesters: effective, confident: true };
+    if (program) return { semesters: program, confident: true };
     if (c?.offered_semesters && c.offered_semesters.length) return { semesters: c.offered_semesters, confident: false };
     return { semesters: knownSemesterIds, confident: false };
   }
@@ -6560,7 +6675,12 @@ function evaluateDraftProposal() {
     courseHours,
     movableCourseIds: ctx.movableCourseIds,
   });
-  return { proposal, errors, warnings, completeness };
+
+  // PART D/E — unified degree-hours progress for diagnostics rendering.
+  const draftState = { semesters: Object.fromEntries(proposal.semesters.map(s => [s.semester_id, s.course_ids || []])) };
+  const degreeProgress = computeDegreeProgress({}, state, draftState);
+
+  return { proposal, errors, warnings, completeness, degreeProgress };
 }
 
 /** PART E/B — diff the active draft against the committed board for board-overlay markers. */
@@ -8104,6 +8224,109 @@ function courseLabelLocal(courseId) {
  * Mirrors api/ai/plan_validation.ts (validatePlanProposal) — kept in sync
  * manually since this runs client-side without a build step.
  */
+/**
+ * PART E — grouped diagnostics for the draft panel: illegal placements,
+ * prerequisite-order violations, and degree-hours status. Returns
+ * { illegalPlacements, prereqIssues, degreeProgress } where the first two
+ * are arrays of human-readable Hebrew rows (empty arrays when none).
+ */
+function buildGroupedDiagnosticsLocal(proposal, ctx, degreeProgress) {
+  const illegalPlacements = [];
+  const prereqIssues = [];
+
+  const propSemIdx = {};
+  for (const sem of (proposal.semesters || [])) {
+    const idx = _semIndexOf(sem.semester_id);
+    for (const cid of (sem.course_ids || [])) propSemIdx[cid] = idx;
+  }
+
+  for (const sem of (proposal.semesters || [])) {
+    const semName = SEM_HE[sem.semester_id] || sem.semester_id;
+    for (const courseId of (sem.course_ids || [])) {
+      const cName = courseLabelLocal(courseId);
+      const info = ctx.courses[courseId];
+
+      // Group 1 — illegal semester placement.
+      if (info?.effective_allowed_semesters?.length && !info.effective_allowed_semesters.includes(sem.semester_id)) {
+        const allowedNames = info.effective_allowed_semesters.map(s => SEM_HE[s] || s).join(', ');
+        illegalPlacements.push({ course: cName, placed: semName, allowed: allowedNames });
+      }
+
+      // Group 2 — prerequisite-order violations.
+      const _prereqIds = new Set([
+        ...(courseMap[courseId]?.prerequisites || []),
+        ...(courseMap[courseId]?.missing_prerequisites || []),
+      ]);
+      const semIdx = _semIndexOf(sem.semester_id);
+      for (const prereq of _prereqIds) {
+        const status = userCourseStatuses[prereq]?.status || 'not_taken';
+        if (status === 'completed' || ctx.completedCourseIds.has(prereq)) continue;
+        const pName = courseLabelLocal(prereq);
+        const pIdx = propSemIdx[prereq];
+        if (pIdx == null) {
+          if (!courseMap[prereq]) continue;
+          prereqIssues.push({ course: cName, prereq: pName, suggestion: `הוסף את ${pName} לתוכנית בסמסטר מוקדם יותר.` });
+        } else if (pIdx >= semIdx) {
+          // Suggest moving the prereq earlier if a legal earlier slot exists,
+          // otherwise suggest moving the dependent course later.
+          const prereqInfo = ctx.courses[prereq];
+          const prereqAllowed = prereqInfo?.effective_allowed_semesters?.length
+            ? prereqInfo.effective_allowed_semesters : null;
+          const hasEarlierLegalSlot = prereqAllowed
+            ? prereqAllowed.some(sid => _semIndexOf(sid) < semIdx)
+            : pIdx > 0;
+          const suggestion = hasEarlierLegalSlot
+            ? `הזז את ${pName} לסמסטר מוקדם יותר.`
+            : `הזז את ${cName} לסמסטר מאוחר יותר.`;
+          prereqIssues.push({ course: cName, prereq: pName, suggestion });
+        }
+      }
+    }
+  }
+
+  return { illegalPlacements, prereqIssues, degreeProgress };
+}
+
+/**
+ * PART E — render the three diagnostic groups (Hebrew). Returns '' when
+ * there is nothing to show.
+ */
+function renderGroupedDiagnosticsHtml(diag) {
+  if (!diag) return '';
+  const blocks = [];
+
+  if (diag.illegalPlacements?.length) {
+    const rows = diag.illegalPlacements.map(p =>
+      `<li>${esc(p.course)} — משובץ ב${esc(p.placed)}, מותר רק ב${esc(p.allowed)}.</li>`
+    ).join('');
+    blocks.push(`<div class="diag-group diag-illegal"><strong>שיבוץ בסמסטר לא חוקי</strong><ul>${rows}</ul></div>`);
+  }
+
+  if (diag.prereqIssues?.length) {
+    const rows = diag.prereqIssues.map(p =>
+      `<li>${esc(p.course)} — דרישת קדם ${esc(p.prereq)}: ${esc(p.suggestion)}</li>`
+    ).join('');
+    blocks.push(`<div class="diag-group diag-prereq"><strong>דרישות קדם</strong><ul>${rows}</ul></div>`);
+  }
+
+  const dp = diag.degreeProgress;
+  if (dp && (dp.remaining > 0 || dp.overshoot > 0)) {
+    const remOrOver = dp.overshoot > 0
+      ? `<li>חריגה: ${esc(dp.overshoot)} ש״ש</li>`
+      : `<li>נותרו: ${esc(dp.remaining)} ש״ש</li>`;
+    blocks.push(`<div class="diag-group diag-hours"><strong>שעות לתואר</strong><ul>
+      <li>שעות שנצברו: ${esc(dp.completed)}</li>
+      <li>במערכת הנוכחית: ${esc(dp.current_board)}</li>
+      <li>יתווספו בהצעה: ${esc(dp.proposed_added)}</li>
+      <li>סה״כ לאחר ההצעה: ${esc(dp.total_after)}/${esc(dp.required)}</li>
+      ${remOrOver}
+    </ul></div>`);
+  }
+
+  if (!blocks.length) return '';
+  return `<div class="grouped-diagnostics">${blocks.join('')}</div>`;
+}
+
 function validatePlanProposalLocal(proposal, ctx) {
   const errors = [];
   const warnings = [];
@@ -9226,26 +9449,35 @@ function getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours) {
 }
 
 /**
- * PART A — compact degree-progress summary block (Hebrew), used in both the
- * draft sidebar panel and the full preview modal. `status` is the result of
- * getDegreeHoursStatusLocal(analysis, proposalSemesters, courseHours).
+ * PART C — compact degree-progress summary block (Hebrew), used in both the
+ * draft sidebar panel and the full preview modal. Sourced from the single
+ * unified computeDegreeProgress() helper so all UI surfaces show the same
+ * numbers. `proposalSemesters` is an array of {semester_id, course_ids}
+ * representing the draft/proposal.
  */
-function renderDegreeProgressHtml(analysis, status) {
-  if (!status || !analysis) return '';
-  const completed = analysis.hours.known_completed_hours;
-  const current   = analysis.hours.known_scheduled_hours;
-  const added     = status.proposed_plan_hours;
-  const total     = status.total_after_plan;
-  const required  = status.degree_required_hours;
-  const remaining = status.missing_hours;
-  const overshoot = Math.max(0, total - required);
+function renderDegreeProgressHtml(analysis, status, proposalSemesters) {
+  if (!analysis) return '';
+  const draftState = proposalSemesters ? { semesters: Object.fromEntries(
+    proposalSemesters.map(s => [s.semester_id, s.course_ids || []])
+  ) } : null;
+  const dp = computeDegreeProgress({}, state, draftState);
+
+  const completed = dp.completed;
+  const current   = dp.current_board;
+  const added     = dp.proposed_added;
+  const total     = dp.total_after;
+  const required  = dp.required;
+  const remaining = dp.remaining;
+  const overshoot = dp.overshoot;
 
   let msgHtml = '';
   if (overshoot > 0) {
     msgHtml = `<div class="dp-msg warn">ההצעה עוברת את היקף התואר ב־${overshoot} ש״ש</div>`;
-  } else if (total === required) {
+  } else if (remaining === 0) {
     msgHtml = `<div class="dp-msg success">ההצעה משלימה את היקף התואר</div>`;
   }
+  const warnHtml = dp.warnings.length
+    ? `<div class="dp-msg warn">${dp.warnings.map(esc).join('; ')}</div>` : '';
 
   return `<div class="degree-progress">
     <div class="dp-row"><span>נצברו</span><span class="v">${esc(completed)}</span></div>
@@ -9253,7 +9485,7 @@ function renderDegreeProgressHtml(analysis, status) {
     <div class="dp-row"><span>יתווספו בהצעה</span><span class="v">${esc(added)}</span></div>
     <div class="dp-row dp-total"><span>סה״כ לאחר ההצעה</span><span class="v">${esc(total)}/${esc(required)}</span></div>
     <div class="dp-row"><span>נותרו</span><span class="v">${esc(remaining)} ש״ש</span></div>
-    ${msgHtml}
+    ${msgHtml}${warnHtml}
   </div>`;
 }
 
@@ -10066,7 +10298,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
 
   // PART A — compact degree-progress summary (also shown in the sidebar draft panel).
   const degreeProgressModalHtml = (_aiPlanLastAnalysis)
-    ? renderDegreeProgressHtml(_aiPlanLastAnalysis, getDegreeHoursStatusLocal(_aiPlanLastAnalysis, proposal.semesters || [], courseHoursForStatus))
+    ? renderDegreeProgressHtml(_aiPlanLastAnalysis, getDegreeHoursStatusLocal(_aiPlanLastAnalysis, proposal.semesters || [], courseHoursForStatus), proposal.semesters || [])
     : '';
 
   const MAX_REASONS_SHOWN = 3;
