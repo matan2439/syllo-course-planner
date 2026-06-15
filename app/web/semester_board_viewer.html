@@ -4728,7 +4728,10 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
   // an explicit "build now" quick-action chip for imperative planning intents.
   // The actual build path runs only when the user clicks "בנה מערכת מחדש" or
   // an explicit "rebuild-plan" / "build-plan" quick action.
-  if (!pending) {
+  // Persist the message as the user's preference for BOTH the plain send and
+  // the clarification-continuation (pending != null). The continuation combines
+  // the original request with the answer into planningText.
+  {
     const basePrefs = { ...(_aiPlanLastPreferences || sidebarQuickActionPrefs()) };
     _aiPlanLastPreferences = { ...basePrefs, extra_request_he: planningText };
   }
@@ -4759,149 +4762,34 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     'fix_legality', 'improve_career_fit', 'replace_course', 'add_avoided', 'improve_current',
   ]);
 
-  // Issue 1 — plain preference text (improve_current) must NEVER auto-build.
-  // The user's text is already persisted into _aiPlanLastPreferences.extra_request_he
-  // above. Acknowledge and offer the explicit build action; do not call
-  // runPrimaryAiAction here.
-  if (intent.type === 'improve_current' && pending == null) {
-    postAssistantMessage('שמרתי את ההעדפה. לחץ "בנה מערכת מחדש" כדי לבנות בפועל לפי הבקשה.', [
+  // Issue 1 (regression fix) — שלח is PURELY conversational. ANY planning /
+  // build / refine intent, OR a clarification-continuation (pending != null),
+  // must NEVER build or mutate the board/draft from here. The message is
+  // already persisted into _aiPlanLastPreferences.extra_request_he above. We
+  // acknowledge and offer the explicit build chip. The real build path runs
+  // only via the "בנה מערכת מחדש" button or the 'rebuild-plan' / 'build-plan'
+  // quick action (handleQuickReply) — none of which go through this function.
+  //
+  // NOTE: the previous guards were gated on `pending == null`, so the
+  // clarification-continuation (pending != null, intent forced to
+  // 'improve_current') bypassed them and fell into the build block below,
+  // calling requestPlanProposal* / mutating the draft. That block is removed.
+  if (pending != null || PLANNING_INTENTS.has(intent.type)) {
+    // Pure preference recording for an explicitly-avoided course is OK — it
+    // does not touch the board/draft. We do NOT remove anything from the draft.
+    if (intent.type === 'add_avoided' && intent.courseId) {
+      if (!_aiPickerState.unwanted.includes(intent.courseId)) _aiPickerState.unwanted.push(intent.courseId);
+      if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
+      if (!_aiPickerState.strongUnwanted.includes(intent.courseId)) _aiPickerState.strongUnwanted.push(intent.courseId);
+    }
+
+    const hasDraft = !!state.proposalDraft;
+    const msg = hasDraft
+      ? 'שמרתי. כדי לעדכן את המערכת לפי זה לחצי על "בנה מערכת מחדש".'
+      : 'הבנתי את ההעדפות. כדי לבנות מערכת לפי זה, לחצי על "בנה מערכת מחדש".';
+    postAssistantMessage(msg, [
       { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
     ]);
-    return;
-  }
-
-  // Issue 1 — even imperative planning intents do NOT auto-build from שלח.
-  // We acknowledge, persist the request, and offer an explicit build chip.
-  // The actual build path is reachable only via the rebuild button or the
-  // 'rebuild-plan' / 'build-plan' quick action. Existing per-action chips
-  // (apply-draft, reject-draft, allow-overload) are unaffected.
-  if (PLANNING_INTENTS.has(intent.type) && pending == null) {
-    postAssistantMessage('הבנתי את הבקשה. לחץ "בנה מערכת מחדש" או על הכפתור כדי לבנות בפועל.', [
-      { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
-    ]);
-    return;
-  }
-
-  if (PLANNING_INTENTS.has(intent.type)) {
-    // "add_avoided" — record the course as strongly avoided, then fall
-    // through to a repair proposal (complete_requirements if the avoided
-    // course leaves a category short, otherwise replace_course/minimal_changes).
-    if (intent.type === 'add_avoided') {
-      if (intent.courseId) {
-        if (!_aiPickerState.unwanted.includes(intent.courseId)) _aiPickerState.unwanted.push(intent.courseId);
-        if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
-        if (!_aiPickerState.strongUnwanted.includes(intent.courseId)) _aiPickerState.strongUnwanted.push(intent.courseId);
-        // Remove from the active draft (or board) so a repair proposal is needed.
-        const draft = _ensureProposalDraft();
-        for (const semId of Object.keys(draft.semesters)) {
-          if (draft.semesters[semId].includes(intent.courseId)) {
-            draft.semesters[semId] = draft.semesters[semId].filter(x => x !== intent.courseId);
-            if (!draft.repo.includes(intent.courseId)) draft.repo.push(intent.courseId);
-          }
-        }
-      }
-      intent.type = 'complete_requirements';
-    }
-
-    // full_plan
-    if (intent.type === 'full_plan') {
-      postAssistantMessage('מבין — בונה תוכנית מלאה מאפס…');
-      const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: planningText };
-      _aiPlanLastPreferences = { ...prefs, action_type: 'full_plan' };
-      try {
-        await requestPlanProposal(prefs, 'full_plan');
-        // Issue 3 — if blocked, show the blocking notice instead of "המוצעת".
-        const v = _aiPlanLastValidation;
-        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length)));
-        if (blocked) {
-          const overloadErr = (v.errors || []).find(e => /חריגה|עומס/.test(e));
-          const overloadInfo = overloadErr ? ` (${overloadErr})` : '';
-          postAssistantMessage(`המערכת שנוצרה לא תקינה כי סמסטר אחד חורג ממגבלת העומס. נסו לבנות מחדש עם עומס נמוך יותר או להפחית קורסים.${overloadInfo}`, [
-            { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
-            { label: 'דחה', action: 'reject-draft' },
-          ]);
-        } else {
-          postAssistantMessage('זו התוכנית המלאה המוצעת — אפשר להחיל, לדחות, או לבקש שינויים.', [
-            { label: 'החל שינוי', action: 'apply-draft' },
-            { label: 'דחה', action: 'reject-draft' },
-          ]);
-        }
-      } catch (err) {
-        postAssistantMessage(`אירעה שגיאה בבניית התוכנית: ${err?.message || err}`);
-      } finally {
-        renderAiTab();
-      }
-      return;
-    }
-
-    // balance_specific_semester — repair locally first; if nothing moved,
-    // fall back to an AI balance_load proposal scoped to that semester.
-    if (intent.type === 'balance_specific_semester' && intent.semesterId) {
-      const before = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
-      repairBalanceSemesterToDraft(intent.semesterId);
-      const after = state.proposalDraft ? Object.values(state.proposalDraft.semesters).flat() : null;
-      const moved = before && after && JSON.stringify(before.slice().sort()) !== JSON.stringify(after.slice().sort());
-      if (moved) {
-        postAssistantMessage('זו ההצעה המעודכנת — אפשר להחיל, לדחות, או לבקש עוד חלופות.', [
-          { label: 'החל שינוי', action: 'apply-draft' },
-          { label: 'דחה', action: 'reject-draft' },
-        ]);
-        return;
-      }
-      const label = SEM_HE[intent.semesterId] || intent.semesterId;
-      postAssistantMessage(`מבין — בודק איזון עומס עבור ${label}…`);
-      intent.extra_request_he = `${planningText} (התמקד באיזון העומס בסמסטר ${label})`;
-      intent.type = 'balance_load';
-    }
-
-    // action_type mapping for the remaining intents.
-    let actionType = 'minimal_changes';
-    let inProgressMsg = 'מבין — אני בודק את התוכנית הנוכחית ומכין הצעת שינוי…';
-    switch (intent.type) {
-      case 'balance_load':
-        actionType = 'balance_load';
-        inProgressMsg = 'מבין — בודק איזון עומס בין הסמסטרים…';
-        break;
-      case 'complete_requirements':
-        // Prefer the conversational completion flow (chat suggestions +
-        // quick replies) for missing categories.
-        offerAllCategorySuggestions();
-        return;
-      case 'fix_legality':
-        actionType = 'fix_prerequisites';
-        inProgressMsg = 'מבין — בודק ומתקן בעיות חוקיות בלוח…';
-        break;
-      case 'replace_course':
-      case 'improve_career_fit':
-      case 'improve_current':
-      default:
-        actionType = 'minimal_changes';
-        break;
-    }
-
-    postAssistantMessage(inProgressMsg);
-    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: intent.extra_request_he || planningText };
-    _aiPlanLastPreferences = { ...prefs, action_type: actionType };
-    try {
-      // PART F — always route through the INCREMENTAL planning call
-      // ("שפר את המערכת הנוכחית"), never a full rebuild, for chat-driven edits.
-      if (state.proposalDraft) {
-        await requestPlanProposalFromDraft(prefs, actionType);
-      } else {
-        await requestPlanProposal(prefs, actionType);
-      }
-      // PART F — follow the proposal with explicit ping-pong action chips.
-      postAssistantMessage('זו ההצעה המעודכנת — אפשר להחיל, לדחות, לבקש עוד חלופות, או לבקש ממני לשאול לפני שיבוץ.', [
-        { label: 'החל שינוי', action: 'apply-draft' },
-        { label: 'דחה', action: 'reject-draft' },
-        { label: 'תן עוד חלופות', action: 'more-alternatives', payload: { previousRequest: planningText } },
-        { label: 'שאל אותי לפני', action: 'ask-before-all' },
-      ]);
-    } catch (err) {
-      postAssistantMessage(`אירעה שגיאה בעת בניית ההצעה: ${err?.message || err}`);
-    } finally {
-      renderAiTab();
-    }
     return;
   }
 

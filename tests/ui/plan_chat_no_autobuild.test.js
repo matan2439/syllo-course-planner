@@ -68,8 +68,9 @@ describe('Issue 1 — שלח does not auto-build', () => {
     document = window.document;
     await waitForInit(window);
     window.setSidebarTab('ai');
-    // Spy on the build entry point. Any call here would be an auto-build.
-    window.eval('window.__rppCalls = 0; const __origRPP = requestPlanProposal; requestPlanProposal = function(...a){ window.__rppCalls++; return Promise.resolve(); };');
+    // Spy on BOTH build entry points. Any call here would be an auto-build.
+    window.eval('window.__rppCalls = 0; requestPlanProposal = function(...a){ window.__rppCalls++; return Promise.resolve(); };');
+    window.eval('window.__rpfdCalls = 0; if (typeof requestPlanProposalFromDraft !== "undefined") { requestPlanProposalFromDraft = function(...a){ window.__rpfdCalls++; return Promise.resolve(); }; }');
   });
 
   afterEach(() => { dom.window.close(); });
@@ -101,6 +102,76 @@ describe('Issue 1 — שלח does not auto-build', () => {
     // An explicit "בנה מערכת מחדש" build chip is offered.
     const chips = Array.from(logEl.querySelectorAll('.ai-quick-reply, button')).map(b => b.textContent);
     expect(chips.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(true);
+  });
+
+  test('Test 1 — analyses preference (no avoid): no build, draft unchanged, prefs updated, chip offered', async () => {
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    const draftBefore = window.eval('JSON.stringify(state.proposalDraft || null)');
+    const lastPropBefore = window.eval('JSON.stringify(_aiPlanLastProposal || null)');
+
+    input.value = 'אני רוצה להתעסק באנליזות חוזק ויברציות וזרימה, ממוצע מעל 82';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(window.eval('window.__rppCalls')).toBe(0);
+    expect(window.eval('window.__rpfdCalls')).toBe(0);
+    const logEl = document.getElementById('ai-chat-log');
+    expect(logEl.querySelector('.ai-chat-bubble.user')).toBeTruthy();
+    expect(window.eval('(_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || ""')).toContain('ויברציות');
+    expect(window.eval('JSON.stringify(state.proposalDraft || null)')).toBe(draftBefore);
+    expect(window.eval('JSON.stringify(_aiPlanLastProposal || null)')).toBe(lastPropBefore);
+    const chips = Array.from(logEl.querySelectorAll('.ai-quick-reply, button')).map(b => b.textContent);
+    expect(chips.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(true);
+  });
+
+  test('Test 2 — imperative "build me a plan": no build, offers explicit build action', async () => {
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    input.value = 'בנה לי מערכת לפי ההעדפות האלה';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('window.__rppCalls')).toBe(0);
+    expect(window.eval('window.__rpfdCalls')).toBe(0);
+    const logEl = document.getElementById('ai-chat-log');
+    const chips = Array.from(logEl.querySelectorAll('.ai-quick-reply, button')).map(b => b.textContent);
+    expect(chips.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(true);
+  });
+
+  test('Test 2b (REGRESSION) — clarification continuation (pending != null) STILL does not build', async () => {
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    const draftBefore = window.eval('JSON.stringify(state.proposalDraft || null)');
+
+    // First send triggers a clarification question (sets _aiPendingPlanningRequest).
+    input.value = 'אני רוצה מערכת טובה יותר';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    // Force the pending state so the continuation path is exercised deterministically.
+    window.eval('_aiPendingPlanningRequest = "אני רוצה מערכת טובה יותר"; _aiClarificationAnswered = false;');
+
+    // The answer send re-enters with pending != null — this is the bypass path.
+    input.value = 'ממוצע מעל 85';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+
+    expect(window.eval('window.__rppCalls')).toBe(0);
+    expect(window.eval('window.__rpfdCalls')).toBe(0);
+    expect(window.eval('JSON.stringify(state.proposalDraft || null)')).toBe(draftBefore);
+    // Combined planningText persisted.
+    expect(window.eval('(_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || ""')).toContain('85');
+  });
+
+  test('Test 4 — board/draft state unchanged after a plain send', async () => {
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    const boardBefore = window.eval('JSON.stringify(state.semesters)');
+    const draftBefore = window.eval('JSON.stringify(state.proposalDraft || null)');
+    input.value = 'חשוב לי ממוצע גבוה';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('JSON.stringify(state.semesters)')).toBe(boardBefore);
+    expect(window.eval('JSON.stringify(state.proposalDraft || null)')).toBe(draftBefore);
   });
 
   test("'rebuild-plan' quick action DOES reach the build path", async () => {

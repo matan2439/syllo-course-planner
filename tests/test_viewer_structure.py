@@ -1395,17 +1395,30 @@ def test_single_build_button_visible_with_confirm_on_rebuild(html):
 
 
 def test_chat_free_text_routes_full_plan_request(html):
-    """Free-text 'תבנה לי תוכנית מלאה' must route to the full-plan flow via
-    detectAiIntent."""
-    m = re.search(r"async function handleSidebarChatSend\(providedMessage\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "handleSidebarChatSend not found"
-    body = m.group(1)
+    """New approved contract: free-text chat send (שלח) must NOT build a plan.
+    The inner chat-send handler still detects intent for conversational routing,
+    but for any planning/build intent it offers an explicit 'בנה מערכת מחדש' /
+    'rebuild-plan' action instead of calling the plan builder. The actual
+    full-plan generation lives only in the explicit build path (runPrimaryAiAction
+    / runBuildFromScratch)."""
+    m = re.search(r"async function _handleSidebarChatSendInner\(.*?\n}\n", html, re.DOTALL)
+    assert m, "_handleSidebarChatSendInner not found"
+    body = m.group(0)
+    # Intent is still detected for conversational routing.
     assert "detectAiIntent(" in body
-    assert "requestPlanProposal(prefs, 'full_plan')" in body
+    # Planning/build free-text offers the explicit build action ...
+    assert "'rebuild-plan'" in body
+    # ... and must NOT itself invoke the plan builder or draft mutation.
+    assert "requestPlanProposal(prefs, 'full_plan')" not in body
+    assert "requestPlanProposalFromDraft(" not in body
 
+    # detectAiIntent still recognizes a full-plan request phrase.
     m2 = re.search(r"function detectAiIntent\(message\)(.*?)\n}\n", html, re.DOTALL)
     assert m2, "detectAiIntent not found"
     assert re.search(r"תבנה.*תוכנית.*מלאה", m2.group(1))
+
+    # The explicit build path still routes to full-plan generation.
+    assert "requestPlanProposal(prefs, 'full_plan')" in _extract_fn(html, "runPrimaryAiAction")
 
 
 def test_chat_first_default_visible_controls(html):
@@ -1681,11 +1694,17 @@ def test_build_button_payload_full_plan(html):
 
 
 def test_build_loading_state_exists(html):
-    """PART D — a loading/progress element with 'בונה מערכת' text exists in
-    the build flow."""
+    """PART D — a loading/progress element (#ai-build-status) with cycling
+    stage text exists in the EXPLICIT build flow (runBuildFromScratch), and
+    that flow routes to full-plan generation. Loading for plan generation
+    belongs to the explicit build path, not to plain chat send."""
     assert 'id="ai-build-status"' in html
     fn = _extract_fn(html, "runBuildFromScratch")
-    assert "בונה מערכת" in fn
+    # Cycling stage messages drive the #ai-build-status indicator.
+    assert "ai-build-status" in fn
+    assert "אוסף העדפות..." in fn
+    # The explicit build flow actually triggers plan generation.
+    assert "run('full_plan')" in fn
 
 
 def test_build_error_path_renders_chat_message(html):
@@ -1768,12 +1787,22 @@ def test_sidebar_chat_send_appends_user_message_and_handler_bound(html):
 
 
 def test_sidebar_chat_send_shows_loading_indicator_for_planning_intents(html):
-    """PART H.6 — planning-intent dispatch posts an in-progress assistant
-    message (the shared chat-based loading indicator) before awaiting the
-    plan request."""
-    fn = _extract_fn(html, "handleSidebarChatSend")
-    assert "postAssistantMessage('מבין" in fn
-    assert "postAssistantMessage(inProgressMsg)" in fn
+    """New approved contract: a plan-generation loading indicator must appear
+    ONLY on an explicit build/rebuild action, NOT on a planning-intent chat
+    send. So the inner chat-send handler must NOT post a build in-progress
+    message for planning intents, while the explicit build flow
+    (runBuildFromScratch) does drive the #ai-build-status loading indicator."""
+    inner = re.search(r"async function _handleSidebarChatSendInner\(.*?\n}\n", html, re.DOTALL)
+    assert inner, "_handleSidebarChatSendInner not found"
+    body = inner.group(0)
+    # Chat send no longer posts the build in-progress message for planning intents.
+    assert "postAssistantMessage(inProgressMsg)" not in body
+    assert "postAssistantMessage('מבין" not in body
+
+    # The explicit build flow owns the loading indicator.
+    build = _extract_fn(html, "runBuildFromScratch")
+    assert "ai-build-status" in build
+    assert "אוסף העדפות..." in build
 
 
 def test_sidebar_chat_send_has_error_branch_with_visible_text(html):
