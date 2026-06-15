@@ -1707,6 +1707,11 @@ export interface LoadBalanceCourseInfo {
   placement_policy?: string | null;
   course_type?: string | null;
   name_he?: string | null;
+  // Difficulty/workload signals used only to break ties when choosing which
+  // same-tier course to shed from an overloaded semester. Null-guarded.
+  workload_score?: number | null;
+  conceptual_complexity_score?: number | null;
+  difficulty_score?: number | null;
 }
 
 export interface LoadBalanceContext {
@@ -1845,6 +1850,8 @@ export interface LoadMoveLogEntry {
   from_semester: string;
   to_semester: string;
   accepted: boolean;
+  /** True when the moved course is mandatory (esp. flexible mandatory). */
+  is_mandatory?: boolean;
   reason: string;
   before_load: number;
   after_load: number;
@@ -1887,6 +1894,15 @@ function _balanceTier(info: LoadBalanceCourseInfo | undefined): number {
 }
 
 /**
+ * Workload weight for tie-breaking within a balance tier: prefer shedding the
+ * heaviest course first. Null-guarded — missing scores collapse to 0 so the
+ * ordering is unchanged when no difficulty data is present.
+ */
+function _balanceWeight(info: LoadBalanceCourseInfo | undefined): number {
+  return info?.workload_score ?? info?.conceptual_complexity_score ?? info?.difficulty_score ?? 0;
+}
+
+/**
  * PART A — load-balancing repair. Greedily moves courses out of overloaded
  * semesters into the least-loaded legal semester, preferring electives
  * first (most flexible), then other movable courses. Stops when no semester
@@ -1922,7 +1938,14 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
     const candidates = sem.course_ids
       .map(cid => ({ cid, info: ctx.courses[cid] }))
       .filter(({ cid, info }) => isMovableForBalance(cid, info, ctx))
-      .sort((a, b) => _balanceTier(a.info) - _balanceTier(b.info));
+      // Keep the existing tier order (electives → flexible mandatory → other);
+      // within a tier, break ties by preferring to shed the HEAVIER course
+      // (workload → complexity → difficulty → weekly hours), descending.
+      // Null-guarded, so absent scores leave the original order intact.
+      .sort((a, b) =>
+        _balanceTier(a.info) - _balanceTier(b.info)
+        || _balanceWeight(b.info) - _balanceWeight(a.info)
+        || (b.info?.hours || 0) - (a.info?.hours || 0));
 
     let moved = false;
     for (const { cid, info } of candidates) {
@@ -1968,13 +1991,17 @@ export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: 
       const k = sem.course_ids.indexOf(cid);
       sem.course_ids.splice(k, 1);
       sems[bestJ].course_ids.push(cid);
+      const isMand = !isElectiveLike(info);
       moveLog.push({
         course_id: cid,
         course_name: info?.name_he ?? null,
         from_semester: sem.semester_id,
         to_semester: sems[bestJ].semester_id,
         accepted: true,
-        reason: `התקבל, עומס ${sem.semester_id} ירד מ-${maxHours} ל-${newOverHours}`,
+        is_mandatory: isMand || undefined,
+        reason: isMand
+          ? `הוזז קורס חובה גמיש ${info?.name_he ?? cid} מ${sem.semester_id} ל${sems[bestJ].semester_id} לאיזון עומס (${maxHours}→${newOverHours})`
+          : `התקבל, עומס ${sem.semester_id} ירד מ-${maxHours} ל-${newOverHours}`,
         before_load: maxHours,
         after_load: newOverHours,
       });

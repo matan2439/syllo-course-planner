@@ -7,6 +7,10 @@ export interface CourseInPlan {
   difficulty_level?: string;
   difficulty_score?: number;
   course_type?: string;
+  /** 'fixed' = mandatory locked to its semester; 'flexible' = movable mandatory; 'elective'. */
+  placement_policy?: string | null;
+  /** Semesters this course may legally be placed in (for movability reasoning). */
+  effective_allowed_semesters?: string[] | null;
   category?: string;
   missing_prerequisites?: string[];
   // Difficulty sub-scores (1-5 scale; null/missing if not yet computed)
@@ -214,6 +218,10 @@ function semestersSection(semesters: SemesterPlan[]): string {
       const parts: string[] = [`  • ${c.name_he || c.course_id} (${c.course_id})`];
       if (c.hours != null) parts.push(`${c.hours} ש"ש`);
       if (c.course_type) parts.push(c.course_type === 'mandatory' ? 'חובה' : 'בחירה');
+      // Flexibility token so the LLM knows which mandatory courses may be moved
+      // for load balancing ('גמיש' = movable, 'קבוע' = locked to its semester).
+      if (c.placement_policy === 'flexible') parts.push('גמיש');
+      else if (c.placement_policy === 'fixed') parts.push('קבוע');
       if (c.category) parts.push(`קטגוריה: ${c.category}`);
       if (c.difficulty_level) parts.push(`קושי כולל: ${c.difficulty_level}${c.difficulty_score != null ? ` (${c.difficulty_score})` : ''}`);
 

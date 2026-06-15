@@ -860,6 +860,80 @@ describe('repairPlanLoad', () => {
     expect(s1Report.not_movable.sort()).toEqual(['M1', 'M2']);
     expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids.sort()).toEqual(['M1', 'M2']);
   });
+
+  // ── Workload-aware move selection + mandatory-move explanation ──────────────
+
+  it('moves a FLEXIBLE mandatory course out of a 27h semester to a lighter legal semester', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'MF'] }, // fixed 12 + flexible mandatory 15 = 27
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory', effective_allowed_semesters: ['s1'] },
+      MF: { hours: 15, placement_policy: 'flexible', course_type: 'mandatory', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(true);
+    const s1 = result.proposal.semesters.find((s: any) => s.semester_id === 's1')!;
+    const s2 = result.proposal.semesters.find((s: any) => s.semester_id === 's2')!;
+    expect(s2.course_ids).toContain('MF');
+    expect(getSemesterLoad(s1 as any, courses as any)).toBeLessThanOrEqual(20);
+  });
+
+  it('does NOT move a FIXED mandatory course even when it overloads the semester', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['MFX'] }, // fixed mandatory 25h
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      MFX: { hours: 25, placement_policy: 'fixed', course_type: 'mandatory', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    expect(result.repaired).toBe(false);
+    const s1Report = result.unmovedOverloaded.find(o => o.semester_id === 's1')!;
+    expect(s1Report.not_movable_reasons).toEqual([{ course_id: 'MFX', reason: 'fixed_mandatory' }]);
+    expect(result.proposal.semesters.find((s: any) => s.semester_id === 's1')!.course_ids).toEqual(['MFX']);
+  });
+
+  it('prefers moving the HEAVIER same-tier candidate (higher workload_score) for load balance', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['E_LIGHT', 'E_HEAVY'] }, // two electives, each 12h = 24
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      E_LIGHT: { hours: 12, course_type: 'elective', workload_score: 2, effective_allowed_semesters: ['s1', 's2'] },
+      E_HEAVY: { hours: 12, course_type: 'elective', workload_score: 5, effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    const s2 = result.proposal.semesters.find((s: any) => s.semester_id === 's2')!;
+    // The heavier-by-workload course is shed first.
+    expect(s2.course_ids).toEqual(['E_HEAVY']);
+  });
+
+  it('records is_mandatory and a Hebrew explanation when a flexible mandatory course is moved for load balance', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['M1', 'MF'] }, // fixed 12 + flexible mandatory 15 = 27
+        { semester_id: 's2', course_ids: [] },
+      ],
+    };
+    const courses = {
+      M1: { hours: 12, placement_policy: 'fixed', course_type: 'mandatory', effective_allowed_semesters: ['s1'] },
+      MF: { hours: 15, name_he: 'מבוא לרובוטיקה', placement_policy: 'flexible', course_type: 'mandatory', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal as any, { courses, maxHoursPerSemester: 20 });
+    const entry = result.moveLog.find(m => m.accepted && m.course_id === 'MF')!;
+    expect(entry).toBeDefined();
+    expect(entry.is_mandatory).toBe(true);
+    expect(entry.reason).toContain('קורס חובה גמיש');
+    expect(entry.reason).toContain('מבוא לרובוטיקה');
+  });
 });
 
 describe('PART G — unified load calculation and balancing', () => {

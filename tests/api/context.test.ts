@@ -231,6 +231,31 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('עצימות הערכה 3');
   });
 
+  it('exposes placement_policy (גמיש/קבוע) and workload for a MANDATORY course so the LLM knows movability + heaviness', () => {
+    const ctx: PlanContext = {
+      semesters: [{
+        id: 'year_3_semester_a', label: "שנה ג׳ — סמסטר א׳", total_hours: 10,
+        courses: [
+          {
+            course_id: 'MF', name_he: 'מבוא לרובוטיקה', hours: 5, course_type: 'mandatory',
+            placement_policy: 'flexible', effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+            workload_score: 5,
+          },
+          {
+            course_id: 'MX', name_he: 'חשבון 1', hours: 5, course_type: 'mandatory',
+            placement_policy: 'fixed', workload_score: 2,
+          },
+        ],
+      }],
+    };
+    const prompt = buildSystemPrompt({ program_id: 'test', plan_context: ctx });
+    // Flexible mandatory: movable token + workload visible.
+    expect(prompt).toContain('גמיש');
+    expect(prompt).toMatch(/מבוא לרובוטיקה[\s\S]*עומס 5/);
+    // Fixed mandatory: locked token.
+    expect(prompt).toContain('קבוע');
+  });
+
   it('flags missing syllabus and low-confidence difficulty data', () => {
     const ctx: PlanContext = {
       semesters: [{

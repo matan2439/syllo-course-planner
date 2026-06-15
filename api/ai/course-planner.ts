@@ -45,6 +45,8 @@ const courseInPlanSchema = z.object({
   difficulty_level:       z.string().nullish(),   // can be null before difficulty is computed
   difficulty_score:       z.number().nullish(),   // same
   course_type:            z.string().optional(),  // always set to 'elective' if missing
+  placement_policy:       z.string().nullish(),   // 'fixed' | 'flexible' | 'elective' — movability for load balance
+  effective_allowed_semesters: z.array(z.string()).nullish(),
   category:               z.string().nullish(),   // null when both category fields are absent
   missing_prerequisites:  z.array(z.string()).optional(),
   // Difficulty sub-scores — null/missing if not yet computed
