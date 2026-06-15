@@ -563,6 +563,14 @@ body.prog-modal-open .workspace {
   display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border2);
   border-radius: var(--radius); padding: 10px; background: var(--surface2);
 }
+.uc-confirm-card.uc-confirm-glow {
+  border: 1px solid rgba(59,130,246,.9);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25), 0 0 16px rgba(59,130,246,.45);
+}
+[data-theme="dark"] .uc-confirm-card.uc-confirm-glow {
+  border-color: rgba(96,165,250,.95);
+  box-shadow: 0 0 0 3px rgba(96,165,250,.30), 0 0 18px rgba(96,165,250,.55);
+}
 .uc-confirm-card-msg { font-size: .8rem; line-height: 1.5; }
 .uc-confirm-card-actions { display: flex; gap: 6px; }
 .uc-confirm-popover {
@@ -805,6 +813,12 @@ body.prog-modal-open .workspace {
   border-radius: 999px; padding: 0 6px; margin-inline-start: 4px; color: var(--text-muted);
 }
 .ai-plan-sem-course-hours { font-size: .68rem; color: var(--text-muted); margin-inline-start: 4px; }
+.ai-plan-blocked-panel { margin: 8px 0; padding: 12px 14px; border: 1px solid rgba(220,53,69,.4); border-radius: 10px; background: rgba(220,53,69,.10); display: flex; flex-direction: column; gap: 8px; }
+.ai-plan-blocked-title { margin: 0; font-size: .95rem; font-weight: 700; }
+.ai-plan-blocked-reasons { margin: 0; padding-inline-start: 18px; font-size: .82rem; line-height: 1.5; }
+.ai-plan-blocked-reason { margin: 0; font-size: .82rem; line-height: 1.5; }
+.ai-plan-blocked-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+[data-theme="dark"] .ai-plan-blocked-panel { background: rgba(220,53,69,.16); border-color: rgba(248,113,113,.5); }
 .ai-plan-quality { margin: 8px 0; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.03); }
 .ai-plan-quality h4 { margin: 0 0 4px; font-size: .85rem; }
 .ai-plan-quality ul { margin: 0 0 6px; padding-inline-start: 18px; font-size: .8rem; }
@@ -1044,6 +1058,7 @@ body.prog-modal-open .workspace {
 .wl-fill  { height: 100%; border-radius: 999px; background: rgba(255,255,255,.85); transition: width var(--t); }
 .wl-fill.med  { background: #FCD34D; }
 .wl-fill.over { background: #F87171; }
+.wl-fill.blocked { background: #DC2626; }
 .wl-note  { font-size: .62rem; opacity: .75; margin-top: 3px; direction: rtl; }
 
 /* Semester drop zone */
@@ -3368,11 +3383,12 @@ function renderRepairDiagnosticsHtml(s) {
 
   // 2) Overloaded semesters — surfaced as plain text; use chat ("תאזן את
   // הסמסטר X") or "אפשרויות מתקדמות" to fix.
+  const repairPrefMax = getEffectiveMaxHoursPreferenceLocal(_aiPlanLastPreferences?.max_weekly_hours);
   for (const sem of s.overloaded_semesters) {
     const label = SEMESTERS.find(x => x.id === sem.semester_id)?.label || sem.semester_id;
     rows.push(`
       <div class="repair-row">
-        <span class="repair-row-text">סמסטר ${esc(label)} עמוס (${sem.total_hours}/${MAX_HOURS} ש״ש)</span>
+        <span class="repair-row-text">סמסטר ${esc(label)} עמוס (${sem.total_hours}/${repairPrefMax} ש״ש)</span>
       </div>`);
   }
 
@@ -3674,7 +3690,14 @@ function sidebarQuickActionPrefs() {
     wanted_course_ids:       wanted,
     unwanted_course_ids:     unwanted,
     strongly_avoided_course_ids: strongUnwanted,
+    soft_avoided_course_ids: (_aiPickerState.softUnwanted || []),
     extra_request_he:        extra,
+    // Carry through explicit overload confirmation / grade relaxation set via
+    // blocked-build clarification chips, so the rebuild honors them.
+    overload_accepted:       _aiPlanLastPreferences?.overload_accepted || undefined,
+    overload_confirmed_at:   _aiPlanLastPreferences?.overload_confirmed_at || undefined,
+    grade_target:            _aiPlanLastPreferences?.grade_target ?? undefined,
+    relax_grade_target:      _aiPlanLastPreferences?.relax_grade_target || undefined,
   };
 }
 
@@ -3917,15 +3940,15 @@ function renderAiTab() {
         // message with a clear Hebrew blocking notice (no "אופטימלית"/"מומלצת"
         // wording). Apply button is already disabled via isPlanApplyableLocal.
         const v = _aiPlanLastValidation;
-        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length)));
+        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length) || (v.completeness && v.completeness.incomplete)));
         if (blocked) {
-          // Find the overloaded semester for a more specific message, if any.
-          const overloadErr = (v.errors || []).find(e => /חריגה|עומס/.test(e));
-          const overloadInfo = overloadErr ? ` (${overloadErr})` : '';
-          postAssistantMessage(`המערכת שנוצרה לא תקינה כי סמסטר אחד חורג ממגבלת העומס. נסו לבנות מחדש עם עומס נמוך יותר או להפחית קורסים.${overloadInfo}`, [
-            { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
-            { label: 'דחה', action: 'reject-draft' },
-          ]);
+          // Interactive clarification: explain WHY no legal/complete schedule
+          // was built, ask targeted Hebrew questions, and offer actionable
+          // relax/clarify chips. Apply stays disabled via isPlanApplyableLocal;
+          // we never present a blocked plan as optimal/recommended.
+          const diag = diagnoseBuildBlock(v);
+          const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+          postAssistantMessage(lines.join('\n'), diag.chips);
         } else {
           postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
             { label: 'החל שינוי', action: 'apply-draft' },
@@ -3992,6 +4015,7 @@ function renderAiTab() {
         message: 'פעולה זו תיצור טיוטת מערכת חדשה על בסיס ההעדפות והקורסים שסימנת. להמשיך?',
         confirmLabel: 'בנה מערכת',
         cancelLabel: 'ביטול',
+        cardClass: 'uc-confirm-glow',
         container: confirmContainer,
         onConfirm: () => { confirmContainer.remove(); proceedWithBuild(); },
         onCancel: () => { confirmContainer.remove(); },
@@ -4220,6 +4244,16 @@ function showAiLoadingBubble(initialText) {
  * sends the quick-reply's label as the next chat message, continuing the
  * conversational flow from the current board+draft state.
  */
+/** Reuse the EXISTING explicit build entry so all normal validation + the new
+ * blocked-build diagnosis re-runs. Clicking sidebar-build-from-scratch is the
+ * same path the 'rebuild-plan' quick action uses — build only happens because
+ * the user clicked a chip (שלח-never-builds preserved). */
+function triggerExplicitRebuild() {
+  const btn = document.getElementById('sidebar-build-from-scratch');
+  if (btn) { btn.click(); return; }
+  if (typeof runBuildFromScratch === 'function') runBuildFromScratch();
+}
+
 function handleQuickReply(qr) {
   switch (qr.action) {
     case 'avoid-control': {
@@ -4283,6 +4317,97 @@ function handleQuickReply(qr) {
       postUserMessage(qr.label);
       askBeforeAllMissingRequirements();
       return;
+    // ── Blocked-build clarification actions ──────────────────────────────
+    // These are EXPLICIT user actions (chip clicks): they may adjust prefs and
+    // then build via the existing explicit rebuild path (sidebar-build-from-scratch
+    // click). Consistent with the שלח-never-builds contract — build happens only
+    // because the user clicked a chip, never from chat-send.
+    case 'relax-overload-26': {
+      postUserMessage(qr.label);
+      const now = Date.now();
+      _aiPlanLastPreferences = {
+        ...(_aiPlanLastPreferences || {}),
+        max_weekly_hours: 26,
+        overload_accepted: true,
+        overload_confirmed_at: now,
+      };
+      const maxHoursSlider = document.getElementById('sidebar-max-hours');
+      const maxHoursNum = document.getElementById('sidebar-max-hours-num');
+      if (maxHoursSlider) maxHoursSlider.value = 26;
+      if (maxHoursNum) maxHoursNum.value = 26;
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'relax-grade': {
+      postUserMessage(qr.label);
+      // Strip the grade-target phrase from the free-text so the parser no
+      // longer derives a grade target, and set a flag the scorer can read.
+      const prevExtra = _aiPlanLastPreferences?.extra_request_he || '';
+      const strippedExtra = prevExtra
+        .replace(/ממוצע[^\d]{0,15}\d{2,3}/g, ' ')
+        .replace(/\b(?:gpa|average)\b[^\d]{0,15}\d{2,3}/gi, ' ')
+        .replace(/\s+/g, ' ').trim();
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), extra_request_he: strippedExtra, grade_target: null, relax_grade_target: true };
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'keep-grade': {
+      postUserMessage(qr.label);
+      postAssistantMessage('בסדר, שומר על יעד הממוצע. בונה מחדש.');
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'relax-avoid-soft': {
+      postUserMessage(qr.label);
+      // Downgrade strong avoids to soft: keep them as a penalty but allow when
+      // no alternative exists. Clearing strongUnwanted leaves the topical avoid
+      // (extra_request_he) as a scorer penalty rather than a hard skip.
+      _aiPickerState.softUnwanted = [...new Set([...(_aiPickerState.softUnwanted || []), ...(_aiPickerState.strongUnwanted || [])])];
+      _aiPickerState.strongUnwanted = [];
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'avoid-course-soft': {
+      postUserMessage(qr.label);
+      const cid = qr.payload?.courseId;
+      if (cid) {
+        _aiPickerState.strongUnwanted = (_aiPickerState.strongUnwanted || []).filter(x => x !== cid);
+        _aiPickerState.unwanted = (_aiPickerState.unwanted || []).filter(x => x !== cid);
+        _aiPickerState.softUnwanted = [...new Set([...(_aiPickerState.softUnwanted || []), cid])];
+      }
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'prioritize-topic': {
+      postUserMessage(qr.label);
+      const terms = qr.payload?.terms || [];
+      if (terms.length) {
+        const emphasis = terms.join(' ');
+        const prev = _aiPlanLastPreferences?.extra_request_he || '';
+        _aiPlanLastPreferences = {
+          ...(_aiPlanLastPreferences || {}),
+          extra_request_he: prev ? `${prev} (עדיפות ל${emphasis})` : `עדיפות ל${emphasis}`,
+        };
+      }
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'rebuild-relaxed': {
+      postUserMessage(qr.label);
+      // Conservative single-step relax of the most-likely blocker.
+      const v = _aiPlanLastValidation;
+      const overloadBlocked = !!(v && (v.overloadBlocked || (v.errors || []).some(e => /חריגה|עומס/.test(e))));
+      if (overloadBlocked) {
+        const cur = Number(_aiPlanLastPreferences?.max_weekly_hours) || DEFAULT_MAX_HOURS_PER_SEMESTER;
+        _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), max_weekly_hours: Math.max(cur, 24) };
+      } else {
+        // Allow less-related electives: downgrade strong avoids to soft.
+        _aiPickerState.softUnwanted = [...new Set([...(_aiPickerState.softUnwanted || []), ...(_aiPickerState.strongUnwanted || [])])];
+        _aiPickerState.strongUnwanted = [];
+      }
+      triggerExplicitRebuild();
+      return;
+    }
     // Issue 1 — explicit build-now quick action. Triggers the same flow as
     // clicking the "בנה מערכת מחדש" button.
     case 'rebuild-plan':
@@ -4940,12 +5065,12 @@ function showUcToast(message) {
  *    appended to this element (which should have position:relative or will
  *    be given it).
  */
-function requestUserConfirmation({ message, confirmLabel, cancelLabel, onConfirm, onCancel, container, anchorEl }) {
+function requestUserConfirmation({ message, confirmLabel, cancelLabel, onConfirm, onCancel, container, anchorEl, cardClass }) {
   confirmLabel = confirmLabel || 'אשר';
   cancelLabel = cancelLabel || 'בטל';
 
   const card = document.createElement('div');
-  card.className = 'uc-confirm-card';
+  card.className = 'uc-confirm-card' + (cardClass ? ' ' + cardClass : '');
   card.innerHTML = `
     <div class="uc-confirm-card-msg">${esc(message)}</div>
     <div class="uc-confirm-card-actions">
@@ -5472,8 +5597,17 @@ function semColHtml(sem, draftDiff) {
   const avgDiff = courses.length
     ? (courses.reduce((s,c)=>s+(c.difficulty_score||0),0)/courses.length).toFixed(1)
     : null;
-  const pct    = Math.min(100, (knownHrs / MAX_HOURS) * 100).toFixed(1);
-  const wlCls  = knownHrs >= 16 ? 'over' : knownHrs >= 10 ? 'med' : '';
+  // ITEM 3 — denominator is the user-defined preferred max (falls back to
+  // DEFAULT_MAX_HOURS_PER_SEMESTER=20 when no preference). The preferred max
+  // controls only the VISIBLE denominator + the "above preferred" warning
+  // color; the hard cap (26) / absolute (30) stay the real validation gates.
+  const preferredMax = getEffectiveMaxHoursPreferenceLocal(_aiPlanLastPreferences?.max_weekly_hours);
+  const pct    = Math.min(100, (knownHrs / preferredMax) * 100).toFixed(1);
+  // Tiers: <= preferred → normal; > preferred && <= HARD_LOAD_CAP(26) → warning;
+  // > 26 → blocked/error (absolute > 30 uses the same error class).
+  const wlCls  = knownHrs > HARD_LOAD_CAP ? 'blocked'
+    : knownHrs > preferredMax ? 'over'
+    : knownHrs >= preferredMax * 0.5 ? 'med' : '';
   const hrsLbl = unknownCt > 0 ? `${knownHrs} שעות ידועות` : `${knownHrs} ש׳׳ש`;
   const unkNote = unknownCt > 0
     ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
@@ -5495,7 +5629,7 @@ function semColHtml(sem, draftDiff) {
       <div class="wl-wrap">
         <div class="wl-row">
           <span>עומס שבועי</span>
-          <span>${knownHrs}/${MAX_HOURS} ש׳׳ש</span>
+          <span>${knownHrs}/${preferredMax} ש׳׳ש</span>
         </div>
         <div class="wl-track"><div class="wl-fill ${wlCls}" style="width:${pct}%"></div></div>
         ${unkNote}
@@ -10184,6 +10318,125 @@ function isPlanApplyableLocal(validationErrors, completeness) {
   return validationErrors.length === 0 && !completeness?.incomplete;
 }
 
+/* ── Interactive clarification for blocked/incomplete plan builds ───────────
+ * When a build cannot produce a LEGAL/complete proposal, turn the failure into
+ * an actionable clarification step instead of a generic failure / broken plan.
+ *
+ * Pure helper: inspects validation.errors + validation.completeness?.reasons +
+ * validation.overloadBlocked and returns:
+ *   { category, explanation_he, questions: string[], chips: [{label, action, payload?}] }
+ *
+ * Category detection keys off the REAL Hebrew reason/error strings produced by
+ * evaluatePlanCompletenessLocal and plan validation (validatePlanLocal). It is
+ * deliberately GENERAL: topic prioritization chips derive from the user's own
+ * parsed preference terms, never hardcoded subjects.
+ */
+function diagnoseBuildBlock(validation, opts) {
+  opts = opts || {};
+  const errors = (validation && validation.errors) || [];
+  const reasons = (validation && validation.completeness && validation.completeness.reasons) || [];
+  const overloadBlocked = !!(validation && validation.overloadBlocked);
+  const all = [...errors, ...reasons];
+  const text = all.join('   ');
+
+  // Context: avoid prefs, grade target, parsed interest topics.
+  const picker = opts.pickerState || (typeof _aiPickerState !== 'undefined' ? _aiPickerState : {}) || {};
+  const strongUnwanted = (picker.strongUnwanted || []).filter(Boolean);
+  const unwanted = (picker.unwanted || []).filter(Boolean);
+  const hasAvoid = strongUnwanted.length > 0 || unwanted.length > 0;
+  const prefs = opts.preferences || (typeof _aiPlanLastPreferences !== 'undefined' ? _aiPlanLastPreferences : {}) || {};
+  let parsedTerms = opts.parsedTerms || null;
+  if (!parsedTerms && typeof extractPreferenceTermsLocal === 'function') {
+    try { parsedTerms = extractPreferenceTermsLocal(prefs.extra_request_he || ''); } catch (_) { parsedTerms = null; }
+  }
+  const interestTerms = (parsedTerms && parsedTerms.interest_terms) || [];
+  const gradeTarget = (parsedTerms && parsedTerms.grade_target) || prefs.grade_target || null;
+
+  const courseNameOf = (cid) => {
+    try {
+      if (typeof courseMap !== 'undefined' && courseMap[cid]) return courseMap[cid].name_he || cid;
+    } catch (_) { /* noop */ }
+    return cid;
+  };
+
+  // ── Category detection (most-specific first) ──
+  const RE_OVERLOAD = /חריגה|עומס|ש"ש/;
+  const RE_PREREQ = /קדם|לפני|אינה משובצת|באותו סמסטר/;
+  const RE_LEGALITY = /מותר רק ב|אסור|חוקי|מוצע רק|זמין רק/;
+  const RE_NO_CANDIDATE = /אין קורס מועמד זמין בקטגוריה/;
+  const RE_CATEGORY = /קטגוריית|מקטגוריית|קורס אחד מקורסי הקטגוריה|שער רוח|שער\/רוח|נק"ז שער/;
+  const RE_HOURS = /חסרות כ-?\d*\s*ש"ש|לא נמצאו קורסים חוקיים נוספים|להשלמת התואר|להשלמת השעות/;
+
+  let category = 'unknown';
+  let explanation_he = '';
+  const questions = [];
+  const chips = [];
+
+  const overloadHit = overloadBlocked || errors.some(e => /חריגה|עומס/.test(e));
+  const prereqHit = all.some(s => RE_PREREQ.test(s));
+  const legalityHit = all.some(s => RE_LEGALITY.test(s));
+  const noCandidateHit = all.some(s => RE_NO_CANDIDATE.test(s));
+  const categoryHit = all.some(s => RE_CATEGORY.test(s));
+  const hoursHit = all.some(s => RE_HOURS.test(s));
+
+  if (overloadHit) {
+    category = 'overload';
+    explanation_he = 'לא הצלחתי לבנות מערכת חוקית כי לפחות סמסטר אחד חורג ממגבלת העומס.';
+    questions.push('אפשר להעלות את עומס המקסימום בסמסטר אחד ל-25–26 ש"ש?');
+    chips.push({ label: 'אפשר עומס עד 26 ש"ש', action: 'relax-overload-26' });
+  } else if (noCandidateHit && hasAvoid) {
+    category = 'electives_after_avoid';
+    explanation_he = 'לא נמצאו מספיק קורסי בחירה חוקיים אחרי העדפות ההימנעות שביקשת.';
+    questions.push('אין מספיק קורסי בחירה אחרי העדפות ההימנעות. לאפשר קורסים פחות קשורים / לרכך הימנעות מסוימת?');
+    chips.push({ label: 'אפשר בחירה פחות קשורה', action: 'relax-avoid-soft' });
+    const firstAvoid = strongUnwanted[0] || unwanted[0];
+    if (firstAvoid) {
+      chips.push({ label: `נסה בלי ${courseNameOf(firstAvoid)}`, action: 'avoid-course-soft', payload: { courseId: firstAvoid } });
+    }
+  } else if (gradeTarget && (categoryHit || hoursHit || noCandidateHit)) {
+    category = 'grade_target';
+    explanation_he = `יעד הממוצע מעל ${gradeTarget} מצמצם את מאגר הקורסים החוקיים ולכן לא הצלחתי להשלים תוכנית מלאה.`;
+    questions.push(`האם אפשר לוותר על חלק מהעדפת הממוצע מעל ${gradeTarget} לטובת קורסים רלוונטיים יותר?`);
+    chips.push({ label: `שמור על ממוצע ${gradeTarget}`, action: 'keep-grade' });
+    chips.push({ label: 'רכך יעד ממוצע', action: 'relax-grade' });
+  } else if (categoryHit || hoursHit || noCandidateHit) {
+    category = 'category_requirements';
+    explanation_he = 'לא הצלחתי להשלים את כל דרישות הקטגוריות/השעות עם ההעדפות הנוכחיות.';
+    questions.push('לאפשר קורסי בחירה פחות קשורים כדי להשלים את הקטגוריות החסרות?');
+    chips.push({ label: 'אפשר בחירה להשלמת קטגוריה', action: 'relax-avoid-soft' });
+  } else if (prereqHit) {
+    category = 'prerequisites';
+    explanation_he = 'נוצרה התנגשות בדרישות קדם ולכן לא הצלחתי לסדר מערכת חוקית.';
+    questions.push('יש התנגשות בקדם. להעדיף סדר לימוד גמיש יותר / לדחות קורס מתקדם לסמסטר מאוחר יותר?');
+    chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
+  } else if (legalityHit) {
+    category = 'legality';
+    explanation_he = 'חלק מהקורסים מוצעים רק בסמסטרים מסוימים ולכן לא הצלחתי לסדר מערכת חוקית.';
+    questions.push('באיזה סמסטר אפשר לרכך את האילוץ כדי לאפשר שיבוץ חוקי?');
+    chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
+  } else {
+    category = 'unknown';
+    explanation_he = 'לא הצלחתי לבנות תוכנית חוקית ומלאה עם ההעדפות הנוכחיות.';
+    questions.push('רוצה שאנסה לבנות מחדש עם אילוצים מרוככים?');
+  }
+
+  // GENERAL topic prioritization: only when MULTIPLE interest topics were
+  // requested AND space is tight (category/hours shortfall). Topic names derive
+  // from the user's OWN parsed preference terms — never hardcoded subjects.
+  if ((category === 'category_requirements' || category === 'electives_after_avoid') && interestTerms.length >= 3) {
+    const a = interestTerms[0], b = interestTerms[1], c = interestTerms[2];
+    questions.push(`להעדיף את ${a} ו-${b} על פני ${c}?`);
+    chips.push({ label: `תעדף ${a}`, action: 'prioritize-topic', payload: { terms: [a, b] } });
+  }
+
+  // ALWAYS offer a conservative single rebuild action as the final chip.
+  if (!chips.some(ch => ch.action === 'rebuild-relaxed')) {
+    chips.push({ label: 'בנה מחדש עם אילוצים מרוככים', action: 'rebuild-relaxed' });
+  }
+
+  return { category, explanation_he, questions, chips };
+}
+
 /** Mirrors api/ai/completion_analysis.ts (getPlanPreviewStatus). */
 function getPlanPreviewStatusLocal(validationErrors, completeness, statusText) {
   const applyable = isPlanApplyableLocal(validationErrors, completeness);
@@ -10765,6 +11018,45 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
       <strong>${planStatus.icon} ${esc(planStatus.text)}</strong>
     </div>`;
 
+  // ── ITEM 1 — clean compact BLOCKED panel ────────────────────────────────
+  // When the proposal is blocked/incomplete, show a short, focused panel with
+  // up to ~3 concise reasons + one main rebuild action (and an optional "בקש
+  // שינויים") INSTEAD of the verbose metrics/requirements/quality dumps.
+  const planBlocked = !!(overloadBlocked || _aiPlanLastValidation?.blocked
+    || completeness?.incomplete || (errors && errors.length));
+  let blockedPanelHtml = '';
+  if (planBlocked) {
+    const diag = diagnoseBuildBlock(
+      { errors, completeness, overloadBlocked },
+      { preferences: _aiPlanLastPreferences },
+    );
+    const rawReasons = [
+      ...(errors || []),
+      ...((completeness?.reasons) || []),
+    ].map(r => (r || '').trim()).filter(Boolean);
+    // Dedup, cap at 3 concise lines.
+    const seen = new Set();
+    const shortReasons = [];
+    for (const r of rawReasons) {
+      if (seen.has(r)) continue;
+      seen.add(r);
+      shortReasons.push(r);
+      if (shortReasons.length >= 3) break;
+    }
+    const reasonsListHtml = shortReasons.length
+      ? `<ul class="ai-plan-blocked-reasons">${shortReasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>`
+      : (diag.explanation_he ? `<p class="ai-plan-blocked-reason">${esc(diag.explanation_he)}</p>` : '');
+    blockedPanelHtml = `
+      <div class="ai-plan-blocked-panel" data-testid="blocked-compact-panel">
+        <h3 class="ai-plan-blocked-title">לא ניתן להציע מערכת חוקית</h3>
+        ${reasonsListHtml}
+        <div class="ai-plan-blocked-actions">
+          <button class="btn btn-primary" id="ai-plan-blocked-rebuild" data-action="rebuild-plan">בנה מערכת מחדש</button>
+          <button class="btn" id="ai-plan-blocked-ask-changes" data-action="ask-changes">בקש שינויים</button>
+        </div>
+      </div>`;
+  }
+
   const autofixHtml = autofixed
     ? `<div class="ai-plan-autofix-note">בעיות פשוטות תוקנו אוטומטית לפני התצוגה.</div>`
     : '';
@@ -10937,13 +11229,20 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   };
   // Phase 2C — per-semester overload badge using the global thresholds.
   const overloadBadgeHtml = (hrs) => {
+    // Warning threshold mirrors the board's load-bar: a semester is "high load"
+    // once it exceeds the effective preferred max (user-configurable), capped at
+    // SOFT_LOAD_MAX so the badge never under-warns relative to the board card.
+    // typeof guard keeps the function body self-contained for unit extraction.
+    const prefMax = (typeof effectiveMaxHours === 'number' && effectiveMaxHours > 0)
+      ? effectiveMaxHours : SOFT_LOAD_MAX;
+    const warnAt = Math.min(SOFT_LOAD_MAX, prefMax);
     if (hrs > ABSOLUTE_MAX_REASONABLE) {
       return `<span class="badge" style="background:#5a0f12;color:#fff;font-weight:600">חריגה לא סבירה: ${hrs} ש"ש</span>`;
     }
     if (hrs > HARD_LOAD_CAP) {
       return `<span class="badge" style="background:#dc3545;color:#fff;font-weight:600">חריגה חסומה: ${hrs} ש"ש</span>`;
     }
-    if (hrs > SOFT_LOAD_MAX) {
+    if (hrs > warnAt) {
       return `<span class="badge" style="background:#ffc107;color:#222;font-weight:600">עומס גבוה: ${hrs} ש"ש</span>`;
     }
     return `<span class="badge" style="background:rgba(40,167,69,.15);color:#28a745;font-weight:600">עומס תקין: ${hrs} ש"ש</span>`;
@@ -11071,6 +11370,7 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     </div>
     <div class="detail-body" style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;direction:rtl;overflow:auto">
       ${statusHtml}
+      ${planBlocked ? blockedPanelHtml : `
       ${degreeProgressModalHtml}
       ${infeasibleTargetHtml}
       ${planQualityHtml}
@@ -11088,33 +11388,42 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
         החלת התוכנית משנה רק את הלוח המקומי שלך, לא את תוכנית הלימודים הרשמית.<br>
         השינוי נשמר אצלך בלבד ואפשר לערוך אותו בגרירה.
       </div>
-      ${applyReasonHtml}
+      ${applyReasonHtml}`}
       <div style="display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap">
-        <button class="btn btn-primary" id="ai-plan-apply" ${canApply ? '' : 'disabled'}>החל תוכנית</button>
+        <button class="btn btn-primary" id="ai-plan-apply" ${canApply ? '' : 'disabled'} ${planBlocked ? 'hidden' : ''}>החל תוכנית</button>
+        ${planBlocked ? '' : `
         <button class="btn" id="ai-plan-ask-changes">בקש שינויים</button>
         ${!canApply ? `
         <button class="btn" id="ai-plan-rebalance">נסה לאזן שוב</button>
         ${severeOverload ? '<button class="btn" id="ai-plan-allow-overload">אפשר חריגה בעומס</button>' : ''}
-        <button class="btn" id="ai-plan-back-prefs">חזור להעדפות</button>` : ''}
+        <button class="btn" id="ai-plan-back-prefs">חזור להעדפות</button>` : ''}`}
         <button class="btn" id="ai-plan-reject">דחה</button>
       </div>
     </div>`;
 
-  document.getElementById('ai-plan-toggle-all-courses').addEventListener('click', () => {
+  document.getElementById('ai-plan-toggle-all-courses')?.addEventListener('click', () => {
     _aiPlanShowAllCourses = !_aiPlanShowAllCourses;
     openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons);
+  });
+  // ITEM 1 — compact blocked panel actions.
+  document.getElementById('ai-plan-blocked-rebuild')?.addEventListener('click', () => {
+    closeAiPlanModal();
+    document.getElementById('sidebar-build-from-scratch')?.click();
+  });
+  document.getElementById('ai-plan-blocked-ask-changes')?.addEventListener('click', () => {
+    openPlanPreferencesModal();
   });
   document.getElementById('ai-plan-close').addEventListener('click', closeAiPlanModal);
   document.getElementById('ai-plan-reject').addEventListener('click', () => {
     rejectProposalDraft();
     closeAiPlanModal();
   });
-  document.getElementById('ai-plan-apply').addEventListener('click', () => {
+  document.getElementById('ai-plan-apply')?.addEventListener('click', () => {
     if (!canApply) return; // safety: never apply an invalid plan
     applyProposalDraft();
     closeAiPlanModal();
   });
-  document.getElementById('ai-plan-ask-changes').addEventListener('click', () => {
+  document.getElementById('ai-plan-ask-changes')?.addEventListener('click', () => {
     openPlanPreferencesModal();
   });
   document.getElementById('ai-plan-rebalance')?.addEventListener('click', () => {

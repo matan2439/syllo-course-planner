@@ -1922,3 +1922,21 @@ def test_phase2c_no_native_alert_or_confirm_in_overload_paths(html):
     # And it must reference HARD_LOAD_CAP in its message body.
     helper_idx = html.index("function promptAcceptOverloadConfirmation")
     assert "HARD_LOAD_CAP" in html[helper_idx: helper_idx + 2000]
+
+
+def test_item2_rebuild_confirmation_glow(html):
+    """ITEM 2 — the blue-glow confirmation variant must be defined in CSS and the
+    rebuild/build confirmation (requestUserConfirmation in the build handler)
+    must opt into it via cardClass, plus a dark-theme rule for the glow."""
+    # The glow CSS class is defined.
+    assert ".uc-confirm-card.uc-confirm-glow" in html
+    # Dark-theme rule for the glow exists.
+    assert '[data-theme="dark"] .uc-confirm-card.uc-confirm-glow' in html
+    # requestUserConfirmation accepts a cardClass param and applies it.
+    ruc_idx = html.index("function requestUserConfirmation")
+    ruc_body = html[ruc_idx: ruc_idx + 1200]
+    assert "cardClass" in ruc_body
+    # The build/rebuild confirmation call passes the glow class.
+    msg_idx = html.index("פעולה זו תיצור טיוטת מערכת חדשה")
+    call_window = html[msg_idx: msg_idx + 600]
+    assert "cardClass: 'uc-confirm-glow'" in call_window
