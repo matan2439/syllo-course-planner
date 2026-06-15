@@ -25,7 +25,8 @@ import {
   type AiProvider,
 } from './course-planner';
 import { planProposalSchema, normalizePlanProposal, droppedPlacementWarnings } from './plan_validation';
-import { buildCompletionAnalysis, formatCompletionMessages } from './completion_analysis';
+import { buildCompletionAnalysis, formatCompletionMessages, getSemesterLoad } from './completion_analysis';
+import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -38,6 +39,8 @@ export const preferencesSchema = z.object({
   extra_request_he:        z.string().max(1000).optional(),
   action_type:             z.enum(['full_plan', 'balance_load', 'add_electives', 'fix_prerequisites', 'minimal_changes']).optional(),
   pinned_course_ids:       z.array(z.string()).optional(),
+  overload_accepted:       z.boolean().optional(),
+  overload_confirmed_at:   z.number().nullish(),
 });
 
 const ACTION_TYPE_HE: Record<string, string> = {
@@ -284,7 +287,35 @@ ${preferences.max_weekly_hours != null ? `- מגבלת השעות השבועיו
     ];
   }
 
-  res.status(200).json(normalized);
+  // Defensive overload gate — server-side enforcement of HARD_LOAD_CAP /
+  // ABSOLUTE_MAX_REASONABLE. Even if the client mis-sends or skips client-side
+  // validation, the proposal must be marked as blocked when a semester
+  // exceeds the absolute max, or exceeds the hard cap without explicit user
+  // confirmation (overload_accepted + overload_confirmed_at).
+  const overloadAccepted = preferences.overload_accepted === true;
+  const overloadConfirmedAt = preferences.overload_confirmed_at;
+  const userConfirmedOverload = overloadAccepted && !!overloadConfirmedAt;
+  const courseHoursMap: Record<string, { hours?: number | null }> = {};
+  for (const sem of (plan_context as PlanContext).semesters ?? []) {
+    for (const c of sem.courses) {
+      if (c.course_id) courseHoursMap[c.course_id] = { hours: c.hours ?? null };
+    }
+  }
+  const blockingErrors: string[] = [];
+  for (const sem of normalized.semesters) {
+    const hrs = getSemesterLoad(sem, courseHoursMap);
+    if (hrs > ABSOLUTE_MAX_REASONABLE) {
+      blockingErrors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE}. לא ניתן להחיל את התוכנית.`);
+    } else if (hrs > HARD_LOAD_CAP && !userConfirmedOverload) {
+      blockingErrors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP}). נדרש אישור חריגה מפורש לפני החלת התוכנית.`);
+    }
+  }
+
+  res.status(200).json({
+    ...normalized,
+    errors: blockingErrors,
+    blocked: blockingErrors.length > 0,
+  });
 }
 
 /** Deterministic mock proposal for dev mode — echoes the current plan unchanged. */

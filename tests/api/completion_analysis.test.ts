@@ -877,10 +877,14 @@ describe('PART G — unified load calculation and balancing', () => {
     const result = repairPlanLoad({ semesters: [sem, { semester_id: 's2', course_ids: [] }] } as any, { courses: courses as any, maxHoursPerSemester: 20 });
     expect(result.unmovedOverloaded).toEqual([]);
 
-    // and to validatePlanProposal's warning path
-    const ctx: any = { completedCourseIds: new Set(), courses, maxHoursPerSemester: 10 };
-    const { warnings, errors } = validatePlanProposal({ semesters: [sem], requirements_status: [] } as any, ctx);
-    expect([...warnings, ...errors].some(m => m.includes('15'))).toBe(true);
+    // Phase 2C — validatePlanProposal no longer warns about the configured
+    // per-user max; load thresholds are SOFT_LOAD_MAX=22 / HARD_LOAD_CAP=26 /
+    // ABSOLUTE_MAX=30 across server+client. Test a value above SOFT_LOAD_MAX:
+    const heavySem = { semester_id: 's1', course_ids: ['M1', 'E1', 'EX'] };
+    const heavyCourses: any = { ...courses, EX: { hours: 15, course_type: 'elective', placement_policy: 'elective' } };
+    const heavyCtx: any = { completedCourseIds: new Set(), courses: heavyCourses };
+    const { warnings, errors } = validatePlanProposal({ semesters: [heavySem], requirements_status: [] } as any, heavyCtx);
+    expect([...warnings, ...errors].some(m => m.includes('30') || m.includes('שעות שבועיות'))).toBe(true);
   });
 
   it('3. repairPlanLoad moves a שער רוח/general course when it helps balance and is legal', () => {
@@ -2357,6 +2361,42 @@ describe('Request B PART F — scorePlan / pickBestPlan / replaceWeakElectives /
     const result = scorePlan(proposal, { courses: {}, knownSemesterIds: known, legal: false });
     expect(result.legal).toBe(false);
     expect(result.score).toBe(-Infinity);
+  });
+
+  it('Phase 2C — scorePlan prefers balanced [21,21,20,21] over imbalanced [27,15,21,20] at equal relevance', () => {
+    const courses: any = {
+      a1: { hours: 21 }, a2: { hours: 21 }, a3: { hours: 20 }, a4: { hours: 21 },
+      b1: { hours: 27 }, b2: { hours: 15 }, b3: { hours: 21 }, b4: { hours: 20 },
+    };
+    const k = ['s1', 's2', 's3', 's4'];
+    const balanced: any = { semesters: [
+      { semester_id: 's1', course_ids: ['a1'] }, { semester_id: 's2', course_ids: ['a2'] },
+      { semester_id: 's3', course_ids: ['a3'] }, { semester_id: 's4', course_ids: ['a4'] },
+    ] };
+    const imbalanced: any = { semesters: [
+      { semester_id: 's1', course_ids: ['b1'] }, { semester_id: 's2', course_ids: ['b2'] },
+      { semester_id: 's3', course_ids: ['b3'] }, { semester_id: 's4', course_ids: ['b4'] },
+    ] };
+    // imbalanced has s1=27 > HARD_LOAD_CAP -> illegal without overloadAccepted
+    expect(scorePlan(imbalanced, { courses, knownSemesterIds: k, legal: true }).legal).toBe(false);
+    // With overloadAccepted, imbalanced becomes legal but strictly worse-scoring than balanced.
+    expect(scorePlan(balanced, { courses, knownSemesterIds: k, legal: true }).score)
+      .toBeGreaterThan(scorePlan(imbalanced, { courses, knownSemesterIds: k, legal: true, overloadAccepted: true }).score);
+  });
+
+  it('Phase 2C — any semester > HARD_LOAD_CAP without overloadAccepted yields legal=false', () => {
+    const courses: any = { X: { hours: 27 } };
+    const result = scorePlan({ semesters: [{ semester_id: 's1', course_ids: ['X'] }] } as any,
+      { courses, knownSemesterIds: ['s1'], legal: true });
+    expect(result.legal).toBe(false);
+    expect(result.score).toBe(-Infinity);
+  });
+
+  it('Phase 2C — any semester > ABSOLUTE_MAX_REASONABLE is illegal even with overloadAccepted', () => {
+    const courses: any = { X: { hours: 31 } };
+    const result = scorePlan({ semesters: [{ semester_id: 's1', course_ids: ['X'] }] } as any,
+      { courses, knownSemesterIds: ['s1'], legal: true, overloadAccepted: true });
+    expect(result.legal).toBe(false);
   });
 
   it('2. scorePlan penalizes a plan with an over-max semester vs. a balanced one', () => {

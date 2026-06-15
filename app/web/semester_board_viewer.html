@@ -3780,10 +3780,9 @@ function renderAiTab() {
           <button class="btn btn-sm" id="sidebar-quick-career">שפר התאמה לקריירה</button>
           <button class="btn btn-sm" id="sidebar-quick-prereqs">תקן בעיות חוקיות</button>
           <button class="btn btn-sm" id="sidebar-missing-suggest-all">השלם דרישות חסרות</button>
-          <label class="ai-plan-check">
-            <input type="checkbox" id="sidebar-allow-overload" ${_aiPlanLastPreferences?.overload_accepted ? 'checked' : ''}>
-            אפשר חריגה בעומס
-          </label>
+          <!-- Phase 2C — silent overload checkbox removed; overload is now
+               an explicit confirmation flow via requestUserConfirmation (see
+               in-preview "ai-plan-allow-overload" button / chat quick-reply). -->
           ${state.proposalDraft ? '<button class="btn btn-sm" id="sidebar-open-full-preview">פתח פירוט מלא</button>' : ''}
           <button class="btn btn-sm btn-link" id="sidebar-clear-chat">נקה שיחה והעדפות זמניות</button>
         </div>
@@ -3981,10 +3980,8 @@ function renderAiTab() {
       postAssistantMessage(`שגיאה: ${err?.message || err}`);
     }
   });
-  document.getElementById('sidebar-allow-overload')?.addEventListener('change', (e) => {
-    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: !!e.target.checked };
-    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = !!e.target.checked;
-  });
+  // Phase 2C — silent allow-overload checkbox removed (handled via explicit
+  // requestUserConfirmation flow elsewhere).
   document.getElementById('sidebar-open-full-preview')?.addEventListener('click', () => {
     const evald = evaluateDraftProposal();
     const ev = evald || { proposal: _aiPlanLastProposal, errors: _aiPlanLastValidation?.errors || [], warnings: _aiPlanLastValidation?.warnings || [], completeness: _aiPlanLastValidation?.completeness };
@@ -4173,8 +4170,8 @@ function handleQuickReply(qr) {
       _aiPlanLastPreferences = { ..._aiPlanLastPreferences, priority: 'career_relevance' };
       break;
     case 'allow-overload':
-      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
-      if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
+      // Phase 2C — confirm overload explicitly (no silent flip).
+      promptAcceptOverloadConfirmation({ refreshPreview: false });
       break;
     case 'keep-load':
       break;
@@ -4967,6 +4964,46 @@ function requestUserConfirmation({ message, confirmLabel, cancelLabel, onConfirm
   });
 
   return card;
+}
+
+/**
+ * Phase 2C — explicit overload acceptance flow. Replaces the previous silent
+ * flips of overload_accepted on the sidebar checkbox / quick-reply / preview
+ * button. Always asks for confirmation via requestUserConfirmation. On
+ * confirm: sets overload_accepted=true AND overload_confirmed_at=Date.now()
+ * (both required by the server defensive gate and by validatePlanProposalLocal
+ * to actually downgrade the > HARD_LOAD_CAP error to a warning), mirrors the
+ * flags onto the active validation ctx, and (optionally) re-runs the preview.
+ */
+function promptAcceptOverloadConfirmation({ anchorEl, refreshPreview } = {}) {
+  // Compute the peak so the message can name it.
+  let peak = 0;
+  try {
+    const sems = (_aiPlanLastProposal?.semesters) || [];
+    const courses = _aiPlanLastCtx?.courses || {};
+    for (const sem of sems) {
+      const hrs = (sem.course_ids || []).reduce((s, cid) => s + (Number(courses[cid]?.hours) || 0), 0);
+      if (hrs > peak) peak = hrs;
+    }
+  } catch (_) { /* noop */ }
+  const message = `התוכנית כוללת סמסטר עם ${peak} ש"ש, מעל המגבלה הקשיחה של ${HARD_LOAD_CAP}. זה עלול ליצור עומס לא סביר. לאשר חריגה בכל זאת?`;
+  requestUserConfirmation({
+    message,
+    confirmLabel: 'כן, אשר חריגה',
+    cancelLabel: 'בטל',
+    anchorEl: anchorEl || undefined,
+    onConfirm: () => {
+      const now = Date.now();
+      _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true, overload_confirmed_at: now };
+      if (_aiPlanLastCtx) {
+        _aiPlanLastCtx.overloadAccepted = true;
+        _aiPlanLastCtx.overloadConfirmedAt = now;
+      }
+      if (refreshPreview && typeof refreshPlanPreviewWithProposal === 'function' && _aiPlanLastProposal) {
+        refreshPlanPreviewWithProposal(_aiPlanLastProposal);
+      }
+    },
+  });
 }
 
 /* ── PART D #5 — compact proposal card embedded in עוזר AI ─────────────────
@@ -8569,24 +8606,18 @@ function validatePlanProposalLocal(proposal, ctx) {
       }
 
     }
-    if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
-      const overBy = semHours - ctx.maxHoursPerSemester;
-      if (overBy > 3 || ctx.balanceLoad) {
-        if (ctx.overloadAccepted) {
-          warnings.push('התוכנית חוקית, אך כוללת חריגה בעומס שאושרה ידנית.');
-        } else {
-        const movableInSem = ctx.movableCourseIds
-          ? (sem.course_ids || []).filter(cid => ctx.movableCourseIds.has(cid))
-          : [];
-        if (movableInSem.length > 0) {
-          errors.push('התוכנית לא איזנה עומס למרות שקיימים קורסים גמישים/בחירה שניתן להזיז.');
-        } else {
-          errors.push(`לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`);
-        }
-        }
+    // Phase 2C unified overload policy — mirror of api/ai/plan_validation.ts.
+    if (semHours > ABSOLUTE_MAX_REASONABLE) {
+      errors.push(`ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE} ש"ש. לא ניתן להחיל את התוכנית.`);
+    } else if (semHours > HARD_LOAD_CAP) {
+      const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
+      if (userConfirmed) {
+        warnings.push(`ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${HARD_LOAD_CAP}) — חריגה בעומס שאושרה ידנית.`);
       } else {
-        warnings.push(`שים לב: ${semName} חורג ב־${overBy} ש"ש מהעדפת העומס שלך.`);
+        errors.push(`ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP} ש"ש). נדרש אישור חריגה מפורש.`);
       }
+    } else if (semHours > SOFT_LOAD_MAX) {
+      warnings.push(`ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${SOFT_LOAD_MAX} ש"ש).`);
     }
   }
 
@@ -8923,6 +8954,12 @@ const DEGREE_REQUIRED_HOURS = 185;
 /** Matches MAX_HOURS (board semester-card cap) — single default for board/AI/validation. */
 const DEFAULT_MAX_HOURS_PER_SEMESTER = MAX_HOURS;
 const SEVERE_OVERLOAD_MARGIN = 3;
+// Phase 2C — mirror of api/ai/load_constants.ts (drift test in
+// tests/test_viewer_structure.py keeps these in sync).
+const SOFT_LOAD_MIN = 18;
+const SOFT_LOAD_MAX = 22;
+const HARD_LOAD_CAP = 26;
+const ABSOLUTE_MAX_REASONABLE = 30;
 
 /** PART A — mirrors api/ai/completion_analysis.ts (getEffectiveMaxHoursPreference). */
 function getEffectiveMaxHoursPreferenceLocal(maxWeeklyHoursPreference) {
@@ -9600,7 +9637,6 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
 // --- Request B optimization mirrors (scorePlan / pickBestPlan / replaceWeakElectives / moveFoundationCoursesEarlier / explainPlanQuality) ---
 
 function scorePlanLocal(proposal, ctx) {
-  const max = ctx.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
   const known = ctx.knownSemesterIds;
   const wanted = new Set(ctx.wantedCourseIds || []);
   const avoided = new Set(ctx.unwantedCourseIds || []);
@@ -9609,8 +9645,14 @@ function scorePlanLocal(proposal, ctx) {
   const peak = loads.length ? Math.max(...loads) : 0;
   const mean = loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0;
   const variance = loads.length ? loads.reduce((a, b) => a + (b - mean) ** 2, 0) / loads.length : 0;
-  const overCount = loads.filter(h => h > max).length;
-  const loadBalance = -(peak * 1) - (Math.sqrt(variance) * 2) - (overCount * 10);
+  // Phase 2C scoring — mirror of api/ai/completion_analysis.ts (scorePlan).
+  const healthyCount = loads.filter(h => h >= SOFT_LOAD_MIN && h <= SOFT_LOAD_MAX).length;
+  const peakPenalty = Math.max(0, peak - SOFT_LOAD_MAX) * 2;
+  const variancePenalty = Math.sqrt(variance) * 2;
+  const overHardCount = loads.filter(h => h > HARD_LOAD_CAP).length;
+  const overAbsCount = loads.filter(h => h > ABSOLUTE_MAX_REASONABLE).length;
+  const overHardPenalty = ctx.overloadAccepted ? overHardCount * 50 : 0;
+  const loadBalance = (healthyCount * 5) - peakPenalty - variancePenalty - overHardPenalty;
 
   let relevance = 0;
   let sequencing = 0;
@@ -9635,9 +9677,11 @@ function scorePlanLocal(proposal, ctx) {
   }
 
   const breakdown = { loadBalance, relevance, sequencing, preferences };
-  if (!ctx.legal) {
-    return { score: -Infinity, legal: false, breakdown };
-  }
+  // Phase 2C hard rejection — > ABSOLUTE_MAX_REASONABLE always illegal,
+  // > HARD_LOAD_CAP illegal without explicit overload acceptance.
+  if (overAbsCount > 0) return { score: -Infinity, legal: false, breakdown };
+  if (overHardCount > 0 && !ctx.overloadAccepted) return { score: -Infinity, legal: false, breakdown };
+  if (!ctx.legal) return { score: -Infinity, legal: false, breakdown };
   return { score: loadBalance + relevance * 2 + sequencing + preferences, legal: true, breakdown };
 }
 
@@ -10226,6 +10270,7 @@ async function requestPlanProposal(prefs, actionType) {
     ctx.maxHoursPerSemester = getEffectiveMaxHoursPreferenceLocal(prefs.max_weekly_hours);
     ctx.balanceLoad = !!prefs.balance_load;
     ctx.overloadAccepted = !!prefs.overload_accepted;
+    ctx.overloadConfirmedAt = prefs.overload_confirmed_at || null;
     ctx.wantedCourseIds = prefs.wanted_course_ids || [];
 
     // PART A: deterministic completion analysis from the live board.
@@ -10696,6 +10741,19 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     }
     return `<span class="badge bdg-not-offered">ללא שינוי</span>`;
   };
+  // Phase 2C — per-semester overload badge using the global thresholds.
+  const overloadBadgeHtml = (hrs) => {
+    if (hrs > ABSOLUTE_MAX_REASONABLE) {
+      return `<span class="badge" style="background:#5a0f12;color:#fff;font-weight:600">חריגה לא סבירה: ${hrs} ש"ש</span>`;
+    }
+    if (hrs > HARD_LOAD_CAP) {
+      return `<span class="badge" style="background:#dc3545;color:#fff;font-weight:600">חריגה חסומה: ${hrs} ש"ש</span>`;
+    }
+    if (hrs > SOFT_LOAD_MAX) {
+      return `<span class="badge" style="background:#ffc107;color:#222;font-weight:600">עומס גבוה: ${hrs} ש"ש</span>`;
+    }
+    return `<span class="badge" style="background:rgba(40,167,69,.15);color:#28a745;font-weight:600">עומס תקין: ${hrs} ש"ש</span>`;
+  };
   const semestersHtml = (proposal.semesters || []).map(sem => {
     const hrs = semHoursById[sem.semester_id] || 0;
     const overloaded = hrs > effectiveMaxHours;
@@ -10719,11 +10777,12 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
     const more = (!showAllCourses && cids.length > MAX_COURSES_SHOWN)
       ? `<li class="ai-plan-hint">ועוד ${cids.length - MAX_COURSES_SHOWN} קורסים</li>`
       : '';
-    return `<div class="ai-plan-sem ${overloaded ? 'sem-overload' : ''}">
+    return `<div class="ai-plan-sem ${overloaded ? 'sem-overload' : ''}" data-sem-id="${esc(sem.semester_id)}">
       <div class="ai-plan-sem-title">
         <span>${esc(SEM_HE[sem.semester_id] || sem.semester_id)}</span>
         <span class="ai-plan-sem-hours ${overloaded ? 'over' : ''}">${hrs} ש״ש${overloaded ? ' ⚠' : ''}</span>
       </div>
+      <div class="ai-plan-sem-overload-badge" data-overload-badge style="margin:4px 0 6px">${overloadBadgeHtml(hrs)}</div>
       <ul class="ai-plan-sem-courses">${shown || '<li>אין קורסים</li>'}${more}</ul>
     </div>`;
   }).join('');
@@ -10871,10 +10930,9 @@ function openPlanPreviewModal(proposal, errors, warnings, autofixed, completenes
   // preview-local recompute (no AI call): mark the flag on the current
   // preferences/ctx and re-validate the SAME proposal so the severe-overload
   // error becomes a warning and Apply unlocks immediately.
-  document.getElementById('ai-plan-allow-overload')?.addEventListener('click', () => {
-    _aiPlanLastPreferences = { ..._aiPlanLastPreferences, overload_accepted: true };
-    if (_aiPlanLastCtx) _aiPlanLastCtx.overloadAccepted = true;
-    refreshPlanPreviewWithProposal(_aiPlanLastProposal);
+  document.getElementById('ai-plan-allow-overload')?.addEventListener('click', (e) => {
+    // Phase 2C — explicit confirmation required (no silent flip).
+    promptAcceptOverloadConfirmation({ anchorEl: e.currentTarget, refreshPreview: true });
   });
   document.getElementById('ai-plan-back-prefs')?.addEventListener('click', () => {
     openPlanPreferencesModal();

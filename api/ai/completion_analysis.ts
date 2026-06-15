@@ -1999,6 +1999,8 @@ export interface ScorePlanContext {
   unwantedCourseIds?: string[] | null;
   /** If false, the plan is illegal and must score the worst regardless of other factors. */
   legal: boolean;
+  /** Phase 2C — user explicitly confirmed overload above HARD_LOAD_CAP. */
+  overloadAccepted?: boolean;
 }
 
 export interface PlanScoreBreakdown {
@@ -2021,7 +2023,6 @@ export interface PlanScoreResult {
  * Higher is better. Illegal plans always score below legal ones.
  */
 export function scorePlan<P extends RepairProposalShape>(proposal: P, ctx: ScorePlanContext): PlanScoreResult {
-  const max = ctx.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
   const known = ctx.knownSemesterIds;
   const wanted = new Set(ctx.wantedCourseIds ?? []);
   const avoided = new Set(ctx.unwantedCourseIds ?? []);
@@ -2030,10 +2031,19 @@ export function scorePlan<P extends RepairProposalShape>(proposal: P, ctx: Score
   const peak = loads.length ? Math.max(...loads) : 0;
   const mean = loads.length ? loads.reduce((a, b) => a + b, 0) / loads.length : 0;
   const variance = loads.length ? loads.reduce((a, b) => a + (b - mean) ** 2, 0) / loads.length : 0;
-  const overCount = loads.filter(h => h > max).length;
-  // PART 2 — penalize a high peak, variance between semesters, and any
-  // semester above the user's max.
-  const loadBalance = -(peak * 1) - (Math.sqrt(variance) * 2) - (overCount * 10);
+  // Phase 2C scoring: bonus for "healthy" semesters in [18,22]; penalty for
+  // peak above SOFT_LOAD_MAX and inter-semester variance.
+  const SOFT_MIN = 18;
+  const SOFT_MAX = 22;
+  const HARD = 26;
+  const ABS = 30;
+  const healthyCount = loads.filter(h => h >= SOFT_MIN && h <= SOFT_MAX).length;
+  const peakPenalty = Math.max(0, peak - SOFT_MAX) * 2;
+  const variancePenalty = Math.sqrt(variance) * 2;
+  const overHardCount = loads.filter(h => h > HARD).length;
+  const overAbsCount = loads.filter(h => h > ABS).length;
+  const overHardPenalty = ctx.overloadAccepted ? overHardCount * 50 : 0;
+  const loadBalance = (healthyCount * 5) - peakPenalty - variancePenalty - overHardPenalty;
 
   let relevance = 0;
   let sequencing = 0;
@@ -2064,6 +2074,15 @@ export function scorePlan<P extends RepairProposalShape>(proposal: P, ctx: Score
   }
 
   const breakdown: PlanScoreBreakdown = { loadBalance, relevance, sequencing, preferences };
+  // Phase 2C hard rejection:
+  //   - any semester > ABSOLUTE_MAX_REASONABLE → always illegal.
+  //   - any semester > HARD_LOAD_CAP without explicit overload acceptance → illegal.
+  if (overAbsCount > 0) {
+    return { score: -Infinity, legal: false, breakdown };
+  }
+  if (overHardCount > 0 && !ctx.overloadAccepted) {
+    return { score: -Infinity, legal: false, breakdown };
+  }
   if (!ctx.legal) {
     return { score: -Infinity, legal: false, breakdown };
   }

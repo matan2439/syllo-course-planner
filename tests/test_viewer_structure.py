@@ -1838,3 +1838,54 @@ def test_mc_semester_bulk_completed_recognized_by_prereq_check(html):
     by the prerequisite-violation check (status === 'completed')."""
     prereq_check = _extract_fn(html, "_hasPrereqOrderViolationLocal")
     assert "status === 'completed'" in prereq_check
+
+
+# ---------------------------------------------------------------------------
+# Phase 2C — load constants drift test (HTML must mirror api/ai/load_constants.ts)
+# ---------------------------------------------------------------------------
+
+def _read_ts_constant(ts_text: str, name: str) -> int:
+    m = re.search(rf"export const {re.escape(name)}\s*=\s*(\d+)\s*;", ts_text)
+    assert m, f"Constant {name} not found in load_constants.ts"
+    return int(m.group(1))
+
+
+def _read_html_constant(html_text: str, name: str) -> int:
+    m = re.search(rf"\bconst {re.escape(name)}\s*=\s*(\d+)\s*;", html_text)
+    assert m, f"Constant {name} not found in semester_board_viewer.html"
+    return int(m.group(1))
+
+
+def test_phase2c_load_constants_mirror_load_constants_ts(html):
+    """Phase 2C — semester_board_viewer.html must mirror api/ai/load_constants.ts
+    (single source of truth). Drift between them breaks the gate parity."""
+    ts_text = Path("api/ai/load_constants.ts").read_text(encoding="utf-8")
+    for name in ("SOFT_LOAD_MIN", "SOFT_LOAD_MAX", "HARD_LOAD_CAP", "ABSOLUTE_MAX_REASONABLE"):
+        assert _read_ts_constant(ts_text, name) == _read_html_constant(html, name), (
+            f"Phase 2C constant {name} mismatch between load_constants.ts and the HTML viewer"
+        )
+
+
+def test_phase2c_no_native_alert_or_confirm_in_overload_paths(html):
+    """Phase 2C — overload acceptance must use requestUserConfirmation, never
+    window.alert / window.confirm. Inspect only ~600-char windows around each
+    occurrence of "overload" so a comment elsewhere in the file mentioning
+    window.confirm() doesn't trip the check."""
+    lower = html.lower()
+    idx = 0
+    while True:
+        i = lower.find('overload', idx)
+        if i == -1:
+            break
+        window = html[max(0, i - 600): i + 600]
+        for offending in ("window.alert(", "window.confirm("):
+            assert offending not in window, (
+                f"Phase 2C: native {offending} detected near an overload reference at offset {i}"
+            )
+        idx = i + 1
+    # The explicit confirmation helper must exist.
+    assert "promptAcceptOverloadConfirmation" in html
+    assert "requestUserConfirmation" in html
+    # And it must reference HARD_LOAD_CAP in its message body.
+    helper_idx = html.index("function promptAcceptOverloadConfirmation")
+    assert "HARD_LOAD_CAP" in html[helper_idx: helper_idx + 2000]

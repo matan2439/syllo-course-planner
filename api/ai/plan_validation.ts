@@ -10,6 +10,7 @@
 
 import { z } from 'zod';
 import { getSemesterLoad } from './completion_analysis';
+import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE, SOFT_LOAD_MAX } from './load_constants';
 
 export const planMoveSchema = z.object({
   course_id: z.string(),
@@ -160,6 +161,8 @@ export interface PlanValidationContext {
   balanceLoad?: boolean;
   /** PART A — user explicitly clicked "אפשר חריגה בעומס": downgrade severe-overload errors to a warning. */
   overloadAccepted?: boolean;
+  /** Phase 2C — timestamp at which the user confirmed the overload. Required (alongside overloadAccepted) to actually downgrade > HARD_LOAD_CAP from error to warning. */
+  overloadConfirmedAt?: number | null;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
   /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
@@ -292,34 +295,33 @@ export function validatePlanProposal(
 
     }
 
-    // 5. semester hour limit — severe overload (or any overload when the user
-    // asked for a balanced load) blocks the plan; mild overload is a warning.
-    if (ctx.maxHoursPerSemester != null && semHours > ctx.maxHoursPerSemester) {
-      const overBy = semHours - ctx.maxHoursPerSemester;
-      if (overBy > 3 || ctx.balanceLoad) {
-        // PART A — user explicitly accepted this overload: do not block Apply,
-        // surface it as a warning instead (still legal otherwise).
-        if (ctx.overloadAccepted) {
-          warnings.push('התוכנית חוקית, אך כוללת חריגה בעומס שאושרה ידנית.');
-        } else {
-        const movableInSem = ctx.movableCourseIds
-          ? sem.course_ids.filter(cid => ctx.movableCourseIds!.has(cid))
-          : [];
-        if (movableInSem.length > 0) {
-          errors.push(
-            'התוכנית לא איזנה עומס למרות שקיימים קורסים גמישים/בחירה שניתן להזיז.',
-          );
-        } else {
-          errors.push(
-            `לא ניתן להחיל — עומס חורג משמעותית מהמגבלה שבחרת: ב${semName} יש ${semHours} שעות שבועיות לעומת מגבלה של ${ctx.maxHoursPerSemester}.`,
-          );
-        }
-        }
-      } else {
+    // 5. Phase 2C unified overload policy (single source of truth — must
+    // match load_constants.ts and the client-side validatePlanProposalLocal):
+    //   - hrs > ABSOLUTE_MAX_REASONABLE (30): always blocking ERROR.
+    //   - hrs > HARD_LOAD_CAP (26): blocking ERROR unless user explicitly
+    //     confirmed overload (overloadAccepted && overloadConfirmedAt); then
+    //     downgraded to a WARNING containing "חריגה בעומס שאושרה ידנית".
+    //   - hrs > SOFT_LOAD_MAX (22) and ≤ HARD_LOAD_CAP: WARNING.
+    //   - hrs ≤ SOFT_LOAD_MAX: no message.
+    if (semHours > ABSOLUTE_MAX_REASONABLE) {
+      errors.push(
+        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE} ש"ש. לא ניתן להחיל את התוכנית.`,
+      );
+    } else if (semHours > HARD_LOAD_CAP) {
+      const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
+      if (userConfirmed) {
         warnings.push(
-          `ב${semName} יש ${semHours} שעות שבועיות — מעבר למגבלה שהוגדרה (${ctx.maxHoursPerSemester}).`,
+          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${HARD_LOAD_CAP}) — חריגה בעומס שאושרה ידנית.`,
+        );
+      } else {
+        errors.push(
+          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP} ש"ש). נדרש אישור חריגה מפורש.`,
         );
       }
+    } else if (semHours > SOFT_LOAD_MAX) {
+      warnings.push(
+        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${SOFT_LOAD_MAX} ש"ש).`,
+      );
     }
   }
 

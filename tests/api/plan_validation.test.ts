@@ -211,51 +211,108 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.some(w => w.includes('0542-4420'))).toBe(false);
   });
 
-  it('warns when a semester exceeds the configured max weekly hours', () => {
-    const ctx: PlanValidationContext = { ...BASE_CTX, maxHoursPerSemester: 8 };
-    const result = validatePlanProposal(BASE_PROPOSAL, ctx); // semester A = 5+4=9 hours
-    expect(result.warnings.some(w => w.includes('year_3_semester_a') && w.includes('9'))).toBe(true);
-  });
-
-  it('blocks a plan when a semester severely exceeds the max weekly hours (more than +3)', () => {
+  it('Phase 2C — 23h warns (mild overload above SOFT_LOAD_MAX=22)', () => {
     const ctx: PlanValidationContext = {
       completedCourseIds: new Set(),
-      maxHoursPerSemester: 14,
-      courses: {
-        '0542-4120': { hours: 27 },
-        '0542-4221': { hours: 5 },
-      },
+      courses: { A: { hours: 23 } },
     };
     const proposal: PlanProposal = {
       ...BASE_PROPOSAL,
       semesters: [
-        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
-        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
+        { semester_id: 'year_3_semester_a', course_ids: ['A'] },
       ],
     };
-    const result = validatePlanProposal(proposal, ctx); // 27 > 14 + 3
-    expect(result.errors.some(e => e.includes('עומס חורג משמעותית') && e.includes('27'))).toBe(true);
-  });
-
-  it('only warns when a semester mildly exceeds the max weekly hours (within +3)', () => {
-    const ctx: PlanValidationContext = {
-      completedCourseIds: new Set(),
-      maxHoursPerSemester: 14,
-      courses: {
-        '0542-4120': { hours: 16 },
-        '0542-4221': { hours: 5 },
-      },
-    };
-    const proposal: PlanProposal = {
-      ...BASE_PROPOSAL,
-      semesters: [
-        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
-        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221'] },
-      ],
-    };
-    const result = validatePlanProposal(proposal, ctx); // 16 <= 14 + 3
+    const result = validatePlanProposal(proposal, ctx);
     expect(result.errors).toEqual([]);
-    expect(result.warnings.some(w => w.includes('16') && w.includes('שעות שבועיות'))).toBe(true);
+    expect(result.warnings.some(w => w.includes('23') && w.includes('מעל הטווח המומלץ'))).toBe(true);
+  });
+
+  it('Phase 2C — 26h warns (boundary, equals HARD_LOAD_CAP)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: { A: { hours: 26 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('26'))).toBe(true);
+  });
+
+  it('Phase 2C — 27h blocks without overload acceptance (> HARD_LOAD_CAP)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('27') && e.includes('המגבלה הקשיחה'))).toBe(true);
+  });
+
+  it('Phase 2C — 27h blocks when overloadAccepted=true but no confirmation timestamp', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      overloadAccepted: true,
+      // overloadConfirmedAt intentionally NOT set
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('המגבלה הקשיחה'))).toBe(true);
+  });
+
+  it('Phase 2C — 27h with overloadAccepted + overloadConfirmedAt downgrades to warning ("אושרה ידנית")', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('אושרה ידנית'))).toBe(true);
+  });
+
+  it('Phase 2C — 31h is always an error, even with overloadAccepted + overloadConfirmedAt', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+      courses: { A: { hours: 31 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('חריגה לא סבירה') && e.includes('31'))).toBe(true);
+  });
+
+  it('Phase 2C — 22h or below produces no overload message', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: { A: { hours: 22 }, B: { hours: 5 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['A'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['B'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.filter(w => w.includes('שעות שבועיות'))).toEqual([]);
   });
 
   it('rejects a plan that omits not-completed mandatory courses', () => {
@@ -317,27 +374,7 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.some(w => w.includes('חסרים קורסי בחירה בקטגוריה מערכות בקרה'))).toBe(true);
   });
 
-  it('blocks overload as "did not balance" when movable courses exist in the overloaded semester', () => {
-    const ctx: PlanValidationContext = {
-      completedCourseIds: new Set(),
-      maxHoursPerSemester: 14,
-      movableCourseIds: new Set(['0542-4221']),
-      courses: {
-        '0542-4120': { hours: 22 },
-        '0542-4221': { hours: 5 },
-      },
-    };
-    const proposal: PlanProposal = {
-      ...BASE_PROPOSAL,
-      semesters: [
-        { semester_id: 'year_3_semester_a', course_ids: ['0542-4120', '0542-4221'] },
-      ],
-    };
-    const result = validatePlanProposal(proposal, ctx); // 27 > 14 + 3, and 0542-4221 is movable
-    expect(result.errors.some(e => e.includes('לא איזנה עומס'))).toBe(true);
-  });
-
-  it('does not block on overload when no max weekly hours is configured', () => {
+  it('Phase 2C — 27h is blocked even without maxHoursPerSemester (HARD_LOAD_CAP is global)', () => {
     const ctx: PlanValidationContext = {
       completedCourseIds: new Set(),
       courses: {
@@ -353,8 +390,7 @@ describe('validatePlanProposal', () => {
       ],
     };
     const result = validatePlanProposal(proposal, ctx);
-    expect(result.errors).toEqual([]);
-    expect(result.warnings).toEqual([]);
+    expect(result.errors.some(e => e.includes('המגבלה הקשיחה'))).toBe(true);
   });
 
   it('rejects a plan that moves a pinned course out of its current semester', () => {
@@ -511,7 +547,7 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
     const without = validatePlanProposal(OVERLOAD_PROPOSAL, OVERLOAD_CTX);
     expect(without.errors.length).toBeGreaterThan(0); // blocked without override
 
-    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true };
+    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true, overloadConfirmedAt: Date.now() };
     const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
     expect(result.errors).toEqual([]);
     expect(result.warnings.some(w => w.includes('חריגה בעומס שאושרה ידנית'))).toBe(true);
@@ -523,7 +559,7 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
   it('2a. does not bypass a missing mandatory course even with overloadAccepted', () => {
     const ctx: PlanValidationContext = {
       ...OVERLOAD_CTX,
-      overloadAccepted: true,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
       requiredMandatoryCourseIds: ['0542-9001'],
     };
     const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
@@ -533,7 +569,7 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
   it('2b. does not bypass illegal placement (outside effective_allowed_semesters) even with overloadAccepted', () => {
     const ctx: PlanValidationContext = {
       ...OVERLOAD_CTX,
-      overloadAccepted: true,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
       courses: {
         ...OVERLOAD_CTX.courses,
         '0542-4221': { hours: 5, effective_allowed_semesters: ['year_3_semester_a'] },
@@ -546,7 +582,7 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
   it('2c. does not bypass a completed course scheduled again even with overloadAccepted', () => {
     const ctx: PlanValidationContext = {
       ...OVERLOAD_CTX,
-      overloadAccepted: true,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
       completedCourseIds: new Set(['0542-4221']),
     };
     const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
@@ -554,7 +590,7 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
   });
 
   it('8. overloadAccepted is a per-request validation flag, not a permanent change to maxHoursPerSemester', () => {
-    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true };
+    const ctx: PlanValidationContext = { ...OVERLOAD_CTX, overloadAccepted: true, overloadConfirmedAt: Date.now() };
     const result = validatePlanProposal(OVERLOAD_PROPOSAL, ctx);
     expect(result.errors).toEqual([]);
     // the configured cap itself is untouched — only the error→warning downgrade changed
