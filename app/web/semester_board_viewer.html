@@ -8121,7 +8121,16 @@ function validatePlanProposalLocal(proposal, ctx) {
     const semName = SEM_HE[sem.semester_id] || sem.semester_id;
     for (const courseId of (sem.course_ids || [])) {
       const cName = courseLabelLocal(courseId);
-      for (const prereq of (courseMap[courseId]?.prerequisites || [])) {
+      // PART B fix — for electives whose prerequisite course_id wasn't resolved
+      // in the program data (`prerequisites` empty due to `course_id: null`),
+      // fall back to the audit-resolved `missing_prerequisites` IDs so ordering
+      // is still enforced (e.g. 0542-4223 "יישומי אלמנטים סופיים בתעשייה" requires
+      // 0542-4224 "אלמנטים סופיים (2)" to be completed or scheduled earlier).
+      const _prereqIds = new Set([
+        ...(courseMap[courseId]?.prerequisites || []),
+        ...(courseMap[courseId]?.missing_prerequisites || []),
+      ]);
+      for (const prereq of _prereqIds) {
         const status = userCourseStatuses[prereq]?.status || 'not_taken';
         if (status === 'completed' || ctx.completedCourseIds.has(prereq)) continue;
         if (status === 'currently_taking' || status === 'planned') {
