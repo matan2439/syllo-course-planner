@@ -159,6 +159,76 @@ describe('C — annual course 0542-3792 spans', () => {
   });
 });
 
+describe('Issue 2 — normalizeAnnualPlacements canonical model', () => {
+  const courses = {
+    '0542-3792': { course_id: '0542-3792', name_he: 'פרויקט שנתי', is_annual: true,
+      placement_policy: 'annual', weekly_hours: 4,
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'] },
+    'x': { course_id: 'x', name_he: 'בחירה', hours: 3,
+      effective_allowed_semesters: SEMESTERS.map(s => s.id) },
+  };
+  // normalizeAnnualPlacements reads global courseMap + isAnnualCourse.
+  const normalize = new Function(
+    'courseMap', 'isAnnualCourse',
+    `${grab('normalizeAnnualPlacements')}\nreturn normalizeAnnualPlacements;`,
+  )(courses, c => !!(c && (c.is_annual === true || c.placement_policy === 'annual')));
+
+  function idsBySem(p) {
+    return Object.fromEntries(p.semesters.map(s => [s.semester_id, s.course_ids]));
+  }
+
+  test('a half-placed annual is normalized into BOTH spans → validator passes', () => {
+    const p = normalize(semProposal({ year_3_semester_a: ['0542-3792'] }));
+    const m = idsBySem(p);
+    expect(m.year_3_semester_a).toContain('0542-3792');
+    expect(m.year_3_semester_b).toContain('0542-3792');
+    expect(causesOf(validate(p, baseCtx(courses)))).not.toContain('annual');
+  });
+
+  test('annual placed in a NON-span semester is removed from it and added to all spans', () => {
+    const p = normalize(semProposal({ year_4_semester_a: ['0542-3792'] }));
+    const m = idsBySem(p);
+    expect(m.year_4_semester_a).not.toContain('0542-3792');
+    expect(m.year_3_semester_a).toContain('0542-3792');
+    expect(m.year_3_semester_b).toContain('0542-3792');
+  });
+
+  test('mandatory annual is NEVER dropped (present after normalization)', () => {
+    const p = normalize(semProposal({ year_3_semester_a: ['0542-3792'] }));
+    const all = p.semesters.flatMap(s => s.course_ids);
+    expect(all).toContain('0542-3792');
+  });
+
+  test('normalization is idempotent and does not duplicate the annual id', () => {
+    const once = normalize(semProposal({ year_3_semester_a: ['0542-3792'], year_3_semester_b: ['0542-3792'] }));
+    const twice = normalize(once);
+    const m = idsBySem(twice);
+    expect(m.year_3_semester_a.filter(id => id === '0542-3792').length).toBe(1);
+    expect(m.year_3_semester_b.filter(id => id === '0542-3792').length).toBe(1);
+  });
+
+  test('if a span semester is genuinely missing from the model, validator still fails', () => {
+    // Only year_3_semester_a exists in the proposal model (no _b at all).
+    const p = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['0542-3792'] }] };
+    normalize(p);
+    // Build a ctx whose SEMESTERS still knows both spans so the validator checks them.
+    const r = validate(p, baseCtx(courses));
+    expect(causesOf(r)).toContain('annual');
+  });
+
+  test('load counts in EACH span; degree counts once (validator annual check satisfied)', () => {
+    const p = normalize(semProposal({ year_3_semester_a: ['0542-3792'], year_3_semester_b: ['x'] }));
+    const m = idsBySem(p);
+    // load: present in both spans (each span counts its 4h).
+    expect(m.year_3_semester_a).toContain('0542-3792');
+    expect(m.year_3_semester_b).toContain('0542-3792');
+    // degree once is enforced by computeDegreeProgress' Set dedup (stubbed here);
+    // the validator's annual check is satisfied (no annual blocker).
+    expect(causesOf(validate(p, baseCtx(courses)))).not.toContain('annual');
+  });
+});
+
 describe('D — degree below 185', () => {
   const courses = { 'x': { course_id: 'x', name_he: 'קורס', effective_allowed_semesters: SEMESTERS.map(s => s.id) } };
 

@@ -973,17 +973,21 @@ def test_no_separate_chat_tab_remains(html):
     assert 'data-tab="chat">שיחה עם AI' not in html
 
 
-def test_unified_ai_tab_has_chat_input_and_quick_actions(html):
-    """The unified 'עוזר AI' tab must contain a chat input, and the old
-    repair quick-actions must now live inside the collapsed 'אפשרויות
-    מתקדמות' section, not as default-visible buttons."""
+def test_unified_ai_tab_has_chat_input_no_static_advanced_actions(html):
+    """The unified 'עוזר AI' tab must contain a chat input + send button. Issue 5
+    — the old static repair quick-actions ('אזן עומס' / 'תקן בעיות חוקיות' /
+    'שפר התאמה לקריירה') are NO LONGER static buttons in renderAiTab; they are
+    surfaced on demand as AI-chat recovery chips (diagnoseBuildBlock) only when a
+    blocker exists. So the static advanced panel must be absent from the tab."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     body = m.group(1)
     assert "sidebar-chat-input" in body
     assert "sidebar-chat-send" in body
-    for label in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה']:
-        assert label in body, f"Advanced action missing: {label}"
+    assert "ai-advanced-collapsible" not in body
+    assert 'id="sidebar-quick-balance"' not in body
+    assert 'id="sidebar-quick-prereqs"' not in body
+    assert 'id="sidebar-quick-career"' not in body
 
 
 def test_mechanical_category_add_buttons_removed(html):
@@ -1265,15 +1269,20 @@ def test_shaar_ruach_pref_control_in_ai_tab_and_payload(html):
     assert m2 and "shaarRuachAssessmentPref" in m2.group(0)
 
 
-def test_global_smart_completion_button_in_advanced_section(html):
-    """The global 'השלם דרישות חסרות' button + handler must exist, now
-    inside the collapsed 'אפשרויות מתקדמות' section."""
-    assert "השלם דרישות חסרות" in html
+def test_global_smart_completion_surfaced_as_chip_not_advanced_section(html):
+    """Issue 5 — the static 'אפשרויות מתקדמות' panel is removed. The
+    offerAllCategorySuggestions completion logic still exists and is surfaced
+    on demand as an AI-chat recovery chip ('השלם דרישות חסרות' /
+    'complete-missing-category') only when a blocker exists, NOT as a static
+    always-present advanced-menu button."""
     assert re.search(r"function offerAllCategorySuggestions\(", html)
-    m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
-    assert m, "advanced actions <details> not found"
-    assert 'id="sidebar-missing-suggest-all"' in m.group(1)
-    assert "השלם דרישות חסרות" in m.group(1)
+    # No static advanced panel and no static advanced-menu buttons.
+    assert "ai-advanced-collapsible" not in html
+    assert 'id="sidebar-missing-suggest-all"' not in html
+    assert 'id="sidebar-quick-balance"' not in html
+    # The on-demand completion chip lives in the cause→chip mapping.
+    assert "complete-missing-category" in html
+    assert "השלם קטגוריה חסרה" in html
 
 
 # ---------------------------------------------------------------------------
@@ -1378,11 +1387,11 @@ def test_single_build_button_visible_with_confirm_on_rebuild(html):
     assert 'id="sidebar-build-from-scratch"' in template_no_details
     assert "בנה מערכת" in template_no_details
 
-    # Not present under אפשרויות מתקדמות as a second build trigger.
-    details_m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
-    assert details_m
-    assert 'id="sidebar-build-from-scratch"' not in details_m.group(1)
-    assert 'id="sidebar-rebuild-from-scratch"' not in details_m.group(1)
+    # Issue 4/5 — exactly ONE build button; the static advanced panel is gone, so
+    # there is no second build trigger anywhere.
+    assert template.count('id="sidebar-build-from-scratch"') == 1
+    assert "ai-advanced-collapsible" not in html
+    assert 'id="sidebar-rebuild-from-scratch"' not in html
 
     m2 = re.search(
         r"getElementById\('sidebar-build-from-scratch'\)\??\.addEventListener\('click', \(\) => \{(.*?)\n  \}\);",
@@ -1443,9 +1452,16 @@ def test_chat_first_default_visible_controls(html):
     for removed in ['אזן עומס', 'תקן בעיות חוקיות', 'שפר התאמה לקריירה', 'הצע תוכנית / תיקון חכם', 'בנה מחדש מאפס', 'הצע צעד הבא', 'שאל אותי לפני בחירה']:
         assert removed not in template_no_details, f"{removed} must not be default-visible"
 
+    # Issue 4/5 — the primary 'בנה מערכת מחדש' build button now sits next to the
+    # reset button, alongside the moved 'נקה שיחה והעדפות זמניות' (sidebar-clear-chat)
+    # and the draft-only 'פתח פירוט מלא' (sidebar-open-full-preview). The static
+    # advanced panel is gone; these are the only default-visible buttons.
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
-    assert set(visible_buttons) <= {"sidebar-chat-send", "sidebar-build-from-scratch", "sidebar-reset-chat"}, visible_buttons
-    assert len(visible_buttons) <= 3
+    assert set(visible_buttons) <= {
+        "sidebar-chat-send", "sidebar-build-from-scratch", "sidebar-reset-chat",
+        "sidebar-clear-chat", "sidebar-open-full-preview",
+    }, visible_buttons
+    assert len(visible_buttons) <= 5
 
 
 def test_full_plan_flow_no_undefined_function_references(html):
@@ -1742,15 +1758,16 @@ def test_draft_summary_card_has_label_and_actions(html):
     assert 'id="sb-draft-reject"' in fn
 
 
-def test_reset_chat_not_in_default_view_moved_to_advanced(html):
-    """Issue B — a VISIBLE 'איפוס שיחה' reset button is now expected (approved
-    requirement); the advanced 'נקה שיחה והעדפות זמניות' action still lives
-    under אפשרויות מתקדמות and clears chat + _aiPickerState."""
+def test_reset_and_clear_chat_are_primary_action_pair_no_advanced_panel(html):
+    """Issue 4/5 — the static 'אפשרויות מתקדמות' panel is removed. A VISIBLE
+    'איפוס שיחה' reset button and the 'נקה שיחה והעדפות זמניות' action both live
+    next to the primary 'בנה מערכת מחדש' build button (primary action pair), NOT
+    inside an advanced <details>. The clear-chat handler still clears chat +
+    _aiPickerState."""
     assert 'איפוס שיחה' in html
     assert 'id="sidebar-reset-chat"' in html
-    details_m = re.search(r"<details class=\"ai-plan-section ai-advanced-collapsible\">(.*?)</details>", html, re.DOTALL)
-    assert details_m
-    assert 'נקה שיחה והעדפות זמניות' in details_m.group(1)
+    assert 'נקה שיחה והעדפות זמניות' in html
+    assert "ai-advanced-collapsible" not in html
     handler = re.search(
         r"getElementById\('sidebar-clear-chat'\)\??\.addEventListener\('click', \([^)]*\) => \{(.*?)\n  \}\);",
         html, re.DOTALL,
@@ -1758,6 +1775,19 @@ def test_reset_chat_not_in_default_view_moved_to_advanced(html):
     assert handler
     assert "clearAiChatHistory(" in handler.group(1)
     assert "_aiPickerState" in handler.group(1)
+
+
+def test_rebuild_button_next_to_reset_button(html):
+    """Issue 4 — the primary rebuild button sits next to the reset button as a
+    primary action pair (both inside the same .ai-action-row), and they remain
+    DISTINCT actions (rebuild != reset)."""
+    m = re.search(r'<div class="ai-action-row"[^>]*>(.*?)</div>', html, re.DOTALL)
+    assert m, "ai-action-row not found"
+    row = m.group(1)
+    assert 'id="sidebar-build-from-scratch"' in row
+    assert 'id="sidebar-reset-chat"' in row
+    # Distinct buttons, not merged.
+    assert row.count('<button') >= 2
 
 
 def test_ask_before_choosing_button_fully_removed(html):

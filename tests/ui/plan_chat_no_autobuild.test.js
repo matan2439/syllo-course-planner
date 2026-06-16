@@ -276,6 +276,102 @@ describe('Issue 1 — שלח does not auto-build', () => {
     expect(parsed.warns.some(w => w.includes('מעבר חום') && w.includes('חובה'))).toBe(true);
   });
 
+  test("Issue 3 — clicking rebuild posts a STATUS message, not a fake user 'בנה מערכת מחדש' bubble", async () => {
+    window.eval('detectAmbiguousPlanningInstruction = () => [];');
+    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
+    document.getElementById('sidebar-chat-input').value = '';
+    const logEl = document.getElementById('ai-chat-log');
+
+    const buildBtn = document.getElementById('sidebar-build-from-scratch');
+    buildBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+
+    // No USER bubble with the button label was inserted.
+    const userTexts = Array.from(logEl.querySelectorAll('.ai-chat-bubble.user')).map(b => b.textContent);
+    expect(userTexts.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(false);
+    // No persisted USER chat message equals the button label.
+    expect(window.eval('_aiChatMessages.some(m => m.role === "user" && m.text && m.text.indexOf("בנה מערכת מחדש") >= 0)')).toBe(false);
+    // A non-user STATUS message was posted, and it is flagged isStatus so it is
+    // never treated as a user instruction.
+    expect(window.eval('_aiChatMessages.some(m => m.isStatus === true && m.role === "assistant")')).toBe(true);
+    // The build path ran.
+    expect(window.eval('window.__rppCalls')).toBeGreaterThanOrEqual(1);
+  });
+
+  test("Issue 6 — 'אל תשבץ X' updates avoid list (unwanted + strongUnwanted)", async () => {
+    window.eval('detectClarificationNeeds = () => null;');
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    // Pick a real course id present in courseMap with a course entry.
+    const cid = window.eval('Object.keys(courseMap).find(k => courseMap[k] && courseMap[k].course_id)');
+    input.value = `אל תשבץ את ${cid}`;
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval(`_aiPickerState.unwanted.indexOf('${cid}') >= 0`)).toBe(true);
+    expect(window.eval(`_aiPickerState.strongUnwanted.indexOf('${cid}') >= 0`)).toBe(true);
+    // Offers an explicit rebuild chip, never auto-builds.
+    expect(window.eval('window.__rppCalls')).toBe(0);
+    const logEl = document.getElementById('ai-chat-log');
+    const chips = Array.from(logEl.querySelectorAll('button')).map(b => b.textContent);
+    expect(chips.some(t => t && t.includes('בנה מערכת מחדש'))).toBe(true);
+  });
+
+  test("Issue 6 — 'פחות עומס בשנה ג סמסטר א' sets a per-semester load preference", async () => {
+    window.eval('detectClarificationNeeds = () => null;');
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    input.value = 'פחות עומס בשנה ג סמסטר א';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('!!(_aiPlanLastPreferences && _aiPlanLastPreferences.balance_load)')).toBe(true);
+    expect(window.eval("(_aiPlanLastPreferences.semester_load_targets || {})['year_3_semester_a']")).toBe('reduce');
+    expect(window.eval('window.__rppCalls')).toBe(0);
+  });
+
+  test("Issue 6 — 'תשלים קורסי בחירה לבד' sets auto-fill preference", async () => {
+    window.eval('detectClarificationNeeds = () => null;');
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    input.value = 'תשלים קורסי בחירה לבד';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('!!(_aiPlanLastPreferences && _aiPlanLastPreferences.auto_fill_electives)')).toBe(true);
+    expect(window.eval('window.__rppCalls')).toBe(0);
+  });
+
+  test("Issue 6 — 'אני לא יכול לקחת קורסי מצטיינים' sets is_honors_student=false", async () => {
+    window.eval('detectClarificationNeeds = () => null;');
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    input.value = 'אני לא יכול לקחת קורסי מצטיינים';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('_aiPlanLastPreferences.is_honors_student')).toBe(false);
+    expect(window.eval('window.__rppCalls')).toBe(0);
+  });
+
+  test("Issue 6 — feedback-triggered rebuild still goes through the explicit gate (validateFinalPlan)", async () => {
+    // After updating state via feedback, clicking the offered rebuild chip runs
+    // the explicit build path (requestPlanProposal → gateProposalActivation).
+    window.eval('detectAmbiguousPlanningInstruction = () => [];');
+    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
+    const input = document.getElementById('sidebar-chat-input');
+    const sendBtn = document.getElementById('sidebar-chat-send');
+    input.value = 'תשלים קורסי בחירה לבד';
+    sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 60));
+    // Click the rebuild chip from the assistant message.
+    window.eval('handleQuickReply({ label: "בנה מערכת מחדש", action: "rebuild-plan" })');
+    await new Promise(r => setTimeout(r, 30));
+    const confirmCard = document.getElementById('ai-build-confirm');
+    if (confirmCard) {
+      const confirmBtn = confirmCard.querySelector('[data-uc-confirm]');
+      if (confirmBtn) confirmBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    }
+    await new Promise(r => setTimeout(r, 60));
+    expect(window.eval('window.__rppCalls')).toBeGreaterThanOrEqual(1);
+  });
+
   test("'rebuild-plan' quick action DOES reach the build path", async () => {
     // Avoid clarification questions diverting the flow.
     window.eval('detectAmbiguousPlanningInstruction = () => [];');

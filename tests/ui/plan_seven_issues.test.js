@@ -238,13 +238,57 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
     expect(html).toContain('.filter(id => !isAnnualCourse(courseMap[id]))');
   });
 
-  test('renderBoard places the annual band INSIDE the grid body, below the headers', () => {
-    // The annual block is emitted INSIDE .year-sems, AFTER the semester columns
-    // (so it renders below the header cards), not as a banner above them.
+  test('renderBoard places the annual band at the TOP of the grid body, before the columns', () => {
+    // Issue 1 — the annual block is emitted INSIDE .year-sems, BEFORE the
+    // semester columns (so it renders at the TOP of the year's card area), still
+    // spanning both columns. It is NOT appended after the columns (old banner).
     expect(html).toContain('annualCoursesForYear(yg.sems).map(annualBandHtml)');
-    expect(html).toContain('${yg.sems.map(s => semColHtml(s, draftDiff)).join(\'\')}${annualBands}');
-    // It is NOT emitted before .year-sems (no above-grid banner).
-    expect(html).not.toContain('${annualBands}\n      <div class="year-sems">');
+    expect(html).toContain('${annualBands}${yg.sems.map(s => semColHtml(s, draftDiff)).join(\'\')}');
+    // It is NOT emitted after the columns anymore.
+    expect(html).not.toContain('.join(\'\')}${annualBands}</div>');
+  });
+
+  test('annual band uses normal card height (compact single-row, note collapsed)', () => {
+    // The .annual-band gets a card box-shadow and a 4px accent border like a
+    // regular course card; the explanatory note is collapsed (display:none) so
+    // the block keeps a normal single-row card height (not a tall banner).
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*box-shadow:\s*var\(--shadow\)/);
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*border-inline-start:\s*4px/);
+    expect(html).toMatch(/\.annual-band\s\.annual-band-note\s*\{\s*display:\s*none/);
+  });
+
+  test('annual band is movable ONLY as a whole unit and only if a legal alternative span exists', () => {
+    // A single allowed span pair (the 3792 case) → no alternative → locked.
+    const annualBandHtml2 = new Function('esc', 'SEM_HE', 'showCourseDetail', 'annualAlternativeSpanLocal',
+      `${grab('annualBandHtml')}\nreturn annualBandHtml;`,
+    )(x => String(x), SEM_HE, () => {}, () => null);
+    const locked = annualBandHtml2(annual);
+    expect(locked).toContain('data-locked="1"');
+    expect(locked).not.toContain('data-annual-movable="1"');
+    // No per-column halves: a single spanning element only.
+    expect((locked.match(/class="annual-band"/g) || []).length).toBe(1);
+
+    // When an alternative legal span pair exists, the WHOLE block is movable.
+    const annualBandHtml3 = new Function('esc', 'SEM_HE', 'showCourseDetail', 'annualAlternativeSpanLocal',
+      `${grab('annualBandHtml')}\nreturn annualBandHtml;`,
+    )(x => String(x), SEM_HE, () => {}, () => ['year_2_semester_a', 'year_2_semester_b']);
+    const movable = annualBandHtml3(annual);
+    expect(movable).toContain('data-annual-movable="1"');
+    expect(movable).not.toContain('data-locked="1"');
+  });
+
+  test('annualAlternativeSpanLocal returns null for a single allowed span pair', () => {
+    const fn = new Function(`${grab('annualAlternativeSpanLocal')}\nreturn annualAlternativeSpanLocal;`)();
+    // Only year_3 a/b allowed and that IS the current span → no alternative.
+    expect(fn({
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    })).toBeNull();
+    // A second full a/b pair in another year → that pair is the alternative.
+    expect(fn({
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b', 'year_2_semester_a', 'year_2_semester_b'],
+    })).toEqual(['year_2_semester_a', 'year_2_semester_b']);
   });
 });
 
