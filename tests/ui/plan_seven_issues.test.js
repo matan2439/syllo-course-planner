@@ -81,8 +81,10 @@ describe('Issue 4 — below-185 proposal is not applicable', () => {
     expect(isApplyable(['some error'], { incomplete: false })).toBe(false);
   });
 
-  test('build path makes total<required an unconditional blocking reason', () => {
-    expect(html).toContain('!degreeHoursStatus.satisfied && degreeHoursStatus.missing_hours > 0');
+  test('build path makes total<required an unconditional blocking reason (after exhaustive refill)', () => {
+    // Issue 2 — the missing-hours blocker is now computed on the FINAL
+    // post-refill proposal (degreeHoursStatusFinal), not the pre-filter status.
+    expect(html).toContain('!degreeHoursStatusFinal.satisfied && degreeHoursStatusFinal.missing_hours > 0');
     expect(html).toContain('ש״ש להשלמת התואר');
   });
 });
@@ -202,8 +204,33 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
   test('renders a SINGLE spanning element with data-annual-span (not two cards)', () => {
     const out = annualBandHtml(annual);
     expect(out).toContain('data-annual-span="year_3_semester_a,year_3_semester_b"');
+    expect(out).toContain('data-course="0542-3792"');
     expect((out.match(/class="annual-band"/g) || []).length).toBe(1);
     expect(out).toContain(annual.name_he);
+  });
+
+  test('uses NORMAL mandatory styling — no striped/hatched .card-annual class', () => {
+    const out = annualBandHtml(annual);
+    // No striped/hatched special card class on the spanning element.
+    expect(out).not.toContain('card-annual');
+    // Keeps a normal-style "שנתי (א׳+ב׳)" badge.
+    expect(out).toContain('bdg-annual');
+    // The source no longer applies the striped card-annual class to any card,
+    // and the striped .card-annual CSS rule is gone.
+    expect(html).not.toContain("cls += ' card-annual'");
+    expect(html).not.toMatch(/\.card-annual\s*\{/);
+    // The .annual-band element is styled with the normal mandatory accent /
+    // lock background and a hatch-free background.
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*var\(--mand-accent\)/);
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*var\(--mand-lock-bg\)/);
+    expect(html).not.toMatch(/\.annual-band\s*\{[^}]*repeating-linear-gradient/);
+  });
+
+  test('spans both semester columns via grid-column inside the grid body', () => {
+    // grid-column: 1 / -1 makes the single block span both columns.
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
+    // The hosting row is a CSS grid (so the span is honored).
+    expect(html).toMatch(/\.year-sems\s*\{[^}]*display:\s*grid/);
   });
 
   test('semColHtml excludes annual courses from per-column cards (no duplicate card)', () => {
@@ -211,8 +238,13 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
     expect(html).toContain('.filter(id => !isAnnualCourse(courseMap[id]))');
   });
 
-  test('renderBoard places the annual band above the two semester columns', () => {
+  test('renderBoard places the annual band INSIDE the grid body, below the headers', () => {
+    // The annual block is emitted INSIDE .year-sems, AFTER the semester columns
+    // (so it renders below the header cards), not as a banner above them.
     expect(html).toContain('annualCoursesForYear(yg.sems).map(annualBandHtml)');
+    expect(html).toContain('${yg.sems.map(s => semColHtml(s, draftDiff)).join(\'\')}${annualBands}');
+    // It is NOT emitted before .year-sems (no above-grid banner).
+    expect(html).not.toContain('${annualBands}\n      <div class="year-sems">');
   });
 });
 

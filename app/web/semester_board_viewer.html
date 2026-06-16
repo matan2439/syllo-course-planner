@@ -1040,7 +1040,7 @@ body.prog-modal-open .workspace {
   background: var(--surface2); border: 1px solid var(--border);
   letter-spacing: .03em;
 }
-.year-sems { display: flex; direction: rtl; gap: 12px; align-items: start; }
+.year-sems { display: grid; grid-template-columns: 1fr 1fr; direction: rtl; gap: 12px; align-items: start; }
 
 /* ── Semester column ────────────────────────────────────────────────────── */
 .semester-col { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-width: 180px; }
@@ -1204,26 +1204,24 @@ body.prog-modal-open .workspace {
 .card-elective  { border-inline-start-color: var(--elec-accent); background: var(--elec-bg); }
 .card-blocked   { border-inline-start-color: var(--blk-accent); background: var(--blk-bg); opacity: .76; }
 .card-missing   { border-inline-start-color: var(--miss-accent); background: var(--miss-bg); }
-/* Issue 1 — annual (year-long) course: distinct dashed double-edge style so the
-   two mirrored A+B cards never look like ordinary one-semester cards. */
-.card-annual {
-  border-inline-start-color: #7c3aed;
-  border-inline-start-width: 5px;
-  border-block-start: 2px dashed #7c3aed;
-  background: repeating-linear-gradient(135deg, var(--mand-bg, #f5f3ff), var(--mand-bg, #f5f3ff) 9px, rgba(124,58,237,.07) 9px, rgba(124,58,237,.07) 18px);
-}
+/* Issue 1 — annual (year-long) course: uses the NORMAL mandatory-course card
+   look (same accent + lock background as .card-locked / .card-mandatory). The
+   spanning treatment lives on .annual-band below; the card itself carries no
+   special striped/hatched styling. */
 .badge.bdg-annual {
-  background: #7c3aed; color: #fff; font-weight: 600;
+  background: var(--mand-accent); color: #fff; font-weight: 600;
 }
-/* Issue 1 — annual course rendered as ONE unified block that visually spans
-   BOTH semester columns of its year (a single band across the .year-sems row),
-   instead of a normal one-semester card or two disconnected cards. */
+/* Issue 1 — annual course rendered as ONE unified block that lives INSIDE the
+   grid body, BELOW the semester header cards, and spans BOTH semester columns
+   of its year (grid-column: 1 / -1 across the .year-sems grid row). Styled like
+   a normal mandatory (locked) card — no hatch/stripe background. */
 .annual-band {
-  margin: 0 0 6px;
-  border: 2px dashed #7c3aed;
-  border-inline-start-width: 5px;
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-inline-start: 5px solid var(--mand-accent);
   border-radius: var(--radius);
-  background: repeating-linear-gradient(135deg, var(--mand-bg, #f5f3ff), var(--mand-bg, #f5f3ff) 9px, rgba(124,58,237,.07) 9px, rgba(124,58,237,.07) 18px);
+  background: var(--mand-lock-bg);
   padding: 8px 12px;
   direction: rtl;
 }
@@ -1232,7 +1230,7 @@ body.prog-modal-open .workspace {
   font-size: .84rem; font-weight: 700; color: var(--text);
 }
 .annual-band .annual-band-span {
-  font-size: .68rem; font-weight: 600; color: #7c3aed; margin-inline-start: auto;
+  font-size: .68rem; font-weight: 600; color: var(--text-muted); margin-inline-start: auto;
 }
 .annual-band .annual-band-note {
   font-size: .68rem; color: var(--text-muted); margin-top: 3px;
@@ -5493,12 +5491,13 @@ function renderBoard() {
   ];
   document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg => {
     // Issue 1 — annual courses for this year render once as a unified spanning
-    // band across both semester columns (not as per-column cards).
+    // block INSIDE the grid body, BELOW the semester header/columns, spanning
+    // both semester columns (grid-column: 1 / -1) — not as a banner above them
+    // and not as per-column cards.
     const annualBands = annualCoursesForYear(yg.sems).map(annualBandHtml).join('');
     return `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
-      ${annualBands}
-      <div class="year-sems">${yg.sems.map(s => semColHtml(s, draftDiff)).join('')}</div>
+      <div class="year-sems">${yg.sems.map(s => semColHtml(s, draftDiff)).join('')}${annualBands}</div>
     </div>`;
   }).join('');
 
@@ -5805,8 +5804,11 @@ function annualCoursesForYear(sems) {
 }
 
 /**
- * Issue 1 — render an annual course as ONE unified block that visually spans
- * BOTH semester columns of its year. Carries data-annual-span so the DOM
+ * Issue 1 — render an annual course as ONE unified block that lives INSIDE the
+ * grid body (placed after the semester columns, below their header cards) and
+ * spans BOTH semester columns of its year via grid-column: 1 / -1. Uses the
+ * NORMAL mandatory-card styling (.annual-band → var(--mand-accent)/lock-bg, no
+ * striped/hatched look). Carries data-annual-span / data-course so the DOM
  * exposes a single spanning element (not two independent cards). Non-draggable
  * (no data-zone / draggable), and removal is blocked elsewhere (removeCourseFromBoard).
  */
@@ -5859,8 +5861,8 @@ function semColHtml(sem, draftDiff) {
   const unkNote = unknownCt > 0
     ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
   // Issue 1 — annual courses are NOT rendered as per-column cards; they render
-  // once as a unified spanning band above the two semester columns (see
-  // annualBandHtmlForYear / renderBoard). Exclude them from the column list.
+  // once as a unified spanning block INSIDE the grid body, below the semester
+  // header cards (see annualBandHtml / renderBoard). Exclude them from columns.
   let cards = ids.filter(id => !isAnnualCourse(courseMap[id]))
     .map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
   // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
@@ -5931,10 +5933,9 @@ function cardHtml(c, placed, draftDiff, opts) {
    * border-color from card-placed wins via !important on card-cat-* so the
    * category accent remains visible even when placed. */
   if (isElectiveLike && catStyles && type !== 'mandatory') cls += ` ${catStyles.card}`;
-  /* Issue 1 — annual (year-long) courses get a distinct style so the mirrored
-   * cards in semester A and semester B do not look like ordinary one-semester
-   * cards. */
-  if (isAnnualCourse(c)) cls += ' card-annual';
+  /* Issue 1 — annual (year-long) courses are NOT rendered as per-column cards
+   * (they render as a single in-grid spanning .annual-band styled like a normal
+   * mandatory card). No striped .card-annual class is applied. */
 
   const isFixedMandatory = c.placement_policy === 'fixed' && type === 'mandatory';
   const isFlexMand       = c.placement_policy === 'flexible';
@@ -11324,7 +11325,13 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (exactMissingHours) {
     category = 'insufficient_hours';
-    explanation_he = `לא הצלחתי להשלים מערכת חוקית כי חסרות ${exactMissingHours} ש״ש להשלמת התואר.`;
+    // Issue 2 — carry the auto-fill EXHAUSTION reason (why no more legal/eligible
+    // candidates could be added) so the chat question is targeted, not generic.
+    const hoursReasonStr = all.find(s => /חסרות\s+\d+(?:\.\d+)?\s*ש[״"]?ש\s+להשלמת התואר/.test(s)) || '';
+    const exhaustReason = (hoursReasonStr.match(/להשלמת התואר\s*[—–-]\s*(.+?)\.?$/) || [])[1] || '';
+    explanation_he = exhaustReason
+      ? `לא הצלחתי להשלים מערכת חוקית כי חסרות ${exactMissingHours} ש״ש להשלמת התואר — ${exhaustReason}.`
+      : `לא הצלחתי להשלים מערכת חוקית כי חסרות ${exactMissingHours} ש״ש להשלמת התואר.`;
     questions.push(`להוסיף קורסי בחירה חוקיים כדי להשלים את ${exactMissingHours} ש״ש החסרות?`);
     chips.push({ label: 'השלם שעות חסרות', action: 'fill-remaining-hours' });
     chips.push({ label: 'הוסף קורסי בחירה קלים', action: 'prefer-low-load' });
@@ -11862,17 +11869,13 @@ async function requestPlanProposal(prefs, actionType) {
       movableCourseIds: ctx.movableCourseIds,
     });
 
-    // Issue 4 — total degree hours below the requirement is ALWAYS blocking.
-    // repairAddHoursToDegreeLocal already ran above to fill remaining hours from
-    // eligible legal candidates; if it still can't reach the required total,
-    // the plan is incomplete and must NOT be applicable. Surface the exact
-    // missing-hours count so Apply is disabled and the chat clarification flow
-    // (diagnoseBuildBlock) can ask a targeted question.
-    if (!degreeHoursStatus.satisfied && degreeHoursStatus.missing_hours > 0) {
-      const msg = `חסרות ${degreeHoursStatus.missing_hours} ש״ש להשלמת התואר.`;
-      if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
-      completeness.incomplete = true;
-    }
+    // Issue 4 / Issue 2 — total degree hours below the requirement is ALWAYS
+    // blocking, BUT the missing-hours chat question must only appear AFTER the
+    // auto-fill has been run EXHAUSTIVELY (including a re-run that compensates
+    // for any eligibility/legal post-filter removals below). We therefore DEFER
+    // pushing the missing-hours reason until after the post-filters + the
+    // final exhaustive re-fill (see the degreeHoursStatusFinal block further
+    // down). degreeHoursStatus here is used only to flag validatePlanProposalLocal.
 
     // PART A.4: mandatory courses with no legal semester — always blocking.
     for (const c of (unplaceableMandatory || [])) {
@@ -11980,6 +11983,76 @@ async function requestPlanProposal(prefs, actionType) {
         if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
         completeness.incomplete = true;
       }
+    }
+
+    // Issue 2 — EXHAUSTIVE auto-fill RE-RUN. The eligibility post-filter and
+    // enforceLegalPlacementsLocal above may have REMOVED courses (ineligible
+    // honors / no legal semester), dropping the degree-hour total back below
+    // 185. The initial repairAddHoursToDegreeLocal ran BEFORE those removals, so
+    // its result is now stale. Re-run the hours fill (which only draws legal,
+    // eligible, prerequisite-satisfied, load-respecting candidates from
+    // analysis.elective_pool) and LOOP until it can no longer add a course —
+    // i.e. the candidate pool is genuinely exhausted or the load cap blocks
+    // every remaining candidate. This guarantees the degree_completion blocker
+    // (and the premature missing-hours chat question) only appears when the fill
+    // is truly unable to reach the requirement.
+    let refillExhaustReason = null;
+    {
+      let lastDebug = null;
+      let lastExhausted = false;
+      let lastCapped = false;
+      // Bounded loop: each pass that adds >=1 course may unlock load room; stop
+      // as soon as a pass adds nothing.
+      for (let pass = 0; pass < 24; pass++) {
+        const r = repairAddHoursToDegreeLocal(eligibleProposal, analysis, {
+          courses: ctx.courses,
+          maxHoursPerSemester: ctx.maxHoursPerSemester,
+          unwantedCourseIds: prefs.unwanted_course_ids,
+          knownSemesterIds: SEMESTERS.map(s => s.id),
+          userInterestText: prefs.extra_request_he,
+        });
+        lastDebug = r.debug || lastDebug;
+        lastExhausted = r.exhausted;
+        lastCapped = r.capped;
+        if (!r.added || !r.added.length) break;
+        eligibleProposal = r.proposal;
+      }
+      // Derive WHY the fill stopped (only meaningful if still short).
+      if (lastCapped) {
+        refillExhaustReason = 'load-cap';            // load cap / max additions hit
+      } else if (lastDebug) {
+        const rej = lastDebug.rejected || [];
+        if (rej.some(x => x.reason === 'no_legal_semester')) {
+          // Remaining candidates exist but none has a legal+fitting semester →
+          // blocked by load cap (no semester has room) or legality.
+          const fitBlocked = lastDebug.candidates_still_available > 0;
+          refillExhaustReason = fitBlocked ? 'load-cap' : 'legality';
+        } else if (lastDebug.candidates_after_filter === 0) {
+          refillExhaustReason = 'no-eligible-electives';
+        } else {
+          refillExhaustReason = 'no-eligible-electives';
+        }
+      }
+      void lastExhausted;
+    }
+
+    // Issue 2 — recompute degree-hour status on the FINAL (post-refill) proposal
+    // and only NOW surface the missing-hours blocker + a TARGETED exhaustion
+    // reason. validateFinalPlan is NOT weakened — it still rejects <185; we only
+    // ensure the fill fully ran first.
+    const degreeHoursStatusFinal = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
+    if (!degreeHoursStatusFinal.satisfied && degreeHoursStatusFinal.missing_hours > 0) {
+      const reasonText = {
+        'no-eligible-electives': 'לא נותרו קורסי בחירה זמינים (כשירים) להשלמת השעות',
+        'load-cap': 'הוספת קורסים נוספים תחרוג ממגבלת העומס',
+        'legality': 'הקורסים שנותרו אינם מוצעים בסמסטר חוקי',
+        'prerequisites': 'הקורסים שנותרו חסומים בגלל דרישות קדם',
+        'category': 'הקורסים שנותרו אינם עונים על דרישות הקטגוריה',
+        'eligibility': 'הקורסים שנותרו אינם זמינים ללא זכאות/מסלול מצטיינים',
+      }[refillExhaustReason] || 'מאגר קורסי הבחירה החוקיים והכשירים מוצה';
+      const msg = `חסרות ${degreeHoursStatusFinal.missing_hours} ש״ש להשלמת התואר — ${reasonText}.`;
+      if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
+      completeness.incomplete = true;
     }
 
     // Issue 2 — RE-VALIDATE the final (post-repair, post-filter) proposal's
