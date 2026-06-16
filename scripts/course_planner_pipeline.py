@@ -114,33 +114,73 @@ def run_verify_live(program: str, year: int, board_path: Path,
     else:
         print(f"[verify-live] board_data_version OK ({live_hash})")
 
-    # Spot-check: every course placed locally is in the same effective_allowed_semesters
-    # bucket live, and no course is placed outside it.
-    live_courses: dict[str, dict] = {}
-    for sem in live.get("semesters", []):
-        for c in sem.get("courses", []):
-            live_courses[c["course_id"]] = {**c, "_semester_id": sem["semester_id"]}
-
-    for sem in local.get("semesters", []):
-        for c in sem.get("courses", []):
-            cid = c["course_id"]
-            live_c = live_courses.get(cid)
-            if not live_c:
-                print(f"[verify-live] FAIL — {cid} missing from live board")
-                ok = False
-                continue
-            if live_c["_semester_id"] != sem["semester_id"]:
-                print(f"[verify-live] FAIL — {cid} placed in {live_c['_semester_id']} live "
-                      f"but {sem['semester_id']} locally")
-                ok = False
-            effective = live_c.get("effective_allowed_semesters")
-            if effective and live_c["_semester_id"] not in effective:
-                print(f"[verify-live] FAIL — {cid} placed in {live_c['_semester_id']} "
-                      f"outside effective_allowed_semesters={effective}")
-                ok = False
+    # Spot-check placements (annual/multi-placement aware).
+    placements_ok, messages = verify_board_placements(local, live)
+    for msg in messages:
+        print(f"[verify-live] {msg}")
+    ok = ok and placements_ok
 
     print("[verify-live] " + ("PASS" if ok else "FAIL"))
     return ok
+
+
+def verify_board_placements(local: dict, live: dict) -> tuple[bool, list[str]]:
+    """Compare local vs live course placements, annual/multi-placement aware.
+
+    Returns (ok, messages). A course may legitimately be placed in more than one
+    semester when it is annual (is_annual=true, spanning spans_semesters). Normal
+    courses must match their single local placement and must not appear in any
+    unexpected extra live semester. Every live placement must also lie within the
+    course's effective_allowed_semesters when that field is present.
+    """
+    def by_id(board: dict) -> dict[str, list[dict]]:
+        out: dict[str, list[dict]] = {}
+        for sem in board.get("semesters", []):
+            for c in sem.get("courses", []):
+                out.setdefault(c["course_id"], []).append({**c, "_semester_id": sem["semester_id"]})
+        return out
+
+    live_by_id = by_id(live)
+    local_by_id = by_id(local)
+    ok = True
+    messages: list[str] = []
+
+    for cid, loc_recs in local_by_id.items():
+        live_recs = live_by_id.get(cid)
+        if not live_recs:
+            messages.append(f"FAIL — {cid} missing from live board")
+            ok = False
+            continue
+        live_sems = {r["_semester_id"] for r in live_recs}
+        loc0 = loc_recs[0]
+
+        if loc0.get("is_annual"):
+            spans = loc0.get("spans_semesters") or sorted({r["_semester_id"] for r in loc_recs})
+            missing = [s for s in spans if s not in live_sems]
+            if missing:
+                messages.append(f"FAIL — annual {cid} missing live placement(s) {missing} (spans={spans})")
+                ok = False
+            if loc0.get("count_hours_once") is True and not any(r.get("count_hours_once") is True for r in live_recs):
+                messages.append(f"FAIL — annual {cid} missing count_hours_once on live record")
+                ok = False
+        else:
+            local_sems = {r["_semester_id"] for r in loc_recs}
+            for s in local_sems:
+                if s not in live_sems:
+                    messages.append(f"FAIL — {cid} placed in {s} locally but not live (live={sorted(live_sems)})")
+                    ok = False
+            extra = [s for s in sorted(live_sems) if s not in local_sems]
+            if extra:
+                messages.append(f"FAIL — {cid} appears in unexpected live semester(s) {extra} (local={sorted(local_sems)})")
+                ok = False
+
+        for r in live_recs:
+            effective = r.get("effective_allowed_semesters")
+            if effective and r["_semester_id"] not in effective:
+                messages.append(f"FAIL — {cid} placed in {r['_semester_id']} outside effective_allowed_semesters={effective}")
+                ok = False
+
+    return ok, messages
 
 
 def main() -> int:
