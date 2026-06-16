@@ -1988,6 +1988,9 @@ function buildPlanContext() {
       category:              c.program_category_name_he || c.program_category_id,
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
       effective_allowed_semesters: c.effective_allowed_semesters || undefined,
+      is_annual:             isAnnualCourse(c) || undefined,
+      spans_semesters:       isAnnualCourse(c) ? (c.spans_semesters || undefined) : undefined,
+      count_hours_once:      isAnnualCourse(c) ? (c.count_hours_once !== false) : undefined,
       pinned:                (state.pinnedCourseIds || []).includes(c.course_id) || undefined,
       workload_score:              c.workload_score              ?? null,
       conceptual_complexity_score: c.conceptual_complexity_score ?? null,
@@ -2067,6 +2070,11 @@ function buildPlanContext() {
     ...personal_status.planned.map(c => c.course_id),
   ]);
   const excludedFromProposalIds = new Set([...completedIdsForAnalysis, ...currentlyPlannedIdsForAnalysis]);
+  // Issue 1 — exclude ineligible courses (honors-only / explicitly excluded)
+  // from every candidate pool so the planner never offers them. By name match,
+  // so it generalizes to any course matching the pattern/excluded list.
+  const ineligibleIdsForAnalysis = resolveIneligibleCourseIdsLocal(courseMap, _aiPlanLastPreferences);
+  for (const id of ineligibleIdsForAnalysis) excludedFromProposalIds.add(id);
   const wantedIdsForAnalysis = new Set(_aiPlanLastPreferences?.wanted_course_ids || []);
 
   // A course satisfies a category if it's in the category's stable course_ids
@@ -3936,13 +3944,15 @@ function renderAiTab() {
       clearTimeout(slowTimer);
       if (statusEl) statusEl.hidden = true;
       if (btn) btn.disabled = false;
-      if (state.proposalDraft) {
-        // Issue 3 — if the build was blocked by overload, replace the success
-        // message with a clear Hebrew blocking notice (no "אופטימלית"/"מומלצת"
-        // wording). Apply button is already disabled via isPlanApplyableLocal.
+      {
+        // Issue 2/3 — a blocked plan no longer activates a draft, so gate on the
+        // validation result (not draft presence). When blocked, the AI chat is
+        // the PRIMARY recovery experience: explain WHY + targeted chips.
         const v = _aiPlanLastValidation;
         const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length) || (v.completeness && v.completeness.incomplete)));
-        if (blocked) {
+        if (!state.proposalDraft && !blocked) {
+          // Nothing to show and nothing blocked — guard against an empty message.
+        } else if (blocked) {
           // Interactive clarification: explain WHY no legal/complete schedule
           // was built, ask targeted Hebrew questions, and offer actionable
           // relax/clarify chips. Apply stays disabled via isPlanApplyableLocal;
@@ -4390,6 +4400,24 @@ function handleQuickReply(qr) {
           extra_request_he: prev ? `${prev} (עדיפות ל${emphasis})` : `עדיפות ל${emphasis}`,
         };
       }
+      triggerExplicitRebuild();
+      return;
+    }
+    // Issue 2 — "drop one elective": allow the build to finish with one fewer
+    // elective by permitting a less-than-full elective fill (relaxes the
+    // category/hours pressure so a legal load fits). Maps to a relaxed rebuild.
+    case 'drop-one-elective': {
+      postUserMessage(qr.label);
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), allow_fewer_electives: true };
+      triggerExplicitRebuild();
+      return;
+    }
+    // Issue 2 — "move a flexible mandatory if legal": let the load-balancer move
+    // flexible mandatory courses (it already does, respecting fixed/pinned and
+    // effective_allowed_semesters). Rebuild so the balancer runs again.
+    case 'move-flexible-mandatory': {
+      postUserMessage(qr.label);
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), balance_load: true };
       triggerExplicitRebuild();
       return;
     }
@@ -5211,15 +5239,37 @@ function renderProposalCard() {
   }
 
   let statusLabel, statusCls;
-  if (blocked) { statusLabel = 'חסום — יש לתקן בעיות חוקיות'; statusCls = 'status-blocked'; }
+  if (blocked) { statusLabel = 'לא ניתן להציע מערכת חוקית'; statusCls = 'status-blocked'; }
   else if (hasWarnings) { statusLabel = 'ניתן להחיל — נותרו אזהרות'; statusCls = 'status-warn'; }
   else { statusLabel = 'ניתן להחיל'; statusCls = 'status-ok'; }
+
+  if (blocked) {
+    // Issue 3 — the PRIMARY blocked recovery experience is the AI chat. This
+    // sidebar card is now a COMPACT fallback only: a single title + ONE short
+    // reason + at most one main action. NO metrics dump (groupedDiag / degree
+    // progress / chips / status-summary) and NO duplicate apply/ask buttons.
+    let oneReason = '';
+    try {
+      const diag = diagnoseBuildBlock({ errors, completeness, overloadBlocked: !!(_aiPlanLastValidation?.overloadBlocked) }, { preferences: _aiPlanLastPreferences });
+      const firstErr = (errors || [])[0] || (completeness?.reasons || [])[0];
+      oneReason = firstErr || diag.explanation_he || '';
+    } catch (_) { oneReason = (errors || [])[0] || ''; }
+    card.innerHTML = `
+      <div class="ai-proposal-card-inner ai-plan-blocked-panel" data-testid="blocked-compact-panel">
+        <h3 class="ai-plan-blocked-title">${esc(statusLabel)}</h3>
+        ${oneReason ? `<p class="ai-plan-blocked-reason">${esc(oneReason)}</p>` : ''}
+        <div class="ai-plan-blocked-actions">
+          <button class="btn btn-primary" id="sb-draft-reject">בנה מערכת מחדש</button>
+        </div>
+      </div>`;
+    document.getElementById('sb-draft-reject').addEventListener('click', () => { rejectProposalDraft(); renderAiTab(); });
+    return;
+  }
 
   card.innerHTML = `
     <div class="ai-proposal-card-inner">
       <div class="ai-plan-hint">זו טיוטה, עדיין לא אושרה.</div>
       <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
-      ${groupedDiagHtml}
       ${degreeProgressHtml}
       ${chipsHtml}
       <div class="sb-status-summary">
@@ -5234,7 +5284,7 @@ function renderProposalCard() {
           placeholder="מה תרצה לשנות בטיוטה?"></textarea>
       </label>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <button class="btn btn-primary" id="sb-draft-apply" ${blocked ? 'disabled' : ''}>החל טיוטה</button>
+        <button class="btn btn-primary" id="sb-draft-apply">החל טיוטה</button>
         <button class="btn" id="sb-draft-reject">דחה טיוטה</button>
         <button class="btn btn-sm" id="sb-draft-ask">בקש שינויים</button>
         <button class="btn btn-sm" id="sb-draft-full">פתח תצוגה מלאה</button>
@@ -5595,8 +5645,14 @@ function semColHtml(sem, draftDiff) {
     if (c.weekly_hours != null) knownHrs += c.weekly_hours;
     else unknownCt++;
   }
-  const avgDiff = courses.length
-    ? (courses.reduce((s,c)=>s+(c.difficulty_score||0),0)/courses.length).toFixed(1)
+  // Issue 4 — average only over courses with a KNOWN or ESTIMATED difficulty;
+  // never count a missing value as 0 (which produced a misleading "קושי 0.0").
+  // If nothing is known/estimable, avgDiff stays null and the UI shows "—".
+  const diffVals = courses
+    .map(c => effectiveCourseDifficultyLocal(c, 'difficulty'))
+    .filter(v => v != null && v > 0);
+  const avgDiff = diffVals.length
+    ? (diffVals.reduce((s,v)=>s+v,0)/diffVals.length).toFixed(1)
     : null;
   // ITEM 3 — denominator is the user-defined preferred max (falls back to
   // DEFAULT_MAX_HOURS_PER_SEMESTER=20 when no preference). The preferred max
@@ -5625,7 +5681,7 @@ function semColHtml(sem, draftDiff) {
       <div class="sem-stats">
         <span>⏱ ${esc(hrsLbl)}</span>
         <span>📚 ${courses.length} קורסים</span>
-        ${avgDiff != null ? `<span>📊 קושי ${esc(avgDiff)}</span>` : ''}
+        ${courses.length ? `<span>📊 קושי ${avgDiff != null ? esc(avgDiff) : 'לא זמין'}</span>` : ''}
       </div>
       <div class="wl-wrap">
         <div class="wl-row">
@@ -5701,15 +5757,32 @@ function cardHtml(c, placed, draftDiff, opts) {
     ? `<span class="badge bdg-mandatory">חובה קבוע</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
+  // Annual (year-long) courses span both semesters A+B simultaneously.
+  const annualBdg = isAnnualCourse(c)
+    ? `<span class="badge bdg-annual" title="${esc('קורס שנתי — מתקיים בשני הסמסטרים (א׳+ב׳). שעות התואר נספרות פעם אחת; העומס נספר בכל סמסטר.')}">שנתי (א׳+ב׳)</span>`
+    : '';
+
   /* Category badge — shown in repo for core categories (fluids/solids/systems/labs) */
   const catBdg = (!placed && catStyles)
     ? `<span class="badge ${catStyles.bdg}">${esc(catStyles.label)}</span>`
     : '';
 
+  /* Issue 4 — when no explicit difficulty_level/score exists (common for
+     mandatory courses), fall back to an ESTIMATED 0–5 difficulty derived from
+     syllabus/hours/prereqs so the card never shows a misleading "0" and the
+     user sees an (estimate) value instead. */
+  let diffLevel = level;
+  let estDiffVal = null;
+  if (!diffLevel && c.difficulty_score == null) {
+    estDiffVal = estimateCourseDifficultyLocal(c);
+    if (estDiffVal != null) {
+      diffLevel = estDiffVal >= 3.75 ? 'very_hard' : estDiffVal >= 2.5 ? 'hard' : estDiffVal >= 1.25 ? 'medium' : 'easy';
+    }
+  }
   /* Lightweight estimate: difficulty_score present but no workload subscore (not from full audit) */
-  const isEstimatedDiff = level && c.workload_score == null && c.difficulty_score != null;
-  const diffBdg = level
-    ? `<span class="badge bdg-${esc(level)}" title="${isEstimatedDiff ? 'הערכה מבוססת מידע חלקי' : ''}">${esc(DIFF_HE[level]||level)}${c.difficulty_score!=null?' '+c.difficulty_score:''}${isEstimatedDiff?'~':''}</span>`
+  const isEstimatedDiff = (diffLevel && c.workload_score == null && c.difficulty_score != null) || estDiffVal != null;
+  const diffBdg = diffLevel
+    ? `<span class="badge bdg-${esc(diffLevel)}" title="${isEstimatedDiff ? 'הערכה מבוססת מידע חלקי' : ''}">${esc(DIFF_HE[diffLevel]||diffLevel)}${c.difficulty_score!=null?' '+c.difficulty_score:(estDiffVal!=null?' '+estDiffVal:'')}${isEstimatedDiff?'~':''}</span>`
     : '';
 
   const prereqVr      = placed ? boardValidation[c.course_id] : null;
@@ -5790,7 +5863,7 @@ function cardHtml(c, placed, draftDiff, opts) {
       ${warnIcon}${pinBtn}${actionBtn}${menuBtn}
     </div>
     <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
-    <div class="card-row">${draftBdg} ${typeBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
+    <div class="card-row">${draftBdg} ${typeBdg} ${annualBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
   </div>${dragHint}
 </div>`;
 }
@@ -8422,6 +8495,14 @@ function buildPlanValidationInputs() {
       is_mandatory: c.course_type === 'mandatory' || !!c.is_mandatory,
       placement_policy: c.placement_policy || null,
       course_type: c.course_type || null,
+      // Issue 4 — real scores when present, plus an effective estimate so the
+      // balancer (_balanceWeight) can rank flexible-mandatory courses that have
+      // null difficulty_score/workload_score in the data.
+      workload_score: c.workload_score ?? null,
+      conceptual_complexity_score: c.conceptual_complexity_score ?? null,
+      difficulty_score: c.difficulty_score ?? null,
+      effective_workload_score: effectiveCourseDifficultyLocal(c, 'workload'),
+      effective_difficulty_score: effectiveCourseDifficultyLocal(c, 'difficulty'),
     };
   }
   // PART B — שער רוח repository courses are not part of courseMap (separate
@@ -8846,9 +8927,19 @@ function validatePlanProposalLocal(proposal, ctx) {
 function _isMovableForBalance(cid, info, ctx) {
   if (!info) return false;
   if (info.placement_policy === 'fixed') return false;
+  // Annual courses span BOTH semesters simultaneously; they are not a free
+  // movable one-semester block and must never be moved as a single half.
+  if (isAnnualCourse(info)) return false;
   if (ctx.pinnedCourseIds?.has(cid)) return false;
   if (ctx.completedCourseIds?.has(cid)) return false;
   return true;
+}
+
+/* An annual (year-long) course occupies BOTH spanned semesters at once.
+ * Degree hours are counted ONCE; weekly load counts in EACH spanned semester.
+ * It is treated as a fixed span (not a movable one-semester course). */
+function isAnnualCourse(c) {
+  return !!(c && (c.is_annual === true || c.placement_policy === 'annual'));
 }
 
 function _isElectiveLike(info) {
@@ -8868,7 +8959,64 @@ function _balanceTier(info) {
  * ordering is unchanged when no difficulty data is present.
  */
 function _balanceWeight(info) {
-  return (info?.workload_score ?? info?.conceptual_complexity_score ?? info?.difficulty_score ?? 0);
+  return (info?.workload_score ?? info?.conceptual_complexity_score ?? info?.difficulty_score
+    ?? info?.effective_workload_score ?? info?.effective_difficulty_score ?? 0);
+}
+
+/**
+ * Issue 4 — estimate a bounded 0–5 difficulty/workload value for a course when
+ * the explicit difficulty_score/workload_score are missing/null. Uses simple,
+ * null-guarded signals available on ALL courses (incl. mandatory):
+ *   weekly_hours, syllabus length + keywords (lab/project/exam/final-project),
+ *   assessment_intensity, and prerequisite depth (number of prereqs).
+ * Returns a number in [0,5], or null only if no signal at all is available.
+ * Mirrors api/ai/completion_analysis.ts (estimateCourseDifficulty).
+ */
+function estimateCourseDifficultyLocal(course) {
+  if (!course) return null;
+  let score = 0;
+  let signals = 0;
+  const hrs = course.weekly_hours ?? course.semester_hours ?? course.hours ?? null;
+  if (hrs != null) {
+    signals++;
+    score += Math.min(2.5, hrs / 6); // ~15h → 2.5
+  }
+  const text = [
+    course.syllabus_summary_he || '',
+    Array.isArray(course.syllabus_topics_he) ? course.syllabus_topics_he.join(' ') : (course.syllabus_topics_he || ''),
+  ].join(' ');
+  if (text.trim()) {
+    signals++;
+    score += Math.min(1, text.length / 800); // longer syllabus → harder
+    if (/מעבדה|lab/i.test(text)) score += 0.5;
+    if (/פרויקט גמר|פרוייקט גמר/.test(text)) score += 0.8;
+    else if (/פרויקט|פרוייקט|project/i.test(text)) score += 0.5;
+    if (/מבחן|בחינה|exam/i.test(text)) score += 0.3;
+  }
+  const intensity = course.assessment_intensity;
+  if (intensity != null) {
+    signals++;
+    score += Math.min(1, Number(intensity) / 5);
+  }
+  const prereqs = Array.isArray(course.prerequisites) ? course.prerequisites
+    : Array.isArray(course.prerequisite_course_ids) ? course.prerequisite_course_ids : null;
+  if (prereqs != null) {
+    signals++;
+    score += Math.min(1, prereqs.length * 0.3);
+  }
+  if (!signals) return null;
+  return Math.max(0, Math.min(5, Number(score.toFixed(2))));
+}
+
+/**
+ * Issue 4 — effective difficulty/workload for display + balancing: real value
+ * if present, else the estimate, else null. `kind` is 'difficulty' | 'workload'.
+ */
+function effectiveCourseDifficultyLocal(course, kind) {
+  if (!course) return null;
+  const real = kind === 'workload' ? course.workload_score : course.difficulty_score;
+  if (real != null) return real;
+  return estimateCourseDifficultyLocal(course);
 }
 
 /**
@@ -9131,6 +9279,59 @@ const SOFT_LOAD_MIN = 18;
 const SOFT_LOAD_MAX = 22;
 const HARD_LOAD_CAP = 26;
 const ABSOLUTE_MAX_REASONABLE = 30;
+
+/**
+ * Issue 1 — data-driven course eligibility / exclusion config (client mirror of
+ * api/ai/relevance.ts ELIGIBILITY config). General + extensible:
+ *   - EXCLUDED_COURSE_NAME_PATTERNS: substrings/regex sources that mark a course
+ *     as requiring special eligibility (e.g. honors "מצטיינים"). A course whose
+ *     name matches one of these is only eligible when the student is honors.
+ *   - EXCLUDED_COURSE_NAMES: explicit course NAMES (normalized-substring match)
+ *     that are excluded for everyone for now (e.g. "פרויקט יישומי בהנדסה מכנית").
+ * Not hardcoded to a single course id — matching is by name, so it generalizes
+ * to every course whose name matches the pattern/list.
+ */
+const EXCLUDED_COURSE_NAME_PATTERNS = ['מצטיינים'];
+const EXCLUDED_COURSE_NAMES = ['פרויקט יישומי בהנדסה מכנית'];
+
+/**
+ * Issue 1 — is a course eligible for this student given prefs?
+ * Returns false when (a) the name matches an honors pattern AND the student is
+ * NOT an honors student, or (b) the name matches the explicit excluded list.
+ * Null-guarded; mandatory courses are handled by callers (never removed).
+ */
+function isCourseEligibleLocal(course, prefs) {
+  if (!course) return true;
+  const name = course.name_he || course.name || '';
+  if (!name) return true;
+  const isHonors = !!(prefs && prefs.is_honors_student);
+  for (const pat of EXCLUDED_COURSE_NAME_PATTERNS) {
+    if (name.includes(pat)) {
+      if (!isHonors) return false;
+    }
+  }
+  const norm = _normalizeCourseNameLocal(name);
+  for (const ex of EXCLUDED_COURSE_NAMES) {
+    const exNorm = _normalizeCourseNameLocal(ex);
+    if (exNorm && norm.includes(exNorm)) return false;
+  }
+  return true;
+}
+
+/**
+ * Issue 1 — resolve the set of ineligible course IDs across a course map/list,
+ * by name match (reuses the eligibility helper). General — returns every course
+ * id whose name is ineligible for the given prefs.
+ */
+function resolveIneligibleCourseIdsLocal(map, prefs) {
+  const result = new Set();
+  const list = Array.isArray(map) ? map : Object.values(map || {});
+  for (const c of list) {
+    if (!c || !c.course_id) continue;
+    if (!isCourseEligibleLocal(c, prefs)) result.add(c.course_id);
+  }
+  return result;
+}
 
 /** PART A — mirrors api/ai/completion_analysis.ts (getEffectiveMaxHoursPreference). */
 function getEffectiveMaxHoursPreferenceLocal(maxWeeklyHoursPreference) {
@@ -10403,7 +10604,19 @@ function diagnoseBuildBlock(validation, opts) {
     category = 'overload';
     explanation_he = 'לא הצלחתי לבנות מערכת חוקית כי לפחות סמסטר אחד חורג ממגבלת העומס.';
     questions.push('אפשר להעלות את עומס המקסימום בסמסטר אחד ל-25–26 ש"ש?');
-    chips.push({ label: 'אפשר עומס עד 26 ש"ש', action: 'relax-overload-26' });
+    // Issue 2 — targeted relief options for the >26h case.
+    chips.push({ label: 'לאפשר עומס עד 26 ש"ש', action: 'relax-overload-26' });
+    chips.push({ label: 'להוריד קורס בחירה אחד', action: 'drop-one-elective' });
+    chips.push({ label: 'להעביר קורס חובה גמיש אם חוקי', action: 'move-flexible-mandatory' });
+    // GENERAL topic prioritization from the user's OWN parsed interest terms
+    // (never hardcoded subjects) — e.g. "להעדיף חוזק/FEM על פני זרימה".
+    if (interestTerms.length >= 2) {
+      const a = interestTerms[0], b = interestTerms[1];
+      chips.push({ label: `להעדיף ${a} על פני ${b}`, action: 'prioritize-topic', payload: { terms: [a] } });
+    }
+    if (gradeTarget) {
+      chips.push({ label: 'להגמיש את דרישת הממוצע', action: 'relax-grade' });
+    }
   } else if (noCandidateHit && hasAvoid) {
     category = 'electives_after_avoid';
     explanation_he = 'לא נמצאו מספיק קורסי בחירה חוקיים אחרי העדפות ההימנעות שביקשת.';
@@ -10641,6 +10854,41 @@ function applyExplicitAvoidPostFilterLocal(proposal, avoidedIds, ctxCourses) {
   );
   const next = { ...proposal, semesters };
   if (rationales.length) next.warnings_he = [...(next.warnings_he || []), ...rationales];
+  return { proposal: next, removed, keptMandatory };
+}
+
+/**
+ * Issue 1 — FINAL deterministic eligibility post-filter. Runs after the LLM
+ * output and all repairs, BEFORE the proposal becomes an applicable draft.
+ * Removes any INELIGIBLE ELECTIVE course (honors-only when the student isn't
+ * honors, or explicitly excluded) from the draft semesters. MANDATORY courses
+ * are never removed (kept with a Hebrew rationale). This guarantees an
+ * ineligible elective cannot survive even if the LLM/scoring included it.
+ * Returns { proposal, removed, keptMandatory }.
+ */
+function applyEligibilityPostFilterLocal(proposal, prefs, ctxCourses) {
+  const removed = [];
+  const keptMandatory = [];
+  const isMandatory = (cid) => {
+    const info = (ctxCourses && ctxCourses[cid]) || {};
+    const cm = courseMap[cid] || {};
+    return !!info.is_mandatory || info.course_type === 'mandatory' || cm.course_type === 'mandatory' || !!cm.is_mandatory;
+  };
+  const semesters = (proposal.semesters || []).map(s => {
+    const kept = (s.course_ids || []).filter(cid => {
+      const c = courseMap[cid];
+      if (isCourseEligibleLocal(c, prefs)) return true;
+      if (isMandatory(cid)) { keptMandatory.push(cid); return true; }
+      removed.push(cid);
+      return false;
+    });
+    return { ...s, course_ids: kept };
+  });
+  const next = { ...proposal, semesters };
+  if (keptMandatory.length) {
+    next.warnings_he = [...(next.warnings_he || []), ...keptMandatory.map(cid =>
+      `הקורס ${courseMap[cid]?.name_he || cid} נשאר כי הוא קורס חובה בתוכנית.`)];
+  }
   return { proposal: next, removed, keptMandatory };
 }
 
@@ -10893,13 +11141,53 @@ async function requestPlanProposal(prefs, actionType) {
       showBoardNotify(`הוסרו ${avoidRemoved.length} קורסי בחירה שביקשת להימנע מהם.`);
     }
 
-    _aiPlanLastProposal = avoidFilteredProposal;
+    // Issue 1 — FINAL eligibility post-filter: strip any ineligible ELECTIVE
+    // (honors-only / explicitly excluded) the LLM/repairs may have included.
+    // If removing makes the plan short on a category, re-run the deterministic
+    // missing-elective repair (which only draws from eligible candidates, since
+    // ineligible ids were excluded from buildPlanContext candidate pools).
+    let { proposal: eligibleProposal, removed: eligRemoved } =
+      applyEligibilityPostFilterLocal(avoidFilteredProposal, prefs, ctx.courses);
+    if (eligRemoved.length) {
+      showBoardNotify(`הוסרו ${eligRemoved.length} קורסים שאינם זמינים ללא זכאות/מסלול מיוחד.`);
+      const refill = repairAddMissingElectivesLocal(eligibleProposal, analysis, {
+        courses: ctx.courses,
+        maxHoursPerSemester: ctx.maxHoursPerSemester,
+        unwantedCourseIds: prefs.unwanted_course_ids,
+        knownSemesterIds: SEMESTERS.map(s => s.id),
+        userInterestText: prefs.extra_request_he,
+      });
+      eligibleProposal = refill.proposal;
+    }
+
+    // Issue 2 — RE-VALIDATE the final (post-repair, post-filter) proposal's
+    // per-semester load. If any semester still exceeds the hard cap (26 ש"ש) and
+    // the user has NOT explicitly accepted overload, treat the result as BLOCKED:
+    // do not activate a normal applicable draft. The blocked→chat clarification
+    // flow (runBuildFromScratch) presents diagnoseBuildBlock + chips instead.
+    const overloadAcceptedNow = !!prefs.overload_accepted && !!prefs.overload_confirmed_at;
+    let peakAfterRepair = 0;
+    for (const sem of (eligibleProposal.semesters || [])) {
+      const h = getSemesterLoadLocal(sem, ctx.courses);
+      if (h > peakAfterRepair) peakAfterRepair = h;
+    }
+    const hardOverloadRemains = peakAfterRepair > HARD_LOAD_CAP && !overloadAcceptedNow;
+    const finalOverloadBlocked = overloadBlocked || hardOverloadRemains;
+
+    _aiPlanLastProposal = eligibleProposal;
     _aiPlanLastAnalysis = analysis;
     _aiPlanLastCtx = ctx;
-    _aiPlanLastValidation = { errors: combinedErrors, warnings: avoidFilteredProposal.warnings_he ? [...new Set([...warnings, ...avoidFilteredProposal.warnings_he])] : warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked };
+    _aiPlanLastValidation = { errors: combinedErrors, warnings: eligibleProposal.warnings_he ? [...new Set([...warnings, ...eligibleProposal.warnings_he])] : warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked: finalOverloadBlocked };
     if (genBtn) genBtn.disabled = false;
     statusEl?.setAttribute('hidden', '');
-    activateProposalDraft(avoidFilteredProposal);
+    if (finalOverloadBlocked) {
+      // Do NOT render the >26h plan as a normal proposed board. Keep the draft
+      // unset so the primary recovery experience is the AI chat (Issue 3).
+      state.proposalDraft = null;
+      renderAll();
+    } else {
+      activateProposalDraft(eligibleProposal);
+    }
   } catch (err) {
     if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;

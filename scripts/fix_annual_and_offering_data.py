@@ -1,0 +1,194 @@
+"""
+Targeted, idempotent data fixes for mechanical_semester_board_2027.json.
+
+Fixes three mandatory year-3 mechanical-engineering courses whose offering /
+annual representation was wrong (root causes documented inline):
+
+  0542-3780 "תהליכי עיבוד (1)"        -> Semester B only (offering parser wrongly
+                                          recorded offered_semesters=['A'];
+                                          syllabus runs Friday 08:00-11:00 in B).
+  0542-3791 "תהליכי עיבוד - מעבדה"     -> Semester B only (same root cause).
+  0542-3792 "הנדסת ניסויים ומדידות -   -> ANNUAL (year-long) spanning A+B. Syllabus
+             מעבדה"                      says "החל משנת תשפ\"ו זהו קורס שנתי" and the
+                                          lab meets weekly in BOTH semesters. It was
+                                          modelled as a free one-semester course.
+
+This board JSON is the LOCAL static source-of-truth (NOT Supabase board_json).
+The build pipeline's --build step only refreshes metadata.board_data_version;
+it does NOT regenerate semesters/placement, so these edits are not clobbered by
+a rebuild. (--sync pushes this same file to Supabase; run after this fix.)
+
+Idempotent: re-running produces no further change.
+
+Usage:
+    python3 scripts/fix_annual_and_offering_data.py data/parsed_json/mechanical_semester_board_2027.json
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+SEM_A = "year_3_semester_a"
+SEM_B = "year_3_semester_b"
+
+
+def _find_course(board: dict, cid: str):
+    """Return (semester_id_or_None, course_dict) list of all records for cid."""
+    found = []
+    for sem in board.get("semesters", []):
+        for c in sem.get("courses", []):
+            if c.get("course_id") == cid:
+                found.append((sem.get("semester_id"), c, sem))
+    for c in board.get("metadata", {}).get("program_repository_courses", []):
+        if c.get("course_id") == cid:
+            found.append((None, c, None))
+    return found
+
+
+def _set_semester_b_only(board: dict, cid: str) -> None:
+    """Fix a course to be offered/placed in Semester B only."""
+    records = _find_course(board, cid)
+    if not records:
+        print(f"  WARN: {cid} not found")
+        return
+    for sem_id, c, sem in records:
+        c["offered_semesters"] = ["B"]
+        c["effective_allowed_semesters"] = [SEM_B]
+        c["offering_source_confidence"] = "high"
+        # Only one legal (effective) semester exists, so the course is effectively
+        # pinned to it: mark placement_policy='fixed' so the planner/repair never
+        # treats it as a freely movable flexible course.
+        c["placement_policy"] = "fixed"
+        # recommended_semester was stale (year_3_semester_a) and conflicted with the
+        # corrected effective set. effective wins; align recommended to B as well.
+        if c.get("recommended_semester") and c["recommended_semester"] not in (SEM_B,):
+            c["recommended_semester"] = SEM_B
+        c["offering_correction_note"] = (
+            "Corrected to Semester B only: syllabus evidence (Friday class) shows "
+            "this course is offered in Semester B; the parsed offered_semesters=['A'] "
+            "was wrong. effective_allowed_semesters wins over recommended_semester."
+        )
+        # program_allowed_semesters / allowed_semesters stay as the broader nominal set.
+        # recommended_semester may remain but effective wins.
+
+    # Ensure the course is physically placed in Semester B (move from A if needed).
+    _move_to_semester(board, cid, SEM_B)
+
+
+def _move_to_semester(board: dict, cid: str, target_sem_id: str) -> None:
+    course_obj = None
+    for sem in board.get("semesters", []):
+        remaining = []
+        for c in sem.get("courses", []):
+            if c.get("course_id") == cid and sem.get("semester_id") != target_sem_id:
+                course_obj = c  # pull it out of the wrong semester
+            else:
+                remaining.append(c)
+        sem["courses"] = remaining
+    # Place it (if it was somewhere else) into the target semester, if not already there.
+    target = next((s for s in board.get("semesters", []) if s.get("semester_id") == target_sem_id), None)
+    if target is None:
+        print(f"  WARN: target semester {target_sem_id} not found for {cid}")
+        return
+    already = any(c.get("course_id") == cid for c in target.get("courses", []))
+    if course_obj is not None and not already:
+        target.setdefault("courses", []).append(course_obj)
+
+
+def _make_annual(board: dict, cid: str) -> None:
+    """Mark a course as annual spanning A+B; place it in BOTH semesters
+    (degree hours counted once, load counted in each)."""
+    records = _find_course(board, cid)
+    if not records:
+        print(f"  WARN: {cid} not found")
+        return
+    # Canonical record (prefer a placed one).
+    canonical = next((c for sem_id, c, sem in records if sem_id is not None), records[0][1])
+    weekly = canonical.get("weekly_hours") or 0
+    annual_fields = {
+        "is_annual": True,
+        "spans_semesters": [SEM_A, SEM_B],
+        "count_hours_once": True,
+        "semester_load_hours_by_semester": {SEM_A: weekly, SEM_B: weekly},
+        "placement_policy": "annual",
+        "annual_note": (
+            'קורס שנתי (החל משנת תשפ"ו): המעבדה מתקיימת מדי שבוע בשני הסמסטרים '
+            "(א'+ב'). שעות התואר נספרות פעם אחת; העומס השבועי נספר בכל סמסטר בנפרד."
+        ),
+        # effective_allowed_semesters stays [A,B] but model treats it as a span.
+        "effective_allowed_semesters": [SEM_A, SEM_B],
+        "offered_semesters": ["A", "B"],
+        "offering_source_confidence": "high",
+    }
+    for sem_id, c, sem in records:
+        c.update(annual_fields)
+
+    # Ensure the annual course is physically present in BOTH semesters.
+    placed = {sem_id for sem_id, c, sem in records if sem_id is not None}
+    for target_sem_id in (SEM_A, SEM_B):
+        if target_sem_id in placed:
+            continue
+        target = next((s for s in board.get("semesters", []) if s.get("semester_id") == target_sem_id), None)
+        if target is None:
+            continue
+        clone = json.loads(json.dumps(canonical))  # deep copy
+        clone.update(annual_fields)
+        target.setdefault("courses", []).append(clone)
+
+
+def _align_recommended_to_effective(board: dict, cid: str) -> None:
+    """When a course's offering is already correct but recommended_semester is stale
+    and contradicts a SINGLE-semester effective_allowed_semesters, align recommended
+    to the effective semester (actual offering wins) and pin placement_policy='fixed'
+    since only one legal semester exists. Idempotent; no offering data is changed."""
+    records = _find_course(board, cid)
+    if not records:
+        print(f"  WARN: {cid} not found")
+        return
+    for sem_id, c, sem in records:
+        eff = c.get("effective_allowed_semesters") or []
+        if len(eff) != 1:
+            print(f"  SKIP: {cid} effective is not single-semester ({eff})")
+            continue
+        only = eff[0]
+        if c.get("recommended_semester") != only:
+            c["recommended_semester"] = only
+        c["placement_policy"] = "fixed"
+        c.setdefault("offering_correction_note",
+            "recommended_semester was stale and conflicted with the single "
+            "effective_allowed_semesters; aligned to actual offering (effective wins).")
+
+
+def _recompute_semester_hours(board: dict) -> None:
+    """Recompute total_weekly_hours per semester from the (now-correct) placement.
+    Annual courses contribute their weekly load to EACH spanned semester (they are
+    physically present in both), which is the desired LOAD behaviour."""
+    for sem in board.get("semesters", []):
+        total = sum(c.get("weekly_hours") or 0 for c in sem.get("courses", []))
+        sem["total_weekly_hours"] = total
+
+
+def main() -> int:
+    board_path = Path(sys.argv[1])
+    board = json.loads(board_path.read_text(encoding="utf-8"))
+
+    print("Fixing 0542-3780 -> Semester B only")
+    _set_semester_b_only(board, "0542-3780")
+    print("Fixing 0542-3791 -> Semester B only")
+    _set_semester_b_only(board, "0542-3791")
+    print("Fixing 0542-3792 -> annual (A+B)")
+    _make_annual(board, "0542-3792")
+    print("Aligning 0542-4020 recommended_semester -> effective (year_4_semester_b)")
+    _align_recommended_to_effective(board, "0542-4020")
+
+    _recompute_semester_hours(board)
+
+    board_path.write_text(json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("Done. Wrote", board_path)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

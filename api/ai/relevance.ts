@@ -286,6 +286,58 @@ export function normalizeCourseName(name?: string | null): string {
   return s;
 }
 
+/**
+ * Issue 1 — data-driven course eligibility / exclusion config (server mirror of
+ * the client EXCLUDED_* config). General + extensible (regex/substring list).
+ *   - EXCLUDED_COURSE_NAME_PATTERNS: name substrings marking honors-only courses
+ *     (e.g. "מצטיינים"); only eligible when the student is an honors student.
+ *   - EXCLUDED_COURSE_NAMES: explicit course names excluded for everyone for now.
+ */
+export const EXCLUDED_COURSE_NAME_PATTERNS = ['מצטיינים'];
+export const EXCLUDED_COURSE_NAMES = ['פרויקט יישומי בהנדסה מכנית'];
+
+export interface EligibilityPrefs {
+  is_honors_student?: boolean | null;
+}
+
+/**
+ * Issue 1 — is a course eligible for this student?
+ * False when (a) name matches an honors pattern AND !is_honors_student, or
+ * (b) name matches the explicit excluded list. By name match (uses
+ * normalizeCourseName), so it generalizes to any matching course.
+ */
+export function isCourseEligible(
+  course: { name_he?: string | null; name?: string | null } | null | undefined,
+  prefs?: EligibilityPrefs | null,
+): boolean {
+  if (!course) return true;
+  const name = course.name_he || course.name || '';
+  if (!name) return true;
+  const isHonors = !!(prefs && prefs.is_honors_student);
+  for (const pat of EXCLUDED_COURSE_NAME_PATTERNS) {
+    if (name.includes(pat) && !isHonors) return false;
+  }
+  const norm = normalizeCourseName(name);
+  for (const ex of EXCLUDED_COURSE_NAMES) {
+    const exNorm = normalizeCourseName(ex);
+    if (exNorm && norm.includes(exNorm)) return false;
+  }
+  return true;
+}
+
+/** Issue 1 — resolve the set of ineligible course IDs by name match. */
+export function resolveIneligibleCourseIds(
+  courses: Array<{ course_id: string; name_he?: string | null; name?: string | null }>,
+  prefs?: EligibilityPrefs | null,
+): Set<string> {
+  const result = new Set<string>();
+  for (const c of courses || []) {
+    if (!c?.course_id) continue;
+    if (!isCourseEligible(c, prefs)) result.add(c.course_id);
+  }
+  return result;
+}
+
 const NAME_AVOID_TRIGGERS = [
   'לא רוצה', 'לא מעוניין', 'לא מעוניינת', 'בלי', 'להימנע מ', 'להימנע',
   'אל תשבץ', 'אל תכלול', 'לא', 'don\'t want', 'do not want', 'avoid', 'without', 'no ',

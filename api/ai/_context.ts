@@ -11,6 +11,12 @@ export interface CourseInPlan {
   placement_policy?: string | null;
   /** Semesters this course may legally be placed in (for movability reasoning). */
   effective_allowed_semesters?: string[] | null;
+  /** True for year-long (annual) courses that occupy BOTH spanned semesters
+   *  together. They are immovable, must not be split, and their degree hours are
+   *  counted once (count_hours_once) even though they appear in two semesters. */
+  is_annual?: boolean;
+  spans_semesters?: string[] | null;
+  count_hours_once?: boolean;
   category?: string;
   missing_prerequisites?: string[];
   // Difficulty sub-scores (1-5 scale; null/missing if not yet computed)
@@ -220,7 +226,11 @@ function semestersSection(semesters: SemesterPlan[]): string {
       if (c.course_type) parts.push(c.course_type === 'mandatory' ? 'חובה' : 'בחירה');
       // Flexibility token so the LLM knows which mandatory courses may be moved
       // for load balancing ('גמיש' = movable, 'קבוע' = locked to its semester).
-      if (c.placement_policy === 'flexible') parts.push('גמיש');
+      if (c.is_annual) {
+        // Annual (year-long) course: occupies both spanned semesters together,
+        // immovable, must not be split, degree hours counted once.
+        parts.push("שנתי (א'+ב') — לא ניתן להזזה/פיצול, שעות נספרות פעם אחת");
+      } else if (c.placement_policy === 'flexible') parts.push('גמיש');
       else if (c.placement_policy === 'fixed') parts.push('קבוע');
       if (c.category) parts.push(`קטגוריה: ${c.category}`);
       if (c.difficulty_level) parts.push(`קושי כולל: ${c.difficulty_level}${c.difficulty_score != null ? ` (${c.difficulty_score})` : ''}`);

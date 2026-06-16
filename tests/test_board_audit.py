@@ -109,3 +109,130 @@ def test_compute_board_hash_stable_and_excludes_version_field():
     board2 = json.loads(json.dumps(board))
     board2["semesters"][0]["courses"][0]["weekly_hours"] = 5.0
     assert compute_board_hash(board2) != h1
+
+
+# === Extended data-integrity checks (offering / annual / legality) ===
+
+import os
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BOARD_PATH = os.path.join(
+    REPO_ROOT, "data", "parsed_json", "mechanical_semester_board_2027.json"
+)
+
+
+def _annual_course(**overrides):
+    c = _base_course(
+        course_id="0542-3792",
+        is_annual=True,
+        spans_semesters=["year_3_semester_a", "year_3_semester_b"],
+        count_hours_once=True,
+        effective_allowed_semesters=["year_3_semester_a", "year_3_semester_b"],
+        program_allowed_semesters=["year_3_semester_a", "year_3_semester_b"],
+        weekly_hours=4.0,
+    )
+    c.update(overrides)
+    return c
+
+
+def test_audit_errors_when_annual_text_without_annual_flag():
+    course = _base_course(
+        course_id="0542-9999",
+        syllabus_summary_he='החל משנת תשפ"ו זהו קורס שנתי המתקיים בשני הסמסטרים',
+        is_annual=False,
+    )
+    issues = audit_board(_board(("year_3_semester_a", [course])))
+    errors = [i for i in issues if i.level == "error"]
+    assert any(i.check == "annual_not_represented" for i in errors)
+
+
+def test_audit_errors_on_offering_mismatch_b_only_but_effective_a():
+    course = _base_course(
+        course_id="0542-3780",
+        offered_semesters=["B"],
+        offering_source_confidence="high",
+        effective_allowed_semesters=["year_3_semester_a"],
+        program_allowed_semesters=["year_3_semester_a", "year_3_semester_b"],
+    )
+    # Placed legally for its (wrong) effective set so we isolate the offering check.
+    issues = audit_board(_board(("year_3_semester_a", [course])))
+    errors = [i for i in issues if i.level == "error"]
+    assert any(i.check == "offering_mismatch" for i in errors)
+
+
+def test_audit_errors_when_annual_placed_in_only_one_semester():
+    course = _annual_course()
+    issues = audit_board(_board(("year_3_semester_a", [course])))
+    errors = [i for i in issues if i.level == "error"]
+    assert any(i.check == "annual_placement_incomplete" for i in errors)
+
+
+def test_audit_passes_annual_placed_in_both_semesters():
+    course = _annual_course()
+    board = _board(
+        ("year_3_semester_a", [dict(course)]),
+        ("year_3_semester_b", [dict(course)]),
+    )
+    issues = audit_board(board)
+    errors = [i for i in issues if i.level == "error"]
+    # Annual placed in both spanned semesters must NOT trip duplicate_placement
+    # or annual_placement_incomplete.
+    assert not any(
+        i.check in ("duplicate_placement", "annual_placement_incomplete")
+        for i in errors
+    )
+
+
+def test_audit_flags_recommended_vs_effective_conflict():
+    course = _base_course(
+        course_id="0542-3780",
+        offered_semesters=["B"],
+        offering_source_confidence="high",
+        effective_allowed_semesters=["year_3_semester_b"],
+        recommended_semester="year_3_semester_a",
+    )
+    issues = audit_board(_board(("year_3_semester_b", [course])))
+    # Placement is legal (effective wins) so this is surfaced as a warning, not masked.
+    assert any(i.check == "recommended_conflicts_effective" for i in issues)
+
+
+def test_real_board_passes_extended_integrity_for_three_target_courses():
+    board = json.loads(open(BOARD_PATH, encoding="utf-8").read())
+    issues = audit_board(board)
+    targets = {"0542-3780", "0542-3791", "0542-3792"}
+    target_errors = [
+        i for i in issues if i.level == "error" and i.course_id in targets
+    ]
+    assert target_errors == [], f"unexpected errors for target courses: {target_errors}"
+
+
+def test_real_board_models_three_target_courses_correctly():
+    board = json.loads(open(BOARD_PATH, encoding="utf-8").read())
+
+    def find_all(cid):
+        recs = []
+        for sem in board.get("semesters", []):
+            for c in sem.get("courses", []):
+                if c.get("course_id") == cid:
+                    recs.append((sem.get("semester_id"), c))
+        return recs
+
+    # 3780 / 3791 -> Semester B only.
+    for cid in ("0542-3780", "0542-3791"):
+        recs = find_all(cid)
+        assert recs, f"{cid} not placed on board"
+        for sem_id, c in recs:
+            assert c["effective_allowed_semesters"] == ["year_3_semester_b"], cid
+            assert c["offered_semesters"] == ["B"], cid
+            assert sem_id == "year_3_semester_b", cid
+
+    # 3792 -> annual spanning A+B, placed in both, hours counted once.
+    recs = find_all("0542-3792")
+    placed = {sem_id for sem_id, _ in recs}
+    assert placed == {"year_3_semester_a", "year_3_semester_b"}
+    for _, c in recs:
+        assert c.get("is_annual") is True
+        assert c.get("count_hours_once") is True
+        assert set(c.get("spans_semesters") or []) == {
+            "year_3_semester_a", "year_3_semester_b",
+        }

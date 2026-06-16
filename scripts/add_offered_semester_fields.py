@@ -21,16 +21,26 @@ OFFERED_SEMESTERS_OVERRIDES: dict[str, dict] = {
         "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
         "offering_source_confidence": "high",
     },
+    # 0542-3780 / 0542-3791: syllabus evidence shows these are offered in Semester
+    # B only (Friday 08:00-11:00 in B). The original migration wrongly recorded
+    # offered_semesters=["A"] (confused the nominal/recommended semester with the
+    # actual syllabus offering). Corrected to ["B"]. See
+    # scripts/fix_annual_and_offering_data.py for the targeted board fix.
     "0542-3780": {
-        "offered_semesters": ["A"],
+        "offered_semesters": ["B"],
         "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
         "offering_source_confidence": "high",
     },
     "0542-3791": {
-        "offered_semesters": ["A"],
+        "offered_semesters": ["B"],
         "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
         "offering_source_confidence": "high",
     },
+    # 0542-3792 is offered across A+B, but it is an ANNUAL (year-long) course
+    # ("החל משנת תשפ\"ו זהו קורס שנתי") — it occupies BOTH semesters together rather
+    # than being a free A-or-B choice. The annual flags (is_annual / spans_semesters /
+    # count_hours_once) are layered on by scripts/fix_annual_and_offering_data.py;
+    # the ["A","B"] offering here remains compatible with that.
     "0542-3792": {
         "offered_semesters": ["A", "B"],
         "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",

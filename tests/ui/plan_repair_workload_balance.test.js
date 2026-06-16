@@ -37,6 +37,7 @@ function loadRepair() {
   };
   const helpers = [
     grab('getSemesterLoadLocal'),
+    grab('isAnnualCourse'),
     grab('_isMovableForBalance'),
     grab('_isElectiveLike'),
     grab('_isFlexibleMandatory'),
@@ -140,5 +141,32 @@ describe('client repairPlanLoad — workload-aware balancing', () => {
     expect(s1.course_ids).toEqual(['MF']);
     expect(result.unmovedOverloaded[0].not_movable_reasons)
       .toEqual([{ course_id: 'MF', reason: 'no_legal_target' }]);
+  });
+
+  // Annual courses (e.g. 0542-3792 הנדסת ניסויים ומדידות - מעבדה) span A+B and
+  // must NOT be moved or split out of either spanned semester by the balancer.
+  test('does NOT move/split an annual course out of an overloaded semester', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 's1', course_ids: ['ANN', 'MF'] }, // annual 8 + flexible 20 = 28h
+        { semester_id: 's2', course_ids: ['ANN'] },        // annual present in both spans
+      ],
+    };
+    const courses = {
+      ANN: {
+        hours: 8, is_annual: true, placement_policy: 'annual', course_type: 'mandatory',
+        spans_semesters: ['s1', 's2'], count_hours_once: true,
+        effective_allowed_semesters: ['s1', 's2'],
+      },
+      MF: { hours: 20, placement_policy: 'flexible', course_type: 'mandatory', effective_allowed_semesters: ['s1', 's2'] },
+    };
+    const result = repairPlanLoad(proposal, ctx(courses));
+    const s1 = result.proposal.semesters.find(s => s.semester_id === 's1');
+    const s2 = result.proposal.semesters.find(s => s.semester_id === 's2');
+    // Annual course stays in BOTH semesters; never moved or removed.
+    expect(s1.course_ids).toContain('ANN');
+    expect(s2.course_ids).toContain('ANN');
+    // The flexible non-annual course is the one that gets shed instead.
+    expect(result.moveLog.some(m => m.accepted && m.course_id === 'ANN')).toBe(false);
   });
 });

@@ -18,9 +18,53 @@ import {
   buildCourseSearchText,
   lexicalRelevance,
   courseUtility,
+  isCourseEligible,
+  type EligibilityPrefs,
   type PreferenceTerms,
   type CourseLike,
 } from './relevance';
+
+/**
+ * Issue 4 — estimate a bounded 0–5 difficulty/workload value for a course when
+ * explicit difficulty_score/workload_score are missing. Null-guarded, uses
+ * signals available on ALL courses (incl. mandatory): weekly_hours, syllabus
+ * length + keywords, assessment_intensity, prerequisite depth. Mirrors the
+ * client estimateCourseDifficultyLocal. Returns null if no signal at all.
+ */
+export function estimateCourseDifficulty(course: {
+  weekly_hours?: number | null;
+  semester_hours?: number | null;
+  hours?: number | null;
+  syllabus_summary_he?: string | null;
+  syllabus_topics_he?: string[] | string | null;
+  assessment_intensity?: number | null;
+  prerequisites?: unknown[] | null;
+  prerequisite_course_ids?: unknown[] | null;
+} | null | undefined): number | null {
+  if (!course) return null;
+  let score = 0;
+  let signals = 0;
+  const hrs = course.weekly_hours ?? course.semester_hours ?? course.hours ?? null;
+  if (hrs != null) { signals++; score += Math.min(2.5, hrs / 6); }
+  const topics = Array.isArray(course.syllabus_topics_he)
+    ? course.syllabus_topics_he.join(' ')
+    : (course.syllabus_topics_he || '');
+  const text = [course.syllabus_summary_he || '', topics].join(' ');
+  if (text.trim()) {
+    signals++;
+    score += Math.min(1, text.length / 800);
+    if (/מעבדה|lab/i.test(text)) score += 0.5;
+    if (/פרויקט גמר|פרוייקט גמר/.test(text)) score += 0.8;
+    else if (/פרויקט|פרוייקט|project/i.test(text)) score += 0.5;
+    if (/מבחן|בחינה|exam/i.test(text)) score += 0.3;
+  }
+  if (course.assessment_intensity != null) { signals++; score += Math.min(1, Number(course.assessment_intensity) / 5); }
+  const prereqs = Array.isArray(course.prerequisites) ? course.prerequisites
+    : Array.isArray(course.prerequisite_course_ids) ? course.prerequisite_course_ids : null;
+  if (prereqs != null) { signals++; score += Math.min(1, prereqs.length * 0.3); }
+  if (!signals) return null;
+  return Math.max(0, Math.min(5, Number(score.toFixed(2))));
+}
 
 /** Total credit-hours required for the degree (ש״ש). */
 export const DEGREE_REQUIRED_HOURS = 185;
@@ -375,12 +419,19 @@ export function buildCompletionAnalysis(ctx: PlanContext): CompletionAnalysis {
   const elective_pool = [...electivePoolMap.values()];
 
   // ── Hours toward the 185 ש"ש degree requirement ──────────────────────────
-  const known_scheduled_hours = (ctx.semesters ?? [])
-    .flatMap(s => s.courses)
+  // Degree hours are counted ONCE per course_id. Annual (year-long) courses are
+  // physically present in BOTH spanned semesters, so dedup by course_id here to
+  // avoid double-counting their degree hours (semester LOAD is still per-semester).
+  const _scheduledByCid = new Map<string, { hours?: number | null }>();
+  for (const s of (ctx.semesters ?? [])) {
+    for (const c of s.courses) {
+      if (!_scheduledByCid.has(c.course_id)) _scheduledByCid.set(c.course_id, c);
+    }
+  }
+  const _uniqueScheduled = [..._scheduledByCid.values()];
+  const known_scheduled_hours = _uniqueScheduled
     .reduce((sum, c) => sum + (typeof c.hours === 'number' ? c.hours : 0), 0);
-  const unknown_scheduled = (ctx.semesters ?? [])
-    .flatMap(s => s.courses)
-    .filter(c => c.hours == null).length;
+  const unknown_scheduled = _uniqueScheduled.filter(c => c.hours == null).length;
 
   const totalHoursProgress = (ctx as any).total_hours_progress;
 
@@ -1131,10 +1182,19 @@ export function pickBestCandidate(
   candidates: CompletionCandidate[],
   unwantedIds: Set<string> = new Set(),
   interestText?: string | null,
+  eligibilityPrefs?: EligibilityPrefs | null,
 ): CompletionCandidate | null {
   if (!candidates.length) return null;
-  const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  let pool = preferred.length ? preferred : candidates;
+  // Issue 1 — never pick an ineligible (honors-only / excluded) candidate when
+  // any eligible alternative exists; if ALL are ineligible, fall through (the
+  // final post-filter still removes ineligible electives).
+  let candidatePool = candidates;
+  if (eligibilityPrefs !== undefined) {
+    const eligible = candidates.filter(c => isCourseEligible(c, eligibilityPrefs));
+    if (eligible.length) candidatePool = eligible;
+  }
+  const preferred = candidatePool.filter(c => !unwantedIds.has(c.course_id));
+  let pool = preferred.length ? preferred : candidatePool;
   // Issue 2 — drop avoid-matching candidates if non-avoiding ones exist.
   if (interestText && interestText.trim()) {
     const nonAvoid = pool.filter(c => !candidateMatchesAvoidTerm(c as CompletionCandidate & CourseLike, interestText));
@@ -1159,10 +1219,17 @@ export function pickBestCandidateForGap(
   gap: number,
   unwantedIds: Set<string> = new Set(),
   interestText?: string | null,
+  eligibilityPrefs?: EligibilityPrefs | null,
 ): CompletionCandidate | null {
   if (!candidates.length) return null;
-  const preferred = candidates.filter(c => !unwantedIds.has(c.course_id));
-  let pool = preferred.length ? preferred : candidates;
+  // Issue 1 — prefer eligible candidates (honors-only / excluded skipped).
+  let candidatePool = candidates;
+  if (eligibilityPrefs !== undefined) {
+    const eligible = candidates.filter(c => isCourseEligible(c, eligibilityPrefs));
+    if (eligible.length) candidatePool = eligible;
+  }
+  const preferred = candidatePool.filter(c => !unwantedIds.has(c.course_id));
+  let pool = preferred.length ? preferred : candidatePool;
   // Issue 2 — hard-skip avoid-matching candidates if non-avoiding ones exist.
   if (interestText && interestText.trim()) {
     const nonAvoid = pool.filter(c => !candidateMatchesAvoidTerm(c as CompletionCandidate & CourseLike, interestText));
@@ -1188,6 +1255,10 @@ export interface RepairCourseInfo {
   hours?: number | null;
   effective_allowed_semesters?: string[] | null;
   placement_policy?: string | null;
+  /** Annual (year-long) course: occupies ALL spans_semesters together. It is
+   *  immovable and must never be split or placed into a single semester. */
+  is_annual?: boolean;
+  spans_semesters?: string[] | null;
 }
 
 export interface RepairProposalShape {
@@ -1253,6 +1324,26 @@ export function repairAddMissingMandatory<P extends RepairProposalShape>(
 
     const info = opts.courses[course.course_id] || {};
     const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : null;
+
+    // Annual (year-long) courses occupy ALL spanned semesters together. They are
+    // never placed into a single least-loaded semester and never split. Insert the
+    // course into each spanned semester it isn't already in.
+    if (info.is_annual) {
+      const spans = (info.spans_semesters?.length ? info.spans_semesters : allowed) || [];
+      const targets = sems.filter(s => spans.includes(s.semester_id));
+      if (!targets.length) {
+        unplaceable.push({ course_id: course.course_id, name_he: course.name_he });
+        continue;
+      }
+      for (const t of targets) {
+        if (!t.course_ids.includes(course.course_id)) {
+          t.course_ids.push(course.course_id);
+          added.push({ course_id: course.course_id, semester_id: t.semester_id });
+        }
+      }
+      placed.add(course.course_id);
+      continue;
+    }
 
     let legalSems;
     if (info.placement_policy === 'fixed') {
@@ -1330,6 +1421,9 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     knownSemesterIds: string[];
     /** PART A — user's free-text career-direction request (e.g. preferences.extra_request_he). */
     userInterestText?: string | null;
+    /** Issue 1 — student eligibility prefs; ineligible (honors-only/excluded)
+     *  candidates are skipped when an eligible alternative exists. */
+    eligibilityPrefs?: EligibilityPrefs | null;
   },
 ): RepairAddResult<P> {
   const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
@@ -1351,9 +1445,13 @@ export function repairAddMissingElectives<P extends RepairProposalShape>(
     let remainingCandidates = cat.candidates.filter(c => !placed.has(c.course_id));
 
     while (needed > 0 && remainingCandidates.length > 0) {
-      const candidate = pickBestCandidate(remainingCandidates, unwanted, opts.userInterestText);
+      const candidate = pickBestCandidate(remainingCandidates, unwanted, opts.userInterestText, opts.eligibilityPrefs);
       if (!candidate) break;
       remainingCandidates = remainingCandidates.filter(c => c.course_id !== candidate.course_id);
+      // Issue 1 — never deterministically insert an ineligible course; if the
+      // only remaining candidates are ineligible, skip the category (the
+      // missing-category repair/blocked flow handles incompleteness).
+      if (opts.eligibilityPrefs !== undefined && !isCourseEligible(candidate, opts.eligibilityPrefs)) continue;
 
       const info = opts.courses[candidate.course_id] || {};
       const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
