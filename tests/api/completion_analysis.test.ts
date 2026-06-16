@@ -2858,6 +2858,27 @@ describe('PART E — prerequisite ordering (robotics lab vs intro robotics)', ()
     expect(warnings.length + errors.length).toBeGreaterThan(0);
   });
 
+  test('Issue 4 — prereq supplied only via `prerequisites` (union) is still enforced as an error', () => {
+    const proposal = {
+      semesters: [
+        { semester_id: 'A', course_ids: ['ROBOLAB'] },
+        { semester_id: 'B', course_ids: ['INTRO_ROBO'] },
+      ],
+      moves: [], warnings_he: [], rationale_he: '', requirements_status: [],
+    };
+    const ctx = {
+      courses: {
+        // prereq carried on `prerequisites`, NOT missing_prerequisites:
+        ROBOLAB: { hours: 3, effective_allowed_semesters: ['A', 'B'], prerequisites: ['INTRO_ROBO'] },
+        INTRO_ROBO: { hours: 2, effective_allowed_semesters: ['A', 'B'] },
+      },
+      completedCourseIds: new Set<string>(),
+      semesterLabels: { A: 'סמסטר א׳', B: 'סמסטר ב׳' },
+    } as any;
+    const { errors } = validatePlanProposal(proposal as any, ctx);
+    expect(errors.some(e => e.includes('ROBOLAB') && e.includes('INTRO_ROBO'))).toBe(true);
+  });
+
   test('intro robotics in an earlier semester satisfies the lab prerequisite (no warning)', () => {
     const proposal = {
       semesters: [

@@ -176,7 +176,7 @@ describe('validatePlanProposal', () => {
     expect(result.errors.some(e => e.includes('0542-4221') && e.includes('year_3_semester_a'))).toBe(true);
   });
 
-  it('warns about unmet prerequisites without rejecting the plan', () => {
+  it('Issue 4 — REJECTS (error) a course whose prerequisite is neither completed nor scheduled', () => {
     const ctx: PlanValidationContext = {
       ...BASE_CTX,
       courses: {
@@ -185,8 +185,31 @@ describe('validatePlanProposal', () => {
       },
     };
     const result = validatePlanProposal(BASE_PROPOSAL, ctx);
-    expect(result.errors).toEqual([]);
-    expect(result.warnings.some(w => w.includes('0542-4221') && w.includes('0542-9999'))).toBe(true);
+    // Strict prerequisite rule: an unsatisfied prereq is a blocking ERROR
+    // (no longer a soft warning), naming the missing prereq.
+    expect(result.errors.some(e => e.includes('0542-4221') && e.includes('0542-9999'))).toBe(true);
+  });
+
+  it('Issue 4 — unions prerequisites ∪ missing_prerequisites and rejects same-semester prereq', () => {
+    const ctx: PlanValidationContext = {
+      ...BASE_CTX,
+      courses: {
+        ...BASE_CTX.courses,
+        // prereq supplied only via `prerequisites` (not missing_prerequisites)
+        '0542-4221': { hours: 5, prerequisites: ['0542-4120'] },
+        '0542-4120': { hours: 4 },
+      },
+    };
+    // Both placed in the SAME semester (year_3_semester_b in BASE_PROPOSAL):
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: [] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4221', '0542-4120'] },
+      ],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('0542-4221') && e.includes('0542-4120') && e.includes('באותו סמסטר'))).toBe(true);
   });
 
   it('does not warn about prerequisites already satisfied by completion or placement', () => {

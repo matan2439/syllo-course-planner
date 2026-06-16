@@ -1721,7 +1721,14 @@ def test_build_success_sets_proposal_draft(html):
     """PART D — successful build flows assign state.proposalDraft (via run ->
     requestPlanProposal)."""
     rpp = _extract_fn(html, "requestPlanProposal")
-    assert "state.proposalDraft" in rpp or "activateProposalDraft" in rpp
+    # The build path now reaches the editable draft through the single central
+    # chokepoint (gateProposalActivation -> validateFinalPlan -> activateProposalDraft),
+    # which is the authoritative activation mechanism.
+    assert (
+        "state.proposalDraft" in rpp
+        or "activateProposalDraft" in rpp
+        or "gateProposalActivation" in rpp
+    )
     fn = _extract_fn(html, "runBuildFromScratch")
     assert "state.proposalDraft" in fn
 

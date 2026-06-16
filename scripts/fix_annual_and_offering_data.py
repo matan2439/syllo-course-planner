@@ -209,6 +209,60 @@ def _fix_4223_semester_a_only(board: dict) -> None:
             "year 4 only, so placement_policy stays flexible.")
 
 
+def _resolve_robotics_lab_prereq(board: dict) -> None:
+    """0542-4624 'מעבדה ברובוטיקה ובקרה של מערכות' — Issue 4. Its prerequisite
+    'מבוא לרובוטיקה' is listed in syllabus_prerequisites_he but was never resolved
+    to a course_id, so prerequisites/missing_prerequisites were empty and the
+    planner could propose the lab without its prerequisite.
+
+    Resolve the intro-robotics course by NAME ('מבוא לרובוטיקה') — expected
+    0542-4621 — and record it on the board record so the prerequisite-union
+    validator (prerequisites ∪ missing_prerequisites) enforces it. Idempotent;
+    LOCAL data only."""
+    LAB_ID = "0542-4624"
+    INTRO_NAME = "מבוא לרובוטיקה"
+
+    # Resolve intro-robotics by name match across the whole board (any semester
+    # or the program repository). Falls back to the known id if not found.
+    intro_id = None
+    for sem in board.get("semesters", []):
+        for c in sem.get("courses", []):
+            if (c.get("name_he") or "").strip() == INTRO_NAME:
+                intro_id = c.get("course_id")
+                break
+        if intro_id:
+            break
+    if not intro_id:
+        for c in board.get("metadata", {}).get("program_repository_courses", []):
+            if (c.get("name_he") or "").strip() == INTRO_NAME:
+                intro_id = c.get("course_id")
+                break
+    if not intro_id:
+        intro_id = "0542-4621"
+        print(f"  WARN: could not resolve '{INTRO_NAME}' by name; using known id {intro_id}")
+
+    records = _find_course(board, LAB_ID)
+    if not records:
+        print(f"  WARN: {LAB_ID} not found")
+        return
+    for sem_id, c, sem in records:
+        # Union onto BOTH fields the validator reads (prerequisites ∪
+        # missing_prerequisites). Keep existing entries; add intro_id once.
+        prereqs = [p for p in (c.get("prerequisites") or []) if p]
+        missing = [p for p in (c.get("missing_prerequisites") or []) if p]
+        if intro_id not in prereqs:
+            prereqs.append(intro_id)
+        if intro_id not in missing:
+            missing.append(intro_id)
+        c["prerequisites"] = prereqs
+        c["missing_prerequisites"] = missing
+        c.setdefault("prereq_resolution_note",
+            f"Issue 4: resolved syllabus prerequisite '{INTRO_NAME}' to {intro_id} "
+            f"(matched by name_he); recorded on prerequisites + missing_prerequisites "
+            f"so the planner enforces it.")
+    print(f"  resolved {LAB_ID} prerequisite -> {intro_id}")
+
+
 def _recompute_semester_hours(board: dict) -> None:
     """Recompute total_weekly_hours per semester from the (now-correct) placement.
     Annual courses contribute their weekly load to EACH spanned semester (they are
@@ -232,6 +286,8 @@ def main() -> int:
     _align_recommended_to_effective(board, "0542-4020")
     print("Fixing 0542-4223 -> Semester A only (year_3_a / year_4_a, flexible)")
     _fix_4223_semester_a_only(board)
+    print("Resolving 0542-4624 robotics-lab prerequisite -> intro robotics")
+    _resolve_robotics_lab_prereq(board)
 
     _recompute_semester_hours(board)
 

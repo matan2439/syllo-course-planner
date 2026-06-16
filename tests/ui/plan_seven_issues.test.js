@@ -181,3 +181,145 @@ describe('Issue 6 / 7 — diagnoseBuildBlock chips & classification', () => {
     expect(diag.chips.map(c => c.action)).toContain('show-blocking-constraints');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// NEW coverage for the four production issues in this task.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('Issue 1 — annual course renders as ONE spanning block', () => {
+  const SEM_HE = { year_3_semester_a: 'שנה ג׳ — סמסטר א׳', year_3_semester_b: 'שנה ג׳ — סמסטר ב׳' };
+  const annualBandHtml = new Function('esc', 'SEM_HE', 'showCourseDetail',
+    `${grab('annualBandHtml')}\nreturn annualBandHtml;`,
+  )(x => String(x), SEM_HE, () => {});
+
+  const annual = {
+    course_id: '0542-3792', name_he: 'הנדסת ניסויים ומדידות - מעבדה', weekly_hours: 4,
+    is_annual: true, placement_policy: 'annual',
+    spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    semester_load_hours_by_semester: { year_3_semester_a: 4, year_3_semester_b: 4 },
+  };
+
+  test('renders a SINGLE spanning element with data-annual-span (not two cards)', () => {
+    const out = annualBandHtml(annual);
+    expect(out).toContain('data-annual-span="year_3_semester_a,year_3_semester_b"');
+    expect((out.match(/class="annual-band"/g) || []).length).toBe(1);
+    expect(out).toContain(annual.name_he);
+  });
+
+  test('semColHtml excludes annual courses from per-column cards (no duplicate card)', () => {
+    // The column builder filters annual ids out of its card list.
+    expect(html).toContain('.filter(id => !isAnnualCourse(courseMap[id]))');
+  });
+
+  test('renderBoard places the annual band above the two semester columns', () => {
+    expect(html).toContain('annualCoursesForYear(yg.sems).map(annualBandHtml)');
+  });
+});
+
+describe('Issue 2 — difficulty estimator domain calibration', () => {
+  const estimate = new Function(
+    `${grab('estimateCourseDifficultyLocal')}\nreturn estimateCourseDifficultyLocal;`,
+  )();
+
+  test('Heat Transfer (core, thin syllabus) lands at least medium (>=2.5)', () => {
+    const ht = {
+      course_id: '0542-3620', name_he: 'מעבר חום', weekly_hours: 4, course_type: 'mandatory',
+      is_mandatory: true, difficulty_score: null,
+      syllabus_summary_he: 'Introduction: conduction, convection and radiation.',
+      prerequisites: [],
+    };
+    expect(estimate(ht)).toBeGreaterThanOrEqual(2.5);
+  });
+
+  test('Heat Transfer even with the board typo "מעבר חם" still >=2.5', () => {
+    const ht = { name_he: 'מעבר חם', weekly_hours: 4, course_type: 'mandatory', is_mandatory: true };
+    expect(estimate(ht)).toBeGreaterThanOrEqual(2.5);
+  });
+
+  test('a hard core course ranks strictly above an easy general elective', () => {
+    const solid = { course_id: 's', name_he: 'מכניקת מוצקים', weekly_hours: 3, course_type: 'mandatory', is_mandatory: true };
+    const easy = { course_id: 'e', name_he: 'מבוא לכתיבה טכנית', weekly_hours: 2, course_type: 'elective', syllabus_summary_he: 'כתיבה.' };
+    expect(estimate(solid)).toBeGreaterThan(estimate(easy));
+  });
+
+  test('a mandatory core course with no syllabus is NOT falsely easy (<1.5)', () => {
+    const bare = { course_id: 'm', name_he: 'תרמודינמיקה', course_type: 'mandatory', is_mandatory: true };
+    expect(estimate(bare)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  test('no signal at all still returns null', () => {
+    expect(estimate({ course_id: 'x', weekly_hours: null, semester_hours: null })).toBeNull();
+  });
+});
+
+describe('Issue 3 — proposal pipeline auto-enforces semester legality', () => {
+  const SEM_HE = { year_3_semester_a: 'ג׳-א׳', year_3_semester_b: 'ג׳-ב׳', year_4_semester_a: 'ד׳-א׳', year_4_semester_b: 'ד׳-ב׳' };
+  const courseMap = {
+    '0542-4223': { course_id: '0542-4223', name_he: 'מבוא לאלמנטים סופיים', weekly_hours: 4,
+      effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'] },
+  };
+  const MAX_HOURS = 26;
+  const factory = new Function('courseMap', 'SEM_HE', 'MAX_HOURS', 'isAnnualCourse',
+    'getLegalSemestersLocal', 'isCourseAllowedInSemesterLocal',
+    `${grab('enforceLegalPlacementsLocal')}\nreturn enforceLegalPlacementsLocal;`,
+  );
+  const isAnnualCourse = new Function(`${grab('isAnnualCourse')}\nreturn isAnnualCourse;`)();
+  const getLegalSemestersLocal = new Function('SEMESTERS',
+    `${grab('getLegalSemestersLocal')}\nreturn getLegalSemestersLocal;`,
+  )([{ id: 'year_3_semester_a' }, { id: 'year_3_semester_b' }, { id: 'year_4_semester_a' }, { id: 'year_4_semester_b' }]);
+  const isCourseAllowedInSemesterLocal = new Function('getLegalSemestersLocal',
+    `${grab('isCourseAllowedInSemesterLocal')}\nreturn isCourseAllowedInSemesterLocal;`,
+  )(getLegalSemestersLocal);
+  const enforce = factory(courseMap, SEM_HE, MAX_HOURS, isAnnualCourse, getLegalSemestersLocal, isCourseAllowedInSemesterLocal);
+
+  test('0542-4223 placed in Semester B is relocated to a legal Semester A', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: [] },
+      { semester_id: 'year_3_semester_b', course_ids: ['0542-4223'] },
+      { semester_id: 'year_4_semester_a', course_ids: [] },
+      { semester_id: 'year_4_semester_b', course_ids: [] },
+    ] };
+    const { proposal: out, relocated } = enforce(proposal, { courses: { '0542-4223': { hours: 4 } } });
+    const semB = out.semesters.find(s => s.semester_id === 'year_3_semester_b');
+    expect(semB.course_ids).not.toContain('0542-4223');
+    const landed = out.semesters.find(s => s.course_ids.includes('0542-4223'));
+    expect(['year_3_semester_a', 'year_4_semester_a']).toContain(landed.semester_id);
+    expect(relocated.some(r => r.course_id === '0542-4223')).toBe(true);
+  });
+
+  test('board_audit fails on 4223 in Semester B (general placement check exists)', () => {
+    const audit = fs.readFileSync(path.join(__dirname, '..', '..', 'app', 'analysis', 'board_audit.py'), 'utf8');
+    expect(audit).toContain('GENERAL placement legality');
+    expect(audit).toMatch(/effective and sem_id not in effective/);
+  });
+});
+
+describe('Issue 4 — robotics-lab prerequisite enforcement (union + strict timing)', () => {
+  const prereqIdsOf = new Function(`${grab('prereqIdsOf')}\nreturn prereqIdsOf;`)();
+
+  test('prereqIdsOf returns the UNION of prerequisites + missing_prerequisites', () => {
+    expect(prereqIdsOf({ prerequisites: ['A'], missing_prerequisites: ['B'] }).sort()).toEqual(['A', 'B']);
+    expect(prereqIdsOf({ missing_prerequisites: ['0542-4621'] })).toEqual(['0542-4621']);
+    expect(prereqIdsOf({})).toEqual([]);
+  });
+
+  test('strict timing: completed / strictly-earlier satisfies; same-sem / later / missing does NOT', () => {
+    const courseMap = { ROBOLAB: { missing_prerequisites: ['INTRO'] } };
+    const userCourseStatuses = {};
+    const SEMESTERS = [{ id: 's0' }, { id: 's1' }, { id: 's2' }];
+    const factory = new Function('courseMap', 'userCourseStatuses', 'SEMESTERS',
+      `${grab('prereqIdsOf')}\n${grab('_semIndexOf')}\n${grab('_userSemesterIndex')}\n${grab('prereqsSatisfiedForPlacementLocal')}\nreturn prereqsSatisfiedForPlacementLocal;`,
+    );
+    const fn = factory(courseMap, userCourseStatuses, SEMESTERS);
+    // prereq scheduled earlier (idx 0), lab at idx 1 → ok
+    expect(fn('ROBOLAB', 1, { INTRO: 0 }, new Set()).ok).toBe(true);
+    // same semester (both idx 1) → NOT ok
+    expect(fn('ROBOLAB', 1, { INTRO: 1 }, new Set()).ok).toBe(false);
+    // later (idx 2) → NOT ok
+    expect(fn('ROBOLAB', 1, { INTRO: 2 }, new Set()).ok).toBe(false);
+    // not scheduled at all → NOT ok
+    expect(fn('ROBOLAB', 1, {}, new Set()).ok).toBe(false);
+    // completed → ok
+    expect(fn('ROBOLAB', 1, {}, new Set(['INTRO'])).ok).toBe(true);
+  });
+});

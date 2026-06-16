@@ -35,6 +35,10 @@ export function estimateCourseDifficulty(course: {
   weekly_hours?: number | null;
   semester_hours?: number | null;
   hours?: number | null;
+  name_he?: string | null;
+  name_en?: string | null;
+  course_type?: string | null;
+  is_mandatory?: boolean | null;
   syllabus_summary_he?: string | null;
   syllabus_topics_he?: string[] | string | null;
   assessment_intensity?: number | null;
@@ -45,24 +49,41 @@ export function estimateCourseDifficulty(course: {
   let score = 0;
   let signals = 0;
   const hrs = course.weekly_hours ?? course.semester_hours ?? course.hours ?? null;
-  if (hrs != null) { signals++; score += Math.min(2.5, hrs / 6); }
+  // Issue 2 — weekly_hours reduced cap/weight so it no longer dominates.
+  if (hrs != null) { signals++; score += Math.min(1.3, hrs / 9); }
   const topics = Array.isArray(course.syllabus_topics_he)
     ? course.syllabus_topics_he.join(' ')
     : (course.syllabus_topics_he || '');
   const text = [course.syllabus_summary_he || '', topics].join(' ');
   if (text.trim()) {
     signals++;
-    score += Math.min(1, text.length / 800);
+    score += Math.min(0.8, text.length / 1000);
     if (/מעבדה|lab/i.test(text)) score += 0.5;
     if (/פרויקט גמר|פרוייקט גמר/.test(text)) score += 0.8;
     else if (/פרויקט|פרוייקט|project/i.test(text)) score += 0.5;
     if (/מבחן|בחינה|exam/i.test(text)) score += 0.3;
   }
+  // Issue 2 — DOMAIN/TITLE signal for core theory/analysis engineering domains.
+  // General keyword list (not a single hardcoded course) over name + syllabus.
+  const domainText = [
+    course.name_he || '', course.name_en || '',
+    course.syllabus_summary_he || '', topics,
+  ].join(' ');
+  const CORE_DOMAIN_RE = /מעבר ?חו?ם|מעבר חום ומסה|heat transfer|תרמודינמיקה|thermodynamic|מכניקת זורמים|מכניקת הזורמים|זרימה|fluid mechanic|מכניקת מוצקים|חוזק חומרים|solid mechanic|strength of material|תנודות|רעידות|vibration|בקרה(?! איכות)|control (theory|systems)|אלמנטים סופיים|finite element|נומרי|חישובית|numerical|דינמיקה|dynamics|משוואות דיפרנציאליות|differential equation/i;
+  let domainFloor = 0;
+  if (CORE_DOMAIN_RE.test(domainText)) { signals++; score += 1.5; domainFloor = 2.5; }
   if (course.assessment_intensity != null) { signals++; score += Math.min(1, Number(course.assessment_intensity) / 5); }
   const prereqs = Array.isArray(course.prerequisites) ? course.prerequisites
     : Array.isArray(course.prerequisite_course_ids) ? course.prerequisite_course_ids : null;
-  if (prereqs != null) { signals++; score += Math.min(1, prereqs.length * 0.3); }
+  // Issue 2 — prerequisite depth weighted more heavily.
+  if (prereqs != null) { signals++; score += Math.min(1.5, prereqs.length * 0.4); }
+  // Issue 2 — modest mandatory/core floor so a missing syllabus can't make a
+  // required course read as trivially easy.
+  const ctype = (course.course_type || '').toLowerCase();
+  let typeFloor = 0;
+  if (ctype === 'mandatory' || ctype === 'core' || course.is_mandatory === true) { signals++; typeFloor = 1.8; }
   if (!signals) return null;
+  score = Math.max(score, domainFloor, typeFloor);
   return Math.max(0, Math.min(5, Number(score.toFixed(2))));
 }
 

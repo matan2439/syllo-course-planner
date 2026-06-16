@@ -146,6 +146,23 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                 f"placed in {sem_id}, outside effective_allowed_semesters={effective}",
             ))
 
+    # 6b. GENERAL placement legality (Issue 3): ANY placed course — mandatory or
+    #     elective — must sit inside its effective_allowed_semesters when those
+    #     are known. The mandatory-only check above does not cover electives such
+    #     as 0542-4223 (non-mandatory, effective=[*_semester_a]), so a Semester-B
+    #     placement of it would otherwise pass. Annual courses legitimately span
+    #     both spanned semesters and are exempt.
+    for sem_id, c in all_courses:
+        cid = c.get("course_id")
+        if c.get("is_annual") or c.get("placement_policy") == "annual":
+            continue
+        effective = c.get("effective_allowed_semesters")
+        if sem_id is not None and effective and sem_id not in effective:
+            issues.append(AuditIssue(
+                "error", "invalid_placement", cid,
+                f"placed in {sem_id}, outside effective_allowed_semesters={effective}",
+            ))
+
     # 7. semester total_weekly_hours == sum of visible course hours
     for sem in board.get("semesters", []):
         sem_id = sem.get("semester_id")

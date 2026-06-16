@@ -2672,7 +2672,14 @@
         "placement_policy": "elective",
         "recommended_semester": null,
         "name_source": "program_json",
-        "name_source_confidence": "high"
+        "name_source_confidence": "high",
+        "prerequisites": [
+          "0542-4621"
+        ],
+        "missing_prerequisites": [
+          "0542-4621"
+        ],
+        "prereq_resolution_note": "Issue 4: resolved syllabus prerequisite 'מבוא לרובוטיקה' to 0542-4621 (matched by name_he); recorded on prerequisites + missing_prerequisites so the planner enforces it."
       },
       {
         "course_id": "0581-4131",

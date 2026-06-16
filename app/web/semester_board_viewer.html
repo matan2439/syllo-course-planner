@@ -1215,6 +1215,28 @@ body.prog-modal-open .workspace {
 .badge.bdg-annual {
   background: #7c3aed; color: #fff; font-weight: 600;
 }
+/* Issue 1 — annual course rendered as ONE unified block that visually spans
+   BOTH semester columns of its year (a single band across the .year-sems row),
+   instead of a normal one-semester card or two disconnected cards. */
+.annual-band {
+  margin: 0 0 6px;
+  border: 2px dashed #7c3aed;
+  border-inline-start-width: 5px;
+  border-radius: var(--radius);
+  background: repeating-linear-gradient(135deg, var(--mand-bg, #f5f3ff), var(--mand-bg, #f5f3ff) 9px, rgba(124,58,237,.07) 9px, rgba(124,58,237,.07) 18px);
+  padding: 8px 12px;
+  direction: rtl;
+}
+.annual-band .annual-band-hdr {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: .84rem; font-weight: 700; color: var(--text);
+}
+.annual-band .annual-band-span {
+  font-size: .68rem; font-weight: 600; color: #7c3aed; margin-inline-start: auto;
+}
+.annual-band .annual-band-note {
+  font-size: .68rem; color: var(--text-muted); margin-top: 3px;
+}
 
 /* Placed cards get difficulty color on border */
 .card-placed.diff-easy      { border-inline-start-color: var(--easy-border); }
@@ -3624,6 +3646,78 @@ function repairIllegalPlacementToDraft(cid) {
   showBoardNotify(`הוצעה העברת ${c.name_he || cid} לסמסטר חוקי — בדוק את הטיוטה.`);
 }
 
+/**
+ * Issue 3 — AUTO-ENFORCE semester legality on a proposal/draft before it is
+ * presented. Any course placed OUTSIDE its getLegalSemestersLocal set is
+ * relocated to a legal semester (fitting under the cap preferred, else the
+ * least-loaded legal one). If a course has NO legal semester it is removed and
+ * reported as blocked — EXCEPT mandatory courses, which are never removed (they
+ * surface as an unplaceable-mandatory block via the caller). Annual courses
+ * legitimately occupy both spanned semesters and are skipped.
+ *
+ * So an offering-restricted course (e.g. 0542-4223, legal only in *_semester_a)
+ * can never remain in any Semester B in a presented draft.
+ *
+ * Returns { proposal, relocated:[{course_id,from,to}], blocked:[{course_id,name,legal}] }.
+ * `courses` maps course_id → { hours, is_mandatory, course_type }.
+ */
+function enforceLegalPlacementsLocal(proposal, opts) {
+  opts = opts || {};
+  const courses = opts.courses || {};
+  const knownSemIds = (proposal.semesters || []).map(s => s.semester_id);
+  const semById = {};
+  for (const sem of (proposal.semesters || [])) semById[sem.semester_id] = { ...sem, course_ids: [...(sem.course_ids || [])] };
+  const hoursOf = semId => (semById[semId]?.course_ids || []).reduce((sum, id) => sum + (courses[id]?.hours || (courseMap[id]?.weekly_hours) || 0), 0);
+  const maxHours = opts.maxHoursPerSemester || MAX_HOURS;
+
+  const relocated = [];
+  const blocked = [];
+
+  for (const fromSem of knownSemIds) {
+    for (const cid of [...(semById[fromSem].course_ids || [])]) {
+      const c = courseMap[cid];
+      if (!c) continue;
+      if (isAnnualCourse(c)) continue; // spans both semesters by design
+      if (isCourseAllowedInSemesterLocal(c, fromSem, knownSemIds)) continue; // already legal
+
+      const legalTargets = knownSemIds
+        .filter(semId => semId !== fromSem)
+        .filter(semId => isCourseAllowedInSemesterLocal(c, semId, knownSemIds));
+      const hrs = courses[cid]?.hours ?? c.weekly_hours ?? 0;
+      const fitting = legalTargets.filter(semId => hoursOf(semId) + hrs <= maxHours);
+      const target = [...(fitting.length ? fitting : legalTargets)].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+
+      // remove from the illegal semester first
+      semById[fromSem].course_ids = semById[fromSem].course_ids.filter(x => x !== cid);
+
+      if (target) {
+        semById[target].course_ids = [...(semById[target].course_ids || []), cid];
+        relocated.push({ course_id: cid, from: fromSem, to: target });
+      } else {
+        const isMand = courses[cid]?.is_mandatory || courses[cid]?.course_type === 'mandatory'
+          || c.is_mandatory || c.course_type === 'mandatory';
+        // Never drop a mandatory course; re-add it (caller's unplaceable-mandatory
+        // path will surface it as blocking). Non-mandatory → remove + report.
+        if (isMand) {
+          semById[fromSem].course_ids = [...(semById[fromSem].course_ids || []), cid];
+        }
+        blocked.push({
+          course_id: cid,
+          name: c.name_he || cid,
+          legal: getLegalSemestersLocal(c, knownSemIds).semesters,
+          mandatory: !!isMand,
+        });
+      }
+    }
+  }
+
+  return {
+    proposal: { ...proposal, semesters: knownSemIds.map(semId => semById[semId]) },
+    relocated,
+    blocked,
+  };
+}
+
 /** PART E #4 — "תקן רצף דרישות קדם": run repairPrerequisiteOrder on the draft. */
 function repairPrereqOrderToDraft() {
   const ctx = buildPlanValidationInputs();
@@ -3961,23 +4055,17 @@ function renderAiTab() {
         // validation result (not draft presence). When blocked, the AI chat is
         // the PRIMARY recovery experience: explain WHY + targeted chips.
         const v = _aiPlanLastValidation;
-        const blocked = !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length) || (v.completeness && v.completeness.incomplete)));
+        // The central gate (gateProposalActivation) is the authoritative source
+        // of applicability and already posts the ONE targeted blocked-chat
+        // recovery message when the final plan is not applicable. Defer to it.
+        const finalPlan = v && v.finalPlan;
+        const blocked = finalPlan ? !finalPlan.applicable
+          : !!(v && (v.blocked || v.overloadBlocked || (v.errors && v.errors.length) || (v.completeness && v.completeness.incomplete)));
         if (!state.proposalDraft && !blocked) {
           // Nothing to show and nothing blocked — guard against an empty message.
         } else if (blocked) {
-          // Interactive clarification: explain WHY no legal/complete schedule
-          // was built, ask targeted Hebrew questions, and offer actionable
-          // relax/clarify chips. Apply stays disabled via isPlanApplyableLocal;
-          // we never present a blocked plan as optimal/recommended.
-          const diag = diagnoseBuildBlock(v);
-          const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-          const blockedMsg = lines.join('\n');
-          // Issue 5 — do NOT duplicate an identical blocked message if the last
-          // assistant bubble already says the same thing (re-render/re-validate).
-          const lastAssistant = [..._aiChatMessages].reverse().find(m => m.role === 'assistant');
-          if (!lastAssistant || lastAssistant.text !== blockedMsg) {
-            postAssistantMessage(blockedMsg, diag.chips);
-          }
+          // The gate already posted the targeted, de-duplicated recovery
+          // message from validateFinalPlan's blockers. Nothing more to post.
         } else {
           postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
             { label: 'החל שינוי', action: 'apply-draft' },
@@ -5403,12 +5491,16 @@ function renderBoard() {
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg =>
-    `<div class="year-group">
+  document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg => {
+    // Issue 1 — annual courses for this year render once as a unified spanning
+    // band across both semester columns (not as per-column cards).
+    const annualBands = annualCoursesForYear(yg.sems).map(annualBandHtml).join('');
+    return `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
+      ${annualBands}
       <div class="year-sems">${yg.sems.map(s => semColHtml(s, draftDiff)).join('')}</div>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 
   if (draftDiff) {
     document.getElementById('board-draft-apply').addEventListener('click', applyProposalDraft);
@@ -5692,6 +5784,49 @@ function renderProgramProgress(prog) {
   </div>`;
 }
 
+/**
+ * Issue 1 — collect the annual (year-long) courses that span BOTH semesters of
+ * a given year-group (e.g. year_3_semester_a + year_3_semester_b). An annual
+ * course is reported once even though its id is placed in both semester lists.
+ */
+function annualCoursesForYear(sems) {
+  const semIds = sems.map(s => s.id);
+  const seen = new Set();
+  const out = [];
+  for (const sem of sems) {
+    for (const id of boardSemesterIds(sem.id)) {
+      const c = courseMap[id];
+      if (!c || !isAnnualCourse(c) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+/**
+ * Issue 1 — render an annual course as ONE unified block that visually spans
+ * BOTH semester columns of its year. Carries data-annual-span so the DOM
+ * exposes a single spanning element (not two independent cards). Non-draggable
+ * (no data-zone / draggable), and removal is blocked elsewhere (removeCourseFromBoard).
+ */
+function annualBandHtml(c) {
+  const spans = Array.isArray(c.spans_semesters) && c.spans_semesters.length
+    ? c.spans_semesters : ['year_3_semester_a', 'year_3_semester_b'];
+  const spanLabels = spans.map(s => SEM_HE[s] || s).join(' + ');
+  const note = c.annual_note || 'קורס שנתי — פעיל בסמסטר א׳ ובסמסטר ב׳; נספר פעם אחת לשעות התואר, אך מוסיף עומס שבועי בשני הסמסטרים.';
+  const hrs = c.weekly_hours != null ? `${c.weekly_hours} ש׳׳ש (כל סמסטר)` : '';
+  return `<div class="annual-band" data-annual-span="${esc(spans.join(','))}" data-course="${esc(c.course_id)}" data-locked="1">
+    <div class="annual-band-hdr">
+      <span class="badge bdg-annual">שנתי (א׳+ב׳)</span>
+      <span class="annual-band-title" onclick="showCourseDetail('${esc(c.course_id)}')" style="cursor:pointer">${esc(c.name_he || c.course_id)}</span>
+      ${hrs ? `<span style="font-size:.7rem;color:var(--text-muted)">⏱ ${esc(hrs)}</span>` : ''}
+      <span class="annual-band-span">פעיל ב: ${esc(spanLabels)}</span>
+    </div>
+    <div class="annual-band-note">${esc(note)}</div>
+  </div>`;
+}
+
 function semColHtml(sem, draftDiff) {
   const ids     = boardSemesterIds(sem.id);
   const courses = ids.map(id => courseMap[id]).filter(Boolean);
@@ -5723,7 +5858,11 @@ function semColHtml(sem, draftDiff) {
   const hrsLbl = unknownCt > 0 ? `${knownHrs} שעות ידועות` : `${knownHrs} ש׳׳ש`;
   const unkNote = unknownCt > 0
     ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
-  let cards = ids.map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
+  // Issue 1 — annual courses are NOT rendered as per-column cards; they render
+  // once as a unified spanning band above the two semester columns (see
+  // annualBandHtmlForYear / renderBoard). Exclude them from the column list.
+  let cards = ids.filter(id => !isAnnualCourse(courseMap[id]))
+    .map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
   // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
   if (draftDiff) {
     const removedHere = (state.semesters[sem.id] || []).filter(cid => draftDiff.removed.has(cid));
@@ -6868,6 +7007,49 @@ function _userSemesterIndex(cid, courseSemIdx) {
   return cid in courseSemIdx ? courseSemIdx[cid] : -1;
 }
 
+/**
+ * Issue 4 — the UNION of a course's hard prerequisites and audit-resolved
+ * missing_prerequisites. The validator/planner must enforce BOTH: some courses
+ * (e.g. 0542-4624 "מעבדה ברובוטיקה ובקרה") carry their prereq only on
+ * missing_prerequisites (resolved from the syllabus), not on `prerequisites`.
+ */
+function prereqIdsOf(c) {
+  if (!c) return [];
+  const union = new Set();
+  for (const p of (Array.isArray(c.prerequisites) ? c.prerequisites : [])) if (p) union.add(p);
+  for (const p of (Array.isArray(c.missing_prerequisites) ? c.missing_prerequisites : [])) if (p) union.add(p);
+  return [...union];
+}
+
+/**
+ * Issue 4 — strict prerequisite-timing rule for placing `courseId` in the
+ * semester at index `targetIdx`, given a map course_id → semester index for the
+ * rest of the plan. A prereq is SATISFIED only if it is:
+ *   (1) completed, OR
+ *   (2) currently_taking AND the dependent course is in a strictly LATER sem, OR
+ *   (3) scheduled in a strictly EARLIER semester in the same plan.
+ * Same-semester does NOT satisfy. Returns { ok, unsatisfied:[ids] }.
+ */
+function prereqsSatisfiedForPlacementLocal(courseId, targetIdx, courseSemIdx, completedIds) {
+  const completed = completedIds || new Set();
+  const unsatisfied = [];
+  for (const prereq of prereqIdsOf(courseMap[courseId])) {
+    const status = userCourseStatuses[prereq]?.status || 'not_taken';
+    if (status === 'completed' || completed.has(prereq)) continue;
+    if (status === 'currently_taking') {
+      const idx = _userSemesterIndex(prereq, courseSemIdx);
+      if (idx === -1 || targetIdx > idx) continue; // unknown timing → informational; later → ok
+      unsatisfied.push(prereq);
+      continue;
+    }
+    // planned / not_taken → must be scheduled strictly earlier in this plan
+    const idx = (prereq in courseSemIdx) ? courseSemIdx[prereq] : null;
+    if (idx != null && idx < targetIdx) continue;
+    unsatisfied.push(prereq);
+  }
+  return { ok: unsatisfied.length === 0, unsatisfied };
+}
+
 function validatePlacement(courseId, targetSemId) {
   const semIds    = SEMESTERS.map(s => s.id);
   const targetIdx = semIds.indexOf(targetSemId);
@@ -6885,7 +7067,8 @@ function validatePlacement(courseId, targetSemId) {
     }
   }
 
-  const prereqs = courseMap[courseId]?.prerequisites || [];
+  // Issue 4 — enforce the UNION of prerequisites + missing_prerequisites.
+  const prereqs = prereqIdsOf(courseMap[courseId]);
   const missing = [], too_late = [], same_sem = [], ok_completed = [], ok_earlier = [], ok_current = [], ok_planned = [],
         blocked_current_same = [], blocked_planned_later = [];
 
@@ -7159,7 +7342,15 @@ function evaluateDraftProposal() {
   const draftState = { semesters: Object.fromEntries(proposal.semesters.map(s => [s.semester_id, s.course_ids || []])) };
   const degreeProgress = computeDegreeProgress({}, state, draftState);
 
-  return { proposal, errors, warnings, completeness, degreeProgress };
+  // SINGLE CHOKEPOINT — refresh the authoritative final-plan validation for the
+  // (possibly hand-edited) draft so Apply stays gated on the central validator.
+  let finalPlan = null;
+  if (typeof validateFinalPlan === 'function') {
+    finalPlan = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
+    if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = finalPlan;
+  }
+
+  return { proposal, errors, warnings, completeness, degreeProgress, finalPlan };
 }
 
 /** PART E/B — diff the active draft against the committed board for board-overlay markers. */
@@ -7208,6 +7399,328 @@ function computeDraftDiff() {
   return { added, moved, removed, movedFrom, replaced, replacedTo };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * CENTRAL AUTHORITATIVE FINAL-PLAN VALIDATOR
+ * ───────────────────────────────────────────────────────────────────────────
+ * The single, un-bypassable gate that EVERY proposal-generation path funnels
+ * through before a draft is presented as applicable. It inspects the FINAL
+ * proposed board (not candidate selection) and consolidates the nine scattered
+ * checks (legality, prereqs, annual, hours, categories, mandatory, eligibility,
+ * overload, difficulty) into one structured result:
+ *
+ *   { applicable, blockers:[{cause,severity,message_he,course_ids?,semester_id?,detail?}],
+ *     warnings:[...], summary }
+ *
+ * Each blocker carries a DISTINCT `cause` key so recovery (diagnoseBuildBlock /
+ * cause→chip mapping) can target it. Server parity lives in
+ * api/ai/plan_validation.ts (validatePlanProposal); this client function is the
+ * authoritative UI gate. Pure — no DOM, no state mutation. Dependencies are
+ * resolved from ctx.helpers first (so it can be unit-tested in isolation), then
+ * fall back to the module-level helpers.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function validateFinalPlan(proposal, ctx) {
+  ctx = ctx || {};
+  const H = ctx.helpers || {};
+  const courses = ctx.courses || {};
+  const prefs = ctx.preferences || ctx.prefs || {};
+  const SEMS = (typeof SEMESTERS !== 'undefined' ? SEMESTERS : (ctx.SEMESTERS || []));
+  const semIds = SEMS.map(s => s.id);
+  const semLabel = id => (SEMS.find(s => s.id === id)?.label) || id;
+
+  // Helper resolution (injected → global → noop), keeps the function grabbable.
+  const _getLegalSemesters = H.getLegalSemestersLocal
+    || (typeof getLegalSemestersLocal === 'function' ? getLegalSemestersLocal : null);
+  const _prereqIdsOf = H.prereqIdsOf
+    || (typeof prereqIdsOf === 'function' ? prereqIdsOf : (c => {
+      const u = new Set();
+      for (const p of (Array.isArray(c?.prerequisites) ? c.prerequisites : [])) if (p) u.add(p);
+      for (const p of (Array.isArray(c?.missing_prerequisites) ? c.missing_prerequisites : [])) if (p) u.add(p);
+      return [...u];
+    }));
+  const _isAnnual = H.isAnnualCourse
+    || (typeof isAnnualCourse === 'function' ? isAnnualCourse : (c => !!(c && (c.is_annual === true || c.placement_policy === 'annual'))));
+  const _computeDegreeProgress = H.computeDegreeProgress
+    || (typeof computeDegreeProgress === 'function' ? computeDegreeProgress : null);
+  const _isEligible = H.isCourseEligibleLocal
+    || (typeof isCourseEligibleLocal === 'function' ? isCourseEligibleLocal : (() => true));
+  const _estimateDifficulty = H.estimateCourseDifficultyLocal
+    || (typeof estimateCourseDifficultyLocal === 'function' ? estimateCourseDifficultyLocal : (() => null));
+  const _getSemesterLoad = H.getSemesterLoadLocal
+    || (typeof getSemesterLoadLocal === 'function' ? getSemesterLoadLocal : (sem => (sem.course_ids || []).reduce((s, cid) => s + (courses[cid]?.hours || 0), 0)));
+  const _userStatuses = ctx.userCourseStatuses
+    || (typeof userCourseStatuses !== 'undefined' ? userCourseStatuses : {});
+  const HARD_CAP = (ctx.hardLoadCap != null) ? ctx.hardLoadCap
+    : (typeof HARD_LOAD_CAP !== 'undefined' ? HARD_LOAD_CAP : 26);
+  const ABS_MAX = (ctx.absoluteMax != null) ? ctx.absoluteMax
+    : (typeof ABSOLUTE_MAX_REASONABLE !== 'undefined' ? ABSOLUTE_MAX_REASONABLE : 30);
+
+  const blockers = [];
+  const warnings = [];
+  const add = (cause, message_he, extra) => blockers.push(Object.assign({ cause, severity: 'error', message_he }, extra || {}));
+  const warn = (cause, message_he, extra) => warnings.push(Object.assign({ cause, severity: 'warning', message_he }, extra || {}));
+
+  const semesters = (proposal && proposal.semesters) || [];
+  // course_id → semester index in the FINAL plan (for prereq timing + dedup).
+  const courseSemIdx = {};
+  const placedIds = new Set();
+  for (const sem of semesters) {
+    const idx = semIds.indexOf(sem.semester_id);
+    for (const cid of (sem.course_ids || [])) {
+      if (!(cid in courseSemIdx) || idx < courseSemIdx[cid]) courseSemIdx[cid] = idx;
+      placedIds.add(cid);
+    }
+  }
+  const completedIds = ctx.completedCourseIds instanceof Set ? ctx.completedCourseIds
+    : new Set(ctx.completedCourseIds || []);
+
+  const nameOf = cid => courses[cid]?.name_he || cid;
+
+  // ── Check 1: illegal_semester / missing_offering_data ────────────────────
+  for (const sem of semesters) {
+    if (!sem.semester_id) continue;
+    for (const cid of (sem.course_ids || [])) {
+      const c = courses[cid];
+      if (!c) continue;
+      // For a *presented* proposal we require confident, effective offering data.
+      const eff = (c.effective_allowed_semesters && c.effective_allowed_semesters.length)
+        ? c.effective_allowed_semesters : null;
+      if (!eff) {
+        add('missing_offering_data',
+          `אין נתוני היצע סמסטר ודאיים ל${nameOf(cid)} — לא ניתן להציג שיבוץ חוקי.`,
+          { course_ids: [cid], semester_id: sem.semester_id });
+        continue;
+      }
+      const legal = _getLegalSemesters ? _getLegalSemesters(c, semIds).semesters : eff;
+      if (legal.length && !legal.includes(sem.semester_id)) {
+        add('illegal_semester',
+          `${nameOf(cid)} מותר רק בסמסטר ${legal.map(semLabel).join(', ')} — לא ב${semLabel(sem.semester_id)}.`,
+          { course_ids: [cid], semester_id: sem.semester_id, detail: { allowed: legal } });
+      }
+    }
+  }
+
+  // ── Check 2: prerequisite (union of prerequisites ∪ missing_prerequisites) ─
+  for (const cid of placedIds) {
+    const c = courses[cid];
+    if (!c) continue;
+    const targetIdx = courseSemIdx[cid];
+    const unsatisfied = [];
+    for (const prereq of _prereqIdsOf(c)) {
+      const status = (_userStatuses[prereq]?.status) || 'not_taken';
+      if (status === 'completed' || completedIds.has(prereq)) continue;
+      const idx = (prereq in courseSemIdx) ? courseSemIdx[prereq] : null;
+      if (status === 'currently_taking') {
+        // currently_taking satisfies only if the dependent is strictly later.
+        if (idx == null || targetIdx > idx) continue;
+        unsatisfied.push(prereq);
+        continue;
+      }
+      // planned / not_taken → must be scheduled strictly EARLIER in this plan.
+      if (idx != null && idx < targetIdx) continue;
+      unsatisfied.push(prereq);
+    }
+    if (unsatisfied.length) {
+      add('prerequisite',
+        `ל${nameOf(cid)} חסרות דרישות קדם בתכנון: ${unsatisfied.map(nameOf).join(', ')} (חייבות להופיע בסמסטר מוקדם יותר).`,
+        { course_ids: [cid, ...unsatisfied], semester_id: semIds[targetIdx], detail: { unsatisfied } });
+    }
+  }
+
+  // ── Check 3: annual (spans present, counted once, load in each active sem) ─
+  for (const cid of placedIds) {
+    const c = courses[cid];
+    if (!c || !_isAnnual(c)) continue;
+    const spans = (c.spans_semesters && c.spans_semesters.length) ? c.spans_semesters
+      : ((c.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : []);
+    if (!spans.length) continue;
+    const presentSpans = spans.filter(sid => (courseSemIdx[cid] != null) &&
+      semesters.some(s => s.semester_id === sid && (s.course_ids || []).includes(cid)));
+    if (presentSpans.length < spans.length) {
+      const missing = spans.filter(sid => !presentSpans.includes(sid));
+      add('annual',
+        `${nameOf(cid)} הוא קורס שנתי שחייב להופיע בכל הסמסטרים: ${spans.map(semLabel).join(' + ')}. חסר: ${missing.map(semLabel).join(', ')}.`,
+        { course_ids: [cid], detail: { spans, present: presentSpans, missing } });
+    }
+  }
+
+  // ── Check 4: degree_completion (total_after_proposal must reach required) ──
+  if (_computeDegreeProgress) {
+    try {
+      const draftState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids || []])) };
+      const dp = _computeDegreeProgress({}, ctx.boardState || (typeof state !== 'undefined' ? state : {}), draftState);
+      const required = dp.required || 185;
+      const total = dp.total_after_proposal != null ? dp.total_after_proposal : dp.total_after;
+      if (total != null && total < required) {
+        const missing = Math.round((required - total) * 10) / 10;
+        add('degree_completion',
+          `חסרות ${missing} ש״ש להשלמת התואר (${total} מתוך ${required}).`,
+          { detail: { total, required, missing } });
+      }
+    } catch (_) { /* progress unavailable — skip silently */ }
+  }
+
+  // ── Check 5: category_requirements (each required category satisfied) ──────
+  for (const cat of (ctx.categoryRequirements || [])) {
+    const required = Number(cat.required) || 0;
+    if (required <= 0) continue;
+    const pool = new Set(cat.availableElectiveIds || cat.course_ids || []);
+    let satisfied = 0;
+    for (const cid of placedIds) if (pool.has(cid)) satisfied++;
+    for (const cid of completedIds) if (pool.has(cid)) satisfied++;
+    if (satisfied < required) {
+      add('category_requirements',
+        `דרישת הקטגוריה "${cat.name}" לא הושלמה — נדרשים ${required}, שובצו ${satisfied}.`,
+        { detail: { category: cat.name, required, placed: satisfied } });
+    }
+  }
+
+  // ── Check 6: mandatory (all required mandatory courses present/completed) ──
+  const missingMandatory = (ctx.requiredMandatoryCourseIds || [])
+    .filter(cid => !placedIds.has(cid) && !completedIds.has(cid)
+      && (_userStatuses[cid]?.status !== 'completed') && (_userStatuses[cid]?.status !== 'currently_taking'));
+  if (missingMandatory.length) {
+    add('mandatory',
+      `חסרים קורסי חובה: ${missingMandatory.map(nameOf).join(', ')}.`,
+      { course_ids: missingMandatory, detail: { missing: missingMandatory } });
+  }
+
+  // ── Check 7: eligibility (no ineligible/honors/excluded course present) ────
+  for (const cid of placedIds) {
+    const c = courses[cid];
+    if (!c) continue;
+    if (!_isEligible(c, prefs)) {
+      add('eligibility',
+        `${nameOf(cid)} אינו זמין לפרופיל הנוכחי (קורס מצטיינים/מוחרג) ולכן אינו יכול להופיע בתוכנית.`,
+        { course_ids: [cid] });
+    }
+  }
+
+  // ── Check 8: overload (no semester > HARD_LOAD_CAP unless accepted) ────────
+  const overloadAccepted = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
+  const userMax = ctx.maxHoursPerSemester;
+  for (const sem of semesters) {
+    const h = _getSemesterLoad(sem, courses);
+    if (h > ABS_MAX) {
+      add('overload',
+        `ב${semLabel(sem.semester_id)} יש ${h} ש״ש — חריגה לא סבירה מעל ${ABS_MAX} ש״ש.`,
+        { semester_id: sem.semester_id, detail: { hours: h, cap: ABS_MAX } });
+    } else if (h > HARD_CAP && !overloadAccepted) {
+      add('overload',
+        `ב${semLabel(sem.semester_id)} יש ${h} ש״ש — חריגה מהמגבלה הקשיחה (${HARD_CAP} ש״ש). נדרש אישור חריגה מפורש.`,
+        { semester_id: sem.semester_id, detail: { hours: h, cap: HARD_CAP } });
+    } else if (userMax != null && h > userMax && h <= HARD_CAP && !overloadAccepted) {
+      warn('overload',
+        `ב${semLabel(sem.semester_id)} יש ${h} ש״ש — מעל מגבלת המקסימום שביקשת (${userMax} ש״ש).`,
+        { semester_id: sem.semester_id, detail: { hours: h, cap: userMax } });
+    }
+  }
+
+  // ── Check 9: difficulty_sanity (warning) — core/mandatory w/o explicit data ─
+  for (const cid of placedIds) {
+    const c = courses[cid];
+    if (!c) continue;
+    const ctype = (c.course_type || '').toLowerCase();
+    const isCore = ctype === 'mandatory' || ctype === 'core' || c.is_mandatory === true;
+    if (!isCore) continue;
+    const explicit = c.difficulty_score != null || c.workload_score != null;
+    if (explicit) continue;
+    const est = _estimateDifficulty(c);
+    if (est == null) {
+      warn('difficulty_sanity',
+        `אין נתוני קושי ל${nameOf(cid)} — הקושי לא ידוע (לא ניתן להעריך).`,
+        { course_ids: [cid], detail: { difficulty: null } });
+    } else {
+      warn('difficulty_sanity',
+        `הקושי של ${nameOf(cid)} מוערך (${est}/5) בהיעדר נתון מפורש — אינו "קל" אוטומטית.`,
+        { course_ids: [cid], detail: { difficulty: est, estimated: true } });
+    }
+  }
+
+  const applicable = blockers.length === 0;
+  const summary = applicable
+    ? (warnings.length ? `התוכנית חוקית — נותרו ${warnings.length} אזהרות.` : 'התוכנית חוקית — ניתן להחיל.')
+    : `לא ניתן להחיל — ${blockers.length} בעיות חוסמות.`;
+
+  return { applicable, blockers, warnings, summary };
+}
+
+/**
+ * Map validateFinalPlan blockers → a diagnoseBuildBlock-shaped object so the
+ * existing blocked-chat / cause→chip flow can present targeted recovery.
+ * Extends the Issue-7 cause→chip mapping to cover all nine causes.
+ */
+function blockersToValidationShape(result) {
+  const blockers = (result && result.blockers) || [];
+  const errors = blockers.map(b => b.message_he);
+  // overloadBlocked drives diagnoseBuildBlock's overload branch.
+  const overloadBlocked = blockers.some(b => b.cause === 'overload');
+  // Synthesize completeness.reasons so the prereq/category/mandatory/hours
+  // branches of diagnoseBuildBlock light up from the real causes.
+  const reasons = blockers.filter(b => b.cause !== 'overload').map(b => b.message_he);
+  return { errors, completeness: { incomplete: !result.applicable, reasons }, overloadBlocked };
+}
+
+/**
+ * Build the validateFinalPlan ctx from the live AI-plan globals. Reused by the
+ * activation gate AND by isPlanApplyableLocal / applyProposalDraft so the gate,
+ * the Apply button and the apply action all agree.
+ */
+function buildFinalPlanValidationCtx() {
+  const ctx = _aiPlanLastCtx || {};
+  return {
+    courses: ctx.courses || {},
+    completedCourseIds: ctx.completedCourseIds,
+    categoryRequirements: ctx.categoryRequirements,
+    requiredMandatoryCourseIds: ctx.requiredMandatoryCourseIds,
+    preferences: _aiPlanLastPreferences || {},
+    maxHoursPerSemester: ctx.maxHoursPerSemester,
+    overloadAccepted: ctx.overloadAccepted,
+    overloadConfirmedAt: ctx.overloadConfirmedAt,
+    boardState: state,
+  };
+}
+
+/** Last blocked-chat message text, used to suppress duplicate identical posts. */
+let _lastFinalPlanBlockedMsg = null;
+
+/**
+ * THE SINGLE CHOKEPOINT. Every generation path reaches a presented draft only
+ * through here. Runs validateFinalPlan on the FINAL board:
+ *  - applicable  → activate the editable draft overlay (normal flow).
+ *  - blocked     → do NOT present an applicable draft; set a blocked state and
+ *                  post ONE targeted AI-chat recovery message (diagnoseBuildBlock
+ *                  driven by the real blockers), Apply stays disabled.
+ * Returns the validation result.
+ */
+function gateProposalActivation(proposal) {
+  const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
+  // Keep the live validation in sync so isPlanApplyableLocal / preview agree.
+  if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = result;
+
+  if (result.applicable) {
+    _lastFinalPlanBlockedMsg = null;
+    activateProposalDraft(proposal);
+    return result;
+  }
+
+  // Blocked: do not render the invalid proposal as the main applicable UX.
+  state.proposalDraft = null;
+  if (_aiPlanLastValidation) _aiPlanLastValidation.blocked = true;
+  renderAll();
+
+  // ONE targeted recovery message via the existing blocked-chat flow.
+  try {
+    const diag = diagnoseBuildBlock(blockersToValidationShape(result), { preferences: _aiPlanLastPreferences });
+    const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+    const msg = lines.join('\n');
+    if (msg && msg !== _lastFinalPlanBlockedMsg) {
+      _lastFinalPlanBlockedMsg = msg;
+      postAssistantMessage(msg, diag.chips);
+    }
+  } catch (_) { /* diagnosis unavailable — blocked state already set */ }
+  return result;
+}
+
 /** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */
 function activateProposalDraft(proposal) {
   const semesters = proposalSemestersToMap(proposal.semesters);
@@ -7230,6 +7743,20 @@ function rejectProposalDraft() {
 function applyProposalDraft() {
   const draft = state.proposalDraft;
   if (!draft) return;
+  // Defense in depth — re-run the central validator on the CURRENT draft board
+  // (which may have been hand-edited since generation) and refuse to apply when
+  // it is not applicable. The single gate cannot be bypassed by Apply.
+  if (typeof validateFinalPlan === 'function' && _aiPlanLastCtx) {
+    const proposal = { semesters: mapToProposalSemesters(draft.semesters) };
+    const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
+    if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = result;
+    if (!result.applicable) {
+      const top = (result.blockers || []).slice(0, 3).map(b => b.message_he).join('\n');
+      postAssistantMessage(`לא ניתן להחיל את הטיוטה — יש בעיות חוסמות:\n${top}`);
+      renderAll();
+      return;
+    }
+  }
   const prevPlaced = new Set(Object.values(state.semesters).flat());
   for (const sem of SEMESTERS) state.semesters[sem.id] = [...(draft.semesters[sem.id] || [])];
   const newPlaced = new Set(Object.values(state.semesters).flat());
@@ -9067,7 +9594,9 @@ function estimateCourseDifficultyLocal(course) {
   const hrs = course.weekly_hours ?? course.semester_hours ?? course.hours ?? null;
   if (hrs != null) {
     signals++;
-    score += Math.min(2.5, hrs / 6); // ~15h → 2.5
+    // Issue 2 — weekly_hours is a weak signal: a 3h core theory course is not
+    // "easy". Reduced cap/weight so hours no longer dominate the estimate.
+    score += Math.min(1.3, hrs / 9); // ~12h → ~1.3
   }
   const text = [
     course.syllabus_summary_he || '',
@@ -9075,11 +9604,27 @@ function estimateCourseDifficultyLocal(course) {
   ].join(' ');
   if (text.trim()) {
     signals++;
-    score += Math.min(1, text.length / 800); // longer syllabus → harder
+    score += Math.min(0.8, text.length / 1000); // longer syllabus → harder (reduced weight)
     if (/מעבדה|lab/i.test(text)) score += 0.5;
     if (/פרויקט גמר|פרוייקט גמר/.test(text)) score += 0.8;
     else if (/פרויקט|פרוייקט|project/i.test(text)) score += 0.5;
     if (/מבחן|בחינה|exam/i.test(text)) score += 0.3;
+  }
+  // Issue 2 — DOMAIN/TITLE signal: core theory/analysis engineering domains are
+  // genuinely hard and must not read as "קל" just because hours/syllabus are
+  // thin. General keyword list (not a single hardcoded course), matched against
+  // name_he + syllabus text. A match adds a meaningful signal AND raises a floor.
+  const domainText = [
+    course.name_he || '', course.name_en || '',
+    course.syllabus_summary_he || '',
+    Array.isArray(course.syllabus_topics_he) ? course.syllabus_topics_he.join(' ') : (course.syllabus_topics_he || ''),
+  ].join(' ');
+  const CORE_DOMAIN_RE = /מעבר ?חו?ם|מעבר חום ומסה|heat transfer|תרמודינמיקה|thermodynamic|מכניקת זורמים|מכניקת הזורמים|זרימה|fluid mechanic|מכניקת מוצקים|חוזק חומרים|solid mechanic|strength of material|תנודות|רעידות|vibration|בקרה(?! איכות)|control (theory|systems)|אלמנטים סופיים|finite element|נומרי|חישובית|numerical|דינמיקה|dynamics|משוואות דיפרנציאליות|differential equation/i;
+  let domainFloor = 0;
+  if (CORE_DOMAIN_RE.test(domainText)) {
+    signals++;
+    score += 1.5;          // meaningful additive signal for core theory domains
+    domainFloor = 2.5;     // a hard core domain course is at least "בינוני"
   }
   const intensity = course.assessment_intensity;
   if (intensity != null) {
@@ -9090,9 +9635,19 @@ function estimateCourseDifficultyLocal(course) {
     : Array.isArray(course.prerequisite_course_ids) ? course.prerequisite_course_ids : null;
   if (prereqs != null) {
     signals++;
-    score += Math.min(1, prereqs.length * 0.3);
+    // Issue 2 — prerequisite depth weighted more heavily (deep chains are hard).
+    score += Math.min(1.5, prereqs.length * 0.4);
+  }
+  // Issue 2 — modest floor for mandatory/core courses so a missing syllabus
+  // can't make a required course read as trivially "קל".
+  const ctype = (course.course_type || '').toLowerCase();
+  let typeFloor = 0;
+  if (ctype === 'mandatory' || ctype === 'core' || course.is_mandatory === true) {
+    signals++;
+    typeFloor = 1.8;
   }
   if (!signals) return null;
+  score = Math.max(score, domainFloor, typeFloor);
   return Math.max(0, Math.min(5, Number(score.toFixed(2))));
 }
 
@@ -9978,8 +10533,26 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
 
       const info = opts.courses[candidate.course_id] || {};
       const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
-      const legalSems = sems.filter(s => allowed.includes(s.semester_id));
+      let legalSems = sems.filter(s => allowed.includes(s.semester_id));
       if (!legalSems.length) continue;
+
+      // Issue 4 — STRICT prerequisite gate: only place the candidate in a
+      // semester where the UNION of its prerequisites + missing_prerequisites is
+      // satisfied (completed / strictly-earlier in this plan). If no legal
+      // semester satisfies the prereqs, the candidate is NOT proposed.
+      const semIdxByCourse = {};
+      sems.forEach((s, i) => { for (const cid of s.course_ids) if (cid !== candidate.course_id) semIdxByCourse[cid] = i; });
+      const candPrereqs = prereqIdsOf(courseMap[candidate.course_id]);
+      if (candPrereqs.length) {
+        legalSems = legalSems.filter(s => {
+          const tIdx = sems.findIndex(x => x.semester_id === s.semester_id);
+          return prereqsSatisfiedForPlacementLocal(candidate.course_id, tIdx, semIdxByCourse, opts.completedCourseIds).ok;
+        });
+        if (!legalSems.length) {
+          extraWarnings.push(`הקורס ${candidate.name_he || candidate.course_id} לא שובץ כי דרישות הקדם שלו (${candPrereqs.map(p => courseLabelLocal(p)).join(', ')}) אינן מתקיימות מוקדם יותר בתוכנית.`);
+          continue;
+        }
+      }
 
       const fitting = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max);
       const relevance = _scoreCareerRelevanceLocal(candidate, opts.userInterestText);
@@ -10634,8 +11207,14 @@ function getMissingRequirementCardsLocal(analysis, placedIds) {
     .map(({ category_id, name, missing, candidates }) => ({ category_id, name, missing, candidates }));
 }
 
-/** Mirrors api/ai/completion_analysis.ts (isPlanApplyable). */
+/** Mirrors api/ai/completion_analysis.ts (isPlanApplyable). Delegates to the
+ * authoritative central validateFinalPlan result when one is available so the
+ * Apply button is enabled ONLY when the final plan is applicable. Falls back to
+ * the legacy errors/completeness signal when no finalPlan result exists. */
 function isPlanApplyableLocal(validationErrors, completeness) {
+  const finalPlan = (typeof _aiPlanLastValidation !== 'undefined' && _aiPlanLastValidation)
+    ? _aiPlanLastValidation.finalPlan : null;
+  if (finalPlan) return !!finalPlan.applicable;
   return validationErrors.length === 0 && !completeness?.incomplete;
 }
 
@@ -10702,8 +11281,12 @@ function diagnoseBuildBlock(validation, opts) {
   const RE_PREREQ = /קדם|לפני|אינה משובצת|באותו סמסטר/;
   const RE_LEGALITY = /מותר רק ב|אסור|חוקי|מוצע רק|זמין רק/;
   const RE_NO_CANDIDATE = /אין קורס מועמד זמין בקטגוריה/;
-  const RE_CATEGORY = /קטגוריית|מקטגוריית|קורס אחד מקורסי הקטגוריה|שער רוח|שער\/רוח|נק"ז שער/;
+  const RE_CATEGORY = /קטגוריית|מקטגוריית|דרישת הקטגוריה|קורס אחד מקורסי הקטגוריה|שער רוח|שער\/רוח|נק"ז שער/;
   const RE_HOURS = /חסרות כ-?\d*\s*ש"ש|לא נמצאו קורסים חוקיים נוספים|להשלמת התואר|להשלמת השעות/;
+  // Extended cause detection for the central validateFinalPlan blockers.
+  const RE_ANNUAL = /קורס שנתי/;
+  const RE_ELIGIBILITY = /אינו זמין לפרופיל|מצטיינים|מוחרג/;
+  const RE_MISSING_OFFERING = /אין נתוני היצע סמסטר/;
 
   let category = 'unknown';
   let explanation_he = '';
@@ -10716,6 +11299,9 @@ function diagnoseBuildBlock(validation, opts) {
   const noCandidateHit = all.some(s => RE_NO_CANDIDATE.test(s));
   const categoryHit = all.some(s => RE_CATEGORY.test(s));
   const hoursHit = all.some(s => RE_HOURS.test(s));
+  const annualHit = all.some(s => RE_ANNUAL.test(s));
+  const eligibilityHit = all.some(s => RE_ELIGIBILITY.test(s));
+  const missingOfferingHit = all.some(s => RE_MISSING_OFFERING.test(s));
 
   // Issue 7 — most-specific causes first, filled with REAL data:
   // 1) missing mandatory course (name it), 2) insufficient degree hours
@@ -10743,6 +11329,36 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'השלם שעות חסרות', action: 'fill-remaining-hours' });
     chips.push({ label: 'הוסף קורסי בחירה קלים', action: 'prefer-low-load' });
     if (gradeTarget) chips.push({ label: 'אפשר קורסים עם קושי גבוה יותר', action: 'allow-harder-courses' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+  } else if (eligibilityHit) {
+    // validateFinalPlan: an ineligible (honors/מצטיינים/excluded) course is present.
+    category = 'eligibility';
+    const eligReason = all.find(s => RE_ELIGIBILITY.test(s)) || '';
+    explanation_he = eligReason
+      ? `לא ניתן להציג את התוכנית: ${eligReason}`
+      : 'התוכנית כוללת קורס שאינו זמין לפרופיל הנוכחי (קורס מצטיינים/מוחרג).';
+    questions.push('להסיר את הקורס הלא-זמין ולהשלים בקורס חלופי חוקי?');
+    chips.push({ label: 'הסר קורס לא זמין והשלם חלופה', action: 'rebuild-relaxed' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+  } else if (annualHit) {
+    // validateFinalPlan: an is_annual course is half-placed / missing a span.
+    category = 'annual';
+    const annualReason = all.find(s => RE_ANNUAL.test(s)) || '';
+    explanation_he = annualReason
+      ? `לא ניתן להציג את התוכנית: ${annualReason}`
+      : 'קורס שנתי משובץ באופן חלקי — חייב להופיע בכל הסמסטרים שהוא נמשך בהם.';
+    questions.push('להשלים את הקורס השנתי בכל הסמסטרים שהוא נמשך בהם?');
+    chips.push({ label: 'השלם את הקורס השנתי בשני הסמסטרים', action: 'rebuild-relaxed' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+  } else if (missingOfferingHit) {
+    // validateFinalPlan: a presented course lacks confident offering data.
+    category = 'missing_offering_data';
+    const offReason = all.find(s => RE_MISSING_OFFERING.test(s)) || '';
+    explanation_he = offReason
+      ? `לא ניתן להציג שיבוץ חוקי: ${offReason}`
+      : 'לקורס בתוכנית חסרים נתוני היצע סמסטר ודאיים, ולכן לא ניתן להציג שיבוץ חוקי.';
+    questions.push('להחליף את הקורס בקורס עם נתוני היצע ודאיים?');
+    chips.push({ label: 'בנה מחדש עם קורסים בעלי היצע ודאי', action: 'rebuild-relaxed' });
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (overloadHit) {
     category = 'overload';
@@ -11337,6 +11953,35 @@ async function requestPlanProposal(prefs, actionType) {
       eligibleProposal = refill.proposal;
     }
 
+    // Issue 3 — AUTO-ENFORCE semester legality as the LAST structural step:
+    // any course (e.g. 0542-4223) the LLM/repairs left outside its legal
+    // semester set is relocated to a legal semester, or — if no legal semester
+    // exists — removed (non-mandatory) and surfaced in the blocked-chat flow.
+    // This guarantees no illegal placement is ever PRESENTED, not merely
+    // offered a manual "תקן שיבוץ" button.
+    {
+      const { proposal: legalProposal, relocated: legalRelocated, blocked: legalBlocked } =
+        enforceLegalPlacementsLocal(eligibleProposal, {
+          courses: ctx.courses,
+          maxHoursPerSemester: ctx.maxHoursPerSemester,
+        });
+      eligibleProposal = legalProposal;
+      if (legalRelocated.length) {
+        eligibleProposal.warnings_he = [
+          ...(eligibleProposal.warnings_he || []),
+          ...legalRelocated.map(r => `${courseLabelLocal(r.course_id)} הועבר לסמסטר חוקי (${SEM_HE[r.to] || r.to}) — היה משובץ בסמסטר לא חוקי.`),
+        ];
+      }
+      for (const b of legalBlocked) {
+        const legalLabels = (b.legal || []).map(s => SEM_HE[s] || s).join(', ') || 'אין סמסטר חוקי';
+        const msg = b.mandatory
+          ? `קורס חובה ${b.name} אינו ניתן לשיבוץ חוקי (סמסטרים מותרים: ${legalLabels}).`
+          : `${b.name} הוסר — אין סמסטר חוקי לשיבוצו (סמסטרים מותרים: ${legalLabels}).`;
+        if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
+        completeness.incomplete = true;
+      }
+    }
+
     // Issue 2 — RE-VALIDATE the final (post-repair, post-filter) proposal's
     // per-semester load. If any semester still exceeds the hard cap (26 ש"ש) and
     // the user has NOT explicitly accepted overload, treat the result as BLOCKED:
@@ -11357,14 +12002,12 @@ async function requestPlanProposal(prefs, actionType) {
     _aiPlanLastValidation = { errors: combinedErrors, warnings: eligibleProposal.warnings_he ? [...new Set([...warnings, ...eligibleProposal.warnings_he])] : warnings, autofixed, completeness, moveLog, electiveSelectionReasons, blocked: serverBlocked, overloadBlocked: finalOverloadBlocked };
     if (genBtn) genBtn.disabled = false;
     statusEl?.setAttribute('hidden', '');
-    if (finalOverloadBlocked) {
-      // Do NOT render the >26h plan as a normal proposed board. Keep the draft
-      // unset so the primary recovery experience is the AI chat (Issue 3).
-      state.proposalDraft = null;
-      renderAll();
-    } else {
-      activateProposalDraft(eligibleProposal);
-    }
+    // SINGLE CHOKEPOINT — the central validator decides applicability. It
+    // subsumes the legacy overload-only block: a >26h (or otherwise invalid)
+    // final board is NOT presented as an applicable draft; the gate posts the
+    // targeted blocked-chat recovery instead.
+    if (finalOverloadBlocked && _aiPlanLastValidation) _aiPlanLastValidation.overloadBlocked = true;
+    gateProposalActivation(eligibleProposal);
   } catch (err) {
     if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;
@@ -11964,6 +12607,11 @@ function refreshPlanPreviewWithProposal(proposal) {
   }
   _aiPlanLastProposal = repaired;
   _aiPlanLastValidation = { errors, warnings, autofixed: false, completeness, moveLog, electiveSelectionReasons: _aiPlanLastValidation?.electiveSelectionReasons };
+  // SINGLE CHOKEPOINT — recompute the authoritative final-plan validation so
+  // isPlanApplyableLocal / Apply stay gated on the central validator.
+  if (typeof validateFinalPlan === 'function' && _aiPlanLastCtx) {
+    _aiPlanLastValidation.finalPlan = validateFinalPlan(repaired, buildFinalPlanValidationCtx());
+  }
   // PART C — keep the board overlay in sync with the recomputed proposal.
   if (state.proposalDraft) {
     const semesters = proposalSemestersToMap(repaired.semesters);

@@ -140,6 +140,9 @@ export interface PlanValidationCourseInfo {
   effective_allowed_semesters?: string[] | null;
   /** Prerequisite course_ids still missing for this course (from prerequisite_issues). */
   missing_prerequisites?: string[];
+  /** Hard prerequisite course_ids (resolved). Issue 4 — the validator enforces
+   *  the UNION of prerequisites ∪ missing_prerequisites. */
+  prerequisites?: string[];
   /** True if this is a mandatory (חובה) course. */
   is_mandatory?: boolean;
 }
@@ -235,6 +238,18 @@ export function validatePlanProposal(
   const seen = new Map<string, string>(); // course_id -> semester_id
   const placedCourseIds = new Set<string>();
 
+  // Issue 4 — chronological order of semesters in the proposal + each course's
+  // index, so the prerequisite check can enforce the STRICT timing rule
+  // (prereq must be completed or scheduled in a STRICTLY EARLIER semester;
+  // same-semester does NOT satisfy).
+  const semOrder = new Map<string, number>();
+  proposal.semesters.forEach((s, i) => semOrder.set(s.semester_id, i));
+  const courseSemIdx = new Map<string, number>();
+  for (const sem of proposal.semesters) {
+    const idx = semOrder.get(sem.semester_id)!;
+    for (const cid of sem.course_ids) courseSemIdx.set(cid, idx);
+  }
+
   for (const sem of proposal.semesters) {
     const semHours = getSemesterLoad(sem, ctx.courses);
     const semName = semesterLabel(sem.semester_id, ctx.semesterLabels);
@@ -284,12 +299,25 @@ export function validatePlanProposal(
         }
       }
 
-      // 4. unmet prerequisites — warning only
-      if (info?.missing_prerequisites && info.missing_prerequisites.length > 0) {
-        const stillMissing = info.missing_prerequisites.filter(p => !placedCourseIds.has(p) && !ctx.completedCourseIds.has(p));
-        if (stillMissing.length > 0) {
-          const missingNames = stillMissing.map(p => courseLabel(p, ctx.courseNames)).join(', ');
-          warnings.push(`לקורס ${cName} (ב${semName}) חסרות דרישות קדם: ${missingNames}.`);
+      // 4. prerequisites — Issue 4: STRICT timing rule, enforced as an ERROR
+      // (mirrors validatePlanProposalLocal). A prereq is satisfied only if it is
+      // completed OR scheduled in a strictly EARLIER semester in this plan.
+      // Same-semester or later (or not scheduled at all) is a blocking error.
+      // Enforces the UNION of prerequisites ∪ missing_prerequisites.
+      const prereqUnion = new Set<string>([
+        ...(info?.prerequisites || []),
+        ...(info?.missing_prerequisites || []),
+      ]);
+      const targetIdx = semOrder.get(sem.semester_id)!;
+      for (const prereq of prereqUnion) {
+        if (ctx.completedCourseIds.has(prereq)) continue;
+        const pIdx = courseSemIdx.get(prereq);
+        if (pIdx === undefined) {
+          errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);
+        } else if (pIdx > targetIdx) {
+          errors.push(`לא ניתן לשבץ את ${cName} לפני דרישת הקדם ${courseLabel(prereq, ctx.courseNames)}.`);
+        } else if (pIdx === targetIdx) {
+          errors.push(`לא ניתן לשבץ את ${cName} ואת דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} באותו סמסטר (${semName}).`);
         }
       }
 
