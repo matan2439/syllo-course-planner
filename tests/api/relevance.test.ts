@@ -78,6 +78,14 @@ describe('extractPreferenceTerms', () => {
     expect((out as any).fem_analysis).toBeUndefined();
   });
 
+  it('Issue 6 — filler "בעיקר"/"עיקר" is a stopword, never an interest topic', () => {
+    const out = extractPreferenceTerms('אני רוצה בעיקר חוזק וגם תכן');
+    expect(out.interest_terms).not.toContain('עיקר');
+    expect(out.interest_terms).not.toContain('בעיקר');
+    // real topics still extracted
+    expect(out.interest_terms).toEqual(expect.arrayContaining(['חוזק', 'תכן']));
+  });
+
   it('parses grade_target via Hebrew ממוצע NN syntax', () => {
     const out = extractPreferenceTerms('אנליזות חוזק ויברציות וזרימה עם זיקה לרובוטיקה ומכטרוניקה, ממוצע מעל 82');
     expect(out.grade_target).toBe(82);

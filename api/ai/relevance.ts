@@ -39,6 +39,11 @@ const HEBREW_STOPWORDS = new Set([
   'על', 'את', 'אם', 'יש', 'ולא', 'לא', 'גם', 'אבל', 'יותר', 'פחות',
   'גבוה', 'גבוהה', 'נמוך', 'נמוכה', 'ו', 'ה', 'או', 'כי', 'זה',
   'להימנע', 'להתמקד',
+  // Issue 6 — non-topical fillers. "בעיקר"/"עיקר" (mainly), "בערך", "ממש" etc.
+  // are emphasis/qualifier words, never an interest topic. Without these,
+  // "בעיקר חוזק" leaked "עיקר" as a topic and produced a "תעדף עיקר" chip.
+  'בעיקר', 'עיקר', 'בערך', 'ממש', 'בעצם', 'בכלל', 'כלל', 'קצת', 'הרבה',
+  'משהו', 'דברים', 'נושא', 'נושאים', 'אולי', 'כן', 'כדי',
   'a', 'an', 'the', 'and', 'or', 'but', 'with', 'without', 'no',
   'i', 'me', 'my', 'want', 'prefer', 'would', 'like', 'for', 'to',
   'of', 'in', 'on', 'is', 'are',

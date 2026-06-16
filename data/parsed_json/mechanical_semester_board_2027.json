@@ -2022,10 +2022,16 @@
         "syllabus_last_fetched_at": "2026-06-10T21:32:00.466221+00:00",
         "syllabus_confidence": 0.8,
         "is_mandatory": false,
-        "placement_policy": "elective",
-        "recommended_semester": null,
+        "placement_policy": "flexible",
+        "recommended_semester": "year_4_semester_a",
         "name_source": "program_json",
-        "name_source_confidence": "high"
+        "name_source_confidence": "high",
+        "effective_allowed_semesters": [
+          "year_3_semester_a",
+          "year_4_semester_a"
+        ],
+        "offering_source_confidence": "high",
+        "offering_correction_note": "Corrected to Semester A only (year 4): offered_semesters=['A'] but effective_allowed_semesters was None, so legality fell back to the broader program set and the planner could place it in Semester B. Pinned effective_allowed_semesters=[year_4_semester_a]; effective wins over the nominal program-allowed set."
       },
       {
         "course_id": "0542-4224",

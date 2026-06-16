@@ -1204,6 +1204,17 @@ body.prog-modal-open .workspace {
 .card-elective  { border-inline-start-color: var(--elec-accent); background: var(--elec-bg); }
 .card-blocked   { border-inline-start-color: var(--blk-accent); background: var(--blk-bg); opacity: .76; }
 .card-missing   { border-inline-start-color: var(--miss-accent); background: var(--miss-bg); }
+/* Issue 1 — annual (year-long) course: distinct dashed double-edge style so the
+   two mirrored A+B cards never look like ordinary one-semester cards. */
+.card-annual {
+  border-inline-start-color: #7c3aed;
+  border-inline-start-width: 5px;
+  border-block-start: 2px dashed #7c3aed;
+  background: repeating-linear-gradient(135deg, var(--mand-bg, #f5f3ff), var(--mand-bg, #f5f3ff) 9px, rgba(124,58,237,.07) 9px, rgba(124,58,237,.07) 18px);
+}
+.badge.bdg-annual {
+  background: #7c3aed; color: #fff; font-weight: 600;
+}
 
 /* Placed cards get difficulty color on border */
 .card-placed.diff-easy      { border-inline-start-color: var(--easy-border); }
@@ -1991,6 +2002,7 @@ function buildPlanContext() {
       is_annual:             isAnnualCourse(c) || undefined,
       spans_semesters:       isAnnualCourse(c) ? (c.spans_semesters || undefined) : undefined,
       count_hours_once:      isAnnualCourse(c) ? (c.count_hours_once !== false) : undefined,
+      semester_load_hours_by_semester: isAnnualCourse(c) ? (c.semester_load_hours_by_semester || undefined) : undefined,
       pinned:                (state.pinnedCourseIds || []).includes(c.course_id) || undefined,
       workload_score:              c.workload_score              ?? null,
       conceptual_complexity_score: c.conceptual_complexity_score ?? null,
@@ -3959,7 +3971,13 @@ function renderAiTab() {
           // we never present a blocked plan as optimal/recommended.
           const diag = diagnoseBuildBlock(v);
           const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-          postAssistantMessage(lines.join('\n'), diag.chips);
+          const blockedMsg = lines.join('\n');
+          // Issue 5 — do NOT duplicate an identical blocked message if the last
+          // assistant bubble already says the same thing (re-render/re-validate).
+          const lastAssistant = [..._aiChatMessages].reverse().find(m => m.role === 'assistant');
+          if (!lastAssistant || lastAssistant.text !== blockedMsg) {
+            postAssistantMessage(blockedMsg, diag.chips);
+          }
         } else {
           postAssistantMessage('זו טיוטה, עדיין לא אושרה — אפשר להחיל, לדחות, או לבקש שינויים.', [
             { label: 'החל שינוי', action: 'apply-draft' },
@@ -4435,6 +4453,43 @@ function handleQuickReply(qr) {
         _aiPickerState.strongUnwanted = [];
       }
       triggerExplicitRebuild();
+      return;
+    }
+    // Issue 7 — targeted recovery chips per blocking cause. Each updates prefs
+    // and triggers a constrained rebuild.
+    case 'fill-remaining-hours':
+    case 'complete-missing-category': {
+      postUserMessage(qr.label);
+      // Allow the deterministic elective/hours repair to draw from the full
+      // eligible pool (downgrade strong avoids to soft so candidates exist).
+      _aiPickerState.softUnwanted = [...new Set([...(_aiPickerState.softUnwanted || []), ...(_aiPickerState.strongUnwanted || [])])];
+      _aiPickerState.strongUnwanted = [];
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), fill_remaining_hours: true };
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'allow-harder-courses': {
+      postUserMessage(qr.label);
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), grade_target: null, allow_hard_courses: true };
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'prefer-low-load': {
+      postUserMessage(qr.label);
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), prefer_low_load: true };
+      triggerExplicitRebuild();
+      return;
+    }
+    case 'show-blocking-constraints': {
+      postUserMessage(qr.label);
+      const v = _aiPlanLastValidation;
+      const lines = [
+        ...((v && v.errors) || []),
+        ...((v && v.completeness && v.completeness.reasons) || []),
+      ].filter(Boolean);
+      postAssistantMessage(lines.length
+        ? 'האילוצים שמונעים פתרון חוקי:\n• ' + lines.join('\n• ')
+        : 'לא נמצאו אילוצים ספציפיים מתועדים.');
       return;
     }
     // Issue 1 — explicit build-now quick action. Triggers the same flow as
@@ -5737,6 +5792,10 @@ function cardHtml(c, placed, draftDiff, opts) {
    * border-color from card-placed wins via !important on card-cat-* so the
    * category accent remains visible even when placed. */
   if (isElectiveLike && catStyles && type !== 'mandatory') cls += ` ${catStyles.card}`;
+  /* Issue 1 — annual (year-long) courses get a distinct style so the mirrored
+   * cards in semester A and semester B do not look like ordinary one-semester
+   * cards. */
+  if (isAnnualCourse(c)) cls += ' card-annual';
 
   const isFixedMandatory = c.placement_policy === 'fixed' && type === 'mandatory';
   const isFlexMand       = c.placement_policy === 'flexible';
@@ -6194,8 +6253,22 @@ function openCourseDetails(cid) {
     ? `<span class="badge bdg-mandatory">חובה קבוע</span>`
     : `<span class="badge bdg-elective">${TYPE_HE.elective}</span>`;
 
-  const diffBdg = level
-    ? `<span class="badge bdg-${esc(level)}">${esc(DIFF_HE[level]||level)} ${c.difficulty_score ?? ''}</span>`
+  /* Issue 2 — when no explicit difficulty_level/score exists, fall back to the
+     SAME estimate the planner and the card use (estimateCourseDifficultyLocal),
+     clearly marked "(הערכה)". Only "לא ידוע" when estimation genuinely can't run. */
+  let detailDiffLevel = level;
+  let detailEstDiff = null;
+  if (!detailDiffLevel && c.difficulty_score == null) {
+    detailEstDiff = estimateCourseDifficultyLocal(c);
+    if (detailEstDiff != null) {
+      detailDiffLevel = detailEstDiff >= 3.75 ? 'very_hard' : detailEstDiff >= 2.5 ? 'hard' : detailEstDiff >= 1.25 ? 'medium' : 'easy';
+    }
+  }
+  const detailIsEstimated = (detailDiffLevel && c.workload_score == null && c.difficulty_score != null) || detailEstDiff != null;
+  const detailDiffScoreTxt = c.difficulty_score != null ? c.difficulty_score : (detailEstDiff != null ? detailEstDiff : '');
+  const detailEstWorkload = c.workload_score != null ? c.workload_score : (detailEstDiff != null ? detailEstDiff : null);
+  const diffBdg = detailDiffLevel
+    ? `<span class="badge bdg-${esc(detailDiffLevel)}" title="${detailIsEstimated ? 'הערכה מבוססת מידע חלקי' : ''}">${esc(DIFF_HE[detailDiffLevel]||detailDiffLevel)} ${detailDiffScoreTxt}${detailIsEstimated ? ' (הערכה)' : ''}</span>`
     : '';
 
   const hoursHtml = c.weekly_hours != null
@@ -6228,7 +6301,14 @@ function openCourseDetails(cid) {
       : mkRow('שעות שבועיות:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
     c.lab_hours != null ? mkRow('מעבדה:', `${esc(c.lab_hours)} שעות`) : '',
     c.teaching_format ? mkRow('אופן הוראה:', esc(c.teaching_format)) : '',
-    level ? mkRow('רמת קושי:', `${esc(DIFF_HE[level]||level)} (${esc(c.difficulty_score??'')})`) : '',
+    detailDiffLevel
+      ? mkRow('רמת קושי:', `${esc(DIFF_HE[detailDiffLevel]||detailDiffLevel)} (${esc(detailDiffScoreTxt)})${detailIsEstimated ? ' <span style="color:var(--text-muted);font-size:.65rem">(הערכה)</span>' : ''}`)
+      : mkRow('רמת קושי:', '<span style="color:var(--miss-accent)">לא ידוע</span>'),
+    detailEstWorkload != null
+      ? mkRow('עומס לימודי:', `${esc(typeof detailEstWorkload === 'number' ? detailEstWorkload.toFixed(2) : detailEstWorkload)}${(c.workload_score == null) ? ' <span style="color:var(--text-muted);font-size:.65rem">(הערכה)</span>' : ''}`)
+      : '',
+    isAnnualCourse(c) ? mkRow('', '<span style="color:#7c3aed;font-weight:600">קורס שנתי — פעיל בסמסטר א׳ ובסמסטר ב׳</span>') : '',
+    isAnnualCourse(c) ? mkRow('', '<span style="color:#7c3aed;font-size:.7rem">נספר פעם אחת לשעות התואר, אך מוסיף עומס שבועי בשני הסמסטרים</span>') : '',
     (status !== 'eligible' && status !== 'partial_info') ? mkRow('מצב:', esc(STAT_HE[status] || status)) : '',
     c.semester_availability ? mkRow('זמינות:', esc(c.semester_availability)) : '',
     (c.allowed_semesters?.length > 1) ? mkRow('ניתן לשיבוץ ב:', esc(_allowedSemLabels)) : '',
@@ -6695,7 +6775,9 @@ function setupGlobalKeys() {
                       'flexible' (mandatory_flexible) → draggable within allowed_semesters
                       'elective' → existing drag rules */
 function isLocked(c) {
-  return c?.placement_policy === 'fixed';
+  // Issue 1(b) — annual (year-long) courses span both semesters as one unit;
+  // neither half may be moved independently, so they are locked like 'fixed'.
+  return c?.placement_policy === 'fixed' || isAnnualCourse(c);
 }
 
 /* True when a mandatory course may be dragged between multiple allowed semesters */
@@ -7392,6 +7474,12 @@ function avoidCourse(cid) {
 
 /** "הסר מהמערכת" — propose removal and report what becomes unmet. */
 function removeCourseFromBoard(cid) {
+  // Issue 1(b) — an annual course is a single year-long unit spanning A+B; its
+  // halves cannot be removed independently. Treat it as locked.
+  if (isAnnualCourse(courseMap[cid])) {
+    showBoardNotify('קורס שנתי (א׳+ב׳) — לא ניתן להסיר רק חצי ממנו; הוא מנוהל כיחידה אחת.');
+    return;
+  }
   const semId = findCoursePlacementSemId(cid);
   if (!semId) { showBoardNotify('הקורס אינו משובץ בלוח.'); return; }
   if (!state.proposalDraft) state.proposalDraft = { semesters: clone(state.semesters), repo: [...state.repo] };
@@ -9032,7 +9120,16 @@ function effectiveCourseDifficultyLocal(course, kind) {
  * same proposal never shows two different numbers for the same semester.
  */
 function getSemesterLoadLocal(semester, courses) {
-  return (semester.course_ids || []).reduce((sum, cid) => sum + ((courses || {})[cid]?.hours || 0), 0);
+  const semId = semester.semester_id;
+  return (semester.course_ids || []).reduce((sum, cid) => {
+    const info = (courses || {})[cid] || {};
+    // Issue 1(d) — annual courses contribute their per-semester load via
+    // semester_load_hours_by_semester[semId] when present (fallback weekly
+    // hours), so each spanned semester gets the correct annual weekly load.
+    const bySem = info.semester_load_hours_by_semester;
+    const h = (bySem && semId != null && bySem[semId] != null) ? bySem[semId] : (info.hours || 0);
+    return sum + h;
+  }, 0);
 }
 
 function repairPlanLoad(proposal, ctx) {
@@ -9464,6 +9561,9 @@ const _HEBREW_STOPWORDS_LOCAL = new Set([
   'קורסים','קורס','כקורס','מסלול','תחום','בתחום','של','על','את','אם','יש','ולא','לא',
   'גם','אבל','יותר','פחות','גבוה','גבוהה','נמוך','נמוכה','ו','ה','או','כי','זה',
   'להימנע','להתמקד',
+  // Issue 6 — non-topical fillers (mirror of relevance.ts HEBREW_STOPWORDS).
+  'בעיקר','עיקר','בערך','ממש','בעצם','בכלל','כלל','קצת','הרבה',
+  'משהו','דברים','נושא','נושאים','אולי','כן','כדי',
   'בחירה','חירה','כבחירה','בחירות','חובה','מקצוע','נקודות','נקז',
   'a','an','the','and','or','but','with','without','no','i','me','my','want',
   'prefer','would','like','for','to','of','in','on','is','are',
@@ -10554,6 +10654,23 @@ function isPlanApplyableLocal(validationErrors, completeness) {
  */
 function diagnoseBuildBlock(validation, opts) {
   opts = opts || {};
+  /* Issue 6 — guard so no prioritize-topic chip is ever built from an empty,
+   * too-short, stopword, or unknown "topic". Mirrors the stopword set used in
+   * the preference parser. Returns true only for a usable Hebrew topic term.
+   * Defined locally so it travels with the function (UI tests grab the function
+   * body in isolation). */
+  const TOPIC_STOPWORDS = new Set([
+    'עיקר', 'בעיקר', 'בכלל', 'כלל', 'בערך', 'בעצם', 'ממש', 'מאוד', 'יותר', 'פחות',
+    'גם', 'רק', 'אולי', 'כן', 'לא', 'אבל', 'או', 'של', 'את', 'עם', 'על', 'כדי',
+    'קצת', 'הרבה', 'משהו', 'דברים', 'נושא', 'נושאים', 'קורס', 'קורסים', 'תחום',
+  ]);
+  const validTopicTerm = (t) => {
+    if (typeof t !== 'string') return false;
+    const s = t.trim();
+    if (s.length < 2) return false;
+    if (TOPIC_STOPWORDS.has(s)) return false;
+    return true;
+  };
   const errors = (validation && validation.errors) || [];
   const reasons = (validation && validation.completeness && validation.completeness.reasons) || [];
   const overloadBlocked = !!(validation && validation.overloadBlocked);
@@ -10600,7 +10717,34 @@ function diagnoseBuildBlock(validation, opts) {
   const categoryHit = all.some(s => RE_CATEGORY.test(s));
   const hoursHit = all.some(s => RE_HOURS.test(s));
 
-  if (overloadHit) {
+  // Issue 7 — most-specific causes first, filled with REAL data:
+  // 1) missing mandatory course (name it), 2) insufficient degree hours
+  // (state the exact missing ש"ש), 3) illegal semester offering (name the
+  // course + its only-legal semester).
+  const mandatoryReasonStr = all.find(s => /חסרים קורסי חובה|לא ניתן לשיבוץ חוקי/.test(s));
+  // exact missing ש"ש — prefer the explicit Issue-4 message, else the "כ-" form.
+  const hoursMissMatch = (all.join('\n').match(/חסרות\s+(\d+(?:\.\d+)?)\s*ש[״"]?ש\s+להשלמת התואר/) ||
+                          all.join('\n').match(/חסרות כ-?\s*(\d+(?:\.\d+)?)\s*ש"ש/));
+  const exactMissingHours = hoursMissMatch ? hoursMissMatch[1] : null;
+
+  if (mandatoryReasonStr) {
+    category = 'missing_mandatory';
+    const namePart = (mandatoryReasonStr.match(/חסרים קורסי חובה:\s*(.+?)\.?$/) || [])[1];
+    explanation_he = namePart
+      ? `לא הצלחתי להשלים מערכת חוקית כי חסר קורס חובה: ${namePart}.`
+      : 'לא הצלחתי להשלים מערכת חוקית כי חסר קורס חובה שלא ניתן לשבץ באופן חוקי.';
+    questions.push('לשבץ את קורס החובה החסר בסמסטר החוקי הקרוב ביותר?');
+    chips.push({ label: 'שבץ את קורס החובה החסר', action: 'rebuild-relaxed' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+  } else if (exactMissingHours) {
+    category = 'insufficient_hours';
+    explanation_he = `לא הצלחתי להשלים מערכת חוקית כי חסרות ${exactMissingHours} ש״ש להשלמת התואר.`;
+    questions.push(`להוסיף קורסי בחירה חוקיים כדי להשלים את ${exactMissingHours} ש״ש החסרות?`);
+    chips.push({ label: 'השלם שעות חסרות', action: 'fill-remaining-hours' });
+    chips.push({ label: 'הוסף קורסי בחירה קלים', action: 'prefer-low-load' });
+    if (gradeTarget) chips.push({ label: 'אפשר קורסים עם קושי גבוה יותר', action: 'allow-harder-courses' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+  } else if (overloadHit) {
     category = 'overload';
     explanation_he = 'לא הצלחתי לבנות מערכת חוקית כי לפחות סמסטר אחד חורג ממגבלת העומס.';
     questions.push('אפשר להעלות את עומס המקסימום בסמסטר אחד ל-25–26 ש"ש?');
@@ -10610,9 +10754,10 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'להעביר קורס חובה גמיש אם חוקי', action: 'move-flexible-mandatory' });
     // GENERAL topic prioritization from the user's OWN parsed interest terms
     // (never hardcoded subjects) — e.g. "להעדיף חוזק/FEM על פני זרימה".
-    if (interestTerms.length >= 2) {
-      const a = interestTerms[0], b = interestTerms[1];
-      chips.push({ label: `להעדיף ${a} על פני ${b}`, action: 'prioritize-topic', payload: { terms: [a] } });
+    const _ovTopics = interestTerms.filter(validTopicTerm);
+    if (_ovTopics.length >= 2) {
+      const a = _ovTopics[0], b = _ovTopics[1];
+      chips.push({ label: `העדף ${a} על פני ${b}`, action: 'prioritize-topic', payload: { terms: [a] } });
     }
     if (gradeTarget) {
       chips.push({ label: 'להגמיש את דרישת הממוצע', action: 'relax-grade' });
@@ -10634,19 +10779,32 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'רכך יעד ממוצע', action: 'relax-grade' });
   } else if (categoryHit || hoursHit || noCandidateHit) {
     category = 'category_requirements';
-    explanation_he = 'לא הצלחתי להשלים את כל דרישות הקטגוריות/השעות עם ההעדפות הנוכחיות.';
+    // Issue 7 — name the specific missing category when the reason mentions it.
+    const catName = (all.find(s => /קטגורי/.test(s)) || '').match(/קטגוריית?\s*"?([^".]+?)"?[\s.]/);
+    explanation_he = catName
+      ? `לא הצלחתי להשלים את דרישת הקטגוריה "${catName[1].trim()}" עם ההעדפות הנוכחיות.`
+      : 'לא הצלחתי להשלים את כל דרישות הקטגוריות/השעות עם ההעדפות הנוכחיות.';
     questions.push('לאפשר קורסי בחירה פחות קשורים כדי להשלים את הקטגוריות החסרות?');
+    chips.push({ label: 'השלם קטגוריה חסרה', action: 'complete-missing-category' });
+    chips.push({ label: 'הוסף קורסי בחירה קלים', action: 'prefer-low-load' });
     chips.push({ label: 'אפשר בחירה להשלמת קטגוריה', action: 'relax-avoid-soft' });
   } else if (prereqHit) {
     category = 'prerequisites';
     explanation_he = 'נוצרה התנגשות בדרישות קדם ולכן לא הצלחתי לסדר מערכת חוקית.';
     questions.push('יש התנגשות בקדם. להעדיף סדר לימוד גמיש יותר / לדחות קורס מתקדם לסמסטר מאוחר יותר?');
     chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (legalityHit) {
     category = 'legality';
-    explanation_he = 'חלק מהקורסים מוצעים רק בסמסטרים מסוימים ולכן לא הצלחתי לסדר מערכת חוקית.';
+    // Issue 7 — name the course + its only-legal semester, e.g.
+    // "מבוא לאלמנטים סופיים ניתן רק בסמסטר א׳...".
+    const legalReason = all.find(s => RE_LEGALITY.test(s)) || '';
+    explanation_he = legalReason
+      ? `לא הצלחתי לסדר מערכת חוקית: ${legalReason}`
+      : 'חלק מהקורסים מוצעים רק בסמסטרים מסוימים ולכן לא הצלחתי לסדר מערכת חוקית.';
     questions.push('באיזה סמסטר אפשר לרכך את האילוץ כדי לאפשר שיבוץ חוקי?');
     chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
+    chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else {
     category = 'unknown';
     explanation_he = 'לא הצלחתי לבנות תוכנית חוקית ומלאה עם ההעדפות הנוכחיות.';
@@ -10656,10 +10814,17 @@ function diagnoseBuildBlock(validation, opts) {
   // GENERAL topic prioritization: only when MULTIPLE interest topics were
   // requested AND space is tight (category/hours shortfall). Topic names derive
   // from the user's OWN parsed preference terms — never hardcoded subjects.
-  if ((category === 'category_requirements' || category === 'electives_after_avoid') && interestTerms.length >= 3) {
-    const a = interestTerms[0], b = interestTerms[1], c = interestTerms[2];
-    questions.push(`להעדיף את ${a} ו-${b} על פני ${c}?`);
-    chips.push({ label: `תעדף ${a}`, action: 'prioritize-topic', payload: { terms: [a, b] } });
+  // Issue 6 — only render a prioritize-topic chip from REAL parsed topic terms
+  // (>=2 valid topics). The label is meaningful ("העדף <A> על פני <B>"), never
+  // the meaningless "תעדף <stopword>". extractPreferenceTermsLocal already drops
+  // stopwords like "עיקר"/"בעיקר", and validTopic() is a final guard.
+  if ((category === 'category_requirements' || category === 'electives_after_avoid')) {
+    const topics = interestTerms.filter(validTopicTerm);
+    if (topics.length >= 2) {
+      const a = topics[0], b = topics[1];
+      questions.push(`להעדיף את ${a} על פני ${b}?`);
+      chips.push({ label: `העדף ${a} על פני ${b}`, action: 'prioritize-topic', payload: { terms: [a] } });
+    }
   }
 
   // ALWAYS offer a conservative single rebuild action as the final chip.
@@ -11080,6 +11245,18 @@ async function requestPlanProposal(prefs, actionType) {
       courseHours,
       movableCourseIds: ctx.movableCourseIds,
     });
+
+    // Issue 4 — total degree hours below the requirement is ALWAYS blocking.
+    // repairAddHoursToDegreeLocal already ran above to fill remaining hours from
+    // eligible legal candidates; if it still can't reach the required total,
+    // the plan is incomplete and must NOT be applicable. Surface the exact
+    // missing-hours count so Apply is disabled and the chat clarification flow
+    // (diagnoseBuildBlock) can ask a targeted question.
+    if (!degreeHoursStatus.satisfied && degreeHoursStatus.missing_hours > 0) {
+      const msg = `חסרות ${degreeHoursStatus.missing_hours} ש״ש להשלמת התואר.`;
+      if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
+      completeness.incomplete = true;
+    }
 
     // PART A.4: mandatory courses with no legal semester — always blocking.
     for (const c of (unplaceableMandatory || [])) {

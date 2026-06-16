@@ -32,6 +32,7 @@ from pathlib import Path
 
 SEM_A = "year_3_semester_a"
 SEM_B = "year_3_semester_b"
+SEM_4A = "year_4_semester_a"
 
 
 def _find_course(board: dict, cid: str):
@@ -161,6 +162,53 @@ def _align_recommended_to_effective(board: dict, cid: str) -> None:
             "effective_allowed_semesters; aligned to actual offering (effective wins).")
 
 
+def _fix_4223_semester_a_only(board: dict) -> None:
+    """0542-4223 'מבוא לאלמנטים סופיים' — the ONLY hard fact from the syllabus is
+    that it is offered in Semester A (never Semester B). Root cause of the live
+    bug: it is a repository course with offered_semesters=['A'] but
+    effective_allowed_semesters=None, so legality fell back to the broader
+    program set and the planner placed it in Semester B.
+
+    Year determination (evidence-based, NOT from the 42xx number):
+      - No program/enriched file carries an explicit year or allowed-semester
+        restriction for it (all year/allowed fields are None).
+      - Prerequisite chain (mechanical_electives_audit.json): 4223 requires
+        0542-4224 'אלמנטים סופיים (2)', which in turn requires 'אלמנטים סופיים (1)'.
+        So it sits LATE in the FEM chain and is prerequisite-gated.
+      - NO course depends on 0542-4223 (it is a leaf — no dependents), so
+        constraining it to a late year does not block any downstream FEM path.
+    Conclusion: there is NO explicit evidence it is Year-4-only. The correct
+    model is a Semester-A elective allowed in either year_3_semester_a or
+    year_4_semester_a, with the *actual* year gated by prerequisites at planning
+    time. We therefore keep it FLEXIBLE across the two Semester-A slots and only
+    remove Semester B (the real, evidence-backed correction).
+
+    Idempotent; LOCAL data only. No offering hours change."""
+    records = _find_course(board, "0542-4223")
+    if not records:
+        print("  WARN: 0542-4223 not found")
+        return
+    for sem_id, c, sem in records:
+        c["offered_semesters"] = ["A"]
+        # Semester A only, but either academic year (prereqs gate feasibility).
+        c["effective_allowed_semesters"] = [SEM_A, SEM_4A]
+        # Recommended later in the path (deep in the FEM chain, no dependents),
+        # but year_3_semester_a remains legal for a student who finished the
+        # prerequisite chain early. recommended ∈ effective, so no audit conflict.
+        c["recommended_semester"] = SEM_4A
+        # More than one legal semester (A in two years) → genuinely flexible.
+        c["placement_policy"] = "flexible"
+        c["offering_source_confidence"] = "high"
+        c.setdefault("offering_correction_note",
+            "Corrected to Semester A only (either year): offered_semesters=['A'] "
+            "but effective_allowed_semesters was None, so legality fell back to "
+            "the broader program set and the planner could place it in Semester "
+            "B. Set effective_allowed_semesters=[year_3_semester_a, "
+            "year_4_semester_a] (Semester A in either year, prerequisite-gated); "
+            "Semester B is now illegal. No explicit evidence justifies pinning to "
+            "year 4 only, so placement_policy stays flexible.")
+
+
 def _recompute_semester_hours(board: dict) -> None:
     """Recompute total_weekly_hours per semester from the (now-correct) placement.
     Annual courses contribute their weekly load to EACH spanned semester (they are
@@ -182,6 +230,8 @@ def main() -> int:
     _make_annual(board, "0542-3792")
     print("Aligning 0542-4020 recommended_semester -> effective (year_4_semester_b)")
     _align_recommended_to_effective(board, "0542-4020")
+    print("Fixing 0542-4223 -> Semester A only (year_3_a / year_4_a, flexible)")
+    _fix_4223_semester_a_only(board)
 
     _recompute_semester_hours(board)
 

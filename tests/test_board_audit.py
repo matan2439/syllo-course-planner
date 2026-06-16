@@ -196,6 +196,66 @@ def test_audit_flags_recommended_vs_effective_conflict():
     assert any(i.check == "recommended_conflicts_effective" for i in issues)
 
 
+def test_audit_flags_4223_if_placed_in_semester_b():
+    # Issue 3 — 0542-4223 is legal ONLY in year_4_semester_a. If the planner ever
+    # places it in Semester B, the audit must FAIL (illegal placement).
+    course = _base_course(
+        course_id="0542-4223",
+        name_he="מבוא לאלמנטים סופיים",
+        is_mandatory=False,
+        placement_policy="fixed",
+        offered_semesters=["A"],
+        offering_source_confidence="high",
+        program_allowed_semesters=["year_4_semester_a", "year_4_semester_b"],
+        effective_allowed_semesters=["year_4_semester_a"],
+        recommended_semester="year_4_semester_a",
+    )
+    board = _board(("year_4_semester_b", [course]))
+    errors = [i for i in audit_board(board) if i.level == "error"]
+    assert any(
+        i.course_id == "0542-4223"
+        and i.check in ("invalid_placement", "illegal_board_placement")
+        for i in errors
+    ), f"expected illegal-placement error for 0542-4223, got {errors}"
+
+
+def test_audit_passes_4223_in_semester_a():
+    course = _base_course(
+        course_id="0542-4223",
+        name_he="מבוא לאלמנטים סופיים",
+        is_mandatory=False,
+        placement_policy="fixed",
+        offered_semesters=["A"],
+        offering_source_confidence="high",
+        program_allowed_semesters=["year_4_semester_a", "year_4_semester_b"],
+        effective_allowed_semesters=["year_4_semester_a"],
+        recommended_semester="year_4_semester_a",
+    )
+    board = _board(("year_4_semester_a", [course]))
+    errors = [
+        i for i in audit_board(board)
+        if i.level == "error" and i.course_id == "0542-4223"
+    ]
+    assert errors == [], f"unexpected errors for 0542-4223 in A: {errors}"
+
+
+def test_real_board_models_4223_semester_a_only():
+    # Issue 3 — 0542-4223 is a Semester-A elective allowed in EITHER academic
+    # year (year_3_semester_a / year_4_semester_a); the only hard fact is "no
+    # Semester B". It stays flexible (no explicit Year-4-only evidence), with
+    # the actual year gated by prerequisites at planning time.
+    board = json.loads(open(BOARD_PATH, encoding="utf-8").read())
+    repo = board["metadata"]["program_repository_courses"]
+    entry = next(c for c in repo if c.get("course_id") == "0542-4223")
+    assert entry["offered_semesters"] == ["A"]
+    eff = entry["effective_allowed_semesters"]
+    assert all("semester_b" not in s for s in eff), eff
+    assert set(eff) <= {"year_3_semester_a", "year_4_semester_a"}, eff
+    assert "year_4_semester_a" in eff and "year_3_semester_a" in eff, eff
+    assert entry["placement_policy"] == "flexible"
+    assert entry["recommended_semester"] in eff
+
+
 def test_real_board_passes_extended_integrity_for_three_target_courses():
     board = json.loads(open(BOARD_PATH, encoding="utf-8").read())
     issues = audit_board(board)
