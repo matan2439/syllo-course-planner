@@ -8273,12 +8273,50 @@ function validateFinalPlan(proposal, ctx) {
     }
   }
 
+  // ── Offering/draft TIER (Phase 1) ────────────────────────────────────────
+  // `ctx.mode` selects the legality tier the user asked for:
+  //   'strict' (default) — confirmed final plan: offering uncertainty and
+  //                        degree incompleteness block (un-presentable).
+  //   'draft'            — plan-with-assumptions: a course having a syllabus is
+  //                        usable for planning even if its semester offering is
+  //                        not yet confirmed. Soft causes (offering / degree
+  //                        completeness / category / mandatory / prerequisite)
+  //                        are downgraded to warnings so the planner can present
+  //                        a full ~185h career-aware draft; only HARD structural
+  //                        violations (overload / illegal_semester / eligibility
+  //                        / duplicate / annual) still block. This mirrors
+  //                        applyProposalDraft's tentative-apply rules so the gate,
+  //                        the board draft and Apply all agree.
+  const _mode = ctx.mode || 'strict';
+  const assumedOfferingCourseIds = [];
+  if (_mode === 'draft') {
+    const SOFT_DRAFT_CAUSES = new Set([
+      'missing_offering_data', 'degree_completion', 'category_requirements',
+      'mandatory', 'prerequisite',
+    ]);
+    const stillBlocking = [];
+    for (const b of blockers) {
+      if (SOFT_DRAFT_CAUSES.has(b.cause)) {
+        warnings.push(Object.assign({}, b, { severity: 'warning' }));
+        if (b.cause === 'missing_offering_data') {
+          for (const cid of (b.course_ids || [])) {
+            if (!assumedOfferingCourseIds.includes(cid)) assumedOfferingCourseIds.push(cid);
+          }
+        }
+      } else {
+        stillBlocking.push(b);
+      }
+    }
+    blockers.length = 0;
+    for (const b of stillBlocking) blockers.push(b);
+  }
+
   const applicable = blockers.length === 0;
   const summary = applicable
     ? (warnings.length ? `התוכנית חוקית — נותרו ${warnings.length} אזהרות.` : 'התוכנית חוקית — ניתן להחיל.')
     : `לא ניתן להחיל — ${blockers.length} בעיות חוסמות.`;
 
-  return { applicable, blockers, warnings, summary };
+  return { applicable, blockers, warnings, summary, assumedOfferingCourseIds };
 }
 
 /**
@@ -8736,7 +8774,29 @@ function activateTentativeDraft(draft, opts) {
   const assumptionLine = (draft.assumptions && draft.assumptions.length)
     ? `\n${draft.assumptions.join(' ')}`
     : '';
-  postAssistantMessage(`${head}${summaryLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
+
+  // Degree-hours accounting (Phase 1) — show total after the draft vs the 185
+  // ש"ש target and the remaining gap, so the user sees the plan is aimed at
+  // COMPLETING the degree, not just "adding some courses". Best-effort: degrades
+  // silently when the progress model is unavailable.
+  let hoursLine = '';
+  try {
+    if (typeof computeDegreeProgress === 'function' && state.proposalDraft) {
+      const draftState = { semesters: state.proposalDraft.semesters };
+      const prog = computeDegreeProgress({}, state, draftState);
+      if (prog && prog.required != null && prog.total_after != null) {
+        const approx = prog.unknown_hours_count > 0 ? '~' : '';
+        hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}.`;
+        if (prog.remaining > 0) {
+          hoursLine += ` חסרות עוד כ-${Math.round(prog.remaining)} ש״ש להשלמת התואר — אפשר להוסיף קורסי בחירה נוספים.`;
+        } else if (prog.total_after >= prog.required) {
+          hoursLine += ' הטיוטה מגיעה לדרישת השעות לתואר.';
+        }
+      }
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+
+  postAssistantMessage(`${head}${summaryLine}${hoursLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
     { label: 'החל טיוטה', action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
@@ -13395,7 +13455,23 @@ async function requestPlanProposal(prefs, actionType) {
       // to the standard diagnoseBuildBlock message.
       const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx);
       if (_fallback) {
-        postAssistantMessage(_fallback.messageHe, _fallback.chips);
+        // Phase 1 — if the ONLY thing blocking the strict gate is soft (offering
+        // uncertainty / degree incompleteness / category / prereq) — i.e. there
+        // is NO hard structural violation — then a syllabus-backed plan IS usable
+        // for planning. Present the full career-aware draft ON THE BOARD now
+        // (offering-uncertain courses marked tentative) instead of only offering
+        // chips. The user sees an actual plan; chips remain available on the draft.
+        const _HARD_STRUCTURAL = new Set(['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual']);
+        const _hasHardBlocker = ((_gateResult && _gateResult.blockers) || []).some(b => _HARD_STRUCTURAL.has(b.cause));
+        const _draft = state.lastPlanningDraft;
+        const _placementCount = _draft
+          ? ((_draft.confirmedPlacements || []).length + (_draft.tentativePlacements || []).length)
+          : 0;
+        if (!_hasHardBlocker && _placementCount > 0) {
+          activateTentativeDraft(_draft, { balance: false, fromBuild: true });
+        } else {
+          postAssistantMessage(_fallback.messageHe, _fallback.chips);
+        }
       } else {
         // No per-course offering/prereq issues to explain — use diagnoseBuildBlock.
         try {
