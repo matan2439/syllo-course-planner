@@ -226,11 +226,11 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
     expect(html).not.toMatch(/\.annual-band\s*\{[^}]*repeating-linear-gradient/);
   });
 
-  test('spans both semester columns via grid-column inside the grid body', () => {
+  test('spans both semester columns via grid-column inside the course-card grid', () => {
     // grid-column: 1 / -1 makes the single block span both columns.
     expect(html).toMatch(/\.annual-band\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
-    // The hosting row is a CSS grid (so the span is honored).
-    expect(html).toMatch(/\.year-sems\s*\{[^}]*display:\s*grid/);
+    // The hosting container (.year-sems-cards) is a CSS grid (so the span is honored).
+    expect(html).toMatch(/\.year-sems-cards\s*\{[^}]*display:\s*grid/);
   });
 
   test('semColHtml excludes annual courses from per-column cards (no duplicate card)', () => {
@@ -238,22 +238,25 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
     expect(html).toContain('.filter(id => !isAnnualCourse(courseMap[id]))');
   });
 
-  test('renderBoard places the annual band at the TOP of the grid body, before the columns', () => {
-    // Issue 1 — the annual block is emitted INSIDE .year-sems, BEFORE the
-    // semester columns (so it renders at the TOP of the year's card area), still
-    // spanning both columns. It is NOT appended after the columns (old banner).
+  test('renderBoard places annual band inside the course-card area, below headers', () => {
+    // Issue 1 — the annual block is now inside .year-sems-cards (course-card area),
+    // AFTER the headers, with annual band spanning both columns BEFORE normal courses.
+    // The structure is: headers row, then cards row with annual band + zones.
     expect(html).toContain('annualCoursesForYear(yg.sems).map(annualBandHtml)');
-    expect(html).toContain('${annualBands}${yg.sems.map(s => semColHtml(s, draftDiff)).join(\'\')}');
-    // It is NOT emitted after the columns anymore.
-    expect(html).not.toContain('.join(\'\')}${annualBands}</div>');
+    expect(html).toContain('.year-sems-headers');
+    expect(html).toContain('.year-sems-cards');
+    expect(html).toContain('semHeaderHtml');
+    expect(html).toContain('semZoneHtml');
+    // Annual band is inside .year-sems-cards (the course-card container), not outside.
+    expect(html).toContain('${annualBands}${zones}');
   });
 
   test('annual band uses normal card height (compact single-row, note collapsed)', () => {
-    // The .annual-band gets a card box-shadow and a 4px accent border like a
-    // regular course card; the explanatory note is collapsed (display:none) so
+    // The .annual-band gets a card box-shadow and a 5px accent border like a
+    // locked/mandatory course card; the explanatory note is collapsed (display:none) so
     // the block keeps a normal single-row card height (not a tall banner).
     expect(html).toMatch(/\.annual-band\s*\{[^}]*box-shadow:\s*var\(--shadow\)/);
-    expect(html).toMatch(/\.annual-band\s*\{[^}]*border-inline-start:\s*4px/);
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*border-inline-start:\s*5px/);
     expect(html).toMatch(/\.annual-band\s\.annual-band-note\s*\{\s*display:\s*none/);
   });
 
@@ -289,6 +292,72 @@ describe('Issue 1 — annual course renders as ONE spanning block', () => {
       spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
       effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b', 'year_2_semester_a', 'year_2_semester_b'],
     })).toEqual(['year_2_semester_a', 'year_2_semester_b']);
+  });
+
+  test('annual band card styling matches locked/mandatory cards for visual consistency', () => {
+    // Issue 1 regression fix — the annual band was rendering as a thin banner
+    // instead of a normal card. The CSS must match locked card padding + height.
+    // Annual band padding should match .card-main (9px 11px 8px), not be too compact.
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*padding:\s*9px\s+11px\s+8px/);
+    // Border width should match locked cards (5px), not be thinner (4px).
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*border-inline-start:\s*5px\s+solid\s+var\(--mand-accent\)/);
+    // Min height should be sufficient for readable content, not a 1-line banner.
+    expect(html).toMatch(/\.annual-band\s+\.annual-band-hdr\s*\{[^}]*min-height:\s*2\.[2-9]em/);
+    // Header should allow wrapping for multi-line layout like normal cards.
+    expect(html).toMatch(/\.annual-band\s+\.annual-band-hdr\s*\{[^}]*flex-wrap:\s*wrap/);
+  });
+
+  test('annual band is positioned inside course-card area, not as separate banner above headers', () => {
+    // Issue 1 regression fix — the annual band was appearing as a separate band
+    // ABOVE the semester headers and course-card area. It must now be INSIDE
+    // the course-card container (.year-sems-cards) BELOW the headers.
+
+    // .year-sems-cards must exist as a separate container for course cards.
+    expect(html).toContain('class="year-sems-cards"');
+
+    // Annual band is rendered as a child of .year-sems-cards (course-card area),
+    // BEFORE the normal semester zones, with grid-column: 1 / -1 to span both.
+    expect(html).toContain('${annualBands}${zones}');
+    expect(html).toMatch(/\.year-sems-cards\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr\s+1fr/);
+
+    // Annual band grid-column: 1 / -1 makes it span both columns in the cards grid.
+    expect(html).toMatch(/\.annual-band\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
+
+    // .sem-zone no longer needs special grid positioning—it auto-places after
+    // the annual band as a normal grid child (the annual band takes row N,
+    // zones take rows N+1, N+2 per the auto-placement).
+    expect(html).toContain('.sem-zone');
+
+    // Headers are in a separate container above cards, not mixed inside .year-sems-cards.
+    expect(html).toContain('class="year-sems-headers"');
+    expect(html).toMatch(/\.year-sems-headers\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr\s+1fr/);
+  });
+
+  test('annual band DOM order: inside year-sems-cards before sem-zones', () => {
+    // Verify the rendering produces the correct DOM order:
+    // <div class="year-sems">
+    //   <div class="year-sems-headers">...</div>
+    //   <div class="year-sems-cards">
+    //     <div class="annual-band">...</div>
+    //     <div class="sem-zone">...</div>
+    //     <div class="sem-zone">...</div>
+    //   </div>
+    // </div>
+
+    // The new renderBoard should call both semHeaderHtml and semZoneHtml.
+    expect(html).toContain('semHeaderHtml(s)');
+    expect(html).toContain('semZoneHtml(s, draftDiff)');
+
+    // Verify year-sems is now flex (not grid), with two sub-containers.
+    expect(html).toMatch(/\.year-sems\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/);
+
+    // The rendering structure must place annualBands and zones INSIDE year-sems-cards.
+    const renderMatch = html.match(/const annualBands[\s\S]*?const headers[\s\S]*?const zones[\s\S]*?<div class="year-sems">/);
+    expect(renderMatch).toBeTruthy();
+
+    // Verify the template string order: headers first (above), then cards with annual+zones.
+    expect(html).toContain('<div class="year-sems-headers">${headers}</div>');
+    expect(html).toContain('<div class="year-sems-cards">${annualBands}${zones}</div>');
   });
 });
 

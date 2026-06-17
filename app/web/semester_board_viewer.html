@@ -1040,7 +1040,15 @@ body.prog-modal-open .workspace {
   background: var(--surface2); border: 1px solid var(--border);
   letter-spacing: .03em;
 }
-.year-sems { display: grid; grid-template-columns: 1fr 1fr; direction: rtl; gap: 12px; align-items: start; }
+.year-sems {
+  display: flex; flex-direction: column; gap: 8px; direction: rtl;
+}
+.year-sems-headers {
+  display: grid; grid-template-columns: 1fr 1fr; direction: rtl; gap: 12px;
+}
+.year-sems-cards {
+  display: grid; grid-template-columns: 1fr 1fr; direction: rtl; gap: 12px; align-items: start;
+}
 
 /* ── Semester column ────────────────────────────────────────────────────── */
 .semester-col { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-width: 180px; }
@@ -1221,18 +1229,18 @@ body.prog-modal-open .workspace {
   grid-column: 1 / -1;
   margin: 0;
   border: 1px solid var(--border);
-  border-inline-start: 4px solid var(--mand-accent);
+  border-inline-start: 5px solid var(--mand-accent);
   border-radius: var(--radius);
   background: var(--mand-lock-bg);
   box-shadow: var(--shadow);
-  padding: 6px 10px;
+  padding: 9px 11px 8px;
   cursor: default;
   direction: rtl;
 }
 .annual-band .annual-band-hdr {
-  display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   font-size: .8rem; font-weight: 700; color: var(--text);
-  min-height: 1.4em;
+  min-height: 2.2em;
 }
 .annual-band .annual-band-title {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -5770,14 +5778,19 @@ function renderBoard() {
   ];
   document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg => {
     // Issue 1 — annual courses for this year render once as a unified spanning
-    // block at the TOP of the grid body (BEFORE the semester columns), spanning
-    // both semester columns (grid-column: 1 / -1) at NORMAL card height — not a
-    // tall banner below the columns and not per-column cards. Multiple annual
-    // courses stack at the top.
+    // block INSIDE the course-card area, BELOW the semester headers, spanning
+    // both semester columns (grid-column: 1 / -1). The annual band appears as
+    // the first card(s) in the course-card area, before normal semester courses.
     const annualBands = annualCoursesForYear(yg.sems).map(annualBandHtml).join('');
+    // Separate headers (row 1) from zones (row 2 with annual band + courses).
+    const headers = yg.sems.map(s => semHeaderHtml(s)).join('');
+    const zones = yg.sems.map(s => semZoneHtml(s, draftDiff)).join('');
     return `<div class="year-group">
       <div class="year-hdr">${esc(yg.label)}</div>
-      <div class="year-sems">${annualBands}${yg.sems.map(s => semColHtml(s, draftDiff)).join('')}</div>
+      <div class="year-sems">
+        <div class="year-sems-headers">${headers}</div>
+        <div class="year-sems-cards">${annualBands}${zones}</div>
+      </div>
     </div>`;
   }).join('');
 
@@ -6153,6 +6166,75 @@ function annualBandHtml(c) {
     </div>
     <div class="annual-band-note">${esc(note)}</div>
   </div>`;
+}
+
+/**
+ * Issue 1 — render just the semester header (without the course zone).
+ * Used to place headers in a separate grid row above the annual band.
+ */
+function semHeaderHtml(sem) {
+  const ids     = boardSemesterIds(sem.id);
+  const courses = ids.map(id => courseMap[id]).filter(Boolean);
+  let knownHrs  = 0, unknownCt = 0;
+  for (const c of courses) {
+    if (c.weekly_hours != null) knownHrs += c.weekly_hours;
+    else unknownCt++;
+  }
+  const diffVals = courses
+    .map(c => effectiveCourseDifficultyLocal(c, 'difficulty'))
+    .filter(v => v != null && v > 0);
+  const avgDiff = diffVals.length
+    ? (diffVals.reduce((s,v)=>s+v,0)/diffVals.length).toFixed(1)
+    : null;
+  const preferredMax = getEffectiveMaxHoursPreferenceLocal(_aiPlanLastPreferences?.max_weekly_hours);
+  const pct    = Math.min(100, (knownHrs / preferredMax) * 100).toFixed(1);
+  const wlCls  = knownHrs > HARD_LOAD_CAP ? 'blocked'
+    : knownHrs > preferredMax ? 'over'
+    : knownHrs >= preferredMax * 0.5 ? 'med' : '';
+  const hrsLbl = unknownCt > 0 ? `${knownHrs} שעות ידועות` : `${knownHrs} ש׳׳ש`;
+  const unkNote = unknownCt > 0
+    ? `<div class="wl-note">⚠ ${unknownCt} קורסים ללא שעות ידועות</div>` : '';
+  return `<div class="sem-hdr ${esc(sem.css)}">
+    <div class="sem-title">${esc(SEM_HE[sem.id] || sem.id)}</div>
+    <div class="sem-stats">
+      <span>⏱ ${esc(hrsLbl)}</span>
+      <span>📚 ${courses.length} קורסים</span>
+      ${courses.length ? `<span>📊 קושי ${avgDiff != null ? esc(avgDiff) : 'לא זמין'}</span>` : ''}
+    </div>
+    <div class="wl-wrap">
+      <div class="wl-row">
+        <span>עומס שבועי</span>
+        <span>${knownHrs}/${preferredMax} ש׳׳ש</span>
+      </div>
+      <div class="wl-track"><div class="wl-fill ${wlCls}" style="width:${pct}%"></div></div>
+      ${unkNote}
+    </div>
+  </div>`;
+}
+
+/**
+ * Issue 1 — render just the semester zone (courses) without the header.
+ * Used to place course cards in a separate grid area below the annual band.
+ */
+function semZoneHtml(sem, draftDiff) {
+  const ids     = boardSemesterIds(sem.id);
+  const courses = ids.map(id => courseMap[id]).filter(Boolean);
+  // Issue 1 — annual courses are NOT rendered as per-column cards; they render
+  // once as a unified spanning block INSIDE the course-card area, before the
+  // normal semester courses (see annualBandHtml / renderBoard). Exclude them.
+  let cards = ids.filter(id => !isAnnualCourse(courseMap[id]))
+    .map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
+  // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
+  if (draftDiff) {
+    const removedHere = (state.semesters[sem.id] || []).filter(cid => draftDiff.removed.has(cid));
+    cards += removedHere.map(cid => cardHtml(courseMap[cid], false, draftDiff, { removedHere: true })).join('');
+  }
+  const knownHrs = ids.reduce((sum, id) => {
+    const c = courseMap[id];
+    return sum + (c?.weekly_hours != null ? c.weekly_hours : 0);
+  }, 0);
+  const draftOverloadCls = knownHrs > MAX_HOURS && draftDiff ? ' sem-draft-overload' : '';
+  return `<div class="sem-zone${draftOverloadCls}" data-zone="semester" data-sem="${esc(sem.id)}">${cards}</div>`;
 }
 
 function semColHtml(sem, draftDiff) {

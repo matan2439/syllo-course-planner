@@ -134,11 +134,12 @@ describe('ITEM 3 — board semester load bar denominator = preferred max', () =>
 
   function renderFirstSemBar() {
     // Render the board and return the first semester's load-bar row text + fill class.
+    // Note: .semester-col no longer exists; headers are now direct children of .year-sems-headers.
     return window.eval(`
       (function(){
         renderBoard();
-        const row = document.querySelector('.semester-col .wl-row');
-        const fill = document.querySelector('.semester-col .wl-fill');
+        const row = document.querySelector('.sem-hdr .wl-row');
+        const fill = document.querySelector('.sem-hdr .wl-fill');
         return { rowText: row ? row.textContent : '', fillClass: fill ? fill.className : '' };
       })();
     `);
