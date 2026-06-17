@@ -12041,12 +12041,22 @@ function diagnoseBuildBlock(validation, opts) {
   } else if (missingOfferingHit) {
     // validateFinalPlan: a presented course lacks confident offering data.
     category = 'missing_offering_data';
-    const offReason = all.find(s => RE_MISSING_OFFERING.test(s)) || '';
-    explanation_he = offReason
-      ? `לא ניתן להציג שיבוץ חוקי: ${offReason}`
-      : 'לקורס בתוכנית חסרים נתוני היצע סמסטר ודאיים, ולכן לא ניתן להציג שיבוץ חוקי.';
-    questions.push('להחליף את הקורס בקורס עם נתוני היצע ודאיים?');
-    chips.push({ label: 'בנה מערכת מחדש עם קורסים שניתן לשבץ בוודאות', action: 'rebuild-relaxed' });
+    const offReasons = all.filter(s => RE_MISSING_OFFERING.test(s));
+    const prereqReasonsMissing = all.filter(s => RE_PREREQ.test(s));
+    const msgParts = [];
+    if (offReasons.length) {
+      msgParts.push(...offReasons);
+    } else {
+      msgParts.push('לקורסים בתוכנית חסרים נתוני היצע סמסטר ודאיים.');
+    }
+    if (prereqReasonsMissing.length) {
+      msgParts.push('בנוסף, הקורסים הבאים חסומים בדרישות קדם שלא הושלמו:');
+      prereqReasonsMissing.slice(0, 3).forEach(r => msgParts.push(`• ${r}`));
+    }
+    msgParts.push('לפתרון: לחץ על הכפתור למטה כדי לבנות תוכנית רק עם קורסים שניתן לשבץ בוודאות.\nאם קורסי הקדם כבר הושלמו, סמן אותם כ"הושלמו" בדף "הקורסים שלי" ונסה שוב.');
+    explanation_he = msgParts.join('\n');
+    questions.push('להחליף את הקורסים הלא-זמינים בקורסים עם נתוני היצע ודאיים?');
+    chips.push({ label: 'בנה מערכת מחדש רק עם קורסים שניתן לשבץ בוודאות', action: 'rebuild-relaxed' });
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (overloadHit) {
     category = 'overload';
