@@ -2801,6 +2801,22 @@ function init(board, audit, programJson) {
     if (!cid) return;
     const _effAllowed = (Array.isArray(effectiveAllowedSemesters) && effectiveAllowedSemesters.length)
       ? effectiveAllowedSemesters : null;
+    // CASE 1 (semester written in the program/syllabus data): a course whose only
+    // offering signal is the half-letter code offered_semesters=['A']/['B'] DOES
+    // have definite semester-offering data. Map it to the concrete semester ids
+    // (A → year_3_semester_a + year_4_semester_a; B → the _b ids) so it is treated
+    // as schedulable_confirmed instead of "אין נתוני היצע". This is the sole place
+    // the program-repository (elective pool) is loaded; the previous code only
+    // honored a pre-resolved effective_allowed_semesters and dropped offered_*.
+    const _offeredDerived = (!_effAllowed && Array.isArray(offered_semesters) && offered_semesters.length)
+      ? normalizeLegalSemesterIdsLocal(offered_semesters, SEMESTERS.map(s => s.id))
+      : null;
+    const _effFinal = _effAllowed
+      ? [..._effAllowed]
+      : (_offeredDerived && _offeredDerived.length ? _offeredDerived : null);
+    // offered_semesters is authoritative program-offering data → 'definite'.
+    const _offeringStatus = _effFinal ? 'definite'
+      : ((offered_semesters && offered_semesters.length) ? 'inferred' : 'unknown');
     if (courseMap[cid]) {
       const e = courseMap[cid];
       if (!e.program_category_id && catId)         e.program_category_id      = catId;
@@ -2810,8 +2826,9 @@ function init(board, audit, programJson) {
         e.offered_semesters = offered_semesters;
       // CRITICAL: carry this year's confident offering (effective_allowed_semesters)
       // so program-repository courses are NOT mis-flagged as "missing offering".
-      if (!e.effective_allowed_semesters?.length && _effAllowed)
-        e.effective_allowed_semesters = [..._effAllowed];
+      // Derive it from definite offered_semesters (A/B) when no resolved list exists.
+      if (!e.effective_allowed_semesters?.length && _effFinal)
+        e.effective_allowed_semesters = [..._effFinal];
     } else {
       const isOffered = offered_in_year !== false;
       courseMap[cid] = {
@@ -2869,10 +2886,10 @@ function init(board, audit, programJson) {
         grade_signal:                null,
         instructor_uncertainty:      null,
         // This year's confident offering when known; null → tentative in draft mode.
-        effective_allowed_semesters: _effAllowed ? [..._effAllowed] : null,
+        // Derived from definite offered_semesters (A/B) when no resolved list exists.
+        effective_allowed_semesters: _effFinal,
         // Offering data-quality classification (definite > inferred > unknown).
-        offering_status:             _effAllowed ? 'definite'
-                                       : ((offered_semesters && offered_semesters.length) ? 'inferred' : 'unknown'),
+        offering_status:             _offeringStatus,
         allowed_semesters:           [],
         locked_by_default:           false,
         placement_rule:              'choose_one_allowed_semester',
@@ -7565,6 +7582,43 @@ function getLegalSemestersLocal(c, knownSemesterIds) {
   return { semesters: knownSemesterIds, confident: false };
 }
 
+/*
+ * Phase 2 — course SCHEDULABILITY classification (CASE 1/2). Separates "can this
+ * course be legally scheduled with the data we have" from career relevance. Used
+ * so the planner SKIPS courses with no usable data instead of letting them block
+ * the whole plan, and so definite-offering courses are treated as confirmed.
+ *
+ *   schedulable_confirmed       — metadata + confident known semester (effective
+ *                                 offering present, incl. offered-derived A/B).
+ *   schedulable_tentative       — has metadata but the semester is inferred /
+ *                                 unknown (placeable in draft mode, not confirmed).
+ *   unschedulable_missing_data  — no name AND no hours AND no offering signal:
+ *                                 cannot be scheduled or even described. SKIP it.
+ *
+ * Prerequisite-impossibility and career-irrelevance are handled by the existing
+ * boardValidation / eligibility layers and are intentionally out of scope here.
+ */
+function classifyCourseSchedulability(c) {
+  if (!c) return 'unschedulable_missing_data';
+  const hasName     = !!c.name_he;
+  const hoursKnown  = (c.weekly_hours != null) || (c.semester_hours != null);
+  const hasEffective = Array.isArray(c.effective_allowed_semesters) && c.effective_allowed_semesters.length > 0;
+  const hasOffered   = Array.isArray(c.offered_semesters) && c.offered_semesters.length > 0;
+  // No name, no hours, no offering signal → cannot schedule or describe. Skip.
+  if (!hasName && !hoursKnown && !hasEffective && !hasOffered) return 'unschedulable_missing_data';
+  if (hasEffective) {
+    const legal = getLegalSemestersLocal(c);
+    // Definite this-year offering (effective present and confident) → confirmed.
+    if (legal.confident) return 'schedulable_confirmed';
+    return 'schedulable_tentative';
+  }
+  // Has some metadata but no resolved effective offering at all.
+  if (hasOffered) return 'schedulable_tentative';
+  // Name/hours exist but there is no semester signal whatsoever → not schedulable
+  // for a legal plan; it would only ever land via an "any semester" guess.
+  return 'unschedulable_missing_data';
+}
+
 /* True when a course is officially flexible in the program but this year's actual
    offering restricts it to a single semester (effective narrower than program-level) */
 function isOfferingRestrictedFlex(c) {
@@ -8796,7 +8850,29 @@ function activateTentativeDraft(draft, opts) {
     }
   } catch (_) { /* progress model unavailable — omit the line */ }
 
-  postAssistantMessage(`${head}${summaryLine}${hoursLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
+  // CASE 2 — courses that could not be scheduled because they have no usable data
+  // (no name / hours / offering signal) are SKIPPED, not treated as a blocker.
+  // Report them as a positive "I skipped N and built from the rest" line instead
+  // of the old dead-end "אין נתוני היצע סמסטר ודאיים ל-X קורסים".
+  let skippedLine = '';
+  try {
+    if (typeof classifyCourseSchedulability === 'function' && typeof courseMap === 'object') {
+      const placedOrDraft = new Set([
+        ...Object.values(state.semesters || {}).flat(),
+        ...Object.values(state.proposalDraft?.semesters || {}).flat(),
+      ]);
+      const skipped = Object.values(courseMap).filter(c =>
+        c && (c.course_type || 'elective') !== 'mandatory'
+        && !placedOrDraft.has(c.course_id)
+        && !isCourseCompleted(c.course_id)
+        && classifyCourseSchedulability(c) === 'unschedulable_missing_data');
+      if (skipped.length) {
+        skippedLine = `\nדילגתי על ${skipped.length} קורסים בגלל מידע חסר (אין נתוני סמסטר/היצע), ובניתי את המערכת מהקורסים שניתן לשבץ.`;
+      }
+    }
+  } catch (_) { /* classification unavailable — omit the line */ }
+
+  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
     { label: 'החל טיוטה', action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
