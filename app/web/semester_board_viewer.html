@@ -1499,6 +1499,12 @@ body.prog-modal-open .workspace {
 }
 .badge.bdg-draft-added { background: var(--success, #2ecc71); color: #04321b; }
 .badge.bdg-draft-moved { background: var(--blue); color: #04203a; }
+.course-card.card-draft-tentative {
+  box-shadow: 0 0 0 2px rgba(241,196,15,.35);
+  border: 1px dashed rgba(241,196,15,.55) !important;
+  opacity: .93;
+}
+.badge.bdg-draft-tentative { background: #f1c40f; color: #3a2c00; }
 .badge.bdg-draft-removed { background: var(--danger, #e74c3c); color: #fff; }
 .badge.bdg-draft-replaced { background: #f1c40f; color: #3a2d04; }
 [data-theme="dark"] .badge.bdg-draft-added { color: #04321b; }
@@ -6558,8 +6564,14 @@ function cardHtml(c, placed, draftDiff, opts) {
       const fromName = courseMap[draftDiff.replacedTo.get(c.course_id).from]?.name_he || draftDiff.replacedTo.get(c.course_id).from;
       draftBdg = `<span class="badge bdg-draft-replaced" title="${esc('הוחלף: ' + fromName + ' ← ' + (c.name_he || c.course_id))}">הוחלף</span>`;
     } else if (draftDiff.added.has(c.course_id)) {
-      cls += ' course-card-draft card-draft-added';
-      draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטה">נוסף</span>`;
+      const _isTentative = Array.isArray(state.proposalDraft?.tentativeCourseIds) && state.proposalDraft.tentativeCourseIds.includes(c.course_id);
+      if (_isTentative) {
+        cls += ' course-card-draft card-draft-tentative';
+        draftBdg = `<span class="badge bdg-draft-tentative" title="קורס בהנחה — היצע סמסטר לא ודאי">טיוטה</span>`;
+      } else {
+        cls += ' course-card-draft card-draft-added';
+        draftBdg = `<span class="badge bdg-draft-added" title="קורס שנוסף בטיוטה">נוסף</span>`;
+      }
     } else if (draftDiff.moved.has(c.course_id)) {
       cls += ' course-card-draft card-draft-moved';
       const fromSemId = draftDiff.movedFrom.get(c.course_id);
@@ -8674,15 +8686,30 @@ function activateTentativeDraft(draft, opts) {
 
   activateProposalDraft(proposal);
 
+  // Tag the draft so applyProposalDraft can use lenient validation (skips degree-level
+  // blockers; only HARD structural violations prevent apply).
+  const _tentativeIds = (draft.tentativePlacements || []).map(p => p.course_id);
+  if (state.proposalDraft) {
+    state.proposalDraft.isTentative = true;
+    state.proposalDraft.tentativeCourseIds = _tentativeIds;
+  }
+
+  const tentativeCount = _tentativeIds.length;
+  const confirmedCount = (draft.confirmedPlacements || []).length;
+  const summaryLine = confirmedCount > 0 && tentativeCount > 0
+    ? `\n${confirmedCount} קורסים בטוחים + ${tentativeCount} קורסים בהנחה מוצגים כטיוטה על הלוח.`
+    : tentativeCount > 0
+      ? `\n${tentativeCount} קורסים (בהנחה לגבי היצע סמסטר) מוצגים כטיוטה על הלוח.`
+      : `\n${confirmedCount} קורסים מוצגים כטיוטה על הלוח.`;
+  const head = opts.balance
+    ? 'הקורסים מוצגים כטיוטה על הלוח — עם הנחות לגבי היצע הסמסטר.'
+    : 'הקורסים מוצגים כטיוטה על הלוח.';
   const assumptionLine = (draft.assumptions && draft.assumptions.length)
     ? `\n${draft.assumptions.join(' ')}`
     : '';
-  const head = opts.balance
-    ? 'יצרתי טיוטה מאוזנת הכוללת גם קורסים עם היצע סמסטר לא ודאי, עם הנחות לגבי ההיצע.'
-    : 'יצרתי טיוטה הכוללת גם קורסים עם היצע סמסטר לא ודאי.';
-  postAssistantMessage(`${head}\nזו טיוטה עם הנחות, לא שיבוץ ודאי — אפשר לערוך אותה ולאשר בהמשך.${assumptionLine}`, [
+  postAssistantMessage(`${head}${summaryLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
     { label: 'החל טיוטה', action: 'apply-draft' },
-    { label: 'דחה', action: 'reject-draft' },
+    { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
 }
 
@@ -8720,20 +8747,37 @@ function rejectProposalDraft() {
 function applyProposalDraft() {
   const draft = state.proposalDraft;
   if (!draft) return;
-  // Defense in depth — re-run the central validator on the CURRENT draft board
-  // (which may have been hand-edited since generation) and refuse to apply when
-  // it is not applicable. The single gate cannot be bypassed by Apply.
+
   if (typeof validateFinalPlan === 'function' && _aiPlanLastCtx) {
     const proposal = { semesters: mapToProposalSemesters(draft.semesters) };
     const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
     if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = result;
     if (!result.applicable) {
-      const top = (result.blockers || []).slice(0, 3).map(b => b.message_he).join('\n');
-      postAssistantMessage(`לא ניתן להחיל את הטיוטה — יש בעיות חוסמות:\n${top}`);
-      renderAll();
-      return;
+      if (draft.isTentative) {
+        // Tentative drafts: only block on HARD structural violations.
+        // Degree-level gaps (degree_completion, category_requirements, mandatory,
+        // missing_offering_data, prerequisite) are expected for partial plans and
+        // must NOT prevent the user from committing the courses they explicitly chose.
+        const HARD = new Set(['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual']);
+        const hardBlockers = (result.blockers || []).filter(b => HARD.has(b.cause));
+        if (hardBlockers.length) {
+          const top = hardBlockers.slice(0, 2).map(b => b.message_he).join('\n');
+          postAssistantMessage(`לא ניתן להחיל את הטיוטה — בעיות חוסמות קשיחות:\n${top}`);
+          renderAll();
+          return;
+        }
+        // Non-structural blockers present — warn but proceed with apply.
+      } else {
+        // Non-tentative draft: strict gate — refuse to apply invalid plan.
+        const top = (result.blockers || []).slice(0, 3).map(b => b.message_he).join('\n');
+        postAssistantMessage(`לא ניתן להחיל את הטיוטה — יש בעיות חוסמות:\n${top}`);
+        renderAll();
+        return;
+      }
     }
   }
+
+  const tentativeIds = draft.tentativeCourseIds || [];
   const prevPlaced = new Set(Object.values(state.semesters).flat());
   for (const sem of SEMESTERS) state.semesters[sem.id] = [...(draft.semesters[sem.id] || [])];
   const newPlaced = new Set(Object.values(state.semesters).flat());
@@ -8747,6 +8791,9 @@ function applyProposalDraft() {
   saveState();
   renderAll();
   showBoardNotify('הטיוטה הוחלה על הלוח שלך');
+  if (tentativeIds.length > 0) {
+    postAssistantMessage(`הטיוטה הוחלה. ${tentativeIds.length} קורס${tentativeIds.length !== 1 ? 'ים' : ''} שובצ${tentativeIds.length !== 1 ? 'ו' : ''} בהנחה לגבי היצע הסמסטר — יש לוודא זמינות לפני הרישום.`);
+  }
 }
 
 /* ── State mutations ────────────────────────────────────────────────────── */
