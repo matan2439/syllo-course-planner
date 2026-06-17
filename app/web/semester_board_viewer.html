@@ -4798,6 +4798,10 @@ function handleQuickReply(qr) {
     // Conversational-fallback actions — operate on state.lastPlanningDraft and
     // produce a real, visible draft instead of looping back to a blocked message.
     case 'planning-fallback': {
+      console.log('[draft-trace] planning-fallback chip clicked', {
+        label: qr.label, type: qr.payload?.type,
+        hasLastPlanningDraft: !!(typeof state !== 'undefined' && state && state.lastPlanningDraft),
+      });
       postUserMessage(qr.label);
       handlePlanningFallbackAction(qr.payload?.type);
       return;
@@ -8552,6 +8556,17 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
  */
 function handlePlanningFallbackAction(type) {
   const draft = (typeof state !== 'undefined' && state) ? state.lastPlanningDraft : null;
+  console.log('[draft-trace] handlePlanningFallbackAction', {
+    type,
+    hasDraft: !!draft,
+    confirmed: draft ? (draft.confirmedPlacements || []).length : 0,
+    tentative: draft ? (draft.tentativePlacements || []).length : 0,
+    blocked: draft ? (draft.blockedCourses || []).length : 0,
+    placements: draft ? [
+      ...(draft.confirmedPlacements || []).map(p => ({ ...p, status: 'confirmed', name: (courseMap[p.course_id] || {}).name_he })),
+      ...(draft.tentativePlacements || []).map(p => ({ ...p, status: 'tentative', name: (courseMap[p.course_id] || {}).name_he })),
+    ] : [],
+  });
   if (!draft) {
     postAssistantMessage('לא נמצאה טיוטת תכנון קודמת. נסה לבנות מערכת מחדש.');
     return;
@@ -8684,15 +8699,29 @@ function activateTentativeDraft(draft, opts) {
     }
   }
 
-  activateProposalDraft(proposal);
-
-  // Tag the draft so applyProposalDraft can use lenient validation (skips degree-level
-  // blockers; only HARD structural violations prevent apply).
+  // Tag the draft so (a) the board's first paint marks tentative courses with
+  // the amber "טיוטה" badge and (b) applyProposalDraft uses lenient validation
+  // (skips degree-level blockers; only HARD structural violations prevent apply).
+  // The flags MUST be set before renderAll() runs inside activateProposalDraft.
   const _tentativeIds = (draft.tentativePlacements || []).map(p => p.course_id);
-  if (state.proposalDraft) {
-    state.proposalDraft.isTentative = true;
-    state.proposalDraft.tentativeCourseIds = _tentativeIds;
-  }
+  activateProposalDraft(proposal, { isTentative: true, tentativeCourseIds: _tentativeIds });
+
+  // Trace the realized draft + board DOM so a production failure is diagnosable.
+  try {
+    const _diff = (typeof computeDraftDiff === 'function') ? computeDraftDiff() : null;
+    const _cardCids = Array.from(document.querySelectorAll('#board .course-card')).map(el => el.dataset.cid);
+    console.log('[draft-trace] activateTentativeDraft → board', {
+      proposalDraftSet: !!state.proposalDraft,
+      isTentative: state.proposalDraft && state.proposalDraft.isTentative,
+      tentativeCourseIds: state.proposalDraft && state.proposalDraft.tentativeCourseIds,
+      draftSemesterCounts: state.proposalDraft
+        ? Object.fromEntries(Object.entries(state.proposalDraft.semesters).map(([k, v]) => [k, v.length]))
+        : null,
+      diffAdded: _diff ? [...(_diff.added || [])] : null,
+      boardCardsRendered: _cardCids.length,
+      tentativeOnBoard: _tentativeIds.filter(cid => _cardCids.includes(cid)),
+    });
+  } catch (_) { /* tracing must never break the flow */ }
 
   const tentativeCount = _tentativeIds.length;
   const confirmedCount = (draft.confirmedPlacements || []).length;
@@ -8725,11 +8754,22 @@ function openCompletedCoursesUi() {
   postAssistantMessage('עדיין חסר מסך לסימון קורסים שהושלמו. צריך להוסיף אותו כדי שאוכל לדעת אילו קורסי קדם כבר עברת.');
 }
 
-/** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */
-function activateProposalDraft(proposal) {
+/**
+ * PART A/B — turn a freshly-generated AI proposal into an editable board overlay.
+ * `opts.isTentative` / `opts.tentativeCourseIds` MUST be applied to the draft
+ * object BEFORE renderAll(), otherwise the first paint runs with the flags
+ * undefined and tentative courses get the green "נוסף" badge instead of the
+ * amber "טיוטה" badge (the board does not re-render on its own afterwards).
+ */
+function activateProposalDraft(proposal, opts) {
+  opts = opts || {};
   const semesters = proposalSemestersToMap(proposal.semesters);
   const placed = new Set(Object.values(semesters).flat());
   state.proposalDraft = { semesters, repo: state.repo.filter(cid => !placed.has(cid)) };
+  if (opts.isTentative) {
+    state.proposalDraft.isTentative = true;
+    state.proposalDraft.tentativeCourseIds = opts.tentativeCourseIds || [];
+  }
   renderAll();
   setSidebarTab('draft');
 }

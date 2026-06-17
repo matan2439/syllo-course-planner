@@ -338,3 +338,138 @@ describe('visible draft — isTentative flag behavior', () => {
     expect(inBoard).toBe(true);
   });
 });
+
+/**
+ * DOM-VISIBLE acceptance tests. The earlier suites assert state.proposalDraft,
+ * but production proved that is NOT sufficient: the user must SEE the draft on
+ * the rendered semester board. These tests query the #board DOM after the real
+ * quick-reply dispatch path (handleQuickReply → handlePlanningFallbackAction).
+ *
+ * Root cause they guard against: activateProposalDraft() ran renderAll() BEFORE
+ * isTentative/tentativeCourseIds were assigned, so the first (and only) paint
+ * marked tentative courses with the green "נוסף" badge instead of amber "טיוטה".
+ * Fix: the flags are passed into activateProposalDraft and applied before render.
+ */
+describe('visible draft — board DOM rendering (acceptance)', () => {
+  let dom, window;
+
+  // Returns the data-cid list of cards currently in the #board DOM.
+  const boardCardCids = (w) =>
+    JSON.parse(w.eval('JSON.stringify(Array.from(document.querySelectorAll("#board .course-card")).map(el => el.dataset.cid))'));
+  // True when the board DOM contains a card for `cid` carrying the amber tentative badge.
+  const hasTentativeCard = (w, cid) =>
+    w.eval(`Array.from(document.querySelectorAll("#board .course-card")).some(el => el.dataset.cid === ${JSON.stringify(cid)} && el.classList.contains("card-draft-tentative") && !!el.querySelector(".bdg-draft-tentative"))`);
+
+  const seedAndClickChip = (w, type, { confirmedCid, tentativeCid, semId } = {}) => {
+    semId = semId || 'year_3_semester_a';
+    const conf = confirmedCid || 'CONF_DOM';
+    const tent = tentativeCid || 'TENT_DOM';
+    w.eval(`
+      courseMap['${conf}'] = { course_id: '${conf}', name_he: 'קורס בטוח', weekly_hours: 3 };
+      courseMap['${tent}'] = { course_id: '${tent}', name_he: 'קורס בהנחה', weekly_hours: 3 };
+      state.lastPlanningDraft = {
+        confirmedPlacements: [{ course_id: '${conf}', semester_id: '${semId}' }],
+        tentativePlacements: [{ course_id: '${tent}', semester_id: '${semId}' }],
+        blockedCourses: [], assumptions: ['הנחה'], missingData: [], questionsForUser: [],
+        source: 'draft_planner', createdAt: Date.now(),
+      };
+    `);
+    // Exercise the REAL dispatch path, exactly like clicking the chip in the UI.
+    w.eval(`handleQuickReply({ label: 'כלול גם קורסים עם היצע לא ודאי', action: 'planning-fallback', payload: { type: ${JSON.stringify(type)} } })`);
+  };
+
+  beforeEach(async () => {
+    dom = loadPage();
+    window = dom.window;
+    await waitForInit(window);
+    window.eval('for (const sid of Object.keys(state.semesters)) state.semesters[sid] = state.semesters[sid] || [];');
+  });
+  afterEach(() => { dom.window.close(); });
+
+  // ── A. The headline acceptance test: a tentative course is VISIBLE on the board ──
+  test('A. clicking "כלול גם קורסים עם היצע לא ודאי" renders the tentative course on the board with a "טיוטה" badge', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS', { tentativeCid: 'TENT_DOM' });
+    // The board DOM must contain the course card…
+    expect(boardCardCids(window)).toContain('TENT_DOM');
+    // …and it must be marked tentative (amber "טיוטה"), not committed/green.
+    expect(hasTentativeCard(window, 'TENT_DOM')).toBe(true);
+  });
+
+  // ── B. The confirmed course is also visible (as a normal draft-added card) ──
+  test('B. the confirmed course also appears on the board after the chip', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS', { confirmedCid: 'CONF_DOM' });
+    expect(boardCardCids(window)).toContain('CONF_DOM');
+  });
+
+  // ── C. computeDraftDiff reports the new course as added and it renders ──
+  test('C. a course only in proposalDraft (not state.semesters) is counted as added AND rendered', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS', { tentativeCid: 'TENT_DOM' });
+    const added = JSON.parse(window.eval('(function(){ const d = computeDraftDiff(); return JSON.stringify(d ? [...d.added] : []); })()'));
+    expect(added).toContain('TENT_DOM');
+    // Not committed to the real board yet.
+    expect(window.eval('Object.values(state.semesters).flat().includes("TENT_DOM")')).toBe(false);
+    // But present in the rendered board overlay.
+    expect(boardCardCids(window)).toContain('TENT_DOM');
+  });
+
+  // ── D. The board draft banner (apply/reject) is rendered while a draft is active ──
+  test('D. the board shows the draft banner with apply/reject controls', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS');
+    expect(window.eval('!!document.querySelector("#board .board-draft-banner")')).toBe(true);
+    expect(window.eval('!!document.getElementById("board-draft-apply")')).toBe(true);
+    expect(window.eval('!!document.getElementById("board-draft-reject")')).toBe(true);
+  });
+
+  // ── E. REPLAN_WITH_ASSUMPTIONS_BALANCED also renders a board-visible tentative draft ──
+  test('E. "הצע מערכת מאוזנת עם הנחות" renders the tentative course on the board', () => {
+    seedAndClickChip(window, 'REPLAN_WITH_ASSUMPTIONS_BALANCED', { tentativeCid: 'TENT_DOM' });
+    expect(boardCardCids(window)).toContain('TENT_DOM');
+    expect(hasTentativeCard(window, 'TENT_DOM')).toBe(true);
+  });
+
+  // ── F. Applying the visible draft commits the courses and clears the overlay ──
+  test('F. clicking the board "החל טיוטה" commits the tentative + confirmed courses', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS', { confirmedCid: 'CONF_DOM', tentativeCid: 'TENT_DOM' });
+    expect(boardCardCids(window)).toContain('TENT_DOM');
+    // Click the actual board banner apply button.
+    window.eval('document.getElementById("board-draft-apply").click()');
+    expect(window.eval('state.proposalDraft')).toBeNull();
+    expect(window.eval('Object.values(state.semesters).flat().includes("TENT_DOM")')).toBe(true);
+    expect(window.eval('Object.values(state.semesters).flat().includes("CONF_DOM")')).toBe(true);
+    // After apply the courses are now committed (normal cards), draft overlay gone.
+    expect(window.eval('!!document.querySelector("#board .board-draft-banner")')).toBe(false);
+  });
+
+  // ── G. Rejecting the visible draft clears the overlay without committing ──
+  test('G. clicking the board "דחה" removes the draft cards and commits nothing', () => {
+    seedAndClickChip(window, 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS', { tentativeCid: 'TENT_DOM' });
+    expect(boardCardCids(window)).toContain('TENT_DOM');
+    window.eval('document.getElementById("board-draft-reject").click()');
+    expect(window.eval('state.proposalDraft')).toBeNull();
+    expect(boardCardCids(window)).not.toContain('TENT_DOM');
+    expect(window.eval('Object.values(state.semesters).flat().includes("TENT_DOM")')).toBe(false);
+  });
+
+  // ── H. The committed course already on the board is not duplicated as "added" ──
+  test('H. a course already committed is not rendered twice nor flagged as newly added', () => {
+    window.eval(`
+      courseMap['ALREADY'] = { course_id: 'ALREADY', name_he: 'קיים', weekly_hours: 3 };
+      courseMap['TENT_DOM'] = { course_id: 'TENT_DOM', name_he: 'קורס בהנחה', weekly_hours: 3 };
+      state.semesters['year_3_semester_a'] = [...(state.semesters['year_3_semester_a'] || []), 'ALREADY'];
+      state.lastPlanningDraft = {
+        confirmedPlacements: [{ course_id: 'ALREADY', semester_id: 'year_3_semester_a' }],
+        tentativePlacements: [{ course_id: 'TENT_DOM', semester_id: 'year_3_semester_a' }],
+        blockedCourses: [], assumptions: [], missingData: [], questionsForUser: [],
+        source: 'draft_planner', createdAt: Date.now(),
+      };
+    `);
+    window.eval(`handleQuickReply({ label: 'כלול גם קורסים עם היצע לא ודאי', action: 'planning-fallback', payload: { type: 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS' } })`);
+    const cids = boardCardCids(window);
+    // ALREADY appears exactly once (it was committed; the draft must not duplicate it).
+    expect(cids.filter(c => c === 'ALREADY').length).toBe(1);
+    // The genuinely-new tentative course is added and visible.
+    const added = JSON.parse(window.eval('(function(){ const d = computeDraftDiff(); return JSON.stringify(d ? [...d.added] : []); })()'));
+    expect(added).toContain('TENT_DOM');
+    expect(added).not.toContain('ALREADY');
+  });
+});
