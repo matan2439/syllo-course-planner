@@ -259,3 +259,168 @@ describe('buildPlanningFallback — conversational fallback', () => {
     expect(result.messageHe).toContain('קורסים שדורשים אישור');
   });
 });
+
+describe('buildPlanningFallback — course name display (name + id format)', () => {
+  let dom, window;
+
+  beforeEach(async () => {
+    dom = loadPage();
+    window = dom.window;
+    await waitForInit(window);
+    window.eval('for (const sid of Object.keys(state.semesters)) state.semesters[sid] = [];');
+    // Inject synthetic courses into courseMap so courseLabelLocal can resolve them.
+    window.eval(`
+      if (typeof courseMap !== 'undefined') {
+        courseMap['NAMED1'] = { name_he: 'מכניקה מתקדמת', course_id: 'NAMED1' };
+        courseMap['NAMED2'] = { name_he: 'זרימת גזים', course_id: 'NAMED2' };
+        courseMap['PREREQ1'] = { name_he: 'מבוא לבקרה', course_id: 'PREREQ1' };
+      }
+    `);
+  });
+
+  afterEach(() => { dom.window.close(); });
+
+  // ── Test 9 ──────────────────────────────────────────────────────────────────
+  test('confirmed course label contains "name (id)" in the message', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['NAMED1', 'NAMED2'] },
+    ]};
+    // NAMED2 has missing offering; NAMED1 is confirmed (no blocker for it)
+    const gate = blockedGate([{
+      cause: 'missing_offering_data',
+      message_he: 'אין נתוני היצע',
+      course_ids: ['NAMED2'],
+    }]);
+    const result = callFallback(window, proposal, gate, {
+      NAMED1: { hours: 3 },
+      NAMED2: { hours: 3 },
+    });
+    expect(result).not.toBeNull();
+    // Confirmed course should show "name (id)" format
+    expect(result.messageHe).toContain('מכניקה מתקדמת (NAMED1)');
+  });
+
+  // ── Test 10 ─────────────────────────────────────────────────────────────────
+  test('tentative course label contains "name (id)" in the message', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['NAMED2'] },
+    ]};
+    const gate = blockedGate([{
+      cause: 'missing_offering_data',
+      message_he: 'אין נתוני היצע',
+      course_ids: ['NAMED2'],
+    }]);
+    const result = callFallback(window, proposal, gate, { NAMED2: { hours: 3 } });
+    expect(result).not.toBeNull();
+    expect(result.messageHe).toContain('זרימת גזים (NAMED2)');
+  });
+
+  // ── Test 11 ─────────────────────────────────────────────────────────────────
+  test('prereq-blocked course shows "name (id)" for the blocked course', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['NAMED1'] },
+    ]};
+    const gate = blockedGate([{
+      cause: 'prerequisite',
+      message_he: 'לחסר דרישת קדם',
+      course_ids: ['NAMED1', 'PREREQ1'],
+      detail: { unsatisfied: ['PREREQ1'] },
+    }]);
+    const result = callFallback(window, proposal, gate, {
+      NAMED1: { hours: 3 },
+      PREREQ1: { hours: 3 },
+    });
+    expect(result).not.toBeNull();
+    expect(result.messageHe).toContain('מכניקה מתקדמת (NAMED1)');
+  });
+
+  // ── Test 12 ─────────────────────────────────────────────────────────────────
+  test('prereq-blocked course shows "name (id)" for the required prereq course', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['NAMED1'] },
+    ]};
+    const gate = blockedGate([{
+      cause: 'prerequisite',
+      message_he: 'לחסר דרישת קדם',
+      course_ids: ['NAMED1', 'PREREQ1'],
+      detail: { unsatisfied: ['PREREQ1'] },
+    }]);
+    const result = callFallback(window, proposal, gate, {
+      NAMED1: { hours: 3 },
+      PREREQ1: { hours: 3 },
+    });
+    expect(result).not.toBeNull();
+    expect(result.messageHe).toContain('מבוא לבקרה (PREREQ1)');
+  });
+
+  // ── Test 13 ─────────────────────────────────────────────────────────────────
+  test('course without a name in courseMap falls back to raw course ID only', () => {
+    const proposal = { semesters: [
+      { semester_id: 'year_3_semester_a', course_ids: ['UNKNOWN_XYZ'] },
+    ]};
+    const gate = blockedGate([{
+      cause: 'missing_offering_data',
+      message_he: 'אין נתוני היצע',
+      course_ids: ['UNKNOWN_XYZ'],
+    }]);
+    const result = callFallback(window, proposal, gate, { UNKNOWN_XYZ: { hours: 3 } });
+    expect(result).not.toBeNull();
+    // No name available — raw ID only, no parenthesized suffix
+    expect(result.messageHe).toContain('UNKNOWN_XYZ');
+    expect(result.messageHe).not.toContain('undefined');
+    expect(result.messageHe).not.toContain('null');
+  });
+});
+
+describe('handleSidebarChatSend — input clearing after send', () => {
+  let dom, window;
+
+  beforeEach(async () => {
+    dom = loadPage();
+    window = dom.window;
+    await waitForInit(window);
+    // Ensure the AI chat UI is rendered so sidebar-chat-input exists in the DOM.
+    window.eval('if (typeof renderAiTab === "function") renderAiTab()');
+  });
+
+  afterEach(() => { dom.window.close(); });
+
+  // ── Test 14 ─────────────────────────────────────────────────────────────────
+  test('DOM input.value is empty string immediately after handleSidebarChatSend', async () => {
+    const hasInput = window.eval('!!document.getElementById("sidebar-chat-input")');
+    if (!hasInput) return; // graceful skip if UI not mounted
+    window.eval('document.getElementById("sidebar-chat-input").value = "שלח הודעה"');
+    window.eval('_aiChatInputDraft = "שלח הודעה"');
+    // Trigger without awaiting — clearing is synchronous, before the async inner call.
+    window.eval('handleSidebarChatSend()');
+    await new Promise(r => setTimeout(r, 0));
+    const inputValue = window.eval('document.getElementById("sidebar-chat-input").value');
+    expect(inputValue).toBe('');
+  });
+
+  // ── Test 15 ─────────────────────────────────────────────────────────────────
+  test('_aiChatInputDraft state var is "" after handleSidebarChatSend', async () => {
+    const hasInput = window.eval('!!document.getElementById("sidebar-chat-input")');
+    if (!hasInput) return;
+    window.eval('document.getElementById("sidebar-chat-input").value = "תבנה מערכת"');
+    window.eval('_aiChatInputDraft = "תבנה מערכת"');
+    window.eval('handleSidebarChatSend()');
+    await new Promise(r => setTimeout(r, 0));
+    const draft = window.eval('_aiChatInputDraft');
+    expect(draft).toBe('');
+  });
+
+  // ── Test 16 ─────────────────────────────────────────────────────────────────
+  test('localStorage inputDraft is "" after handleSidebarChatSend clears state', async () => {
+    const hasInput = window.eval('!!document.getElementById("sidebar-chat-input")');
+    if (!hasInput) return;
+    window.eval('document.getElementById("sidebar-chat-input").value = "שאלה"');
+    window.eval('_aiChatInputDraft = "שאלה"');
+    window.eval('handleSidebarChatSend()');
+    await new Promise(r => setTimeout(r, 0));
+    const stored = window.eval(
+      '(function() { try { const r = JSON.parse(localStorage.getItem("tau_ai_chat") || "{}"); return r.inputDraft; } catch(e) { return null; } })()'
+    );
+    expect(stored).toBe('');
+  });
+});

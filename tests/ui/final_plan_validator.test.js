@@ -406,3 +406,68 @@ describe('G — multiple blockers + specific recovery message', () => {
     expect(diag.category).toBe('eligibility');
   });
 });
+
+describe('validateFinalPlan nameOf — "name (id)" display format', () => {
+  // ── Test 17 ─────────────────────────────────────────────────────────────────
+  test('prerequisite blocker message contains "name (cid)" when name_he is set', () => {
+    const courses = {
+      '0542-9001': {
+        course_id: '0542-9001', name_he: 'בקרה',
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+      },
+      '0542-9002': {
+        course_id: '0542-9002', name_he: 'מעבדה ברובוטיקה',
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+        missing_prerequisites: ['0542-9001'],
+      },
+    };
+    const r = validate(semProposal({ year_3_semester_a: ['0542-9002'] }), baseCtx(courses));
+    expect(r.applicable).toBe(false);
+    const b = r.blockers.find(x => x.cause === 'prerequisite');
+    expect(b).toBeTruthy();
+    // Should show "בקרה (0542-9001)" — name + id format
+    expect(b.message_he).toContain('בקרה (0542-9001)');
+  });
+
+  // ── Test 18 ─────────────────────────────────────────────────────────────────
+  test('nameOf falls back to raw course ID when no name_he is present', () => {
+    const courses = {
+      'NOID': {
+        course_id: 'NOID',
+        // No name_he field
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+        missing_prerequisites: ['PREREQ_NOID'],
+      },
+      'PREREQ_NOID': {
+        course_id: 'PREREQ_NOID',
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+      },
+    };
+    const r = validate(semProposal({ year_3_semester_a: ['NOID'] }), baseCtx(courses));
+    const b = r.blockers.find(x => x.cause === 'prerequisite');
+    expect(b).toBeTruthy();
+    // No name — raw ID only
+    expect(b.message_he).toContain('PREREQ_NOID');
+    expect(b.message_he).not.toContain('undefined');
+  });
+
+  // ── Test 19 ─────────────────────────────────────────────────────────────────
+  test('mandatory blocker message shows "name (id)" for missing mandatory course', () => {
+    const courses = {
+      'PRESENT': {
+        course_id: 'PRESENT', name_he: 'קורס נוכח',
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+      },
+      'MAND_WITH_NAME': {
+        course_id: 'MAND_WITH_NAME', name_he: 'פיסיקה 3',
+        effective_allowed_semesters: SEMESTERS.map(s => s.id),
+      },
+    };
+    const ctx = baseCtx(courses, { requiredMandatoryCourseIds: ['MAND_WITH_NAME'] });
+    const r = validate(semProposal({ year_3_semester_a: ['PRESENT'] }), ctx);
+    const b = r.blockers.find(x => x.cause === 'mandatory');
+    expect(b).toBeTruthy();
+    // Mandatory blocker should use "name (id)" format
+    expect(b.message_he).toContain('פיסיקה 3 (MAND_WITH_NAME)');
+  });
+});

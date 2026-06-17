@@ -5321,7 +5321,12 @@ async function handleSidebarChatSend(providedMessage) {
 
   if (providedMessage == null) {
     postUserMessage(message);
-    if (input) input.value = '';
+    if (input) {
+      input.value = '';
+      try { input.focus(); } catch(_) {}
+    }
+    _aiChatInputDraft = '';
+    saveAiChatState();
   }
 
   // Emergency runtime fix: wrap the entire handler body so any synchronous
@@ -7987,7 +7992,11 @@ function validateFinalPlan(proposal, ctx) {
   const completedIds = ctx.completedCourseIds instanceof Set ? ctx.completedCourseIds
     : new Set(ctx.completedCourseIds || []);
 
-  const nameOf = cid => courses[cid]?.name_he || cid;
+  const nameOf = cid => {
+    const n = (courses[cid]?.name_he) ||
+      (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || null;
+    return n ? `${n} (${cid})` : cid;
+  };
 
   // ── Check 1: illegal_semester / missing_offering_data ────────────────────
   // Issue 7 — GROUP the missing-offering-data courses into ONE blocker (a single
@@ -8276,7 +8285,13 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
 
   const blockers = (gateResult && gateResult.blockers) || [];
   const courses = (ctx && ctx.courses) || {};
-  const nameOf = cid => (courses[cid] && courses[cid].name_he) || cid;
+  // Use the global courseLabelLocal (name + id) when available; fall back to
+  // name_he from ctx.courses, then raw id.
+  const nameOf = cid => typeof courseLabelLocal === 'function'
+    ? courseLabelLocal(cid)
+    : ((courses[cid]?.name_he || (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he))
+        ? `${courses[cid]?.name_he || courseMap[cid].name_he} (${cid})`
+        : cid);
 
   // Committed board course IDs (all semesters flat)
   const boardCids = new Set(
@@ -8344,20 +8359,25 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
   }
 
   if (hasTentative) {
-    parts.push('\nקורסים שדורשים אישור (חסר מידע ודאי על היצע הסמסטר):');
-    tentativeNew.slice(0, 4).forEach(cid => parts.push(`• ${nameOf(cid)}`));
+    parts.push('\nקורסים שדורשים אישור:');
+    tentativeNew.slice(0, 4).forEach(cid => parts.push(`• ${nameOf(cid)} — חסר מידע ודאי על היצע הסמסטר`));
     if (tentativeNew.length > 4) parts.push(`• ועוד ${tentativeNew.length - 4}`);
   }
 
   if (hasPrereq) {
-    parts.push('\nקורסים חסומים בדרישות קדם:');
+    parts.push('\nקורסים שחסומים כרגע:');
     prereqNew.slice(0, 4).forEach(({ cid, unsatisfied }) => {
       const prereqNames = unsatisfied.map(nameOf).join(', ') || 'דרישת קדם לא ידועה';
-      parts.push(`• ${nameOf(cid)} — תלוי בכך שסיימת: ${prereqNames}`);
+      parts.push(`• ${nameOf(cid)} — תלוי בכך שסיימת את ${prereqNames}`);
     });
   }
 
-  parts.push('\nכדי להמשיך, בחר אחת מהאפשרויות:');
+  parts.push('\nכדי להמשיך, אפשר לבחור אחת מהאפשרויות הבאות:');
+  let optN = 1;
+  parts.push(`${optN++}. לבנות מערכת רק עם הקורסים הבטוחים`);
+  if (hasTentative) parts.push(`${optN++}. לכלול גם קורסים עם היצע סמסטר לא ודאי`);
+  if (hasPrereq)    parts.push(`${optN++}. לסמן קורסי קדם שכבר הושלמו`);
+  parts.push(`${optN}. לתת ל-AI להציע מערכת מאוזנת עם הנחות`);
 
   // ── Chips ─────────────────────────────────────────────────────────────────
   const chips = [];
@@ -12079,6 +12099,7 @@ function diagnoseBuildBlock(validation, opts) {
 
   const courseNameOf = (cid) => {
     try {
+      if (typeof courseLabelLocal === 'function') return courseLabelLocal(cid);
       if (typeof courseMap !== 'undefined' && courseMap[cid]) return courseMap[cid].name_he || cid;
     } catch (_) { /* noop */ }
     return cid;
