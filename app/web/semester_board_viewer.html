@@ -4772,6 +4772,11 @@ function handleQuickReply(qr) {
       triggerExplicitRebuild();
       return;
     }
+    case 'show-my-courses': {
+      postUserMessage(qr.label);
+      postAssistantMessage('כדי לסמן קורסי קדם כ"הושלמו": עבור לכרטיסיית "הקורסים שלי" בתפריט הצד, מצא את קורסי הקדם החסומים ושנה את הסטטוס שלהם ל"הושלם". לאחר מכן בנה מחדש את המערכת.');
+      return;
+    }
     case 'show-blocking-constraints': {
       postUserMessage(qr.label);
       const v = _aiPlanLastValidation;
@@ -8221,7 +8226,8 @@ let _lastFinalPlanBlockedMsg = null;
  *                  driven by the real blockers), Apply stays disabled.
  * Returns the validation result.
  */
-function gateProposalActivation(proposal) {
+function gateProposalActivation(proposal, opts) {
+  opts = opts || {};
   const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
   // Keep the live validation in sync so isPlanApplyableLocal / preview agree.
   if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = result;
@@ -8237,17 +8243,137 @@ function gateProposalActivation(proposal) {
   if (_aiPlanLastValidation) _aiPlanLastValidation.blocked = true;
   renderAll();
 
-  // ONE targeted recovery message via the existing blocked-chat flow.
-  try {
-    const diag = diagnoseBuildBlock(blockersToValidationShape(result), { preferences: _aiPlanLastPreferences });
-    const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-    const msg = lines.join('\n');
-    if (msg && msg !== _lastFinalPlanBlockedMsg) {
-      _lastFinalPlanBlockedMsg = msg;
-      postAssistantMessage(msg, diag.chips);
-    }
-  } catch (_) { /* diagnosis unavailable — blocked state already set */ }
+  // Post a recovery message unless caller suppresses it (to post a richer one).
+  if (!opts.suppressBlockedMessage) {
+    try {
+      const diag = diagnoseBuildBlock(blockersToValidationShape(result), { preferences: _aiPlanLastPreferences });
+      const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+      const msg = lines.join('\n');
+      if (msg && msg !== _lastFinalPlanBlockedMsg) {
+        _lastFinalPlanBlockedMsg = msg;
+        postAssistantMessage(msg, diag.chips);
+      }
+    } catch (_) { /* diagnosis unavailable — blocked state already set */ }
+  }
   return result;
+}
+
+/**
+ * Conversational fallback for strict-validation failures.
+ *
+ * When the planner produced an ineligible proposal, this function examines what
+ * it *did* place (vs. the committed board) and classifies new courses into
+ * confirmed / tentative (missing offering data) / prereq-blocked buckets.
+ *
+ * Returns null when there is nothing richer to say (let diagnoseBuildBlock handle).
+ * Returns { outcome, confirmedPlacements, tentativePlacements, blockedCourses, messageHe, chips }
+ * when a conversational partial-plan message can be built.
+ *
+ * Does NOT touch state — board is already unchanged (gate cleared proposalDraft).
+ */
+function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
+  if (!gateResult || gateResult.applicable) return null;
+
+  const blockers = (gateResult && gateResult.blockers) || [];
+  const courses = (ctx && ctx.courses) || {};
+  const nameOf = cid => (courses[cid] && courses[cid].name_he) || cid;
+
+  // Committed board course IDs (all semesters flat)
+  const boardCids = new Set(
+    Object.values((typeof state !== 'undefined' ? state.semesters : null) || {}).flat()
+  );
+
+  // Proposal placement map: cid → Hebrew semester label
+  const proposalPlacement = {};
+  for (const sem of ((eligibleProposal && eligibleProposal.semesters) || [])) {
+    const semLbl = _formatSemIdHe(sem.semester_id);
+    for (const cid of (sem.course_ids || [])) proposalPlacement[cid] = semLbl;
+  }
+
+  // "New" = in proposal but NOT already committed to the board
+  const newCids = Object.keys(proposalPlacement).filter(cid => !boardCids.has(cid));
+
+  // Classify by blocker cause — only care about per-course actionable causes
+  const missingOfferingCids = new Set();
+  const prereqEntries = []; // { cid, unsatisfied: [prereqCourseId] }
+
+  for (const b of blockers) {
+    if (b.cause === 'missing_offering_data') {
+      for (const cid of (b.course_ids || [])) missingOfferingCids.add(cid);
+    } else if (b.cause === 'prerequisite') {
+      const cids = b.course_ids || [];
+      const blocked = cids[0];
+      const unsatisfied = (b.detail && b.detail.unsatisfied) || cids.slice(1);
+      if (blocked) prereqEntries.push({ cid: blocked, unsatisfied });
+    }
+  }
+
+  // Only intercept when there are per-course offering/prereq issues to explain
+  if (missingOfferingCids.size === 0 && prereqEntries.length === 0) return null;
+  // Nothing new to show
+  if (newCids.length === 0) return null;
+
+  // Classify new courses
+  const prereqBlockedCidSet = new Set(prereqEntries.map(e => e.cid));
+  const confirmedNew = newCids.filter(cid => !missingOfferingCids.has(cid) && !prereqBlockedCidSet.has(cid));
+  const tentativeNew  = newCids.filter(cid =>  missingOfferingCids.has(cid));
+  const prereqNew     = prereqEntries.filter(e => !boardCids.has(e.cid));
+
+  const hasConfirmed  = confirmedNew.length > 0;
+  const hasTentative  = tentativeNew.length > 0;
+  const hasPrereq     = prereqNew.length > 0;
+
+  if (!hasConfirmed && !hasTentative && !hasPrereq) return null;
+
+  const outcome = (hasConfirmed || hasTentative)
+    ? 'PARTIAL_PLAN_NEEDS_CONFIRMATION'
+    : 'NEED_USER_INPUT';
+
+  // ── Build Hebrew message ──────────────────────────────────────────────────
+  const parts = [];
+  if (outcome === 'PARTIAL_PLAN_NEEDS_CONFIRMATION') {
+    parts.push('לא הצלחתי לבנות מערכת מלאה בוודאות גבוהה, אבל מצאתי טיוטה חלקית שאפשר להתקדם איתה.');
+  } else {
+    parts.push('לא הצלחתי להשלים את המערכת — חסר מידע שיאפשר לשבץ חלק מהקורסים.');
+  }
+
+  if (hasConfirmed) {
+    parts.push('\nשיבוץ בטוח:');
+    confirmedNew.slice(0, 6).forEach(cid => parts.push(`• ${nameOf(cid)} — ${proposalPlacement[cid]}`));
+    if (confirmedNew.length > 6) parts.push(`• ועוד ${confirmedNew.length - 6} קורסים נוספים`);
+  }
+
+  if (hasTentative) {
+    parts.push('\nקורסים שדורשים אישור (חסר מידע ודאי על היצע הסמסטר):');
+    tentativeNew.slice(0, 4).forEach(cid => parts.push(`• ${nameOf(cid)}`));
+    if (tentativeNew.length > 4) parts.push(`• ועוד ${tentativeNew.length - 4}`);
+  }
+
+  if (hasPrereq) {
+    parts.push('\nקורסים חסומים בדרישות קדם:');
+    prereqNew.slice(0, 4).forEach(({ cid, unsatisfied }) => {
+      const prereqNames = unsatisfied.map(nameOf).join(', ') || 'דרישת קדם לא ידועה';
+      parts.push(`• ${nameOf(cid)} — תלוי בכך שסיימת: ${prereqNames}`);
+    });
+  }
+
+  parts.push('\nכדי להמשיך, בחר אחת מהאפשרויות:');
+
+  // ── Chips ─────────────────────────────────────────────────────────────────
+  const chips = [];
+  chips.push({ label: 'בנה רק עם קורסים בטוחים', action: 'rebuild-relaxed' });
+  if (hasTentative) chips.push({ label: 'כלול גם קורסים עם היצע לא ודאי', action: 'rebuild-relaxed' });
+  if (hasPrereq)    chips.push({ label: 'סמן קורסי קדם שהושלמו', action: 'show-my-courses' });
+  chips.push({ label: 'הצע מערכת מאוזנת עם הנחות', action: 'rebuild-relaxed' });
+
+  return {
+    outcome,
+    confirmedPlacements: confirmedNew,
+    tentativePlacements: tentativeNew,
+    blockedCourses: prereqNew,
+    messageHe: parts.join('\n'),
+    chips,
+  };
 }
 
 /** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */
@@ -12825,7 +12951,8 @@ async function requestPlanProposal(prefs, actionType) {
 
     // Snapshot committed board BEFORE the gate for an exact before/after diff.
     const _beforeBoard = JSON.parse(JSON.stringify(state.semesters || {}));
-    const _gateResult = gateProposalActivation(eligibleProposal);
+    // Gate runs with suppressBlockedMessage so requestPlanProposal owns the message.
+    const _gateResult = gateProposalActivation(eligibleProposal, { suppressBlockedMessage: true });
 
     // After gate: draft is active (applicable) or cleared (blocked).
     const _afterBoard = (_gateResult && _gateResult.applicable && state.proposalDraft && state.proposalDraft.semesters)
@@ -12851,8 +12978,25 @@ async function requestPlanProposal(prefs, actionType) {
       try { postPlanChangeSummary(_bProp, _aProp, prefs); } catch (_) {}
     } else if (_planOutcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
       postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+    } else {
+      // FAILURE_VALIDATION — try the conversational fallback before falling back
+      // to the standard diagnoseBuildBlock message.
+      const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx);
+      if (_fallback) {
+        postAssistantMessage(_fallback.messageHe, _fallback.chips);
+      } else {
+        // No per-course offering/prereq issues to explain — use diagnoseBuildBlock.
+        try {
+          const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
+          const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+          const msg = lines.join('\n');
+          if (msg && msg !== _lastFinalPlanBlockedMsg) {
+            _lastFinalPlanBlockedMsg = msg;
+            postAssistantMessage(msg, diag.chips);
+          }
+        } catch (_) { /* diagnosis unavailable */ }
+      }
     }
-    // FAILURE_VALIDATION: gateProposalActivation already posted the recovery message.
 
     _aiPlanLastSummaryProposal = JSON.parse(JSON.stringify(eligibleProposal));
   } catch (err) {
