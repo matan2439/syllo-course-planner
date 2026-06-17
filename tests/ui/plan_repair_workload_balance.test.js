@@ -36,6 +36,8 @@ function loadRepair() {
     throw new Error(`${name}: unbalanced braces`);
   };
   const helpers = [
+    'function _normalizeSemId(id) { return (id || "").replace(/(_[ab])\\d+$/, "$1"); }',
+    'function _formatSemIdHe(id) { return _normalizeSemId(id); }',
     grab('getSemesterLoadLocal'),
     grab('isAnnualCourse'),
     grab('_isMovableForBalance'),

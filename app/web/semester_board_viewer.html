@@ -1738,6 +1738,21 @@ const SEM_HE = {
   year_4_semester_b: "שנה ד׳ — סמסטר ב׳",
 };
 
+/** Strips accidental AI-generated numeric suffixes from semester IDs.
+ *  'year_3_semester_a2' → 'year_3_semester_a',  'year_4_semester_b3' → 'year_4_semester_b' */
+function _normalizeSemId(id) {
+  return (id || '').replace(/(_[ab])\d+$/, '$1');
+}
+/** Converts any semester ID (including suffixed variants) to a Hebrew label. */
+function _formatSemIdHe(id) {
+  const norm = _normalizeSemId(id);
+  if (SEM_HE[norm]) return SEM_HE[norm];
+  const m = norm.match(/^year_(\d+)_semester_([ab])$/i);
+  if (!m) return id;
+  const YEAR_HE = { 1:'א', 2:'ב', 3:'ג', 4:'ד', 5:'ה', 6:'ו' };
+  return `שנה ${YEAR_HE[parseInt(m[1])] || m[1]}׳ — סמסטר ${m[2].toLowerCase() === 'a' ? 'א' : 'ב'}׳`;
+}
+
 /**
  * PART B — Year 1/2 mandatory mechanical-engineering courses. The active
  * board (SEMESTERS/courseMap) only covers years 3-4, but "הקורסים שלי" needs
@@ -4443,7 +4458,7 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
 
   const lines = [];
   const lbl = (cid) => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
-  const semLbl = (sid) => SEM_HE[sid] || sid;
+  const semLbl = _formatSemIdHe;
   const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
 
   if (added.length) lines.push(`נוספו: ${cap(added, 4)}.`);
@@ -4471,14 +4486,20 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     ...(((v && v.completeness && v.completeness.reasons) || [])),
   ].filter(Boolean);
   const uniqBlockers = [...new Set(blockerLines)];
-  if (uniqBlockers.length) {
-    lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
+
+  // When no courses were actually added/removed/moved relative to the committed
+  // board, skip the success opener — claiming success contradicts an empty diff.
+  if (added.length === 0 && removed.length === 0 && movedC.length === 0) {
+    const msg = uniqBlockers.length
+      ? `לא הצלחתי לשבץ קורסים חדשים: ${uniqBlockers.slice(0, 2).join('; ')}.`
+      : 'לא הצלחתי להוסיף קורסים חדשים ללוח לפי הנתונים הקיימים.';
+    _planChangeSummaryNonce++;
+    postStatusMessage(msg);
+    return;
   }
 
-  if (!lines.length) {
-    // No placement change and nothing to echo — say so plainly (still varied).
-    const noChange = ['לא נדרשו שינויים — המערכת כבר עומדת בהעדפות.', 'אין שינוי במערכת לפי הבקשה הנוכחית.'];
-    lines.push(noChange[_planChangeSummaryNonce % noChange.length]);
+  if (uniqBlockers.length) {
+    lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
   }
 
   // Rotate the opening phrase so repeated rebuilds differ visibly.
@@ -4487,6 +4508,26 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   _planChangeSummaryNonce++;
 
   postStatusMessage([opener, ...lines].join('\n'));
+}
+
+/**
+ * Diffs two committed-board snapshots ({ semId: [courseIds] }).
+ * Semester IDs are normalized before comparison so 'year_3_semester_a2' and
+ * 'year_3_semester_a' are treated as the same semester.
+ */
+function _computeBoardDiff(before, after) {
+  const bMap = {}, aMap = {};
+  for (const [sem, cids] of Object.entries(before || {}))
+    for (const cid of (cids || [])) bMap[cid] = _normalizeSemId(sem);
+  for (const [sem, cids] of Object.entries(after || {}))
+    for (const cid of (cids || [])) aMap[cid] = _normalizeSemId(sem);
+  return {
+    added:   Object.keys(aMap).filter(c => !(c in bMap)),
+    removed: Object.keys(bMap).filter(c => !(c in aMap)),
+    moved:   Object.keys(aMap)
+      .filter(c => c in bMap && bMap[c] !== aMap[c])
+      .map(c => ({ cid: c, from: bMap[c], to: aMap[c] })),
+  };
 }
 
 /* PART B/C — transient loading bubble shown while a chat/build request is
@@ -6620,7 +6661,7 @@ function buildCourseContext(c) {
   // information only — never invent an offering semester.
   {
     const legal = getLegalSemestersLocal(c);
-    const semLabel = id => (SEMESTERS.find(s => s.id === id)?.label) || id;
+    const semLabel = _formatSemIdHe;
     if (legal.semesters?.length) {
       lines.push(`סמסטרי היצע מותרים (effective_allowed_semesters): ${legal.semesters.map(semLabel).join(', ')}`);
     } else {
@@ -7893,7 +7934,7 @@ function validateFinalPlan(proposal, ctx) {
   const prefs = ctx.preferences || ctx.prefs || {};
   const SEMS = (typeof SEMESTERS !== 'undefined' ? SEMESTERS : (ctx.SEMESTERS || []));
   const semIds = SEMS.map(s => s.id);
-  const semLabel = id => (SEMS.find(s => s.id === id)?.label) || id;
+  const semLabel = _formatSemIdHe;
 
   // Helper resolution (injected → global → noop), keeps the function grabbable.
   const _getLegalSemesters = H.getLegalSemestersLocal
@@ -10321,8 +10362,8 @@ function repairPlanLoad(proposal, ctx) {
         accepted: true,
         is_mandatory: isMand || undefined,
         reason: isMand
-          ? `הוזז קורס חובה גמיש ${info.name_he || cid} מ${sem.semester_id} ל${sems[bestJ].semester_id} לאיזון עומס (${maxHours}→${newOverHours})`
-          : `התקבל, עומס ${sem.semester_id} ירד מ-${maxHours} ל-${newOverHours}`,
+          ? `הוזז קורס חובה גמיש ${info.name_he || cid} מ${_formatSemIdHe(sem.semester_id)} ל${_formatSemIdHe(sems[bestJ].semester_id)} לאיזון עומס (${maxHours}→${newOverHours})`
+          : `התקבל, עומס ${_formatSemIdHe(sem.semester_id)} ירד מ-${maxHours} ל-${newOverHours}`,
         before_load: maxHours, after_load: newOverHours,
       });
       moved = true;
@@ -10377,7 +10418,7 @@ function repairPlanLoad(proposal, ctx) {
           course_id: cid, course_name: info.name_he || null,
           from_semester: sem.semester_id, to_semester: sems[bestJ].semester_id,
           accepted: true,
-          reason: `הופחת עומס ${sem.semester_id} לפי בקשה — ${info.name_he || cid} הועבר ל${sems[bestJ].semester_id}`,
+          reason: `הופחת עומס ${_formatSemIdHe(sem.semester_id)} לפי בקשה — ${info.name_he || cid} הועבר ל${_formatSemIdHe(sems[bestJ].semester_id)}`,
           load_target: 'reduce',
         });
         repaired = true;
@@ -12005,7 +12046,7 @@ function diagnoseBuildBlock(validation, opts) {
       ? `לא ניתן להציג שיבוץ חוקי: ${offReason}`
       : 'לקורס בתוכנית חסרים נתוני היצע סמסטר ודאיים, ולכן לא ניתן להציג שיבוץ חוקי.';
     questions.push('להחליף את הקורס בקורס עם נתוני היצע ודאיים?');
-    chips.push({ label: 'בנה מחדש עם קורסים בעלי היצע ודאי', action: 'rebuild-relaxed' });
+    chips.push({ label: 'בנה מערכת מחדש עם קורסים שניתן לשבץ בוודאות', action: 'rebuild-relaxed' });
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (overloadHit) {
     category = 'overload';
@@ -12053,10 +12094,16 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'אפשר בחירה להשלמת קטגוריה', action: 'relax-avoid-soft' });
   } else if (prereqHit) {
     category = 'prerequisites';
-    explanation_he = 'נוצרה התנגשות בדרישות קדם ולכן לא הצלחתי לסדר מערכת חוקית.';
-    questions.push('יש התנגשות בקדם. להעדיף סדר לימוד גמיש יותר / לדחות קורס מתקדם לסמסטר מאוחר יותר?');
-    chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
+    // Surface the first actual prereq blocker (contains course + prereq names)
+    // rather than a generic explanation that gives the user nothing actionable.
+    const prereqReasons = all.filter(s => RE_PREREQ.test(s));
+    const firstPrereqReason = prereqReasons[0] || '';
+    explanation_he = firstPrereqReason
+      ? `לא ניתן לסדר מערכת חוקית: ${firstPrereqReason}`
+      : 'נוצרה התנגשות בדרישות קדם ולכן לא הצלחתי לסדר מערכת חוקית.';
+    questions.push('האם ניתן לסמן את קורס הקדם כ"הושלם" או "בלימוד כעת" כדי לאפשר שיבוץ?');
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
+    chips.push({ label: 'אפשר סדר גמיש', action: 'rebuild-relaxed' });
   } else if (legalityHit) {
     category = 'legality';
     // Issue 7 — name the course + its only-legal semester, e.g.
@@ -12734,7 +12781,7 @@ async function requestPlanProposal(prefs, actionType) {
       if (requestedMoved.length) {
         eligibleProposal.warnings_he = [
           ...(eligibleProposal.warnings_he || []),
-          ...requestedMoved.map(m => `${courseLabelLocal(m.course_id)} הועבר ל${SEM_HE[m.to] || m.to} לפי בקשתך.`),
+          ...requestedMoved.map(m => `${courseLabelLocal(m.course_id)} הועבר ל${_formatSemIdHe(m.to)} לפי בקשתך.`),
         ];
         // Re-enforce legality after relocation (defense in depth).
         const reEnforced = enforceLegalPlacementsLocal(eligibleProposal, {
@@ -12753,19 +12800,50 @@ async function requestPlanProposal(prefs, actionType) {
       }
     }
 
+    // Normalize AI-generated semester IDs before all structural steps
+    // (strips accidental suffixes: 'year_3_semester_a2' → 'year_3_semester_a').
+    for (const s of (eligibleProposal.semesters || [])) {
+      s.semester_id = _normalizeSemId(s.semester_id);
+    }
+
     // Issue 2 — LAST structural step before the gate: normalize annual courses
     // to the single canonical representation (present in EVERY span semester,
     // absent elsewhere) so validateFinalPlan's annual check — which stays the
     // authority — passes for a correctly-spanning model and still fails if a
     // span is genuinely missing from the model.
     normalizeAnnualPlacements(eligibleProposal);
-    // POST-REBUILD CHANGE SUMMARY — capture the proposal that was active before
-    // THIS build so the deterministic diff summary can describe what changed.
-    const _prevProposalForSummary = _aiPlanLastSummaryProposal || null;
-    gateProposalActivation(eligibleProposal);
-    // Post a short, varied Hebrew summary of the ACTUAL change (added / removed /
-    // moved courses) vs the previous proposal. Deterministic, no LLM.
-    try { postPlanChangeSummary(_prevProposalForSummary, eligibleProposal, prefs); } catch (_) {}
+
+    // Snapshot committed board BEFORE the gate for an exact before/after diff.
+    const _beforeBoard = JSON.parse(JSON.stringify(state.semesters || {}));
+    const _gateResult = gateProposalActivation(eligibleProposal);
+
+    // After gate: draft is active (applicable) or cleared (blocked).
+    const _afterBoard = (_gateResult && _gateResult.applicable && state.proposalDraft && state.proposalDraft.semesters)
+      ? JSON.parse(JSON.stringify(state.proposalDraft.semesters))
+      : JSON.parse(JSON.stringify(state.semesters || {}));
+
+    // Exact diff — mandatory courses already on the board are never "added".
+    const _boardDiff = _computeBoardDiff(_beforeBoard, _afterBoard);
+    const _planOutcome = !_gateResult || !_gateResult.applicable
+      ? 'FAILURE_VALIDATION'
+      : (_boardDiff.added.length > 0 || _boardDiff.removed.length > 0 || _boardDiff.moved.length > 0)
+        ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
+
+    console.log('[AI plan diff]', {
+      before: _beforeBoard, after: _afterBoard,
+      added: _boardDiff.added, removed: _boardDiff.removed, moved: _boardDiff.moved,
+      outcome: _planOutcome, gateApplicable: !!(_gateResult && _gateResult.applicable),
+    });
+
+    if (_planOutcome === 'SUCCESS_WITH_CHANGES') {
+      const _bProp = { semesters: Object.entries(_beforeBoard).map(([id, cs]) => ({ semester_id: id, course_ids: cs })) };
+      const _aProp = { semesters: Object.entries(_afterBoard).map(([id, cs]) => ({ semester_id: id, course_ids: cs })) };
+      try { postPlanChangeSummary(_bProp, _aProp, prefs); } catch (_) {}
+    } else if (_planOutcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
+      postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+    }
+    // FAILURE_VALIDATION: gateProposalActivation already posted the recovery message.
+
     _aiPlanLastSummaryProposal = JSON.parse(JSON.stringify(eligibleProposal));
   } catch (err) {
     if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';

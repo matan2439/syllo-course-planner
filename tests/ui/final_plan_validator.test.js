@@ -33,6 +33,8 @@ function grab(name) {
 // validateFinalPlan grabbed with the real prereq + annual helpers folded in so
 // the union/timing logic is the genuine shipped logic.
 const validate = new Function(
+  `function _normalizeSemId(id) { return (id || '').replace(/(_[ab])\\d+$/, '$1'); }\n` +
+  `function _formatSemIdHe(id) { return _normalizeSemId(id); }\n` +
   `${grab('prereqIdsOf')}\n${grab('isAnnualCourse')}\n${grab('validateFinalPlan')}\n` +
   `return validateFinalPlan;`,
 )();
