@@ -2791,8 +2791,10 @@ function init(board, audit, programJson) {
    * (or "not_offered") using PDF name / hours / category as display data.
    * For courses already in courseMap: only enrich category + offered fields.
    */
-  const _addOrEnrichCourse = (cid, name_he, hours, offered_semesters, offered_in_year, catId, prereqs, catNameHe) => {
+  const _addOrEnrichCourse = (cid, name_he, hours, offered_semesters, offered_in_year, catId, prereqs, catNameHe, effectiveAllowedSemesters) => {
     if (!cid) return;
+    const _effAllowed = (Array.isArray(effectiveAllowedSemesters) && effectiveAllowedSemesters.length)
+      ? effectiveAllowedSemesters : null;
     if (courseMap[cid]) {
       const e = courseMap[cid];
       if (!e.program_category_id && catId)         e.program_category_id      = catId;
@@ -2800,6 +2802,10 @@ function init(board, audit, programJson) {
       if (e.offered_in_year == null)               e.offered_in_year          = offered_in_year !== false;
       if (!e.offered_semesters?.length && offered_semesters?.length)
         e.offered_semesters = offered_semesters;
+      // CRITICAL: carry this year's confident offering (effective_allowed_semesters)
+      // so program-repository courses are NOT mis-flagged as "missing offering".
+      if (!e.effective_allowed_semesters?.length && _effAllowed)
+        e.effective_allowed_semesters = [..._effAllowed];
     } else {
       const isOffered = offered_in_year !== false;
       courseMap[cid] = {
@@ -2856,6 +2862,11 @@ function init(board, audit, programJson) {
         semester_availability:       null,
         grade_signal:                null,
         instructor_uncertainty:      null,
+        // This year's confident offering when known; null → tentative in draft mode.
+        effective_allowed_semesters: _effAllowed ? [..._effAllowed] : null,
+        // Offering data-quality classification (definite > inferred > unknown).
+        offering_status:             _effAllowed ? 'definite'
+                                       : ((offered_semesters && offered_semesters.length) ? 'inferred' : 'unknown'),
         allowed_semesters:           [],
         locked_by_default:           false,
         placement_rule:              'choose_one_allowed_semester',
@@ -2887,7 +2898,8 @@ function init(board, audit, programJson) {
     _addOrEnrichCourse(
       rc.course_id, rc.name_he, rc.weekly_hours,
       rc.offered_semesters, rc.offered_in_year, rc.category_id, null,
-      rc.program_category_name_he || null
+      rc.program_category_name_he || null,
+      rc.effective_allowed_semesters || null
     );
     /* Enrich with difficulty, URL, and detail data from board JSON */
     const _ce = courseMap[rc.course_id];
@@ -2947,7 +2959,8 @@ function init(board, audit, programJson) {
       _addOrEnrichCourse(
         ec.course_id, ec.name_he, ec.hours,
         ec.offered_semesters, ec.offered_in_year,
-        ec.category_id || null, ec.prerequisites
+        ec.category_id || null, ec.prerequisites, null,
+        ec.effective_allowed_semesters || null
       );
     }
     for (const ec of (programJson.other_specialization_electives || [])) {
@@ -4801,13 +4814,55 @@ function handleQuickReply(qr) {
     case 'show-blocking-constraints': {
       postUserMessage(qr.label);
       const v = _aiPlanLastValidation;
-      const lines = [
-        ...((v && v.errors) || []),
-        ...((v && v.completeness && v.completeness.reasons) || []),
-      ].filter(Boolean);
-      postAssistantMessage(lines.length
-        ? 'האילוצים שמונעים פתרון חוקי:\n• ' + lines.join('\n• ')
-        : 'לא נמצאו אילוצים ספציפיים מתועדים.');
+      const fp = v && v.finalPlan;
+      const blockers = (fp && fp.blockers) || [];
+      const uniq = arr => [...new Set(arr.filter(Boolean))];
+      // Classify: HARD structural blockers vs. mere uncertainty vs. degree gaps.
+      const HARD = new Set(['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual']);
+      const DEGREE = new Set(['degree_completion', 'category_requirements', 'mandatory']);
+      const hardLines     = uniq(blockers.filter(b => HARD.has(b.cause)).map(b => b.message_he));
+      const offeringLines = uniq(blockers.filter(b => b.cause === 'missing_offering_data').map(b => b.message_he));
+      const prereqLines   = uniq(blockers.filter(b => b.cause === 'prerequisite').map(b => b.message_he));
+      const degreeLines   = uniq(blockers.filter(b => DEGREE.has(b.cause)).map(b => b.message_he));
+      // Fall back to the flat error/reason lines when no structured blockers exist.
+      if (!blockers.length) {
+        const lines = uniq([
+          ...((v && v.errors) || []),
+          ...((v && v.completeness && v.completeness.reasons) || []),
+        ]);
+        postAssistantMessage(lines.length
+          ? 'האילוצים הנוכחיים:\n• ' + lines.join('\n• ')
+          : 'לא נמצאו אילוצים ספציפיים מתועדים.');
+        return;
+      }
+      const draft = (typeof state !== 'undefined' && state) ? state.lastPlanningDraft : null;
+      const usableTentative = (draft && draft.tentativePlacements && draft.tentativePlacements.length) || offeringLines.length;
+      const usableConfirmed = (draft && draft.confirmedPlacements && draft.confirmedPlacements.length) > 0;
+      const parts = [];
+      if (hardLines.length) {
+        parts.push('חסמים קשיחים (מונעים שיבוץ חוקי):');
+        hardLines.forEach(l => parts.push(`• ${l}`));
+      }
+      if (offeringLines.length) {
+        parts.push('\nאי-ודאות בלבד (אפשר לשבץ בטיוטה עם הנחה):');
+        offeringLines.forEach(l => parts.push(`• ${l}`));
+      }
+      if (prereqLines.length) {
+        parts.push('\nתלוי בדרישות קדם (אפשר לסמן קורסים שהושלמו):');
+        prereqLines.forEach(l => parts.push(`• ${l}`));
+      }
+      if (degreeLines.length) {
+        parts.push('\nהשלמת תואר (לא חוסם טיוטה חלקית):');
+        degreeLines.forEach(l => parts.push(`• ${l}`));
+      }
+      if (usableTentative || usableConfirmed) {
+        parts.push('\nאפשר עדיין להתקדם עם טיוטה — בחר פעולה:');
+      }
+      const chips = [];
+      if (usableTentative) chips.push({ label: 'צור טיוטה עם קורסים לא ודאיים', action: 'planning-fallback', payload: { type: 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS' } });
+      if (usableConfirmed)  chips.push({ label: 'בנה רק עם קורסים ודאיים', action: 'planning-fallback', payload: { type: 'COMMIT_CONFIRMED_ONLY' } });
+      if (prereqLines.length) chips.push({ label: 'פתח סימון קורסים שהושלמו', action: 'planning-fallback', payload: { type: 'OPEN_COMPLETED_COURSES' } });
+      postAssistantMessage(parts.join('\n'), chips);
       return;
     }
     // Issue 1 — explicit build-now quick action. Triggers the same flow as
@@ -12328,7 +12383,9 @@ function diagnoseBuildBlock(validation, opts) {
   const errors = (validation && validation.errors) || [];
   const reasons = (validation && validation.completeness && validation.completeness.reasons) || [];
   const overloadBlocked = !!(validation && validation.overloadBlocked);
-  const all = [...errors, ...reasons];
+  // Deduplicate: the same blocker line (e.g. the grouped missing-offering message)
+  // can appear in BOTH errors and completeness.reasons — never show it twice.
+  const all = [...new Set([...errors, ...reasons])];
   const text = all.join('   ');
 
   // Context: avoid prefs, grade target, parsed interest topics.
