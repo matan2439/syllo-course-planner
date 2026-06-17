@@ -263,6 +263,111 @@ def _resolve_robotics_lab_prereq(board: dict) -> None:
     print(f"  resolved {LAB_ID} prerequisite -> {intro_id}")
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# Repository-elective offering-data population (Step 2 of the mass-removal fix).
+#
+# 31 repository (unplaced) electives carried NO confident
+# effective_allowed_semesters, so validateFinalPlan blocked any plan that placed
+# them (`missing_offering_data`) and the deterministic fill collapsed into mass
+# removals. We resolve their offering ONLY from concrete evidence:
+#   * board.offered_semesters half-letter codes ("A"/"B")  -> 15 courses
+#   * per-course parsed_json files (offered_semesters in Hebrew א'/ב')  -> 16 courses
+# Each entry's `halves` is the evidence-backed set of offered halves (A and/or B).
+# The academic YEAR is NOT determined by evidence for repository electives, so a
+# half maps to BOTH the year-3 and year-4 slot of that half; with >=2 legal
+# semesters the course stays placement_policy='flexible' (per the task spec:
+# 'fixed' only when a SINGLE legal semester is known). 24 further electives had
+# genuinely no offering evidence and are intentionally left UNKNOWN (untouched).
+#
+# LOCAL data only. Idempotent: re-running writes the same values.
+_HALF_TO_SEMS = {
+    "A": [SEM_A, SEM_4A],                    # year_3_semester_a, year_4_semester_a
+    "B": ["year_3_semester_b", "year_4_semester_b"],
+}
+
+# course_id -> {"halves": [...], "source": "...", "confidence": "high"}
+_REPOSITORY_OFFERING_RESOLUTION = {
+    "0542-4120": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4123": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4320": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4352": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4220": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4221": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4224": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4420": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4422": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4455": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4622": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4391": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4624": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0581-4131": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4094": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4125": {"halves": ["A"], "source": "parsed_json/course_05424125_2025.json", "confidence": "high"},
+    "0542-4425": {"halves": ["B"], "source": "parsed_json/course_05424425_2025.json", "confidence": "high"},
+    "0542-4524": {"halves": ["A"], "source": "parsed_json/course_05424524_2025.json", "confidence": "high"},
+    "0542-4722": {"halves": ["B"], "source": "parsed_json/course_05424722_2025.json", "confidence": "high"},
+    "0509-4010": {"halves": ["B"], "source": "parsed_json/course_05094010_2025.json", "confidence": "high"},
+    "0512-1203": {"halves": ["B"], "source": "parsed_json/course_05121203_2025.json", "confidence": "high"},
+    "0512-2508": {"halves": ["A", "B"], "source": "parsed_json/course_05122508_2025.json", "confidence": "high"},
+    "0512-4200": {"halves": ["A", "B"], "source": "parsed_json/course_05124200_2025.json", "confidence": "high"},
+    "0512-4362": {"halves": ["A"], "source": "parsed_json/course_05124362_2025.json", "confidence": "high"},
+    "0512-4700": {"halves": ["B"], "source": "parsed_json/course_05124700_2025.json", "confidence": "high"},
+    "0512-4702": {"halves": ["A"], "source": "parsed_json/course_05124702_2025.json", "confidence": "high"},
+    "0571-1818": {"halves": ["B"], "source": "parsed_json/course_05711818_2025.json", "confidence": "high"},
+    "0571-3802": {"halves": ["B"], "source": "parsed_json/course_05713802_2025.json", "confidence": "high"},
+    "0571-4174": {"halves": ["A"], "source": "parsed_json/course_05714174_2025.json", "confidence": "high"},
+    "0542-4011": {"halves": ["A"], "source": "parsed_json/course_05424011_2025.json", "confidence": "high"},
+    "0542-4012": {"halves": ["B"], "source": "parsed_json/course_05424012_2025.json", "confidence": "high"},
+    # Sourced from the LIVE TAU syllabus pages (ims.tau.ac.il/Tal/Syllabus), which
+    # explicitly state the offering semester ("סמסטר א'/ב' תשפ\"ו"):
+    "0542-4226": {"halves": ["B"], "source": "tau_syllabus:Syllabus_L.aspx?course=0542422602&year=2025 (סמסטר ב')", "confidence": "high"},
+    "0542-4621": {"halves": ["A"], "source": "tau_syllabus:Syllabus_L.aspx?course=0542462101&year=2025 (סמסטר א')", "confidence": "high"},
+    "0542-4559": {"halves": ["A"], "source": "tau_syllabus:Syllabus_L.aspx?course=0542455902&year=2025 (סמסטר א')", "confidence": "high"},
+}
+
+
+def _populate_repository_offering_data(board: dict) -> None:
+    """Populate offered_semesters / effective_allowed_semesters /
+    offering_source_confidence for the 31 evidence-resolved repository electives.
+    Idempotent; only the listed courses' offering fields are touched. Courses not
+    in the resolution map are left UNKNOWN (untouched)."""
+    resolved = 0
+    for cid, info in _REPOSITORY_OFFERING_RESOLUTION.items():
+        records = _find_course(board, cid)
+        if not records:
+            print(f"  WARN: {cid} not found")
+            continue
+        halves = info["halves"]
+        eff = []
+        for h in halves:
+            eff.extend(_HALF_TO_SEMS[h])
+        eff = list(dict.fromkeys(eff))  # stable de-dup
+        for sem_id, c, sem in records:
+            c["offered_semesters"] = list(halves)
+            c["effective_allowed_semesters"] = eff
+            c["offering_source_confidence"] = info["confidence"]
+            c["offering_source_url"] = info["source"]
+            # >=2 legal semesters (year undetermined) -> genuinely flexible.
+            # placement_policy='fixed' is reserved for a SINGLE legal semester.
+            if len(eff) == 1:
+                c["placement_policy"] = "fixed"
+                if c.get("recommended_semester") not in (None, eff[0]):
+                    c["recommended_semester"] = eff[0]
+            else:
+                if c.get("placement_policy") in (None, "", "elective"):
+                    c["placement_policy"] = "flexible"
+                if c.get("recommended_semester") and c["recommended_semester"] not in eff:
+                    c["recommended_semester"] = eff[0]
+            c.setdefault("offering_correction_note",
+                f"Step 2 (mass-removal fix): populated offering from {info['source']} "
+                f"(offered halves {halves}); effective_allowed_semesters={eff}. "
+                "Was previously missing, which blocked any plan placing it "
+                "(missing_offering_data). program_allowed_semesters is NOT used for "
+                "final legality.")
+        resolved += 1
+    print(f"  populated offering data for {resolved}/{len(_REPOSITORY_OFFERING_RESOLUTION)} repository electives")
+
+
 def _recompute_semester_hours(board: dict) -> None:
     """Recompute total_weekly_hours per semester from the (now-correct) placement.
     Annual courses contribute their weekly load to EACH spanned semester (they are
@@ -288,6 +393,8 @@ def main() -> int:
     _fix_4223_semester_a_only(board)
     print("Resolving 0542-4624 robotics-lab prerequisite -> intro robotics")
     _resolve_robotics_lab_prereq(board)
+    print("Populating offering data for evidence-resolved repository electives")
+    _populate_repository_offering_data(board)
 
     _recompute_semester_hours(board)
 

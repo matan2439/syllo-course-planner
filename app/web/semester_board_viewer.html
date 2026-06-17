@@ -4402,6 +4402,85 @@ function postStatusMessage(text) {
   renderAiChatLog();
 }
 
+/**
+ * POST-REBUILD CHANGE SUMMARY — deterministic (no LLM) Hebrew summary of the
+ * ACTUAL diff between the previous proposal and the freshly-built one: courses
+ * added / removed / moved between semesters, plus key honored constraints
+ * (e.g. a 'reduce' load target) and any remaining blockers. Reflects the real
+ * change computed from before/after, never a template platitude. Phrasing
+ * rotates (via _planChangeSummaryNonce) so repeated rebuilds don't post
+ * identical text. Posts nothing meaningful only when there is genuinely no
+ * placement change AND no constraint to echo.
+ */
+function _proposalPlacementMap(proposal) {
+  const map = {}; // course_id → semester_id
+  for (const sem of (proposal?.semesters || [])) {
+    for (const cid of (sem.course_ids || [])) map[cid] = sem.semester_id;
+  }
+  return map;
+}
+function postPlanChangeSummary(prevProposal, newProposal, prefs) {
+  const before = _proposalPlacementMap(prevProposal);
+  const after = _proposalPlacementMap(newProposal);
+  const added = [];
+  const removed = [];
+  const movedC = [];
+  for (const cid of Object.keys(after)) {
+    if (!(cid in before)) added.push(cid);
+    else if (before[cid] !== after[cid]) movedC.push({ cid, from: before[cid], to: after[cid] });
+  }
+  for (const cid of Object.keys(before)) {
+    if (!(cid in after)) removed.push(cid);
+  }
+
+  const lines = [];
+  const lbl = (cid) => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
+  const semLbl = (sid) => SEM_HE[sid] || sid;
+  const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
+
+  if (added.length) lines.push(`נוספו: ${cap(added, 4)}.`);
+  if (removed.length) lines.push(`הוסרו: ${cap(removed, 4)}.`);
+  if (movedC.length) {
+    lines.push(...movedC.slice(0, 4).map(m => `${lbl(m.cid)} עבר ל${semLbl(m.to)}.`));
+    if (movedC.length > 4) lines.push(`ועוד ${movedC.length - 4} העברות.`);
+  }
+
+  // Honored constraints derived from prefs (echo only the user-set ones).
+  const honored = [];
+  const loadTargets = (prefs && prefs.semester_load_targets) || {};
+  for (const [sid, mode] of Object.entries(loadTargets)) {
+    if (mode === 'reduce') honored.push(`הופחת העומס ב${semLbl(sid)}`);
+  }
+  if (prefs && prefs.requested_moves && Object.keys(prefs.requested_moves).length && movedC.length) {
+    // already reflected in the moved lines above
+  }
+  if (honored.length) lines.push(`התחשבתי ב: ${honored.join('; ')}.`);
+
+  // Remaining blockers (grouped) from the latest validation, if any.
+  const v = _aiPlanLastValidation;
+  const blockerLines = [
+    ...(((v && v.finalPlan && v.finalPlan.blockers) || []).map(b => b.message_he).filter(Boolean)),
+    ...(((v && v.completeness && v.completeness.reasons) || [])),
+  ].filter(Boolean);
+  const uniqBlockers = [...new Set(blockerLines)];
+  if (uniqBlockers.length) {
+    lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
+  }
+
+  if (!lines.length) {
+    // No placement change and nothing to echo — say so plainly (still varied).
+    const noChange = ['לא נדרשו שינויים — המערכת כבר עומדת בהעדפות.', 'אין שינוי במערכת לפי הבקשה הנוכחית.'];
+    lines.push(noChange[_planChangeSummaryNonce % noChange.length]);
+  }
+
+  // Rotate the opening phrase so repeated rebuilds differ visibly.
+  const openers = ['עדכנתי את המערכת:', 'הנה מה שהשתנה:', 'סיכום השינויים:', 'בוצע — לסיכום:'];
+  const opener = openers[_planChangeSummaryNonce % openers.length];
+  _planChangeSummaryNonce++;
+
+  postStatusMessage([opener, ...lines].join('\n'));
+}
+
 /* PART B/C — transient loading bubble shown while a chat/build request is
  * in flight. Not part of _aiChatMessages (not persisted). Returns an object
  * with `setText(text)` and `remove()`. Also schedules a "slow response"
@@ -5309,12 +5388,27 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     // move request that is illegal, explain the exact blocker (do not ignore).
     if (fb && fb.handled) {
       if (fb.blocked) {
-        postAssistantMessage(fb.message); // illegal move explained, no rebuild chip
-      } else {
-        postAssistantMessage(fb.message, [
-          { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
-        ]);
+        // Illegal move — explain the exact blocker, no rebuild.
+        postAssistantMessage(fb.message);
+        return;
       }
+      // RECOGNIZED corrective command (fb.handled === true). This is NOT the
+      // ambiguous-text path (that returns fb.handled === false below), so the
+      // "שלח must never auto-build plain preference text" contract is preserved:
+      // we only EXECUTE for explicitly recognized commands.
+      if (state.proposalDraft) {
+        // User is iterating on an existing draft — ACTUALLY execute the
+        // constrained rebuild through the EXISTING explicit build path
+        // (→ gateProposalActivation → validateFinalPlan), not just offer a chip.
+        // Post a NON-user status message echoing what will change first.
+        postStatusMessage(fb.message);
+        triggerExplicitRebuild();
+        return;
+      }
+      // No draft yet — nothing to edit. Record state + offer the build chip.
+      postAssistantMessage(fb.message, [
+        { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
+      ]);
       return;
     }
 
@@ -7164,24 +7258,83 @@ function isFlexibleMandatory(c) {
    authoritative, even if narrower than program_allowed_semesters/allowed_semesters);
    else program_allowed_semesters/allowed_semesters; elective → effective_allowed_semesters,
    else offered_semesters, else any known semester (not confident — warning, not block). */
+/* Normalize a raw allowed/offered-semester list into full semester ids present
+   in the plan. The board data mixes two formats: full ids ("year_3_semester_a")
+   and bare half-letter offering codes ("A"/"B", "a"/"b", or Hebrew "א"/"ב").
+   A bare half-letter means "offered in that half of ANY year in the plan", so it
+   expands to every known id ending in _semester_a / _semester_b. Without this,
+   a course whose only offering data is ["A"] is judged illegal in every real
+   semester id and wrongly removed by enforceLegalPlacementsLocal. Already-full
+   ids pass through unchanged; unknown tokens are dropped (they can never match a
+   real placement). */
+function normalizeLegalSemesterIdsLocal(raw, knownSemesterIds) {
+  if (!Array.isArray(raw) || !raw.length) return [];
+  const known = knownSemesterIds || SEMESTERS.map(s => s.id);
+  const knownSet = new Set(known);
+  const out = new Set();
+  for (const tok of raw) {
+    if (tok == null) continue;
+    const s = String(tok).trim();
+    if (!s) continue;
+    if (knownSet.has(s)) { out.add(s); continue; }      // already a full id
+    const low = s.toLowerCase();
+    let half = null;
+    if (low === 'a' || s === 'א' || low === 'semester_a' || low.endsWith('_semester_a')) half = '_semester_a';
+    else if (low === 'b' || s === 'ב' || low === 'semester_b' || low.endsWith('_semester_b')) half = '_semester_b';
+    if (half) {
+      for (const id of known) if (id.endsWith(half)) out.add(id);
+    }
+    // else: unknown token (e.g. a malformed id) — intentionally dropped.
+  }
+  return [...out];
+}
+
 function getLegalSemestersLocal(c, knownSemesterIds) {
   knownSemesterIds = knownSemesterIds || SEMESTERS.map(s => s.id);
-  const effective = (c?.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : null;
-  const program = (c?.program_allowed_semesters && c.program_allowed_semesters.length) ? c.program_allowed_semesters
+  // Inlined (self-contained so the function stays individually grabbable in
+  // isolation unit tests): expand half-letter offering codes ("A"/"B"/"א"/"ב")
+  // and partial ids to the full semester ids present in the plan; pass through
+  // already-full ids; drop unknown tokens.
+  const norm = raw => {
+    if (!Array.isArray(raw) || !raw.length) return [];
+    const knownSet = new Set(knownSemesterIds);
+    const out = new Set();
+    for (const tok of raw) {
+      if (tok == null) continue;
+      const s = String(tok).trim();
+      if (!s) continue;
+      if (knownSet.has(s)) { out.add(s); continue; }
+      const low = s.toLowerCase();
+      let half = null;
+      if (low === 'a' || s === 'א' || low === 'semester_a' || low.endsWith('_semester_a')) half = '_semester_a';
+      else if (low === 'b' || s === 'ב' || low === 'semester_b' || low.endsWith('_semester_b')) half = '_semester_b';
+      if (half) { for (const id of knownSemesterIds) if (id.endsWith(half)) out.add(id); }
+    }
+    return [...out];
+  };
+  const effectiveRaw = (c?.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : null;
+  const programRaw = (c?.program_allowed_semesters && c.program_allowed_semesters.length) ? c.program_allowed_semesters
     : ((c?.allowed_semesters && c.allowed_semesters.length) ? c.allowed_semesters : null);
+  const effective = effectiveRaw ? norm(effectiveRaw) : null;
+  const program = programRaw ? norm(programRaw) : null;
+  // Expanded offering codes ("A"/"B" → matching full ids in the plan).
+  const offered = (c?.offered_semesters && c.offered_semesters.length) ? norm(c.offered_semesters) : null;
 
   if (c?.placement_policy === 'fixed') {
-    const fixed = c?.recommended_semester ? [c.recommended_semester] : (effective || program || []);
-    return { semesters: fixed, confident: true };
+    const fixedRaw = c?.recommended_semester ? [c.recommended_semester] : (effectiveRaw || programRaw || []);
+    const fixed = norm(fixedRaw);
+    // Never collapse a genuinely-fixed course to an empty (=unplaceable) set
+    // just because its token was unrecognized; fall back to known semesters.
+    return { semesters: fixed.length ? fixed : knownSemesterIds, confident: fixed.length > 0 };
   }
   if (c?.placement_policy === 'flexible' || c?.course_type === 'mandatory') {
-    if (effective) return { semesters: effective, confident: true };
-    if (program) return { semesters: program, confident: true };
-    if (c?.offered_semesters && c.offered_semesters.length) return { semesters: c.offered_semesters, confident: false };
+    if (effective && effective.length) return { semesters: effective, confident: true };
+    if (program && program.length) return { semesters: program, confident: true };
+    if (offered && offered.length) return { semesters: offered, confident: false };
     return { semesters: knownSemesterIds, confident: false };
   }
-  if (effective) return { semesters: effective, confident: true };
-  if (c?.offered_semesters && c.offered_semesters.length) return { semesters: c.offered_semesters, confident: false };
+  if (effective && effective.length) return { semesters: effective, confident: true };
+  if (offered && offered.length) return { semesters: offered, confident: false };
   return { semesters: knownSemesterIds, confident: false };
 }
 
@@ -7709,18 +7862,29 @@ function validateFinalPlan(proposal, ctx) {
   const nameOf = cid => courses[cid]?.name_he || cid;
 
   // ── Check 1: illegal_semester / missing_offering_data ────────────────────
+  // Issue 7 — GROUP the missing-offering-data courses into ONE blocker (a single
+  // contextual line naming up to a few courses + a count), instead of emitting N
+  // near-identical per-course blockers that flood the recovery panel.
+  const missingOfferingIds = [];
   for (const sem of semesters) {
     if (!sem.semester_id) continue;
     for (const cid of (sem.course_ids || [])) {
       const c = courses[cid];
       if (!c) continue;
-      // For a *presented* proposal we require confident, effective offering data.
+      // For a *presented* proposal we require CONFIDENT, effective offering data
+      // (effective_allowed_semesters). This is the sole authority: offered_semesters
+      // half-letter codes ("A"/"B") and program_allowed_semesters are NOT sufficient
+      // for final legality — they are program-level / nominal, not this year's
+      // confirmed offering. The planner is responsible for only PLACING electives
+      // that already carry confident offering data (see repairAdd* below); a placed
+      // course still missing effective_allowed_semesters is a real data gap and is
+      // blocked here as missing_offering_data. (Annual courses are validated by the
+      // dedicated annual check below.) The blockers are GROUPED into one message.
       const eff = (c.effective_allowed_semesters && c.effective_allowed_semesters.length)
         ? c.effective_allowed_semesters : null;
       if (!eff) {
-        add('missing_offering_data',
-          `אין נתוני היצע סמסטר ודאיים ל${nameOf(cid)} — לא ניתן להציג שיבוץ חוקי.`,
-          { course_ids: [cid], semester_id: sem.semester_id });
+        if (_isAnnual(c)) continue;
+        if (!missingOfferingIds.includes(cid)) missingOfferingIds.push(cid);
         continue;
       }
       const legal = _getLegalSemesters ? _getLegalSemesters(c, semIds).semesters : eff;
@@ -7730,6 +7894,15 @@ function validateFinalPlan(proposal, ctx) {
           { course_ids: [cid], semester_id: sem.semester_id, detail: { allowed: legal } });
       }
     }
+  }
+  if (missingOfferingIds.length) {
+    const names = missingOfferingIds.map(nameOf);
+    const shown = names.slice(0, 3).join(', ');
+    const extra = names.length > 3 ? ` ועוד ${names.length - 3}` : '';
+    const msg = missingOfferingIds.length === 1
+      ? `אין נתוני היצע סמסטר ודאיים ל${names[0]} — לא ניתן להציג שיבוץ חוקי.`
+      : `אין נתוני היצע סמסטר ודאיים ל-${missingOfferingIds.length} קורסים (${shown}${extra}) — לא ניתן להציג שיבוץ חוקי. בחר קורסי בחירה עם נתוני סמסטר ודאיים.`;
+    add('missing_offering_data', msg, { course_ids: missingOfferingIds });
   }
 
   // ── Check 2: prerequisite (union of prerequisites ∪ missing_prerequisites) ─
@@ -8949,6 +9122,8 @@ let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הק
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
 let _aiPlanLastPreviewArgs = null;  // cached openPlanPreviewModal args for "פתח פירוט מלא"
 let _aiPlanLastValidation  = null;  // {errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons} for the active draft
+let _aiPlanLastSummaryProposal = null; // snapshot of the previous proposal, for the deterministic post-rebuild change summary
+let _planChangeSummaryNonce = 0;       // rotates summary phrasing so repeated rebuilds don't post identical text
 
 function closeAiPlanModal() {
   const overlay = document.getElementById('ai-plan-overlay');
@@ -9339,6 +9514,13 @@ function buildPlanValidationInputs() {
     courses[c.course_id] = {
       hours: getCourseHours(c),
       effective_allowed_semesters: c.effective_allowed_semesters || null,
+      // Offering data also exists as half-letter codes ("A"/"B"); carry it so
+      // getLegalSemestersLocal / validateFinalPlan can resolve legality for
+      // courses that have no effective_allowed_semesters field.
+      offered_semesters: c.offered_semesters || null,
+      program_allowed_semesters: c.program_allowed_semesters || null,
+      allowed_semesters: c.allowed_semesters || null,
+      recommended_semester: c.recommended_semester || null,
       missing_prerequisites: (c.missing_prerequisites || []).filter(Boolean),
       is_mandatory: c.course_type === 'mandatory' || !!c.is_mandatory,
       placement_policy: c.placement_policy || null,
@@ -9920,6 +10102,62 @@ function getSemesterLoadLocal(semester, courses) {
   }, 0);
 }
 
+/**
+ * CONSUME requested_moves (set by applyCorrectiveFeedbackToState for
+ * "תעביר את X לסמסטר Y"). For each {course_id → targetSem}: if the course is
+ * currently placed in a DIFFERENT semester and the target is LEGAL for it
+ * (getLegalSemestersLocal / isCourseAllowedInSemesterLocal), relocate it
+ * (remove from current, add to target). Illegal targets are skipped + recorded
+ * with a reason (double-guard; the feedback layer already pre-checks legality).
+ * Never moves annual or fixed courses; never drops mandatory. The move
+ * preference is STICKY (kept in prefs) but the apply is IDEMPOTENT: a course
+ * already in its target is left untouched (relocated only when elsewhere).
+ * Runs BEFORE normalizeAnnualPlacements + gateProposalActivation; the existing
+ * enforceLegalPlacements + validateFinalPlan remain the authority afterwards.
+ * Returns { proposal, moved:[{course_id,from,to}], skipped:[{course_id,reason}] }.
+ */
+function applyRequestedMovesLocal(proposal, requestedMoves, opts) {
+  opts = opts || {};
+  const courses = opts.courses || {};
+  const moves = requestedMoves || {};
+  if (!moves || !Object.keys(moves).length) {
+    return { proposal, moved: [], skipped: [] };
+  }
+  const knownSemIds = (proposal.semesters || []).map(s => s.semester_id);
+  const semById = {};
+  for (const sem of (proposal.semesters || [])) {
+    semById[sem.semester_id] = { ...sem, course_ids: [...(sem.course_ids || [])] };
+  }
+  const semOfCourse = (cid) => knownSemIds.find(sid => (semById[sid].course_ids || []).includes(cid)) || null;
+
+  const moved = [];
+  const skipped = [];
+  for (const [cid, targetSem] of Object.entries(moves)) {
+    if (!knownSemIds.includes(targetSem)) { skipped.push({ course_id: cid, reason: 'unknown_target' }); continue; }
+    const c = courseMap[cid] || courses[cid];
+    if (!c) { skipped.push({ course_id: cid, reason: 'unknown_course' }); continue; }
+    // Never relocate annual or fixed courses as a single movable block.
+    if (isAnnualCourse(c) || c.placement_policy === 'fixed') { skipped.push({ course_id: cid, reason: 'not_movable' }); continue; }
+    const from = semOfCourse(cid);
+    if (from == null) { skipped.push({ course_id: cid, reason: 'not_placed' }); continue; }
+    if (from === targetSem) { continue; } // idempotent: already satisfied
+    // Double-guard legality.
+    const legal = (typeof isCourseAllowedInSemesterLocal === 'function')
+      ? isCourseAllowedInSemesterLocal(c, targetSem, knownSemIds) : true;
+    if (!legal) { skipped.push({ course_id: cid, reason: 'illegal_target' }); continue; }
+    semById[from].course_ids = semById[from].course_ids.filter(x => x !== cid);
+    semById[targetSem].course_ids = [...semById[targetSem].course_ids, cid];
+    moved.push({ course_id: cid, from, to: targetSem });
+  }
+
+  if (!moved.length) return { proposal, moved, skipped };
+  return {
+    proposal: { ...proposal, semesters: knownSemIds.map(sid => semById[sid]) },
+    moved,
+    skipped,
+  };
+}
+
 function repairPlanLoad(proposal, ctx) {
   const max = ctx.maxHoursPerSemester;
   if (max == null) return { proposal, repaired: false, movedCount: 0, moveLog: [], unmovedOverloaded: [] };
@@ -10011,6 +10249,62 @@ function repairPlanLoad(proposal, ctx) {
       break;
     }
     if (!moved) break;
+  }
+
+  // CONSUME semester_load_targets — for each semester flagged 'reduce', bias
+  // the balancer to move MOVABLE courses (elective / flexible-mandatory; never
+  // fixed/annual/pinned) OUT of that semester to another legal semester,
+  // respecting effective_allowed_semesters + the load cap on the destination,
+  // even when the semester is not over `max`. This combines with the balance
+  // logic above without violating legality. Idempotent-ish: each 'reduce' pass
+  // sheds at most a bounded number of courses while a strictly-better legal
+  // destination (lower resulting peak / room under cap) exists.
+  const loadTargets = (ctx.semesterLoadTargets) || {};
+  for (const [reduceSemId, mode] of Object.entries(loadTargets)) {
+    if (mode !== 'reduce') continue;
+    const reduceIdx = sems.findIndex(s => s.semester_id === reduceSemId);
+    if (reduceIdx < 0) continue;
+    let reduceGuard = 0;
+    // Shed up to a few courses; stop when nothing more can legally move out
+    // without overloading a destination.
+    while (reduceGuard++ < 12) {
+      const sem = sems[reduceIdx];
+      const candidates = sem.course_ids
+        .map(cid => ({ cid, info: ctx.courses[cid] || {} }))
+        .filter(({ cid, info }) => _isMovableForBalance(cid, info, ctx))
+        // shed electives first, then flexible mandatory; heavier first
+        .sort((a, b) =>
+          _balanceTier(a.info) - _balanceTier(b.info)
+          || (b.info?.hours || 0) - (a.info?.hours || 0));
+      let didMove = false;
+      for (const { cid, info } of candidates) {
+        const ch = info.hours || 0;
+        const allowed = info.effective_allowed_semesters?.length
+          ? info.effective_allowed_semesters : allSemIds;
+        // Legal destinations that have ROOM under the cap after adding ch.
+        const fitting = sems
+          .map((s, j) => j)
+          .filter(j => j !== reduceIdx && allowed.includes(sems[j].semester_id))
+          .filter(j => hoursOf(sems[j]) + ch <= max);
+        if (!fitting.length) continue;
+        const bestJ = fitting.sort((a, b) => hoursOf(sems[a]) - hoursOf(sems[b]))[0];
+        const k = sem.course_ids.indexOf(cid);
+        sem.course_ids.splice(k, 1);
+        sems[bestJ].course_ids.push(cid);
+        moveLog.push({
+          course_id: cid, course_name: info.name_he || null,
+          from_semester: sem.semester_id, to_semester: sems[bestJ].semester_id,
+          accepted: true,
+          reason: `הופחת עומס ${sem.semester_id} לפי בקשה — ${info.name_he || cid} הועבר ל${sems[bestJ].semester_id}`,
+          load_target: 'reduce',
+        });
+        repaired = true;
+        movedCount++;
+        didMove = true;
+        break;
+      }
+      if (!didMove) break;
+    }
   }
 
   // Report any semesters still over max, which of their courses were/weren't
@@ -10765,7 +11059,20 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
       remaining = remaining.filter(c => c.course_id !== candidate.course_id);
 
       const info = opts.courses[candidate.course_id] || {};
-      const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+      // Skip electives the validator would reject for missing offering data, and
+      // resolve legality via getLegalSemestersLocal so "A"/"B" offering codes map
+      // to real semester ids (fill agrees with validateFinalPlan / enforceLegal).
+      const hasOffering =
+        (info.effective_allowed_semesters?.length || candidate.effective_allowed_semesters?.length) ||
+        (info.offered_semesters?.length || candidate.offered_semesters?.length);
+      if (!hasOffering && !isAnnualCourse(candidate)) continue;
+      const legalForCand = (typeof getLegalSemestersLocal === 'function')
+        ? getLegalSemestersLocal(
+            { ...candidate, ...info, effective_allowed_semesters: info.effective_allowed_semesters || candidate.effective_allowed_semesters, offered_semesters: info.offered_semesters || candidate.offered_semesters },
+            opts.knownSemesterIds,
+          ).semesters
+        : (info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds);
+      const allowed = (legalForCand && legalForCand.length) ? legalForCand : opts.knownSemesterIds;
       let legalSems = sems.filter(s => allowed.includes(s.semester_id));
       if (!legalSems.length) continue;
 
@@ -10883,7 +11190,26 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
     pool = pool.filter(c => c.course_id !== candidate.course_id);
 
     const info = opts.courses[candidate.course_id] || {};
-    const allowed = info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds;
+    // Do not place an elective the central validator will reject for missing
+    // offering data: require effective_allowed_semesters OR offered_semesters
+    // (the two concrete offering formats). Use getLegalSemestersLocal so the
+    // half-letter offering codes ("A"/"B") are expanded to real semester ids
+    // and the fill agrees with validateFinalPlan / enforceLegalPlacementsLocal.
+    const candInfo = candidate || {};
+    const hasOffering =
+      (info.effective_allowed_semesters?.length || candInfo.effective_allowed_semesters?.length) ||
+      (info.offered_semesters?.length || candInfo.offered_semesters?.length);
+    if (!hasOffering && !isAnnualCourse(candInfo)) {
+      rejected.push({ course_id: candidate.course_id, reason: 'missing_offering_data' });
+      continue;
+    }
+    const legalForCand = (typeof getLegalSemestersLocal === 'function')
+      ? getLegalSemestersLocal(
+          { ...candInfo, ...info, effective_allowed_semesters: info.effective_allowed_semesters || candInfo.effective_allowed_semesters, offered_semesters: info.offered_semesters || candInfo.offered_semesters },
+          opts.knownSemesterIds,
+        ).semesters
+      : (info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds);
+    const allowed = (legalForCand && legalForCand.length) ? legalForCand : opts.knownSemesterIds;
     const legalSems = sems.filter(s => allowed.includes(s.semester_id));
     if (!legalSems.length) {
       rejected.push({ course_id: candidate.course_id, reason: 'no_legal_semester' });
@@ -11979,6 +12305,7 @@ async function requestPlanProposal(prefs, actionType) {
     // overload (e.g. 27 ש"ש) is still detected and repaired/blocked.
     ctx.maxHoursPerSemester = getEffectiveMaxHoursPreferenceLocal(prefs.max_weekly_hours);
     ctx.balanceLoad = !!prefs.balance_load;
+    ctx.semesterLoadTargets = prefs.semester_load_targets || {};
     ctx.overloadAccepted = !!prefs.overload_accepted;
     ctx.overloadConfirmedAt = prefs.overload_confirmed_at || null;
     ctx.wantedCourseIds = prefs.wanted_course_ids || [];
@@ -12312,13 +12639,52 @@ async function requestPlanProposal(prefs, actionType) {
     // final board is NOT presented as an applicable draft; the gate posts the
     // targeted blocked-chat recovery instead.
     if (finalOverloadBlocked && _aiPlanLastValidation) _aiPlanLastValidation.overloadBlocked = true;
+    // CONSUME requested_moves — apply user-requested course relocations
+    // ("תעביר את X לסמסטר Y") AFTER the repair/fill chain and BEFORE
+    // normalizeAnnualPlacements + the gate. Legal moves only (double-guarded);
+    // enforceLegalPlacementsLocal already re-ran above, and validateFinalPlan
+    // below remains the authority. Re-enforce legality after the moves so a
+    // requested move can never produce an illegal placement that reaches the gate.
+    {
+      const { proposal: movedProposal, moved: requestedMoved, skipped: requestedSkipped } =
+        applyRequestedMovesLocal(eligibleProposal, prefs.requested_moves, { courses: ctx.courses });
+      eligibleProposal = movedProposal;
+      if (requestedMoved.length) {
+        eligibleProposal.warnings_he = [
+          ...(eligibleProposal.warnings_he || []),
+          ...requestedMoved.map(m => `${courseLabelLocal(m.course_id)} הועבר ל${SEM_HE[m.to] || m.to} לפי בקשתך.`),
+        ];
+        // Re-enforce legality after relocation (defense in depth).
+        const reEnforced = enforceLegalPlacementsLocal(eligibleProposal, {
+          courses: ctx.courses,
+          maxHoursPerSemester: ctx.maxHoursPerSemester,
+        });
+        eligibleProposal = reEnforced.proposal;
+      }
+      for (const s of requestedSkipped) {
+        if (s.reason === 'illegal_target' || s.reason === 'unknown_target') {
+          const msg = `לא ניתן להעביר את ${courseLabelLocal(s.course_id)} — היעד אינו חוקי עבורו.`;
+          if (!completeness.reasons.includes(msg)) {
+            eligibleProposal.warnings_he = [...(eligibleProposal.warnings_he || []), msg];
+          }
+        }
+      }
+    }
+
     // Issue 2 — LAST structural step before the gate: normalize annual courses
     // to the single canonical representation (present in EVERY span semester,
     // absent elsewhere) so validateFinalPlan's annual check — which stays the
     // authority — passes for a correctly-spanning model and still fails if a
     // span is genuinely missing from the model.
     normalizeAnnualPlacements(eligibleProposal);
+    // POST-REBUILD CHANGE SUMMARY — capture the proposal that was active before
+    // THIS build so the deterministic diff summary can describe what changed.
+    const _prevProposalForSummary = _aiPlanLastSummaryProposal || null;
     gateProposalActivation(eligibleProposal);
+    // Post a short, varied Hebrew summary of the ACTUAL change (added / removed /
+    // moved courses) vs the previous proposal. Deterministic, no LLM.
+    try { postPlanChangeSummary(_prevProposalForSummary, eligibleProposal, prefs); } catch (_) {}
+    _aiPlanLastSummaryProposal = JSON.parse(JSON.stringify(eligibleProposal));
   } catch (err) {
     if (statusEl && !statusEl.textContent) statusEl.textContent = 'שגיאת רשת — נסה שוב.';
     if (genBtn) genBtn.disabled = false;

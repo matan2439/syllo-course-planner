@@ -379,6 +379,48 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                 f"(effective wins; recommended is stale/wrong)",
             ))
 
+    # CHECK 6 — PLACED course missing confident offering data is an ERROR (no
+    # silent fallback). A placed, non-annual course MUST carry
+    # effective_allowed_semesters; otherwise validateFinalPlan would block the
+    # plan (`missing_offering_data`) and there is NO fallback to
+    # program_allowed_semesters for final legality. This mirrors the UI authority
+    # validator so the static board can never present an un-validatable placement.
+    for sem_id, c in all_courses:
+        if sem_id is None:
+            continue  # repository (unplaced) — handled as a warning below
+        if c.get("is_annual") or c.get("placement_policy") == "annual":
+            continue
+        cid = c.get("course_id")
+        if not c.get("effective_allowed_semesters"):
+            issues.append(AuditIssue(
+                "error", "placed_missing_offering_data", cid,
+                f"placed in {sem_id} but has no effective_allowed_semesters "
+                "(confident offering data) — validateFinalPlan would block this; "
+                "no fallback to program_allowed_semesters is permitted",
+            ))
+
+    # CHECK 7 — Repository (unplaced) electives missing confident offering data
+    # are a data-quality WARNING (not an error): they cannot be safely placed by
+    # the planner until offering data is resolved. Report the count + ids so the
+    # data gap is visible. (Mandatory courses are excluded — they are governed by
+    # program_allowed_semesters checks above.)
+    missing_offering_repo = [
+        c.get("course_id")
+        for sem_id, c in all_courses
+        if sem_id is None
+        and not c.get("is_mandatory")
+        and not c.get("is_annual")
+        and c.get("placement_policy") != "annual"
+        and not c.get("effective_allowed_semesters")
+    ]
+    if missing_offering_repo:
+        ids = ", ".join(sorted(missing_offering_repo))
+        issues.append(AuditIssue(
+            "warning", "elective_missing_offering_data", None,
+            f"{len(missing_offering_repo)} repository elective(s) lack confident "
+            f"effective_allowed_semesters and cannot be placed until resolved: {ids}",
+        ))
+
     return issues
 
 
