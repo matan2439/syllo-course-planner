@@ -278,12 +278,13 @@ describe('Issue 1 — שלח does not auto-build', () => {
 
   test("Issue 3 — clicking rebuild posts a STATUS message, not a fake user 'בנה מערכת מחדש' bubble", async () => {
     window.eval('detectAmbiguousPlanningInstruction = () => [];');
-    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
     document.getElementById('sidebar-chat-input').value = '';
     const logEl = document.getElementById('ai-chat-log');
 
     const buildBtn = document.getElementById('sidebar-build-from-scratch');
     buildBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    // Existing board → inline chat confirmation; confirm it to proceed.
+    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
     await new Promise(r => setTimeout(r, 60));
 
     // No USER bubble with the button label was inserted.
@@ -354,7 +355,6 @@ describe('Issue 1 — שלח does not auto-build', () => {
     // After updating state via feedback, clicking the offered rebuild chip runs
     // the explicit build path (requestPlanProposal → gateProposalActivation).
     window.eval('detectAmbiguousPlanningInstruction = () => [];');
-    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
     const input = document.getElementById('sidebar-chat-input');
     const sendBtn = document.getElementById('sidebar-chat-send');
     input.value = 'תשלים קורסי בחירה לבד';
@@ -363,11 +363,8 @@ describe('Issue 1 — שלח does not auto-build', () => {
     // Click the rebuild chip from the assistant message.
     window.eval('handleQuickReply({ label: "בנה מערכת מחדש", action: "rebuild-plan" })');
     await new Promise(r => setTimeout(r, 30));
-    const confirmCard = document.getElementById('ai-build-confirm');
-    if (confirmCard) {
-      const confirmBtn = confirmCard.querySelector('[data-uc-confirm]');
-      if (confirmBtn) confirmBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    }
+    // Existing board → inline chat confirmation; confirm it to proceed.
+    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
     await new Promise(r => setTimeout(r, 60));
     expect(window.eval('window.__rppCalls')).toBeGreaterThanOrEqual(1);
   });
@@ -380,12 +377,8 @@ describe('Issue 1 — שלח does not auto-build', () => {
     window.eval('handleQuickReply({ label: "בנה מערכת מחדש", action: "rebuild-plan" })');
     await new Promise(r => setTimeout(r, 30));
 
-    // With an existing board, a confirm card is shown — click "בנה מערכת".
-    const confirmCard = document.getElementById('ai-build-confirm');
-    if (confirmCard) {
-      const confirmBtn = confirmCard.querySelector('[data-uc-confirm]');
-      if (confirmBtn) confirmBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    }
+    // With an existing board, an inline chat confirmation is shown — confirm it.
+    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
     await new Promise(r => setTimeout(r, 60));
     expect(window.eval('window.__rppCalls')).toBeGreaterThanOrEqual(1);
   });

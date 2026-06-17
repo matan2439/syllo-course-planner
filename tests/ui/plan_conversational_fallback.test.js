@@ -106,13 +106,34 @@ describe('buildPlanningFallback — conversational fallback', () => {
   });
 
   // ── Test 2 ─────────────────────────────────────────────────────────────────
-  test('only structural blockers (degree_completion) → returns null, lets diagnoseBuildBlock handle', () => {
+  // A degree-incomplete plan (e.g. "build year 3") is NOT a dead end: its placed
+  // courses are legal/confirmed, so the draft planner produces a partial plan
+  // rather than letting diagnoseBuildBlock report only "missing hours".
+  test('degree_completion-only block → partial confirmed draft (not a dead end)', () => {
     const courses = { 'C1': { name_he: 'חשבון אינפינ׳', hours: 4 } };
     const proposal = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['C1'] }] };
     const gate = blockedGate([{
       cause: 'degree_completion',
       message_he: 'חסרות 10 ש״ש להשלמת התואר',
       course_ids: [],
+    }]);
+
+    const result = callFallback(window, proposal, gate, courses);
+    expect(result).not.toBeNull();
+    expect(result.outcome).toBe('PARTIAL_PLAN_NEEDS_CONFIRMATION');
+    expect(result.confirmedPlacements).toContain('C1');
+  });
+
+  // A genuinely hard structural blocker (overload) is left to the existing
+  // overload recovery flow — the draft planner does not intercept it.
+  test('hard structural blocker (overload) → returns null, lets existing recovery handle', () => {
+    const courses = { 'C1': { name_he: 'קורס כבד', hours: 30 } };
+    const proposal = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['C1'] }] };
+    const gate = blockedGate([{
+      cause: 'overload',
+      message_he: 'הסמסטר עמוס מדי',
+      course_ids: ['C1'],
+      semester_id: 'year_3_semester_a',
     }]);
 
     const result = callFallback(window, proposal, gate, courses);
@@ -255,8 +276,8 @@ describe('buildPlanningFallback — conversational fallback', () => {
     expect(result.confirmedPlacements).toContain('SAFE');
     expect(result.tentativePlacements).toContain('TENT');
     // Message should mention both sections
-    expect(result.messageHe).toContain('שיבוץ בטוח');
-    expect(result.messageHe).toContain('קורסים שדורשים אישור');
+    expect(result.messageHe).toContain('קורסים בטוחים');
+    expect(result.messageHe).toContain('היצע הסמסטריאלי דומה לשנים קודמות');
   });
 });
 
@@ -419,7 +440,7 @@ describe('handleSidebarChatSend — input clearing after send', () => {
     window.eval('handleSidebarChatSend()');
     await new Promise(r => setTimeout(r, 0));
     const stored = window.eval(
-      '(function() { try { const r = JSON.parse(localStorage.getItem("tau_ai_chat") || "{}"); return r.inputDraft; } catch(e) { return null; } })()'
+      '(function() { try { const r = JSON.parse(localStorage.getItem("tau_ai_chat_v1") || "{}"); return r.inputDraft; } catch(e) { return null; } })()'
     );
     expect(stored).toBe('');
   });

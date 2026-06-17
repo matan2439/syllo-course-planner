@@ -286,12 +286,8 @@ describe('Command execution — requested_moves + semester_load_targets consumed
     input.value = 'אל תשבץ את ' + cid;
     sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
     await new Promise(r => setTimeout(r, 80));
-    // Confirm card (existing board) → click confirm if present.
-    const confirmCard = document.getElementById('ai-build-confirm');
-    if (confirmCard) {
-      const confirmBtn = confirmCard.querySelector('[data-uc-confirm]');
-      if (confirmBtn) confirmBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    }
+    // Existing board → inline chat confirmation; confirm it to proceed.
+    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
     await new Promise(r => setTimeout(r, 80));
 
     // The build path ran AND went through the gate — not just a chip.

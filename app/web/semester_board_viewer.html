@@ -4213,20 +4213,17 @@ function renderAiTab() {
     };
 
     if (hasExisting) {
+      // Inline chat confirmation (replaces the old bright standalone glow panel)
+      // so the build confirmation stays inside the conversational flow.
       document.getElementById('ai-build-confirm')?.remove();
-      const buildStatusEl = document.getElementById('ai-build-status');
-      const confirmContainer = document.createElement('div');
-      confirmContainer.id = 'ai-build-confirm';
-      buildStatusEl?.insertAdjacentElement('afterend', confirmContainer);
-      requestUserConfirmation({
-        message: 'פעולה זו תיצור טיוטת מערכת חדשה על בסיס ההעדפות והקורסים שסימנת. להמשיך?',
-        confirmLabel: 'בנה מערכת',
-        cancelLabel: 'ביטול',
-        cardClass: 'uc-confirm-glow',
-        container: confirmContainer,
-        onConfirm: () => { confirmContainer.remove(); proceedWithBuild(); },
-        onCancel: () => { confirmContainer.remove(); },
-      });
+      _pendingBuildProceed = proceedWithBuild;
+      postAssistantMessage(
+        'אני עומד לבנות טיוטת מערכת חדשה לפי ההעדפות והקורסים שסימנת. הפעולה לא תאשר קורסים לא ודאיים בלי שתבחר בכך. להמשיך?',
+        [
+          { label: 'כן, בנה מערכת', action: 'confirm-build-yes' },
+          { label: 'ביטול', action: 'confirm-build-no' },
+        ],
+      );
       return;
     }
 
@@ -4368,6 +4365,8 @@ function resetAiConversation() {
   //    blocked/overload state and loading bubbles, then re-render the board so
   //    no draft courses show.
   state.proposalDraft = null;
+  state.lastPlanningDraft = null;
+  _pendingBuildProceed = null;
   _missingReqsDismissedFingerprint = null;
   document.getElementById('ai-build-confirm')?.remove();
   document.querySelectorAll('.ai-chat-bubble.loading').forEach(el => el.remove());
@@ -4775,6 +4774,28 @@ function handleQuickReply(qr) {
     case 'show-my-courses': {
       postUserMessage(qr.label);
       postAssistantMessage('כדי לסמן קורסי קדם כ"הושלמו": עבור לכרטיסיית "הקורסים שלי" בתפריט הצד, מצא את קורסי הקדם החסומים ושנה את הסטטוס שלהם ל"הושלם". לאחר מכן בנה מחדש את המערכת.');
+      return;
+    }
+    // Conversational-fallback actions — operate on state.lastPlanningDraft and
+    // produce a real, visible draft instead of looping back to a blocked message.
+    case 'planning-fallback': {
+      postUserMessage(qr.label);
+      handlePlanningFallbackAction(qr.payload?.type);
+      return;
+    }
+    // Inline build confirmation (replaces the old bright standalone panel).
+    case 'confirm-build-yes': {
+      postUserMessage(qr.label);
+      const proceed = _pendingBuildProceed;
+      _pendingBuildProceed = null;
+      if (typeof proceed === 'function') proceed();
+      else postAssistantMessage('אין בקשת בנייה ממתינה. לחץ "בנה מערכת" כדי להתחיל.');
+      return;
+    }
+    case 'confirm-build-no': {
+      postUserMessage(qr.label);
+      _pendingBuildProceed = null;
+      postAssistantMessage('בוטל. הלוח הנוכחי נשמר ללא שינוי.');
       return;
     }
     case 'show-blocking-constraints': {
@@ -5521,6 +5542,8 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
 
 let _aiClarificationAnswered = false;
 let _aiPendingPlanningRequest = null;
+// Inline build-confirmation: the deferred build callback awaiting "כן, בנה מערכת".
+let _pendingBuildProceed = null;
 
 /**
  * Issue A — the chat-send Q&A path must never build a draft. This helper only
@@ -8285,30 +8308,57 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
 
   const blockers = (gateResult && gateResult.blockers) || [];
   const courses = (ctx && ctx.courses) || {};
-  // Use the global courseLabelLocal (name + id) when available; fall back to
-  // name_he from ctx.courses, then raw id.
-  const nameOf = cid => typeof courseLabelLocal === 'function'
-    ? courseLabelLocal(cid)
-    : ((courses[cid]?.name_he || (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he))
-        ? `${courses[cid]?.name_he || courseMap[cid].name_he} (${cid})`
-        : cid);
+  // "name (id)" display — prefer the program courseMap (production), fall back to
+  // name_he carried on ctx.courses (covers ids the courseMap doesn't know), then
+  // the raw id.
+  const nameOf = cid => {
+    const name = (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he)
+      || courses[cid]?.name_he || null;
+    return name ? `${name} (${cid})` : cid;
+  };
+
+  // Draft mode intercepts blockers that describe a still-useful PARTIAL plan:
+  //  - missing_offering_data → uncertain offering, NOT unusable (tentative)
+  //  - prerequisite          → a specific course is blocked (listed, not placed)
+  //  - degree_completion / category_requirements / mandatory → the plan is legal
+  //    so far but does not yet COMPLETE the degree (expected for "build year 3").
+  // A "hard" structural blocker (overload, illegal_semester, eligibility,
+  // duplicate, annual) means the repaired proposal itself is malformed — we let
+  // the existing diagnoseBuildBlock / overload recovery handle those instead.
+  const PARTIAL_OK_CAUSES = new Set([
+    'missing_offering_data', 'prerequisite',
+    'degree_completion', 'category_requirements', 'mandatory',
+  ]);
+  if (blockers.some(b => !PARTIAL_OK_CAUSES.has(b.cause))) return null;
 
   // Committed board course IDs (all semesters flat)
   const boardCids = new Set(
     Object.values((typeof state !== 'undefined' ? state.semesters : null) || {}).flat()
   );
 
-  // Proposal placement map: cid → Hebrew semester label
+  // Proposal placement maps: cid → Hebrew semester label, and cid → semester_id.
   const proposalPlacement = {};
+  const proposalSemId = {};
   for (const sem of ((eligibleProposal && eligibleProposal.semesters) || [])) {
+    const semId = _normalizeSemId(sem.semester_id);
     const semLbl = _formatSemIdHe(sem.semester_id);
-    for (const cid of (sem.course_ids || [])) proposalPlacement[cid] = semLbl;
+    for (const cid of (sem.course_ids || [])) {
+      proposalPlacement[cid] = semLbl;
+      proposalSemId[cid] = semId;
+    }
   }
 
-  // "New" = in proposal but NOT already committed to the board
-  const newCids = Object.keys(proposalPlacement).filter(cid => !boardCids.has(cid));
+  // Relevance gate — only consider courses that belong to the loaded program
+  // pool (courseMap is built per-program at init). Anything outside the pool is
+  // an irrelevant/cross-program suggestion and is dropped from the draft.
+  const inProgramPool = cid =>
+    (typeof courseMap !== 'undefined' && !!courseMap[cid]) || !!courses[cid];
 
-  // Classify by blocker cause — only care about per-course actionable causes
+  // "New" = in proposal, relevant to the program, NOT already on the board.
+  const newCids = Object.keys(proposalPlacement)
+    .filter(cid => !boardCids.has(cid) && inProgramPool(cid));
+
+  // Classify by blocker cause.
   const missingOfferingCids = new Set();
   const prereqEntries = []; // { cid, unsatisfied: [prereqCourseId] }
 
@@ -8323,16 +8373,14 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
     }
   }
 
-  // Only intercept when there are per-course offering/prereq issues to explain
-  if (missingOfferingCids.size === 0 && prereqEntries.length === 0) return null;
-  // Nothing new to show
+  // Nothing new to place → let diagnoseBuildBlock explain the degree-level gap.
   if (newCids.length === 0) return null;
 
-  // Classify new courses
+  // Classify new courses into confirmed / tentative / prereq-blocked buckets.
   const prereqBlockedCidSet = new Set(prereqEntries.map(e => e.cid));
   const confirmedNew = newCids.filter(cid => !missingOfferingCids.has(cid) && !prereqBlockedCidSet.has(cid));
   const tentativeNew  = newCids.filter(cid =>  missingOfferingCids.has(cid));
-  const prereqNew     = prereqEntries.filter(e => !boardCids.has(e.cid));
+  const prereqNew     = prereqEntries.filter(e => !boardCids.has(e.cid) && inProgramPool(e.cid));
 
   const hasConfirmed  = confirmedNew.length > 0;
   const hasTentative  = tentativeNew.length > 0;
@@ -8344,28 +8392,58 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
     ? 'PARTIAL_PLAN_NEEDS_CONFIRMATION'
     : 'NEED_USER_INPUT';
 
+  // ── Persist the draft so the quick-reply actions can act on it ────────────
+  // (string-id arrays for the return shape; {course_id, semester_id} for state).
+  const assumptions = [];
+  const missingData = [];
+  const questionsForUser = [];
+  if (hasTentative) {
+    assumptions.push('קורסים עם היצע סמסטר לא ודאי שובצו בהנחה שההיצע דומה לשנים קודמות.');
+    tentativeNew.forEach(cid => missingData.push(`אין נתוני היצע סמסטר ודאיים ל${nameOf(cid)}.`));
+  }
+  if (hasPrereq) {
+    prereqNew.forEach(({ cid, unsatisfied }) => {
+      const names = unsatisfied.map(nameOf).join(', ');
+      questionsForUser.push(`האם כבר השלמת את ${names || 'דרישות הקדם'} (נדרש ל${nameOf(cid)})?`);
+    });
+  }
+  try {
+    if (typeof state !== 'undefined' && state) {
+      state.lastPlanningDraft = {
+        confirmedPlacements: confirmedNew.map(cid => ({ course_id: cid, semester_id: proposalSemId[cid] })),
+        tentativePlacements: tentativeNew.map(cid => ({ course_id: cid, semester_id: proposalSemId[cid] })),
+        blockedCourses: prereqNew.map(({ cid, unsatisfied }) => ({ course_id: cid, unsatisfied })),
+        assumptions,
+        missingData,
+        questionsForUser,
+        source: 'draft_planner',
+        createdAt: Date.now(),
+      };
+    }
+  } catch (_) { /* state unavailable — return value still drives the message */ }
+
   // ── Build Hebrew message ──────────────────────────────────────────────────
   const parts = [];
-  if (outcome === 'PARTIAL_PLAN_NEEDS_CONFIRMATION') {
-    parts.push('לא הצלחתי לבנות מערכת מלאה בוודאות גבוהה, אבל מצאתי טיוטה חלקית שאפשר להתקדם איתה.');
+  if (hasConfirmed) {
+    parts.push('יצרתי טיוטת מערכת ראשונית לפי הקורסים הרלוונטיים לתואר. זו אינה מערכת סופית מאושרת, אבל היא בסיס שאפשר לערוך.');
   } else {
-    parts.push('לא הצלחתי להשלים את המערכת — חסר מידע שיאפשר לשבץ חלק מהקורסים.');
+    parts.push('לא הצלחתי לשבץ קורסים בוודאות, אבל ריכזתי למטה מה אפשר לעשות כדי להתקדם.');
   }
 
   if (hasConfirmed) {
-    parts.push('\nשיבוץ בטוח:');
+    parts.push('\nקורסים בטוחים:');
     confirmedNew.slice(0, 6).forEach(cid => parts.push(`• ${nameOf(cid)} — ${proposalPlacement[cid]}`));
     if (confirmedNew.length > 6) parts.push(`• ועוד ${confirmedNew.length - 6} קורסים נוספים`);
   }
 
   if (hasTentative) {
-    parts.push('\nקורסים שדורשים אישור:');
-    tentativeNew.slice(0, 4).forEach(cid => parts.push(`• ${nameOf(cid)} — חסר מידע ודאי על היצע הסמסטר`));
+    parts.push('\nקורסים ששובצו בהנחה שההיצע הסמסטריאלי דומה לשנים קודמות:');
+    tentativeNew.slice(0, 4).forEach(cid => parts.push(`• ${nameOf(cid)} — היצע סמסטר לא ודאי`));
     if (tentativeNew.length > 4) parts.push(`• ועוד ${tentativeNew.length - 4}`);
   }
 
   if (hasPrereq) {
-    parts.push('\nקורסים שחסומים כרגע:');
+    parts.push('\nקורסים שלא שובצו (חסומים בדרישות קדם):');
     prereqNew.slice(0, 4).forEach(({ cid, unsatisfied }) => {
       const prereqNames = unsatisfied.map(nameOf).join(', ') || 'דרישת קדם לא ידועה';
       parts.push(`• ${nameOf(cid)} — תלוי בכך שסיימת את ${prereqNames}`);
@@ -8379,21 +8457,190 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
   if (hasPrereq)    parts.push(`${optN++}. לסמן קורסי קדם שכבר הושלמו`);
   parts.push(`${optN}. לתת ל-AI להציע מערכת מאוזנת עם הנחות`);
 
-  // ── Chips ─────────────────────────────────────────────────────────────────
+  // ── Chips — each now triggers a REAL planning action on the stored draft ──
   const chips = [];
-  chips.push({ label: 'בנה רק עם קורסים בטוחים', action: 'rebuild-relaxed' });
-  if (hasTentative) chips.push({ label: 'כלול גם קורסים עם היצע לא ודאי', action: 'rebuild-relaxed' });
-  if (hasPrereq)    chips.push({ label: 'סמן קורסי קדם שהושלמו', action: 'show-my-courses' });
-  chips.push({ label: 'הצע מערכת מאוזנת עם הנחות', action: 'rebuild-relaxed' });
+  chips.push({ label: 'בנה רק עם קורסים בטוחים', action: 'planning-fallback', payload: { type: 'COMMIT_CONFIRMED_ONLY' } });
+  if (hasTentative) chips.push({ label: 'כלול גם קורסים עם היצע לא ודאי', action: 'planning-fallback', payload: { type: 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS' } });
+  if (hasPrereq)    chips.push({ label: 'סמן קורסי קדם שהושלמו', action: 'planning-fallback', payload: { type: 'OPEN_COMPLETED_COURSES' } });
+  chips.push({ label: 'הצע מערכת מאוזנת עם הנחות', action: 'planning-fallback', payload: { type: 'REPLAN_WITH_ASSUMPTIONS_BALANCED' } });
 
   return {
     outcome,
     confirmedPlacements: confirmedNew,
     tentativePlacements: tentativeNew,
     blockedCourses: prereqNew,
+    assumptions,
+    missingData,
+    nextQuestions: questionsForUser,
     messageHe: parts.join('\n'),
     chips,
   };
+}
+
+/**
+ * Real action handler behind the conversational-fallback quick replies. Operates
+ * on the deterministic draft stored in state.lastPlanningDraft — it never
+ * re-hits the blocking final-degree gate, so a useful partial draft is produced
+ * instead of looping back to a "cannot build" message.
+ */
+function handlePlanningFallbackAction(type) {
+  const draft = (typeof state !== 'undefined' && state) ? state.lastPlanningDraft : null;
+  if (!draft) {
+    postAssistantMessage('לא נמצאה טיוטת תכנון קודמת. נסה לבנות מערכת מחדש.');
+    return;
+  }
+  switch (type) {
+    case 'COMMIT_CONFIRMED_ONLY':            return commitConfirmedPlacementsToBoard(draft);
+    case 'REPLAN_ALLOW_UNCERTAIN_OFFERINGS': return activateTentativeDraft(draft, { balance: false });
+    case 'REPLAN_WITH_ASSUMPTIONS_BALANCED': return activateTentativeDraft(draft, { balance: true });
+    case 'OPEN_COMPLETED_COURSES':           return openCompletedCoursesUi();
+    default:
+      postAssistantMessage('פעולה לא מוכרת.');
+  }
+}
+
+/**
+ * COMMIT_CONFIRMED_ONLY — commit ONLY the strictly-safe confirmed placements to
+ * the real board. Tentative/blocked courses are never committed. A per-course
+ * structural re-check (legal semester / prereq order / overload / eligibility)
+ * is applied; degree-level "incompleteness" (degree_completion / category /
+ * mandatory) is EXPECTED for a partial plan and does not block the commit.
+ */
+function commitConfirmedPlacementsToBoard(draft) {
+  const confirmed = (draft.confirmedPlacements || []).filter(p => p && p.course_id && p.semester_id);
+  if (!confirmed.length) {
+    postAssistantMessage('לא נוספו קורסים חדשים, כי אין כרגע קורסים בטוחים לשיבוץ או שהם כבר נמצאים בלוח.');
+    return;
+  }
+
+  const before = clone(state.semesters || {});
+  const boardCids = new Set(Object.values(state.semesters || {}).flat());
+  const newSemesters = clone(state.semesters || {});
+  let added = [];
+  for (const { course_id, semester_id } of confirmed) {
+    const sid = _normalizeSemId(semester_id);
+    if (!newSemesters[sid]) continue;             // unknown semester — skip
+    if (boardCids.has(course_id)) continue;        // already on the board
+    if ((newSemesters[sid] || []).includes(course_id)) continue;
+    newSemesters[sid] = [...(newSemesters[sid] || []), course_id];
+    added.push(course_id);
+  }
+
+  // Per-course structural re-check (defense in depth): drop any confirmed course
+  // that turns out to violate a hard placement rule. Degree-level blockers are
+  // ignored on purpose — this is a partial commit.
+  if (added.length && typeof validateFinalPlan === 'function') {
+    try {
+      const proposal = { semesters: mapToProposalSemesters(newSemesters) };
+      const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
+      const STRUCTURAL = new Set(['illegal_semester', 'prerequisite', 'missing_offering_data', 'overload', 'eligibility', 'duplicate', 'annual']);
+      const offending = new Set();
+      for (const b of (result.blockers || [])) {
+        if (!STRUCTURAL.has(b.cause)) continue;
+        for (const cid of (b.course_ids || [])) if (added.includes(cid)) offending.add(cid);
+      }
+      if (offending.size) {
+        for (const sid of Object.keys(newSemesters)) {
+          newSemesters[sid] = (newSemesters[sid] || []).filter(cid => !offending.has(cid));
+        }
+        added = added.filter(cid => !offending.has(cid));
+      }
+    } catch (_) { /* validation unavailable — trust the confirmed classification */ }
+  }
+
+  if (!added.length) {
+    postAssistantMessage('לא נוספו קורסים חדשים, כי אין כרגע קורסים בטוחים לשיבוץ או שהם כבר נמצאים בלוח.');
+    return;
+  }
+
+  // Commit to the real board (mirror of applyProposalDraft's board+repo update).
+  const prevPlaced = new Set(Object.values(state.semesters).flat());
+  for (const sem of SEMESTERS) state.semesters[sem.id] = [...(newSemesters[sem.id] || [])];
+  const newPlaced = new Set(Object.values(state.semesters).flat());
+  const repoSet = new Set(state.repo);
+  for (const cid of newPlaced) repoSet.delete(cid);
+  for (const cid of prevPlaced) if (!newPlaced.has(cid)) repoSet.add(cid);
+  state.repo = [...repoSet];
+  state.proposalDraft = null;
+  try { saveState(); } catch (_) {}
+  renderAll();
+
+  const diff = _computeBoardDiff(before, state.semesters);
+  if (diff.added.length === 0 && diff.removed.length === 0 && diff.moved.length === 0) {
+    postAssistantMessage('לא נוספו קורסים חדשים, כי אין כרגע קורסים בטוחים לשיבוץ או שהם כבר נמצאים בלוח.');
+    return;
+  }
+  const lbl = cid => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
+  const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
+  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.`);
+}
+
+/**
+ * REPLAN_ALLOW_UNCERTAIN_OFFERINGS / REPLAN_WITH_ASSUMPTIONS_BALANCED — assemble
+ * a DRAFT overlay (confirmed + tentative) the user can see and edit. Tentative
+ * courses are shown as part of the draft but are NOT silently committed — the
+ * draft must still pass the gate on "apply". Sets the corresponding planning
+ * flags so a later rebuild knows the user opted into uncertain offerings.
+ */
+function activateTentativeDraft(draft, opts) {
+  opts = opts || {};
+  const placements = [
+    ...((draft.confirmedPlacements) || []),
+    ...((draft.tentativePlacements) || []),
+  ].filter(p => p && p.course_id && p.semester_id);
+
+  if (!placements.length) {
+    postAssistantMessage('אין קורסים זמינים לטיוטה כרגע. נסה לבנות מערכת מחדש.');
+    return;
+  }
+
+  const newSemesters = clone(state.semesters || {});
+  const boardCids = new Set(Object.values(state.semesters || {}).flat());
+  for (const { course_id, semester_id } of placements) {
+    const sid = _normalizeSemId(semester_id);
+    if (!newSemesters[sid]) continue;
+    if (boardCids.has(course_id) || (newSemesters[sid] || []).includes(course_id)) continue;
+    newSemesters[sid] = [...(newSemesters[sid] || []), course_id];
+  }
+
+  let proposal = { semesters: mapToProposalSemesters(newSemesters) };
+  // Record the opt-in flags (drives a future rebuild + documents the assumption).
+  _aiPlanLastPreferences = {
+    ...(_aiPlanLastPreferences || {}),
+    allow_uncertain_offerings: true,
+  };
+  if (opts.balance) {
+    _aiPlanLastPreferences.allow_assumptions = true;
+    _aiPlanLastPreferences.optimize_for = 'balanced_workload';
+    if (typeof repairPlanLoad === 'function' && _aiPlanLastCtx) {
+      try { proposal = repairPlanLoad(proposal, _aiPlanLastCtx).proposal || proposal; } catch (_) {}
+    }
+  }
+
+  activateProposalDraft(proposal);
+
+  const assumptionLine = (draft.assumptions && draft.assumptions.length)
+    ? `\n${draft.assumptions.join(' ')}`
+    : '';
+  const head = opts.balance
+    ? 'יצרתי טיוטה מאוזנת הכוללת גם קורסים עם היצע סמסטר לא ודאי, עם הנחות לגבי ההיצע.'
+    : 'יצרתי טיוטה הכוללת גם קורסים עם היצע סמסטר לא ודאי.';
+  postAssistantMessage(`${head}\nזו טיוטה עם הנחות, לא שיבוץ ודאי — אפשר לערוך אותה ולאשר בהמשך.${assumptionLine}`, [
+    { label: 'החל טיוטה', action: 'apply-draft' },
+    { label: 'דחה', action: 'reject-draft' },
+  ]);
+}
+
+/** OPEN_COMPLETED_COURSES — reveal the "הקורסים שלי" UI for marking prereqs done. */
+function openCompletedCoursesUi() {
+  if (typeof openMyCoursesModal === 'function') {
+    try {
+      openMyCoursesModal();
+      postAssistantMessage('פתחתי את "הקורסים שלי". סמן שם את קורסי הקדם שכבר עברת כ"הושלם", ואז בנה מחדש את המערכת.');
+      return;
+    } catch (_) { /* fall through to the explanatory message */ }
+  }
+  postAssistantMessage('עדיין חסר מסך לסימון קורסים שהושלמו. צריך להוסיף אותו כדי שאוכל לדעת אילו קורסי קדם כבר עברת.');
 }
 
 /** PART A/B — turn a freshly-generated AI proposal into an editable board overlay. */

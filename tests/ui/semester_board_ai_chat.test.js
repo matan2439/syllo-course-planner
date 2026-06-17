@@ -173,11 +173,8 @@ describe('AI chat thread UI', () => {
     const btn = document.getElementById('sidebar-build-from-scratch');
     btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    // Confirm card appears for an existing/empty board build prompt OR build starts directly.
-    const confirmCard = document.getElementById('ai-build-confirm')?.querySelector('.uc-confirm-card');
-    if (confirmCard) {
-      confirmCard.querySelector('[data-uc-confirm]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    }
+    // Existing/empty board build shows an inline chat confirmation — confirm it.
+    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
 
     const statusEl = document.getElementById('ai-build-status');
     expect(statusEl.hidden).toBe(false);

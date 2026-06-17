@@ -320,33 +320,38 @@ describe('"בנה מערכת" build button', () => {
     dom.window.close();
   });
 
-  test('clicking the build button with an existing board renders an in-app confirmation card', () => {
+  test('clicking the build button with an existing board renders an inline chat confirmation', () => {
     window.setSidebarTab('ai');
     const btn = document.getElementById('sidebar-build-from-scratch');
     expect(btn).toBeTruthy();
 
     btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    const confirmCard = document.getElementById('ai-build-confirm')?.querySelector('.uc-confirm-card');
-    expect(confirmCard).toBeTruthy();
-    expect(confirmCard.textContent).toContain('להמשיך');
+    // The old bright standalone glow panel must NOT be rendered.
+    expect(document.querySelector('.uc-confirm-glow')).toBeFalsy();
+    expect(document.getElementById('ai-build-confirm')).toBeFalsy();
+
+    // Confirmation is an inline assistant chat message with yes/cancel chips.
+    const last = JSON.parse(window.eval('JSON.stringify(_aiChatMessages[_aiChatMessages.length-1] || {})'));
+    expect(last.role).toBe('assistant');
+    expect(last.text).toContain('להמשיך');
+    const actions = (last.quickReplies || []).map(q => q.action);
+    expect(actions).toContain('confirm-build-yes');
+    expect(actions).toContain('confirm-build-no');
 
     // No fetch to generate-plan yet — only after confirming.
     expect(fetchCalls.find(c => c.url.includes('/api/ai/generate-plan'))).toBeFalsy();
   });
 
-  test('confirming the build confirmation card starts loading and calls the AI endpoint with action_type=full_plan', async () => {
+  test('confirming the inline chat confirmation starts loading and calls the AI endpoint with action_type=full_plan', async () => {
     window.setSidebarTab('ai');
     const btn = document.getElementById('sidebar-build-from-scratch');
     expect(btn).toBeTruthy();
 
     btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
 
-    const confirmCard = document.getElementById('ai-build-confirm').querySelector('.uc-confirm-card');
-    confirmCard.querySelector('[data-uc-confirm]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-
-    // Confirmation card removed.
-    expect(document.getElementById('ai-build-confirm')).toBeFalsy();
+    // Confirm via the inline chip flow.
+    window.eval('handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
 
     // Loading indicator shown synchronously (before the await resolves).
     const statusEl = document.getElementById('ai-build-status');
