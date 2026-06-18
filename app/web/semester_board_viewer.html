@@ -8477,6 +8477,141 @@ function gateProposalActivation(proposal, opts) {
 }
 
 /**
+ * Deterministic replacement planner — the rescue path.
+ *
+ * Root-cause this guards: the strict-validation flow (requestPlanProposal) seeds
+ * the deterministic repair chain from the AI's proposal. When the AI returns bad
+ * courses (not in courseMap / unschedulable / causing a hard structural blocker),
+ * the gate fails and buildPlanningFallback — which keys off the AI proposal's
+ * placements — returns null. The flow then dead-ends at diagnoseBuildBlock, which
+ * only DESCRIBES the failure and never builds a schedule.
+ *
+ * This planner ignores the bad AI proposal entirely. It re-seeds the SAME proven
+ * deterministic completion chain (mandatory → electives → שער רוח → 185-hour fill
+ * → legality → load-balance) from the CURRENT COMMITTED BOARD, drawing candidates
+ * exclusively from the program pool (analysis, built from courseMap). Courses that
+ * are unschedulable_missing_data are never candidates (the repair functions
+ * require an offering signal). The result is a real plan that approaches the
+ * 185-ש"ש target from where the user already is.
+ *
+ * Returns a structured result; never throws (caller wraps in try/catch anyway):
+ *   { proposal, addedCids, confirmedCids, tentativeCids, totalHours, targetHours,
+ *     reachedTarget, candidatesConsidered, shortCategories, tentativePlacements,
+ *     confirmedPlacements }
+ * addedCids.length === 0 means nothing could be added — caller should fall through
+ * to diagnoseBuildBlock.
+ *
+ * Does NOT commit to the board — the caller activates the returned proposal as a
+ * draft overlay (activateProposalDraft), so the user reviews before applying.
+ */
+function buildDeterministicReplacementPlan(args) {
+  args = args || {};
+  const prefs = args.prefs || (typeof _aiPlanLastPreferences !== 'undefined' && _aiPlanLastPreferences) || {};
+  const knownSemesterIds = SEMESTERS.map(s => s.id);
+
+  // 1. Build context + analysis from LIVE state — NOT the AI proposal.
+  const planContext = buildPlanContext();
+  const analysis = buildCompletionAnalysisLocal(planContext);
+  const ctx = buildPlanValidationInputs();
+  ctx.maxHoursPerSemester = getEffectiveMaxHoursPreferenceLocal(prefs.max_weekly_hours);
+
+  const targetHours = (typeof args.targetHours === 'number' && args.targetHours)
+    || analysis.hours?.required_total || DEGREE_REQUIRED_HOURS;
+
+  // 2. Seed from the CURRENT COMMITTED BOARD (clean base — no bad AI courses).
+  let proposal = { semesters: mapToProposalSemesters(state.semesters || {}) };
+  const beforeCids = new Set(Object.values(state.semesters || {}).flat());
+
+  // 3. Run the deterministic completion chain (same proven repairs as the main
+  //    flow, here re-seeded from the board instead of the AI proposal).
+  const repairOpts = {
+    courses: ctx.courses,
+    maxHoursPerSemester: ctx.maxHoursPerSemester,
+    unwantedCourseIds: prefs.unwanted_course_ids,
+    knownSemesterIds,
+    userInterestText: prefs.extra_request_he,
+  };
+  try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  try { proposal = repairAddHoursToDegreeLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+
+  // 4. Enforce legality, then balance workload across semesters.
+  try {
+    const enf = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: ctx.maxHoursPerSemester });
+    proposal = enf.proposal || proposal;
+  } catch (_) {}
+  try { proposal = repairPlanLoad(proposal, ctx).proposal || proposal; } catch (_) {}
+
+  // 5. Defense in depth: drop any course that is unschedulable_missing_data
+  //    (the repairs already require an offering signal, but a board course or a
+  //    mandatory insert could carry incomplete data). Mandatory courses are kept
+  //    even if data is thin — removing a required course never improves the plan.
+  for (const sem of proposal.semesters) {
+    sem.course_ids = (sem.course_ids || []).filter(cid => {
+      if (beforeCids.has(cid)) return true; // never strip what the user already has
+      const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+      if (c && (c.course_type === 'mandatory' || c.is_mandatory)) return true;
+      return classifyCourseSchedulability(c) !== 'unschedulable_missing_data';
+    });
+  }
+
+  // 6. Diff vs the committed board → what the replacement plan adds.
+  const afterCids = Object.values(proposalSemestersToMap(proposal.semesters)).flat();
+  const addedCids = afterCids.filter(cid => !beforeCids.has(cid));
+
+  // 7. Classify added courses confirmed vs tentative (offering certainty).
+  const confirmedCids = [];
+  const tentativeCids = [];
+  const semOfCid = {};
+  for (const sem of proposal.semesters) {
+    for (const cid of (sem.course_ids || [])) semOfCid[cid] = sem.semester_id;
+  }
+  for (const cid of addedCids) {
+    const cls = classifyCourseSchedulability((typeof courseMap !== 'undefined') ? courseMap[cid] : null);
+    if (cls === 'schedulable_tentative') tentativeCids.push(cid);
+    else confirmedCids.push(cid);
+  }
+
+  // 8. Degree-hours accounting against the 185-ש"ש target.
+  const courseHours = {};
+  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
+  let totalHours = targetHours;
+  let reachedTarget = true;
+  try {
+    const status = getDegreeHoursStatusLocal(analysis, proposal.semesters, courseHours);
+    totalHours = status.total_after_plan;
+    reachedTarget = status.satisfied;
+  } catch (_) {
+    totalHours = afterCids.reduce((sum, cid) => sum + (courseHours[cid] || 0), 0);
+    reachedTarget = totalHours >= targetHours;
+  }
+
+  // Categories still short after the fill — surfaced in the partial-plan message.
+  const shortCategories = (analysis.categories || [])
+    .filter(cat => {
+      const placedFromCat = (cat.candidates || []).filter(c => afterCids.includes(c.course_id)).length;
+      return Math.max(0, cat.missing - placedFromCat) > 0;
+    })
+    .map(cat => cat.name)
+    .filter(Boolean);
+
+  return {
+    proposal,
+    addedCids,
+    confirmedCids,
+    tentativeCids,
+    confirmedPlacements: confirmedCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
+    tentativePlacements: tentativeCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
+    totalHours,
+    targetHours,
+    reachedTarget,
+    candidatesConsidered: (analysis.elective_pool || []).length,
+    shortCategories,
+  };
+}
+
+/**
  * Conversational fallback for strict-validation failures.
  *
  * When the planner produced an ineligible proposal, this function examines what
@@ -13607,25 +13742,67 @@ async function requestPlanProposal(prefs, actionType) {
           postAssistantMessage(_fallback.messageHe, _fallback.chips);
         }
       } else {
-        // No per-course offering/prereq issues to explain — use diagnoseBuildBlock.
-        // This path fires when buildPlanningFallback returns null:
-        //   (a) all proposed courses are already on the committed board (newCids=0)
-        //   (b) there is a hard blocker mixed with offering data issues
-        console.log('[planner-e2e-trace]', {
-          messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
-          reason: 'buildPlanningFallback returned null',
-          blockerCauses: _blockerCauses,
-          oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
-        });
+        // buildPlanningFallback returned null — the AI proposal yielded nothing
+        // usable. This is the path that historically dead-ended at
+        // diagnoseBuildBlock. BEFORE diagnosing failure, attempt a deterministic
+        // replacement plan built from the program pool (NOT the AI proposal).
+        console.log('[planner-e2e-trace]', { messagePath: 'entering diagnoseBuildBlock', reason: 'buildPlanningFallback returned null', blockerCauses: _blockerCauses });
+        console.log('[planner-e2e-trace]', { messagePath: 'attempting deterministic replacement plan' });
+        let _rescued = false;
         try {
-          const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
-          const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-          const msg = lines.join('\n');
-          if (msg && msg !== _lastFinalPlanBlockedMsg) {
-            _lastFinalPlanBlockedMsg = msg;
-            postAssistantMessage(msg, diag.chips);
+          const _repl = buildDeterministicReplacementPlan({ prefs: _aiPlanLastPreferences, targetHours: DEGREE_REQUIRED_HOURS });
+          console.log('[planner-e2e-trace]', { messagePath: 'replacement candidates count', count: _repl.candidatesConsidered });
+          console.log('[planner-e2e-trace]', { messagePath: 'replacement selected count', count: _repl.addedCids.length, confirmed: _repl.confirmedCids.length, tentative: _repl.tentativeCids.length });
+          console.log('[planner-e2e-trace]', { messagePath: 'replacement total hours', hours: _repl.totalHours, target: _repl.targetHours, reached: _repl.reachedTarget });
+          if (_repl.addedCids.length > 0) {
+            // Persist the draft so the quick-reply chips can act on it.
+            state.lastPlanningDraft = {
+              confirmedPlacements: _repl.confirmedPlacements,
+              tentativePlacements: _repl.tentativePlacements,
+              blockedCourses: [], assumptions: [], missingData: [], questionsForUser: [],
+              source: 'deterministic_replacement', createdAt: Date.now(),
+            };
+            // Render the replacement plan on the board as an editable draft.
+            activateProposalDraft(_repl.proposal, {
+              isTentative: _repl.tentativeCids.length > 0,
+              tentativeCourseIds: _repl.tentativeCids,
+            });
+            const _cards = document.querySelectorAll('#board .course-card').length;
+            console.log('[planner-e2e-trace]', { messagePath: 'replacement rendered cards count', count: _cards });
+            const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
+            const _msg = _repl.reachedTarget
+              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.`
+              : `הצלחתי להגיע ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש כי אין מספיק קורסים עם מידע מלא${_repl.shortCategories.length ? ' בקטגוריות: ' + _repl.shortCategories.join(', ') : ''}.`;
+            _lastFinalPlanBlockedMsg = null;
+            postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
+              { label: 'החל טיוטה', action: 'apply-draft' },
+              { label: 'דחה טיוטה', action: 'reject-draft' },
+            ]);
+            _rescued = true;
           }
-        } catch (_) { /* diagnosis unavailable */ }
+        } catch (e) {
+          console.log('[planner-e2e-trace]', { messagePath: 'replacement failed', error: String(e && e.message || e) });
+        }
+
+        if (!_rescued) {
+          // Replacement could add nothing either — now describe the gap. This is
+          // the only remaining path to diagnoseBuildBlock.
+          console.log('[planner-e2e-trace]', {
+            messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
+            reason: 'replacement plan added no courses',
+            blockerCauses: _blockerCauses,
+            oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
+          });
+          try {
+            const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
+            const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+            const msg = lines.join('\n');
+            if (msg && msg !== _lastFinalPlanBlockedMsg) {
+              _lastFinalPlanBlockedMsg = msg;
+              postAssistantMessage(msg, diag.chips);
+            }
+          } catch (_) { /* diagnosis unavailable */ }
+        }
       }
     }
 

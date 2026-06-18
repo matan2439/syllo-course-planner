@@ -354,17 +354,19 @@ describe('C — plan build: confirmed-offering courses → no old message', () =
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// D — diagnoseBuildBlock path: unknown courses → new message, NOT old
+// D — bad-AI-proposal path: unknown courses now trigger the DETERMINISTIC
+//     REPLACEMENT planner (rescue) instead of dead-ending at diagnoseBuildBlock.
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('D — diagnoseBuildBlock path: unknown courses → new "דילגתי" message', () => {
+describe('D — unknown courses → deterministic replacement plan (rescue), not a dead end', () => {
   let dom, window, plannerLogs;
 
   beforeAll(async () => {
     // UNKNOWN_COURSES_PROPOSAL places course IDs that are NOT in the program
-    // pool. buildPlanningFallback sees newCids.length=0 → returns null →
-    // diagnoseBuildBlock path fires. This is the exact scenario that was
-    // emitting the old dead-end message before the fix.
+    // pool. buildPlanningFallback sees newCids.length=0 → returns null. The flow
+    // would historically dead-end at diagnoseBuildBlock. Now it first attempts
+    // buildDeterministicReplacementPlan, which builds a real plan from the
+    // program pool and renders it on the board.
     plannerLogs = [];
     const setup = createPageSetup(makeAiFetch(UNKNOWN_COURSES_PROPOSAL), plannerLogs);
     setup.injectScript();
@@ -382,46 +384,33 @@ describe('D — diagnoseBuildBlock path: unknown courses → new "דילגתי" 
     expect(hasOld).toBe(false);
   });
 
-  test('chat MUST contain the new message (דילגתי / [debug] / rebuild line)', () => {
+  test('chat MUST contain a positive plan message (replacement / progress / skip line)', () => {
     const hasNew = getAssistantMsgs(window).some(t => NEW_PATTERNS.some(re => re.test(t)));
     expect(hasNew).toBe(true);
   });
 
-  test('[planner-e2e-trace] log shows diagnoseBuildBlock path was taken', () => {
-    const diagLog = plannerLogs.find(
+  test('[planner-e2e-trace] shows the deterministic replacement plan was attempted', () => {
+    const attemptLog = plannerLogs.find(
+      l => l.data && l.data.messagePath === 'attempting deterministic replacement plan',
+    );
+    expect(attemptLog).toBeDefined();
+  });
+
+  test('replacement selected ≥1 course and rendered cards on the board', () => {
+    const selLog = plannerLogs.find(l => l.data && l.data.messagePath === 'replacement selected count');
+    expect(selLog).toBeDefined();
+    expect(selLog.data.count).toBeGreaterThan(0);
+    const cards = window.document.querySelectorAll('#board .course-card').length;
+    expect(cards).toBeGreaterThan(0);
+  });
+
+  test('the dead-end diagnoseBuildBlock branch did NOT fire (rescue happened first)', () => {
+    // Because the replacement plan added courses, the flow never reaches the
+    // final diagnoseBuildBlock branch.
+    const deadEnd = plannerLogs.find(
       l => l.data && l.data.messagePath === 'FAILURE_VALIDATION/diagnoseBuildBlock',
     );
-    expect(diagLog).toBeDefined();
-  });
-
-  test('[planner-e2e-trace] log for diagnoseBuildBlock has oldMissingOfferingMessageRendered=true', () => {
-    // The "old" flag is now a CODE-PATH marker, not a message-text flag.
-    // It says "this branch executed" — NOT that the old text was shown to user.
-    const dbLog = plannerLogs.find(l => l.tag === '[planner-e2e-trace]' && l.data && l.data.messagePath === 'diagnoseBuildBlock');
-    // This log is emitted from inside diagnoseBuildBlock when missingOfferingHit.
-    // It might not fire if blockers are not missing_offering_data (e.g. overload).
-    // Accept either: the log exists with the flag, OR no such log (overload path).
-    if (dbLog) {
-      expect(dbLog.data.oldMissingOfferingMessageRendered).toBe(true);
-    }
-    // At minimum, one of the two diagnoseBuildBlock-related logs must exist.
-    const anyDiag = plannerLogs.some(l =>
-      l.data && (l.data.messagePath === 'FAILURE_VALIDATION/diagnoseBuildBlock' || l.data.messagePath === 'diagnoseBuildBlock'),
-    );
-    expect(anyDiag).toBe(true);
-  });
-
-  test('[debug] marker IS visible in the assistant message text', () => {
-    // The [debug] marker was added to diagnoseBuildBlock missingOfferingHit so
-    // we can verify in production (console + visible chat) that this path ran.
-    const msgs = getAssistantMsgs(window);
-    const hasDiagMsg = msgs.some(t => /דילגתי על/.test(t) || /\[debug: diagnoseBuildBlock/.test(t));
-    // If the path was diagnoseBuildBlock with missing_offering_data, the debug
-    // marker must be in the message. If another branch fired (overload), skip.
-    const diagMissingLog = plannerLogs.find(l => l.data && l.data.messagePath === 'diagnoseBuildBlock' && l.data.oldMissingOfferingMessageRendered);
-    if (diagMissingLog) {
-      expect(hasDiagMsg).toBe(true);
-    }
+    expect(deadEnd).toBeUndefined();
   });
 });
 
