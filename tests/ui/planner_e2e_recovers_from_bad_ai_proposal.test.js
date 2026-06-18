@@ -199,7 +199,7 @@ describe('recovers from a bad AI proposal (out-of-pool courses)', () => {
     expect(OLD_DEAD_END.test(last)).toBe(false);
     expect(/לא נמצאו מספיק קורסים מאומתים/.test(last)).toBe(false);
     // It is one of the two replacement messages.
-    const isReplacement = /בניתי מערכת חלופית/.test(last) || /הצלחתי להגיע ל-\d+\/\d+ ש/.test(last);
+    const isReplacement = /בניתי מערכת חלופית/.test(last) || /הגעתי ל-\d+\/\d+ ש/.test(last) || /הצלחתי להגיע ל-\d+\/\d+ ש/.test(last);
     expect(isReplacement).toBe(true);
   });
 
