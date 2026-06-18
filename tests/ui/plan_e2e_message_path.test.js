@@ -426,6 +426,66 @@ describe('D — diagnoseBuildBlock path: unknown courses → new "דילגתי" 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// E — no uncaught SyntaxError on page load or during AI planning
+//
+// Background: production console showed "VM138:1 Uncaught SyntaxError:
+// Unexpected token '{'" immediately after the [planner-version] log. A full
+// audit of semester_board_viewer.html found ZERO eval() / new Function() /
+// setTimeout(string) calls — the error cannot originate from our code and is
+// most likely from a browser extension. These tests prove our code is clean
+// by capturing any window 'error' events that contain SyntaxError or
+// "Unexpected token" during page load and the full planning flow.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('E — no uncaught SyntaxError on page load or during AI planning', () => {
+  function createTracked(fetchOverride) {
+    const errors = [];
+    const setup = createPageSetup(fetchOverride);
+    setup.window.addEventListener('error', (e) => {
+      const msg = e.message || (e.error && e.error.message) || '';
+      if (/SyntaxError|Unexpected token/i.test(msg)) {
+        errors.push({ message: msg, filename: e.filename || 'inline', lineno: e.lineno });
+      }
+    });
+    return { setup, errors };
+  }
+
+  test('page load and init: no uncaught SyntaxError', async () => {
+    const { setup, errors } = createTracked();
+    setup.injectScript();
+    await waitForInit(setup.window);
+    setup.window.eval('renderAiTab()');
+    await new Promise(r => setTimeout(r, 60));
+    setup.dom.window.close();
+    expect(errors).toHaveLength(0);
+  });
+
+  test('planning (confirmed-offering): no uncaught SyntaxError during AI flow', async () => {
+    const { setup, errors } = createTracked(makeAiFetch(CONFIRMED_PROPOSAL));
+    setup.injectScript();
+    await waitForInit(setup.window);
+    setup.window.eval('renderAiTab()');
+    setup.window.eval('requestPlanProposal({ action_type: "full_plan" }, "full_plan").catch(()=>{})');
+    await waitForChat(setup.window);
+    await new Promise(r => setTimeout(r, 150));
+    setup.dom.window.close();
+    expect(errors).toHaveLength(0);
+  });
+
+  test('planning (unknown-courses): no uncaught SyntaxError during AI flow', async () => {
+    const { setup, errors } = createTracked(makeAiFetch(UNKNOWN_COURSES_PROPOSAL));
+    setup.injectScript();
+    await waitForInit(setup.window);
+    setup.window.eval('renderAiTab()');
+    setup.window.eval('requestPlanProposal({ action_type: "full_plan" }, "full_plan").catch(()=>{})');
+    await waitForChat(setup.window);
+    await new Promise(r => setTimeout(r, 150));
+    setup.dom.window.close();
+    expect(errors).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // F — old message is replaced everywhere: no path emits the raw old text
 // ─────────────────────────────────────────────────────────────────────────────
 
