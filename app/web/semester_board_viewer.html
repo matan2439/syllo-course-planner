@@ -2016,7 +2016,30 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'legal-v1';         // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'offers-fix-v1';    // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+
+// Client-side semester corrections derived from data/parsed_json/merged_*.json (TAU schedule 2025).
+// Overrides offered_semesters from the Supabase backup where the pipeline either wrote the wrong
+// semester or left the field empty despite schedule data existing.
+const COURSE_DATA_OVERRIDES = {
+  '0542-4220': ['B'],      // תורת התנודות — pipeline wrote A; all schedule groups are in ב' (B)
+  '0509-4010': ['B'],      // ננו לווינים
+  '0512-1203': ['B'],      // מבוא לעיבוד אותות
+  '0512-2508': ['A', 'B'], // התקנים אלקטרוניים — schedule groups appear in both semesters
+  '0512-4200': ['A', 'B'], // מבוא לעיבוד ספרתי של אותות — groups in both
+  '0512-4362': ['A'],      // מערכות משוב שימושיות
+  '0512-4700': ['B'],      // טכנולוגיות מיקרו וננו אלקטרוניקה
+  '0512-4702': ['A'],      // מערכות ממוזערות לבישות
+  '0542-4011': ['A'],      // פרוייקט מחקר למצטיינים (1)
+  '0542-4012': ['B'],      // פרויקט מחקר למצטיינים (2)
+  '0542-4125': ['A'],      // מבוא להנדסת סביבה
+  '0542-4425': ['B'],      // הדפסת תלת מימד ותכן חלקי פלסטיקה
+  '0542-4524': ['A'],      // מבוא להנדסת חלל
+  '0542-4722': ['B'],      // מבוא להנדסת מערכות זעירות (MEMS)
+  '0571-1818': ['B'],      // מבני נתונים
+  '0571-3802': ['B'],      // מודלים דטרמיניסטיים בחקר ביצועים
+  '0571-4174': ['A'],      // תיכון וחשיבה המצאתית
+};
 
 /* ── AI session token (quota) ────────────────────────────────────────────── */
 /**
@@ -2986,6 +3009,20 @@ function init(board, audit, programJson) {
       if (!_ce.hours_source_confidence && rc.hours_source_confidence) _ce.hours_source_confidence = rc.hours_source_confidence;
       if (rc.name_source)                                     _ce.name_source            = rc.name_source;
       if (rc.name_source_confidence)                          _ce.name_source_confidence = rc.name_source_confidence;
+    }
+  }
+
+  /* ── Apply COURSE_DATA_OVERRIDES — semester corrections from TAU schedule scrape ──────────
+   * Re-derives effective_allowed_semesters from the corrected offered_semesters so the
+   * planner sees these courses as schedulable_confirmed instead of unschedulable_missing_data. */
+  for (const [_cid, _semList] of Object.entries(COURSE_DATA_OVERRIDES)) {
+    const _ce = courseMap[_cid];
+    if (!_ce) continue;
+    _ce.offered_semesters = _semList;
+    const _derived = normalizeLegalSemesterIdsLocal(_semList, SEMESTERS.map(s => s.id));
+    if (_derived && _derived.length) {
+      _ce.effective_allowed_semesters = _derived;
+      _ce.offering_status = 'definite';
     }
   }
 
@@ -8542,15 +8579,27 @@ function buildDataAuditReportLocal() {
     const cls = classifyCourseSchedulability(c);
     const hasHours = (c.weekly_hours != null) || (c.semester_hours != null);
     const hasOffering = !!(c.effective_allowed_semesters?.length || c.offered_semesters?.length);
+    const hasSyllabus = !!(c.syllabus_url || c.syllabus_text_available);
     if (!hasHours) report.missing_hours++;
-    if (!c.syllabus_url) report.missing_syllabus++;
+    if (!hasSyllabus) report.missing_syllabus++;
     if (!hasOffering) report.missing_offering++;
     if (cls === 'schedulable_confirmed') report.confirmed++;
     else if (cls === 'schedulable_tentative') report.tentative++;
     else report.missing_data++;
     const pids = (typeof prereqIdsOf === 'function') ? prereqIdsOf(c) : [];
     if (pids.length) report.has_prereqs++;
-    report.courses.push({ course_id: c.course_id, name_he: c.name_he, category: c.program_category_id || c.category, schedulability: cls, offered: c.offered_semesters, effective: c.effective_allowed_semesters, has_hours: hasHours, has_syllabus: !!c.syllabus_url, prereq_ids: pids });
+    // Classify WHY a course is unschedulable — helps distinguish data gaps from planning mistakes.
+    let unschedulable_reason = null;
+    if (cls === 'unschedulable_missing_data') {
+      unschedulable_reason = hasSyllabus ? 'syllabus_has_no_semester' : 'no_data';
+    }
+    report.courses.push({
+      course_id: c.course_id, name_he: c.name_he,
+      category: c.program_category_id || c.category,
+      schedulability: cls, unschedulable_reason,
+      offered: c.offered_semesters, effective: c.effective_allowed_semesters,
+      has_hours: hasHours, has_syllabus: hasSyllabus, prereq_ids: pids,
+    });
   }
   return report;
 }

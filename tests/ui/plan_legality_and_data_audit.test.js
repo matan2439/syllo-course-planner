@@ -149,12 +149,12 @@ describe('auditDraftLegality — semester offering legality', () => {
     expect(result.legal).not.toContain('0542-4624');
   });
 
-  test('course offered only in Semester A is flagged as illegalSemesterPlacement when placed in B', () => {
-    // 0542-4220 תורת התנודות offered: ["A"]
+  test('course offered only in Semester B is flagged as illegalSemesterPlacement when placed in A', () => {
+    // 0542-4220 תורת התנודות — COURSE_DATA_OVERRIDES corrected it to ["B"] (Supabase had wrong ["A"])
     const proposal = {
       semesters: [
-        { semester_id: 'year_3_semester_a', course_ids: [] },
-        { semester_id: 'year_3_semester_b', course_ids: ['0542-4220'] },
+        { semester_id: 'year_3_semester_a', course_ids: ['0542-4220'] },
+        { semester_id: 'year_3_semester_b', course_ids: [] },
         { semester_id: 'year_4_semester_a', course_ids: [] },
         { semester_id: 'year_4_semester_b', course_ids: [] },
       ],
@@ -170,11 +170,11 @@ describe('auditDraftLegality — semester offering legality', () => {
   });
 
   test('course placed in its correct semester is NOT flagged', () => {
-    // 0542-4220 תורת התנודות offered: ["A"] → year_3_semester_a is legal
+    // 0542-4220 תורת התנודות offered: ["B"] → year_3_semester_b is legal
     const proposal = {
       semesters: [
-        { semester_id: 'year_3_semester_a', course_ids: ['0542-4220'] },
-        { semester_id: 'year_3_semester_b', course_ids: [] },
+        { semester_id: 'year_3_semester_a', course_ids: [] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4220'] },
         { semester_id: 'year_4_semester_a', course_ids: [] },
         { semester_id: 'year_4_semester_b', course_ids: [] },
       ],
