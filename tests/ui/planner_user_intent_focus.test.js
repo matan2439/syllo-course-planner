@@ -195,16 +195,18 @@ describe('buildDeterministicReplacementPlan — requested focus drives the plan'
     }
   });
 
-  test('Test 7 — focus prioritization raises placed hours above the no-focus baseline', () => {
+  test('Test 7 — focus prioritization places ≥ the no-focus baseline without overloading', () => {
     const baseline = JSON.parse(window.eval(`(function(){
       _aiPlanLastPreferences = {};
       const r = buildDeterministicReplacementPlan({ prefs: {}, targetHours: 185 });
       return JSON.stringify({ totalHours: r.totalHours });
     })()`));
-    // With focus + foundational-prereq handling, the plan schedules more real
-    // engineering courses than the bare no-preference fill.
+    // Focus prioritization schedules at least as many hours as the bare no-pref
+    // fill (it must not place FEWER real courses). The absolute total is bounded
+    // by the per-semester workload cap — the plan must respect that, not inflate
+    // the total by overloading semesters (the bug this build fixes).
     expect(plan.totalHours).toBeGreaterThanOrEqual(baseline.totalHours);
-    expect(plan.totalHours).toBeGreaterThan(95);
+    expect(plan.totalHours).toBeGreaterThan(80);
   });
 });
 

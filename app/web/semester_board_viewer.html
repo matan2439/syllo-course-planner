@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'focus-v1';         // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'exclude-v1';       // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Client-side semester corrections derived from data/parsed_json/merged_*.json (TAU schedule 2025).
 // Overrides offered_semesters from the Supabase backup where the pipeline either wrote the wrong
@@ -3123,6 +3123,20 @@ function init(board, audit, programJson) {
   }
 
   reconcilePlacements();
+
+  // Persistent user planning constraints (hard exclusions, focus, grade/workload).
+  // Survives rebuilds within a session; hard exclusions are HARD constraints the
+  // planner must never violate (a course the user said "אל תשבץ" / removed from a draft).
+  if (!state.userPlanningConstraints) {
+    state.userPlanningConstraints = {
+      hardExcludeCourseIds: [],
+      sessionRemovedCourseIds: [],
+      mustIncludeDomains: [],
+      preferredDomains: [],
+      gradeTarget: null,
+      workloadPreference: 'balanced',
+    };
+  }
 
   // Extract board-level completed course IDs
   _boardCompletedIds = board.metadata?.completed_course_ids || [];
@@ -8626,21 +8640,33 @@ function buildDeterministicReplacementPlan(args) {
   // priority-ordered list of requested course ids.
   const intent = extractPlanningIntentLocal(prefs.extra_request_he || '');
 
+  // Hard exclusions are HARD constraints — assembled from strongly-avoided list,
+  // parsed "אל תשבץ X" requests, persisted constraints, and session-removed courses.
+  // They are never schedulable as electives/filler/focus (mandatory exempt).
+  const hardExcludeSet = buildHardExcludeSetLocal(prefs);
+  // A hard-excluded course is removed from the requested-focus list too — the user
+  // may have named a domain whose course they separately excluded.
+  const requestedAfterExclude = (intent.requested_course_ids || [])
+    .filter(cid => !hardExcludeSet.has(cid));
+
   const repairOpts = {
     courses: ctx.courses,
     maxHoursPerSemester: ctx.maxHoursPerSemester,
     unwantedCourseIds: prefs.unwanted_course_ids,
+    hardExcludeCourseIds: hardExcludeSet,
     knownSemesterIds,
     userInterestText: prefs.extra_request_he,
     completedCourseIds: new Set(typeof completedCourseIds !== 'undefined' ? completedCourseIds : []),
-    requestedCourseIds: intent.requested_course_ids,
+    requestedCourseIds: requestedAfterExclude,
   };
   try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
-  try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
-  // Part C — place the user's requested-focus courses BEFORE generic filler so
-  // they are never crowded out. Capture per-course outcomes for the domain report.
+  // Part C — place the user's requested-focus courses FIRST (before generic
+  // category fill) so they both satisfy degree categories AND are never crowded
+  // out. Running this ahead of repairAddMissingElectivesLocal also avoids adding
+  // duplicate category courses on top of the focus ones (which overloaded sems).
   let _domainPass = { added: [], rejected: [] };
   try { _domainPass = repairAddRequestedDomainCoursesLocal(proposal, analysis, repairOpts); proposal = _domainPass.proposal || proposal; } catch (_) {}
+  try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   try { proposal = repairAddHoursToDegreeLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
 
@@ -8662,6 +8688,25 @@ function buildDeterministicReplacementPlan(args) {
       if (c && (c.course_type === 'mandatory' || c.is_mandatory)) return true;
       return classifyCourseSchedulability(c) !== 'unschedulable_missing_data';
     });
+  }
+
+  // 5a. Hard-exclusion sweep — defense in depth. No fill function should have
+  //     placed a hard-excluded course, but an enforcement move or a board-seed
+  //     course could carry one. Strip every hard-excluded course that is NOT a
+  //     committed-board course and NOT mandatory (a required course can't be
+  //     dropped; that conflict is surfaced separately). Record them as skipped.
+  const _excludedRemoved = [];
+  if (hardExcludeSet.size) {
+    for (const sem of proposal.semesters) {
+      sem.course_ids = (sem.course_ids || []).filter(cid => {
+        if (!hardExcludeSet.has(cid)) return true;
+        if (beforeCids.has(cid)) return true; // never silently drop a committed course
+        const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+        if (c && (c.course_type === 'mandatory' || c.is_mandatory)) return true;
+        _excludedRemoved.push(cid);
+        return false;
+      });
+    }
   }
 
   // 5b. Legality audit: remove newly-added courses that are still illegal after
@@ -8748,6 +8793,7 @@ function buildDeterministicReplacementPlan(args) {
     no_legal_semester: 'לא מוצע בסמסטרים המוצגים',
     prereq_not_met: 'חסר קורס קדם',
     no_capacity: 'אין מקום פנוי בסמסטר חוקי (עומס)',
+    hard_excluded: 'ביקשת לא לשבץ אותו',
     not_requested_or_unschedulable: 'לא שובץ',
   };
   const _afterSet = new Set(afterCids);
@@ -8763,6 +8809,9 @@ function buildDeterministicReplacementPlan(args) {
         included.push({ course_id: cid, name_he: nameHe, semester_id: semOfCid[cid] });
       } else if (beforeCids.has(cid)) {
         skipped.push({ course_id: cid, name_he: nameHe, reason: 'already_on_board', reason_he: _REASON_HE.already_on_board });
+      } else if (hardExcludeSet.has(cid)) {
+        // A focus-domain course the user separately asked to exclude — say so plainly.
+        skipped.push({ course_id: cid, name_he: nameHe, reason: 'hard_excluded', reason_he: _REASON_HE.hard_excluded });
       } else {
         const reason = _rejByCid[cid] || 'not_requested_or_unschedulable';
         skipped.push({ course_id: cid, name_he: nameHe, reason, reason_he: _REASON_HE[reason] || _REASON_HE.not_requested_or_unschedulable });
@@ -8786,6 +8835,11 @@ function buildDeterministicReplacementPlan(args) {
     gapReasons,
     intent,
     domainReport,
+    hardExcludedCourseIds: [...hardExcludeSet],
+    excludedSkipped: [...new Set(_excludedRemoved)].map(cid => ({
+      course_id: cid,
+      name_he: (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || cid,
+    })),
   };
 }
 
@@ -12010,7 +12064,115 @@ function extractPlanningIntentLocal(text) {
   };
 }
 
+/**
+ * Hard-exclusion support — explicit user exclusions are HARD constraints.
+ *
+ * COURSE_EXCLUSION_SYNONYMS maps abbreviations / English names to the canonical
+ * course id so "תרמו 2" / "Thermodynamics 2" resolve to the same course as the
+ * full Hebrew name. The matcher also falls back to the course's name_he from
+ * courseMap, so any course can be excluded by its exact catalog name.
+ */
+const COURSE_EXCLUSION_SYNONYMS = {
+  '0542-4120': ['תרמודינמיקה (2)', 'תרמודינמיקה 2', 'תרמו 2', 'תרמו2', 'thermodynamics 2', 'thermo 2', 'thermodynamics ii'],
+  '0542-4123': ['תהליכי מעבר חום וחומר', 'מעבר חום וחומר'],
+  '0542-4224': ['מכניקת המוצקים (2)', 'מכניקת המוצקים 2', 'מוצקים 2'],
+  '0542-4220': ['תורת התנודות', 'תנודות', 'רעידות'],
+  '0542-4352': ['דינמיקת הגזים', 'דינמיקה של גזים'],
+  '0542-4320': ['מכניקת הזורמים (2)', 'מכניקת הזורמים 2', 'זורמים 2'],
+};
+// Phrases that signal the user wants a course NOT scheduled (hard exclude).
+const _HARD_EXCLUDE_TRIGGERS = [
+  'אל תשבץ', 'אל תכלול', 'לא לשבץ', 'לא לכלול', 'אל תוסיף', 'בלי ', 'ללא ',
+  'לא רוצה ללמוד', 'לא רוצה את', 'לא מעוניין', 'לא מעוניינת', 'תוריד את', 'הסר את', 'להסיר את',
+  "don't include", 'do not include', 'without ', 'exclude ', 'remove ', "don't add",
+];
+
+function _normForMatchLocal(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[()[\]{}.,;:!?״"׳'`]/g, ' ')
+    .replace(/[–—\-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * parseHardExclusionsFromUserText — detect explicit "do not schedule X" requests
+ * and resolve X to course ids (by synonym table, then by courseMap name_he).
+ * Returns { courseIds:[...], matchedNames:[...] }. Only runs when an exclusion
+ * trigger phrase is present, so a focus request ("להתמקד ב…") never excludes.
+ */
+function parseHardExclusionsFromUserText(text) {
+  const raw = text || '';
+  const norm = _normForMatchLocal(raw);
+
+  // PROXIMITY: only consider course names that appear AFTER an exclusion trigger,
+  // within a short window. This prevents a focus term earlier in the same message
+  // (e.g. "להתמקד ב…רעידות") from being misread as an exclusion when the trigger
+  // ("אל תשבץ תרמודינמיקה") targets a different course later in the sentence.
+  const windows = [];
+  for (const trig of _HARD_EXCLUDE_TRIGGERS) {
+    const t = _normForMatchLocal(trig);
+    let from = 0;
+    while (true) {
+      const idx = norm.indexOf(t, from);
+      if (idx < 0) break;
+      windows.push(norm.slice(idx + t.length, idx + t.length + 60));
+      from = idx + t.length;
+    }
+  }
+  if (!windows.length) return { courseIds: [], matchedNames: [] };
+
+  const courseIds = new Set();
+  const matchedNames = [];
+  const inWindow = needle => windows.some(w => w.includes(needle));
+  // 1) synonym table — match only within an exclusion window.
+  for (const [cid, syns] of Object.entries(COURSE_EXCLUSION_SYNONYMS)) {
+    for (const syn of syns) {
+      if (inWindow(_normForMatchLocal(syn))) { courseIds.add(cid); matchedNames.push(syn); break; }
+    }
+  }
+  // 2) catalog names from courseMap — match only within an exclusion window.
+  if (typeof courseMap !== 'undefined') {
+    for (const [cid, c] of Object.entries(courseMap)) {
+      if (!c || !c.name_he) continue;
+      const n = _normForMatchLocal(c.name_he);
+      if (n.length >= 4 && inWindow(n)) { courseIds.add(cid); matchedNames.push(c.name_he); }
+    }
+  }
+  return { courseIds: [...courseIds], matchedNames: [...new Set(matchedNames)] };
+}
+
+/** True if `cid` is in the hard-exclude set (never schedulable as elective/filler). */
+function isCourseHardExcludedLocal(cid, hardSet) {
+  if (!cid || !hardSet) return false;
+  return (hardSet instanceof Set) ? hardSet.has(cid) : (Array.isArray(hardSet) && hardSet.includes(cid));
+}
+
+/**
+ * Assemble the effective hard-exclude course-id set for a planning run from all
+ * sources: the user's strongly-avoided list, parsed exclusions in the current
+ * request text, persisted constraints, and courses the user removed from a draft
+ * this session. Mandatory courses are never excluded (handled by callers).
+ */
+function buildHardExcludeSetLocal(prefs) {
+  prefs = prefs || {};
+  const set = new Set();
+  for (const cid of (prefs.strongly_avoided_course_ids || [])) set.add(cid);
+  for (const cid of (prefs.hard_exclude_course_ids || [])) set.add(cid);
+  try {
+    for (const cid of parseHardExclusionsFromUserText(prefs.extra_request_he || '').courseIds) set.add(cid);
+  } catch (_) {}
+  const stored = (typeof state !== 'undefined' && state.userPlanningConstraints) || null;
+  if (stored) {
+    for (const cid of (stored.hardExcludeCourseIds || [])) set.add(cid);
+    for (const cid of (stored.sessionRemovedCourseIds || [])) set.add(cid);
+  }
+  return set;
+}
+
 function buildCourseSearchTextLocal(course) {
+  if (!course) return '';
   if (!course) return '';
   const parts = [];
   if (course.name_he) parts.push(course.name_he);
@@ -12318,10 +12480,13 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
   const extraWarnings = [];
   const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
 
+  const _hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
   for (const cat of analysis.categories) {
     const placedFromCategory = cat.candidates.filter(c => placed.has(c.course_id)).length;
     let needed = Math.max(0, cat.missing - placedFromCategory);
-    let remaining = cat.candidates.filter(c => !placed.has(c.course_id));
+    // Hard-excluded courses are never used to satisfy a category (the user said no).
+    let remaining = cat.candidates
+      .filter(c => !placed.has(c.course_id) && !_hardExcluded(c.course_id));
 
     while (needed > 0 && remaining.length > 0) {
       const candidate = _pickBestCandidateLocal(remaining, unwanted, opts.userInterestText);
@@ -12425,7 +12590,10 @@ function repairAddRequestedDomainCoursesLocal(proposal, analysis, opts) {
   const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
   const added = [], rejected = [];
 
+  const _hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
   for (const cid of requested) {
+    // Hard exclusion is a HARD constraint — never schedule, even a requested-focus course.
+    if (_hardExcluded(cid)) { rejected.push({ course_id: cid, reason: 'hard_excluded' }); continue; }
     if (placed.has(cid)) { rejected.push({ course_id: cid, reason: 'already_on_board' }); continue; }
     const info = opts.courses[cid] || {};
     const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
@@ -12517,9 +12685,14 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
 
   // PART A — the candidate pool for remaining hours spans ALL of
   // analysis.elective_pool, including courses from already-satisfied
-  // categories (cat.missing === 0). Only filtered by: not already placed.
+  // categories (cat.missing === 0). Filtered by: not already placed, and NOT
+  // hard-excluded (an explicit user exclusion is never used as filler).
+  // Inline, dependency-free hard-exclude check (this function is also unit-tested
+  // in isolation, where module-level helpers are not in scope).
+  const _hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
   const candidates_before_filter = (analysis.elective_pool || []).length;
-  let pool = (analysis.elective_pool || []).filter(c => !placed.has(c.course_id));
+  let pool = (analysis.elective_pool || [])
+    .filter(c => !placed.has(c.course_id) && !_hardExcluded(c.course_id));
   const candidates_after_filter = pool.length;
   const rejected = [];
   for (const c of (analysis.elective_pool || [])) {
@@ -12527,6 +12700,12 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
   }
   let exhausted = false;
   let capped = false;
+  // Overfill guard — do not push the plan past the target with filler when it is
+  // avoidable. maxOverfill=0 means: prefer candidates that keep total ≤ target; an
+  // overshoot is allowed ONLY when no within-target candidate remains (smallest
+  // unavoidable overshoot). Prevents 189/185-style overfill.
+  const maxOverfill = (typeof opts.maxOverfill === 'number') ? opts.maxOverfill : 0;
+  const hrsOfCandidate = c => (opts.courses[c.course_id]?.hours ?? c.hours ?? 0);
 
   while (pool.length > 0 && added.length < maxAdditions) {
     if (priorKnown && total >= target) break;
@@ -12538,6 +12717,19 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
       : _pickBestCandidateLocal(pool, unwanted, opts.userInterestText);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
+
+    // Overfill control: if placing this candidate overshoots the target beyond the
+    // allowed tolerance, PREFER a within-target candidate when one still exists
+    // (skip this overshooting one). Only when NO within-target candidate remains
+    // is the overshoot unavoidable to reach the requirement — allow the (already
+    // smallest, per _pickBestCandidateForGapLocal) overshoot, which then crosses
+    // the target and ends the loop. This prevents stacking filler far past 185
+    // while still letting the plan reach the requirement when course sizes force it.
+    if (priorKnown && (total + hrsOfCandidate(candidate)) > target + maxOverfill) {
+      const hasWithin = pool.some(c => (total + hrsOfCandidate(c)) <= target + maxOverfill);
+      if (hasWithin) { rejected.push({ course_id: candidate.course_id, reason: 'would_overfill' }); continue; }
+      // else: no within-target candidate remains — allow this minimal unavoidable overshoot.
+    }
 
     const info = opts.courses[candidate.course_id] || {};
     // Do not place an elective the central validator will reject for missing
@@ -12590,7 +12782,10 @@ function repairAddHoursToDegreeLocal(proposal, analysis, opts) {
     } else if (fitting.length) {
       semTarget = [...fitting].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
     }
-    if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    // Workload guard: a generic filler course must NEVER overload a semester past
+    // the cap. If no semester has room, skip it (do not fall back to an over-cap
+    // semester — that produced the 27/24-ש"ש overloads).
+    if (!semTarget) { rejected.push({ course_id: candidate.course_id, reason: 'no_capacity' }); continue; }
 
     semTarget.course_ids.push(candidate.course_id);
     placed.add(candidate.course_id);
@@ -13063,7 +13258,9 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
   }
   const target = gr.required;
 
-  let pool = gr.candidates.filter(c => !placed.has(c.course_id));
+  // Hard-excluded שער-רוח courses are never scheduled (the user said no).
+  const _hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
+  let pool = gr.candidates.filter(c => !placed.has(c.course_id) && !_hardExcluded(c.course_id));
   let exhausted = false;
   const assessmentPref = _aiPickerState.shaarRuachAssessmentPref || null;
   let prefUnmatched = false;
@@ -13081,8 +13278,11 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
     const legalSems = sems.filter(s => allowed.includes(s.semester_id));
     if (!legalSems.length) continue;
 
+    // Workload guard: שער-רוח is flexible (any semester). Do not overload a
+    // semester past the cap to fit it — if no semester has room, leave the
+    // requirement short (reported as a gap) rather than producing a 21/20 overload.
     let semTarget = legalSems.filter(s => hoursOf(s) + (info.hours || 0) <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
-    if (!semTarget) semTarget = [...legalSems].sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!semTarget) { exhausted = true; break; }
 
     semTarget.course_ids.push(candidate.course_id);
     placed.add(candidate.course_id);
@@ -14185,9 +14385,14 @@ async function requestPlanProposal(prefs, actionType) {
             const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
             const _reasonStr = (_repl.gapReasons && _repl.gapReasons.length) ? '\nסיבות:\n• ' + _repl.gapReasons.join('\n• ') : '';
             const _focusStr = _formatDomainFocusHe(_repl.domainReport);
+            // Surface hard-excluded courses so the user knows the planner honored
+            // their "אל תשבץ" request (and did not use them to reach 185).
+            const _exclStr = (_repl.excludedSkipped && _repl.excludedSkipped.length)
+              ? '\nלא שובצו קורסים שביקשת לא לשבץ: ' + _repl.excludedSkipped.map(c => c.name_he).join(', ') + '.'
+              : '';
             const _msg = _repl.reachedTarget
-              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}`;
+              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}`
+              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}`;
             _lastFinalPlanBlockedMsg = null;
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
               { label: 'החל טיוטה', action: 'apply-draft' },
