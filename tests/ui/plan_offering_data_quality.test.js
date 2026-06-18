@@ -141,18 +141,21 @@ describe('offering data-quality + draft tolerance', () => {
     expect(committedHasUnk).toBe(false);
   });
 
-  // ── Deduplicated diagnostic ───────────────────────────────────────────────
-  test('missing-offering diagnostic is not duplicated when the line appears in errors AND reasons', () => {
-    const msg = 'אין נתוני היצע סמסטר ודאיים ל-3 קורסים (א, ב, ג) — לא ניתן להציג שיבוץ חוקי.';
+  // ── Replaced diagnostic (CASE 2 fix) ─────────────────────────────────────
+  test('missing-offering diagnostic emits "דילגתי על N קורסים" instead of the old raw text', () => {
+    // diagnoseBuildBlock now replaces the raw "אין נתוני היצע סמסטר ודאיים ל-X קורסים"
+    // validator text with the friendly "דילגתי על N קורסים" format (CASE 2 fix).
+    const rawMsg = 'אין נתוני היצע סמסטר ודאיים ל-3 קורסים (א, ב, ג) — לא ניתן להציג שיבוץ חוקי.';
     const out = window.eval(`(function(){
-      const validation = { errors: ['${msg}'], completeness: { reasons: ['${msg}'], incomplete: true } };
+      const validation = { errors: ['${rawMsg}'], completeness: { reasons: ['${rawMsg}'], incomplete: true } };
       const diag = diagnoseBuildBlock(validation, { preferences: {} });
       return JSON.stringify({ explanation: diag.explanation_he });
     })()`);
     const { explanation } = JSON.parse(out);
-    // The offering line must appear exactly once in the explanation.
-    const occurrences = explanation.split('אין נתוני היצע סמסטר ודאיים').length - 1;
-    expect(occurrences).toBe(1);
+    // Old raw text MUST NOT appear in the user-facing output.
+    expect(explanation).not.toMatch(/אין נתוני היצע סמסטר ודאיים ל-\d+ קורסים/);
+    // New friendly text MUST appear.
+    expect(explanation).toMatch(/דילגתי על \d+ קורסים/);
   });
 
   // ── Actionable "show blocking constraints" ────────────────────────────────

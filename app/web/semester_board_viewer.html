@@ -2016,6 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
+const PLANNER_BUILD  = '29df308-v2';       // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 /* ── AI session token (quota) ────────────────────────────────────────────── */
 /**
@@ -4044,6 +4045,7 @@ function renderAiTab() {
       </div>
 
       <div id="ai-proposal-card"></div>
+      <div id="ai-build-version" style="font-size:10px;color:#aaa;text-align:right;padding:2px 8px 4px;user-select:text" title="גרסת הפלנר — לשימוש לאימות">Build: ${PLANNER_BUILD}</div>
     </div>`;
 
   // PART E — one-click repair buttons (diagnostics-driven, populate proposalDraft).
@@ -4144,6 +4146,7 @@ function renderAiTab() {
    * cycling stage message in #ai-build-status, calls full_plan, then renders
    * the resulting draft (or an error message in chat on failure). */
   function runBuildFromScratch() {
+    console.log('[planner-e2e-trace]', { action: 'runBuildFromScratch', function: 'runBuildFromScratch', build: PLANNER_BUILD, ts: Date.now() });
     const btn = document.getElementById('sidebar-build-from-scratch');
     const statusEl = document.getElementById('ai-build-status');
     const stages = ['אוסף העדפות...', 'שולח בקשה ל-AI...', 'בודק דרישות...', 'בודק חוקיות...', 'יוצר טיוטה...', 'מסיים...'];
@@ -4347,16 +4350,28 @@ function loadAiChatState() {
     const raw = localStorage.getItem(LS_AI_CHAT);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const storedBuild = parsed.build || null;
+      if (storedBuild !== PLANNER_BUILD) {
+        // Build changed — messages from an older build may show stale planner
+        // behavior (e.g. the old "אין נתוני היצע סמסטר ודאיים" dead-end).
+        // Auto-clear so the user starts fresh with the current version.
+        _aiChatMessages = [];
+        _aiChatInputDraft = typeof parsed.inputDraft === 'string' ? parsed.inputDraft : '';
+        console.log('[planner-version]', { event: 'stale-cleared', storedBuild, currentBuild: PLANNER_BUILD });
+        saveAiChatState();
+        return;
+      }
       _aiChatMessages = Array.isArray(parsed.messages) ? parsed.messages : [];
       _aiChatInputDraft = typeof parsed.inputDraft === 'string' ? parsed.inputDraft : '';
     }
   } catch { _aiChatMessages = []; _aiChatInputDraft = ''; }
+  console.log('[planner-version]', { commit: PLANNER_BUILD, loadedAt: new Date().toISOString(), messages: _aiChatMessages.length });
 }
 
 /** PART D — persist chat history + input draft to localStorage. */
 function saveAiChatState() {
   try {
-    localStorage.setItem(LS_AI_CHAT, JSON.stringify({ messages: _aiChatMessages, inputDraft: _aiChatInputDraft }));
+    localStorage.setItem(LS_AI_CHAT, JSON.stringify({ messages: _aiChatMessages, inputDraft: _aiChatInputDraft, build: PLANNER_BUILD }));
   } catch {}
 }
 
@@ -8426,6 +8441,14 @@ function gateProposalActivation(proposal, opts) {
   const result = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
   // Keep the live validation in sync so isPlanApplyableLocal / preview agree.
   if (_aiPlanLastValidation) _aiPlanLastValidation.finalPlan = result;
+  console.log('[planner-e2e-trace]', {
+    function: 'gateProposalActivation',
+    planningMode: 'strict',
+    applicable: result.applicable,
+    blockerCauses: (result.blockers || []).map(b => b.cause),
+    warningCauses: (result.warnings || []).map(w => w.cause),
+    build: PLANNER_BUILD,
+  });
 
   if (result.applicable) {
     _lastFinalPlanBlockedMsg = null;
@@ -12714,23 +12737,36 @@ function diagnoseBuildBlock(validation, opts) {
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (missingOfferingHit) {
     // validateFinalPlan: a presented course lacks confident offering data.
+    // The raw validator text ("אין נתוני היצע סמסטר ודאיים ל-X קורסים") is
+    // intentionally NOT re-echoed here — CASE 2 says those courses are SKIPPED
+    // with a positive message, not surfaced as a blocker. Extract the count from
+    // the blocker text and produce the friendly "דילגתי על N קורסים" format.
     category = 'missing_offering_data';
     const offReasons = all.filter(s => RE_MISSING_OFFERING.test(s));
     const prereqReasonsMissing = all.filter(s => RE_PREREQ.test(s));
+    const countMatch = offReasons.join(' ').match(/ל-(\d+)\s+קורסים/);
+    const skippedCount = countMatch ? parseInt(countMatch[1], 10) : (offReasons.length || 1);
     const msgParts = [];
-    if (offReasons.length) {
-      msgParts.push(...offReasons);
-    } else {
-      msgParts.push('לקורסים בתוכנית חסרים נתוני היצע סמסטר ודאיים.');
-    }
+    msgParts.push(skippedCount > 1
+      ? `דילגתי על ${skippedCount} קורסים בגלל מידע חסר (אין נתוני היצע סמסטר) — ובניתי את המערכת מהקורסים שניתן לשבץ.`
+      : 'דילגתי על קורס אחד בגלל מידע חסר (אין נתוני היצע סמסטר) — ובניתי את המערכת מהקורסים שניתן לשבץ.');
     if (prereqReasonsMissing.length) {
       msgParts.push('בנוסף, הקורסים הבאים חסומים בדרישות קדם שלא הושלמו:');
       prereqReasonsMissing.slice(0, 3).forEach(r => msgParts.push(`• ${r}`));
     }
-    msgParts.push('לפתרון: לחץ על הכפתור למטה כדי לבנות תוכנית רק עם קורסים שניתן לשבץ בוודאות.\nאם קורסי הקדם כבר הושלמו, סמן אותם כ"הושלמו" בדף "הקורסים שלי" ונסה שוב.');
+    msgParts.push('ניתן לבנות מחדש עם הקורסים הזמינים — לחץ למטה.');
+    msgParts.push(`[debug: diagnoseBuildBlock missing-offering path — build ${PLANNER_BUILD}]`);
     explanation_he = msgParts.join('\n');
-    questions.push('להחליף את הקורסים הלא-זמינים בקורסים עם נתוני היצע ודאיים?');
-    chips.push({ label: 'בנה מערכת מחדש רק עם קורסים שניתן לשבץ בוודאות', action: 'rebuild-relaxed' });
+    console.log('[planner-e2e-trace]', {
+      messagePath: 'diagnoseBuildBlock',
+      oldMissingOfferingMessageRendered: true,
+      skippedCoursesMessageRendered: true,
+      skippedCount,
+      build: PLANNER_BUILD,
+      note: 'fallback=null path — proposal had no new courses OR hard+offering mix',
+    });
+    questions.push('לבנות מחדש עם קורסים שניתן לשבץ בוודאות?');
+    chips.push({ label: 'בנה מחדש עם קורסים זמינים', action: 'rebuild-relaxed' });
     chips.push({ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' });
   } else if (overloadHit) {
     category = 'overload';
@@ -13529,6 +13565,17 @@ async function requestPlanProposal(prefs, actionType) {
     } else {
       // FAILURE_VALIDATION — try the conversational fallback before falling back
       // to the standard diagnoseBuildBlock message.
+      const _blockerCauses = ((_gateResult && _gateResult.blockers) || []).map(b => b.cause);
+      console.log('[planner-e2e-trace]', {
+        action: actionType,
+        function: 'requestPlanProposal',
+        messagePath: 'FAILURE_VALIDATION',
+        planningMode: 'strict',
+        blockerCauses: _blockerCauses,
+        proposalDraftExists: !!state.proposalDraft,
+        renderedDraftCards: document.querySelectorAll('#board .course-card').length,
+        build: PLANNER_BUILD,
+      });
       const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx);
       if (_fallback) {
         // Phase 1 — if the ONLY thing blocking the strict gate is soft (offering
@@ -13538,18 +13585,38 @@ async function requestPlanProposal(prefs, actionType) {
         // (offering-uncertain courses marked tentative) instead of only offering
         // chips. The user sees an actual plan; chips remain available on the draft.
         const _HARD_STRUCTURAL = new Set(['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual']);
-        const _hasHardBlocker = ((_gateResult && _gateResult.blockers) || []).some(b => _HARD_STRUCTURAL.has(b.cause));
+        const _hasHardBlocker = _blockerCauses.some(c => _HARD_STRUCTURAL.has(c));
         const _draft = state.lastPlanningDraft;
         const _placementCount = _draft
           ? ((_draft.confirmedPlacements || []).length + (_draft.tentativePlacements || []).length)
           : 0;
+        console.log('[planner-e2e-trace]', {
+          messagePath: 'FAILURE_VALIDATION/fallback',
+          hasHardBlocker: _hasHardBlocker,
+          placementCount: _placementCount,
+          confirmedCount: (_draft?.confirmedPlacements || []).length,
+          tentativeCount: (_draft?.tentativePlacements || []).length,
+          skippedCoursesMessageRendered: false,
+          oldMissingOfferingMessageRendered: false,
+        });
         if (!_hasHardBlocker && _placementCount > 0) {
+          console.log('[planner-e2e-trace]', { messagePath: 'FAILURE_VALIDATION/activateTentativeDraft', proposalDraftExists: true });
           activateTentativeDraft(_draft, { balance: false, fromBuild: true });
         } else {
+          console.log('[planner-e2e-trace]', { messagePath: 'FAILURE_VALIDATION/fallback-chat', reason: _hasHardBlocker ? 'hard-blocker' : 'no-placements' });
           postAssistantMessage(_fallback.messageHe, _fallback.chips);
         }
       } else {
         // No per-course offering/prereq issues to explain — use diagnoseBuildBlock.
+        // This path fires when buildPlanningFallback returns null:
+        //   (a) all proposed courses are already on the committed board (newCids=0)
+        //   (b) there is a hard blocker mixed with offering data issues
+        console.log('[planner-e2e-trace]', {
+          messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
+          reason: 'buildPlanningFallback returned null',
+          blockerCauses: _blockerCauses,
+          oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
+        });
         try {
           const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
           const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
