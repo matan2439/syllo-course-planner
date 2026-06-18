@@ -449,7 +449,11 @@ describe('Issue 4 — robotics-lab prerequisite enforcement (union + strict timi
   });
 
   test('strict timing: completed / strictly-earlier satisfies; same-sem / later / missing does NOT', () => {
-    const courseMap = { ROBOLAB: { missing_prerequisites: ['INTRO'] } };
+    // INTRO is an IN-SCOPE prereq (present in courseMap) — mirrors production where
+    // מבוא לרובוטיקה (0542-4621) is a program course. In-scope prereqs are strictly
+    // timing-enforced; only foundational year-1/2 prereqs ABSENT from courseMap are
+    // assumed completed (covered by planner_user_intent_focus.test.js Test 10).
+    const courseMap = { ROBOLAB: { missing_prerequisites: ['INTRO'] }, INTRO: { name_he: 'מבוא' } };
     const userCourseStatuses = {};
     const SEMESTERS = [{ id: 's0' }, { id: 's1' }, { id: 's2' }];
     const factory = new Function('courseMap', 'userCourseStatuses', 'SEMESTERS',

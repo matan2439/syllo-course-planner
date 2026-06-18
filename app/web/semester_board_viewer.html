@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'offers-fix-v1';    // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'focus-v1';         // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Client-side semester corrections derived from data/parsed_json/merged_*.json (TAU schedule 2025).
 // Overrides offered_semesters from the Supabase backup where the pipeline either wrote the wrong
@@ -4089,7 +4089,6 @@ function renderAiTab() {
           <button class="btn btn-primary" id="sidebar-build-from-scratch">${state.proposalDraft || allPlacedIds().size > 2 ? 'בנה מערכת מחדש' : 'בנה מערכת'}</button>
           <button id="sidebar-reset-chat" class="btn btn-sm btn-link" type="button">איפוס שיחה</button>
           <button class="btn btn-sm btn-link" id="sidebar-clear-chat">נקה שיחה והעדפות זמניות</button>
-          ${state.proposalDraft ? '<button class="btn btn-sm btn-link" id="sidebar-open-full-preview">פתח פירוט מלא</button>' : ''}
         </div>
       </div>
 
@@ -4325,20 +4324,9 @@ function renderAiTab() {
     }
   });
   // Phase 2C — silent allow-overload checkbox removed (handled via explicit
-  // requestUserConfirmation flow elsewhere).
-  document.getElementById('sidebar-open-full-preview')?.addEventListener('click', () => {
-    const evald = evaluateDraftProposal();
-    const ev = evald || { proposal: _aiPlanLastProposal, errors: _aiPlanLastValidation?.errors || [], warnings: _aiPlanLastValidation?.warnings || [], completeness: _aiPlanLastValidation?.completeness };
-    openPlanPreviewModal(
-      ev.proposal,
-      ev.errors,
-      ev.warnings,
-      _aiPlanLastValidation?.autofixed,
-      ev.completeness,
-      _aiPlanLastValidation?.moveLog,
-      _aiPlanLastValidation?.electiveSelectionReasons
-    );
-  });
+  // requestUserConfirmation flow elsewhere). The detached "פתח פירוט מלא" full-
+  // preview control was removed — the draft is reviewed and edited directly on
+  // the board, and all changes happen through the chat.
 
   renderProposalCard();
 }
@@ -5926,40 +5914,15 @@ function renderProposalCard() {
         <div>הוסרו: ${removedCount}</div>
         ${replacedCount ? `<div>הוחלפו: ${replacedCount}</div>` : ''}
       </div>
-      <label class="ai-plan-field">
-        בקש שינויים בטיוטה
-        <textarea id="sidebar-draft-instruction" rows="2" dir="rtl"
-          placeholder="מה תרצה לשנות בטיוטה?"></textarea>
-      </label>
+      <div class="ai-plan-hint">לשינויים בטיוטה — כתוב מה לשנות בצ׳אט למטה (למשל: "הוסף דגש על תכן", "הורד עומס בסמסטר ב׳").</div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <button class="btn btn-primary" id="sb-draft-apply">החל טיוטה</button>
         <button class="btn" id="sb-draft-reject">דחה טיוטה</button>
-        <button class="btn btn-sm" id="sb-draft-ask">בקש שינויים</button>
-        <button class="btn btn-sm" id="sb-draft-full">פתח תצוגה מלאה</button>
       </div>
     </div>`;
 
   document.getElementById('sb-draft-apply').addEventListener('click', () => { if (!blocked) applyProposalDraft(); });
   document.getElementById('sb-draft-reject').addEventListener('click', () => { rejectProposalDraft(); renderAiTab(); });
-  document.getElementById('sb-draft-ask').addEventListener('click', () => {
-    const instr = document.getElementById('sidebar-draft-instruction')?.value?.trim();
-    if (instr) postUserMessage(instr);
-    const prefs = { ...sidebarQuickActionPrefs(), extra_request_he: instr || _aiPlanLastPreferences?.extra_request_he };
-    _aiPlanLastPreferences = { ...prefs, action_type: 'minimal_changes' };
-    requestPlanProposalFromDraft(prefs, 'minimal_changes').finally(() => renderAiTab());
-  });
-  document.getElementById('sb-draft-full').addEventListener('click', () => {
-    const ev = evald || { proposal: _aiPlanLastProposal, errors, warnings, completeness };
-    openPlanPreviewModal(
-      ev.proposal,
-      ev.errors,
-      ev.warnings,
-      _aiPlanLastValidation?.autofixed,
-      ev.completeness,
-      _aiPlanLastValidation?.moveLog,
-      _aiPlanLastValidation?.electiveSelectionReasons
-    );
-  });
 }
 
 /** PART D — "בקש שינויים": send the edited draft back to the AI as the starting board. */
@@ -7767,6 +7730,12 @@ function prereqsSatisfiedForPlacementLocal(courseId, targetIdx, courseSemIdx, co
   for (const prereq of prereqIdsOf(courseMap[courseId])) {
     const status = userCourseStatuses[prereq]?.status || 'not_taken';
     if (status === 'completed' || completed.has(prereq)) continue;
+    // Foundational-prereq rule: the board displays only years 3–4. A prerequisite
+    // that is NOT part of the displayed program universe (absent from courseMap)
+    // is a year-1/2 foundational course the student has already completed — assume
+    // it satisfied. In-scope prereqs (present in courseMap, e.g. מכניקת המוצקים 2)
+    // are still strictly enforced and must be scheduled earlier.
+    if (typeof courseMap !== 'undefined' && !courseMap[prereq]) continue;
     if (status === 'currently_taking') {
       const idx = _userSemesterIndex(prereq, courseSemIdx);
       if (idx === -1 || targetIdx > idx) continue; // unknown timing → informational; later → ok
@@ -8652,6 +8621,11 @@ function buildDeterministicReplacementPlan(args) {
 
   // 3. Run the deterministic completion chain (same proven repairs as the main
   //    flow, here re-seeded from the board instead of the AI proposal).
+  // Part A/B — extract structured intent (focus domains, career goal, grade
+  // target) from the user's free-text request, and expand it into a concrete,
+  // priority-ordered list of requested course ids.
+  const intent = extractPlanningIntentLocal(prefs.extra_request_he || '');
+
   const repairOpts = {
     courses: ctx.courses,
     maxHoursPerSemester: ctx.maxHoursPerSemester,
@@ -8659,9 +8633,14 @@ function buildDeterministicReplacementPlan(args) {
     knownSemesterIds,
     userInterestText: prefs.extra_request_he,
     completedCourseIds: new Set(typeof completedCourseIds !== 'undefined' ? completedCourseIds : []),
+    requestedCourseIds: intent.requested_course_ids,
   };
   try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  // Part C — place the user's requested-focus courses BEFORE generic filler so
+  // they are never crowded out. Capture per-course outcomes for the domain report.
+  let _domainPass = { added: [], rejected: [] };
+  try { _domainPass = repairAddRequestedDomainCoursesLocal(proposal, analysis, repairOpts); proposal = _domainPass.proposal || proposal; } catch (_) {}
   try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   try { proposal = repairAddHoursToDegreeLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
 
@@ -8759,6 +8738,39 @@ function buildDeterministicReplacementPlan(args) {
   if (_gapNoSemester > 0) gapReasons.push(`${_gapNoSemester} קורסים לא מוצעים בסמסטרים המוצגים`);
   if (shortCategories.length > 0) gapReasons.push(`מחסור בקטגוריות: ${shortCategories.join(', ')}`);
 
+  // Part D/F — domain report: for each requested focus domain, which courses were
+  // included vs skipped (and exactly why). Built from the FINAL proposal so it
+  // reflects the legality audit (a domain course placed by the pre-pass but later
+  // stripped as illegal is reported as skipped, not included).
+  const _REASON_HE = {
+    already_on_board: 'כבר קיים בתכנית',
+    missing_offering_data: 'חסרים נתוני סמסטר',
+    no_legal_semester: 'לא מוצע בסמסטרים המוצגים',
+    prereq_not_met: 'חסר קורס קדם',
+    no_capacity: 'אין מקום פנוי בסמסטר חוקי (עומס)',
+    not_requested_or_unschedulable: 'לא שובץ',
+  };
+  const _afterSet = new Set(afterCids);
+  const _rejByCid = {};
+  for (const r of (_domainPass.rejected || [])) _rejByCid[r.course_id] = r.reason;
+  const domainReport = (intent.requiredDomains || []).map(key => {
+    const def = PLANNING_DOMAINS[key];
+    const considered = (def.course_ids || []).filter(cid => typeof courseMap === 'undefined' || courseMap[cid]);
+    const included = [], skipped = [];
+    for (const cid of considered) {
+      const nameHe = (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || cid;
+      if (_afterSet.has(cid) && !beforeCids.has(cid)) {
+        included.push({ course_id: cid, name_he: nameHe, semester_id: semOfCid[cid] });
+      } else if (beforeCids.has(cid)) {
+        skipped.push({ course_id: cid, name_he: nameHe, reason: 'already_on_board', reason_he: _REASON_HE.already_on_board });
+      } else {
+        const reason = _rejByCid[cid] || 'not_requested_or_unschedulable';
+        skipped.push({ course_id: cid, name_he: nameHe, reason, reason_he: _REASON_HE[reason] || _REASON_HE.not_requested_or_unschedulable });
+      }
+    }
+    return { domain: key, label_he: def.label_he, satisfied: included.length > 0, included, skipped };
+  });
+
   return {
     proposal,
     addedCids,
@@ -8772,7 +8784,38 @@ function buildDeterministicReplacementPlan(args) {
     candidatesConsidered: (analysis.elective_pool || []).length,
     shortCategories,
     gapReasons,
+    intent,
+    domainReport,
   };
+}
+
+/**
+ * Part D/F — render the per-domain focus report as concise Hebrew chat lines.
+ * For each requested domain: which courses were included (with semester) and,
+ * if any were skipped, exactly why. Returns '' when no focus domains were named.
+ */
+function _formatDomainFocusHe(domainReport) {
+  if (!Array.isArray(domainReport) || !domainReport.length) return '';
+  const semLabel = sid => (typeof SEM_HE !== 'undefined' && SEM_HE[sid]) || sid || '';
+  const lines = ['', 'התמקדות לפי הבקשה שלך:'];
+  for (const d of domainReport) {
+    const mark = d.satisfied ? '✓' : '✗';
+    if (d.included.length) {
+      const names = d.included.map(c => {
+        const sem = semLabel(c.semester_id);
+        return sem ? `${c.name_he} (${sem})` : c.name_he;
+      }).join(', ');
+      lines.push(`${mark} ${d.label_he}: שובצו ${names}`);
+    } else {
+      lines.push(`${mark} ${d.label_he}: לא ניתן היה לשבץ קורס מהתחום`);
+    }
+    // Explain skips that are NOT "already on board" (those aren't gaps).
+    const realSkips = (d.skipped || []).filter(s => s.reason !== 'already_on_board');
+    for (const s of realSkips) {
+      lines.push(`   • לא שובץ ${s.name_he} — ${s.reason_he}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -11856,6 +11899,117 @@ function extractPreferenceTermsLocal(text) {
     raw_text: raw,
   };
 }
+
+/**
+ * PLANNING_DOMAINS — explicit domain → {keywords, course_ids} mapping.
+ *
+ * Why this exists: the lexical relevance scorer (lexicalRelevanceLocal) matches
+ * on shared tokens, so it FAILS on synonyms. The user asking for "רעידות"
+ * (vibrations) never matches "תורת התנודות" (Theory of Vibrations) because the
+ * words share no stem. This map encodes the domain→course knowledge directly so
+ * a requested domain reliably pulls in its concrete courses even when the names
+ * use different vocabulary.
+ *
+ * course_ids are ordered by relevance/centrality within the domain. They are the
+ * ME-2027 program courses; non-existent ids are simply skipped at planning time.
+ * `priority` orders domains when the user lists several (lower = placed first).
+ */
+const PLANNING_DOMAINS = {
+  design: {
+    label_he: 'תכן',
+    priority: 1,
+    keywords: ['תכן', 'תכנון', 'עיצוב', 'פיתוח מוצר', 'מוצר', 'הנדסי', 'design'],
+    course_ids: ['0542-4422', '0542-4425'], // תכן הנדסי: מבוא ושיטות; הדפסת תלת מימד ותכן חלקי פלסטיקה
+  },
+  strength: {
+    label_he: 'אנליזות חוזק',
+    priority: 2,
+    keywords: ['חוזק', 'אנליז', 'מכניקת המוצקים', 'מכניקת מוצקים', 'מוצקים', 'אלסטיות', 'אלמנטים סופיים', 'אלמנטים', 'חומרים', 'מבנים', 'fem', 'strength'],
+    // מכניקת המוצקים (2) listed BEFORE FEM — FEM (0542-4223) requires it as a
+    // prereq, so it must be placed in an earlier semester first.
+    course_ids: ['0542-4224', '0542-4221', '0542-4223', '0542-4226', '0581-4131'], // מכניקת המוצקים (2); אלסטיות; FEM; יישומי FEM; מעבדה בחומרים
+  },
+  fluids: {
+    label_he: 'זרימה',
+    priority: 3,
+    keywords: ['זרימה', 'זורמים', 'גזים', 'אווירודינמיקה', 'אוירודינמיקה', 'דינמיקת הגזים', 'fluids', 'flow'],
+    course_ids: ['0542-4320', '0542-4352', '0542-4523'], // מכניקת הזורמים (2); דינמיקת הגזים; מבוא לאוירודינמיקה
+  },
+  heat: {
+    label_he: 'מעבר חום',
+    priority: 4,
+    keywords: ['מעבר חום', 'חום', 'תרמודינמיקה', 'תרמי', 'אנרגיה', 'heat', 'thermal'],
+    course_ids: ['0542-4120', '0542-4123', '0542-4391'], // תרמודינמיקה (2); תהליכי מעבר חום וחומר; מעבדה בסימולציות נומריות בזרימה ומעבר חום
+  },
+  vibrations: {
+    label_he: 'רעידות',
+    priority: 5,
+    keywords: ['רעידות', 'רעיד', 'תנודות', 'תנוד', 'דינמיקה', 'דינמיקת', 'vibration', 'dynamics'],
+    course_ids: ['0542-4220', '0542-4622'], // תורת התנודות; דינמיקה ובקרה של מערכות
+  },
+};
+const _CAREER_INDUSTRY_KW_LOCAL = ['תעשייה', 'תעשיית', 'תעשייתי', 'תעשייתית', 'שכר', 'משכורת', 'salary', 'industry', 'industrial', 'high-paying', 'מקצועי'];
+
+/**
+ * extractPlanningIntentLocal — Part A. Turns the user's free-text request into a
+ * structured planning intent: which focus DOMAINS they named, their career goal,
+ * grade target, and derived preference weights. Also expands the domains into a
+ * concrete, priority-ordered list of requested course ids (requested_course_ids)
+ * that the planner places before generic filler electives.
+ *
+ * Returns:
+ *   { requiredDomains: ['design',...], domainLabels: ['תכן',...],
+ *     requested_course_ids: ['0542-4422',...], careerGoal, gradeTarget,
+ *     preferenceWeights: { industry_relevance, salary_relevance, grade_risk, workload_balance },
+ *     terms /* raw extractPreferenceTermsLocal output *\/ }
+ */
+function extractPlanningIntentLocal(text) {
+  const raw = text || '';
+  const lower = raw.toLowerCase();
+  const terms = extractPreferenceTermsLocal(raw);
+
+  // Match domains by keyword presence (substring — robust to Hebrew prefixes).
+  const matched = [];
+  for (const [key, def] of Object.entries(PLANNING_DOMAINS)) {
+    if (def.keywords.some(kw => lower.includes(kw.toLowerCase()))) matched.push(key);
+  }
+  matched.sort((a, b) => (PLANNING_DOMAINS[a].priority || 99) - (PLANNING_DOMAINS[b].priority || 99));
+
+  // Expand to concrete course ids, priority-ordered, de-duplicated, existing only.
+  const requested = [];
+  const seen = new Set();
+  for (const key of matched) {
+    for (const cid of (PLANNING_DOMAINS[key].course_ids || [])) {
+      if (seen.has(cid)) continue;
+      if (typeof courseMap !== 'undefined' && !courseMap[cid]) continue;
+      seen.add(cid);
+      requested.push(cid);
+    }
+  }
+
+  const wantsIndustry = _CAREER_INDUSTRY_KW_LOCAL.some(kw => lower.includes(kw.toLowerCase()))
+    || !!terms.wants_industry_value || !!terms.wants_practical;
+  const careerGoal = wantsIndustry ? 'industry_high_salary' : null;
+  const gradeTarget = terms.grade_target ?? null;
+
+  const preferenceWeights = {
+    industry_relevance: wantsIndustry ? 'high' : 'medium',
+    salary_relevance: /שכר|משכורת|salary|high-paying/.test(lower) ? 'high' : (wantsIndustry ? 'medium' : 'low'),
+    grade_risk: gradeTarget != null ? 'medium' : 'low',
+    workload_balance: 'medium',
+  };
+
+  return {
+    requiredDomains: matched,
+    domainLabels: matched.map(k => PLANNING_DOMAINS[k].label_he),
+    requested_course_ids: requested,
+    careerGoal,
+    gradeTarget,
+    preferenceWeights,
+    terms,
+  };
+}
+
 function buildCourseSearchTextLocal(course) {
   if (!course) return '';
   const parts = [];
@@ -12239,6 +12393,86 @@ function repairAddMissingElectivesLocal(proposal, analysis, opts) {
       warnings_he: [...(proposal.warnings_he || []), 'נוספו קורסי בחירה אוטומטית כדי להשלים דרישות תואר.', ...extraWarnings],
     },
     added,
+  };
+}
+
+/**
+ * Part C — requested-focus priority pass. Runs BEFORE the generic hours-fill so
+ * the user's requested domains are placed FIRST, never crowded out by filler.
+ *
+ * opts.requestedCourseIds is the priority-ordered list of course ids expanded
+ * from the user's requested domains (extractPlanningIntentLocal.requested_course_ids).
+ * Each candidate is placed in a legal semester only when it is: offered, in a
+ * legal semester, prereq-satisfied (completed or scheduled earlier), not a
+ * duplicate, and fits the workload cap. Every candidate that cannot be placed is
+ * reported with a precise reason code so the chat can explain exactly why a
+ * requested course was skipped.
+ *
+ * Returns { proposal, added:[{course_id,semester_id}], rejected:[{course_id,reason}] }.
+ * reason ∈ already_on_board | missing_offering_data | no_legal_semester |
+ *          prereq_not_met | no_capacity.
+ */
+function repairAddRequestedDomainCoursesLocal(proposal, analysis, opts) {
+  const requested = opts.requestedCourseIds || [];
+  if (!requested.length) return { proposal, added: [], rejected: [] };
+  const max = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
+  const completed = new Set(opts.completedCourseIds || []);
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  for (const id of opts.knownSemesterIds) {
+    if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
+  }
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const hoursOf = sem => sem.course_ids.reduce((sum, cid) => sum + (opts.courses[cid]?.hours || 0), 0);
+  const added = [], rejected = [];
+
+  for (const cid of requested) {
+    if (placed.has(cid)) { rejected.push({ course_id: cid, reason: 'already_on_board' }); continue; }
+    const info = opts.courses[cid] || {};
+    const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+    const hasOffering =
+      (info.effective_allowed_semesters?.length || cm?.effective_allowed_semesters?.length) ||
+      (info.offered_semesters?.length || cm?.offered_semesters?.length);
+    if (!hasOffering && !isAnnualCourse(cm || info)) {
+      rejected.push({ course_id: cid, reason: 'missing_offering_data' }); continue;
+    }
+    const legalForCand = (typeof getLegalSemestersLocal === 'function')
+      ? getLegalSemestersLocal(
+          { ...(cm || {}), ...info,
+            effective_allowed_semesters: info.effective_allowed_semesters || cm?.effective_allowed_semesters,
+            offered_semesters: info.offered_semesters || cm?.offered_semesters },
+          opts.knownSemesterIds,
+        ).semesters
+      : (info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds);
+    const allowed = (legalForCand && legalForCand.length) ? legalForCand : opts.knownSemesterIds;
+    let legalSems = sems.filter(s => allowed.includes(s.semester_id));
+    if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'no_legal_semester' }); continue; }
+
+    // Prerequisite gate — only keep semesters where the prereq chain is satisfied.
+    const _semIdxByCourse = {};
+    sems.forEach((s, i) => { for (const _c2 of s.course_ids) if (_c2 !== cid) _semIdxByCourse[_c2] = i; });
+    const _prereqs = (typeof prereqIdsOf === 'function' && cm) ? prereqIdsOf(cm) : [];
+    if (_prereqs.length && typeof prereqsSatisfiedForPlacementLocal === 'function') {
+      legalSems = legalSems.filter(s => {
+        const tIdx = sems.findIndex(x => x.semester_id === s.semester_id);
+        return prereqsSatisfiedForPlacementLocal(cid, tIdx, _semIdxByCourse, completed).ok;
+      });
+      if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'prereq_not_met' }); continue; }
+    }
+
+    const hrs = info.hours || cm?.weekly_hours || cm?.semester_hours || 0;
+    let target = legalSems.filter(s => hoursOf(s) + hrs <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+    if (!target) { rejected.push({ course_id: cid, reason: 'no_capacity' }); continue; }
+
+    target.course_ids.push(cid);
+    placed.add(cid);
+    added.push({ course_id: cid, semester_id: target.semester_id });
+  }
+
+  if (!added.length) return { proposal, added: [], rejected };
+  return {
+    proposal: { ...proposal, semesters: sems },
+    added,
+    rejected,
   };
 }
 
@@ -13950,9 +14184,10 @@ async function requestPlanProposal(prefs, actionType) {
             console.log('[planner-e2e-trace]', { messagePath: 'replacement rendered cards count', count: _cards });
             const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
             const _reasonStr = (_repl.gapReasons && _repl.gapReasons.length) ? '\nסיבות:\n• ' + _repl.gapReasons.join('\n• ') : '';
+            const _focusStr = _formatDomainFocusHe(_repl.domainReport);
             const _msg = _repl.reachedTarget
-              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_reasonStr}`;
+              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}`
+              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}`;
             _lastFinalPlanBlockedMsg = null;
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
               { label: 'החל טיוטה', action: 'apply-draft' },

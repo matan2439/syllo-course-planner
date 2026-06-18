@@ -1060,18 +1060,21 @@ def test_proposal_card_renders_inside_unified_ai_tab(html):
     assert "renderProposalCard()" in m.group(1)
 
 
-def test_proposal_card_has_apply_reject_ask_again_controls(html):
-    """The proposal card must offer apply/reject/ask-again and a link to the
-    full preview modal."""
+def test_proposal_card_has_apply_reject_controls(html):
+    """The proposal card offers only apply/reject. The detached editing controls
+    (the 'בקש שינויים בטיוטה' textarea, 'בקש שינויים' button, and 'פתח תצוגה מלאה'
+    full-preview button) were removed — all draft changes happen through the chat."""
     m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderProposalCard not found"
     body = m.group(1)
     assert "sb-draft-apply" in body
     assert "sb-draft-reject" in body
-    assert "sb-draft-ask" in body
-    assert "sb-draft-full" in body
     assert "applyProposalDraft" in body
     assert "rejectProposalDraft" in body
+    # The detached editing panel must be gone.
+    assert "sb-draft-ask" not in body
+    assert "sb-draft-full" not in body
+    assert "sidebar-draft-instruction" not in body
 
 
 def test_planning_request_includes_current_semesters(html):
@@ -1339,8 +1342,11 @@ def test_render_proposal_card_present_in_ai_tab(html):
     m2 = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m2, "renderProposalCard not found"
     body = m2.group(1)
-    for label in ["החל טיוטה", "דחה טיוטה", "בקש שינויים", "פתח תצוגה מלאה"]:
+    for label in ["החל טיוטה", "דחה טיוטה"]:
         assert label in body, f"{label} missing from renderProposalCard"
+    # The detached editing controls were removed in favour of chat-driven edits.
+    for gone in ["בקש שינויים בטיוטה", "פתח תצוגה מלאה"]:
+        assert gone not in body, f"{gone} should have been removed from renderProposalCard"
 
 
 # ---------------------------------------------------------------------------
@@ -1453,13 +1459,14 @@ def test_chat_first_default_visible_controls(html):
         assert removed not in template_no_details, f"{removed} must not be default-visible"
 
     # Issue 4/5 — the primary 'בנה מערכת מחדש' build button now sits next to the
-    # reset button, alongside the moved 'נקה שיחה והעדפות זמניות' (sidebar-clear-chat)
-    # and the draft-only 'פתח פירוט מלא' (sidebar-open-full-preview). The static
-    # advanced panel is gone; these are the only default-visible buttons.
+    # reset button, alongside the moved 'נקה שיחה והעדפות זמניות' (sidebar-clear-chat).
+    # The detached 'פתח פירוט מלא' (sidebar-open-full-preview) control was removed —
+    # the draft is reviewed on the board and all changes happen through the chat.
     visible_buttons = re.findall(r'<button[^>]*id="([^"]+)"', template_no_details)
+    assert "sidebar-open-full-preview" not in visible_buttons
     assert set(visible_buttons) <= {
         "sidebar-chat-send", "sidebar-build-from-scratch", "sidebar-reset-chat",
-        "sidebar-clear-chat", "sidebar-open-full-preview",
+        "sidebar-clear-chat",
     }, visible_buttons
     assert len(visible_buttons) <= 5
 
