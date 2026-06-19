@@ -19,6 +19,9 @@ data/import_reports/*
 !data/import_reports/normalized_courses_mechanical_2027.json
 !data/import_reports/data_audit_mechanical_2027.json
 !data/import_reports/data_audit_mechanical_2027.csv
+!data/import_reports/supabase_normalization_diff_2027.json
+!data/import_reports/supabase_normalization_after_2027.json
+data/backups/*
 data/raw_html/*
 data/parsed_json/*
 !data/raw_html/.gitkeep

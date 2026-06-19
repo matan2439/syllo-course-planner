@@ -1,0 +1,54 @@
+{
+  "verified_at": "2026-06-19T14:39:31.984415",
+  "total_repo_courses": 56,
+  "with_offered_semesters": 48,
+  "with_effective_allowed_semesters": 48,
+  "not_offered_this_year": 8,
+  "still_missing_semester_data": 0,
+  "spot_checks": {
+    "0542-4220": {
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "expected_offered": [
+        "B"
+      ],
+      "pass": true
+    },
+    "0542-4224": {
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "expected_offered": [
+        "A"
+      ],
+      "pass": true
+    },
+    "0512-2508": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "expected_offered": [
+        "A",
+        "B"
+      ],
+      "pass": true
+    }
+  },
+  "missing_courses": []
+}

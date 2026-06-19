@@ -1,0 +1,1449 @@
+{
+  "generated_at": "2026-06-19T14:39:31.092896",
+  "program_id": "mechanical_engineering",
+  "academic_year": 2027,
+  "mode": "pre_write",
+  "summary": {
+    "total_courses": 56,
+    "courses_with_changes": 22,
+    "courses_unchanged": 34,
+    "not_offered_this_year": 8
+  },
+  "changes": [
+    {
+      "course_id": "0509-4010",
+      "course_name": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-1202",
+      "course_name": "אלקטרוניקה בסיסית",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0512-1203",
+      "course_name": "מבוא לעיבוד אותות",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-2508",
+      "course_name": "התקנים אלקטרוניים",
+      "changed": false,
+      "old_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "new_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-4200",
+      "course_name": "מבוא לעיבוד ספרתי של אותות",
+      "changed": false,
+      "old_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "new_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-4362",
+      "course_name": "מערכות משוב שימושיות",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-4700",
+      "course_name": "טכנולוגיות מיקרו וננו אלקטרוניקה",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0512-4702",
+      "course_name": "מערכות ממוזערות לבישות",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-3112",
+      "course_name": "פרויקט יישומי בהנדסה מכנית",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0542-4011",
+      "course_name": "פרוייקט מחקר למצטיינים (1)",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4012",
+      "course_name": "פרויקט מחקר למצטיינים (2)",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4093",
+      "course_name": "מעבדה במערכות אנרגיה",
+      "changed": false,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": false,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026"
+    },
+    {
+      "course_id": "0542-4094",
+      "course_name": "מעבדת מתקדמת בזרימה ומערכות אנרגיה",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4120",
+      "course_name": "תרמודינמיקה (2)",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4123",
+      "course_name": "תהליכי מעבר חום וחומר",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4124",
+      "course_name": "",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4125",
+      "course_name": "מבוא להנדסת סביבה",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4131",
+      "course_name": "מנועי שריפה פנימית",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4132",
+      "course_name": "אנרגיה מתחדשת",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4135",
+      "course_name": "תכן תרמי מתקדם בעזרת כלי תוכנה הנדסיים",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4179",
+      "course_name": "מתקנים לייצור כח וניצול אנרגיה",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0542-4191",
+      "course_name": "",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4220",
+      "course_name": "תורת התנודות",
+      "changed": true,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "corrected_A_to_B"
+    },
+    {
+      "course_id": "0542-4221",
+      "course_name": "מבוא לתורת האלסטיות",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4223",
+      "course_name": "מבוא לאלמנטים סופיים",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4224",
+      "course_name": "מכניקת המוצקים (2)",
+      "changed": true,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "corrected_B_to_A"
+    },
+    {
+      "course_id": "0542-4226",
+      "course_name": "יישומי אלמנטים סופיים בתעשייה",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4275",
+      "course_name": "אווירודינמיקה של טורבינות רוח",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0542-4320",
+      "course_name": "מכניקת הזורמים (2)",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4321",
+      "course_name": "הידראוליקה הנדסית",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4322",
+      "course_name": "תכנון תרמי של ציוד אלקטרוני",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": null,
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": null,
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "missing",
+      "old_offered_in_year": true,
+      "new_offered_in_year": false,
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year",
+      "reason": "not_offered_in_2025_2026 + fix_offered_in_year"
+    },
+    {
+      "course_id": "0542-4351",
+      "course_name": "הנדסה ימית",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0542-4352",
+      "course_name": "דינמיקת הגזים",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4391",
+      "course_name": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4420",
+      "course_name": "תורת המכונות",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4422",
+      "course_name": "תכן הנדסי: מבוא ושיטות",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4425",
+      "course_name": "הדפסת תלת מימד ותכן חלקי פלסטיקה",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4455",
+      "course_name": "בינה חישובית",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4524",
+      "course_name": "מבוא להנדסת חלל",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4527",
+      "course_name": "מכניקת המסלולים של לוויינים",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0542-4559",
+      "course_name": "מעבדה במכאטרוניקה",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4621",
+      "course_name": "מבוא לרובוטיקה",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4622",
+      "course_name": "דינמיקה ובקרה של מערכות",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4624",
+      "course_name": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0542-4722",
+      "course_name": "מבוא להנדסת מערכות זעירות (Mems)",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0555-3160",
+      "course_name": "הנדסת תאים ורקמות",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4000",
+      "course_name": "אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4432",
+      "course_name": "תכנון מערכות ביו-רפואיות",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4550",
+      "course_name": "מבוא לביופיזיקה של התא",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4555",
+      "course_name": "ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4562",
+      "course_name": "מבוא לאולטרסאונד: הדמיה וטיפול",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0555-4630",
+      "course_name": "ביו-חומרים פולימרים",
+      "changed": true,
+      "old_offered_semesters": null,
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": null,
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": null,
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "added_missing_semester_data"
+    },
+    {
+      "course_id": "0571-1818",
+      "course_name": "מבני נתונים",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0571-3802",
+      "course_name": "מודלים דטרמיניסטיים בחקר ביצועים",
+      "changed": false,
+      "old_offered_semesters": [
+        "B"
+      ],
+      "new_offered_semesters": [
+        "B"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0571-4174",
+      "course_name": "תיכון וחשיבה המצאתית",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    },
+    {
+      "course_id": "0581-4131",
+      "course_name": "מעבדה בחומרים הנדסיים",
+      "changed": false,
+      "old_offered_semesters": [
+        "A"
+      ],
+      "new_offered_semesters": [
+        "A"
+      ],
+      "old_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "new_effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "old_offering_source_confidence": "high",
+      "new_offering_source_confidence": "high",
+      "old_offered_in_year": true,
+      "new_offered_in_year": true,
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete",
+      "reason": "no_change"
+    }
+  ]
+}

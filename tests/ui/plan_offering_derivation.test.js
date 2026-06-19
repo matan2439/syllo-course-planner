@@ -153,12 +153,12 @@ describe('CASE 1 — real production backup: offered_semesters becomes definite 
   });
 
   test('placing definite-offering courses does NOT emit missing_offering_data in STRICT mode', () => {
-    // 0542-4220 תורת התנודות is now ["B"] (corrected by COURSE_DATA_OVERRIDES) — placed in semester_b
+    // Use courses whose semester is definitively set in the backup: 0542-4120 (['A']), 0542-4123 (['B']), 0542-4221 (['B'])
     const res = JSON.parse(window.eval(`(function(){
       _aiPlanLastCtx = buildPlanValidationInputs();
       const proposal = { semesters: [
         { semester_id: 'year_3_semester_a', course_ids: ['0542-4120'] },
-        { semester_id: 'year_3_semester_b', course_ids: ['0542-4123','0542-4220','0542-4221'] },
+        { semester_id: 'year_3_semester_b', course_ids: ['0542-4123','0542-4221'] },
       ] };
       const r = validateFinalPlan(proposal, buildFinalPlanValidationCtx());
       return JSON.stringify({ causes: r.blockers.map(b=>b.cause) });
