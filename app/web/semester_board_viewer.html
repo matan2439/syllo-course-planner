@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'prereq-parser-v4'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'intent-profile-v5'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5363,6 +5363,14 @@ function detectAiIntent(message) {
     return { type: 'improve_career_fit', extra_request_he: text };
   }
 
+  // Part F — open informational question (no build/modify trigger reached above).
+  // Routed to conversational Q&A, NOT to the planning pipeline, so the assistant
+  // answers "מה עדיף לי, זרימה או חוזק?" instead of attempting a silent re-plan.
+  if (/[?？]/.test(text) || /^(מה|האם|איך|כיצד|כמה|מתי|עדיף|מהו|מהי|כדאי|אילו|למי)\b/.test(text)
+      || /מה\s+עדיף|מה\s+ההבדל|האם\s+כדאי|מה\s+יותר/.test(text)) {
+    return { type: 'ask_question', extra_request_he: text };
+  }
+
   // fallback — ask for clarification if ambiguous, else minimal improvement.
   if (detectClarificationNeeds(text)) {
     return { type: 'ask_clarification' };
@@ -5572,6 +5580,16 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     _aiPlanLastPreferences = { ...basePrefs, extra_request_he: planningText };
   }
 
+  // Part F — maintain a structured UserIntentProfile across the conversation so the
+  // assistant can echo what it understood and the next build consumes it. Updating
+  // the profile is a pure state change — it never triggers a build on its own.
+  try {
+    const _mode = (intent.type === 'ask_question' || intent.type === 'explain_course' || intent.type === 'ask_clarification') ? 'answer'
+      : (intent.type === 'full_plan') ? 'build_plan'
+      : (state.proposalDraft ? 'modify_plan' : 'update_preferences');
+    _aiUserIntentProfile = buildUserIntentProfileLocal(planningText, { conversationMode: _mode });
+  } catch (_) {}
+
   // PART F — "why was this chosen?" gets a SPECIFIC, non-generic answer from
   // electiveSelectionReasons + course metadata, without triggering a re-plan.
   if (intent.type === 'explain_course') {
@@ -5655,9 +5673,12 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
     }
 
     const hasDraft = !!state.proposalDraft;
-    const msg = hasDraft
+    // Part F — echo what the assistant understood (UserIntentProfile.explanation_he)
+    // before the build prompt, so the user sees their request was parsed correctly.
+    const _understood = (_aiUserIntentProfile?.explanation_he) ? (_aiUserIntentProfile.explanation_he + '\n') : '';
+    const msg = _understood + (hasDraft
       ? 'שמרתי. כדי לעדכן את המערכת לפי זה לחצי על "בנה מערכת מחדש".'
-      : 'הבנתי את ההעדפות. כדי לבנות מערכת לפי זה, לחצי על "בנה מערכת מחדש".';
+      : 'כדי לבנות מערכת לפי זה, לחצי על "בנה מערכת מחדש".');
     postAssistantMessage(msg, [
       { label: 'בנה מערכת מחדש', action: 'rebuild-plan' },
     ]);
@@ -5704,6 +5725,9 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
 
 let _aiClarificationAnswered = false;
 let _aiPendingPlanningRequest = null;
+// Part D/F — the conversation's current structured UserIntentProfile (built from
+// the latest message). Read by the build path and the "what I understood" echo.
+let _aiUserIntentProfile = null;
 // Inline build-confirmation: the deferred build callback awaiting "כן, בנה מערכת".
 let _pendingBuildProceed = null;
 
@@ -8781,6 +8805,12 @@ function buildDeterministicReplacementPlan(args) {
   const requestedAfterExclude = (intent.requested_course_ids || [])
     .filter(cid => !hardExcludeSet.has(cid));
 
+  // Part D — structured profile (drives intent-aligned completion + decision trace).
+  const userIntentProfile = buildUserIntentProfileLocal(prefs.extra_request_he || '', {
+    conversationMode: 'build_plan',
+    extraHardExclude: [...hardExcludeSet],
+  });
+
   const repairOpts = {
     courses: ctx.courses,
     maxHoursPerSemester: ctx.maxHoursPerSemester,
@@ -8790,6 +8820,7 @@ function buildDeterministicReplacementPlan(args) {
     userInterestText: prefs.extra_request_he,
     completedCourseIds: new Set(typeof completedCourseIds !== 'undefined' ? completedCourseIds : []),
     requestedCourseIds: requestedAfterExclude,
+    userIntentProfile,
   };
   try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   // Part C — place the user's requested-focus courses FIRST (before generic
@@ -8800,7 +8831,10 @@ function buildDeterministicReplacementPlan(args) {
   try { _domainPass = repairAddRequestedDomainCoursesLocal(proposal, analysis, repairOpts); proposal = _domainPass.proposal || proposal; } catch (_) {}
   try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
   try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
-  try { proposal = repairAddHoursToDegreeLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  // Part C — intent-aligned completion toward 185 ש"ש (not random filler): ranked
+  // by the UserIntentProfile, weak alternatives labeled. Reuses the gated engine.
+  let _completion = { added: [], weakCount: 0 };
+  try { _completion = repairAddIntentAlignedCompletionCoursesLocal(proposal, analysis, repairOpts); proposal = _completion.proposal || proposal; } catch (_) {}
 
   // 4. Enforce legality, then balance workload across semesters.
   try {
@@ -8952,7 +8986,7 @@ function buildDeterministicReplacementPlan(args) {
     return { domain: key, label_he: def.label_he, satisfied: included.length > 0, included, skipped };
   });
 
-  return {
+  const _planResult = {
     proposal,
     addedCids,
     confirmedCids,
@@ -8966,6 +9000,8 @@ function buildDeterministicReplacementPlan(args) {
     shortCategories,
     gapReasons,
     intent,
+    userIntentProfile,
+    completionAdded: _completion.added || [],
     domainReport,
     hardExcludedCourseIds: [...hardExcludeSet],
     excludedSkipped: [...new Set(_excludedRemoved)].map(cid => ({
@@ -8973,6 +9009,10 @@ function buildDeterministicReplacementPlan(args) {
       name_he: (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || cid,
     })),
   };
+  // Part G — attach the per-course decision trace (explanations for every
+  // selected/skipped course). Built last so it reflects the audited final plan.
+  _planResult.decisionTrace = buildPlanDecisionTraceLocal(_planResult, userIntentProfile);
+  return _planResult;
 }
 
 /**
@@ -12203,6 +12243,185 @@ function extractPlanningIntentLocal(text) {
     preferenceWeights,
     terms,
   };
+}
+
+/**
+ * Part D — structured, degree-agnostic UserIntentProfile.
+ *
+ * Deterministic HARD constraints (mustInclude course ids, hard exclusions, grade
+ * target, requested domains/courses) are parsed exactly; soft preferences are
+ * INFERRED into weighted optimizationCriteria that drive intent-aligned ranking.
+ * Nothing is hardcoded to a specific program — everything derives from the user's
+ * free text plus the loaded courseMap, so new degrees/domains work automatically.
+ *
+ * conversationMode ∈ answer | update_preferences | build_plan | modify_plan | clarify.
+ */
+function buildUserIntentProfileLocal(text, opts) {
+  opts = opts || {};
+  const raw = text || '';
+  const intent = extractPlanningIntentLocal(raw);
+  const terms = intent.terms || {};
+
+  let hardExclude = [];
+  try { hardExclude = (parseHardExclusionsFromUserText(raw)?.courseIds) || []; } catch (_) {}
+  if (Array.isArray(opts.extraHardExclude)) hardExclude = [...new Set([...hardExclude, ...opts.extraHardExclude])];
+
+  const inferredGoals = [];
+  if (intent.careerGoal === 'industry_high_salary') inferredGoals.push('industry_high_salary');
+  if (intent.gradeTarget != null) inferredGoals.push('grade_target');
+
+  const inferredPreferences = [];
+  if (terms.wants_practical) inferredPreferences.push('practical');
+  if (terms.wants_industry_value) inferredPreferences.push('industry_relevance');
+  if (terms.wants_easy || intent.gradeTarget != null) inferredPreferences.push('grade_safety');
+
+  const inferredAvoidances = [...(terms.avoid_terms || [])];
+
+  const optimizationCriteria = [];
+  for (const d of (intent.requiredDomains || [])) {
+    optimizationCriteria.push({ name: 'domain_' + d, weight: 1.0, reason: `המשתמש ביקש במפורש ${PLANNING_DOMAINS[d]?.label_he || d}.` });
+  }
+  if (intent.careerGoal === 'industry_high_salary') optimizationCriteria.push({ name: 'industry_relevance', weight: 0.9, reason: 'המשתמש ביקש התאמה גבוהה לתעשייה / שכר.' });
+  if (terms.wants_practical) optimizationCriteria.push({ name: 'practical', weight: 0.7, reason: 'המשתמש מעדיף קורסים מעשיים.' });
+  if (intent.gradeTarget != null) optimizationCriteria.push({ name: 'grade_safety', weight: 0.6, reason: `המשתמש מכוון לממוצע סביב ${intent.gradeTarget}.` });
+
+  const nameOf = (cid) => (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || cid;
+  const parts = [];
+  if (intent.domainLabels?.length) parts.push(`דגש על ${intent.domainLabels.join(', ')}`);
+  if (intent.mustIncludeCourseIds?.length) parts.push(`לכלול בוודאות: ${intent.mustIncludeCourseIds.map(nameOf).join(', ')}`);
+  if (hardExclude.length) parts.push(`לא לשבץ: ${hardExclude.map(nameOf).join(', ')}`);
+  if (intent.careerGoal === 'industry_high_salary') parts.push('התאמה גבוהה לתעשייה/שכר');
+  if (intent.gradeTarget != null) parts.push(`יעד ממוצע ~${intent.gradeTarget}`);
+  const explanation_he = parts.length ? ('הבנתי ש' + parts.join(' • ') + '.') : 'הבנתי את הבקשה הכללית שלך.';
+
+  return {
+    mustIncludeCourseIds: intent.mustIncludeCourseIds || [],
+    hardExcludeCourseIds: hardExclude,
+    requestedDomains: intent.requiredDomains || [],
+    requestedCourseIds: intent.requested_course_ids || [],
+    inferredGoals, inferredPreferences, inferredAvoidances,
+    optimizationCriteria,
+    gradeTarget: intent.gradeTarget ?? null,
+    careerGoal: intent.careerGoal ?? null,
+    conversationMode: opts.conversationMode || 'update_preferences',
+    explanation_he,
+    raw_text: raw,
+    intent,
+  };
+}
+
+/**
+ * Part C/E — score a course against the full UserIntentProfile. Combines explicit
+ * must-include / requested / domain membership with lexical relevance and the
+ * weighted optimizationCriteria. `weak` is true when the user expressed intent but
+ * the course matches none of it (eligible only as a labeled completion alternative).
+ */
+function scoreCourseAgainstIntentProfileLocal(course, profile) {
+  if (!course) return { score: 0, matched: [], weak: true, reason_he: '' };
+  profile = profile || {};
+  const matched = [];
+  let score = 0;
+  if ((profile.mustIncludeCourseIds || []).includes(course.course_id)) { score += 100; matched.push('must_include'); }
+  if ((profile.requestedCourseIds || []).includes(course.course_id)) { score += 10; matched.push('requested'); }
+  for (const d of (profile.requestedDomains || [])) {
+    if ((PLANNING_DOMAINS[d]?.course_ids || []).includes(course.course_id)) { score += 5; matched.push('domain_' + d); }
+  }
+  const rel = _scoreCareerRelevanceLocal(course, profile.raw_text || '');
+  score += rel.score;
+  if (rel.tag === 'matched') matched.push('lexical');
+  if (rel.tag === 'avoided') { score -= 5; matched.push('avoided'); }
+  const util = (typeof courseUtilityLocal === 'function') ? courseUtilityLocal(course) : { score: 0 };
+  for (const crit of (profile.optimizationCriteria || [])) {
+    if (crit.name === 'industry_relevance' || crit.name === 'practical') score += (crit.weight || 0) * (util.score || 0);
+  }
+  const hasIntent = !!((profile.requestedDomains || []).length || (profile.inferredGoals || []).length || String(profile.raw_text || '').trim());
+  const weak = hasIntent && matched.filter(m => m !== 'avoided').length === 0;
+  return { score, matched, weak, reason_he: rel.reason };
+}
+
+/**
+ * Part C — intent-aligned completion toward the degree target. Replaces the notion
+ * of "generic filler": it reuses the fully-gated hours-completion engine
+ * (repairAddHoursToDegreeLocal — legal semester, prereq, offering, hard-exclude,
+ * workload and overfill are all enforced there), then labels each added course by
+ * its intent alignment. Courses that close the gap but do not match the user's
+ * stated intent are flagged `weak` and a single clear Hebrew note is attached so
+ * the user can reject them (after which they become session hard-exclusions).
+ */
+function repairAddIntentAlignedCompletionCoursesLocal(proposal, analysis, opts) {
+  opts = opts || {};
+  const res = repairAddHoursToDegreeLocal(proposal, analysis, opts);
+  const added = res.added || [];
+  const profile = opts.userIntentProfile || null;
+  const interestText = opts.userInterestText || (profile && profile.raw_text) || '';
+  const hasIntent = !!((interestText && interestText.trim()) || (profile && ((profile.requestedDomains || []).length || (profile.inferredGoals || []).length)));
+  let weakCount = 0;
+  const tagged = added.map(a => {
+    const c = (typeof courseMap !== 'undefined' && courseMap[a.course_id]) || (opts.courses && opts.courses[a.course_id]) || { course_id: a.course_id };
+    const rel = _scoreCareerRelevanceLocal(c, interestText);
+    const weak = hasIntent && rel.tag !== 'matched';
+    if (weak) weakCount++;
+    const name = c.name_he || a.course_id;
+    const explanation_he = weak
+      ? `${name} נבחר להשלמת שעות לקראת 185 ש״ש — עדיין רלוונטי לתחום ההנדסי, אך אינו אחד מהקורסים שביקשת במפורש.`
+      : `${name} נבחר להשלמת התואר ומתאים לבקשתך (${rel.reason}).`;
+    return { ...a, weak, intent_alignment_score: Math.round(rel.score * 100) / 100, explanation_he };
+  });
+  let outProposal = res.proposal || proposal;
+  if (weakCount > 0) {
+    const note = 'קורסים אלה פחות קשורים לבקשה המקורית, אבל נבחרו כדי להתקרב ל־185 ש״ש לאחר שמוצו כל הקורסים הרלוונטיים החוקיים.';
+    outProposal = { ...outProposal, warnings_he: [...new Set([...(outProposal.warnings_he || []), note])] };
+  }
+  return { proposal: outProposal, added: tagged, exhausted: res.exhausted, weakCount };
+}
+
+/**
+ * Part G — per-course decision trace. For every SELECTED course: which stage chose
+ * it, what intent it satisfies, its intent-alignment score, legality, and a Hebrew
+ * explanation. For every SKIPPED course: stage, reason code, and explanation.
+ */
+function buildPlanDecisionTraceLocal(planResult, profile) {
+  profile = profile || planResult.userIntentProfile || {};
+  const trace = { selected: [], skipped: [] };
+  const semOf = {};
+  for (const sem of (planResult.proposal?.semesters || [])) for (const cid of (sem.course_ids || [])) semOf[cid] = sem.semester_id;
+  const must = new Set(profile.mustIncludeCourseIds || []);
+  const domainCids = new Set();
+  for (const d of (profile.requestedDomains || [])) for (const cid of (PLANNING_DOMAINS[d]?.course_ids || [])) domainCids.add(cid);
+  const completionByCid = {};
+  for (const a of (planResult.completionAdded || [])) completionByCid[a.course_id] = a;
+  const semHe = (sid) => (typeof _formatSemIdHe === 'function' ? _formatSemIdHe(sid) : sid) || '';
+
+  for (const cid of (planResult.addedCids || [])) {
+    const c = (typeof courseMap !== 'undefined' && courseMap[cid]) || { course_id: cid };
+    const sc = scoreCourseAgainstIntentProfileLocal(c, profile);
+    const name = c.name_he || cid;
+    let stage, satisfies = [];
+    if (must.has(cid)) { stage = 'must_include'; satisfies = ['בקשה מפורשת']; }
+    else if (domainCids.has(cid)) { stage = 'requested_domain'; satisfies = ['תחום מבוקש']; }
+    else if (c.is_mandatory || c.course_type === 'mandatory') { stage = 'mandatory'; satisfies = ['דרישת חובה']; }
+    else if (completionByCid[cid]?.weak) { stage = 'weak_completion'; satisfies = ['השלמת שעות']; }
+    else { stage = 'completion'; satisfies = ['השלמת תואר']; }
+    const explanation_he = completionByCid[cid]?.explanation_he || (
+      stage === 'must_include'    ? `${name} נכלל לפי בקשתך המפורשת.`
+    : stage === 'requested_domain' ? `${name} נבחר כי הוא מתאים לתחום שביקשת, מוצע ב${semHe(semOf[cid])}, ועומד בדרישות הקדם.`
+    : stage === 'mandatory'        ? `${name} הוא קורס חובה בתואר.`
+    :                                `${name} נבחר להשלמת התואר ומתאים לבקשתך.`);
+    trace.selected.push({
+      course_id: cid, selected_stage: stage, satisfies,
+      intent_alignment_score: Math.round(sc.score * 100) / 100,
+      legality_status: 'legal', explanation_he,
+    });
+  }
+
+  for (const d of (planResult.domainReport || [])) for (const s of (d.skipped || [])) {
+    if (s.reason === 'already_on_board') continue;
+    trace.skipped.push({ course_id: s.course_id, skipped_stage: 'requested_domain', reason_code: s.reason, explanation_he: `${s.name_he}: ${s.reason_he}` });
+  }
+  for (const e of (planResult.excludedSkipped || [])) {
+    trace.skipped.push({ course_id: e.course_id, skipped_stage: 'hard_exclude', reason_code: 'hard_excluded', explanation_he: `${e.name_he}: ביקשת לא לשבץ אותו.` });
+  }
+  return trace;
 }
 
 /**
