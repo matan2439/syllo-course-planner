@@ -1,0 +1,3012 @@
+{
+  "generated_at": "2026-06-18",
+  "total_courses": 68,
+  "summary": {
+    "fully_schedulable": 34,
+    "syl_url_no_parsed_text": 5,
+    "parsed_text_no_semester": 13,
+    "semester_in_src_not_app": 0,
+    "prereq_only_as_text": 8,
+    "blocked_by_prereqs": 2,
+    "planner_bugs": 0,
+    "user_preference_excluded": 0,
+    "auto_fixable": 0,
+    "needs_upstream_scraping": 21,
+    "manual_review": 32
+  },
+  "category_counts": {
+    "fully_schedulable": 34,
+    "semester_not_in_current_sources": 15,
+    "prerequisite_available_but_not_scheduled": 2,
+    "syllabus_exists_but_not_parsed": 9,
+    "prerequisites_only_in_text": 8
+  },
+  "schedulability_counts": {
+    "fully_schedulable": 34,
+    "unschedulable": 24,
+    "schedulable_with_prereq_constraint": 2,
+    "schedulable_with_caveat": 8
+  },
+  "courses": [
+    {
+      "course_id": "0509-4010",
+      "course_name": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-1202",
+      "course_name": "אלקטרוניקה בסיסית",
+      "category": "other_specialization",
+      "weekly_hours": null,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "חסרות שעות שבועיות — אין נתוני שעות",
+      "can_fix_automatically": false,
+      "required_fix": "manual: add weekly_hours to Supabase"
+    },
+    {
+      "course_id": "0512-1203",
+      "course_name": "מבוא לעיבוד אותות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-1204",
+      "course_name": "המרת אנרגיה והנע חשמלי",
+      "category": "",
+      "weekly_hours": 3.5,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-2508",
+      "course_name": "התקנים אלקטרוניים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A",
+        "B"
+      ],
+      "override_semesters": [
+        "A",
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A",
+        "B"
+      ],
+      "app_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "app_effective_semesters": [
+        "A",
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0512-2830"
+      ],
+      "prereq_raw_text_snippet": "פיזיקה קוואנטית ומצב מוצק (05122830) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעו...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0512-2830"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-4200",
+      "course_name": "מבוא לעיבוד ספרתי של אותות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A",
+        "B"
+      ],
+      "override_semesters": [
+        "A",
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A",
+        "B"
+      ],
+      "app_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "app_effective_semesters": [
+        "A",
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-4362",
+      "course_name": "מערכות משוב שימושיות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0512-4700",
+      "course_name": "טכנולוגיות מיקרו וננו אלקטרוניקה",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0512-2508"
+      ],
+      "prereq_raw_text_snippet": "התקנים אלקטרוניים (05122508) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעות בדף הי...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": [
+        "0512-2508"
+      ],
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "schedulable_with_prereq_constraint",
+      "problem_category": "prerequisite_available_but_not_scheduled",
+      "problem_hebrew": "דרישות קדם הן קורסי בחירה במאגר (0512-2508) — חייבות להיות מתוזמנות לפני",
+      "can_fix_automatically": false,
+      "required_fix": "planner: prereqsSatisfiedForPlacementLocal already handles this ordering"
+    },
+    {
+      "course_id": "0512-4702",
+      "course_name": "מערכות ממוזערות לבישות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-2400",
+      "course_name": "תכן מכני (1)",
+      "category": "",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-2500",
+      "course_name": "מכניקת הזורמים (1)",
+      "category": "",
+      "weekly_hours": 5,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-3112",
+      "course_name": "פרויקט יישומי בהנדסה מכנית",
+      "category": "other_specialization",
+      "weekly_hours": 2,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-3243",
+      "course_name": "מבוא לבקרה",
+      "category": "",
+      "weekly_hours": 5.5,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-3620",
+      "course_name": "מעבר חם",
+      "category": "",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-3780",
+      "course_name": "תהליכי עיבוד (1)",
+      "category": "",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-3791",
+      "course_name": "תהליכי עיבוד - מעבדה",
+      "category": "",
+      "weekly_hours": 2,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": [
+        "year_3_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-3792",
+      "course_name": "הנדסת ניסויים ומדידות - מעבדה",
+      "category": "",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A",
+        "B"
+      ],
+      "supabase_effective_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "app_offered_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_3_semester_a",
+        "year_3_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4010",
+      "course_name": "תיכון ופרוייקט (1)",
+      "category": "",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": [
+        "year_4_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_4_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4011",
+      "course_name": "פרוייקט מחקר למצטיינים (1)",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4012",
+      "course_name": "פרויקט מחקר למצטיינים (2)",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4020",
+      "course_name": "תיכון ופרוייקט (2)",
+      "category": "",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": [
+        "year_4_semester_b"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_4_semester_b"
+      ],
+      "app_offered_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4091",
+      "course_name": "מעבדה במכניקת המוצקים",
+      "category": "",
+      "weekly_hours": 2,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": [
+        "year_4_semester_b"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_4_semester_b"
+      ],
+      "app_offered_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4092",
+      "course_name": "מעבדת זרימה ומעבר חום",
+      "category": "",
+      "weekly_hours": 2,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": true,
+      "source_repo_json": false,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": [
+        "year_4_semester_a"
+      ],
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:effective_allowed_semesters",
+      "effective_semester_value": [
+        "year_4_semester_a"
+      ],
+      "app_offered_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "app_effective_semesters": [
+        "year_4_semester_a",
+        "year_4_semester_b"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "קורס חובה קבוע — אין בעיה",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4093",
+      "course_name": "מעבדה במערכות אנרגיה",
+      "category": "advanced_labs",
+      "weekly_hours": 1,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4094",
+      "course_name": "מעבדת מתקדמת בזרימה ומערכות אנרגיה",
+      "category": "advanced_labs",
+      "weekly_hours": 1,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4120",
+      "course_name": "תרמודינמיקה (2)",
+      "category": "fluids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2600"
+      ],
+      "prereq_raw_text_snippet": "תרמודינמיקה (1) (05422600) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעות בדף הידי...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2600"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4123",
+      "course_name": "תהליכי מעבר חום וחומר",
+      "category": "fluids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2500",
+        "0542-3620"
+      ],
+      "prereq_raw_text_snippet": "מכניקת הזורמים (1) (05422500) + מעבר חם (05423620) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים ...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": [
+        "0542-2500",
+        "0542-3620"
+      ],
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4124",
+      "course_name": "",
+      "category": "other_specialization",
+      "weekly_hours": null,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "חסרות שעות שבועיות — אין נתוני שעות",
+      "can_fix_automatically": false,
+      "required_fix": "manual: add weekly_hours to Supabase"
+    },
+    {
+      "course_id": "0542-4125",
+      "course_name": "מבוא להנדסת סביבה",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0509-1815",
+        "0542-2500"
+      ],
+      "prereq_raw_text_snippet": "כימיה בסיסית להנדסה (05091815) + מכניקת הזורמים (1) (05422500) דרישות קדם ספציפיות בקורס בהתאם לתוכנ...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": [
+        "0542-2500"
+      ],
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0509-1815"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4131",
+      "course_name": "מנועי שריפה פנימית",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4132",
+      "course_name": "אנרגיה מתחדשת",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4135",
+      "course_name": "תכן תרמי מתקדם בעזרת כלי תוכנה הנדסיים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4179",
+      "course_name": "מתקנים לייצור כח וניצול אנרגיה",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4191",
+      "course_name": "",
+      "category": "other_specialization",
+      "weekly_hours": null,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "חסרות שעות שבועיות — אין נתוני שעות",
+      "can_fix_automatically": false,
+      "required_fix": "manual: add weekly_hours to Supabase"
+    },
+    {
+      "course_id": "0542-4220",
+      "course_name": "תורת התנודות",
+      "category": "solids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4221",
+      "course_name": "מבוא לתורת האלסטיות",
+      "category": "solids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2200"
+      ],
+      "prereq_raw_text_snippet": "מכניקת המוצקים (1) (05422200) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעות בדף ה...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2200"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4223",
+      "course_name": "מבוא לאלמנטים סופיים",
+      "category": "solids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2200",
+        "0542-4224"
+      ],
+      "prereq_raw_text_snippet": "מכניקת המוצקים (1) (05422200) או מכניקת המוצקים (2) (05424224) דרישות קדם ספציפיות בקורס בהתאם לתוכנ...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": [
+        "0542-4224"
+      ],
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2200"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "schedulable_with_prereq_constraint",
+      "problem_category": "prerequisite_available_but_not_scheduled",
+      "problem_hebrew": "דרישות קדם הן קורסי בחירה במאגר (0542-4224) — חייבות להיות מתוזמנות לפני",
+      "can_fix_automatically": false,
+      "required_fix": "planner: prereqsSatisfiedForPlacementLocal already handles this ordering"
+    },
+    {
+      "course_id": "0542-4224",
+      "course_name": "מכניקת המוצקים (2)",
+      "category": "solids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2200"
+      ],
+      "prereq_raw_text_snippet": "מכניקת המוצקים (1) (05422200) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעות בדף ה...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2200"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4226",
+      "course_name": "יישומי אלמנטים סופיים בתעשייה",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-4275",
+      "course_name": "אווירודינמיקה של טורבינות רוח",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4320",
+      "course_name": "מכניקת הזורמים (2)",
+      "category": "fluids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4321",
+      "course_name": "הידראוליקה הנדסית",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4322",
+      "course_name": "תכנון תרמי של ציוד אלקטרוני",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": false,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0542-4351",
+      "course_name": "הנדסה ימית",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-4352",
+      "course_name": "דינמיקת הגזים",
+      "category": "fluids",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2500",
+        "0542-2600"
+      ],
+      "prereq_raw_text_snippet": "מכניקת הזורמים (1) (05422500) + תרמודינמיקה (1) (05422600) דרישות קדם ספציפיות בקורס בהתאם לתוכנית ה...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": [
+        "0542-2500"
+      ],
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2600"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4391",
+      "course_name": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+      "category": "advanced_labs",
+      "weekly_hours": 3.5,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4420",
+      "course_name": "תורת המכונות",
+      "category": "systems",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4422",
+      "course_name": "תכן הנדסי: מבוא ושיטות",
+      "category": "systems",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4425",
+      "course_name": "הדפסת תלת מימד ותכן חלקי פלסטיקה",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0509-1510",
+        "0542-2400",
+        "0542-3780",
+        "0542-3791"
+      ],
+      "prereq_raw_text_snippet": "גרפיקה הנדסית (05091510) + תכן מכני (1) (05422400) + תהליכי עיבוד (1) (05423780) + תהליכי עיבוד - מע...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": [
+        "0542-2400",
+        "0542-3780",
+        "0542-3791"
+      ],
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0509-1510"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4455",
+      "course_name": "בינה חישובית",
+      "category": "systems",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4524",
+      "course_name": "מבוא להנדסת חלל",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2200",
+        "0542-3620"
+      ],
+      "prereq_raw_text_snippet": "מכניקת המוצקים (1) (05422200) + מעבר חם (05423620) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים ...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": [
+        "0542-3620"
+      ],
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2200"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0542-4527",
+      "course_name": "מכניקת המסלולים של לוויינים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-4559",
+      "course_name": "מעבדה במכאטרוניקה",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-4621",
+      "course_name": "מבוא לרובוטיקה",
+      "category": "other_specialization",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0542-4622",
+      "course_name": "דינמיקה ובקרה של מערכות",
+      "category": "systems",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4624",
+      "course_name": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "category": "advanced_labs",
+      "weekly_hours": 3,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": [
+        "B"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "schedulable_with_caveat",
+      "problem_category": "prerequisites_only_in_text",
+      "problem_hebrew": "דרישות קדם קיימות רק כטקסט עברי — לא מפורסמות כ-IDs",
+      "can_fix_automatically": false,
+      "required_fix": "parse syllabus_prerequisites_he to extract course IDs"
+    },
+    {
+      "course_id": "0542-4722",
+      "course_name": "מבוא להנדסת מערכות זעירות (Mems)",
+      "category": "other_specialization",
+      "weekly_hours": 5,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0542-2200",
+        "0509-1829",
+        "0542-2110"
+      ],
+      "prereq_raw_text_snippet": "מכניקת המוצקים (1) (05422200) + פיזיקה (2) (05091829) + דינמיקה של גוף קשיח (05422110) + פיזיקה (2) ...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0542-2200",
+        "0509-1829",
+        "0542-2110"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0555-3160",
+      "course_name": "הנדסת תאים ורקמות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0555-4000",
+      "course_name": "אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0555-4432",
+      "course_name": "תכנון מערכות ביו-רפואיות",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0555-4550",
+      "course_name": "מבוא לביופיזיקה של התא",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": false,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "unschedulable",
+      "problem_category": "syllabus_exists_but_not_parsed",
+      "problem_hebrew": "אין מידע על סמסטר, אין syllabus מפורסם, אין JSON מפוענח",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: scrape course page + parse syllabus"
+    },
+    {
+      "course_id": "0555-4555",
+      "course_name": "ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0555-4562",
+      "course_name": "מבוא לאולטרסאונד: הדמיה וטיפול",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0555-4630",
+      "course_name": "ביו-חומרים פולימרים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": false,
+      "source_raw_json": false,
+      "source_syllabus_json": false,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": null,
+      "raw_json_semesters": null,
+      "override_semesters": null,
+      "semester_in_any_source": false,
+      "semester_source": "",
+      "effective_semester_value": [],
+      "app_offered_semesters": null,
+      "app_effective_semesters": null,
+      "semester_in_app": false,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": true,
+      "schedulability_status": "unschedulable",
+      "problem_category": "semester_not_in_current_sources",
+      "problem_hebrew": "יש syllabus אך אין מידע על סמסטר בשום מקור",
+      "can_fix_automatically": false,
+      "required_fix": "upstream: run pipeline to extract semester from scrape/syllabus"
+    },
+    {
+      "course_id": "0571-1818",
+      "course_name": "מבני נתונים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0509-1820"
+      ],
+      "prereq_raw_text_snippet": "תכנות - (פייתון) (05091820) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעות בדף היד...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0509-1820"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0571-3802",
+      "course_name": "מודלים דטרמיניסטיים בחקר ביצועים",
+      "category": "other_specialization",
+      "weekly_hours": 4,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "B",
+      "raw_json_semesters": [
+        "B"
+      ],
+      "override_semesters": [
+        "B"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "B"
+      ],
+      "app_offered_semesters": [
+        "B"
+      ],
+      "app_effective_semesters": [
+        "B"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0509-1424"
+      ],
+      "prereq_raw_text_snippet": "אלגברה ליניארית לתעשיה ונ (05091424) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעו...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0509-1424"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0571-4174",
+      "course_name": "תיכון וחשיבה המצאתית",
+      "category": "other_specialization",
+      "weekly_hours": 2,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": null,
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": [
+        "A"
+      ],
+      "semester_in_any_source": true,
+      "semester_source": "COURSE_DATA_OVERRIDES (client-side patch)",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": null,
+      "prereq_raw_text_snippet": null,
+      "supabase_prereq_text": false,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": null,
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    },
+    {
+      "course_id": "0581-4131",
+      "course_name": "מעבדה בחומרים הנדסיים",
+      "category": "advanced_labs",
+      "weekly_hours": 1,
+      "has_syllabus_url": true,
+      "has_parsed_syllabus_text": true,
+      "source_board_json": false,
+      "source_repo_json": true,
+      "source_merged_json": true,
+      "source_raw_json": true,
+      "source_syllabus_json": true,
+      "supabase_offered_semesters": [
+        "A"
+      ],
+      "supabase_effective_semesters": null,
+      "merged_json_semester": "A",
+      "raw_json_semesters": [
+        "A"
+      ],
+      "override_semesters": null,
+      "semester_in_any_source": true,
+      "semester_source": "supabase:offered_semesters",
+      "effective_semester_value": [
+        "A"
+      ],
+      "app_offered_semesters": [
+        "A"
+      ],
+      "app_effective_semesters": [
+        "A"
+      ],
+      "semester_in_app": true,
+      "merged_prereq_ids": [
+        "0581-1111"
+      ],
+      "prereq_raw_text_snippet": "מבוא למדע והנדסה של חומרי (05811111) דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, מופיעו...",
+      "supabase_prereq_text": true,
+      "prereqs_on_mandatory_board": null,
+      "prereqs_in_repo_elective_pool": null,
+      "prereqs_NOT_in_map_foundational": [
+        "0581-1111"
+      ],
+      "prereq_only_as_text": false,
+      "schedulability_status": "fully_schedulable",
+      "problem_category": "fully_schedulable",
+      "problem_hebrew": "ניתן לתזמון — יש סמסטר, שעות, ודרישות קדם מטופלות",
+      "can_fix_automatically": false,
+      "required_fix": ""
+    }
+  ]
+}

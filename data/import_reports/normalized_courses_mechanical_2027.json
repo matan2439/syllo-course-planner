@@ -1,0 +1,1053 @@
+{
+  "pipeline_version": "1.0.0",
+  "program": "mechanical_engineering_2027",
+  "source_directories": [
+    "data/raw_html/course_details/ (68 files)",
+    "data/raw_html/syllabus/ (60 files)"
+  ],
+  "before": {
+    "total_repo_courses": 56,
+    "with_offered_semesters": 16,
+    "with_effective_allowed_semesters": 0,
+    "missing_semester_data": 40
+  },
+  "after": {
+    "total_repo_courses": 56,
+    "with_offered_semesters": 48,
+    "not_offered_this_year": 8,
+    "with_effective_allowed_semesters": 48,
+    "still_missing_semester_data": 0
+  },
+  "courses": [
+    {
+      "course_id": "0509-4010",
+      "course_name": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0509-4010 קב': 01 ננו לווינים- בין חינוך למדעים למהפכת החלל הנדסה/קורסי תשתית ובחירה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סוכובסקי חיים שיעור כיתות הנדסה 101 ג 16:00-19:00 ב' פרופ' פרייס קולין סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-1202",
+      "course_name": "אלקטרוניקה בסיסית",
+      "weekly_hours": 2,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-1202 קב': 08 אלקטרוניקה בסיסית הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר אלפי יצחק שיעור סמואלי הנדסה 102 ג 08:00-11:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-1202 קב': 09 אלקטרוניקה בסיסית הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר ג'פי שלמה תרגיל וולפסון - הנדסה 130 א 10:00-11:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-1202 קב': 10 אלקטרוניקה בסיסית הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר ג'פי שלמה תרגיל עבודה סוציאל 056 ד 16:00-17:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-1202 קב': 11 אלקטרוניקה בסיסית הנדסה/מגמה ל",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-1203",
+      "course_name": "מבוא לעיבוד אותות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-1203 קב': 01 מבוא לעיבוד אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' ירדאור ברק אריה שיעור כיתות הנדסה 101 א 12:00-15:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-1203 קב': 02 מבוא לעיבוד אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' איבראהים רואן תרגיל הנדסת תוכנה 104 ב 14:00-15:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-1203 קב': 03 מבוא לעיבוד אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' איבראהים רואן תרגיל וולפסון - הנדסה 118 ד 17:00-18:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-2508",
+      "course_name": "התקנים אלקטרוניים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-2508 קב': 01 התקנים אלקטרוניים הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר בן כהן אסיה שיעור כיתות הנדסה 101 א 08:00-11:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-2508 קב': 02 התקנים אלקטרוניים הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' אמזלג אודליה תרגיל כיתות הנדסה 207 א 13:00-14:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-2508 קב': 03 התקנים אלקטרוניים הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' נתן אמיר שיעור הנדסת תוכנה 102 ד 10:00-11:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-2508 קב': 04 התקנים אלקטרוניים הנדס",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-4200",
+      "course_name": "מבוא לעיבוד ספרתי של אותות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-4200 קב': 01 מבוא לעיבוד ספרתי של אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר ארבל ליאור שיעור כיתות הנדסה 011 א 11:00-14:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית מספר קורס שם קורס 0512-4200 קב': 02 מבוא לעיבוד ספרתי של אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר אברהם רון תרגיל הנדסת תוכנה 104 ב 11:00-12:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית מספר קורס שם קורס 0512-4200 קב': 03 מבוא לעיבוד ספרתי של אותות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' רצון הילה תרגיל הנדסת תוכנה 104 ב 12:00-13:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנ",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a",
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-4362",
+      "course_name": "מערכות משוב שימושיות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-4362 קב': 01 מערכות משוב שימושיות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' גרשון אליהו שיעור כיתות הנדסה 008 ג 13:00-16:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-4362 קב': 02 מערכות משוב שימושיות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר אלון שגיא תרגיל וולפסון - הנדסה 130 ה 10:00-12:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-4362 קב': 03 מערכות משוב שימושיות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר אלון שגיא תרגיל וולפסון - הנדסה 134 ד 10:00-12:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-4700",
+      "course_name": "טכנולוגיות מיקרו וננו אלקטרוניקה",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-4700 קב': 01 טכנולוגיות מיקרו וננו אלקטרוניקה הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר בן כהן אסיה שיעור סמואלי הנדסה 102 ה 08:00-11:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-4700 קב': 02 טכנולוגיות מיקרו וננו אלקטרוניקה הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' שרם רוני תרגיל וולפסון - הנדסה 118 ה 12:00-13:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0512-4700 קב': 03 טכנולוגיות מיקרו וננו אלקטרוניקה הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' שרם רוני תרגיל וולפסון - הנדסה 118 ה 13:00-14:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0512-4702",
+      "course_name": "מערכות ממוזערות לבישות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0512-4702 קב': 01 מערכות ממוזערות לבישות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' חנין יעל שיעור הנדסת תוכנה 104 ד 09:00-12:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית מספר קורס שם קורס 0512-4702 קב': 02 מערכות ממוזערות לבישות הנדסה/מגמה להנדסת חשמל שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' לוי ענבר תרגיל עבודה סוציאל 056 ד 15:00-16:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-3112",
+      "course_name": "פרויקט יישומי בהנדסה מכנית",
+      "weekly_hours": 2,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-3112 קב': 01 פרויקט יישומי בהנדסה מכנית הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' ממן שטינדל הדס פרוייקט ב' סילבוס Moodle רשימת תפוצה מספר קורס שם קורס 0542-3112 קב': 02 פרויקט יישומי בהנדסה מכנית הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' ממן שטינדל הדס פרוייקט א' סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4011",
+      "course_name": "פרוייקט מחקר למצטיינים (1)",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4011 קב': 01 פרוייקט מחקר למצטיינים (1) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' פנחסיק בת אל שני פרוייקט א' סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4012",
+      "course_name": "פרויקט מחקר למצטיינים (2)",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4012 קב': 01 פרויקט מחקר למצטיינים (2) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' פנחסיק בת אל שני פרוייקט ב' סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "syllabus",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4093",
+      "course_name": "מעבדה במערכות אנרגיה",
+      "weekly_hours": 1,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4094",
+      "course_name": "מעבדת מתקדמת בזרימה ומערכות אנרגיה",
+      "weekly_hours": 1,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4094 קב': 01 מעבדה מתקדמת בזרימה ומערכות אנרגיה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' קליין עמית אשרת מעבדה וולפסון - הנדסה 269 א 08:00-11:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4120",
+      "course_name": "תרמודינמיקה (2)",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4120 קב': 01 תרמודינמיקה (2) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר קושניר רועי שיעור ותרגיל וולפסון - הנדסה 238 א 17:00-19:00 א' שיעור ותרגיל וולפסון - הנדסה 238 ב 16:00-18:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4123",
+      "course_name": "תהליכי מעבר חום וחומר",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4123 קב': 01 תהליכי מעבר חום וחומר הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר קושניר רועי שיעור ותרגיל וולפסון - הנדסה 130 א 15:00-17:00 ב' שיעור ותרגיל וולפסון - הנדסה 238 ב 14:00-16:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4124",
+      "course_name": "",
+      "weekly_hours": null,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4125",
+      "course_name": "מבוא להנדסת סביבה",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4125 קב': 01 מבוא להנדסת סביבה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' ממן שטינדל הדס שיעור ותרגיל סמואלי הנדסה 001 ב 16:00-20:00 א' גב' ארדן רוני סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4131",
+      "course_name": "מנועי שריפה פנימית",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4132",
+      "course_name": "אנרגיה מתחדשת",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4135",
+      "course_name": "תכן תרמי מתקדם בעזרת כלי תוכנה הנדסיים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4179",
+      "course_name": "מתקנים לייצור כח וניצול אנרגיה",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4179 קב': 01 מתקנים לייצור כח וניצול אנרגיה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר ברנע יעקב שיעור ותרגיל כיתות הנדסה 001 ה 16:00-20:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4191",
+      "course_name": "",
+      "weekly_hours": null,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4220",
+      "course_name": "תורת התנודות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4220 קב': 01 תורת התנודות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר ברינסקי איגור שיעור ותרגיל הנדסת תוכנה 106 א 13:00-15:00 ב' שיעור ותרגיל וולפסון - הנדסה 118 ב 16:00-18:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4221",
+      "course_name": "מבוא לתורת האלסטיות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4221 קב': 01 מבוא לתורת האלסטיות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר מרקוביץ תומר שיעור ותרגיל כיתות הנדסה 205 א 11:00-13:00 ב' גב' מרטינז ויסברג שני ד\"ר מרקוביץ תומר שיעור ותרגיל הנדסת תוכנה 106 ב 12:00-14:00 ב' גב' מרטינז ויסברג שני סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4223",
+      "course_name": "מבוא לאלמנטים סופיים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4223 קב': 01 מבוא לאלמנטים סופיים הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' יוסיבאש זהר שיעור הנדסת תוכנה 104 א 12:00-14:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4223 קב': 02 מבוא לאלמנטים סופיים הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר סגל טל תרגיל וולפסון - הנדסה 108 ב 12:00-14:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4224",
+      "course_name": "מכניקת המוצקים (2)",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4224 קב': 01 מכניקת המוצקים (2) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר מדינה ליאור שיעור ותרגיל סמואלי הנדסה 001 ד 11:00-13:00 א' גב' מרטינז ויסברג שני ד\"ר מדינה ליאור שיעור ותרגיל כיתות הנדסה 205 ה 14:00-16:00 א' גב' מרטינז ויסברג שני סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4226",
+      "course_name": "יישומי אלמנטים סופיים בתעשייה",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4226 קב': 01 יישומי אלמנטים סופיים בתעשייה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר קריינר ניב שיעור הנדסת תוכנה 101 א 17:00-19:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4226 קב': 02 יישומי אלמנטים סופיים בתעשייה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר קריינר ניב תרגיל הנדסת תוכנה 101 א 19:00-20:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4275",
+      "course_name": "אווירודינמיקה של טורבינות רוח",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4275 קב': 01 אווירודינמיקה של טורבינות רוח הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר זילברמן משה שיעור כיתות הנדסה 001 א 11:00-14:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4320",
+      "course_name": "מכניקת הזורמים (2)",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4320 קב': 01 מכניקת הזורמים (2) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' טולדו יצחק ירון שיעור ותרגיל הנדסת תוכנה 106 ה 12:00-16:00 ב' מר מגן עומרי סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4321",
+      "course_name": "הידראוליקה הנדסית",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4322",
+      "course_name": "תכנון תרמי של ציוד אלקטרוני",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) אין נתונים מתאימים למאפייני החיפוש חיפוש חדש 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [],
+      "effective_allowed_semesters": [],
+      "offering_source": "course_details",
+      "offering_confidence": "missing",
+      "not_offered_this_year": true,
+      "data_status": "not_offered_this_year"
+    },
+    {
+      "course_id": "0542-4351",
+      "course_name": "הנדסה ימית",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4351 קב': 01 הנדסה ימית הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' טולדו יצחק ירון שיעור ותרגיל כיתות הנדסה 001 ד 12:00-16:00 ב' מר זקן יעקב סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4352",
+      "course_name": "דינמיקת הגזים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4352 קב': 01 דינמיקת הגזים הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר קוזק יורם שיעור כיתות הנדסה 205 ג 10:00-11:00 א' שיעור עבודה סוציאל 056 ד 13:00-15:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4352 קב': 02 דינמיקת הגזים הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר מגן עומרי תרגיל כיתות הנדסה 205 ג 11:00-12:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4391",
+      "course_name": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+      "weekly_hours": 3.5,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4391 קב': 01 מעבדה בסימולציות נומריות בזרימה ומעבר חום הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' מרום גיל שיעור כיתות הנדסה 001 ד 14:00-16:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4391 קב': 02 מעבדה בסימולציות נומריות בזרימה ומעבר חום הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' מרום גיל מעבדה הנדסת תוכנה 010 ד 16:00-19:00 א' גב' קונסנס עדי סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4420",
+      "course_name": "תורת המכונות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4420 קב': 01 תורת המכונות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר גרונפלד יוסף שיעור ותרגיל וולפסון - הנדסה 118 א 14:00-16:00 א' שיעור ותרגיל הנדסת תוכנה 106 ב 14:00-16:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4422",
+      "course_name": "תכן הנדסי: מבוא ושיטות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4422 קב': 01 תכן הנדסי: מבוא ושיטות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' רייך יורם שיעור ותרגיל סמואלי הנדסה 102 ג 16:00-20:00 א' שיעור ותרגיל כיתות הנדסה 103 ג 17:00-20:00 א' שיעור ותרגיל כיתות הנדסה 001 ג 17:00-20:00 א' שיעור ותרגיל כיתות הנדסה 207 ג 17:00-20:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4425",
+      "course_name": "הדפסת תלת מימד ותכן חלקי פלסטיקה",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4425 קב': 01 הדפסת תלת מימד ותכן חלקי פלסטיקה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר הררי צח שיעור כיתות הנדסה 001 ב 16:00-18:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4425 קב': 02 הדפסת תלת מימד ותכן חלקי פלסטיקה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר הררי צח תרגיל כיתות הנדסה 001 ב 18:00-19:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4455",
+      "course_name": "בינה חישובית",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4455 קב': 01 בינה חישובית הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סינטוב אבישי שיעור ותרגיל וולפסון - הנדסה 108 ג 16:00-19:00 ב' מר עטרי רותם פרופ' סינטוב אבישי שיעור ותרגיל הנדסת תוכנה 104 ה 17:00-18:00 ב' מר עטרי רותם סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4524",
+      "course_name": "מבוא להנדסת חלל",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4524 קב': 01 מבוא להנדסת חלל הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר פורטנוי דניאל שיעור ותרגיל הנדסת תוכנה 103 ב 18:00-20:00 א' שיעור ותרגיל הנדסת תוכנה 103 ד 18:00-20:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4527",
+      "course_name": "מכניקת המסלולים של לוויינים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4527 קב': 01 מכניקת המסלולים של לוויינים הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר פורטנוי דניאל שיעור ותרגיל הנדסת תוכנה 103 ב 18:00-20:00 ב' שיעור ותרגיל הנדסת תוכנה 101 ד 18:00-20:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4559",
+      "course_name": "מעבדה במכאטרוניקה",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4559 קב': 01 מעבדה במכאטרוניקה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סינטוב אבישי מעבדה וולפסון - הנדסה 364 א 12:00-15:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4559 קב': 02 מעבדה במכאטרוניקה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סינטוב אבישי מעבדה וולפסון - הנדסה 364 ב 12:00-15:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4621",
+      "course_name": "מבוא לרובוטיקה",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4621 קב': 01 מבוא לרובוטיקה הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר עטרי רותם שיעור ותרגיל וולפסון - הנדסה 118 ה 11:00-14:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4622",
+      "course_name": "דינמיקה ובקרה של מערכות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4622 קב': 01 דינמיקה ובקרה של מערכות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר ביילקין לאה שיעור ותרגיל כיתות הנדסה 205 ד 08:00-12:00 ב' מר קור אסף סילבוס בחינה דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4624",
+      "course_name": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "weekly_hours": 3,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4624 קב': 01 מעבדה ברובוטיקה ובקרה של מערכות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סינטוב אבישי מעבדה וולפסון - הנדסה 364 ד 12:00-15:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4624 קב': 02 מעבדה ברובוטיקה ובקרה של מערכות הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' סינטוב אבישי מעבדה וולפסון - הנדסה 364 ד 15:00-18:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0542-4722",
+      "course_name": "מבוא להנדסת מערכות זעירות (Mems)",
+      "weekly_hours": 5,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0542-4722 קב': 01 מבוא להנדסת מערכות זעירות (Mems) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' קרילוב ויאצסלב שיעור ותרגיל הנדסת תוכנה 101 ב 10:00-12:00 ב' שיעור ותרגיל כיתות הנדסה 001 ד 10:00-12:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4722 קב': 02 מבוא להנדסת מערכות זעירות (Mems) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' קרילוב ויאצסלב מעבדה כיתות הנדסה 001 ד 16:00-17:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0542-4722 קב': 03 מבוא להנדסת מערכות זעירות (Mems) הנדסה/מגמה להנדסה מכנית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' קרילוב ויאצסלב מעבדה כיתות הנדסה 001 ד ",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-3160",
+      "course_name": "הנדסת תאים ורקמות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-3160 קב': 01 הנדסת תאים ורקמות הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' מעוז בן מאיר שיעור וולפסון - הנדסה 238 ה 09:00-12:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית מספר קורס שם קורס 0555-3160 קב': 02 הנדסת תאים ורקמות הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' ריסקה אליזבת תרגיל כיתות הנדסה 205 ג 14:00-15:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה ⒠-מועבר באנגלית מספר קורס שם קורס 0555-3160 קב': 03 הנדסת תאים ורקמות הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' כהן רוני תרגיל כיתות הנדסה 205 ג 13:00-14:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה ⒠-מועב",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4000",
+      "course_name": "אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4000 קב': 01 אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' גנות ישראל שיעור כיתות הנדסה 008 ה 12:00-15:00 ב' סילבוס Moodle רשימת תפוצה מספר קורס שם קורס 0555-4000 קב': 02 אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' בן-לולו ליטל תרגיל כיתות הנדסה 008 ה 15:00-16:00 ב' סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4432",
+      "course_name": "תכנון מערכות ביו-רפואיות",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4432 קב': 01 תכנון מערכות ביו-רפואיות הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' גנות ישראל שיעור אודיטו.הנדסה 020 ב 16:00-19:00 ב' סילבוס Moodle רשימת תפוצה מספר קורס שם קורס 0555-4432 קב': 02 תכנון מערכות ביו-רפואיות הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר לין ניקולס תרגיל אודיטו.הנדסה 020 ב 19:00-20:00 ב' סילבוס Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4550",
+      "course_name": "מבוא לביופיזיקה של התא",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4550 קב': 01 מבוא לביופיזיקה של התא הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' נבו אורי שיעור וולפסון - הנדסה 134 ב 12:00-15:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0555-4550 קב': 02 מבוא לביופיזיקה של התא הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' כהן רוני תרגיל וולפסון - הנדסה 134 ב 15:00-16:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "course_details",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4555",
+      "course_name": "ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4555 קב': 01 ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר רוזנפלד דקל שיעור הנדסת תוכנה 103 ה 09:00-12:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0555-4555 קב': 02 ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' קוזנצובה יקטרינה תרגיל הנדסת תוכנה 103 ה 12:00-13:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4562",
+      "course_name": "מבוא לאולטרסאונד: הדמיה וטיפול",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4562 קב': 01 מבוא לאולטרסאונד: הדמיה וטיפול הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' אילוביץ טלי שיעור הנדסת תוכנה 101 ד 09:00-12:00 א' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0555-4562 קב': 02 מבוא לאולטרסאונד: הדמיה וטיפול הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' קרלינסקי קרן תכלת תרגיל הנדסת תוכנה 101 א 11:00-12:00 א' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0555-4630",
+      "course_name": "ביו-חומרים פולימרים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0555-4630 קב': 01 ביו-חומרים פולימרים הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר פרופ' זילברמן מיטל שיעור וולפסון - הנדסה 120 ד 10:00-13:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0555-4630 קב': 02 ביו-חומרים פולימרים הנדסה/המגמה להנדסה ביו-רפואית שם מרצה אופן הוראה בניין חדר יום שעה סמסטר גב' חנון תום תרגיל וולפסון - הנדסה 120 ד 13:00-14:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0571-1818",
+      "course_name": "מבני נתונים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0571-1818 קב': 01 מבני נתונים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר שלום רפי שיעור וולפסון - הנדסה 001 ב 15:00-17:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0571-1818 קב': 02 מבני נתונים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר טשצ'שמה ערן תרגיל וולפסון - הנדסה 108 ה 09:00-11:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0571-1818 קב': 03 מבני נתונים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר טשצ'שמה ערן תרגיל וולפסון - הנדסה 108 ד 13:00-15:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0571-1818 קב': 04 מבני נתונים הנדסה/מגמה להנדסת תעש",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0571-3802",
+      "course_name": "מודלים דטרמיניסטיים בחקר ביצועים",
+      "weekly_hours": 4,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0571-3802 קב': 01 מודלים דטרמיניסטיים בחקר ביצועים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר כספי מור שיעור סמואלי הנדסה 102 ה 12:00-15:00 ב' סילבוס בחינה דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0571-3802 קב': 02 מודלים דטרמיניסטיים בחקר ביצועים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר צדיקריו יניר תרגיל הנדסת תוכנה 104 ד 09:00-10:00 ב' סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0571-3802 קב': 03 מודלים דטרמיניסטיים בחקר ביצועים הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר צדיקריו יניר תרגיל הנדסת תוכנה 104 ד 10:30-11:30 ב' סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "B"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_b",
+        "year_4_semester_b"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0571-4174",
+      "course_name": "תיכון וחשיבה המצאתית",
+      "weekly_hours": 2,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0571-4174 קב': 01 תיכון וחשיבה המצאתית הנדסה/מגמה להנדסת תעשייה שם מרצה אופן הוראה בניין חדר יום שעה סמסטר מר אל-גד עפר שיעור כיתות הנדסה 008 א 16:00-18:00 א' סילבוס בחינה Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    },
+    {
+      "course_id": "0581-4131",
+      "course_name": "מעבדה בחומרים הנדסיים",
+      "weekly_hours": 1,
+      "category": "",
+      "prerequisites_raw_text": "אוניברסיטת תל אביב-תוצאות חיפוש קורסים מערכת שעות חיפוש קורסים-תוצאות שנה\"ל תשפ\"ו (2025/2026) מספר קורס שם קורס 0581-4131 קב': 01 מעבדה בחומרים הנדסיים הנדסה/מדע והנדסה של חומרים שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר בשארה חנא מעבדה וולפסון - הנדסה 266 ה 08:00-11:00 א' מר ניצן אסף סילבוס דרישות קדם Moodle רשימת תפוצה מספר קורס שם קורס 0581-4131 קב': 02 מעבדה בחומרים הנדסיים הנדסה/מדע והנדסה של חומרים שם מרצה אופן הוראה בניין חדר יום שעה סמסטר ד\"ר בשארה חנא מעבדה וולפסון - הנדסה 266 ה 11:00-14:00 א' מר ניצן אסף סילבוס דרישות קדם Moodle רשימת תפוצה 00:00",
+      "prerequisite_course_ids": [],
+      "offered_semesters": [
+        "A"
+      ],
+      "effective_allowed_semesters": [
+        "year_3_semester_a",
+        "year_4_semester_a"
+      ],
+      "offering_source": "both",
+      "offering_confidence": "high",
+      "not_offered_this_year": false,
+      "data_status": "complete"
+    }
+  ]
+}
