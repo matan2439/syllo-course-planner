@@ -2016,13 +2016,33 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'data-normalize-v2'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'data-normalize-v3'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
 //  48/56 schedulable, 8 not offered this year).
 // Add entries here ONLY for emergency corrections that cannot wait for a Supabase update.
 const COURSE_DATA_OVERRIDES = {};
+
+// Prerequisite data extracted from TAU syllabus HTML (2025/2026) — stored here because
+// Supabase prerequisite_course_ids was NULL for these courses before the data fix.
+// Only in-scope (program_repository) prereqs are listed; year-1/2 foundational prereqs
+// (e.g. 0542-2200 מכניקת המוצקים 1) are handled by the foundational-prereq rule in
+// prereqsSatisfiedForPlacementLocal (auto-satisfied when absent from courseMap).
+const COURSE_PREREQ_OVERRIDES = {
+  '0542-4223': ['0542-4224'],  // מבוא לאלמנטים סופיים requires מכניקת המוצקים (2)
+  '0542-4226': ['0542-4223'],  // יישומי אלמנטים סופיים requires מבוא לאלמנטים סופיים
+};
+
+/**
+ * A course is renderable only if it has a display name. Courses that reach
+ * courseMap with no name_he (data error or not-offered placeholder) must not
+ * appear as board cards or as planner candidates.
+ */
+function isCourseRenderable(c) {
+  if (!c || !c.course_id) return false;
+  return !!(c.name_he || c.course_name);
+}
 
 /* ── AI session token (quota) ────────────────────────────────────────────── */
 /**
@@ -3009,6 +3029,18 @@ function init(board, audit, programJson) {
     }
   }
 
+  /* ── Apply COURSE_PREREQ_OVERRIDES — prerequisite data missing from Supabase ──────────────
+   * Merges in-scope prereq IDs so prereqIdsOf() and auditDraftLegality() enforce the chain.
+   * Year-1/2 foundational prereqs are auto-satisfied (absent from courseMap) per the
+   * foundational-prereq rule in prereqsSatisfiedForPlacementLocal. */
+  for (const [_cid, _prereqList] of Object.entries(COURSE_PREREQ_OVERRIDES)) {
+    const _ce = courseMap[_cid];
+    if (!_ce) continue;
+    const _existing = new Set(_ce.prerequisites || []);
+    for (const _p of _prereqList) _existing.add(_p);
+    _ce.prerequisites = [..._existing];
+  }
+
   /* Source 2: live programJson fetch (enriches with prerequisites etc.) */
   if (programJson) {
     for (const ec of (programJson.elective_courses || [])) {
@@ -3263,7 +3295,7 @@ function _repoSearchText(c, nameHe) {
 function _buildRepoSection(gid, nameHe, ids, forceOpen, emptyMsg, notLoadedLabel) {
   const cards = ids.map(id => {
     const c = courseMap[id];
-    if (!c) return '';
+    if (!c || !isCourseRenderable(c)) return '';
     return `<div class="repo-card-wrap" data-search="${esc(_repoSearchText(c, nameHe))}">${cardHtml(c, false)}</div>`;
   }).join('');
   const isOpen = forceOpen || openGroups.has(gid);
@@ -3308,6 +3340,8 @@ function renderSidebar() {
   for (const id of state.repo) {
     const c = courseMap[id];
     if (!c) continue;
+    // Never show a course card with no display name — it's a data error placeholder.
+    if (!isCourseRenderable(c)) continue;
     /* קורסי שער רוח get their own dedicated section below — never bucket
        them into mandatory/category/elective/blocked/missing groups. */
     if (c.program_category_id === 'shaar_ruach' || c.source === 'shaar_ruach') continue;
@@ -7628,8 +7662,10 @@ function classifyCourseSchedulability(c) {
   const hoursKnown  = (c.weekly_hours != null) || (c.semester_hours != null);
   const hasEffective = Array.isArray(c.effective_allowed_semesters) && c.effective_allowed_semesters.length > 0;
   const hasOffered   = Array.isArray(c.offered_semesters) && c.offered_semesters.length > 0;
-  // No name, no hours, no offering signal → cannot schedule or describe. Skip.
-  if (!hasName && !hoursKnown && !hasEffective && !hasOffered) return 'unschedulable_missing_data';
+  // No name → cannot display or describe the course. Never schedulable.
+  if (!hasName) return 'unschedulable_missing_data';
+  // Has name but no hours and no offering signal → still unschedulable.
+  if (!hoursKnown && !hasEffective && !hasOffered) return 'unschedulable_missing_data';
   if (hasEffective) {
     const legal = getLegalSemestersLocal(c);
     // Definite this-year offering (effective present and confident) → confirmed.
@@ -12012,9 +12048,23 @@ function extractPlanningIntentLocal(text) {
   }
   matched.sort((a, b) => (PLANNING_DOMAINS[a].priority || 99) - (PLANNING_DOMAINS[b].priority || 99));
 
-  // Expand to concrete course ids, priority-ordered, de-duplicated, existing only.
-  const requested = [];
+  // Detect explicit course name mentions — turned into must-include ids (placed before
+  // domain courses). Uses _normForMatchLocal for robustness against Hebrew prefixes.
+  const mustIncludeCourseIds = [];
   const seen = new Set();
+  if (typeof courseMap !== 'undefined') {
+    const normText = _normForMatchLocal(raw);
+    for (const [_cid, _cm] of Object.entries(courseMap)) {
+      if (!_cm.name_he) continue;
+      const _normName = _normForMatchLocal(_cm.name_he);
+      if (_normName.length >= 5 && normText.includes(_normName)) {
+        if (!seen.has(_cid)) { mustIncludeCourseIds.push(_cid); seen.add(_cid); }
+      }
+    }
+  }
+
+  // Expand domain keywords to concrete course ids, priority-ordered, de-duplicated.
+  const requested = [...mustIncludeCourseIds]; // must-include goes first
   for (const key of matched) {
     for (const cid of (PLANNING_DOMAINS[key].course_ids || [])) {
       if (seen.has(cid)) continue;
@@ -12040,6 +12090,7 @@ function extractPlanningIntentLocal(text) {
     requiredDomains: matched,
     domainLabels: matched.map(k => PLANNING_DOMAINS[k].label_he),
     requested_course_ids: requested,
+    mustIncludeCourseIds,
     careerGoal,
     gradeTarget,
     preferenceWeights,
