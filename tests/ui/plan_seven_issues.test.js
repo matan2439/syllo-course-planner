@@ -457,7 +457,7 @@ describe('Issue 4 — robotics-lab prerequisite enforcement (union + strict timi
     const userCourseStatuses = {};
     const SEMESTERS = [{ id: 's0' }, { id: 's1' }, { id: 's2' }];
     const factory = new Function('courseMap', 'userCourseStatuses', 'SEMESTERS',
-      `${grab('prereqIdsOf')}\n${grab('_semIndexOf')}\n${grab('_userSemesterIndex')}\n${grab('prereqsSatisfiedForPlacementLocal')}\nreturn prereqsSatisfiedForPlacementLocal;`,
+      `${grab('prereqIdsOf')}\n${grab('prereqGroupsOf')}\n${grab('_semIndexOf')}\n${grab('_userSemesterIndex')}\n${grab('prereqsSatisfiedForPlacementLocal')}\nreturn prereqsSatisfiedForPlacementLocal;`,
     );
     const fn = factory(courseMap, userCourseStatuses, SEMESTERS);
     // prereq scheduled earlier (idx 0), lab at idx 1 → ok

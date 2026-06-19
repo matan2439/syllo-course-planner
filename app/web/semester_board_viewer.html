@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'data-normalize-v3'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'prereq-parser-v4'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -2024,14 +2024,19 @@ const PLANNER_BUILD  = 'data-normalize-v3'; // bump when chat-influencing logic 
 // Add entries here ONLY for emergency corrections that cannot wait for a Supabase update.
 const COURSE_DATA_OVERRIDES = {};
 
-// Prerequisite data extracted from TAU syllabus HTML (2025/2026) — stored here because
-// Supabase prerequisite_course_ids was NULL for these courses before the data fix.
-// Only in-scope (program_repository) prereqs are listed; year-1/2 foundational prereqs
-// (e.g. 0542-2200 מכניקת המוצקים 1) are handled by the foundational-prereq rule in
-// prereqsSatisfiedForPlacementLocal (auto-satisfied when absent from courseMap).
+// EMERGENCY FALLBACK ONLY — prerequisite corrections that cannot wait for a data fix.
+// The authoritative source is the general OR-aware parser (parseCoursePrereqGroupsLocal),
+// which derives in-scope prereqs from prerequisites_raw_text / syllabus_prerequisites_he /
+// prerequisite_course_ids / missing_prerequisites and reduces foundational OR-groups.
+// Each value is an AND-list of in-scope course ids (OR-alternatives expressed as a nested
+// array, e.g. [['0542-4224','0542-4225'], '0542-3620']). Year-1/2 foundational prereqs are
+// auto-satisfied (absent from courseMap) and need NOT be listed here.
+//
+// NOTE: 0542-4223 (מבוא לאלמנטים סופיים) is deliberately NOT listed — its real prereq is
+// "מכניקת המוצקים (1) (05422200) OR (2) (05424224)", an OR satisfied by the foundational
+// year-2 course 0542-2200, so it has no enforced in-scope prerequisite.
 const COURSE_PREREQ_OVERRIDES = {
-  '0542-4223': ['0542-4224'],  // מבוא לאלמנטים סופיים requires מכניקת המוצקים (2)
-  '0542-4226': ['0542-4223'],  // יישומי אלמנטים סופיים requires מבוא לאלמנטים סופיים
+  '0542-4226': ['0542-4223'],  // יישומי אלמנטים סופיים requires מבוא לאלמנטים סופיים (in-scope)
 };
 
 /**
@@ -3029,18 +3034,6 @@ function init(board, audit, programJson) {
     }
   }
 
-  /* ── Apply COURSE_PREREQ_OVERRIDES — prerequisite data missing from Supabase ──────────────
-   * Merges in-scope prereq IDs so prereqIdsOf() and auditDraftLegality() enforce the chain.
-   * Year-1/2 foundational prereqs are auto-satisfied (absent from courseMap) per the
-   * foundational-prereq rule in prereqsSatisfiedForPlacementLocal. */
-  for (const [_cid, _prereqList] of Object.entries(COURSE_PREREQ_OVERRIDES)) {
-    const _ce = courseMap[_cid];
-    if (!_ce) continue;
-    const _existing = new Set(_ce.prerequisites || []);
-    for (const _p of _prereqList) _existing.add(_p);
-    _ce.prerequisites = [..._existing];
-  }
-
   /* Source 2: live programJson fetch (enriches with prerequisites etc.) */
   if (programJson) {
     for (const ec of (programJson.elective_courses || [])) {
@@ -3181,6 +3174,12 @@ function init(board, audit, programJson) {
     }
   }
 
+  /* ── Part B — parse prerequisites into OR-aware, foundational-reduced groups.
+   * Runs after the full courseMap is built so the in-scope/foundational split is
+   * accurate. Replaces the old naive flat ID extraction (which flattened OR→AND
+   * and over-constrained courses like 0542-4223). */
+  applyPrerequisiteParsingLocal();
+
   /* ── Dev diagnostics (console only) ───────────────────────────────────── */
   const _planned = Object.values(state.semesters).flat().length;
   const _pdfRepo = board.metadata?.program_repository_courses?.length ?? 0;
@@ -3285,9 +3284,10 @@ function mkChip(lbl, val, warn) {
 
 function _repoSearchText(c, nameHe) {
   const parts = [
-    c.course_id, c.name_he, c.name_en, nameHe,
+    c.course_id, (c.course_id || '').replace('-', ''), c.name_he, c.name_en, nameHe,
     c.program_category_name_he, CAT_CSS[c.program_category_id]?.label,
     ...(c.syllabus_topics_he || []), c.syllabus_summary_he,
+    ...((typeof COURSE_NAME_ALIASES !== 'undefined' && COURSE_NAME_ALIASES[c.course_id]) || []),
   ];
   return parts.filter(Boolean).join(' ').toLowerCase();
 }
@@ -5396,13 +5396,10 @@ function _extractSemesterIdFromText(text) {
   return null;
 }
 
-/** Find a course_id mentioned in free text by name_he or course_id. */
+/** Find a course_id mentioned in free text by id, alias, or name_he. */
 function _extractCourseIdFromText(text) {
-  for (const [cid, c] of Object.entries(courseMap)) {
-    if (c.name_he && text.includes(c.name_he)) return cid;
-    if (text.includes(cid)) return cid;
-  }
-  return null;
+  const ids = resolveCourseMentionsLocal(text);
+  return ids.length ? ids[0] : null;
 }
 
 /**
@@ -7748,6 +7745,117 @@ function prereqIdsOf(c) {
   return [...union];
 }
 
+/* Normalize a TAU course id to canonical NNNN-NNNN form. Accepts "05424223",
+   "0542-4223", or text containing such a token. Returns null if not a course id. */
+function _normCourseIdLocal(id) {
+  if (id == null) return null;
+  const digits = String(id).replace(/\D/g, '');
+  if (digits.length === 8) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  const m = String(id).match(/(\d{4})-?(\d{4})/);
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+
+/**
+ * Part B — general OR-aware prerequisite parser.
+ *
+ * Builds a CNF (AND-of-ORs) prerequisite structure from the best available
+ * source, in priority order:
+ *   1. Free text (prerequisites_raw_text / syllabus_prerequisites_he) — preserves
+ *      structure: "+" / "וגם" separate AND-segments; course ids within one segment
+ *      (typically joined by "או") are OR-alternatives.
+ *   2. Flat id lists (prerequisite_course_ids / prerequisites / missing_prerequisites)
+ *      — already OR-flattened upstream, so each id becomes its own singleton AND-group.
+ *
+ * Returns raw groups [[id,...], ...]; foundational reduction happens in
+ * applyPrerequisiteParsingLocal once the full courseMap is known.
+ */
+function parseCoursePrereqGroupsLocal(c) {
+  if (!c) return [];
+  const idRe = /\((\d{4})-?(\d{4})\)/g;
+  const idsInSegment = (seg) => {
+    const out = []; let m; idRe.lastIndex = 0;
+    while ((m = idRe.exec(String(seg))) !== null) out.push(`${m[1]}-${m[2]}`);
+    return out;
+  };
+  const lines = [];
+  if (typeof c.prerequisites_raw_text === 'string' && c.prerequisites_raw_text.trim()) lines.push(c.prerequisites_raw_text);
+  for (const ln of (Array.isArray(c.syllabus_prerequisites_he) ? c.syllabus_prerequisites_he : [])) {
+    if (typeof ln === 'string') lines.push(ln);
+  }
+  const textGroups = [];
+  for (const line of lines) {
+    for (const seg of String(line).split(/\+|,| וגם /)) {
+      const ids = idsInSegment(seg);
+      if (ids.length) textGroups.push([...new Set(ids)]);
+    }
+  }
+  if (textGroups.length) return textGroups;
+
+  // Fallback: flat id sources (no structured text available) → singleton AND-groups.
+  const flat = new Set();
+  for (const src of [c.prerequisite_course_ids, c.prerequisites, c.missing_prerequisites]) {
+    for (const id of (Array.isArray(src) ? src : [])) {
+      const n = _normCourseIdLocal(id);
+      if (n) flat.add(n);
+    }
+  }
+  return [...flat].map(id => [id]);
+}
+
+/**
+ * Part B — apply the parser across the fully-populated courseMap. Reduces each
+ * course's prerequisite CNF to its IN-SCOPE obligations:
+ *   - An OR-group satisfiable by a FOUNDATIONAL (out-of-scope, year-1/2, absent
+ *     from courseMap) alternative is DROPPED (it is assumed already completed).
+ *     This is what makes 0542-4223's "(1) OR (2)" impose no in-scope prereq.
+ *   - Remaining groups keep only their in-scope alternatives.
+ * Writes c.prereq_groups (OR-aware, used by the placement gate) and c.prerequisites
+ * (flat singleton AND, foundational-free, safe for the central validator).
+ * Emergency COURSE_PREREQ_OVERRIDES entries are merged as additional AND-groups.
+ */
+function applyPrerequisiteParsingLocal() {
+  if (typeof courseMap === 'undefined' || !courseMap) return;
+  const inScope = (id) => !!courseMap[id];
+  for (const cid of Object.keys(courseMap)) {
+    const c = courseMap[cid];
+    if (!c) continue;
+    const rawGroups = parseCoursePrereqGroupsLocal(c);
+    const ov = (typeof COURSE_PREREQ_OVERRIDES !== 'undefined') ? COURSE_PREREQ_OVERRIDES[cid] : null;
+    if (Array.isArray(ov)) {
+      for (const entry of ov) {
+        const grp = (Array.isArray(entry) ? entry : [entry]).map(_normCourseIdLocal).filter(Boolean);
+        if (grp.length) rawGroups.push(grp);
+      }
+    }
+    const reduced = [];
+    const seen = new Set();
+    for (const g of rawGroups) {
+      if (!g.length) continue;
+      if (g.some(id => !inScope(id))) continue;            // foundational alt satisfies the OR → drop
+      const alts = [...new Set(g.filter(inScope))];
+      if (!alts.length) continue;
+      const key = alts.slice().sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      reduced.push(alts);
+    }
+    c.prereq_groups = reduced;
+    // Flat hard-AND (display + central validator): only unambiguous singleton groups.
+    // Multi-alternative in-scope OR-groups are enforced via prereq_groups in the
+    // placement gate, never as flat AND (which would over-constrain the validator).
+    c.prerequisites = [...new Set(reduced.filter(g => g.length === 1).map(g => g[0]))];
+    c.missing_prerequisites = [];   // folded into prereq_groups (foundational-reduced)
+  }
+}
+
+/* The OR-aware prerequisite CNF for a course: its parsed prereq_groups when
+   available, else its flat prereq union mapped to singleton AND-groups. */
+function prereqGroupsOf(c) {
+  if (!c) return [];
+  if (Array.isArray(c.prereq_groups)) return c.prereq_groups;
+  return prereqIdsOf(c).map(id => [id]);
+}
+
 /**
  * Issue 4 — strict prerequisite-timing rule for placing `courseId` in the
  * semester at index `targetIdx`, given a map course_id → semester index for the
@@ -7760,25 +7868,30 @@ function prereqIdsOf(c) {
 function prereqsSatisfiedForPlacementLocal(courseId, targetIdx, courseSemIdx, completedIds) {
   const completed = completedIds || new Set();
   const unsatisfied = [];
-  for (const prereq of prereqIdsOf(courseMap[courseId])) {
+  // A single prerequisite (one OR-alternative) is satisfied if it is completed,
+  // out-of-scope foundational (assumed completed), currently-taking with legal
+  // timing, or scheduled strictly EARLIER in this plan.
+  const altSatisfied = (prereq) => {
     const status = userCourseStatuses[prereq]?.status || 'not_taken';
-    if (status === 'completed' || completed.has(prereq)) continue;
+    if (status === 'completed' || completed.has(prereq)) return true;
     // Foundational-prereq rule: the board displays only years 3–4. A prerequisite
-    // that is NOT part of the displayed program universe (absent from courseMap)
-    // is a year-1/2 foundational course the student has already completed — assume
-    // it satisfied. In-scope prereqs (present in courseMap, e.g. מכניקת המוצקים 2)
-    // are still strictly enforced and must be scheduled earlier.
-    if (typeof courseMap !== 'undefined' && !courseMap[prereq]) continue;
+    // absent from courseMap is a year-1/2 foundational course assumed completed.
+    if (typeof courseMap !== 'undefined' && !courseMap[prereq]) return true;
     if (status === 'currently_taking') {
       const idx = _userSemesterIndex(prereq, courseSemIdx);
-      if (idx === -1 || targetIdx > idx) continue; // unknown timing → informational; later → ok
-      unsatisfied.push(prereq);
-      continue;
+      return (idx === -1 || targetIdx > idx); // unknown timing → informational; later → ok
     }
     // planned / not_taken → must be scheduled strictly earlier in this plan
     const idx = (prereq in courseSemIdx) ? courseSemIdx[prereq] : null;
-    if (idx != null && idx < targetIdx) continue;
-    unsatisfied.push(prereq);
+    return (idx != null && idx < targetIdx);
+  };
+  // OR-aware: each group is satisfied if ANY alternative is satisfied. Only when a
+  // whole group is unmet do its in-scope alternatives count as unsatisfied.
+  for (const group of prereqGroupsOf(courseMap[courseId])) {
+    if (!group.length || group.some(altSatisfied)) continue;
+    for (const p of group) {
+      if (typeof courseMap === 'undefined' || courseMap[p]) unsatisfied.push(p);
+    }
   }
   return { ok: unsatisfied.length === 0, unsatisfied };
 }
@@ -12048,20 +12161,14 @@ function extractPlanningIntentLocal(text) {
   }
   matched.sort((a, b) => (PLANNING_DOMAINS[a].priority || 99) - (PLANNING_DOMAINS[b].priority || 99));
 
-  // Detect explicit course name mentions — turned into must-include ids (placed before
-  // domain courses). Uses _normForMatchLocal for robustness against Hebrew prefixes.
-  const mustIncludeCourseIds = [];
-  const seen = new Set();
-  if (typeof courseMap !== 'undefined') {
-    const normText = _normForMatchLocal(raw);
-    for (const [_cid, _cm] of Object.entries(courseMap)) {
-      if (!_cm.name_he) continue;
-      const _normName = _normForMatchLocal(_cm.name_he);
-      if (_normName.length >= 5 && normText.includes(_normName)) {
-        if (!seen.has(_cid)) { mustIncludeCourseIds.push(_cid); seen.add(_cid); }
-      }
-    }
-  }
+  // Part A — explicit course mentions (by id, alias, or full name) become must-include
+  // ids, placed before domain courses. A course the SAME message hard-excludes is not
+  // a must-include (exclusion wins).
+  const mentioned = resolveCourseMentionsLocal(raw);
+  let excludedNow = [];
+  try { excludedNow = (parseHardExclusionsFromUserText(raw)?.courseIds) || []; } catch (_) {}
+  const mustIncludeCourseIds = mentioned.filter(cid => !excludedNow.includes(cid));
+  const seen = new Set(mustIncludeCourseIds);
 
   // Expand domain keywords to concrete course ids, priority-ordered, de-duplicated.
   const requested = [...mustIncludeCourseIds]; // must-include goes first
@@ -12120,6 +12227,58 @@ const _HARD_EXCLUDE_TRIGGERS = [
   'לא רוצה ללמוד', 'לא רוצה את', 'לא מעוניין', 'לא מעוניינת', 'תוריד את', 'הסר את', 'להסיר את',
   "don't include", 'do not include', 'without ', 'exclude ', 'remove ', "don't add",
 ];
+
+// Part A — positive-mention aliases: English names, abbreviations, partial names,
+// and common Hebrew typos that should resolve to a course id for discovery,
+// mustInclude extraction, and sidebar search. Extensible per course (same pattern
+// as COURSE_EXCLUSION_SYNONYMS). Used by resolveCourseMentionsLocal IN ADDITION to
+// id-token matching and full name_he substring matching.
+const COURSE_NAME_ALIASES = {
+  '0542-4223': ['fem', 'finite element', 'finite elements', 'אלמנטים סופיים',
+                'אלמנתים סופיים', 'אלמנטים סופים', 'מבוא לאלמנטים סופיים'],
+  '0542-4226': ['יישומי אלמנטים סופיים', 'אלמנטים סופיים בתעשייה', 'finite element applications'],
+};
+
+/**
+ * Part A — resolve every course explicitly mentioned in free text to its course id.
+ * Matches, in order of confidence:
+ *   1. Explicit id tokens, dashed or dashless ("0542-4223" / "05424223").
+ *   2. COURSE_NAME_ALIASES (English / abbreviation / partial / typo).
+ *   3. Full name_he present as a normalized substring (distinctive, low false-positive).
+ * Returns an ordered, de-duplicated list of in-scope course ids.
+ */
+function resolveCourseMentionsLocal(text) {
+  const raw = String(text || '');
+  const norm = _normForMatchLocal(raw);
+  const found = [];
+  const seen = new Set();
+  const add = (cid) => {
+    if (!cid || seen.has(cid)) return;
+    if (typeof courseMap !== 'undefined' && !courseMap[cid]) return;
+    seen.add(cid); found.push(cid);
+  };
+
+  // 1. Explicit id tokens (dashed or dashless).
+  let m; const idRe = /(\d{4})-?(\d{4})/g;
+  while ((m = idRe.exec(raw)) !== null) add(`${m[1]}-${m[2]}`);
+
+  // 2. Alias table (normalized substring).
+  if (typeof COURSE_NAME_ALIASES !== 'undefined') {
+    for (const [cid, aliases] of Object.entries(COURSE_NAME_ALIASES)) {
+      if (aliases.some(a => { const na = _normForMatchLocal(a); return na.length >= 3 && norm.includes(na); })) add(cid);
+    }
+  }
+
+  // 3. Full course name present in the text.
+  if (typeof courseMap !== 'undefined') {
+    for (const [cid, c] of Object.entries(courseMap)) {
+      if (!c.name_he) continue;
+      const nn = _normForMatchLocal(c.name_he);
+      if (nn.length >= 5 && norm.includes(nn)) add(cid);
+    }
+  }
+  return found;
+}
 
 function _normForMatchLocal(s) {
   return String(s || '')
