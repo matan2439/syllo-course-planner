@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'plan-context-v8'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'full185-fill-v9'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5788,18 +5788,12 @@ function applyDraftPatchLocal(patch) {
     }
     case 'build_full_185': {
       const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
-      postAssistantMessage(formatFull185SummaryLocal(plan), [
-        { label: 'החל טיוטה', action: 'apply-draft' },
-        { label: 'דחה טיוטה', action: 'reject-draft' },
-      ]);
+      postAssistantMessage(formatFull185SummaryLocal(plan)); /* actions live in the upper board banner — no duplicate chat chips */
       return { changed: true };
     }
     case 'rebuild': {
       const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
-      postAssistantMessage(formatFull185SummaryLocal(plan), [
-        { label: 'החל טיוטה', action: 'apply-draft' },
-        { label: 'דחה טיוטה', action: 'reject-draft' },
-      ]);
+      postAssistantMessage(formatFull185SummaryLocal(plan)); /* actions live in the upper board banner — no duplicate chat chips */
       return { changed: true };
     }
     case 'explain_course_decision': {
@@ -6211,45 +6205,12 @@ function promptAcceptOverloadConfirmation({ anchorEl, refreshPreview } = {}) {
  * "פתח תצוגה מלאה" link to the full preview modal. Renders nothing when no
  * draft is active. */
 function renderProposalCard() {
+  // Issue 2 — NO draft action cluster below the AI chat. The single canonical draft
+  // action row is the upper blue board-draft banner (renderBoard: board-draft-apply /
+  // board-draft-reject / board-draft-back-ai). This element renders nothing, so there
+  // is never a duplicate "החל טיוטה" / "דחה" / "בנה מחדש" below the chat.
   const card = document.getElementById('ai-proposal-card');
-  if (!card) return;
-  const draft = state.proposalDraft;
-  if (!draft) { card.innerHTML = ''; return; }
-
-  const evald = evaluateDraftProposal();
-  const errors   = evald?.errors   ?? _aiPlanLastValidation?.errors   ?? [];
-  const warnings = evald?.warnings ?? _aiPlanLastValidation?.warnings ?? [];
-  const completeness = evald?.completeness ?? _aiPlanLastValidation?.completeness ?? null;
-  const blocked = errors.length > 0 || !!completeness?.incomplete;
-  const hasWarnings = warnings.length > 0;
-
-  const diff = computeDraftDiff();
-  const addedCount = diff?.added.size ?? 0;
-  const movedCount = diff?.moved.size ?? 0;
-  const removedCount = diff?.removed.size ?? 0;
-  const replacedCount = diff?.replaced.size ?? 0;
-
-  // Issue 1 — NO large draft/status/explanation card inside the chat panel. The
-  // status + gap explanation are written as normal chat messages (by the build /
-  // patch flows). This element renders ONLY a compact inline action row, so it can
-  // never take over or hide the conversation. Numbers/explanations live in chat.
-  const ds = computeDraftStatusLocal();
-  const canApply = ds.status === 'legal_full' || ds.status === 'legal_partial';
-  const applyLabel = ds.status === 'legal_full' ? 'החל מערכת' : 'החל טיוטה';
-  const actionsHtml = canApply
-    ? `<button class="btn btn-primary btn-sm" id="sb-draft-apply">${applyLabel}</button>
-       <button class="btn btn-sm" id="sb-draft-rebuild">בנה מחדש</button>
-       <button class="btn btn-sm" id="sb-draft-reject">דחה</button>`
-    : `<button class="btn btn-primary btn-sm" id="sb-draft-rebuild">בנה מחדש</button>
-       <button class="btn btn-sm" id="sb-draft-reject">דחה</button>`;
-
-  card.innerHTML =
-    `<div class="ai-proposal-actions" data-draft-status="${ds.status}"
-          style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${actionsHtml}</div>`;
-
-  document.getElementById('sb-draft-apply')?.addEventListener('click', () => { if (canApply) applyProposalDraft(); });
-  document.getElementById('sb-draft-rebuild')?.addEventListener('click', () => { triggerExplicitRebuild(); });
-  document.getElementById('sb-draft-reject')?.addEventListener('click', () => { rejectProposalDraft(); renderAiTab(); });
+  if (card) card.innerHTML = '';
 }
 
 /** PART D — "בקש שינויים": send the edited draft back to the AI as the starting board. */
@@ -9342,6 +9303,30 @@ function buildDeterministicReplacementPlan(args) {
     }
   }
 
+  // 5c. Part E — FINAL completion loop (after all legality sweeps). The sweeps above
+  //     (5/5a/5b) and repairPlanLoad can strip fill-added courses or move them into
+  //     an illegal slot, freeing room that no later fill used — leaving the plan short
+  //     of 185 even though legal candidates still fit. Run fill ⇄ audit-strip as the
+  //     LAST mutation (no repairPlanLoad after, so nothing is moved into an illegal
+  //     slot), so every bit of legal room is used. fillToDegreeTargetLocal adds ONLY
+  //     legal candidates, and the audit re-strips any that became illegal, so this
+  //     converges to a legal, maximally-filled plan.
+  if (args.fillToTarget) {
+    for (let _i = 0; _i < 8; _i++) {
+      let _b; try { _b = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _b = 0; }
+      if (_b >= targetHours) break;
+      try { proposal = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }).proposal || proposal; } catch (_) {}
+      try {
+        const _a2 = auditDraftLegality(proposal, { completedCourseIds: _completedSet });
+        const _bad = new Set([..._a2.illegalSemesterPlacements, ..._a2.missingPrerequisites]
+          .map(p => p.course_id).filter(cid => !beforeCids.has(cid)));
+        if (_bad.size) for (const sem of proposal.semesters) sem.course_ids = (sem.course_ids || []).filter(cid => !_bad.has(cid));
+      } catch (_) {}
+      let _a; try { _a = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _a = _b; }
+      if (_a <= _b) break; // no further progress — remaining candidates are genuinely blocked
+    }
+  }
+
   // 6. Diff vs the committed board → what the replacement plan adds.
   const afterCids = Object.values(proposalSemestersToMap(proposal.semesters)).flat();
   const addedCids = afterCids.filter(cid => !beforeCids.has(cid));
@@ -9510,7 +9495,22 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
     } catch (_) { return sems.flatMap(s => s.course_ids).reduce((t, cid) => t + (opts.courses[cid]?.hours || 0), 0); }
   };
 
-  let pool = (analysis.elective_pool || []).filter(c => !placed.has(c.course_id));
+  // Pool = the FULL normalized repository (every schedulable non-mandatory course in
+  // courseMap), not just the curated engineering elective_pool — so 185-completion can
+  // use ANY legal candidate as a last resort (incl. שער-רוח / free electives), per
+  // "compute all legal candidates from the full repository … add until 185 or none
+  // remain". Relevance ranking still places the most intent-aligned courses first.
+  const poolById = new Map();
+  for (const c of (analysis.elective_pool || [])) if (!placed.has(c.course_id)) poolById.set(c.course_id, c);
+  if (typeof courseMap !== 'undefined') {
+    for (const cid of Object.keys(courseMap)) {
+      if (placed.has(cid) || poolById.has(cid)) continue;
+      const c = courseMap[cid];
+      if (!c || c.course_type === 'mandatory' || c.is_mandatory) continue;
+      poolById.set(cid, { course_id: cid, hours: hoursForCourseId(cid) });
+    }
+  }
+  let pool = [...poolById.values()];
   const scoreOf = (c) => scoreCourseAgainstIntentProfileLocal((typeof courseMap !== 'undefined' && courseMap[c.course_id]) || c, profile).score;
   pool.sort((a, b) => scoreOf(b) - scoreOf(a));
 

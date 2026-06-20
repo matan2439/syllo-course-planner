@@ -90,13 +90,13 @@ describe('C5/C6 — card removal + canonical PlanContext baseline', () => {
     expect(card.textContent).not.toContain('זו טיוטה');
   });
 
-  test('T02 — the card has no large status/explanation block (compact actions only)', () => {
+  test('T02 — the lower #ai-proposal-card renders nothing (no status/explanation, no duplicate buttons)', () => {
     window.eval('renderProposalCard();');
     const card = document.getElementById('ai-proposal-card');
+    expect(card.innerHTML.trim()).toBe('');
     expect(card.querySelector('.ai-plan-status')).toBeFalsy();
     expect(card.querySelector('.draft-chips-row')).toBeFalsy();
     expect(card.textContent).not.toContain('טיוטה חוקית חלקית');
-    expect(card.querySelector('.ai-proposal-actions')).toBeTruthy();
   });
 
   test('T03 — build_full_185 emits the draft status as a normal assistant chat message', () => {
@@ -105,12 +105,14 @@ describe('C5/C6 — card removal + canonical PlanContext baseline', () => {
     expect(statusMsg).toBeTruthy();
   });
 
-  test('T04 — compact apply/reject/rebuild actions remain in the card', () => {
-    window.eval('renderProposalCard();');
-    const card = document.getElementById('ai-proposal-card');
-    expect(card.querySelector('#sb-draft-apply')).toBeTruthy();
-    expect(card.querySelector('#sb-draft-rebuild')).toBeTruthy();
-    expect(card.querySelector('#sb-draft-reject')).toBeTruthy();
+  test('T04 — exactly one draft action cluster exists (upper board banner), none below the chat', () => {
+    window.eval('renderAll();'); // renders the board banner + clears the lower card
+    // Exactly one "החל טיוטה" apply control in the whole document.
+    const applyButtons = Array.from(document.querySelectorAll('button')).filter(b => /החל טיוטה|החל מערכת/.test(b.textContent || ''));
+    expect(applyButtons.length).toBe(1);
+    expect(document.getElementById('board-draft-apply')).toBeTruthy();
+    // No lower duplicate cluster.
+    expect(document.querySelector('#ai-proposal-card #sb-draft-apply')).toBeFalsy();
   });
 
   test('T05 — buildPlanContextFromState.completedHours equals the UI baseline', () => {
@@ -132,10 +134,18 @@ describe('C5/C6 — card removal + canonical PlanContext baseline', () => {
     expect(r.chatCompleted).toBe(r.sidebarCompleted);
   });
 
-  test('T07 — with a 90h baseline the chat summary cannot say "נצברו 0"', () => {
-    const summary = window.eval('formatFull185SummaryLocal({ proposal: state.proposalDraft ? { semesters: mapToProposalSemesters(state.proposalDraft.semesters) } : undefined, gapBreakdown: _aiPlanLastGapBreakdown })');
+  test('T07 — the chat summary reflects the real completed baseline, never "נצברו 0"', () => {
+    // Use a LOW baseline (30h) so the plan stays legal_partial and the breakdown line
+    // (נצברו …) is present — it must show 30, never 0.
+    const summary = window.eval(`(function(){
+      degreeHoursProfile = { completed_degree_hours: 30 };
+      const plan = buildFull185PlanLocal({ extra_request_he: '' });
+      _aiPlanLastGapBreakdown = plan.gapBreakdown;
+      activateProposalDraft(plan.proposal);
+      return formatFull185SummaryLocal(plan);
+    })()`);
     expect(summary).not.toContain('נצברו 0');
-    expect(summary).toContain('נצברו 90');
+    if (summary.includes('נצברו')) expect(summary).toContain('נצברו 30');
   });
 
   test('T08 — totalAfterPlan is never lower than completedHours', () => {

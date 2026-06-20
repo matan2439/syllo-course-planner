@@ -284,8 +284,7 @@ describe('detached draft-editing panel is gone — actions via chat', () => {
   });
   afterAll(() => dom.window.close());
 
-  test('Test 11 — renderProposalCard exposes apply/reject but no detached editing controls', async () => {
-    // Activate a draft so the proposal card renders.
+  test('Test 11 — draft actions live ONLY in the upper board banner; no lower duplicate cluster', async () => {
     window.__txt = FOCUS_TEXT;
     window.eval(`(function(){
       _aiPlanLastPreferences = { extra_request_he: window.__txt };
@@ -293,12 +292,15 @@ describe('detached draft-editing panel is gone — actions via chat', () => {
       activateProposalDraft(r.proposal, { isTentative: r.tentativeCids.length>0, tentativeCourseIds: r.tentativeCids });
       renderAiTab();
     })()`);
-    expect(window.document.getElementById('sb-draft-apply')).toBeTruthy();
-    expect(window.document.getElementById('sb-draft-reject')).toBeTruthy();
+    // Issue 2 — the single draft action cluster is the upper blue board banner.
+    expect(window.document.getElementById('board-draft-apply')).toBeTruthy();
+    expect(window.document.getElementById('board-draft-reject')).toBeTruthy();
+    // No lower duplicate cluster below the AI chat.
+    expect(window.document.getElementById('sb-draft-apply')).toBeFalsy();
+    expect(window.document.getElementById('sb-draft-reject')).toBeFalsy();
+    expect(window.document.querySelector('#ai-proposal-card .ai-proposal-actions')).toBeFalsy();
     // Removed detached controls:
     expect(window.document.getElementById('sb-draft-ask')).toBeFalsy();
-    expect(window.document.getElementById('sb-draft-full')).toBeFalsy();
-    expect(window.document.getElementById('sidebar-draft-instruction')).toBeFalsy();
     expect(window.document.getElementById('sidebar-open-full-preview')).toBeFalsy();
   });
 

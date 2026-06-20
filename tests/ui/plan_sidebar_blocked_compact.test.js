@@ -74,50 +74,25 @@ describe('canonical draft.status — sidebar card', () => {
     })()`);
   }
 
-  test('legal draft: card is compact actions ONLY — no status/explanation text, apply present', () => {
+  test('legal draft: the lower #ai-proposal-card renders nothing (no duplicate cluster)', () => {
     const status = renderLegalPartialCard();
     expect(['legal_full', 'legal_partial']).toContain(status);
     const card = document.getElementById('ai-proposal-card');
-    // Issue 1 — the card is NOT an explanation surface: no "זו טיוטה", no
-    // "טיוטה חוקית חלקית" status paragraph, no contradictory legacy labels.
-    expect(card.innerHTML).not.toContain('לא ניתן להציע מערכת חוקית');
-    expect(card.textContent).not.toContain('זו טיוטה');
-    expect(card.textContent).not.toContain('טיוטה חוקית חלקית');
-    expect(card.querySelector('.ai-plan-status')).toBeFalsy();
-    expect(card.querySelector('.draft-chips-row')).toBeFalsy();
-    // Compact action buttons remain.
-    expect(card.querySelector('#sb-draft-apply')).toBeTruthy();
-    expect(card.querySelector('#sb-draft-rebuild')).toBeTruthy();
+    // Issue 2 — the card under the chat is empty: no buttons, no status/explanation.
+    expect(card.innerHTML.trim()).toBe('');
+    expect(card.querySelector('#sb-draft-apply')).toBeFalsy();
+    expect(card.querySelector('#sb-draft-rebuild')).toBeFalsy();
+    // The single action cluster is the upper board banner.
+    expect(document.getElementById('board-draft-apply')).toBeTruthy();
+    expect(document.getElementById('board-draft-reject')).toBeTruthy();
   });
 
-  test('illegal_blocked: no apply button; rebuild offered', () => {
-    // Force an overload-worsening draft: pile extra courses into one semester.
-    window.eval(`(function(){
-      const plan = buildFull185PlanLocal({ extra_request_he: '' });
-      // Overload year_4_semester_b far past the hard cap with extra real courses
-      // that are NOT on the committed board, so the draft worsens that semester.
-      const target = plan.proposal.semesters.find(s => s.semester_id === 'year_4_semester_b') || plan.proposal.semesters[0];
-      const extras = Object.keys(courseMap).filter(cid =>
-        courseMap[cid].name_he && (hoursForCourseId(cid) || 0) >= 3 &&
-        !plan.proposal.semesters.some(s => (s.course_ids||[]).includes(cid))).slice(0, 12);
-      target.course_ids = [...(target.course_ids||[]), ...extras];
-      _aiPlanLastProposal = plan.proposal;
-      activateProposalDraft(plan.proposal);
-      renderAiTab();
-      renderProposalCard();
-    })()`);
-    const ds = JSON.parse(window.eval('JSON.stringify(computeDraftStatusLocal())'));
-    const card = document.getElementById('ai-proposal-card');
-    if (ds.status === 'illegal_blocked' || ds.status === 'data_error') {
-      expect(card.querySelector('#sb-draft-apply')).toBeFalsy();
-      expect(card.querySelector('#sb-draft-rebuild')).toBeTruthy();
-    } else {
-      // If the overload didn't trip (data-dependent), at least apply is present.
-      expect(card.querySelector('#sb-draft-apply')).toBeTruthy();
-    }
+  test('no contradictory "לא ניתן להציע מערכת חוקית" label anywhere for a legal draft', () => {
+    renderLegalPartialCard();
+    expect(document.getElementById('ai-proposal-card').innerHTML).not.toContain('לא ניתן להציע מערכת חוקית');
   });
 
-  test('no detached editing controls remain in the card', () => {
+  test('no detached editing controls remain', () => {
     renderLegalPartialCard();
     expect(document.getElementById('sb-draft-ask')).toBeFalsy();
     expect(document.getElementById('sb-draft-full')).toBeFalsy();
