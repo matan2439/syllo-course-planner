@@ -43,3 +43,5 @@ next-env.d.ts
 .vercel
 .env.production.local
 .claude/worktrees/
+supabase_board_backup_2027_pre_sync.json
+Gemini_Generated_Image_50vd950vd950vd95.png
