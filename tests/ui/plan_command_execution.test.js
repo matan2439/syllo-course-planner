@@ -260,41 +260,27 @@ describe('Command execution — requested_moves + semester_load_targets consumed
   });
 
   // ── 3) execute-on-command: recognized command + existing draft → rebuild ───
-  test('recognized command WITH a draft triggers a rebuild through the gate (spy) and posts NO fake user bubble', async () => {
-    // Spy the gate; let requestPlanProposal resolve quickly with a stub proposal
-    // that excludes the avoided course, then run the gate spy.
+  test('recognized command WITH a draft mutates the draft directly (DraftPatch) — course removed, recorded, no fake bubble', async () => {
+    // New contract: a recognized correction with an active draft is applied as a
+    // DraftPatch that DIRECTLY mutates the draft (no second confirm, no gate spy).
     window.eval('detectClarificationNeeds = () => null;');
     window.eval('detectAmbiguousPlanningInstruction = () => [];');
-    window.eval('requestUserConfirmation = (o) => o.onConfirm && o.onConfirm();');
-    window.eval('window.__gateCalls = 0; const __origGate = gateProposalActivation; gateProposalActivation = function(p){ window.__gateCalls++; return __origGate ? __origGate(p) : undefined; };');
-    // Stub the network build to deterministically EXCLUDE the avoided course.
-    const cid = window.eval('Object.keys(courseMap).find(k => courseMap[k] && courseMap[k].course_id)');
-    window.eval(`requestPlanProposal = function(prefs){
-      window.__rppCalls = (window.__rppCalls||0)+1;
-      window.__rppPrefs = prefs;
-      // Emulate the real pipeline tail: build a proposal that honours the
-      // strongUnwanted set, then run the gate (the authority).
-      var proposal = { semesters: [ { semester_id:'year_3_semester_a', course_ids: [] } ] };
-      gateProposalActivation(proposal);
-      return Promise.resolve();
-    };`);
-    // Seed an existing draft so the iterate-path (execute) fires.
+    // Seed an existing draft containing a NON-mandatory elective to be excluded
+    // (a mandatory course cannot be removed — it is required).
+    const cid = window.eval("Object.keys(courseMap).find(k => courseMap[k] && courseMap[k].name_he && (courseMap[k].course_type||'elective')!=='mandatory' && !courseMap[k].is_mandatory)");
     window.eval("state.proposalDraft = { semesters: { year_3_semester_a: ['" + cid + "'] }, repo: [] };");
 
     const input = document.getElementById('sidebar-chat-input');
     const sendBtn = document.getElementById('sidebar-chat-send');
     input.value = 'אל תשבץ את ' + cid;
     sendBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 80));
-    // Existing board → inline chat confirmation; confirm it to proceed.
-    window.eval('if (_pendingBuildProceed) handleQuickReply({ action: "confirm-build-yes", label: "כן, בנה מערכת" })');
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 120));
 
-    // The build path ran AND went through the gate — not just a chip.
-    expect(window.eval('window.__rppCalls')).toBeGreaterThanOrEqual(1);
-    expect(window.eval('window.__gateCalls')).toBeGreaterThanOrEqual(1);
-    // The avoided course is in the strongUnwanted preference set (state change).
+    // The board actually changed: the course is no longer in the draft.
+    expect(window.eval(`Object.values(state.proposalDraft.semesters).flat().indexOf('${cid}') >= 0`)).toBe(false);
+    // The exclusion is recorded as a hard constraint (state change).
     expect(window.eval(`_aiPickerState.strongUnwanted.indexOf('${cid}') >= 0`)).toBe(true);
+    expect(window.eval(`(_aiUserIntentProfile.hardExcludeCourseIds||[]).indexOf('${cid}') >= 0`)).toBe(true);
     // No fake user bubble with the build-button label was inserted.
     expect(window.eval('_aiChatMessages.some(m => m.role === "user" && m.text && m.text.indexOf("בנה מערכת מחדש") >= 0)')).toBe(false);
   });

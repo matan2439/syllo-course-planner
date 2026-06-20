@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'draft-status-185-v6'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'chat-draftpatch-v7'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -4735,6 +4735,10 @@ function handleQuickReply(qr) {
       postAssistantMessage('בסדר, לא אשבץ כרגע. אפשר לבקש זאת מאוחר יותר.');
       return;
     // PART F — ping-pong action chips after an incremental proposal.
+    case 'build-full-185':
+      postUserMessage(qr.label);
+      applyDraftPatchLocal({ type: 'build_full_185', courseIds: [], domains: [], semesterId: null, reason_he: '', requiresReplan: true });
+      return;
     case 'apply-draft':
       postUserMessage(qr.label);
       if (state.proposalDraft) applyProposalDraft();
@@ -5401,6 +5405,17 @@ function _extractSemesterIdFromText(text) {
     const labelNorm = label.replace(/[׳—]/g, '').replace(/\s+/g, ' ').trim();
     if (norm.replace(/\s+/g, ' ').includes(labelNorm)) return semId;
   }
+  // Compact form: "סמסטר ג א" / "ג׳ א׳" — a year letter (ג/ד) immediately followed
+  // by a semester letter (א/ב), with no "שנה" word. Years 3–4 only are displayed.
+  const compact = norm.match(/([גד])\s*([אב])(?!\S)/);
+  if (compact) {
+    const year = yearMap[compact[1]];
+    const sem = semMap[compact[2]];
+    if (year && sem) {
+      const semesterId = `year_${year}_semester_${sem}`;
+      if (SEMESTERS.some(s => s.id === semesterId)) return semesterId;
+    }
+  }
   return null;
 }
 
@@ -5495,6 +5510,273 @@ function applyCorrectiveFeedbackToState(message, intent) {
   return { handled: false };
 }
 
+/* Part D/F — decision trace + gap breakdown of the latest build (for "why?" answers
+   and the exact 185 gap explanation). */
+let _aiPlanLastDecisionTrace = null;
+let _aiPlanLastGapBreakdown = null;
+
+/**
+ * Part A/B — classify a chat message into a structured DraftPatch. The patch is the
+ * single contract the chat layer applies to the draft + UserIntentProfile.
+ *   type ∈ hard_exclude_course | must_include_course | remove_course | add_course |
+ *          change_weight | change_workload | build_full_185 | explain_course_decision |
+ *          rebuild | apply_draft | reject_draft | ask_question | update_preferences
+ */
+function classifyCorrectionIntentLocal(text) {
+  const raw = (text || '').trim();
+  const mk = (type, extra) => ({ type, courseIds: [], domains: [], semesterId: null, reason_he: '', requiresReplan: true, ...extra });
+
+  // build a full 185 plan
+  if (/\b185\b|מערכת\s*מלאה|תואר\s*מלא|כל\s*התואר/.test(raw) && /בנה|תבנה|בני|השלם|תשלים|תבנ/.test(raw)) {
+    return mk('build_full_185', { targetHours: DEGREE_REQUIRED_HOURS_GLOBAL(), reason_he: 'בניית מערכת מלאה ל-185 ש״ש' });
+  }
+  // explain a decision — "למה הכנסת X" (must come before exclude/include verbs)
+  if (/למה|מדוע|why/i.test(raw)) return mk('explain_course_decision', { requiresReplan: false, courseIds: resolveCourseMentionsLocal(raw) });
+
+  // hard exclude — "אל תשבץ X" / "בלי X" / "תוריד את X"
+  if (_HARD_EXCLUDE_TRIGGERS.some(t => raw.includes(t)) || /אל\s*תשבץ|אל\s*תכלול|תוריד\s*את|הסר\s*את|להסיר\s*את/.test(raw)) {
+    const ids = resolveCourseMentionsLocal(raw);
+    if (ids.length) return mk('hard_exclude_course', { courseIds: ids, reason_he: 'הוחרג לפי בקשתך' });
+  }
+  // must include / add — "תוסיף X" / "אני רוצה לקחת X" / "חשוב לי ש…X"
+  if (/תוסיף|הוסף|תכניס|להוסיף|חשוב\s*לי|אני\s*רוצה\s*(?:ל?קחת|ללמוד|ש)/.test(raw)) {
+    const ids = resolveCourseMentionsLocal(raw);
+    if (ids.length) return mk('must_include_course', { courseIds: ids, reason_he: 'נוסף כקורס שחובה לכלול' });
+  }
+  // workload — "תוריד עומס מסמסטר ג׳ א׳" / "תאזן"
+  if (/(פחות\s*עומס|להוריד\s*עומס|תוריד\s*עומס|הקטן\s*עומס|לאזן|תאזן)/.test(raw)) {
+    const semId = _extractSemesterIdFromText(raw);
+    return mk('change_workload', { semesterId: semId, reason_he: semId ? ('הפחתת עומס ב' + (SEM_HE[semId] || semId)) : 'איזון עומס' });
+  }
+  // domain preference — "תעדיף יותר חוזק ותכן"
+  if (/תעדיף|העדף|דגש|להתמקד|יותר/.test(raw)) {
+    const di = extractPlanningIntentLocal(raw);
+    if ((di.requiredDomains || []).length) return mk('change_weight', { domains: di.requiredDomains, reason_he: 'עודכנו ההעדפות' });
+  }
+  // explicit rebuild
+  if (/בנה\s*מחדש|תבנה\s*מחדש|בנה\s*מערכת|תבנה\s*מערכת/.test(raw)) return mk('rebuild', { reason_he: 'בנייה מחדש' });
+
+  // question / plain preference fall-through
+  const di = detectAiIntent(raw);
+  if (di.type === 'ask_question' || di.type === 'explain_course') return mk('ask_question', { requiresReplan: false });
+  return mk('update_preferences', { requiresReplan: false });
+}
+
+/* Remove course ids from the active draft immediately (board actually changes). */
+function removeFromDraftLocal(cids) {
+  if (!state.proposalDraft) return;
+  const set = new Set(cids);
+  for (const sem of Object.keys(state.proposalDraft.semesters || {})) {
+    state.proposalDraft.semesters[sem] = (state.proposalDraft.semesters[sem] || []).filter(cid => !set.has(cid));
+  }
+  renderAll();
+}
+
+/* Which draft semester currently holds cid, or null. */
+function findDraftSemOf(cid) {
+  if (!state.proposalDraft) return null;
+  for (const [sem, ids] of Object.entries(state.proposalDraft.semesters || {})) {
+    if ((ids || []).includes(cid)) return sem;
+  }
+  return null;
+}
+
+/* Per-draft-semester weekly-hours map. */
+function _draftSemHoursMap() {
+  const out = {};
+  if (!state.proposalDraft) return out;
+  for (const [sem, ids] of Object.entries(state.proposalDraft.semesters || {})) {
+    out[sem] = (ids || []).reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+  }
+  return out;
+}
+
+/* Exact reason a must-include course could not be placed (from the gap breakdown). */
+function explainUnplaceableLocal(cid) {
+  const g = _aiPlanLastGapBreakdown;
+  const r = g && (g.relaxableCourses || []).find(x => x.course_id === cid);
+  if (r) {
+    if (r.blocker === 'offering') return 'הוא לא מוצע באף אחד מהסמסטרים המוצגים (שנים ג׳–ד׳)';
+    if (r.blocker === 'prereq') return 'חסרות לו דרישות קדם בתוך התכנית';
+    if (r.blocker === 'workload') return 'אין סמסטר חוקי עם מספיק מקום פנוי (עומס)';
+  }
+  const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+  if (c && classifyCourseSchedulability(c) === 'unschedulable_missing_data') return 'חסרים לו נתוני סמסטר/היצע';
+  return 'לא נמצא שיבוץ חוקי עבורו בתכנית הנוכחית';
+}
+
+/* Answer "why was X chosen?" from the last decision trace (no rebuild). */
+function explainCourseDecisionLocal(cid) {
+  const trace = _aiPlanLastDecisionTrace;
+  if (!trace) return 'עדיין אין לי מעקב החלטות — בנה מערכת קודם ואז אוכל להסביר.';
+  if (cid) {
+    const sel = (trace.selected || []).find(s => s.course_id === cid);
+    if (sel) return sel.explanation_he;
+    const sk = (trace.skipped || []).find(s => s.course_id === cid);
+    if (sk) return sk.explanation_he;
+  }
+  const last = (trace.selected || []).slice(-1)[0];
+  return last ? last.explanation_he : 'לא נמצאה החלטה מתאימה להסבר.';
+}
+
+/* Hebrew summary for a full-185 build: legal_full message, or legal_partial + the
+   exact gap breakdown (Part E / Part G2). */
+function formatFull185SummaryLocal(plan) {
+  const ds = computeDraftStatusLocal();
+  const required = ds.required;
+  if (ds.status === 'legal_full') return `בניתי מערכת חוקית מלאה ל-${required} ש״ש.`;
+  if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש. הסבר מפורט בצ׳אט.';
+  const g = (plan && plan.gapBreakdown) || _aiPlanLastGapBreakdown || {};
+  const lines = [`בניתי טיוטה חוקית חלקית עד ${ds.total}/${required} ש״ש. חסרות ${ds.missing} ש״ש.`];
+  lines.push(`פירוט: נצברו ${g.completedHours || 0}, במערכת הנוכחית ${g.existingBoardHours || 0}, נוספו בטיוטה ${g.newlyAddedHours || 0}.`);
+  const reasons = [];
+  if (g.blockedByPrereq) reasons.push(`${g.blockedByPrereq} חסומים בדרישות קדם`);
+  if (g.blockedByOffering) reasons.push(`${g.blockedByOffering} לא מוצעים בסמסטרים המוצגים`);
+  if (g.blockedByHardExclude) reasons.push(`${g.blockedByHardExclude} הוחרגו לבקשתך`);
+  if (g.blockedByWorkload) reasons.push(`${g.blockedByWorkload} חסומים במגבלת עומס`);
+  if (g.blockedByMissingData) reasons.push(`${g.blockedByMissingData} חסרי נתונים`);
+  if (g.legalCandidatesAvailable) reasons.push(`${g.legalCandidatesAvailable} מועמדים חוקיים נותרו אך פחות רלוונטיים לבקשה`);
+  if (reasons.length) lines.push('לא הגענו ל-185 כי: ' + reasons.join(', ') + '.');
+  return lines.join('\n');
+}
+
+/**
+ * Part C/D — rebuild the draft from the current UserIntentProfile + preferences,
+ * honoring hard exclusions and must-include ids, then activate it as the draft and
+ * refresh the decision trace / gap breakdown. The board actually changes.
+ */
+function rebuildDraftFromProfileLocal(opts) {
+  opts = opts || {};
+  if (!_aiUserIntentProfile) _aiUserIntentProfile = buildUserIntentProfileLocal((_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || '', {});
+  const p = _aiUserIntentProfile;
+  const prefs = { ...(_aiPlanLastPreferences || {}) };
+  prefs.hard_exclude_course_ids = [...new Set([...(prefs.hard_exclude_course_ids || []), ...(p.hardExcludeCourseIds || [])])];
+  prefs.must_include_course_ids = [...new Set([...(prefs.must_include_course_ids || []), ...(p.mustIncludeCourseIds || [])])];
+  _aiPlanLastPreferences = prefs;
+  // Seed choice: 'draft' re-runs on the ACTIVE DRAFT (post-removal) so excluded /
+  // removed courses are not re-seeded (used by hard_exclude / workload). 'board'
+  // (default) rebuilds fresh from the committed board, letting the accumulated
+  // profile constraints (must-include / hard-exclude / domains) reconstruct with
+  // room to place must-include courses.
+  const seedSemesters = (opts.seedFrom === 'draft' && state.proposalDraft) ? state.proposalDraft.semesters : undefined;
+  const plan = buildDeterministicReplacementPlan({ prefs, targetHours: DEGREE_REQUIRED_HOURS_GLOBAL(), fillToTarget: !!opts.fillToTarget, seedSemesters });
+  _aiPlanLastProposal = plan.proposal;
+  _aiPlanLastDecisionTrace = plan.decisionTrace || null;
+  _aiPlanLastGapBreakdown = plan.gapBreakdown || null;
+  _aiUserIntentProfile = plan.userIntentProfile || p;
+  // Preserve any session hard-excludes/must-includes the planner doesn't echo back.
+  _aiUserIntentProfile.hardExcludeCourseIds = [...new Set([...(_aiUserIntentProfile.hardExcludeCourseIds || []), ...(p.hardExcludeCourseIds || [])])];
+  _aiUserIntentProfile.mustIncludeCourseIds = [...new Set([...(_aiUserIntentProfile.mustIncludeCourseIds || []), ...(p.mustIncludeCourseIds || [])])];
+  activateProposalDraft(plan.proposal, { isTentative: (plan.tentativeCids || []).length > 0, tentativeCourseIds: plan.tentativeCids || [] });
+  return plan;
+}
+
+/**
+ * Part C — apply a DraftPatch: mutate the UserIntentProfile + the actual draft, then
+ * post a chat summary of the REAL change. Returns { changed }.
+ */
+function applyDraftPatchLocal(patch) {
+  if (!_aiUserIntentProfile) _aiUserIntentProfile = buildUserIntentProfileLocal((_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || '', {});
+  const profile = _aiUserIntentProfile;
+  const nameOf = cid => (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
+  const hasDraft = !!state.proposalDraft;
+
+  switch (patch.type) {
+    case 'hard_exclude_course': {
+      for (const cid of patch.courseIds) {
+        if (!profile.hardExcludeCourseIds.includes(cid)) profile.hardExcludeCourseIds.push(cid);
+        _aiPickerState.unwanted = [...new Set([...(_aiPickerState.unwanted || []), cid])];
+        _aiPickerState.strongUnwanted = [...new Set([...(_aiPickerState.strongUnwanted || []), cid])];
+      }
+      const names = patch.courseIds.map(nameOf).join(', ');
+      if (hasDraft) {
+        removeFromDraftLocal(patch.courseIds);
+        rebuildDraftFromProfileLocal({ fillToTarget: false, seedFrom: 'draft' });
+        postAssistantMessage(`הסרתי את ${names} ולא אשבץ אותו שוב בטיוטה הנוכחית.`);
+      } else {
+        postAssistantMessage(`רשמתי לא לשבץ את ${names}. בנה מערכת כדי להחיל זאת.`, [{ label: 'בנה מערכת מלאה ל-185', action: 'build-full-185' }]);
+      }
+      return { changed: hasDraft };
+    }
+    case 'must_include_course': {
+      for (const cid of patch.courseIds) if (!profile.mustIncludeCourseIds.includes(cid)) profile.mustIncludeCourseIds.push(cid);
+      if (hasDraft) {
+        rebuildDraftFromProfileLocal({ fillToTarget: false });
+        const lines = patch.courseIds.map(cid => {
+          const sem = findDraftSemOf(cid);
+          return sem ? `הוספתי את ${nameOf(cid)} ל${SEM_HE[sem] || sem}.` : `לא הצלחתי לשבץ את ${nameOf(cid)} — ${explainUnplaceableLocal(cid)}.`;
+        });
+        postAssistantMessage(lines.join('\n'));
+      } else {
+        postAssistantMessage(`רשמתי לכלול את ${patch.courseIds.map(nameOf).join(', ')}. בנה מערכת כדי לשבץ אותו.`, [{ label: 'בנה מערכת מלאה ל-185', action: 'build-full-185' }]);
+      }
+      return { changed: hasDraft };
+    }
+    case 'change_weight': {
+      profile.requestedDomains = [...new Set([...(profile.requestedDomains || []), ...(patch.domains || [])])];
+      const labels = (patch.domains || []).map(d => (PLANNING_DOMAINS[d] && PLANNING_DOMAINS[d].label_he) || d);
+      const txt = (((_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || '') + ' דגש על ' + labels.join(' ו')).trim();
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), extra_request_he: txt };
+      if (hasDraft) {
+        const before = new Set(Object.values(state.proposalDraft.semesters).flat());
+        rebuildDraftFromProfileLocal({ fillToTarget: false });
+        const after = new Set(Object.values(state.proposalDraft.semesters).flat());
+        const added = [...after].filter(c => !before.has(c));
+        const removed = [...before].filter(c => !after.has(c));
+        let msg = `עדכנתי את ההעדפה לכיוון ${labels.join(', ')}.`;
+        if (added.length) msg += `\nנוספו: ${added.map(nameOf).join(', ')}.`;
+        if (removed.length) msg += `\nהוסרו: ${removed.map(nameOf).join(', ')}.`;
+        if (!added.length && !removed.length) msg += '\nהטיוטה כבר תאמה את ההעדפה — לא נדרש שינוי.';
+        postAssistantMessage(msg);
+      } else {
+        postAssistantMessage(`עדכנתי את ההעדפה לכיוון ${labels.join(', ')}. בנה מערכת כדי להחיל.`, [{ label: 'בנה מערכת מלאה ל-185', action: 'build-full-185' }]);
+      }
+      return { changed: hasDraft };
+    }
+    case 'change_workload': {
+      const targets = { ...((_aiPlanLastPreferences && _aiPlanLastPreferences.semester_load_targets) || {}) };
+      if (patch.semesterId) targets[patch.semesterId] = 'reduce';
+      _aiPlanLastPreferences = { ...(_aiPlanLastPreferences || {}), balance_load: true, semester_load_targets: targets };
+      const semLabel = patch.semesterId ? (SEM_HE[patch.semesterId] || patch.semesterId) : 'הסמסטרים';
+      if (hasDraft) {
+        const before = _draftSemHoursMap();
+        rebuildDraftFromProfileLocal({ fillToTarget: false, seedFrom: 'draft' });
+        const after = _draftSemHoursMap();
+        const delta = patch.semesterId ? ((after[patch.semesterId] || 0) - (before[patch.semesterId] || 0)) : 0;
+        let msg = `עדכנתי את מגבלת העומס ל${semLabel}.`;
+        if (patch.semesterId) msg += delta < 0 ? `\nהורדתי כ-${Math.abs(delta)} ש״ש מ${semLabel}.` : `\nלא ניתן היה להוריד עומס נוסף מ${semLabel} בלי לפגוע בקורסי חובה.`;
+        postAssistantMessage(msg);
+      } else {
+        postAssistantMessage(`רשמתי העדפה לעומס נמוך יותר ב${semLabel}. בנה מערכת כדי לאזן.`, [{ label: 'בנה מערכת מלאה ל-185', action: 'build-full-185' }]);
+      }
+      return { changed: hasDraft };
+    }
+    case 'build_full_185': {
+      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
+      postAssistantMessage(formatFull185SummaryLocal(plan), [
+        { label: 'החל טיוטה', action: 'apply-draft' },
+        { label: 'דחה טיוטה', action: 'reject-draft' },
+      ]);
+      return { changed: true };
+    }
+    case 'rebuild': {
+      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
+      postAssistantMessage(formatFull185SummaryLocal(plan), [
+        { label: 'החל טיוטה', action: 'apply-draft' },
+        { label: 'דחה טיוטה', action: 'reject-draft' },
+      ]);
+      return { changed: true };
+    }
+    case 'explain_course_decision': {
+      const cid = (patch.courseIds || [])[0];
+      postAssistantMessage(explainCourseDecisionLocal(cid));
+      return { changed: false };
+    }
+    default:
+      return { changed: false };
+  }
+}
+
 /**
  * Send the chat input (or a provided message, e.g. from a quick reply) to
  * the planning/chat flow. If the message is a planning-style request and the
@@ -5582,13 +5864,37 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
 
   // Part F — maintain a structured UserIntentProfile across the conversation so the
   // assistant can echo what it understood and the next build consumes it. Updating
-  // the profile is a pure state change — it never triggers a build on its own.
+  // the profile is a pure state change — it never triggers a build on its own. The
+  // profile ACCUMULATES across turns: prior hard-excludes / must-includes / domains
+  // are merged in, never overwritten by a single new message.
   try {
     const _mode = (intent.type === 'ask_question' || intent.type === 'explain_course' || intent.type === 'ask_clarification') ? 'answer'
       : (intent.type === 'full_plan') ? 'build_plan'
       : (state.proposalDraft ? 'modify_plan' : 'update_preferences');
+    const _prev = _aiUserIntentProfile;
     _aiUserIntentProfile = buildUserIntentProfileLocal(planningText, { conversationMode: _mode });
+    if (_prev) {
+      _aiUserIntentProfile.hardExcludeCourseIds = [...new Set([...(_prev.hardExcludeCourseIds || []), ...(_aiUserIntentProfile.hardExcludeCourseIds || [])])];
+      _aiUserIntentProfile.mustIncludeCourseIds = [...new Set([...(_prev.mustIncludeCourseIds || []), ...(_aiUserIntentProfile.mustIncludeCourseIds || [])])];
+      _aiUserIntentProfile.requestedDomains = [...new Set([...(_prev.requestedDomains || []), ...(_aiUserIntentProfile.requestedDomains || [])])];
+    }
   } catch (_) {}
+
+  // Part A/C — structured chat-correction routing. A recognized correction patch
+  // mutates the active draft + UserIntentProfile DIRECTLY (the board actually
+  // changes) and posts a summary of the real change. build_full_185 and "why?"
+  // always route here; the draft-mutation patches route here only when a draft is
+  // active (with no draft, preference text falls through to be recorded + offered
+  // an explicit build, preserving the "שלח never auto-builds from scratch" contract).
+  try {
+    const _patch = classifyCorrectionIntentLocal(planningText);
+    const ALWAYS = new Set(['build_full_185', 'explain_course_decision']);
+    const DRAFT_ONLY = new Set(['hard_exclude_course', 'must_include_course', 'change_weight', 'change_workload']);
+    if (ALWAYS.has(_patch.type) || (state.proposalDraft && DRAFT_ONLY.has(_patch.type))) {
+      applyDraftPatchLocal(_patch);
+      return;
+    }
+  } catch (err) { /* fall through to legacy handling on any failure */ }
 
   // PART F — "why was this chosen?" gets a SPECIFIC, non-generic answer from
   // electiveSelectionReasons + course metadata, without triggering a re-plan.
@@ -8827,9 +9133,12 @@ function buildDeterministicReplacementPlan(args) {
   const targetHours = (typeof args.targetHours === 'number' && args.targetHours)
     || analysis.hours?.required_total || DEGREE_REQUIRED_HOURS;
 
-  // 2. Seed from the CURRENT COMMITTED BOARD (clean base — no bad AI courses).
-  let proposal = { semesters: mapToProposalSemesters(state.semesters || {}) };
-  const beforeCids = new Set(Object.values(state.semesters || {}).flat());
+  // 2. Seed from the CURRENT COMMITTED BOARD (clean base — no bad AI courses), or
+  //    from an explicit seed (args.seedSemesters) when re-running on the active draft
+  //    after a chat correction, so removed/excluded courses are not re-seeded.
+  const seedSemesters = args.seedSemesters || state.semesters || {};
+  let proposal = { semesters: mapToProposalSemesters(seedSemesters) };
+  const beforeCids = new Set(Object.values(seedSemesters).flat());
 
   // 3. Run the deterministic completion chain (same proven repairs as the main
   //    flow, here re-seeded from the board instead of the AI proposal).
@@ -8842,16 +9151,25 @@ function buildDeterministicReplacementPlan(args) {
   // parsed "אל תשבץ X" requests, persisted constraints, and session-removed courses.
   // They are never schedulable as electives/filler/focus (mandatory exempt).
   const hardExcludeSet = buildHardExcludeSetLocal(prefs);
+  // Part C — explicit must-include ids from chat patches (prefs.must_include_course_ids)
+  // are honored as HARD positive requirements: placed FIRST, before domain/text ids.
   // A hard-excluded course is removed from the requested-focus list too — the user
   // may have named a domain whose course they separately excluded.
-  const requestedAfterExclude = (intent.requested_course_ids || [])
-    .filter(cid => !hardExcludeSet.has(cid));
+  const patchMustInclude = (prefs.must_include_course_ids || []).filter(cid => !hardExcludeSet.has(cid));
+  const requestedAfterExclude = [...new Set([
+    ...patchMustInclude,
+    ...(intent.requested_course_ids || []),
+  ])].filter(cid => !hardExcludeSet.has(cid));
+  // Surface patch must-include in the intent object so the decision trace tags them.
+  if (patchMustInclude.length) intent.mustIncludeCourseIds = [...new Set([...patchMustInclude, ...(intent.mustIncludeCourseIds || [])])];
 
   // Part D — structured profile (drives intent-aligned completion + decision trace).
   const userIntentProfile = buildUserIntentProfileLocal(prefs.extra_request_he || '', {
     conversationMode: 'build_plan',
     extraHardExclude: [...hardExcludeSet],
   });
+  // Merge chat-patch must-include into the profile so the trace/completion see them.
+  if (patchMustInclude.length) userIntentProfile.mustIncludeCourseIds = [...new Set([...patchMustInclude, ...(userIntentProfile.mustIncludeCourseIds || [])])];
 
   const repairOpts = {
     courses: ctx.courses,
@@ -15125,6 +15443,15 @@ function _renderGroupedList(messages, classify, groupLabels, order) {
 
 function openPlanPreviewModal(proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons) {
   _aiPlanLastPreviewArgs = [proposal, errors, warnings, autofixed, completeness, moveLog, electiveSelectionReasons];
+  // Part F — the detached plan-preview / draft-explanation / correction modal is
+  // REMOVED. The draft is reviewed on the board, summarized by the sidebar card
+  // (numeric summary + apply/reject/rebuild), and edited through chat. Route any
+  // legacy caller to those surfaces instead of rendering a detached panel.
+  if (proposal) _aiPlanLastProposal = proposal;
+  try { if (typeof renderProposalCard === 'function') renderProposalCard(); } catch (_) {}
+  return;
+  /* eslint-disable no-unreachable */
+  // ─ legacy detached-modal renderer below is intentionally unreachable ─
   const allWarnings = [...(proposal.warnings_he || []), ...warnings];
 
   // ── Top summary (status / blocking errors / max load only) ─────────────────
@@ -15654,7 +15981,8 @@ function refreshPlanPreviewWithProposal(proposal) {
     renderBoard();
     if (_sidebarTab === 'ai') renderAiTab();
   }
-  openPlanPreviewModal(repaired, errors, warnings, false, completeness, moveLog);
+  // Part F — no detached modal: refresh the sidebar card from the recomputed draft.
+  try { if (typeof renderProposalCard === 'function') renderProposalCard(); } catch (_) {}
 }
 
 /**
