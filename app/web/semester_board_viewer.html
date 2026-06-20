@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'chat-draftpatch-v7'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'plan-context-v8'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5621,14 +5621,44 @@ function explainCourseDecisionLocal(cid) {
 
 /* Hebrew summary for a full-185 build: legal_full message, or legal_partial + the
    exact gap breakdown (Part E / Part G2). */
+/**
+ * Part C — return an error object if the canonical PlanContext baseline disagrees
+ * with the sidebar program-progress baseline, else null. Both derive from
+ * computeDegreeProgress(null draft), so this should never trip — it is a safety net
+ * that blocks a misleading "נצברו 0" summary when the user clearly has prior hours.
+ */
+function _planContextConsistencyErrorLocal() {
+  try {
+    const pc = buildPlanContextFromState({});
+    const prog = (typeof computeProgramProgress === 'function') ? computeProgramProgress() : null;
+    const sidebarBaseline = prog ? prog.plannedHours : (pc.completedHours + pc.existingBoardHours);
+    const ctxBaseline = pc.completedHours + pc.existingBoardHours;
+    if (sidebarBaseline > 0.05 && ctxBaseline <= 0.05) {
+      return { sidebarBaseline, ctxBaseline, sourceOfCompletedHours: pc.sourceOfCompletedHours };
+    }
+    if (Math.abs(sidebarBaseline - ctxBaseline) > 0.5) {
+      return { sidebarBaseline, ctxBaseline, mismatch: true };
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
 function formatFull185SummaryLocal(plan) {
+  // Part C — consistency guard: the chat summary and the sidebar program-progress
+  // baseline both derive from buildPlanContextFromState / computeDegreeProgress(null).
+  // If they ever disagree (sidebar shows prior hours but the plan context computes a
+  // zero baseline), refuse to present a misleading summary.
+  const guard = _planContextConsistencyErrorLocal();
+  if (guard) { console.error('[plan-context-error]', guard); return 'יש חוסר התאמה בנתוני השעות. לא אבנה טיוטה עד שאסנכרן את נתוני הבסיס.'; }
+
   const ds = computeDraftStatusLocal();
   const required = ds.required;
   if (ds.status === 'legal_full') return `בניתי מערכת חוקית מלאה ל-${required} ש״ש.`;
   if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש. הסבר מפורט בצ׳אט.';
+  const pc = buildPlanContextFromState({ proposalSemesters: (plan && plan.proposal && plan.proposal.semesters) || undefined });
   const g = (plan && plan.gapBreakdown) || _aiPlanLastGapBreakdown || {};
   const lines = [`בניתי טיוטה חוקית חלקית עד ${ds.total}/${required} ש״ש. חסרות ${ds.missing} ש״ש.`];
-  lines.push(`פירוט: נצברו ${g.completedHours || 0}, במערכת הנוכחית ${g.existingBoardHours || 0}, נוספו בטיוטה ${g.newlyAddedHours || 0}.`);
+  lines.push(`פירוט: נצברו ${pc.completedHours}, במערכת הנוכחית ${pc.existingBoardHours}, נוספו בטיוטה ${pc.newlyAddedDraftHours}.`);
   const reasons = [];
   if (g.blockedByPrereq) reasons.push(`${g.blockedByPrereq} חסומים בדרישות קדם`);
   if (g.blockedByOffering) reasons.push(`${g.blockedByOffering} לא מוצעים בסמסטרים המוצגים`);
@@ -5637,6 +5667,11 @@ function formatFull185SummaryLocal(plan) {
   if (g.blockedByMissingData) reasons.push(`${g.blockedByMissingData} חסרי נתונים`);
   if (g.legalCandidatesAvailable) reasons.push(`${g.legalCandidatesAvailable} מועמדים חוקיים נותרו אך פחות רלוונטיים לבקשה`);
   if (reasons.length) lines.push('לא הגענו ל-185 כי: ' + reasons.join(', ') + '.');
+  // Part D #10 — if no completed-hours source is set, the baseline may understate the
+  // user's real progress. Ask them to set it rather than silently assuming 0.
+  if (pc.sourceOfCompletedHours === 'none') {
+    lines.push('שים לב: לא הוגדרו שעות שכבר צברת. אם כבר השלמת קורסים, עדכן את שעות הזכאות ב"הקורסים שלי" כדי שהחישוב יתחיל מהבסיס הנכון ולא מ-0.');
+  }
   return lines.join('\n');
 }
 
@@ -6194,65 +6229,23 @@ function renderProposalCard() {
   const removedCount = diff?.removed.size ?? 0;
   const replacedCount = diff?.replaced.size ?? 0;
 
-  // PART A — compact degree-progress summary + PART E summary chips row.
-  const ctxForProgress = _aiPlanLastCtx;
-  const analysisForProgress = _aiPlanLastAnalysis;
-  let degreeProgressHtml = '';
-  let chipsHtml = '';
-  if (ctxForProgress && analysisForProgress) {
-    const courseHoursForProgress = {};
-    for (const [cid, info] of Object.entries(ctxForProgress.courses)) courseHoursForProgress[cid] = info.hours;
-    const proposalSemesters = (evald?.proposal?.semesters) || mapToProposalSemesters(draft.semesters);
-    const degreeStatus = getDegreeHoursStatusLocal(analysisForProgress, proposalSemesters, courseHoursForProgress);
-    degreeProgressHtml = renderDegreeProgressHtml(analysisForProgress, degreeStatus, proposalSemesters);
-
-    const placedIdsChips = new Set(proposalSemesters.flatMap(s => s.course_ids || []));
-    const generalStatus = getGeneralRequirementStatusReportLocal(analysisForProgress, placedIdsChips);
-    const categoryStatus = getCategoryStatusReportLocal(analysisForProgress, placedIdsChips);
-    const categoriesSatisfied = categoryStatus.filter(c => c.satisfied).length;
-    let peakSemHours = 0;
-    for (const sem of proposalSemesters) peakSemHours = Math.max(peakSemHours, getSemesterLoadLocal(sem, ctxForProgress.courses || {}));
-    chipsHtml = `<div class="draft-chips-row">
-      ${mkChip('סה״כ', `${degreeStatus.total_after_plan}/${degreeStatus.degree_required_hours}`, false)}
-      ${mkChip('נותרו', `${degreeStatus.missing_hours} ש״ש`, degreeStatus.missing_hours > 0)}
-      ${generalStatus ? mkChip('שער רוח', `${generalStatus.placed}/${generalStatus.required}`, !generalStatus.satisfied) : ''}
-      ${categoryStatus.length ? mkChip('קטגוריות', `${categoriesSatisfied}/${categoryStatus.length}`, categoriesSatisfied < categoryStatus.length) : ''}
-      ${mkChip('נוספו', addedCount, false)}
-      ${mkChip('הועברו', movedCount, false)}
-      ${replacedCount ? mkChip('הוחלפו', replacedCount, false) : ''}
-      ${mkChip('עומס שיא', `${peakSemHours} ש״ש`, false)}
-    </div>`;
-  }
-
-  // Part G — render from the ONE canonical draft status. The sidebar card carries
-  // only: status line + numeric summary chips + apply/reject/rebuild. ALL detailed
-  // explanation lives in chat (no duplicated plan-explanation panel here).
+  // Issue 1 — NO large draft/status/explanation card inside the chat panel. The
+  // status + gap explanation are written as normal chat messages (by the build /
+  // patch flows). This element renders ONLY a compact inline action row, so it can
+  // never take over or hide the conversation. Numbers/explanations live in chat.
   const ds = computeDraftStatusLocal();
   const canApply = ds.status === 'legal_full' || ds.status === 'legal_partial';
-
-  let statusLabel, statusCls;
-  if (ds.status === 'legal_full')          { statusLabel = `מערכת חוקית מלאה — ${ds.total}/${ds.required} ש״ש`; statusCls = 'status-ok'; }
-  else if (ds.status === 'legal_partial')  { statusLabel = `טיוטה חוקית חלקית עד ${ds.total}/${ds.required} ש״ש — חסרות ${ds.missing} ש״ש`; statusCls = 'status-warn'; }
-  else if (ds.status === 'illegal_blocked'){ statusLabel = 'יש לתקן בעיות חוקיות לפני החלה'; statusCls = 'status-blocked'; }
-  else if (ds.status === 'data_error')     { statusLabel = 'יש קורסים עם נתונים חסרים בטיוטה'; statusCls = 'status-blocked'; }
-  else                                     { statusLabel = ''; statusCls = ''; }
-
-  const applyLabel = ds.status === 'legal_full' ? 'החל מערכת' : 'החל טיוטה חלקית';
+  const applyLabel = ds.status === 'legal_full' ? 'החל מערכת' : 'החל טיוטה';
   const actionsHtml = canApply
-    ? `<button class="btn btn-primary" id="sb-draft-apply">${applyLabel}</button>
-       <button class="btn" id="sb-draft-rebuild">בנה מערכת מחדש</button>
-       <button class="btn" id="sb-draft-reject">דחה טיוטה</button>`
-    : `<button class="btn btn-primary" id="sb-draft-rebuild">בנה מערכת מחדש</button>
-       <button class="btn" id="sb-draft-reject">דחה טיוטה</button>`;
+    ? `<button class="btn btn-primary btn-sm" id="sb-draft-apply">${applyLabel}</button>
+       <button class="btn btn-sm" id="sb-draft-rebuild">בנה מחדש</button>
+       <button class="btn btn-sm" id="sb-draft-reject">דחה</button>`
+    : `<button class="btn btn-primary btn-sm" id="sb-draft-rebuild">בנה מחדש</button>
+       <button class="btn btn-sm" id="sb-draft-reject">דחה</button>`;
 
-  card.innerHTML = `
-    <div class="ai-proposal-card-inner" data-draft-status="${ds.status}">
-      <div class="ai-plan-hint">זו טיוטה, עדיין לא אושרה.</div>
-      <div class="ai-plan-status ${statusCls}">${esc(statusLabel)}</div>
-      ${chipsHtml}
-      <div class="ai-plan-hint">לשינויים — כתוב מה לשנות בצ׳אט למטה (למשל: "אל תשבץ X", "תוסיף Y", "תוריד עומס מסמסטר ג׳ א׳").</div>
-      <div style="display:flex;flex-direction:column;gap:4px">${actionsHtml}</div>
-    </div>`;
+  card.innerHTML =
+    `<div class="ai-proposal-actions" data-draft-status="${ds.status}"
+          style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${actionsHtml}</div>`;
 
   document.getElementById('sb-draft-apply')?.addEventListener('click', () => { if (canApply) applyProposalDraft(); });
   document.getElementById('sb-draft-rebuild')?.addEventListener('click', () => { triggerExplicitRebuild(); });
@@ -6505,6 +6498,71 @@ function computeDegreeProgress(context, boardState, draftState) {
 }
 function DEGREE_REQUIRED_HOURS_GLOBAL() {
   return (typeof DEGREE_REQUIRED_HOURS !== 'undefined') ? DEGREE_REQUIRED_HOURS : 185;
+}
+
+/**
+ * THE single canonical hours baseline (Part B). Every planning / chat / sidebar /
+ * status / gap surface MUST read from this so they can never disagree.
+ *
+ * The baseline (completed + existing board + currently-planned) is computed with a
+ * NULL draft — IDENTICAL to the sidebar program-progress calc (computeProgramProgress)
+ * — so a draft proposal can never re-bucket the user's prior hours out of the total
+ * (the bug that produced 81/185 in chat while the sidebar showed 128.5/185). Only the
+ * genuinely-new draft courses are added on top.
+ *
+ * @param {object} [opts.proposalSemesters] array of {semester_id, course_ids}; if
+ *   omitted the active draft (state.proposalDraft) is used; if neither, baseline only.
+ * Returns { completedHours, existingBoardHours, newlyAddedDraftHours, totalAfterPlan,
+ *   requiredHours, remainingHoursTo185, duplicateHours, sourceOfCompletedHours,
+ *   sourceOfExistingBoardHours }.
+ */
+function buildPlanContextFromState(opts) {
+  opts = opts || {};
+  // Baseline: committed board + completed + currently-planned, NO draft (matches sidebar).
+  const base = computeDegreeProgress({}, state, null);
+  const required = base.required || DEGREE_REQUIRED_HOURS_GLOBAL();
+  const completedHours = Math.round((base.completed || 0) * 10) / 10;
+  const existingBoardHours = Math.round(((base.current_board || 0) + (base.currently_planned || 0)) * 10) / 10;
+
+  // Already-counted ids (board + completed + currently-planned) — anything else placed
+  // by the draft is genuinely NEW and counts once toward newlyAddedDraftHours.
+  const boardPlaced = new Set(Object.values(state.semesters || {}).flat());
+  const completedIds = new Set(Object.entries(userCourseStatuses || {})
+    .filter(([, u]) => u && u.status === 'completed').map(([c]) => c));
+  const plannedIds = new Set(Object.entries(userCourseStatuses || {})
+    .filter(([, u]) => u && (u.status === 'currently_taking' || u.status === 'planned')).map(([c]) => c));
+  const alreadyCounted = (cid) => boardPlaced.has(cid) || completedIds.has(cid) || plannedIds.has(cid);
+
+  const draftSems = opts.proposalSemesters
+    ? Object.fromEntries(opts.proposalSemesters.map(s => [s.semester_id, s.course_ids || []]))
+    : (state.proposalDraft ? state.proposalDraft.semesters : null);
+
+  let newlyAddedDraftHours = 0, duplicateHours = 0;
+  const seenNew = new Set();
+  if (draftSems) {
+    for (const ids of Object.values(draftSems)) {
+      for (const cid of (ids || [])) {
+        if (alreadyCounted(cid)) continue;
+        const h = hoursForCourseId(cid);
+        if (seenNew.has(cid)) { if (typeof h === 'number') duplicateHours += h; continue; }
+        seenNew.add(cid);
+        if (typeof h === 'number') newlyAddedDraftHours += h;
+      }
+    }
+  }
+  newlyAddedDraftHours = Math.round(newlyAddedDraftHours * 10) / 10;
+  duplicateHours = Math.round(duplicateHours * 10) / 10;
+
+  const totalAfterPlan = Math.round((completedHours + existingBoardHours + newlyAddedDraftHours) * 10) / 10;
+  const remainingHoursTo185 = Math.max(0, Math.round((required - totalAfterPlan) * 10) / 10);
+
+  const manualSet = typeof (degreeHoursProfile && degreeHoursProfile.completed_degree_hours) === 'number';
+  return {
+    completedHours, existingBoardHours, newlyAddedDraftHours, duplicateHours,
+    totalAfterPlan, requiredHours: required, remainingHoursTo185,
+    sourceOfCompletedHours: manualSet ? 'degree_hours_profile' : (completedIds.size ? 'completed_status_courses' : 'none'),
+    sourceOfExistingBoardHours: 'committed_board+currently_planned',
+  };
 }
 
 function computeProgramProgress() {
@@ -8525,12 +8583,14 @@ function computeDraftStatusLocal() {
   // on ANY draft (built, hand-edited, or chat-patched) without needing the heavier
   // _aiPlanLastCtx pipeline globals to be set.
   const proposal = { semesters: mapToProposalSemesters(draft.semesters) };
-  let dp;
-  try { dp = computeDegreeProgress({}, state, { semesters: draft.semesters }); }
-  catch (_) { dp = { required: DEGREE_REQUIRED_HOURS_GLOBAL(), total_after: 0 }; }
-  const required = dp.required ?? DEGREE_REQUIRED_HOURS_GLOBAL();
-  const total = dp.total_after ?? 0;
-  const missing = Math.max(0, Math.round((required - total) * 10) / 10);
+  // Hours from THE canonical PlanContext (null-draft baseline + new draft hours) so
+  // this status can never disagree with the sidebar program-progress total.
+  let pc;
+  try { pc = buildPlanContextFromState({ proposalSemesters: proposal.semesters }); }
+  catch (_) { pc = { requiredHours: DEGREE_REQUIRED_HOURS_GLOBAL(), totalAfterPlan: 0, remainingHoursTo185: 0 }; }
+  const required = pc.requiredHours;
+  const total = pc.totalAfterPlan;
+  const missing = pc.remainingHoursTo185;
 
   const placed = proposal.semesters.flatMap(s => s.course_ids || []);
   // data_error — a placed course with no display name or no schedulable data.
@@ -9204,12 +9264,36 @@ function buildDeterministicReplacementPlan(args) {
     try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
   }
 
-  // 4. Enforce legality, then balance workload across semesters.
+  // 4. Enforce legality, then balance workload across semesters. For an aggressive
+  //    full-185 build the load balancer must use the HARD cap, not the soft comfort
+  //    preference — otherwise repairPlanLoad sheds the very courses the fill added to
+  //    reach 185 (the soft 20h cap can make 185 mathematically unreachable).
+  const _hardCap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : ctx.maxHoursPerSemester;
+  const _balanceCtx = args.fillToTarget ? { ...ctx, maxHoursPerSemester: _hardCap } : ctx;
   try {
-    const enf = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: ctx.maxHoursPerSemester });
+    const enf = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: _balanceCtx.maxHoursPerSemester });
     proposal = enf.proposal || proposal;
   } catch (_) {}
-  try { proposal = repairPlanLoad(proposal, ctx).proposal || proposal; } catch (_) {}
+  try { proposal = repairPlanLoad(proposal, _balanceCtx).proposal || proposal; } catch (_) {}
+
+  // Part E — iterate fill ⇄ rebalance: repairPlanLoad can free room a single greedy
+  // fill pass missed (candidates that only fit AFTER rebalancing). Keep filling the
+  // rebalanced plan until 185 is reached or a pass adds nothing — so the planner does
+  // not stop short while legal candidates that now fit still remain.
+  if (args.fillToTarget) {
+    for (let _i = 0; _i < 5; _i++) {
+      let _before;
+      try { _before = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _before = 0; }
+      if (_before >= targetHours) break;
+      let _added = 0;
+      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; } catch (_) {}
+      try { const enf2 = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: _balanceCtx.maxHoursPerSemester }); proposal = enf2.proposal || proposal; } catch (_) {}
+      try { proposal = repairPlanLoad(proposal, _balanceCtx).proposal || proposal; } catch (_) {}
+      let _after;
+      try { _after = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _after = _before; }
+      if (_added === 0 || _after <= _before) break; // no further progress possible
+    }
+  }
 
   // 5. Defense in depth: drop any course that is unschedulable_missing_data
   //    (the repairs already require an offering signal, but a board course or a
@@ -9400,11 +9484,13 @@ function buildDeterministicReplacementPlan(args) {
  */
 function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const required = opts.requiredHours || DEGREE_REQUIRED_HOURS;
-  // Never exceed the HARD overload cap — a fill that overloads a semester would
-  // make the whole draft illegal_blocked. Stay at/under the hard cap so the
-  // result is a LEGAL (possibly partial) plan, not an overloaded one.
-  const softMax = opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER;
-  const max = Math.min(softMax, (typeof HARD_LOAD_CAP !== 'undefined' ? HARD_LOAD_CAP : softMax));
+  // "Build a full 185 plan" is an aggressive completion request: fill up to the HARD
+  // overload cap (the legality limit), NOT the soft per-semester comfort preference
+  // (e.g. 20) — otherwise 185 can be mathematically unreachable even though legal
+  // candidates and semester room exist. Staying at/under the hard cap keeps the
+  // result LEGAL (computeDraftStatusLocal's overload check uses the same cap).
+  const hardCap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : (opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER);
+  const max = hardCap;
   const completed = opts.completedCourseIds || new Set();
   const profile = opts.userIntentProfile || null;
   const hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
@@ -9415,8 +9501,12 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const hoursOf = sem => sem.course_ids.reduce((t, cid) => t + (opts.courses[cid]?.hours || 0), 0);
   const curTotal = () => {
     try {
-      const draftState = { semesters: Object.fromEntries(sems.map(s => [s.semester_id, s.course_ids])) };
-      return computeDegreeProgress({}, state, draftState).total_after;
+      // Use THE canonical baseline (completed + existing board + currently-planned)
+      // plus the in-progress proposal's new hours — so the fill targets 185 from the
+      // user's REAL starting point (e.g. 128.5), not a draft-only sub-total.
+      return buildPlanContextFromState({
+        proposalSemesters: sems.map(s => ({ semester_id: s.semester_id, course_ids: s.course_ids })),
+      }).totalAfterPlan;
     } catch (_) { return sems.flatMap(s => s.course_ids).reduce((t, cid) => t + (opts.courses[cid]?.hours || 0), 0); }
   };
 
@@ -9472,12 +9562,12 @@ function buildGapBreakdownLocal(proposal, analysis, opts) {
   const profile = opts.userIntentProfile || null;
   const hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
 
-  let completedHours = 0, existingBoardHours = 0, newlyAddedHours = 0, totalAfterPlan = 0;
+  // THE canonical PlanContext baseline (null-draft) + this proposal's new hours.
+  let completedHours = 0, existingBoardHours = 0, newlyAddedHours = 0, totalAfterPlan = 0, duplicateHours = 0;
   try {
-    const draftState = { semesters: Object.fromEntries((proposal.semesters || []).map(s => [s.semester_id, s.course_ids || []])) };
-    const dp = computeDegreeProgress({}, state, draftState);
-    completedHours = dp.completed; existingBoardHours = dp.current_board + dp.currently_planned;
-    newlyAddedHours = dp.proposed_added; totalAfterPlan = dp.total_after;
+    const pc = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
+    completedHours = pc.completedHours; existingBoardHours = pc.existingBoardHours;
+    newlyAddedHours = pc.newlyAddedDraftHours; totalAfterPlan = pc.totalAfterPlan; duplicateHours = pc.duplicateHours;
   } catch (_) {
     totalAfterPlan = (opts.afterCids || []).reduce((s, cid) => s + (opts.courseHours?.[cid] || 0), 0);
   }
@@ -9516,7 +9606,7 @@ function buildGapBreakdownLocal(proposal, analysis, opts) {
   }
 
   return {
-    completedHours, existingBoardHours, newlyAddedHours, totalAfterPlan,
+    completedHours, existingBoardHours, newlyAddedHours, duplicateHours, totalAfterPlan,
     requiredHours: required, remainingHoursTo185,
     legalCandidatesAvailable, blockedByPrereq, blockedByOffering, blockedByHardExclude,
     blockedByWorkload, blockedByMissingData, rejectedWeak,

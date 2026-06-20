@@ -74,17 +74,20 @@ describe('canonical draft.status — sidebar card', () => {
     })()`);
   }
 
-  test('legal_partial: shows apply, says "טיוטה חוקית חלקית", never "לא ניתן להציע מערכת חוקית"', () => {
+  test('legal draft: card is compact actions ONLY — no status/explanation text, apply present', () => {
     const status = renderLegalPartialCard();
     expect(['legal_full', 'legal_partial']).toContain(status);
     const card = document.getElementById('ai-proposal-card');
-    // No contradictory legacy labels.
+    // Issue 1 — the card is NOT an explanation surface: no "זו טיוטה", no
+    // "טיוטה חוקית חלקית" status paragraph, no contradictory legacy labels.
     expect(card.innerHTML).not.toContain('לא ניתן להציע מערכת חוקית');
-    // Apply path is available for a legal (full or partial) draft.
+    expect(card.textContent).not.toContain('זו טיוטה');
+    expect(card.textContent).not.toContain('טיוטה חוקית חלקית');
+    expect(card.querySelector('.ai-plan-status')).toBeFalsy();
+    expect(card.querySelector('.draft-chips-row')).toBeFalsy();
+    // Compact action buttons remain.
     expect(card.querySelector('#sb-draft-apply')).toBeTruthy();
-    if (status === 'legal_partial') {
-      expect(card.querySelector('.ai-plan-status').textContent).toContain('טיוטה חוקית חלקית');
-    }
+    expect(card.querySelector('#sb-draft-rebuild')).toBeTruthy();
   });
 
   test('illegal_blocked: no apply button; rebuild offered', () => {
