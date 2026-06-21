@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'panel-prefs-grade-v10'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'completed-source-v11'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5702,6 +5702,22 @@ function formatFull185SummaryLocal(plan) {
       : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
   }
   if (profile.gradeTarget != null) notes.push(`העדפתי קורסים עם סיכון ציונים נמוך/בינוני כדי לשמור על יעד ממוצע ${profile.gradeTarget}.`);
+  // Part D — surface RELEVANT courses that could not be scheduled due to missing data
+  // (e.g. תכן תרמי מתקדם 0542-4135 has no offered_semesters) instead of dropping silently.
+  try {
+    if (typeof courseMap !== 'undefined' && ((profile.requestedDomains || []).length || String(profile.raw_text || '').trim())) {
+      const relevantBlocked = [];
+      for (const cid of Object.keys(courseMap)) {
+        const c = courseMap[cid];
+        if (!c || c.course_type === 'mandatory' || c.is_mandatory) continue;
+        if (classifyCourseSchedulability(c) !== 'unschedulable_missing_data') continue;
+        const sc = scoreCourseAgainstIntentProfileLocal(c, profile);
+        if (sc.matched.some(m => m.indexOf('domain_') === 0 || m === 'lexical')) { relevantBlocked.push(c.name_he || cid); }
+        if (relevantBlocked.length >= 3) break;
+      }
+      if (relevantBlocked.length) notes.push('קורסים רלוונטיים שחסרים להם נתוני סמסטר ולכן לא ניתן לשבץ אותם כעת: ' + relevantBlocked.join(', ') + '.');
+    }
+  } catch (_) {}
   // If no completed-hours source is set, the baseline may understate real progress.
   const _pc = buildPlanContextFromState({ proposalSemesters: (plan && plan.proposal && plan.proposal.semesters) || undefined });
   if (_pc.sourceOfCompletedHours === 'none') notes.push('לא הוגדרו שעות שכבר צברת — אם כבר השלמת קורסים, עדכן את שעות הזכאות ב"הקורסים שלי" כדי שהחישוב יתחיל מהבסיס הנכון ולא מ-0.');
@@ -9218,7 +9234,13 @@ function buildDeterministicReplacementPlan(args) {
   //    after a chat correction, so removed/excluded courses are not re-seeded.
   const seedSemesters = args.seedSemesters || state.semesters || {};
   let proposal = { semesters: mapToProposalSemesters(seedSemesters) };
-  const beforeCids = new Set(Object.values(seedSemesters).flat());
+  // Source of truth = "הקורסים שלי": a course marked COMPLETED is done — it must not
+  // appear in the future years-3/4 draft (its hours count via completedHours, never as
+  // a board/draft course). Remove it from the seed so the planner never re-schedules it.
+  const _doneIds = new Set(Object.entries(typeof userCourseStatuses !== 'undefined' ? userCourseStatuses : {})
+    .filter(([, u]) => u && u.status === 'completed').map(([c]) => c));
+  if (_doneIds.size) for (const sem of proposal.semesters) sem.course_ids = (sem.course_ids || []).filter(cid => !_doneIds.has(cid));
+  const beforeCids = new Set(Object.values(seedSemesters).flat().filter(cid => !_doneIds.has(cid)));
 
   // 3. Run the deterministic completion chain (same proven repairs as the main
   //    flow, here re-seeded from the board instead of the AI proposal).
@@ -9388,6 +9410,12 @@ function buildDeterministicReplacementPlan(args) {
       let _a; try { _a = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _a = _b; }
       if (_a <= _b) break; // no further progress — remaining candidates are genuinely blocked
     }
+    // 5d. Part B — workload minimization: once at/over 185, trim the lowest-relevance
+    //     NON-required filler the fill over-added, so we don't carry extra load past
+    //     the target. Only removes when the total stays >= 185 (never drops below).
+    try {
+      proposal = minimizeOverloadAfterTargetLocal(proposal, { ...repairOpts, requiredHours: targetHours, beforeCids });
+    } catch (_) {}
   }
 
   // 6. Diff vs the committed board → what the replacement plan adds.
@@ -9542,6 +9570,13 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const completed = opts.completedCourseIds || new Set();
   const profile = opts.userIntentProfile || null;
   const hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
+  // Source of truth = "הקורסים שלי": a course the user marked completed or currently-
+  // taking must NEVER be (re)scheduled by the fill — it already counts toward the
+  // baseline and is assumed satisfied for prerequisites.
+  const _alreadyDone = (cid) => {
+    const st = (typeof userCourseStatuses !== 'undefined' && userCourseStatuses[cid] && userCourseStatuses[cid].status) || null;
+    return st === 'completed' || st === 'currently_taking' || completed.has(cid);
+  };
 
   const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
   for (const id of opts.knownSemesterIds) if (!sems.some(s => s.semester_id === id)) sems.push({ semester_id: id, course_ids: [] });
@@ -9583,7 +9618,7 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
     let placedOne = false;
     for (let i = 0; i < pool.length; i++) {
       const cid = pool[i].course_id;
-      if (placed.has(cid) || hardExcluded(cid)) continue;
+      if (placed.has(cid) || hardExcluded(cid) || _alreadyDone(cid)) continue;
       const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
       if (!cm || !isCourseRenderable(cm) || classifyCourseSchedulability(cm) === 'unschedulable_missing_data') continue;
       const info = opts.courses[cid] || {};
@@ -9608,6 +9643,103 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   return {
     proposal: { ...proposal, semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)) },
     added,
+  };
+}
+
+/**
+ * Part B — after reaching the target, trim the lowest-relevance NON-required filler the
+ * fill over-added, ONLY while the authoritative total stays >= target (so it never drops
+ * below 185). Reduces semester overload without losing 185 or any required course / שער-רוח.
+ * Never removes: committed-board courses, mandatory, must-include, requested-domain
+ * matches, or שער-רוח courses (those satisfy a separate requirement).
+ */
+function minimizeOverloadAfterTargetLocal(proposal, opts) {
+  const required = opts.requiredHours || DEGREE_REQUIRED_HOURS;
+  const beforeCids = opts.beforeCids || new Set();
+  const profile = opts.userIntentProfile || null;
+  const mustInc = new Set((profile && profile.mustIncludeCourseIds) || []);
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const totalOf = () => { try { return buildPlanContextFromState({ proposalSemesters: sems.map(s => ({ semester_id: s.semester_id, course_ids: s.course_ids })) }).totalAfterPlan; } catch (_) { return 0; } };
+  const hoursOf = sem => sem.course_ids.reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+  const scoreOf = (cid) => { const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null; return c ? scoreCourseAgainstIntentProfileLocal(c, profile).score : 0; };
+  const removable = (cid) => {
+    if (beforeCids.has(cid) || mustInc.has(cid)) return false;
+    const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+    if (!c || c.course_type === 'mandatory' || c.is_mandatory) return false;
+    if (_isShaarRuachLocal(c)) return false; // protects the שער-רוח credit requirement
+    const sc = scoreCourseAgainstIntentProfileLocal(c, profile);
+    return sc.weak; // only intent-unaligned filler
+  };
+  if (totalOf() < required) return proposal; // never trim a below-target plan
+  let changed = true, guard = 0;
+  while (changed && guard++ < 80) {
+    changed = false;
+    const order = [...sems].sort((a, b) => hoursOf(b) - hoursOf(a));
+    for (const sem of order) {
+      const cands = sem.course_ids.filter(removable).sort((a, b) => scoreOf(a) - scoreOf(b));
+      for (const cid of cands) {
+        const h = hoursForCourseId(cid) || 0;
+        if (totalOf() - h >= required) {
+          sem.course_ids = sem.course_ids.filter(x => x !== cid);
+          changed = true; break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+  return { ...proposal, semesters: sems };
+}
+
+/**
+ * Part D — audit a course's planning data: which fields are present/missing and the
+ * exact reason it cannot be scheduled. Used to SURFACE relevant-but-unschedulable
+ * courses (e.g. 0542-4135 תכן תרמי) instead of silently dropping them.
+ */
+function auditCourseDataLocal(cid) {
+  const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+  if (!c) return { course_id: cid, in_courseMap: false };
+  const offered = Array.isArray(c.offered_semesters) ? c.offered_semesters : [];
+  const eff = Array.isArray(c.effective_allowed_semesters) ? c.effective_allowed_semesters : [];
+  const hasOffering = offered.length > 0 || eff.length > 0;
+  const cls = classifyCourseSchedulability(c);
+  const missing = [];
+  if (!c.name_he && !c.course_name) missing.push('name');
+  if (!hasOffering) missing.push('offered_semesters');
+  if (c.weekly_hours == null && c.semester_hours == null) missing.push('weekly_hours');
+  return {
+    course_id: cid, in_courseMap: true, name_he: c.name_he || null,
+    category: c.program_category_id || c.category_id || null,
+    weekly_hours: c.weekly_hours ?? null,
+    offered_semesters: offered, effective_allowed_semesters: eff,
+    has_offering: hasOffering, syllabus_url: c.syllabus_url || null,
+    syllabus_text_available: !!c.syllabus_text_available,
+    final_assessment: c.assessment_type || null, has_final_exam: _hasFinalExamLocal(c),
+    tau_factor_avg_grade: c.tau_factor_avg_grade ?? null,
+    schedulability: cls, missing_fields: missing,
+    schedulable: cls !== 'unschedulable_missing_data' && isCourseRenderable(c),
+    blocking_reason: missing.length ? `חסר: ${missing.join(', ')}` : null,
+  };
+}
+
+/**
+ * Source-of-truth audit of the "הקורסים שלי" completed/current/planned state, for the
+ * report and for the chat to confirm what counts toward completedHours.
+ */
+function auditCompletedStateLocal() {
+  const completedCourseIds = [], currentlyTakingCourseIds = [], plannedCourseIds = [];
+  for (const [cid, us] of Object.entries(typeof userCourseStatuses !== 'undefined' ? userCourseStatuses : {})) {
+    if (us?.status === 'completed') completedCourseIds.push(cid);
+    else if (us?.status === 'currently_taking') currentlyTakingCourseIds.push(cid);
+    else if (us?.status === 'planned') plannedCourseIds.push(cid);
+  }
+  let pc = {}; try { pc = buildPlanContextFromState({}); } catch (_) {}
+  return {
+    completedHours: pc.completedHours ?? 0,
+    existingBoardHours: pc.existingBoardHours ?? 0,
+    totalAfterPlan: pc.totalAfterPlan ?? 0,
+    remainingHoursTo185: pc.remainingHoursTo185 ?? 0,
+    sourceOfCompletedHours: pc.sourceOfCompletedHours || 'none',
+    completedCourseIds, currentlyTakingCourseIds, plannedCourseIds,
   };
 }
 
@@ -13198,6 +13330,9 @@ const COURSE_NAME_ALIASES = {
   '0542-4223': ['fem', 'finite element', 'finite elements', 'אלמנטים סופיים',
                 'אלמנתים סופיים', 'אלמנטים סופים', 'מבוא לאלמנטים סופיים'],
   '0542-4226': ['יישומי אלמנטים סופיים', 'אלמנטים סופיים בתעשייה', 'finite element applications'],
+  '0542-4135': ['תכן תרמי מתקדם', 'תכן תרמי', 'תכנון ציוד תרמי', 'תכן תרמי מתקדם בעזרת כלי תוכנה',
+                'thermal design', 'advanced thermal design'],
+  '0542-4322': ['תכנון תרמי של ציוד אלקטרוני', 'תכן תרמי אלקטרוני', 'thermal design electronics'],
 };
 
 /**
