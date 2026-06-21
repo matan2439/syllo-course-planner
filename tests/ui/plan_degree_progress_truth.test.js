@@ -292,19 +292,47 @@ describe('degree-progress counting truth-table', () => {
       degreeHoursProfile = { completed_degree_hours: 150 };
       const baseline = computeDegreeProgress({},state,null);
       const boardSet = new Set(Object.values(state.semesters || {}).flat());
+
+      // Trace the building process to see where courses are added
+      let traceStep = [];
+      const origBuild = buildDeterministicReplacementPlan;
+      window.buildDeterministicReplacementPlan = function(args) {
+        const result = origBuild.call(this, args);
+        return result;
+      };
+
       const plan = buildFull185PlanLocal({ extra_request_he: '' });
       const placed = plan.proposal.semesters.flatMap(s=>s.course_ids||[]);
+      const newCourses = placed.filter(cid => !boardSet.has(cid));
       const planCtx = buildPlanContextFromState({proposalSemesters:plan.proposal.semesters});
+
+      // Track where the extra hours came from
+      let newHours = 0;
+      for (const cid of newCourses) newHours += (hoursForCourseId(cid) || 0);
+
       return JSON.stringify({
         completed: 150,
+        completed_from: 'manual',
         baseline_total: baseline.completed + baseline.current_board + baseline.currently_planned,
-        plan_total: planCtx.totalAfterPlan
+        baseline_breakdown: {completed: baseline.completed, board: baseline.current_board, planned: baseline.currently_planned},
+        plan_total: planCtx.totalAfterPlan,
+        plan_breakdown: {completed: planCtx.completedHours, board: planCtx.existingBoardHours, added: planCtx.newlyAddedDraftHours},
+        board_course_count: boardSet.size,
+        new_course_count: newCourses.length,
+        new_hours: Math.round(newHours * 10) / 10,
+        new_course_ids: newCourses.slice(0, 3),
+        should_only_add: Math.max(0, 185 - (150 + baseline.current_board))
       });
     })()`));
 
+    // Log for manual inspection
+    console.log('[T15] r=', r);
+    console.log('[T15] New courses added:', r.new_course_ids);
+
     expect(r.completed).toBe(150);
     expect(r.plan_total).toBeGreaterThanOrEqual(185);
-    expect(r.plan_total).toBeLessThanOrEqual(195); // should not overshoot by more than ~1 course (10 hours)
+    // BUG: This should pass but doesn't - plan adds too many courses
+    expect(r.plan_total).toBeLessThanOrEqual(195);
   });
 
   test('T16 — no course can be counted as both completed and planned on board', () => {

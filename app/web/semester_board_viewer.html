@@ -9647,26 +9647,56 @@ function buildDeterministicReplacementPlan(args) {
     requestedCourseIds: requestedAfterExclude,
     userIntentProfile,
   };
-  try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+  // Don't add ANY courses (mandatory included) if the baseline ALREADY meets the
+  // target. A high manual completed total (e.g. 150 ש"ש) means the student has done
+  // most of the degree — including mandatory courses — but the lump-sum can't say
+  // WHICH ones, so re-adding "missing" mandatory courses double-counts and overfills
+  // (the 150+41→210 bug). When already at/over target, trust the completed total and
+  // add nothing. (When the baseline is below target, mandatory is added normally.)
+  let _skipOptionalRepairs = false;
+  if (args.fillToTarget) {
+    try {
+      const _seedCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
+      if (_seedCtx.totalAfterPlan >= targetHours) _skipOptionalRepairs = true;
+    } catch (_) {}
+  }
+  if (!_skipOptionalRepairs) {
+    try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+    // Re-check after mandatory: it may have closed the gap on its own.
+    if (args.fillToTarget) {
+      try {
+        const _checkCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
+        if (_checkCtx.totalAfterPlan >= targetHours) _skipOptionalRepairs = true;
+      } catch (_) {}
+    }
+  }
+
   // Part C — place the user's requested-focus courses FIRST (before generic
   // category fill) so they both satisfy degree categories AND are never crowded
   // out. Running this ahead of repairAddMissingElectivesLocal also avoids adding
   // duplicate category courses on top of the focus ones (which overloaded sems).
   let _domainPass = { added: [], rejected: [] };
-  try { _domainPass = repairAddRequestedDomainCoursesLocal(proposal, analysis, repairOpts); proposal = _domainPass.proposal || proposal; } catch (_) {}
-  try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
-  try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
-  // Part C — intent-aligned completion toward 185 ש"ש (not random filler): ranked
-  // by the UserIntentProfile, weak alternatives labeled. Reuses the gated engine.
   let _completion = { added: [], weakCount: 0 };
-  try { _completion = repairAddIntentAlignedCompletionCoursesLocal(proposal, analysis, repairOpts); proposal = _completion.proposal || proposal; } catch (_) {}
+  if (!_skipOptionalRepairs) {
+    try { _domainPass = repairAddRequestedDomainCoursesLocal(proposal, analysis, repairOpts); proposal = _domainPass.proposal || proposal; } catch (_) {}
+    try { proposal = repairAddMissingElectivesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+    try { proposal = repairAddGeneralCoursesLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
+    // Part C — intent-aligned completion toward 185 ש"ש (not random filler): ranked
+    // by the UserIntentProfile, weak alternatives labeled. Reuses the gated engine.
+    try { _completion = repairAddIntentAlignedCompletionCoursesLocal(proposal, analysis, repairOpts); proposal = _completion.proposal || proposal; } catch (_) {}
+  }
 
   // Part E — build_full_185: keep adding LEGAL, intent-ranked candidates until the
   // authoritative degree total (computeDegreeProgress baseline) reaches the target
   // or no legal candidate remains. Uncapped — the only stop is target-or-exhausted.
+  // BUG FIX: Only fill if the baseline doesn't already exceed the target.
   let _fill = { added: [] };
   if (args.fillToTarget) {
-    try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
+    const _baselineCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
+    const _baselineTotal = _baselineCtx.totalAfterPlan;
+    if (_baselineTotal < targetHours) {
+      try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
+    }
   }
 
   // 4. Enforce legality, then balance workload across semesters. For an aggressive
