@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'full185-fill-v9'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'panel-prefs-grade-v10'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -4007,8 +4007,12 @@ function sidebarQuickActionPrefs() {
     preferred_categories:    _aiPlanLastPreferences?.preferred_categories ?? [],
     wanted_course_ids:       wanted,
     unwanted_course_ids:     unwanted,
-    strongly_avoided_course_ids: strongUnwanted,
+    // Panel "avoid/exclude" is a HARD exclusion — include every strongUnwanted id,
+    // not only those also marked unwanted (the panel sets the strong list directly).
+    strongly_avoided_course_ids: [...new Set([...(_aiPickerState.strongUnwanted || []), ...strongUnwanted])],
     soft_avoided_course_ids: (_aiPickerState.softUnwanted || []),
+    // Panel שער-רוח final-assessment preference (e.g. prefer_no_exam) — feeds ranking.
+    shaarRuachAssessmentPref: _aiPickerState.shaarRuachAssessmentPref ?? _aiPlanLastPreferences?.shaarRuachAssessmentPref ?? null,
     extra_request_he:        extra,
     // Carry through explicit overload confirmation / grade relaxation set via
     // blocked-build clarification chips, so the rebuild honors them.
@@ -5526,6 +5530,10 @@ function classifyCorrectionIntentLocal(text) {
   const raw = (text || '').trim();
   const mk = (type, extra) => ({ type, courseIds: [], domains: [], semesterId: null, reason_he: '', requiresReplan: true, ...extra });
 
+  // Part F — full per-course detail on request ("פתח פירוט מלא" / "למה כל קורס נבחר").
+  if (/פתח\s*פירוט\s*מלא|פירוט\s*מלא|למה\s*כל\s*קורס/.test(raw)) {
+    return mk('explain_full_detail', { requiresReplan: false });
+  }
   // build a full 185 plan
   if (/\b185\b|מערכת\s*מלאה|תואר\s*מלא|כל\s*התואר/.test(raw) && /בנה|תבנה|בני|השלם|תשלים|תבנ/.test(raw)) {
     return mk('build_full_185', { targetHours: DEGREE_REQUIRED_HOURS_GLOBAL(), reason_he: 'בניית מערכת מלאה ל-185 ש״ש' });
@@ -5643,35 +5651,73 @@ function _planContextConsistencyErrorLocal() {
   } catch (e) { return null; }
 }
 
+/**
+ * Part F — CONCISE build summary: status line + per-focus counts + brief blockers +
+ * exclusion / שער-רוח notes. No exhaustive per-course list (that is shown only when
+ * the user asks "פתח פירוט מלא" / "למה כל קורס נבחר?", via formatFull185DetailLocal).
+ */
 function formatFull185SummaryLocal(plan) {
-  // Part C — consistency guard: the chat summary and the sidebar program-progress
-  // baseline both derive from buildPlanContextFromState / computeDegreeProgress(null).
-  // If they ever disagree (sidebar shows prior hours but the plan context computes a
-  // zero baseline), refuse to present a misleading summary.
   const guard = _planContextConsistencyErrorLocal();
   if (guard) { console.error('[plan-context-error]', guard); return 'יש חוסר התאמה בנתוני השעות. לא אבנה טיוטה עד שאסנכרן את נתוני הבסיס.'; }
 
   const ds = computeDraftStatusLocal();
   const required = ds.required;
-  if (ds.status === 'legal_full') return `בניתי מערכת חוקית מלאה ל-${required} ש״ש.`;
-  if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש. הסבר מפורט בצ׳אט.';
-  const pc = buildPlanContextFromState({ proposalSemesters: (plan && plan.proposal && plan.proposal.semesters) || undefined });
-  const g = (plan && plan.gapBreakdown) || _aiPlanLastGapBreakdown || {};
-  const lines = [`בניתי טיוטה חוקית חלקית עד ${ds.total}/${required} ש״ש. חסרות ${ds.missing} ש״ש.`];
-  lines.push(`פירוט: נצברו ${pc.completedHours}, במערכת הנוכחית ${pc.existingBoardHours}, נוספו בטיוטה ${pc.newlyAddedDraftHours}.`);
-  const reasons = [];
-  if (g.blockedByPrereq) reasons.push(`${g.blockedByPrereq} חסומים בדרישות קדם`);
-  if (g.blockedByOffering) reasons.push(`${g.blockedByOffering} לא מוצעים בסמסטרים המוצגים`);
-  if (g.blockedByHardExclude) reasons.push(`${g.blockedByHardExclude} הוחרגו לבקשתך`);
-  if (g.blockedByWorkload) reasons.push(`${g.blockedByWorkload} חסומים במגבלת עומס`);
-  if (g.blockedByMissingData) reasons.push(`${g.blockedByMissingData} חסרי נתונים`);
-  if (g.legalCandidatesAvailable) reasons.push(`${g.legalCandidatesAvailable} מועמדים חוקיים נותרו אך פחות רלוונטיים לבקשה`);
-  if (reasons.length) lines.push('לא הגענו ל-185 כי: ' + reasons.join(', ') + '.');
-  // Part D #10 — if no completed-hours source is set, the baseline may understate the
-  // user's real progress. Ask them to set it rather than silently assuming 0.
-  if (pc.sourceOfCompletedHours === 'none') {
-    lines.push('שים לב: לא הוגדרו שעות שכבר צברת. אם כבר השלמת קורסים, עדכן את שעות הזכאות ב"הקורסים שלי" כדי שהחישוב יתחיל מהבסיס הנכון ולא מ-0.');
+  if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש.';
+
+  const lines = [];
+  if (ds.status === 'legal_full') lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
+  else lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
+
+  // Per-focus highlights (concise) — included courses per requested domain.
+  const dr = (plan && plan.domainReport) || [];
+  const focus = dr.filter(d => (d.included || []).length).map(d => `${d.label_he}: ${(d.included).map(x => x.name_he).slice(0, 3).join(', ')}`);
+  if (focus.length) { lines.push('שובץ לפי הדגשים:'); for (const f of focus.slice(0, 5)) lines.push('• ' + f); }
+
+  // Why short of 185 (brief).
+  if (ds.status !== 'legal_full') {
+    const g = (plan && plan.gapBreakdown) || _aiPlanLastGapBreakdown || {};
+    const reasons = [];
+    if (g.blockedByPrereq) reasons.push(`${g.blockedByPrereq} חסומים בקדם`);
+    if (g.blockedByOffering) reasons.push(`${g.blockedByOffering} לא מוצעים בסמסטרים`);
+    if (g.blockedByWorkload) reasons.push(`${g.blockedByWorkload} חסומים בעומס`);
+    if (g.blockedByHardExclude) reasons.push(`${g.blockedByHardExclude} הוחרגו לבקשתך`);
+    if (g.blockedByMissingData) reasons.push(`${g.blockedByMissingData} חסרי נתונים`);
+    if (reasons.length) { lines.push('לא הגעתי ל-185 כי:'); for (const r of reasons) lines.push('• ' + r); }
   }
+
+  // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
+  const profile = (plan && plan.userIntentProfile) || _aiUserIntentProfile || {};
+  const notes = [];
+  for (const cid of (profile.hardExcludeCourseIds || [])) {
+    const nm = (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
+    notes.push(`${nm} לא שובצה כי ביקשת לא לשבץ אותה.`);
+  }
+  if (profile.shaarRuachAssessmentPref === 'prefer_no_exam') {
+    const usedUnknown = ((plan && plan.completionAdded) || []).some(a => {
+      const c = (typeof courseMap !== 'undefined') ? courseMap[a.course_id] : null;
+      return c && _isShaarRuachLocal(c) && _hasFinalExamLocal(c) == null;
+    });
+    notes.push(usedUnknown
+      ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה.'
+      : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
+  }
+  if (profile.gradeTarget != null) notes.push(`העדפתי קורסים עם סיכון ציונים נמוך/בינוני כדי לשמור על יעד ממוצע ${profile.gradeTarget}.`);
+  // If no completed-hours source is set, the baseline may understate real progress.
+  const _pc = buildPlanContextFromState({ proposalSemesters: (plan && plan.proposal && plan.proposal.semesters) || undefined });
+  if (_pc.sourceOfCompletedHours === 'none') notes.push('לא הוגדרו שעות שכבר צברת — אם כבר השלמת קורסים, עדכן את שעות הזכאות ב"הקורסים שלי" כדי שהחישוב יתחיל מהבסיס הנכון ולא מ-0.');
+  if (notes.length) { lines.push('שים לב:'); for (const n of notes.slice(0, 6)) lines.push('• ' + n); }
+
+  lines.push('לפירוט מלא: כתוב "פתח פירוט מלא".');
+  return lines.join('\n');
+}
+
+/** Part F — full per-course explanation, shown only on explicit request. */
+function formatFull185DetailLocal(plan) {
+  const trace = (plan && plan.decisionTrace) || _aiPlanLastDecisionTrace || { selected: [], skipped: [] };
+  const lines = ['פירוט מלא של ההחלטות:'];
+  for (const s of (trace.selected || [])) lines.push(`✓ ${s.explanation_he}`);
+  const skipped = (trace.skipped || []).slice(0, 20);
+  if (skipped.length) { lines.push('— לא שובצו:'); for (const s of skipped) lines.push(`✗ ${s.explanation_he}`); }
   return lines.join('\n');
 }
 
@@ -5684,9 +5730,18 @@ function rebuildDraftFromProfileLocal(opts) {
   opts = opts || {};
   if (!_aiUserIntentProfile) _aiUserIntentProfile = buildUserIntentProfileLocal((_aiPlanLastPreferences && _aiPlanLastPreferences.extra_request_he) || '', {});
   const p = _aiUserIntentProfile;
-  const prefs = { ...(_aiPlanLastPreferences || {}) };
-  prefs.hard_exclude_course_ids = [...new Set([...(prefs.hard_exclude_course_ids || []), ...(p.hardExcludeCourseIds || [])])];
-  prefs.must_include_course_ids = [...new Set([...(prefs.must_include_course_ids || []), ...(p.mustIncludeCourseIds || [])])];
+  // Part A — ALWAYS merge the Planning Preferences panel state (_aiPickerState:
+  // wanted / strongUnwanted / שער-רוח assessment pref / workload / grade) before
+  // building, so panel constraints are honored exactly like chat constraints.
+  const panelPrefs = (typeof sidebarQuickActionPrefs === 'function') ? sidebarQuickActionPrefs() : {};
+  const prefs = { ...(_aiPlanLastPreferences || {}), ...panelPrefs };
+  // Panel "avoid/exclude" → HARD exclude (like chat). Panel "include" → must-include.
+  prefs.hard_exclude_course_ids = [...new Set([
+    ...(prefs.hard_exclude_course_ids || []), ...(panelPrefs.strongly_avoided_course_ids || []), ...(p.hardExcludeCourseIds || []),
+  ])];
+  prefs.must_include_course_ids = [...new Set([
+    ...(prefs.must_include_course_ids || []), ...(panelPrefs.wanted_course_ids || []), ...(p.mustIncludeCourseIds || []),
+  ])].filter(cid => !prefs.hard_exclude_course_ids.includes(cid));
   _aiPlanLastPreferences = prefs;
   // Seed choice: 'draft' re-runs on the ACTIVE DRAFT (post-removal) so excluded /
   // removed courses are not re-seeded (used by hard_exclude / workload). 'board'
@@ -5799,6 +5854,10 @@ function applyDraftPatchLocal(patch) {
     case 'explain_course_decision': {
       const cid = (patch.courseIds || [])[0];
       postAssistantMessage(explainCourseDecisionLocal(cid));
+      return { changed: false };
+    }
+    case 'explain_full_detail': {
+      postAssistantMessage(formatFull185DetailLocal({ proposal: _aiPlanLastProposal }));
       return { changed: false };
     }
     default:
@@ -5917,7 +5976,7 @@ async function _handleSidebarChatSendInner(message, providedMessage, input) {
   // an explicit build, preserving the "שלח never auto-builds from scratch" contract).
   try {
     const _patch = classifyCorrectionIntentLocal(planningText);
-    const ALWAYS = new Set(['build_full_185', 'explain_course_decision']);
+    const ALWAYS = new Set(['build_full_185', 'explain_course_decision', 'explain_full_detail']);
     const DRAFT_ONLY = new Set(['hard_exclude_course', 'must_include_course', 'change_weight', 'change_workload']);
     if (ALWAYS.has(_patch.type) || (state.proposalDraft && DRAFT_ONLY.has(_patch.type))) {
       applyDraftPatchLocal(_patch);
@@ -9188,6 +9247,10 @@ function buildDeterministicReplacementPlan(args) {
   const userIntentProfile = buildUserIntentProfileLocal(prefs.extra_request_he || '', {
     conversationMode: 'build_plan',
     extraHardExclude: [...hardExcludeSet],
+    extraMustInclude: patchMustInclude,
+    // Part A/C/E — panel grade target + שער-רוח assessment preference feed ranking.
+    gradeTarget: (typeof prefs.grade_target === 'number') ? prefs.grade_target : undefined,
+    shaarRuachAssessmentPref: prefs.shaarRuachAssessmentPref || null,
   });
   // Merge chat-patch must-include into the profile so the trace/completion see them.
   if (patchMustInclude.length) userIntentProfile.mustIncludeCourseIds = [...new Set([...patchMustInclude, ...(userIntentProfile.mustIncludeCourseIds || [])])];
@@ -12877,14 +12940,22 @@ function buildUserIntentProfileLocal(text, opts) {
   try { hardExclude = (parseHardExclusionsFromUserText(raw)?.courseIds) || []; } catch (_) {}
   if (Array.isArray(opts.extraHardExclude)) hardExclude = [...new Set([...hardExclude, ...opts.extraHardExclude])];
 
+  // Part A/C — grade target and שער-רוח assessment preference come from the chat text
+  // OR the Planning Preferences panel (opts); panel value wins when provided.
+  const gradeTarget = (opts.gradeTarget != null) ? opts.gradeTarget : (intent.gradeTarget ?? null);
+  const shaarRuachAssessmentPref = opts.shaarRuachAssessmentPref ?? null;
+  const mustInclude = [...new Set([...(intent.mustIncludeCourseIds || []), ...(opts.extraMustInclude || [])])]
+    .filter(cid => !hardExclude.includes(cid));
+
   const inferredGoals = [];
   if (intent.careerGoal === 'industry_high_salary') inferredGoals.push('industry_high_salary');
-  if (intent.gradeTarget != null) inferredGoals.push('grade_target');
+  if (gradeTarget != null) inferredGoals.push('grade_target');
 
   const inferredPreferences = [];
   if (terms.wants_practical) inferredPreferences.push('practical');
   if (terms.wants_industry_value) inferredPreferences.push('industry_relevance');
-  if (terms.wants_easy || intent.gradeTarget != null) inferredPreferences.push('grade_safety');
+  if (terms.wants_easy || gradeTarget != null) inferredPreferences.push('grade_safety');
+  if (shaarRuachAssessmentPref === 'prefer_no_exam') inferredPreferences.push('shaar_ruach_no_exam');
 
   const inferredAvoidances = [...(terms.avoid_terms || [])];
 
@@ -12894,25 +12965,28 @@ function buildUserIntentProfileLocal(text, opts) {
   }
   if (intent.careerGoal === 'industry_high_salary') optimizationCriteria.push({ name: 'industry_relevance', weight: 0.9, reason: 'המשתמש ביקש התאמה גבוהה לתעשייה / שכר.' });
   if (terms.wants_practical) optimizationCriteria.push({ name: 'practical', weight: 0.7, reason: 'המשתמש מעדיף קורסים מעשיים.' });
-  if (intent.gradeTarget != null) optimizationCriteria.push({ name: 'grade_safety', weight: 0.6, reason: `המשתמש מכוון לממוצע סביב ${intent.gradeTarget}.` });
+  if (gradeTarget != null) optimizationCriteria.push({ name: 'grade_safety', weight: 0.8, reason: `המשתמש מכוון לממוצע סביב ${gradeTarget} — מעדיף קורסים עם סיכון ציונים נמוך.` });
+  if (shaarRuachAssessmentPref === 'prefer_no_exam') optimizationCriteria.push({ name: 'shaar_ruach_no_exam', weight: 0.7, reason: 'המשתמש ביקש קורסי שער רוח ללא מבחן.' });
 
   const nameOf = (cid) => (typeof courseMap !== 'undefined' && courseMap[cid]?.name_he) || cid;
   const parts = [];
   if (intent.domainLabels?.length) parts.push(`דגש על ${intent.domainLabels.join(', ')}`);
-  if (intent.mustIncludeCourseIds?.length) parts.push(`לכלול בוודאות: ${intent.mustIncludeCourseIds.map(nameOf).join(', ')}`);
+  if (mustInclude.length) parts.push(`לכלול בוודאות: ${mustInclude.map(nameOf).join(', ')}`);
   if (hardExclude.length) parts.push(`לא לשבץ: ${hardExclude.map(nameOf).join(', ')}`);
   if (intent.careerGoal === 'industry_high_salary') parts.push('התאמה גבוהה לתעשייה/שכר');
-  if (intent.gradeTarget != null) parts.push(`יעד ממוצע ~${intent.gradeTarget}`);
+  if (gradeTarget != null) parts.push(`יעד ממוצע ~${gradeTarget}`);
+  if (shaarRuachAssessmentPref === 'prefer_no_exam') parts.push('שער רוח ללא מבחן');
   const explanation_he = parts.length ? ('הבנתי ש' + parts.join(' • ') + '.') : 'הבנתי את הבקשה הכללית שלך.';
 
   return {
-    mustIncludeCourseIds: intent.mustIncludeCourseIds || [],
+    mustIncludeCourseIds: mustInclude,
     hardExcludeCourseIds: hardExclude,
     requestedDomains: intent.requiredDomains || [],
     requestedCourseIds: intent.requested_course_ids || [],
     inferredGoals, inferredPreferences, inferredAvoidances,
     optimizationCriteria,
-    gradeTarget: intent.gradeTarget ?? null,
+    gradeTarget,
+    shaarRuachAssessmentPref,
     careerGoal: intent.careerGoal ?? null,
     conversationMode: opts.conversationMode || 'update_preferences',
     explanation_he,
@@ -12921,18 +12995,60 @@ function buildUserIntentProfileLocal(text, opts) {
   };
 }
 
+/* Part E — is this a שער-רוח / general-education course? */
+function _isShaarRuachLocal(c) {
+  if (!c) return false;
+  if (c.program_category_id === 'shaar_ruach' || c.category_id === 'shaar_ruach'
+      || c.source === 'shaar_ruach' || c.source_type === 'shaar_ruach' || c.is_general_requirement) return true;
+  const id = c.course_id || '';
+  return id.startsWith('0609') || id.startsWith('1880') || id.startsWith('0680') || id.startsWith('0662');
+}
+
+/* Part E — does the course have a FINAL EXAM? true / false / null(unknown), derived
+   from has_exam, assessment_type, or the Hebrew assessment text. */
+function _hasFinalExamLocal(c) {
+  if (!c) return null;
+  if (typeof c.has_exam === 'boolean') return c.has_exam;
+  const at = String(c.assessment_type || '').toLowerCase();
+  if (/exam|final_exam|בחינ|מבחן/.test(at)) return true;
+  if (/paper|project|assignment|essay|עבוד|פרויקט|מטל|תרגיל/.test(at)) return false;
+  const txt = `${c.syllabus_assessment_he || ''} ${c.assessment_text_raw || ''} ${c.assessment_ai_notes || ''}`;
+  if (/(אין|ללא|בלי)\s*(בחינ|מבחן)/.test(txt)) return false;
+  if (/בחינ|מבחן|exam/i.test(txt)) return true;
+  if (/(עבודת?\s*סיום|מטל|פרויקט|תרגיל)/.test(txt)) return false;
+  return null; // unknown
+}
+
+/* Part C — grade-risk in [0..1] (0 = safe) + confidence. Uses TAU Factor avg grade,
+   else difficulty estimate, else exam style, else a moderate unknown penalty — the
+   grade target is NEVER silently ignored. */
+function _gradeRiskScoreLocal(c) {
+  if (!c) return { risk: 0.5, confidence: 'unknown' };
+  if (typeof c.tau_factor_avg_grade === 'number' && c.tau_factor_avg_grade > 0) {
+    return { risk: Math.max(0, Math.min(1, (90 - c.tau_factor_avg_grade) / 30)), confidence: 'known' };
+  }
+  const est = (typeof estimateCourseDifficultyLocal === 'function') ? estimateCourseDifficultyLocal(c) : null;
+  if (est != null && Number.isFinite(est)) return { risk: Math.max(0, Math.min(1, (est - 1) / 4)), confidence: 'estimated' };
+  const exam = _hasFinalExamLocal(c);
+  if (exam === true) return { risk: 0.6, confidence: 'weak' };
+  if (exam === false) return { risk: 0.3, confidence: 'weak' };
+  return { risk: 0.5, confidence: 'unknown' };
+}
+
 /**
  * Part C/E — score a course against the full UserIntentProfile. Combines explicit
- * must-include / requested / domain membership with lexical relevance and the
- * weighted optimizationCriteria. `weak` is true when the user expressed intent but
- * the course matches none of it (eligible only as a labeled completion alternative).
+ * must-include / requested / domain membership with lexical relevance, the weighted
+ * optimizationCriteria, GRADE RISK (when a grade target is set) and the שער-רוח
+ * no-final-exam preference. `weak` is true when the user expressed intent but the
+ * course matches none of it (eligible only as a labeled completion alternative).
  */
 function scoreCourseAgainstIntentProfileLocal(course, profile) {
   if (!course) return { score: 0, matched: [], weak: true, reason_he: '' };
   profile = profile || {};
   const matched = [];
   let score = 0;
-  if ((profile.mustIncludeCourseIds || []).includes(course.course_id)) { score += 100; matched.push('must_include'); }
+  const isMust = (profile.mustIncludeCourseIds || []).includes(course.course_id);
+  if (isMust) { score += 100; matched.push('must_include'); }
   if ((profile.requestedCourseIds || []).includes(course.course_id)) { score += 10; matched.push('requested'); }
   for (const d of (profile.requestedDomains || [])) {
     if ((PLANNING_DOMAINS[d]?.course_ids || []).includes(course.course_id)) { score += 5; matched.push('domain_' + d); }
@@ -12944,6 +13060,21 @@ function scoreCourseAgainstIntentProfileLocal(course, profile) {
   const util = (typeof courseUtilityLocal === 'function') ? courseUtilityLocal(course) : { score: 0 };
   for (const crit of (profile.optimizationCriteria || [])) {
     if (crit.name === 'industry_relevance' || crit.name === 'practical') score += (crit.weight || 0) * (util.score || 0);
+  }
+  // Part C — grade target: deprioritize grade-risky courses (never a must-include).
+  if (profile.gradeTarget != null && !isMust) {
+    const gr = _gradeRiskScoreLocal(course);
+    const w = profile.gradeTarget >= 85 ? 6 : 4;
+    score -= w * gr.risk;
+    if (gr.risk >= 0.55) matched.push('grade_risk');
+  }
+  // Part E — שער-רוח no-final-exam preference: reward known no-exam, penalize exam and
+  // (more mildly) unknown assessment, so no-exam alternatives win when they exist.
+  if (profile.shaarRuachAssessmentPref === 'prefer_no_exam' && _isShaarRuachLocal(course)) {
+    const exam = _hasFinalExamLocal(course);
+    if (exam === true) { score -= 8; matched.push('has_final_exam'); }
+    else if (exam == null) { score -= 3; matched.push('unknown_assessment'); }
+    else { score += 3; matched.push('no_final_exam'); }
   }
   const hasIntent = !!((profile.requestedDomains || []).length || (profile.inferredGoals || []).length || String(profile.raw_text || '').trim());
   const weak = hasIntent && matched.filter(m => m !== 'avoided').length === 0;
