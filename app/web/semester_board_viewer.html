@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'completed-source-v11'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'progress-sync-grade-v12'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5702,6 +5702,25 @@ function formatFull185SummaryLocal(plan) {
       : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
   }
   if (profile.gradeTarget != null) notes.push(`העדפתי קורסים עם סיכון ציונים נמוך/בינוני כדי לשמור על יעד ממוצע ${profile.gradeTarget}.`);
+  // Issue B — report grade-safety swaps + explain any high-risk course that was KEPT.
+  for (const sw of ((plan && plan.gradeSwaps) || []).slice(0, 4)) {
+    notes.push(`החלפתי את ${sw.removed_name} (סיכון ציונים גבוה) ב${sw.added_name} הקל יותר.`);
+  }
+  if (profile.gradeTarget != null && typeof courseMap !== 'undefined') {
+    const placedIds = ((plan && plan.proposal && plan.proposal.semesters) || []).flatMap(s => s.course_ids || []);
+    const keptHard = placedIds.filter(cid => {
+      const c = courseMap[cid];
+      if (!c || c.course_type === 'mandatory' || c.is_mandatory) return false;
+      return _gradeRiskScoreLocal(c).risk >= 0.7 && !(plan.gradeSwaps || []).some(sw => sw.added === cid);
+    }).slice(0, 3);
+    for (const cid of keptHard) {
+      const c = courseMap[cid];
+      const why = (profile.mustIncludeCourseIds || []).includes(cid) ? 'ביקשת אותו במפורש'
+        : (c.course_type === 'mandatory' || c.is_mandatory) ? 'הוא קורס חובה'
+        : 'אין חלופה חוקית קלה יותר שמתאימה לבקשה';
+      notes.push(`שיבצתי את ${c.name_he || cid} למרות סיכון ציונים גבוה כי ${why}.`);
+    }
+  }
   // Part D — surface RELEVANT courses that could not be scheduled due to missing data
   // (e.g. תכן תרמי מתקדם 0542-4135 has no offered_semesters) instead of dropping silently.
   try {
@@ -6598,6 +6617,44 @@ function buildPlanContextFromState(opts) {
     totalAfterPlan, requiredHours: required, remainingHoursTo185,
     sourceOfCompletedHours: manualSet ? 'degree_hours_profile' : (completedIds.size ? 'completed_status_courses' : 'none'),
     sourceOfExistingBoardHours: 'committed_board+currently_planned',
+  };
+}
+
+/**
+ * Issue A — THE ONE canonical degree-progress context. Every UI + planner path
+ * ("הקורסים שלי", sidebar summary, AI/chat summary, draft status, planner fill,
+ * PlanContext, gap breakdown) must read from this so they can never disagree.
+ * It wraps buildPlanContextFromState (the single hours math) and adds the completed/
+ * current course id sets and the שער-רוח requirement, plus a sourceVersion that bumps
+ * whenever the completed state changes — so callers can detect staleness.
+ */
+function buildDegreeProgressContext(opts) {
+  opts = opts || {};
+  const pc = buildPlanContextFromState(opts);
+  const completedCourseIds = [], currentlyTakingCourseIds = [], plannedCourseIds = [];
+  for (const [cid, us] of Object.entries(typeof userCourseStatuses !== 'undefined' ? userCourseStatuses : {})) {
+    if (us?.status === 'completed') completedCourseIds.push(cid);
+    else if (us?.status === 'currently_taking') currentlyTakingCourseIds.push(cid);
+    else if (us?.status === 'planned') plannedCourseIds.push(cid);
+  }
+  // שער-רוח (general-requirement) progress — from the single computeDegreeProgress source.
+  let dp = {}; try { dp = computeDegreeProgress({}, state, null); } catch (_) {}
+  const shaarRuachRequired = dp.shaar_ruach_required ?? 0;
+  const shaarRuachCompleted = dp.shaar_ruach_completed ?? 0;
+  const shaarRuachScheduled = dp.shaar_ruach_scheduled ?? 0;
+  const shaarRuachRemaining = dp.shaar_ruach_remaining ?? Math.max(0, shaarRuachRequired - shaarRuachCompleted - shaarRuachScheduled);
+  return {
+    completedHours: pc.completedHours,
+    completedCourseIds, currentlyTakingCourseIds, plannedCourseIds,
+    existingBoardHours: pc.existingBoardHours,
+    draftHours: pc.newlyAddedDraftHours,
+    duplicateHours: pc.duplicateHours,
+    totalAfterPlan: pc.totalAfterPlan,
+    requiredHours: pc.requiredHours,
+    remainingHoursTo185: pc.remainingHoursTo185,
+    shaarRuachRequired, shaarRuachCompleted, shaarRuachScheduled, shaarRuachRemaining,
+    sourceOfCompletedHours: pc.sourceOfCompletedHours,
+    sourceVersion: `${completedCourseIds.length}|${currentlyTakingCourseIds.length}|${pc.completedHours}|${pc.existingBoardHours}|${pc.newlyAddedDraftHours}`,
   };
 }
 
@@ -9396,6 +9453,7 @@ function buildDeterministicReplacementPlan(args) {
   //     slot), so every bit of legal room is used. fillToDegreeTargetLocal adds ONLY
   //     legal candidates, and the audit re-strips any that became illegal, so this
   //     converges to a legal, maximally-filled plan.
+  let _planResultGradeSwaps = [];
   if (args.fillToTarget) {
     for (let _i = 0; _i < 8; _i++) {
       let _b; try { _b = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _b = 0; }
@@ -9410,9 +9468,16 @@ function buildDeterministicReplacementPlan(args) {
       let _a; try { _a = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _a = _b; }
       if (_a <= _b) break; // no further progress — remaining candidates are genuinely blocked
     }
-    // 5d. Part B — workload minimization: once at/over 185, trim the lowest-relevance
-    //     NON-required filler the fill over-added, so we don't carry extra load past
-    //     the target. Only removes when the total stays >= 185 (never drops below).
+    // 5d. Issue B — grade-safety replacement: once at/over the target, swap high grade-
+    //     risk NON-required courses for easier legal alternatives (keeps >= target).
+    let _gradeSwaps = [];
+    try {
+      const _rep = replaceHighRiskCoursesLocal(proposal, { ...repairOpts, requiredHours: targetHours, beforeCids });
+      proposal = _rep.proposal || proposal; _gradeSwaps = _rep.swaps || [];
+    } catch (_) {}
+    _planResultGradeSwaps = _gradeSwaps;
+    // 5e. Part B — workload minimization: trim the lowest-relevance NON-required filler
+    //     the fill over-added, only while the total stays >= 185 (never drops below).
     try {
       proposal = minimizeOverloadAfterTargetLocal(proposal, { ...repairOpts, requiredHours: targetHours, beforeCids });
     } catch (_) {}
@@ -9537,6 +9602,7 @@ function buildDeterministicReplacementPlan(args) {
     intent,
     userIntentProfile,
     completionAdded: _completion.added || [],
+    gradeSwaps: _planResultGradeSwaps,
     gapBreakdown,
     domainReport,
     hardExcludedCourseIds: [...hardExcludeSet],
@@ -9688,6 +9754,67 @@ function minimizeOverloadAfterTargetLocal(proposal, opts) {
     }
   }
   return { ...proposal, semesters: sems };
+}
+
+/**
+ * Issue B — after reaching the target, REPLACE high grade-risk NON-required courses with
+ * easier LEGAL alternatives (lower risk, legal in the same semester, prereq-met, fits the
+ * cap, keeps total >= target). Never touches committed-board, mandatory, must-include, or
+ * courses that are a prerequisite for another placed course. Returns { proposal, swaps }.
+ */
+function replaceHighRiskCoursesLocal(proposal, opts) {
+  const profile = opts.userIntentProfile || null;
+  if (!profile || profile.gradeTarget == null) return { proposal, swaps: [] };
+  const required = opts.requiredHours || DEGREE_REQUIRED_HOURS;
+  const beforeCids = opts.beforeCids || new Set();
+  const mustInc = new Set(profile.mustIncludeCourseIds || []);
+  const completed = opts.completedCourseIds || new Set();
+  const cap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : 26;
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const placed = new Set(sems.flatMap(s => s.course_ids));
+  const hoursOf = sem => sem.course_ids.reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+  const riskOf = cid => _gradeRiskScoreLocal((typeof courseMap !== 'undefined' && courseMap[cid]) || {}).risk;
+  const totalNow = () => { try { return buildPlanContextFromState({ proposalSemesters: sems.map(s => ({ semester_id: s.semester_id, course_ids: s.course_ids })) }).totalAfterPlan; } catch (_) { return 0; } };
+  const isPrereqForPlaced = (cid) => {
+    for (const other of placed) { if (other === cid) continue; const g = prereqGroupsOf(courseMap[other]); if (g.some(grp => grp.includes(cid))) return true; }
+    return false;
+  };
+  const done = (cid) => completed.has(cid) || (typeof userCourseStatuses !== 'undefined' && userCourseStatuses[cid] && (userCourseStatuses[cid].status === 'completed' || userCourseStatuses[cid].status === 'currently_taking'));
+  const swaps = [];
+  for (const sem of sems) {
+    for (const cid of [...sem.course_ids]) {
+      const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+      if (!c || beforeCids.has(cid) || mustInc.has(cid) || c.course_type === 'mandatory' || c.is_mandatory) continue;
+      if (riskOf(cid) < 0.6 || isPrereqForPlaced(cid)) continue; // only replaceable high-risk
+      const h = hoursForCourseId(cid) || 0;
+      let best = null, bestScore = -1e9;
+      for (const altId of Object.keys(courseMap)) {
+        if (placed.has(altId) || mustInc.has(altId) || done(altId)) continue;
+        const ac = courseMap[altId];
+        if (!ac || ac.course_type === 'mandatory' || ac.is_mandatory) continue;
+        if (classifyCourseSchedulability(ac) === 'unschedulable_missing_data' || !isCourseRenderable(ac)) continue;
+        if (riskOf(altId) >= riskOf(cid)) continue; // must be easier
+        const legal = getLegalSemestersLocal(ac, opts.knownSemesterIds).semesters;
+        if (!(legal && legal.includes(sem.semester_id))) continue;
+        if (hoursOf(sem) - h + (hoursForCourseId(altId) || 0) > cap) continue;
+        const semIdx = {}; sems.forEach((s, i) => { for (const c2 of s.course_ids) if (c2 !== cid) semIdx[c2] = i; });
+        const ti = sems.findIndex(x => x.semester_id === sem.semester_id);
+        if (!prereqsSatisfiedForPlacementLocal(altId, ti, semIdx, completed).ok) continue;
+        const sc = scoreCourseAgainstIntentProfileLocal(ac, profile).score;
+        if (sc > bestScore) { bestScore = sc; best = altId; }
+      }
+      if (!best) continue;
+      sem.course_ids = sem.course_ids.filter(x => x !== cid); placed.delete(cid);
+      sem.course_ids.push(best); placed.add(best);
+      if (totalNow() < required) { // revert if it drops below target
+        sem.course_ids = sem.course_ids.filter(x => x !== best); placed.delete(best);
+        sem.course_ids.push(cid); placed.add(cid);
+      } else {
+        swaps.push({ removed: cid, removed_name: c.name_he || cid, added: best, added_name: (courseMap[best] && courseMap[best].name_he) || best });
+      }
+    }
+  }
+  return { proposal: { ...proposal, semesters: sems }, swaps };
 }
 
 /**
@@ -10900,6 +11027,18 @@ function setUserStatus(cid, status, plannedSemester) {
   // Keep legacy myCoursesState in sync for any old code paths
   myCoursesState.completed = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'completed');
   myCoursesState.current   = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'currently_taking');
+
+  // Issue A — recompute the CANONICAL completed-course set immediately so the planner,
+  // prerequisite checks and every progress surface use the fresh state right after an
+  // edit (the global completedCourseIds was previously set only at init → went stale).
+  const _userCompleted = Object.keys(userCourseStatuses).filter(id => userCourseStatuses[id].status === 'completed');
+  const _boardDone = (typeof _boardCompletedIds !== 'undefined' && Array.isArray(_boardCompletedIds)) ? _boardCompletedIds : [];
+  if (typeof completedCourseIds !== 'undefined') completedCourseIds = [...new Set([..._boardDone, ..._userCompleted])];
+  // A stale AI draft/validation no longer reflects the updated completed state — drop it
+  // so the next build starts from the corrected baseline (no old localStorage override).
+  if (state && state.proposalDraft) state.proposalDraft = null;
+  _aiPlanLastProposal = null; _aiPlanLastValidation = null;
+  _aiPlanLastGapBreakdown = null; _aiPlanLastDecisionTrace = null;
 }
 
 /* The semester id (if any) in which a course is currently placed on the board */
@@ -11034,21 +11173,19 @@ function _renderMyCoursesSummary() {
     if (counts[us.status] != null) counts[us.status]++;
   }
 
-  const planContext = buildPlanContext();
-  const analysis = buildCompletionAnalysisLocal(planContext);
-  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
-  const ctx = buildPlanValidationInputs();
-  const courseHours = {};
-  for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
-  const hours = getDegreeHoursStatusLocal(analysis, semObjs, courseHours);
-  const general = getGeneralRequirementStatusReportLocal(analysis, new Set(semObjs.flatMap(s => s.course_ids)));
+  // Issue A — read from THE ONE canonical degree-progress context so this panel can
+  // never disagree with the sidebar / chat / planner. The label distinguishes COMPLETED
+  // (status-marked) hours from the current board, instead of lumping them as before.
+  const dpc = buildDegreeProgressContext({});
 
   sumEl.innerHTML = `
-    <span>🎓 שעות שצברתי: ${hours.completed_degree_hours ?? 0}/${hours.degree_required_hours}</span>
+    <span>🎓 נצברו (הושלמו): ${dpc.completedHours}/${dpc.requiredHours}</span>
+    <span>📋 במערכת הנוכחית: ${dpc.existingBoardHours} ש״ש</span>
+    <span>📊 סה״כ: ${dpc.totalAfterPlan}/${dpc.requiredHours}</span>
     <span>✅ ${counts.completed} הושלמו</span>
     <span>📖 ${counts.currently_taking} נלמדים עכשיו</span>
     <span>🗓 ${counts.planned} מתוכננים</span>
-    ${general ? `<span>שער רוח: ${general.placed}/${general.required}</span>` : ''}
+    ${dpc.shaarRuachRequired ? `<span>שער רוח: ${dpc.shaarRuachCompleted + dpc.shaarRuachScheduled}/${dpc.shaarRuachRequired}</span>` : ''}
   `;
 }
 
@@ -13193,11 +13330,14 @@ function scoreCourseAgainstIntentProfileLocal(course, profile) {
   for (const crit of (profile.optimizationCriteria || [])) {
     if (crit.name === 'industry_relevance' || crit.name === 'practical') score += (crit.weight || 0) * (util.score || 0);
   }
-  // Part C — grade target: deprioritize grade-risky courses (never a must-include).
+  // Part C — grade target: STRONGLY deprioritize grade-risky courses (never a must-
+  // include). The penalty must be able to overcome a domain match (+5) so a very-hard
+  // domain course loses to an easier relevant alternative when one exists.
   if (profile.gradeTarget != null && !isMust) {
     const gr = _gradeRiskScoreLocal(course);
-    const w = profile.gradeTarget >= 85 ? 6 : 4;
+    const w = profile.gradeTarget >= 85 ? 11 : 8;
     score -= w * gr.risk;
+    if (gr.risk >= 0.7) score -= 4; // extra cliff for very-hard / very-low-grade courses
     if (gr.risk >= 0.55) matched.push('grade_risk');
   }
   // Part E — שער-רוח no-final-exam preference: reward known no-exam, penalize exam and
