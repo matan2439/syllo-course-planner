@@ -2016,7 +2016,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'degree-progress-truth-v13'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'debug-explain-v14'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -6947,6 +6947,359 @@ function auditDegreeProgress() {
 
 // Expose audit function to window for console access
 if (typeof window !== 'undefined') window.auditDegreeProgress = auditDegreeProgress;
+
+/**
+ * Planner Debugger — Layer 6 building block. PURE, read-only audit of ANY plan
+ * expressed as [{semester_id, course_ids}]. Used by debugCurrentPlan() for the AI
+ * plan and by tests for the manual-plan fixture, so both are measured identically.
+ * Never mutates state or planner behavior.
+ */
+function auditPlanLocal(proposalSemesters, opts) {
+  opts = opts || {};
+  const sems = (proposalSemesters || []).map(s => ({ semester_id: s.semester_id, course_ids: [...(s.course_ids || [])] }));
+  const placed = sems.flatMap(s => s.course_ids);
+  const placedSet = new Set(placed);
+  const profile = opts.userIntentProfile || (typeof _aiUserIntentProfile !== 'undefined' && _aiUserIntentProfile) || null;
+  const srIds = new Set((typeof SHAAR_RUACH_COURSES !== 'undefined' ? SHAAR_RUACH_COURSES : []).map(c => c.course_id));
+
+  let totalDegreeHours = 0;
+  try { totalDegreeHours = buildPlanContextFromState({ proposalSemesters: sems }).totalAfterPlan; } catch (_) {}
+
+  // Visible future-board hours (sum of placed course hours, counted once).
+  let boardHours = 0; const seen = new Set();
+  for (const cid of placed) { if (seen.has(cid)) continue; seen.add(cid); boardHours += (hoursForCourseId(cid) || 0); }
+  boardHours = Math.round(boardHours * 10) / 10;
+
+  // Category satisfaction from the PASSED plan (not global state).
+  const cats = (typeof programRequirements !== 'undefined' && programRequirements && programRequirements.categories) || [];
+  const completedSet = new Set([...(typeof completedCourseIds !== 'undefined' ? completedCourseIds : [])]);
+  const categories = cats.map(cat => {
+    const set = new Set(cat.course_ids || []);
+    const inPlan = [...placedSet].filter(c => set.has(c)).length;
+    const inCompleted = [...completedSet].filter(c => set.has(c)).length;
+    const min = cat.min_courses || 0;
+    const have = inPlan + inCompleted;
+    return { category_id: cat.category_id, name: cat.name_he || cat.category_id, required: min, placed: inPlan, completed: inCompleted, satisfied: have >= min, missing: Math.max(0, min - have) };
+  });
+
+  // שער-רוח: completed (from canonical) + scheduled-in-plan; cap from program.
+  let dp = {}; try { dp = computeDegreeProgress({}, state, null); } catch (_) {}
+  const shaarCap = dp.shaar_ruach_required ?? (typeof shaarRuachRequiredCreditsFor === 'function' ? (shaarRuachRequiredCreditsFor(typeof selectedProg !== 'undefined' ? selectedProg?.program_id : undefined) || 6) : 6);
+  const shaarCompleted = dp.shaar_ruach_completed ?? 0;
+  let shaarPlanned = 0; const ssen = new Set();
+  for (const cid of placed) { if (srIds.has(cid) && !ssen.has(cid)) { ssen.add(cid); shaarPlanned += (hoursForCourseId(cid) || 0); } }
+  const shaarTotal = Math.round((shaarCompleted + shaarPlanned) * 10) / 10;
+
+  // Difficulty / grade-risk over placed non-mandatory courses.
+  let riskSum = 0, riskN = 0, hardCount = 0;
+  for (const cid of placedSet) {
+    const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+    if (!c || c.course_type === 'mandatory' || c.is_mandatory) continue;
+    const r = _gradeRiskScoreLocal(c).risk; riskSum += r; riskN++;
+    if (r >= 0.7) hardCount++;
+  }
+  const avgGradeRisk = riskN ? Math.round((riskSum / riskN) * 100) / 100 : 0;
+
+  // Max semester load (visible future board).
+  let maxSemesterLoad = 0;
+  for (const s of sems) {
+    const h = s.course_ids.reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+    if (h > maxSemesterLoad) maxSemesterLoad = h;
+  }
+  maxSemesterLoad = Math.round(maxSemesterLoad * 10) / 10;
+
+  const missingRequirements = categories.filter(c => !c.satisfied)
+    .map(c => `${c.name}: ${c.placed + c.completed}/${c.required}`);
+  if (shaarTotal < shaarCap) missingRequirements.push(`שער רוח: ${shaarTotal}/${shaarCap}`);
+
+  return {
+    totalDegreeHours, boardHours,
+    categories, shaarRuach: { cap: shaarCap, completed: shaarCompleted, planned: Math.round(shaarPlanned * 10) / 10, total: shaarTotal, remainingAllowed: Math.max(0, shaarCap - shaarTotal), exceeded: shaarTotal > shaarCap + 1e-6 },
+    missingRequirements,
+    hardCourseCount: hardCount, avgGradeRisk, maxSemesterLoad,
+    placedCourseCount: placedSet.size,
+  };
+}
+if (typeof window !== 'undefined') window.auditPlanLocal = auditPlanLocal;
+
+/**
+ * Planner Debugger / Explain Mode (read-only). Returns a structured 7-layer JSON
+ * proving exactly why the current board looks the way it does. Changes NOTHING in
+ * the planner. Run from the console: debugCurrentPlan() — or copy window.__lastPlanDebug.
+ * Optional opts.manualPlan = [{semester_id, course_ids}] adds the Layer-6 comparison.
+ */
+function debugCurrentPlan(opts) {
+  opts = opts || {};
+  const out = { generatedAt: new Date().toISOString(), buildMarker: (typeof PLANNER_BUILD !== 'undefined' ? PLANNER_BUILD : null) };
+  const REQUIRED = (typeof programRequirements !== 'undefined' && programRequirements && programRequirements.total_required_hours) || (typeof DEGREE_REQUIRED_HOURS_GLOBAL === 'function' ? DEGREE_REQUIRED_HOURS_GLOBAL() : 185);
+  const boardSems = Object.entries(state?.semesters || {}).map(([id, ids]) => ({ semester_id: id, course_ids: [...(ids || [])] }));
+  const draftActive = !!(state && state.proposalDraft && state.proposalDraft.semesters);
+  const draftSems = draftActive ? Object.entries(state.proposalDraft.semesters).map(([id, ids]) => ({ semester_id: id, course_ids: [...(ids || [])] })) : null;
+  const currentPlanSems = draftSems || boardSems;
+  const completedStatusIds = new Set(Object.entries(userCourseStatuses || {}).filter(([, u]) => u?.status === 'completed').map(([c]) => c));
+  const currentlyTakingIds = new Set(Object.entries(userCourseStatuses || {}).filter(([, u]) => u?.status === 'currently_taking').map(([c]) => c));
+  const boardSet = new Set(boardSems.flatMap(s => s.course_ids));
+  const draftSet = new Set((draftSems || []).flatMap(s => s.course_ids));
+  const y12 = (typeof YEAR_1_2_MANDATORY_COURSES !== 'undefined') ? YEAR_1_2_MANDATORY_COURSES : [];
+  const nameOf = cid => (courseMap[cid] && courseMap[cid].name_he) || cid;
+
+  // ── LAYER 1 — degree-progress math (proves the total with a course list) ──
+  try {
+    const dp = computeDegreeProgress({}, state, draftActive ? { semesters: state.proposalDraft.semesters } : null);
+    const dpc = buildDegreeProgressContext(draftActive ? { proposalSemesters: currentPlanSems } : {});
+    const hasExplicit = completedStatusIds.size > 0 || (typeof _boardCompletedIds !== 'undefined' && _boardCompletedIds.length > 0) || (typeof degreeHoursProfile?.completed_degree_hours === 'number');
+    const years12BaselineHours = (!hasExplicit) ? Math.round(y12.reduce((s, c) => s + (c.credit_hours || 0), 0) * 10) / 10 : 0;
+    const completedManualHours = (typeof degreeHoursProfile?.completed_degree_hours === 'number') ? degreeHoursProfile.completed_degree_hours : null;
+
+    // Per-course counted list — mirrors computeDegreeProgress EXACTLY so the
+    // counted-true sum equals total_after (completed + board + currently_planned +
+    // draft). Each hour is attributed to exactly one bucket.
+    const counted = [];
+    const compSet = new Set([...completedStatusIds, ...((typeof _boardCompletedIds !== 'undefined' && _boardCompletedIds) || [])]);
+    if (!hasExplicit) for (const c of y12) compSet.add(c.course_id);
+    const plannedStatusIds = new Set(Object.entries(userCourseStatuses || {}).filter(([, u]) => u?.status === 'currently_taking' || u?.status === 'planned').map(([c]) => c));
+    // completed bucket
+    if (completedManualHours != null) {
+      counted.push({ id: '__manual_completed__', name: '(שעות שהושלמו — מספר ידני)', hours: completedManualHours, source: 'completed', counted: true, reason: 'manual completed total (authoritative; board/draft add on top)' });
+      for (const cid of compSet) counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: 'completed', counted: false, reason: 'subsumed by manual completed total — not added again' });
+    } else {
+      for (const cid of compSet) {
+        const isY12 = y12.some(x => x.course_id === cid) && !completedStatusIds.has(cid);
+        counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: isY12 ? 'years12Baseline' : 'completed', counted: true, reason: isY12 ? 'foundational years-1/2 (auto — no explicit completed signal)' : 'status=completed' });
+      }
+    }
+    // existingBoard bucket: board courses (excl. completed) + off-board currently_planned
+    for (const cid of boardSet) {
+      if (compSet.has(cid)) { counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: 'existingBoard', counted: false, reason: 'also marked completed — counted once in completed' }); continue; }
+      counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: 'existingBoard', counted: true, reason: 'placed on years 3-4 board' });
+    }
+    for (const cid of plannedStatusIds) {
+      if (compSet.has(cid) || boardSet.has(cid)) continue; // already counted
+      counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: currentlyTakingIds.has(cid) ? 'currentlyTaking' : 'existingBoard', counted: true, reason: 'currently-taking/planned, off-board (part of baseline)' });
+    }
+    // draft bucket: genuinely-new draft courses
+    if (draftSems) for (const cid of draftSet) {
+      if (boardSet.has(cid) || compSet.has(cid) || plannedStatusIds.has(cid)) { counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: 'draft', counted: false, reason: 'already counted in board/completed/planned — duplicate' }); continue; }
+      counted.push({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null, source: 'draft', counted: true, reason: 'added by AI draft' });
+    }
+
+    out.layer1_degreeProgress = {
+      degreeTargetHours: REQUIRED,
+      years12BaselineHours,
+      completedManualHours,
+      completedStatusHours: Math.round([...completedStatusIds].reduce((s, c) => s + (hoursForCourseId(c) || 0), 0) * 10) / 10,
+      currentlyTakingHours: dpc.currentlyTakingHours,
+      existingBoardHours: dpc.existingBoardHours,
+      draftHours: dpc.draftHours,
+      duplicateHours: dpc.duplicateHours,
+      totalCountedHours: dpc.totalCountedHours,
+      remainingHoursTo185: dpc.remainingHoursToDegree,
+      completedSource: dp.completed_source,
+      formula: `total = completed(${dp.completed}) + existingBoard(${dpc.existingBoardHours}) + currentlyTaking(${dpc.currentlyTakingHours}) + draft(${dpc.draftHours}) - duplicates(${dpc.duplicateHours}) = ${dpc.totalCountedHours} / ${REQUIRED}`,
+      countedCourses: counted,
+      countedHoursSum: Math.round(counted.filter(c => c.counted).reduce((s, c) => s + (c.hours || 0), 0) * 10) / 10,
+    };
+  } catch (e) { out.layer1_degreeProgress = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 2 — board workload (displayed vs counted, per semester) ──
+  try {
+    const ctxCourses = {}; for (const cid of Object.keys(courseMap || {})) ctxCourses[cid] = { hours: hoursForCourseId(cid) };
+    const sems = (typeof SEMESTERS !== 'undefined' ? SEMESTERS : []).map(s => s.id);
+    const rows = [];
+    let totalDisplayed = 0, totalCounted = 0;
+    for (const semId of sems) {
+      const committed = (state.semesters && state.semesters[semId]) || [];
+      const drafted = draftActive ? (state.proposalDraft.semesters[semId] || []) : [];
+      const ids = draftActive ? drafted : committed;
+      const displayed = ids.reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+      const confirmed = committed.reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+      const draftH = draftActive ? drafted.filter(c => !boardSet.has(c)).reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0) : 0;
+      rows.push({ semesterId: semId, title: (typeof SEM_HE !== 'undefined' && SEM_HE[semId]) || semId, displayedHours: Math.round(displayed * 10) / 10, confirmedHours: Math.round(confirmed * 10) / 10, draftHours: Math.round(draftH * 10) / 10, courseCount: ids.length, courses: ids.map(cid => ({ id: cid, name: nameOf(cid), hours: hoursForCourseId(cid) ?? null })) });
+      totalDisplayed += displayed; totalCounted += displayed;
+    }
+    out.layer2_boardWorkload = { draftActive, boardSemesters: rows, totalDisplayedBoardHours: Math.round(totalDisplayed * 10) / 10, totalCountedBoardHours: Math.round(totalCounted * 10) / 10 };
+  } catch (e) { out.layer2_boardWorkload = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 3 — degree requirements (mandatory / categories / שער-רוח) ──
+  try {
+    const ss = buildSidebarStatusSummary();
+    const dpc = buildDegreeProgressContext(draftActive ? { proposalSemesters: currentPlanSems } : {});
+    out.layer3_requirements = {
+      mandatory: ss.mandatory,
+      categories: ss.categories,
+      shaarRuach: { cap: dpc.shaarRuachRequired, completed: dpc.shaarRuachCompleted, planned: dpc.shaarRuachScheduled, total: dpc.shaarRuachTotalHours, remainingAllowed: dpc.shaarRuachRemainingAllowed, exceeded: dpc.shaarRuachTotalHours > (dpc.shaarRuachRequired || 6) + 1e-6 },
+      missingRequirements: (ss.categories || []).filter(c => !c.satisfied).map(c => c.name_he || c.category_id || c.name),
+    };
+  } catch (e) { out.layer3_requirements = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 4 — candidate pipeline (considered/legal/selected + blockers) ──
+  try {
+    const analysis = buildCompletionAnalysisLocal(buildPlanContext());
+    const knownSems = (typeof SEMESTERS !== 'undefined' ? SEMESTERS : []).map(s => s.id);
+    const completedForPrereq = new Set([...(typeof completedCourseIds !== 'undefined' ? completedCourseIds : []), ...y12.map(c => c.course_id)]);
+    const hardExclude = new Set(((typeof _aiUserIntentProfile !== 'undefined' && _aiUserIntentProfile && _aiUserIntentProfile.hardExcludeCourseIds) || []));
+    const profile = (typeof _aiUserIntentProfile !== 'undefined' && _aiUserIntentProfile) || null;
+    const srIds = new Set((typeof SHAAR_RUACH_COURSES !== 'undefined' ? SHAAR_RUACH_COURSES : []).map(c => c.course_id));
+    const planSet = new Set(currentPlanSems.flatMap(s => s.course_ids));
+    const semObjs = currentPlanSems.map(s => ({ id: s.semester_id, ids: [...s.course_ids] }));
+    const semIdx = {}; semObjs.forEach((s, i) => { for (const c of s.ids) semIdx[c] = i; });
+    const semH = {}; semObjs.forEach(s => { semH[s.id] = s.ids.reduce((t, c) => t + (hoursForCourseId(c) || 0), 0); });
+    const cands = [];
+    let nConsidered = 0, nLegal = 0, nSelected = 0;
+    for (const cid of Object.keys(courseMap || {})) {
+      const c = courseMap[cid];
+      if (!c || c.course_type === 'mandatory' || c.is_mandatory) continue;
+      const selected = planSet.has(cid);
+      const completedAlready = completedStatusIds.has(cid) || currentlyTakingIds.has(cid);
+      const missingData = classifyCourseSchedulability(c) === 'unschedulable_missing_data' || !isCourseRenderable(c);
+      const legalSemsRaw = missingData ? [] : (getLegalSemestersLocal(c, knownSems).semesters || []);
+      const wrongSemester = !missingData && legalSemsRaw.length === 0;
+      let prereqMissing = false;
+      if (!missingData && !wrongSemester) {
+        const okSomewhere = legalSemsRaw.some(sid => { const ti = semObjs.findIndex(x => x.id === sid); return prereqsSatisfiedForPlacementLocal(cid, ti < 0 ? 0 : ti, semIdx, completedForPrereq).ok; });
+        prereqMissing = !okSomewhere;
+      }
+      const hours = hoursForCourseId(cid) || 0;
+      const loadCap = !missingData && !wrongSemester && legalSemsRaw.every(sid => (semH[sid] || 0) + hours > (typeof HARD_LOAD_CAP !== 'undefined' ? HARD_LOAD_CAP : 26));
+      const shaarRuachCap = srIds.has(cid) && (() => { const planned = [...planSet].filter(x => srIds.has(x)).reduce((t, x) => t + (hoursForCourseId(x) || 0), 0); return (planned + hours) > ((typeof shaarRuachRequiredCreditsFor === 'function' ? shaarRuachRequiredCreditsFor(selectedProg?.program_id) : 6) || 6) + 1e-6; })();
+      const hardExcluded = hardExclude.has(cid);
+      const duplicate = false;
+      const blockers = { missingOfferingData: !!missingData, wrongSemester: !!wrongSemester, prerequisitesMissing: !!prereqMissing, loadCap: !!loadCap, shaarRuachCap: !!shaarRuachCap, duplicate, completedAlready: !!completedAlready, hardExcluded: !!hardExcluded };
+      const legal = !missingData && !wrongSemester && !prereqMissing;
+      const blocked = Object.entries(blockers).filter(([, v]) => v).map(([k]) => k);
+      if (legal && !completedAlready) nLegal++;
+      nConsidered++;
+      if (selected) nSelected++;
+      cands.push({ id: cid, name: c.name_he || cid, hours, category: c.category || c.program_category_id || null, considered: true, legal, selected, rejectionReason: selected ? null : (blocked[0] || 'not_selected_lower_rank'), selectedReason: selected ? 'in_current_plan' : null, blockers });
+    }
+    // sort: selected first, then legal-unselected, then blocked
+    cands.sort((a, b) => (b.selected - a.selected) || (b.legal - a.legal));
+    let gap = null; try { gap = buildGapBreakdownLocal(typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal ? _aiPlanLastProposal : { semesters: currentPlanSems }, analysis, { knownSemesterIds: knownSems, completedCourseIds: completedForPrereq, userIntentProfile: profile, requiredHours: REQUIRED }); } catch (_) {}
+    out.layer4_candidatePipeline = {
+      summary: { totalCandidates: nConsidered, legalUnselected: cands.filter(c => c.legal && !c.selected).length, selected: nSelected, blockedByMissingData: cands.filter(c => c.blockers.missingOfferingData).length },
+      gapBreakdown: gap,
+      candidates: cands,
+    };
+  } catch (e) { out.layer4_candidatePipeline = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 5 — selected-course explanation (incl. the named hard courses) ──
+  try {
+    const profile = (typeof _aiUserIntentProfile !== 'undefined' && _aiUserIntentProfile) || (typeof buildUserIntentProfileLocal === 'function' ? buildUserIntentProfileLocal('', {}) : null);
+    const knownSems = (typeof SEMESTERS !== 'undefined' ? SEMESTERS : []).map(s => s.id);
+    const planSet = new Set(currentPlanSems.flatMap(s => s.course_ids));
+    const mustInc = new Set((profile && profile.mustIncludeCourseIds) || []);
+    const semOfCourse = {}; for (const s of currentPlanSems) for (const cid of s.course_ids) semOfCourse[cid] = s.semester_id;
+    const explainOne = (cid) => {
+      const c = courseMap[cid]; if (!c) return null;
+      const risk = _gradeRiskScoreLocal(c);
+      const rel = profile ? scoreCourseAgainstIntentProfileLocal(c, profile).score : null;
+      const mandatory = c.course_type === 'mandatory' || c.is_mandatory;
+      const because = [];
+      if (mandatory) because.push('mandatory');
+      if (mustInc.has(cid)) because.push('direct_user_focus');
+      // category requirement?
+      const inCat = (programRequirements?.categories || []).some(cat => (cat.course_ids || []).includes(cid) && (cat.min_courses || 0) > 0);
+      if (inCat) because.push('category_requirement');
+      if (!because.length) because.push(risk.risk >= 0.7 ? 'no_better_candidate' : 'filler');
+      // alternatives: easier legal same-category candidates not placed
+      const alts = [];
+      for (const altId of Object.keys(courseMap)) {
+        if (planSet.has(altId) || altId === cid) continue;
+        const ac = courseMap[altId]; if (!ac || ac.course_type === 'mandatory' || ac.is_mandatory) continue;
+        if (_gradeRiskScoreLocal(altId ? ac : ac).risk >= risk.risk) continue; // easier only
+        const md = classifyCourseSchedulability(ac) === 'unschedulable_missing_data' || !isCourseRenderable(ac);
+        const legalSems = md ? [] : (getLegalSemestersLocal(ac, knownSems).semesters || []);
+        const legal = !md && legalSems.length > 0;
+        // same broad relevance: share a category with cid
+        const shareCat = (programRequirements?.categories || []).some(cat => (cat.course_ids || []).includes(cid) && (cat.course_ids || []).includes(altId));
+        if (!shareCat) continue;
+        alts.push({ id: altId, name: ac.name_he || altId, legal, risk: Math.round(_gradeRiskScoreLocal(ac).risk * 100) / 100, relevance: profile ? Math.round(scoreCourseAgainstIntentProfileLocal(ac, profile).score * 100) / 100 : null, reasonRejected: md ? 'missing_offering_data' : (!legal ? 'no_legal_semester' : 'lower_overall_rank_or_not_needed') });
+        if (alts.length >= 6) break;
+      }
+      const replaceable = !mandatory && !mustInc.has(cid) && alts.some(a => a.legal);
+      return { id: cid, name: c.name_he || cid, hours: hoursForCourseId(cid) ?? null, semester: semOfCourse[cid] || null, selectedBecause: because, relevanceScore: rel == null ? null : Math.round(rel * 100) / 100, gradeRiskScore: Math.round(risk.risk * 100) / 100, difficulty: c.difficulty ?? c.difficulty_level ?? null, tauFactorAverage: c.tau_factor_avg_grade ?? null, alternativesConsidered: alts, replaceable };
+    };
+    out.layer5_selectedExplanation = [...planSet].map(explainOne).filter(Boolean).filter(x => !(courseMap[x.id] && (courseMap[x.id].course_type === 'mandatory' || courseMap[x.id].is_mandatory)));
+    // Named hard courses the user explicitly wants traced (selected or not).
+    const NAMED = ['מכניקת המוצקים (2)', 'מבוא לתורת האלסטיות', 'יישומי אלמנטים סופיים בתעשייה', 'מכניקת הזורמים (2)', 'דינמיקה ובקרה של מערכות', 'דינמיקת הגזים', 'תורת התנודות'];
+    const named = [];
+    for (const nm of NAMED) {
+      const key = nm.replace(/[()]/g, '').trim();
+      const cid = Object.keys(courseMap).find(c => { const n = (courseMap[c].name_he || ''); return n === nm || n.replace(/[()]/g, '').trim() === key || n.includes(key.split(' ')[0]) && n.includes(key.split(' ').slice(-1)[0]); });
+      if (!cid) { named.push({ requestedName: nm, found: false }); continue; }
+      const c = courseMap[cid];
+      named.push({ requestedName: nm, found: true, id: cid, name: c.name_he, selected: new Set(currentPlanSems.flatMap(s => s.course_ids)).has(cid), gradeRiskScore: Math.round(_gradeRiskScoreLocal(c).risk * 100) / 100, tauFactorAverage: c.tau_factor_avg_grade ?? null, missingOfferingData: classifyCourseSchedulability(c) === 'unschedulable_missing_data', explanation: explainOne(cid) });
+    }
+    out.layer5_namedHardCourses = named;
+  } catch (e) { out.layer5_selectedExplanation = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 6 — manual-plan comparison (only when a fixture is supplied) ──
+  try {
+    const aiPlanAudit = auditPlanLocal(currentPlanSems);
+    out.layer6_comparison = { aiPlanAudit };
+    if (opts.manualPlan && opts.manualPlan.length) {
+      const manualPlanAudit = auditPlanLocal(opts.manualPlan);
+      const diffs = [];
+      const dh = Math.round((aiPlanAudit.totalDegreeHours - manualPlanAudit.totalDegreeHours) * 10) / 10;
+      if (Math.abs(dh) > 0.01) diffs.push(`AI total ${dh > 0 ? 'adds' : 'is short'} ${Math.abs(dh)} ש"ש vs manual (${aiPlanAudit.totalDegreeHours} vs ${manualPlanAudit.totalDegreeHours})`);
+      if (aiPlanAudit.hardCourseCount !== manualPlanAudit.hardCourseCount) diffs.push(`AI selects ${aiPlanAudit.hardCourseCount} hard courses vs ${manualPlanAudit.hardCourseCount} in manual`);
+      if (aiPlanAudit.shaarRuach.total !== manualPlanAudit.shaarRuach.total) diffs.push(`AI uses ${aiPlanAudit.shaarRuach.total} ש"ש שער-רוח vs ${manualPlanAudit.shaarRuach.total} in manual`);
+      if (aiPlanAudit.maxSemesterLoad !== manualPlanAudit.maxSemesterLoad) diffs.push(`AI peak semester load ${aiPlanAudit.maxSemesterLoad} vs ${manualPlanAudit.maxSemesterLoad} in manual`);
+      const manualIds = new Set(opts.manualPlan.flatMap(s => s.course_ids));
+      const aiIds = new Set(currentPlanSems.flatMap(s => s.course_ids));
+      const onlyManual = [...manualIds].filter(c => !aiIds.has(c) && courseMap[c]);
+      for (const c of onlyManual) { if (classifyCourseSchedulability(courseMap[c]) === 'unschedulable_missing_data') diffs.push(`AI misses ${nameOf(c)} (${c}) — missing offering data`); }
+      out.layer6_comparison.manualPlanAudit = manualPlanAudit;
+      out.layer6_comparison.differences = diffs;
+    }
+  } catch (e) { out.layer6_comparison = { error: String(e && e.message || e) }; }
+
+  // ── LAYER 7 — state freshness ──
+  try {
+    const dpc = buildDegreeProgressContext({});
+    const proposalDraftExists = draftActive;
+    const lastProposal = (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal) || null;
+    // stale if a last AI proposal exists whose placements no longer match the active draft/board
+    let stale = false;
+    if (lastProposal && lastProposal.semesters) {
+      const lastIds = new Set(lastProposal.semesters.flatMap(s => s.course_ids || []));
+      const curIds = new Set(currentPlanSems.flatMap(s => s.course_ids));
+      stale = lastIds.size !== curIds.size || [...lastIds].some(c => !curIds.has(c));
+    }
+    out.layer7_stateFreshness = {
+      buildMarker: out.buildMarker,
+      localStorageKeysUsed: ['tau_program', (typeof LS_AI_CHAT !== 'undefined' ? LS_AI_CHAT : 'tau_ai_chat'), 'tau_degree_hours_profile', 'tau_user_course_statuses'].filter(Boolean),
+      proposalDraftExists,
+      draftStateAge: (state && state.proposalDraft && state.proposalDraft._ts) ? (Date.now() - state.proposalDraft._ts) : null,
+      staleDraftDetected: stale,
+      completedStateVersion: dpc.sourceVersion,
+      plannerStateVersion: out.buildMarker,
+      lastValidationStatus: (typeof _aiPlanLastValidation !== 'undefined' && _aiPlanLastValidation) ? (_aiPlanLastValidation.status || 'present') : null,
+      currentDraftStatus: (() => { try { return computeDraftStatusLocal().status; } catch (_) { return null; } })(),
+      stateMismatchDetected: stale,
+    };
+  } catch (e) { out.layer7_stateFreshness = { error: String(e && e.message || e) }; }
+
+  // ── legal_partial explanation (why not legal_full) ──
+  try {
+    const ds = computeDraftStatusLocal();
+    if (ds && ds.status !== 'legal_full') {
+      const l4 = out.layer4_candidatePipeline || {};
+      out.whyNotLegalFull = {
+        status: ds.status,
+        total: ds.total,
+        remainingHours: Math.max(0, REQUIRED - (ds.total || 0)),
+        legalNonShaarRuachCandidatesLeft: (l4.candidates || []).filter(c => c.legal && !c.selected && !(new Set((typeof SHAAR_RUACH_COURSES !== 'undefined' ? SHAAR_RUACH_COURSES : []).map(x => x.course_id))).has(c.id)).length,
+        blockedByMissingData: (l4.summary && l4.summary.blockedByMissingData) || 0,
+        explanation: 'legal_partial when total < 185 and the only remaining legal candidates are שער-רוח (cap-limited) or engineering courses blocked by missing offering data.',
+      };
+    }
+  } catch (_) {}
+
+  if (typeof window !== 'undefined') { window.__lastPlanDebug = out; try { console.log('[debugCurrentPlan] copy window.__lastPlanDebug or:\n' + JSON.stringify(out, null, 2)); } catch (_) {} }
+  return out;
+}
+if (typeof window !== 'undefined') window.debugCurrentPlan = debugCurrentPlan;
 
 function computeProgramProgress() {
   if (!programRequirements) return null;
