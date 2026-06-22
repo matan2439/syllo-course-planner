@@ -7772,8 +7772,17 @@ function cardHtml(c, placed, draftDiff, opts) {
     c.teaching_format ? `<span class="hrs-tag">אופן הוראה: ${esc(c.teaching_format)}</span>` : '',
   ].filter(Boolean).join(' ');
 
+  // The only warning type currently produced for a course is the "not offered"
+  // one (set once, at data-normalization time, in lockstep with `status`), and
+  // it is always co-rendered as the visible bdg-not-offered badge below. In that
+  // case the icon is purely decorative — hide it from assistive tech instead of
+  // announcing the same warning twice. If a future warning type isn't mirrored
+  // by a visible badge, keep the icon's own aria-label.
   const warnIcon  = (c.warnings||[]).length
-    ? `<span class="warn-icon" role="img" title="${esc((c.warnings||[]).join(', '))}" aria-label="${esc('אזהרה: ' + (c.warnings||[]).join(', '))}">⚠</span>` : '';
+    ? (isNotOffered
+        ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}" aria-hidden="true">⚠</span>`
+        : `<span class="warn-icon" role="img" title="${esc((c.warnings||[]).join(', '))}" aria-label="${esc('אזהרה: ' + (c.warnings||[]).join(', '))}">⚠</span>`)
+    : '';
 
   // PART B/E — draft-overlay markers: added/moved/removed relative to the committed board.
   let draftBdg = '';
