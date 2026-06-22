@@ -2069,7 +2069,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'debug-explain-v14'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'grade-safety-gate-v15'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5576,6 +5576,7 @@ function applyCorrectiveFeedbackToState(message, intent) {
    and the exact 185 gap explanation). */
 let _aiPlanLastDecisionTrace = null;
 let _aiPlanLastGapBreakdown = null;
+let _aiPlanLastSkippedFiller = []; // high-risk filler the grade-safety gate skipped (last build)
 
 /**
  * Part A/B — classify a chat message into a structured DraftPatch. The patch is the
@@ -5743,6 +5744,15 @@ function formatFull185SummaryLocal(plan) {
     if (reasons.length) { lines.push('לא הגעתי ל-185 כי:'); for (const r of reasons) lines.push('• ' + r); }
   }
 
+  // Over-selection fix — high-risk courses the planner deliberately did NOT add as
+  // hours-filler (they satisfy no unmet category minimum). Surface them honestly with
+  // the reason and the option to add manually, rather than force-filling the gap.
+  const _skf = (plan && plan.skippedHighRiskFiller) || (typeof _aiPlanLastSkippedFiller !== 'undefined' ? _aiPlanLastSkippedFiller : []) || [];
+  if (_skf.length) {
+    lines.push(`לא מילאתי את הפער בכוח: דילגתי על ${_skf.length} קורסים בסיכון ציונים גבוה שאינם נדרשים לאף קטגוריה (כדי לא להכביד על הממוצע):`);
+    for (const s of _skf.slice(0, 4)) lines.push(`• ${s.name_he} (סיכון ${s.risk}${s.tau_factor_avg_grade != null ? `, ממוצע TAU ${s.tau_factor_avg_grade}` : ''}) — אפשר להוסיף ידנית אם תרצה.`);
+  }
+
   // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
   const profile = (plan && plan.userIntentProfile) || _aiUserIntentProfile || {};
   const notes = [];
@@ -5846,6 +5856,7 @@ function rebuildDraftFromProfileLocal(opts) {
   _aiPlanLastProposal = plan.proposal;
   _aiPlanLastDecisionTrace = plan.decisionTrace || null;
   _aiPlanLastGapBreakdown = plan.gapBreakdown || null;
+  _aiPlanLastSkippedFiller = plan.skippedHighRiskFiller || [];
   _aiUserIntentProfile = plan.userIntentProfile || p;
   // Preserve any session hard-excludes/must-includes the planner doesn't echo back.
   _aiUserIntentProfile.hardExcludeCourseIds = [...new Set([...(_aiUserIntentProfile.hardExcludeCourseIds || []), ...(p.hardExcludeCourseIds || [])])];
@@ -7242,18 +7253,31 @@ function debugCurrentPlan(opts) {
     const planSet = new Set(currentPlanSems.flatMap(s => s.course_ids));
     const mustInc = new Set((profile && profile.mustIncludeCourseIds) || []);
     const semOfCourse = {}; for (const s of currentPlanSems) for (const cid of s.course_ids) semOfCourse[cid] = s.semester_id;
+    // Category role: distinguish a course that is genuinely needed to meet an unmet/
+    // at-minimum category ("category_required") from a course in a category that already
+    // EXCEEDS its minimum ("category_member_oversupply" — droppable without breaking it).
+    const _completedForCat = new Set([...(typeof completedCourseIds !== 'undefined' ? completedCourseIds : [])]);
+    const categoryRoleOf = (cid) => {
+      const cs = (programRequirements?.categories || []).filter(cat => (cat.course_ids || []).includes(cid) && (cat.min_courses || 0) > 0);
+      if (!cs.length) return 'no_category';
+      for (const cat of cs) {
+        const counted = (cat.course_ids || []).filter(c => planSet.has(c) || _completedForCat.has(c)).length;
+        if (counted <= (cat.min_courses || 0)) return 'category_required';
+      }
+      return 'category_member_oversupply';
+    };
     const explainOne = (cid) => {
       const c = courseMap[cid]; if (!c) return null;
       const risk = _gradeRiskScoreLocal(c);
       const rel = profile ? scoreCourseAgainstIntentProfileLocal(c, profile).score : null;
       const mandatory = c.course_type === 'mandatory' || c.is_mandatory;
+      const role = categoryRoleOf(cid);
       const because = [];
       if (mandatory) because.push('mandatory');
       if (mustInc.has(cid)) because.push('direct_user_focus');
-      // category requirement?
-      const inCat = (programRequirements?.categories || []).some(cat => (cat.course_ids || []).includes(cid) && (cat.min_courses || 0) > 0);
-      if (inCat) because.push('category_requirement');
-      if (!because.length) because.push(risk.risk >= 0.7 ? 'no_better_candidate' : 'filler');
+      if (role === 'category_required') because.push('category_required');
+      else if (role === 'category_member_oversupply') because.push('category_member_oversupply');
+      if (!because.length) because.push(risk.risk >= 0.9 ? 'high_risk_filler' : (risk.risk >= 0.7 ? 'no_better_candidate' : 'filler'));
       // alternatives: easier legal same-category candidates not placed
       const alts = [];
       for (const altId of Object.keys(courseMap)) {
@@ -7269,8 +7293,10 @@ function debugCurrentPlan(opts) {
         alts.push({ id: altId, name: ac.name_he || altId, legal, risk: Math.round(_gradeRiskScoreLocal(ac).risk * 100) / 100, relevance: profile ? Math.round(scoreCourseAgainstIntentProfileLocal(ac, profile).score * 100) / 100 : null, reasonRejected: md ? 'missing_offering_data' : (!legal ? 'no_legal_semester' : 'lower_overall_rank_or_not_needed') });
         if (alts.length >= 6) break;
       }
-      const replaceable = !mandatory && !mustInc.has(cid) && alts.some(a => a.legal);
-      return { id: cid, name: c.name_he || cid, hours: hoursForCourseId(cid) ?? null, semester: semOfCourse[cid] || null, selectedBecause: because, relevanceScore: rel == null ? null : Math.round(rel * 100) / 100, gradeRiskScore: Math.round(risk.risk * 100) / 100, difficulty: c.difficulty ?? c.difficulty_level ?? null, tauFactorAverage: c.tau_factor_avg_grade ?? null, alternativesConsidered: alts, replaceable };
+      // "replaceable" now also means: high-risk AND only a category-oversupply member
+      // (removing it breaks no minimum) — i.e. droppable over-selection.
+      const replaceable = !mandatory && !mustInc.has(cid) && (alts.some(a => a.legal) || (risk.risk >= 0.9 && role !== 'category_required'));
+      return { id: cid, name: c.name_he || cid, hours: hoursForCourseId(cid) ?? null, semester: semOfCourse[cid] || null, categoryRole: role, selectedBecause: because, relevanceScore: rel == null ? null : Math.round(rel * 100) / 100, gradeRiskScore: Math.round(risk.risk * 100) / 100, difficulty: c.difficulty ?? c.difficulty_level ?? null, tauFactorAverage: c.tau_factor_avg_grade ?? null, alternativesConsidered: alts, replaceable };
     };
     out.layer5_selectedExplanation = [...planSet].map(explainOne).filter(Boolean).filter(x => !(courseMap[x.id] && (courseMap[x.id].course_type === 'mandatory' || courseMap[x.id].is_mandatory)));
     // Named hard courses the user explicitly wants traced (selected or not).
@@ -7284,6 +7310,9 @@ function debugCurrentPlan(opts) {
       named.push({ requestedName: nm, found: true, id: cid, name: c.name_he, selected: new Set(currentPlanSems.flatMap(s => s.course_ids)).has(cid), gradeRiskScore: Math.round(_gradeRiskScoreLocal(c).risk * 100) / 100, tauFactorAverage: c.tau_factor_avg_grade ?? null, missingOfferingData: classifyCourseSchedulability(c) === 'unschedulable_missing_data', explanation: explainOne(cid) });
     }
     out.layer5_namedHardCourses = named;
+    // High-risk filler the grade-safety gate deliberately skipped on the last build
+    // (not category-required) — surfaced instead of force-filled.
+    out.layer5_skippedHighRiskFiller = (typeof _aiPlanLastSkippedFiller !== 'undefined' ? _aiPlanLastSkippedFiller : []) || [];
   } catch (e) { out.layer5_selectedExplanation = { error: String(e && e.message || e) }; }
 
   // ── LAYER 6 — manual-plan comparison (only when a fixture is supplied) ──
@@ -7338,13 +7367,22 @@ function debugCurrentPlan(opts) {
     const ds = computeDraftStatusLocal();
     if (ds && ds.status !== 'legal_full') {
       const l4 = out.layer4_candidatePipeline || {};
+      const skipped = (typeof _aiPlanLastSkippedFiller !== 'undefined' ? _aiPlanLastSkippedFiller : []) || [];
+      const satisfiedReqs = ((out.layer3_requirements && out.layer3_requirements.categories) || [])
+        .filter(c => c.satisfied).map(c => c.name_he || c.category_id || c.name);
       out.whyNotLegalFull = {
         status: ds.status,
         total: ds.total,
         remainingHours: Math.max(0, REQUIRED - (ds.total || 0)),
         legalNonShaarRuachCandidatesLeft: (l4.candidates || []).filter(c => c.legal && !c.selected && !(new Set((typeof SHAAR_RUACH_COURSES !== 'undefined' ? SHAAR_RUACH_COURSES : []).map(x => x.course_id))).has(c.id)).length,
         blockedByMissingData: (l4.summary && l4.summary.blockedByMissingData) || 0,
-        explanation: 'legal_partial when total < 185 and the only remaining legal candidates are שער-רוח (cap-limited) or engineering courses blocked by missing offering data.',
+        // Over-selection fix — the gap was left on purpose: high-risk filler was skipped.
+        highRiskFillerSkipped: skipped.length,
+        skippedCourses: skipped.slice(0, 8).map(s => ({ id: s.course_id, name: s.name_he, risk: s.risk })),
+        requirementsSatisfiedDespiteGap: satisfiedReqs,
+        explanation: skipped.length
+          ? `Gap left ON PURPOSE: ${skipped.length} very-hard course(s) (risk ≥ 0.9) were skipped because they satisfy no unmet category minimum — the plan stays lighter and safer instead of force-filling. Remaining legal options are שער-רוח (cap-limited) or data-blocked engineering courses.`
+          : 'legal_partial when total < 185 and the only remaining legal candidates are שער-רוח (cap-limited) or engineering courses blocked by missing offering data.',
       };
     }
   } catch (_) {}
@@ -10108,11 +10146,13 @@ function buildDeterministicReplacementPlan(args) {
   // or no legal candidate remains. Uncapped — the only stop is target-or-exhausted.
   // BUG FIX: Only fill if the baseline doesn't already exceed the target.
   let _fill = { added: [] };
+  let _skippedHighRiskFiller = [];
   if (args.fillToTarget) {
     const _baselineCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
     const _baselineTotal = _baselineCtx.totalAfterPlan;
     if (_baselineTotal < targetHours) {
       try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
+      if (_fill.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._fill.skippedHighRiskFiller);
     }
   }
 
@@ -10138,7 +10178,7 @@ function buildDeterministicReplacementPlan(args) {
       try { _before = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _before = 0; }
       if (_before >= targetHours) break;
       let _added = 0;
-      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; } catch (_) {}
+      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; if (_f.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._f.skippedHighRiskFiller); } catch (_) {}
       try { const enf2 = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: _balanceCtx.maxHoursPerSemester }); proposal = enf2.proposal || proposal; } catch (_) {}
       try { proposal = repairPlanLoad(proposal, _balanceCtx).proposal || proposal; } catch (_) {}
       let _after;
@@ -10229,6 +10269,17 @@ function buildDeterministicReplacementPlan(args) {
     //     the fill over-added, only while the total stays >= 185 (never drops below).
     try {
       proposal = minimizeOverloadAfterTargetLocal(proposal, { ...repairOpts, requiredHours: targetHours, beforeCids });
+    } catch (_) {}
+    // 5f. Over-selection fix (FINAL removal — runs AFTER every fill pass so nothing
+    //     re-adds) — strip very-hard (risk ≥ 0.9) courses that earlier passes
+    //     (domain-focus / category fill) over-added beyond a category's minimum.
+    //     Categories stay satisfied; committed-board / mandatory / must-include /
+    //     completed are never touched. Removed courses are surfaced as skipped
+    //     high-risk filler so the gap is explained, not silently force-filled.
+    try {
+      const _trim = trimOverSelectedHighRiskLocal(proposal, { userIntentProfile, completedCourseIds: _prereqCompletedSet, beforeCids });
+      proposal = _trim.proposal || proposal;
+      if (_trim.removed && _trim.removed.length) _skippedHighRiskFiller.push(..._trim.removed);
     } catch (_) {}
   }
 
@@ -10335,11 +10386,19 @@ function buildDeterministicReplacementPlan(args) {
     return { domain: key, label_he: def.label_he, satisfied: included.length > 0, included, skipped };
   });
 
+  // High-risk filler the grade-safety gate deliberately skipped (deduped; exclude any
+  // that ended up placed by another pass). Surfaced honestly instead of force-filling.
+  const _finalPlacedSet = new Set((proposal.semesters || []).flatMap(s => s.course_ids || []));
+  const _skippedSeen = new Set();
+  const skippedHighRiskFiller = (typeof _skippedHighRiskFiller !== 'undefined' ? _skippedHighRiskFiller : [])
+    .filter(s => !_finalPlacedSet.has(s.course_id) && !_skippedSeen.has(s.course_id) && _skippedSeen.add(s.course_id));
+
   const _planResult = {
     proposal,
     addedCids,
     confirmedCids,
     tentativeCids,
+    skippedHighRiskFiller,
     confirmedPlacements: confirmedCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     tentativePlacements: tentativeCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     totalHours,
@@ -10444,6 +10503,33 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
     return t;
   };
 
+  // ── Grade-safety gate (over-selection fix) — a very-hard course (risk ≥ 0.9) is
+  // NEVER added purely as hours-filler. It is placed only when it is mandatory, an
+  // explicit user request/must-include, OR it satisfies a category minimum that is
+  // still unmet. Otherwise the fill leaves the small hours-gap and surfaces it
+  // honestly, rather than over-stuffing a category with lethal courses to chase 185.
+  const _cats = (typeof programRequirements !== 'undefined' && programRequirements && programRequirements.categories) || [];
+  const _catsOf = (cid) => _cats.filter(cat => (cat.course_ids || []).includes(cid));
+  const _mustInc = new Set((profile && profile.mustIncludeCourseIds) || []);
+  // "User-preferred" = an EXPLICIT must-include (a specific course the user named).
+  // A soft domain focus (e.g. "דגש על חוזק" → requestedCourseIds) is NOT a license to
+  // over-stuff a category with risk-1.0 courses — the category-necessity audit showed
+  // those are over-selection. So requested-domain courses are gated like any filler.
+  const _userPreferred = (cid) => _mustInc.has(cid);
+  const _isMandatoryCourse = (cid) => { const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null; return !!(c && (c.course_type === 'mandatory' || c.is_mandatory)); };
+  const _satisfiesUnmetCategoryMin = (cid) => {
+    for (const cat of _catsOf(cid)) {
+      const min = cat.min_courses || 0;
+      if (min <= 0) continue;
+      const n = (cat.course_ids || []).filter(c => placed.has(c) || completed.has(c)).length;
+      if (n < min) return true; // placing cid moves an unmet category toward its minimum
+    }
+    return false;
+  };
+  const _gradeRiskOf = (cm) => (typeof _gradeRiskScoreLocal === 'function') ? (_gradeRiskScoreLocal(cm).risk || 0) : 0;
+  const HIGH_RISK_FILLER_CUTOFF = 0.9;
+  const skippedHighRiskFiller = [];
+
   const added = [];
   let guard = 0;
   while (curTotal() < required && guard++ < 300) {
@@ -10468,6 +10554,22 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
       if (!legalSems.length) continue;
       const fit = legalSems.filter(s => hoursOf(s) + (info.hours || pool[i].hours || 0) <= max);
       if (!fit.length) continue;
+      // Grade-safety gate: the course is genuinely placeable here — but if it is very
+      // hard (risk ≥ 0.9) and is NOT mandatory / user-preferred / needed for an unmet
+      // category minimum, do NOT place it as filler. Record it as a deliberately
+      // skipped high-risk filler and remove it from the pool so the gap is surfaced.
+      if (_gradeRiskOf(cm) >= HIGH_RISK_FILLER_CUTOFF && !_isMandatoryCourse(cid) && !_userPreferred(cid) && !_satisfiesUnmetCategoryMin(cid)) {
+        skippedHighRiskFiller.push({
+          course_id: cid, name_he: cm.name_he || cid,
+          risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
+          tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
+          categories: _catsOf(cid).map(c => c.category_id),
+          hours: info.hours || pool[i].hours || hoursForCourseId(cid) || 0,
+          reason: 'high_risk_filler_not_category_required',
+        });
+        pool.splice(i, 1); i--;
+        continue;
+      }
       const target = fit.sort((a, b) => hoursOf(a) - hoursOf(b))[0];
       target.course_ids.push(cid); placed.add(cid);
       added.push({ course_id: cid, semester_id: target.semester_id, hours: info.hours || pool[i].hours || 0 });
@@ -10480,7 +10582,56 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   return {
     proposal: { ...proposal, semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)) },
     added,
+    skippedHighRiskFiller,
   };
+}
+
+/**
+ * Over-selection fix (companion to the fill gate) — remove very-hard (risk ≥ 0.9)
+ * courses that were added by EARLIER passes (domain-focus / category fill) when their
+ * category already EXCEEDS its minimum, i.e. they are pure over-supply. Never removes:
+ * committed-board courses (beforeCids), mandatory, must-include, completed, or the
+ * last course needed to keep a category at its minimum. Highest-risk over-supply is
+ * dropped first. Returns { proposal, removed } — `removed` is surfaced as skipped
+ * high-risk filler so the gap is explained, not silently force-filled.
+ */
+function trimOverSelectedHighRiskLocal(proposal, opts) {
+  opts = opts || {};
+  const cats = (typeof programRequirements !== 'undefined' && programRequirements && programRequirements.categories) || [];
+  const profile = opts.userIntentProfile || null;
+  const mustInc = new Set((profile && profile.mustIncludeCourseIds) || []);
+  const completed = opts.completedCourseIds || new Set();
+  const beforeCids = opts.beforeCids || new Set();
+  const cutoff = (typeof opts.cutoff === 'number') ? opts.cutoff : 0.9;
+  const sems = (proposal.semesters || []).map(s => ({ ...s, course_ids: [...(s.course_ids || [])] }));
+  const placedSet = () => new Set(sems.flatMap(s => s.course_ids));
+  const riskOf = (cid) => { const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null; return c ? (_gradeRiskScoreLocal(c).risk || 0) : 0; };
+  const _isProtected = (cid) => { const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null; return beforeCids.has(cid) || mustInc.has(cid) || completed.has(cid) || !!(c && (c.course_type === 'mandatory' || c.is_mandatory)); };
+  const removed = [];
+  for (const cat of cats) {
+    const min = cat.min_courses || 0;
+    if (min <= 0) continue;
+    const ids = cat.course_ids || [];
+    let countedNow = ids.filter(c => placedSet().has(c) || completed.has(c)).length;
+    if (countedNow <= min) continue; // not over-supplied
+    const removable = ids
+      .filter(c => placedSet().has(c) && !_isProtected(c) && riskOf(c) >= cutoff)
+      .sort((a, b) => riskOf(b) - riskOf(a)); // drop the hardest first
+    for (const cid of removable) {
+      if (countedNow <= min) break;
+      for (const s of sems) { const i = s.course_ids.indexOf(cid); if (i >= 0) { s.course_ids.splice(i, 1); break; } }
+      const c = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+      removed.push({
+        course_id: cid, name_he: (c && c.name_he) || cid,
+        risk: Math.round(riskOf(cid) * 100) / 100,
+        tau_factor_avg_grade: (c && typeof c.tau_factor_avg_grade === 'number') ? c.tau_factor_avg_grade : null,
+        categories: [cat.category_id], hours: hoursForCourseId(cid) || 0,
+        reason: 'high_risk_filler_not_category_required',
+      });
+      countedNow--;
+    }
+  }
+  return { proposal: { ...proposal, semesters: sems }, removed };
 }
 
 /**
@@ -11814,7 +11965,7 @@ function setUserStatus(cid, status, plannedSemester) {
   // so the next build starts from the corrected baseline (no old localStorage override).
   if (state && state.proposalDraft) state.proposalDraft = null;
   _aiPlanLastProposal = null; _aiPlanLastValidation = null;
-  _aiPlanLastGapBreakdown = null; _aiPlanLastDecisionTrace = null;
+  _aiPlanLastGapBreakdown = null; _aiPlanLastDecisionTrace = null; _aiPlanLastSkippedFiller = [];
 }
 
 /* The semester id (if any) in which a course is currently placed on the board */

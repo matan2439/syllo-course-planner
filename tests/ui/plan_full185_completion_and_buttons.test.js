@@ -76,6 +76,7 @@ const STRICT_FITTABLE = `function strictFittable(proposal){
     const c=courseMap[cid];
     if(!c||c.course_type==='mandatory'||c.is_mandatory) continue;
     if(srIds.has(cid)) continue; // שער-רוח is cap-limited, not gap-fill
+    if(_gradeRiskScoreLocal(c).risk>=0.9) continue; // grade-safety gate skips risk≥0.9 filler by design
     if(classifyCourseSchedulability(c)==='unschedulable_missing_data'||!isCourseRenderable(c)) continue;
     const legal=getLegalSemestersLocal(c,knownSems).semesters; const allowed=(legal&&legal.length)?legal:knownSems;
     let ls=sems.filter(s=>allowed.includes(s.id));

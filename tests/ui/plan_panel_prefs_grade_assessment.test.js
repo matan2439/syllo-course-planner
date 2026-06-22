@@ -110,8 +110,10 @@ describe('Planning Preferences panel integration', () => {
     const r = build();
     // The שער-רוח cap (Part I) means 185 is reachable only via schedulable engineering
     // electives; when the repo exhausts them the honest result is legal_partial < 185.
+    // Grade-safety gate (over-selection fix) intentionally leaves the plan below 185
+    // rather than force-fill risk≥0.9 courses → a lighter legal_partial plan.
     if (r.total >= 185) expect(r.status).toBe('legal_full');
-    else { expect(r.total).toBeGreaterThan(180); expect(r.status).toBe('legal_partial'); }
+    else { expect(r.total).toBeGreaterThan(150); expect(r.status).toBe('legal_partial'); }
   });
 
   test('G11 — gradeTarget 82 is represented in the profile', () => {
@@ -126,8 +128,9 @@ describe('Planning Preferences panel integration', () => {
     const r = build();
     const nLines = r.summary.split('\n').length;
     // Concise: a short status + a bounded set of explanations the user explicitly asked
-    // for (why hard courses were kept, what's blocked by missing data) — NOT a full list.
-    expect(nLines).toBeLessThanOrEqual(20);
+    // for (why hard courses were kept, which high-risk filler was skipped, what's blocked
+    // by missing data) — NOT a full list.
+    expect(nLines).toBeLessThanOrEqual(26);
     expect(r.summary).toContain('לפירוט מלא');
   });
 });

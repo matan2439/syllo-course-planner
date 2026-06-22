@@ -99,8 +99,10 @@ describe('185 completion + workload trim', () => {
     })()`));
     // With the שער-רוח cap, 185 needs schedulable engineering electives; when those run
     // out (unschedulable_missing_data) the honest status is legal_partial, NOT legal_full.
+    // Grade-safety gate (over-selection fix) intentionally leaves the plan below 185
+    // rather than force-fill risk≥0.9 courses → a lighter legal_partial plan.
     if (r.total >= 185) expect(r.status).toBe('legal_full');
-    else { expect(r.total).toBeGreaterThan(180); expect(r.status).toBe('legal_partial'); }
+    else { expect(r.total).toBeGreaterThan(150); expect(r.status).toBe('legal_partial'); }
   });
 
   test('F4 — workload trim never drops the total below its starting point', () => {
