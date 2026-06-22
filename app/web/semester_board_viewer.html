@@ -35,6 +35,13 @@
   --shadow-lg: 0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
   --t:         180ms ease;
 
+  /* ── Motion system ── */
+  --motion-fast:   120ms;
+  --motion-normal: 180ms;
+  --motion-slow:   240ms;
+  --ease-standard:   cubic-bezier(.2,0,.2,1);
+  --ease-emphasized: cubic-bezier(.3,0,.1,1);
+
   --easy-bg:#D1FAE5; --easy-text:#065F46; --easy-border:#6EE7B7;
   --med-bg:#FEF3C7;  --med-text:#92400E;  --med-border:#FCD34D;
   --hard-bg:#FEE2E2; --hard-text:#991B1B; --hard-border:#FCA5A5;
@@ -62,7 +69,7 @@
   --cat-labs-accent:    #059669; --cat-labs-bg:    rgba(5,150,105,.06);
   --cat-other-accent:   #64748B; --cat-other-bg:   rgba(100,116,139,.04);
   --cat-specelective-accent: #DB2777; --cat-specelective-bg: rgba(219,39,119,.06);
-  --cat-shaarruach-accent:   #0D9488; --cat-shaarruach-bg:   rgba(13,148,136,.06);
+  --cat-shaarruach-accent:   #4F46E5; --cat-shaarruach-bg:   rgba(79,70,229,.06);
 }
 
 [data-theme="dark"] {
@@ -92,7 +99,17 @@
   --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
   --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
   --cat-specelective-accent: #F472B6; --cat-specelective-bg: rgba(219,39,119,.14);
-  --cat-shaarruach-accent:   #2DD4BF; --cat-shaarruach-bg:   rgba(13,148,136,.14);
+  --cat-shaarruach-accent:   #818CF8; --cat-shaarruach-bg:   rgba(129,140,248,.14);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -1260,10 +1277,24 @@ body.prog-modal-open .workspace {
 .card-placed.diff-very_hard { border-inline-start-color: var(--vhard-border); }
 
 /* Card body */
-.card-main { padding: 9px 11px 8px; }
+.card-main { padding: 9px 11px 8px; min-height: 84px; display: flex; flex-direction: column; }
 .card-top {
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 4px; margin-bottom: 4px;
+}
+
+/* Secondary badges (category/difficulty/extra-hours) — collapsed by default,
+   revealed on hover/focus so the default card stays scannable. */
+.card-secondary {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height var(--motion-normal) var(--ease-standard),
+              opacity var(--motion-fast) var(--ease-standard);
+}
+.course-card:hover .card-secondary,
+.course-card:focus-within .card-secondary,
+.course-card.card-secondary-pinned .card-secondary {
+  max-height: 4em; opacity: 1; margin-top: 4px;
 }
 .cid {
   font-family: ui-monospace, "Cascadia Code", monospace;
@@ -1278,17 +1309,21 @@ body.prog-modal-open .workspace {
 .card-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .warn-icon { font-size: .75rem; margin-inline-start: auto; cursor: help; }
 
-/* Drag hint strip — visible on hover for draggable cards */
+/* Drag hint strip — faintly visible by default for discoverability, full
+   opacity on hover/focus for draggable cards. */
 .card-drag-hint {
   font-size: .6rem; color: var(--text-faint);
   text-align: center; letter-spacing: .04em;
   padding: 3px 0 4px;
   border-top: 1px solid var(--border);
-  opacity: 0;
-  transition: opacity 160ms ease;
+  opacity: .32;
+  transition: opacity var(--motion-fast) var(--ease-standard);
   cursor: grab;
 }
-.course-card[draggable="true"]:not(.card-locked):hover .card-drag-hint { opacity: 1; }
+.course-card[draggable="true"]:not(.card-locked):hover .card-drag-hint,
+.course-card[draggable="true"]:not(.card-locked):focus-within .card-drag-hint {
+  opacity: 1;
+}
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
 .badge {
@@ -1482,6 +1517,18 @@ body.prog-modal-open .workspace {
    plus a slight opacity change and a subtle box-shadow glow — no dashed
    border or outline that competes with the category accent. */
 .course-card-draft { opacity: .92; }
+@keyframes cardDraftIn {
+  from { opacity: 0; transform: scale(.94); }
+  to   { opacity: .92; transform: scale(1); }
+}
+@keyframes cardDraftOut {
+  from { opacity: .92; transform: scale(1); }
+  to   { opacity: .45; transform: scale(.97); }
+}
+.course-card.card-draft-added,
+.course-card.card-draft-tentative {
+  animation: cardDraftIn var(--motion-slow) var(--ease-emphasized);
+}
 .course-card.card-draft-added {
   box-shadow: 0 0 0 2px rgba(46,204,113,.18);
 }
@@ -1490,6 +1537,7 @@ body.prog-modal-open .workspace {
 }
 .course-card.course-card-draft-removed {
   opacity: .45; filter: grayscale(.4);
+  animation: cardDraftOut var(--motion-normal) var(--ease-standard);
 }
 .course-card.course-card-draft-replaced {
   box-shadow: 0 0 0 2px rgba(241,196,15,.22);
@@ -7786,8 +7834,9 @@ function cardHtml(c, placed, draftDiff, opts) {
       <span class="cid" dir="ltr">${esc(c.course_id)}</span>
       ${warnIcon}${pinBtn}${actionBtn}${menuBtn}
     </div>
-    <div class="cname${c.name_he?'':' unnamed'}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
-    <div class="card-row">${draftBdg} ${typeBdg} ${annualBdg} ${catBdg} ${diffBdg} ${prereqWarnBdg} ${hoursHtml} ${extraHoursHtml}</div>
+    <div class="cname${c.name_he?'':' unnamed'}" title="${esc(c.name_he||'')}">${c.name_he?esc(c.name_he):'⚠ שם קורס חסר — נדרש ייבוא מידע'}</div>
+    <div class="card-row">${draftBdg} ${typeBdg} ${prereqWarnBdg} ${hoursHtml}</div>
+    <div class="card-secondary">${annualBdg} ${catBdg} ${diffBdg} ${extraHoursHtml}</div>
   </div>${dragHint}
 </div>`;
 }
