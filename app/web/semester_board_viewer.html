@@ -28,7 +28,7 @@
   --border2:   #D1D5DB;
   --text:      #111827;
   --text-muted:#6B7280;
-  --text-faint:#9CA3AF;
+  --text-faint:#5F6B78;
   --radius:    10px;
   --shadow:    0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.05);
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
@@ -76,7 +76,7 @@
   --bg:#0F1117; --bg2:#171A23;
   --surface:#171A23; --surface2:#1F2430;
   --border:#2D3342; --border2:#3D4455;
-  --text:#F9FAFB; --text-muted:#A1A1AA; --text-faint:#6B7280;
+  --text:#F9FAFB; --text-muted:#A1A1AA; --text-faint:#838C99;
 
   --easy-bg:#064E3B; --easy-text:#6EE7B7; --easy-border:#065F46;
   --med-bg:#78350F;  --med-text:#FCD34D;  --med-border:#92400E;
@@ -1338,7 +1338,7 @@ body.prog-modal-open .workspace {
 .bdg-blocked        { background: #F3F4F6;            color: #6B7280; border-color: #D1D5DB; }
 .bdg-missing        { background: var(--warn-soft);   color: #92400E; border-color: var(--warning); }
 .bdg-partial        { background: #FFFBEB;            color: #92400E; border-color: #FCD34D; }
-.bdg-not-offered    { background: #F1F5F9;            color: #64748B; border-color: #CBD5E1; }
+.bdg-not-offered    { background: #F1F5F9;            color: #5C6B82; border-color: #CBD5E1; }
 [data-theme="dark"] .bdg-mandatory      { background: #1E3A5F; color: #93C5FD; border-color: #2563EB; }
 [data-theme="dark"] .bdg-mandatory-flex { background: #064E3B; color: #6EE7B7; border-color: #065F46; }
 [data-theme="dark"] .bdg-elective       { background: #2E1065; color: #C4B5FD; border-color: #7C3AED; }
@@ -1386,34 +1386,39 @@ body.prog-modal-open .workspace {
 .hrs-tag .v { font-weight: 700; color: var(--text); }
 .hrs-unk { font-size: .67rem; color: var(--miss-accent); font-style: italic; }
 
-/* Card action buttons */
-.rm-btn, .lock-btn {
-  font-size: .72rem; border: none; background: none;
-  cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
+/* Card action buttons — hit area enlarged to ~28px while the glyph itself
+   stays compact (font-size unchanged), so cards don't look noisier. */
+.rm-btn, .pin-btn, .course-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; min-height: 28px;
+  margin: -7px -4px; /* offsets the larger hit box so layout doesn't visually shift */
+  border: none; background: none; border-radius: 6px;
+  cursor: pointer; line-height: 1; flex-shrink: 0;
+  transition: color var(--t), background var(--t), transform .12s;
+}
+.rm-btn:focus-visible, .pin-btn:focus-visible, .course-menu-btn:focus-visible {
+  outline: 2px solid var(--mand-accent); outline-offset: 1px;
+}
+
+.rm-btn { font-size: .72rem; color: var(--text-faint); }
+.rm-btn:hover { color: var(--danger); background: rgba(239,68,68,.08); }
+
+.lock-btn {
+  font-size: .72rem; line-height: 1; flex-shrink: 0; color: var(--mand-accent);
   transition: color var(--t), transform .12s;
 }
-.rm-btn { color: var(--text-faint); }
-.rm-btn:hover { color: var(--danger); }
-.lock-btn { color: var(--mand-accent); }
 .lock-btn:hover { transform: scale(1.2); }
 .card-locked .lock-btn { color: var(--text-faint); }
 
 /* Pin / "אל תזיז" toggle */
-.pin-btn {
-  font-size: .72rem; border: none; background: none;
-  cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0;
-  transition: transform .12s; opacity: .5;
-}
+.pin-btn { font-size: .72rem; opacity: .5; transition: transform .12s, opacity .12s; }
 .pin-btn:hover { transform: scale(1.2); opacity: 1; }
 .pin-btn.pinned { opacity: 1; }
 .course-card.card-pinned { outline: 2px solid var(--mand-accent); outline-offset: -2px; }
 
 /* PART B — course action menu ("⋯") */
-.course-menu-btn {
-  font-size: .8rem; border: none; background: none; color: var(--text-faint);
-  cursor: pointer; padding: 0 3px; line-height: 1; flex-shrink: 0; opacity: .6;
-}
-.course-menu-btn:hover { opacity: 1; }
+.course-menu-btn { font-size: .8rem; color: var(--text-faint); opacity: .6; }
+.course-menu-btn:hover { opacity: 1; background: var(--surface2); }
 .course-menu-popover {
   position: fixed; z-index: 9999; background: var(--bg-elevated, #fff);
   border: 1px solid var(--border-color, #ccc); border-radius: 8px;
@@ -7768,7 +7773,7 @@ function cardHtml(c, placed, draftDiff, opts) {
   ].filter(Boolean).join(' ');
 
   const warnIcon  = (c.warnings||[]).length
-    ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}">⚠</span>` : '';
+    ? `<span class="warn-icon" role="img" title="${esc((c.warnings||[]).join(', '))}" aria-label="${esc('אזהרה: ' + (c.warnings||[]).join(', '))}">⚠</span>` : '';
 
   // PART B/E — draft-overlay markers: added/moved/removed relative to the committed board.
   let draftBdg = '';
@@ -7805,24 +7810,25 @@ function cardHtml(c, placed, draftDiff, opts) {
 
   const pinned = placed && (state?.pinnedCourseIds || []).includes(c.course_id);
   if (pinned) cls += ' card-pinned';
+  const _courseLabelForA11y = c.name_he || c.course_id;
   const pinBtn = (placed && !removedHere)
-    ? `<button class="pin-btn ${pinned ? 'pinned' : ''}" data-pin="${esc(c.course_id)}" title="אל תזיז — ה-AI לא יזיז את הקורס הזה">${pinned ? '📌' : '📍'}</button>`
+    ? `<button class="pin-btn ${pinned ? 'pinned' : ''}" data-pin="${esc(c.course_id)}" title="אל תזיז — ה-AI לא יזיז את הקורס הזה" aria-label="${esc(pinned ? `הסר נעיצה מ${_courseLabelForA11y} — אפשר ל-AI להזיז אותו` : `נעץ את ${_courseLabelForA11y} — אל תזיז, ה-AI לא יזיז את הקורס הזה`)}" aria-pressed="${pinned ? 'true' : 'false'}">${pinned ? '📌' : '📍'}</button>`
     : '';
 
   let actionBtn = '';
   if (removedHere) {
     actionBtn = '';
   } else if (isFixedMandatory) {
-    actionBtn = `<span class="lock-btn" title="חובה קבוע — לא ניתן להזיז">🔒</span>`;
+    actionBtn = `<span class="lock-btn" role="img" title="חובה קבוע — לא ניתן להזיז" aria-label="חובה קבוע — לא ניתן להזיז את ${esc(_courseLabelForA11y)}">🔒</span>`;
   } else if (isFlexMand) {
-    actionBtn = `<span class="lock-btn" title="חובה גמיש — ניתן להזזה בין סמסטרים מותרים">↔</span>`;
+    actionBtn = `<span class="lock-btn" role="img" title="חובה גמיש — ניתן להזזה בין סמסטרים מותרים" aria-label="חובה גמיש — ${esc(_courseLabelForA11y)} ניתן להזזה בין סמסטרים מותרים">↔</span>`;
   } else if (placed) {
-    actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר">✕</button>`;
+    actionBtn = `<button class="rm-btn" data-rm="${esc(c.course_id)}" title="החזר למאגר" aria-label="${esc(`הסר את ${_courseLabelForA11y} והחזר למאגר`)}">✕</button>`;
   }
 
   // PART B — compact course action menu ("⋯") for placed, non-draft cards.
   const menuBtn = (!removedHere && !draftDiff)
-    ? `<button class="course-menu-btn" data-menu="${esc(c.course_id)}" title="פעולות נוספות">⋯</button>`
+    ? `<button class="course-menu-btn" data-menu="${esc(c.course_id)}" title="פעולות נוספות" aria-label="${esc(`פעולות נוספות ל${_courseLabelForA11y}`)}" aria-haspopup="true">⋯</button>`
     : '';
 
   const dragHint = (canDrag && !removedHere) ? '<div class="card-drag-hint">⠿ גרירה</div>' : '';
