@@ -2069,7 +2069,7 @@ const LS_USER_STATUSES = 'tau_user_course_statuses_v1';
 const LS_DEGREE_HOURS_PROFILE = 'tau_degree_hours_profile_v1';
 const LS_AI_SESSION  = 'tau_ai_sid';       // anonymous AI quota session UUID
 const LS_AI_CHAT     = 'tau_ai_chat_v1';   // PART D — persisted chat history + input draft
-const PLANNER_BUILD  = 'grade-safety-gate-v15'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
+const PLANNER_BUILD  = 'grade-safety-msg-v16'; // bump when chat-influencing logic changes — triggers auto-clear of stale localStorage messages
 
 // Supabase is now the source of truth for offered_semesters / effective_allowed_semesters
 // (updated 2026-06-19 by scripts/supabase_normalize_mechanical_2027.py — 22 courses corrected,
@@ -5769,10 +5769,16 @@ function formatFull185SummaryLocal(plan) {
       // systems/advanced_labs). Report THOSE explicitly — broader elective/hour
       // requirements may still be short (that IS the surfaced gap), so we do not
       // over-claim "everything is satisfied".
+      // Count against THIS plan's placed courses (the draft) + completed — NOT the
+      // committed board (computeProgramProgress), which can't see a freshly-built draft.
       const _coreIds = new Set(['fluids', 'solids', 'systems', 'advanced_labs']);
-      const _core = ((computeProgramProgress() || {}).categories || [])
+      const _placedPlan = new Set(((plan && plan.proposal && plan.proposal.semesters) || []).flatMap(s => s.course_ids || []));
+      const _completedSet = new Set(typeof completedCourseIds !== 'undefined' ? completedCourseIds : []);
+      const _core = ((typeof programRequirements !== 'undefined' && programRequirements && programRequirements.categories) || [])
         .filter(c => _coreIds.has(c.category_id) && (c.min_courses || 0) > 0);
-      _coreCatsSat = _core.length ? _core.every(c => c.satisfied) : null;
+      _coreCatsSat = _core.length
+        ? _core.every(c => (c.course_ids || []).filter(x => _placedPlan.has(x) || _completedSet.has(x)).length >= (c.min_courses || 0))
+        : null;
     } catch (_) {}
     if (_coreCatsSat === true) lines.push('✓ דרישות הליבה (זורמים/מוצקים/מערכות/מעבדות) עדיין מתקיימות — הפער הוא בשעות בלבד, לא בקורסי ליבה.');
     lines.push(`כדי להשלים ל-${required} ש״ש תוכל: (1) לאשר ידנית קורס בסיכון גבוה מהרשימה למעלה, (2) להמתין להשלמת נתוני סמסטר לקורסים החסומים, או (3) לבחור קורסי בחירה נוספים מתאימים.`);
