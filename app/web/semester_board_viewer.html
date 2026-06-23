@@ -15841,6 +15841,16 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
 
   if (!added.length) return { proposal, added: [], exhausted, blockedByGlobalCap };
   const warnings_he = [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'];
+  // Unknown exam/assessment data must never be presented as satisfying the
+  // no-exam preference — it only means "couldn't verify", not "matches". Name
+  // each such added course explicitly so the user knows to confirm it manually,
+  // instead of folding it into the generic "closest alternatives" line below.
+  if (assessmentPref === 'prefer_no_exam') {
+    const unknownAdded = added.filter(a => _hasFinalExamLocal(courseMap[a.course_id]) == null);
+    for (const a of unknownAdded) {
+      warnings_he.push(`${courseMap[a.course_id]?.name_he || a.course_id}: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית, לכן אינו מאומת כתואם את ההעדפה "בלי בחינה סופית".`);
+    }
+  }
   if (assessmentPref && prefUnmatched) {
     warnings_he.push('לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת, לכן נבחרו החלופות הקרובות ביותר.');
   }
@@ -16266,6 +16276,11 @@ function _normalizeCourseNameLocal(name) {
   s = s.replace(/(^|\s)ב['׳]?(?=\s|$)/g, ' 2 ').replace(/(^|\s)א['׳]?(?=\s|$)/g, ' 1 ')
        .replace(/(^|\s)ג['׳]?(?=\s|$)/g, ' 3 ').replace(/(^|\s)ד['׳]?(?=\s|$)/g, ' 4 ');
   s = s.replace(/[()[\]{}.,;:!?"״'׳`\-–—_]/g, ' ');
+  // Fold common acceptable Hebrew spelling variants of the same word to one
+  // canonical form (e.g. "לוויינים"/"לווינים"/"לוויינות"/"לווינות" — all valid
+  // spellings of "satellites") so a course title typed/spoken with a different
+  // but equally-correct spelling still resolves to the same canonical course.
+  s = s.replace(/לווי{1,2}נ(ים|ות)/g, 'לוויינים');
   s = s.replace(/\s+/g, ' ').trim();
   return s;
 }
@@ -16386,16 +16401,35 @@ function applyEligibilityPostFilterLocal(proposal, prefs, ctxCourses) {
   return { proposal: next, removed, keptMandatory };
 }
 
+/**
+ * Union of every source that means "the user explicitly does not want this
+ * course": free-text mentions (resolveAvoidedCourseIdsLocal) AND the
+ * structured "קורסים שאני רוצה להימנע מהם" picker field / hard-exclude list.
+ * Bug fixed here: this set used to come ONLY from free-text resolution, so a
+ * course chosen via the picker (prefs.strongly_avoided_course_ids) was never
+ * passed to the final deterministic safety net (applyExplicitAvoidPostFilterLocal)
+ * — it was only a soft scoring signal, which an AI-generated proposal could
+ * silently override.
+ */
+function computeExplicitlyAvoidedIdsLocal(prefs) {
+  const ids = new Set(resolveAvoidedCourseIdsLocal(prefs.extra_request_he));
+  for (const cid of (prefs.strongly_avoided_course_ids || [])) ids.add(cid);
+  for (const cid of (prefs.hard_exclude_course_ids || [])) ids.add(cid);
+  return ids;
+}
+
 async function requestPlanProposal(prefs, actionType) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
-  // Issue C — resolve explicitly-named avoided courses from the free-text
-  // request and merge them into the strong-unwanted / unwanted preference sets
-  // so pickBestCandidate(ForGap) skips them when alternatives exist. The final
-  // deterministic post-filter below removes any that nonetheless survive.
-  const explicitlyAvoidedIds = resolveAvoidedCourseIdsLocal(prefs.extra_request_he);
-  if (explicitlyAvoidedIds.size) {
-    const ids = [...explicitlyAvoidedIds];
+  // Issue C — resolve explicitly-named avoided courses (free text + the
+  // avoid-list picker + hard excludes) and merge the free-text ones into the
+  // strong-unwanted / unwanted preference sets so pickBestCandidate(ForGap)
+  // skips them when alternatives exist. The final deterministic post-filter
+  // below removes ANY of them that nonetheless survive, regardless of source.
+  const explicitlyAvoidedIds = computeExplicitlyAvoidedIdsLocal(prefs);
+  const freeTextAvoidedIds = resolveAvoidedCourseIdsLocal(prefs.extra_request_he);
+  if (freeTextAvoidedIds.size) {
+    const ids = [...freeTextAvoidedIds];
     prefs.strongly_avoided_course_ids = [...new Set([...(prefs.strongly_avoided_course_ids || []), ...ids])];
     prefs.unwanted_course_ids = [...new Set([...(prefs.unwanted_course_ids || []), ...ids])];
     if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];

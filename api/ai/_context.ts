@@ -428,6 +428,15 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
     const workloadSummary = buildWorkloadSummary(course_context);
     sections.push('', '### פרטי קורס ספציפי', course_context);
     if (workloadSummary) sections.push('', '### סיכום נתוני עומס לקורס זה (לשימוש בתשובות על עומס)', workloadSummary);
+    sections.push(
+      '',
+      '### הערה חשובה על הקורס הספציפי שלעיל',
+      'הקטע "פרטי קורס ספציפי" שלמעלה מתאר קורס קיים שהמשתמש בחר/פתח כעת — הוא ' +
+      'בהכרח קיים במערכת. לעולם אל תאמר "הקורס לא מופיע במערכת" / "אין מידע על ' +
+      'הקורס הזה" כאשר קטע זה סופק. אם שדה ספציפי (סילבוס/בחינה/מטלות/דרישות קדם) ' +
+      'חסר בו, אמור זאת בפירוש כך: "הקורס קיים במערכת, אבל חסר מידע על: <השדות ' +
+      'החסרים>" — וענה על סמך כל שדה אחר שכן קיים.',
+    );
   }
 
   const planBlock = sections.join('\n');
