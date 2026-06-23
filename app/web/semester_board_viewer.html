@@ -7896,14 +7896,21 @@ function cardHtml(c, placed, draftDiff, opts) {
     c.teaching_format ? `<span class="hrs-tag">אופן הוראה: ${esc(c.teaching_format)}</span>` : '',
   ].filter(Boolean).join(' ');
 
-  // The only warning type currently produced for a course is the "not offered"
-  // one (set once, at data-normalization time, in lockstep with `status`), and
-  // it is always co-rendered as the visible bdg-not-offered badge below. In that
-  // case the icon is purely decorative — hide it from assistive tech instead of
-  // announcing the same warning twice. If a future warning type isn't mirrored
-  // by a visible badge, keep the icon's own aria-label.
+  // Two warning types are currently produced for a course, and both are always
+  // co-rendered as visible text elsewhere in the card, making the icon's own
+  // aria-label redundant screen-reader noise:
+  //   1. "not offered" (set at data-normalization time, in lockstep with
+  //      `status`) — always paired with the visible bdg-not-offered badge.
+  //   2. "weekly hours missing" (audit-only courses where weekly_hours is
+  //      null) — always paired with the visible .hrs-unk text in hoursHtml
+  //      above, which renders in every branch where weekly_hours is null.
+  // In both cases hide the icon from assistive tech instead of announcing the
+  // same warning twice. If a future warning type isn't mirrored by visible
+  // text, keep the icon's own aria-label (the else branch below).
+  const isHoursMissingWarning = c.weekly_hours == null
+    && (c.warnings||[]).length === 1 && c.warnings[0] === 'שעות שבועיות חסרות.';
   const warnIcon  = (c.warnings||[]).length
-    ? (isNotOffered
+    ? ((isNotOffered || isHoursMissingWarning)
         ? `<span class="warn-icon" title="${esc((c.warnings||[]).join(', '))}" aria-hidden="true">⚠</span>`
         : `<span class="warn-icon" role="img" title="${esc((c.warnings||[]).join(', '))}" aria-label="${esc('אזהרה: ' + (c.warnings||[]).join(', '))}">⚠</span>`)
     : '';
