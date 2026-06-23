@@ -5727,6 +5727,13 @@ function formatFull185SummaryLocal(plan) {
   if (ds.status === 'legal_full') lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
   else lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
 
+  // Completion-state guard — when the plan is below the degree target, state plainly
+  // that this is a conservative / grade-safe DRAFT and NOT a complete 185-ש"ש degree
+  // plan, so the partial total is never mistaken for a finished, ready-to-use plan.
+  if (ds.status !== 'legal_full') {
+    lines.push(`⚠️ זוהי טיוטה חלקית ובטוחה-לציון — לא תכנית תואר מלאה ל-${required} ש״ש. אין להגיש אותה כתכנית סופית כמות שהיא.`);
+  }
+
   // Per-focus highlights (concise) — included courses per requested domain.
   const dr = (plan && plan.domainReport) || [];
   const focus = dr.filter(d => (d.included || []).length).map(d => `${d.label_he}: ${(d.included).map(x => x.name_he).slice(0, 3).join(', ')}`);
@@ -5751,6 +5758,24 @@ function formatFull185SummaryLocal(plan) {
   if (_skf.length) {
     lines.push(`לא מילאתי את הפער בכוח: דילגתי על ${_skf.length} קורסים בסיכון ציונים גבוה שאינם נדרשים לאף קטגוריה (כדי לא להכביד על הממוצע):`);
     for (const s of _skf.slice(0, 4)) lines.push(`• ${s.name_he} (סיכון ${s.risk}${s.tau_factor_avg_grade != null ? `, ממוצע TAU ${s.tau_factor_avg_grade}` : ''}) — אפשר להוסיף ידנית אם תרצה.`);
+  }
+
+  // Reassurance + path-to-target — confirm all category minimums still hold despite the
+  // gap, and spell out the user's real options to reach the full degree target.
+  if (ds.status !== 'legal_full') {
+    let _coreCatsSat = null;
+    try {
+      // The over-selection fix protects the CORE category minimums (fluids/solids/
+      // systems/advanced_labs). Report THOSE explicitly — broader elective/hour
+      // requirements may still be short (that IS the surfaced gap), so we do not
+      // over-claim "everything is satisfied".
+      const _coreIds = new Set(['fluids', 'solids', 'systems', 'advanced_labs']);
+      const _core = ((computeProgramProgress() || {}).categories || [])
+        .filter(c => _coreIds.has(c.category_id) && (c.min_courses || 0) > 0);
+      _coreCatsSat = _core.length ? _core.every(c => c.satisfied) : null;
+    } catch (_) {}
+    if (_coreCatsSat === true) lines.push('✓ דרישות הליבה (זורמים/מוצקים/מערכות/מעבדות) עדיין מתקיימות — הפער הוא בשעות בלבד, לא בקורסי ליבה.');
+    lines.push(`כדי להשלים ל-${required} ש״ש תוכל: (1) לאשר ידנית קורס בסיכון גבוה מהרשימה למעלה, (2) להמתין להשלמת נתוני סמסטר לקורסים החסומים, או (3) לבחור קורסי בחירה נוספים מתאימים.`);
   }
 
   // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
