@@ -129,8 +129,10 @@ describe('Planning Preferences panel integration', () => {
     const nLines = r.summary.split('\n').length;
     // Concise: a short status + a bounded set of explanations the user explicitly asked
     // for (why hard courses were kept, which high-risk filler was skipped, what's blocked
-    // by missing data) — NOT a full list.
-    expect(nLines).toBeLessThanOrEqual(26);
+    // by missing data) — NOT a full list. Budget raised by 2 for the mandatory hours-
+    // accounting line and the "stopped below target" explanation line surfaced by the
+    // overshoot-minimization gate (verified against this exact scenario's actual output).
+    expect(nLines).toBeLessThanOrEqual(28);
     expect(r.summary).toContain('לפירוט מלא');
   });
 });

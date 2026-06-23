@@ -5841,6 +5841,18 @@ function formatFull185SummaryLocal(plan) {
   if (_pc.sourceOfCompletedHours === 'none') notes.push('לא הוגדרו שעות שכבר צברת — אם כבר השלמת קורסים, עדכן את שעות הזכאות ב"הקורסים שלי" כדי שהחישוב יתחיל מהבסיס הנכון ולא מ-0.');
   if (notes.length) { lines.push('שים לב:'); for (const n of notes.slice(0, 6)) lines.push('• ' + n); }
 
+  // Overshoot-minimization gate — explicit hours accounting so the user never has
+  // to guess where extra hours came from: target, baseline right before the
+  // uncapped fill-to-target stage ran, how much it added, the final total, and the
+  // resulting overshoot (0 if the fill landed at/under target).
+  const _fs = (plan && plan.fillStats) || null;
+  if (_fs && typeof _fs.baselineHours === 'number') {
+    lines.push(`חישוב שעות: יעד ${_fs.targetHours}, בסיס לפני השלמה ${_fs.baselineHours}, נוספו ${_fs.addedHours} ש״ש, סה״כ ${_fs.finalHours} ש״ש${_fs.overshootHours > 0 ? ` (חריגה של ${Math.round(_fs.overshootHours * 10) / 10} ש״ש)` : ''}.`);
+    if (_fs.stoppedBelowTarget) {
+      lines.push(`לא הגעתי ל-${_fs.targetHours} ש״ש כי כל הדרך הנותרת דרשה קורסים בסיכון ציונים גבוה שאינם נדרשים לאף קטגוריה — עדיפות לציון על פני מילוי שעות בכוח.`);
+    }
+  }
+
   lines.push('לפירוט מלא: כתוב "פתח פירוט מלא".');
   return lines.join('\n');
 }
@@ -10132,6 +10144,7 @@ function buildDeterministicReplacementPlan(args) {
     completedCourseIds: _prereqCompletedSet,
     requestedCourseIds: requestedAfterExclude,
     userIntentProfile,
+    requiredHours: targetHours,
   };
   // Don't add ANY courses (mandatory included) if the baseline ALREADY meets the
   // target. A high manual completed total (e.g. 150 ש"ש) means the student has done
@@ -10140,12 +10153,13 @@ function buildDeterministicReplacementPlan(args) {
   // (the 150+41→210 bug). When already at/over target, trust the completed total and
   // add nothing. (When the baseline is below target, mandatory is added normally.)
   let _skipOptionalRepairs = false;
-  if (args.fillToTarget) {
-    try {
-      const _seedCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
-      if (_seedCtx.totalAfterPlan >= targetHours) _skipOptionalRepairs = true;
-    } catch (_) {}
-  }
+  // True pre-repair baseline (completed + committed board, before ANY mandatory/
+  // domain/elective/general/intent-completion repair runs) — used for the honest
+  // "added X ש"ש" figure in fillStats, since later capture points run after those
+  // earlier stages have already added their own hours.
+  let _trueBaselineHours = null;
+  try { _trueBaselineHours = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) {}
+  if (args.fillToTarget && typeof _trueBaselineHours === 'number' && _trueBaselineHours >= targetHours) _skipOptionalRepairs = true;
   if (!_skipOptionalRepairs) {
     try { proposal = repairAddMissingMandatoryLocal(proposal, analysis, repairOpts).proposal || proposal; } catch (_) {}
     // Re-check after mandatory: it may have closed the gap on its own.
@@ -10178,9 +10192,15 @@ function buildDeterministicReplacementPlan(args) {
   // BUG FIX: Only fill if the baseline doesn't already exceed the target.
   let _fill = { added: [] };
   let _skippedHighRiskFiller = [];
+  // Hours-accounting for the overshoot-minimization report (Part E) — the baseline
+  // is the total just BEFORE the uncapped fill-to-target stage runs (i.e. after
+  // mandatory/domain/elective/general/intent-completion already ran their own
+  // gap-aware additions), so the report isolates exactly how much THIS stage added.
+  let _fillBaselineHours = null;
   if (args.fillToTarget) {
     const _baselineCtx = buildPlanContextFromState({ proposalSemesters: proposal.semesters });
     const _baselineTotal = _baselineCtx.totalAfterPlan;
+    _fillBaselineHours = _baselineTotal;
     if (_baselineTotal < targetHours) {
       try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
       if (_fill.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._fill.skippedHighRiskFiller);
@@ -10424,6 +10444,20 @@ function buildDeterministicReplacementPlan(args) {
   const skippedHighRiskFiller = (typeof _skippedHighRiskFiller !== 'undefined' ? _skippedHighRiskFiller : [])
     .filter(s => !_finalPlacedSet.has(s.course_id) && !_skippedSeen.has(s.course_id) && _skippedSeen.add(s.course_id));
 
+  // Part E — explicit hours-accounting for the overshoot-minimization gate, shown
+  // verbatim in the summary/debug output: target, the baseline right before the
+  // uncapped fill stage ran, how much that stage added, the final total, and the
+  // resulting overshoot (0 when the fill landed at/under target).
+  const overshootHours = Math.max(0, totalHours - targetHours);
+  const fillStats = {
+    targetHours,
+    baselineHours: _trueBaselineHours,
+    addedHours: (typeof _trueBaselineHours === 'number') ? Math.max(0, totalHours - _trueBaselineHours) : null,
+    finalHours: totalHours,
+    overshootHours,
+    stoppedBelowTarget: !reachedTarget,
+  };
+
   const _planResult = {
     proposal,
     addedCids,
@@ -10435,6 +10469,7 @@ function buildDeterministicReplacementPlan(args) {
     totalHours,
     targetHours,
     reachedTarget,
+    fillStats,
     candidatesConsidered: (analysis.elective_pool || []).length,
     shortCategories,
     gapReasons,
@@ -10463,6 +10498,16 @@ function buildDeterministicReplacementPlan(args) {
  * computeDegreeProgress total reaches the target or no candidate can be placed.
  * Returns { proposal, added }.
  */
+// Shared gap-minimizing fit score (exact fit > smallest overshoot > largest
+// undershoot) — used by every course-adding stage that must respect the global
+// degree-hours target, so a small remaining gap never greedily turns into a
+// large overshoot regardless of which stage is doing the adding.
+function fitRankToGap(hrs, gap) {
+  if (hrs === gap) return 0;
+  if (hrs > gap) return 1 + (hrs - gap);
+  return 1000 + (gap - hrs);
+}
+
 function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const required = opts.requiredHours || DEGREE_REQUIRED_HOURS;
   // "Build a full 185 plan" is an aggressive completion request: fill up to the HARD
@@ -10561,20 +10606,33 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const HIGH_RISK_FILLER_CUTOFF = 0.9;
   const skippedHighRiskFiller = [];
 
+  // ── Minimize-overshoot gate — once the remaining deficit is small, the next
+  // course added should be the one that comes CLOSEST to closing it (exact fit >
+  // smallest overshoot > largest undershoot among legal candidates), not simply
+  // the highest-intent-score candidate. Mirrors the same fit-ranking already used
+  // by repairAddHoursToDegreeLocal's _pickBestCandidateForGapLocal, so a 7ש"ש gap
+  // does not greedily turn into a 24ש"ש overshoot just because a big elective
+  // happened to score highest. Mandatory / must-include / category-required
+  // courses are placed regardless of fit (handled by the grade-safety gate below,
+  // which is evaluated before ranking — it still always wins on eligibility).
+  const _fitRank = fitRankToGap;
+
+  const baselineHours = curTotal();
   const added = [];
   let guard = 0;
   while (curTotal() < required && guard++ < 300) {
-    let placedOne = false;
+    const gap = required - curTotal();
+    let best = null; // { idx, cid, info, target, hours, fitRank, score }
     for (let i = 0; i < pool.length; i++) {
       const cid = pool[i].course_id;
       if (placed.has(cid) || hardExcluded(cid) || _alreadyDone(cid)) continue;
       const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
       if (!cm || !isCourseRenderable(cm) || classifyCourseSchedulability(cm) === 'unschedulable_missing_data') continue;
       const info = opts.courses[cid] || {};
+      const hrs = info.hours || pool[i].hours || hoursForCourseId(cid) || 0;
       // שער-רוח cap: never let total general-requirement hours exceed the cap.
       if (shaarRuachIdsSet.has(cid) && shaarRuachCap > 0) {
-        const srH = info.hours || pool[i].hours || hoursForCourseId(cid) || 0;
-        if (shaarRuachBaseCompleted + shaarRuachHoursInProposal() + srH > shaarRuachCap + 1e-6) continue;
+        if (shaarRuachBaseCompleted + shaarRuachHoursInProposal() + hrs > shaarRuachCap + 1e-6) continue;
       }
       const legal = (typeof getLegalSemestersLocal === 'function') ? getLegalSemestersLocal({ ...cm, ...info }, opts.knownSemesterIds).semesters : opts.knownSemesterIds;
       const allowed = (legal && legal.length) ? legal : opts.knownSemesterIds;
@@ -10583,7 +10641,7 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
       const semIdx = {}; sems.forEach((s, idx) => { for (const c2 of s.course_ids) if (c2 !== cid) semIdx[c2] = idx; });
       legalSems = legalSems.filter(s => prereqsSatisfiedForPlacementLocal(cid, sems.findIndex(x => x.semester_id === s.semester_id), semIdx, completed).ok);
       if (!legalSems.length) continue;
-      const fit = legalSems.filter(s => hoursOf(s) + (info.hours || pool[i].hours || 0) <= max);
+      const fit = legalSems.filter(s => hoursOf(s) + hrs <= max);
       if (!fit.length) continue;
       // Grade-safety gate: the course is genuinely placeable here — but if it is very
       // hard (risk ≥ 0.9) and is NOT mandatory / user-preferred / needed for an unmet
@@ -10595,25 +10653,35 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
           risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
           tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
           categories: _catsOf(cid).map(c => c.category_id),
-          hours: info.hours || pool[i].hours || hoursForCourseId(cid) || 0,
+          hours: hrs,
           reason: 'high_risk_filler_not_category_required',
         });
         pool.splice(i, 1); i--;
         continue;
       }
       const target = fit.sort((a, b) => hoursOf(a) - hoursOf(b))[0];
-      target.course_ids.push(cid); placed.add(cid);
-      added.push({ course_id: cid, semester_id: target.semester_id, hours: info.hours || pool[i].hours || 0 });
-      pool.splice(i, 1);
-      placedOne = true;
-      break;
+      const fitRank = _fitRank(hrs, gap);
+      const score = scoreOf(pool[i]);
+      if (!best || fitRank < best.fitRank || (fitRank === best.fitRank && score > best.score)) {
+        best = { idx: i, cid, info, target, hours: hrs, fitRank, score };
+      }
     }
-    if (!placedOne) break;
+    if (!best) break;
+    best.target.course_ids.push(best.cid); placed.add(best.cid);
+    added.push({ course_id: best.cid, semester_id: best.target.semester_id, hours: best.info.hours || best.hours || 0 });
+    pool.splice(best.idx, 1);
   }
+  const finalHours = curTotal();
   return {
     proposal: { ...proposal, semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)) },
     added,
     skippedHighRiskFiller,
+    baselineHours,
+    finalHours,
+    targetHours: required,
+    addedHours: added.reduce((t, a) => t + (a.hours || 0), 0),
+    overshootHours: Math.max(0, finalHours - required),
+    stoppedBelowTarget: finalHours < required,
   };
 }
 
@@ -14978,17 +15046,20 @@ function repairAddRequestedDomainCoursesLocal(proposal, analysis, opts) {
   const added = [], rejected = [];
 
   const _hardExcluded = (cid) => { const hx = opts.hardExcludeCourseIds; return hx ? (hx.has ? hx.has(cid) : (Array.isArray(hx) && hx.includes(cid))) : false; };
-  for (const cid of requested) {
-    // Hard exclusion is a HARD constraint — never schedule, even a requested-focus course.
-    if (_hardExcluded(cid)) { rejected.push({ course_id: cid, reason: 'hard_excluded' }); continue; }
-    if (placed.has(cid)) { rejected.push({ course_id: cid, reason: 'already_on_board' }); continue; }
+
+  // Checks eligibility (exclude/placed/offering/legal-semester/prereq/capacity)
+  // for cid and returns { legalSems, hrs, target } if placeable, or null + pushes
+  // a rejection reason otherwise. Pure read of `sems`/`placed` at call time.
+  const _evalCandidate = (cid) => {
+    if (_hardExcluded(cid)) { rejected.push({ course_id: cid, reason: 'hard_excluded' }); return null; }
+    if (placed.has(cid)) { rejected.push({ course_id: cid, reason: 'already_on_board' }); return null; }
     const info = opts.courses[cid] || {};
     const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
     const hasOffering =
       (info.effective_allowed_semesters?.length || cm?.effective_allowed_semesters?.length) ||
       (info.offered_semesters?.length || cm?.offered_semesters?.length);
     if (!hasOffering && !isAnnualCourse(cm || info)) {
-      rejected.push({ course_id: cid, reason: 'missing_offering_data' }); continue;
+      rejected.push({ course_id: cid, reason: 'missing_offering_data' }); return null;
     }
     const legalForCand = (typeof getLegalSemestersLocal === 'function')
       ? getLegalSemestersLocal(
@@ -15000,7 +15071,7 @@ function repairAddRequestedDomainCoursesLocal(proposal, analysis, opts) {
       : (info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : opts.knownSemesterIds);
     const allowed = (legalForCand && legalForCand.length) ? legalForCand : opts.knownSemesterIds;
     let legalSems = sems.filter(s => allowed.includes(s.semester_id));
-    if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'no_legal_semester' }); continue; }
+    if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'no_legal_semester' }); return null; }
 
     // Prerequisite gate — only keep semesters where the prereq chain is satisfied.
     const _semIdxByCourse = {};
@@ -15011,16 +15082,75 @@ function repairAddRequestedDomainCoursesLocal(proposal, analysis, opts) {
         const tIdx = sems.findIndex(x => x.semester_id === s.semester_id);
         return prereqsSatisfiedForPlacementLocal(cid, tIdx, _semIdxByCourse, completed).ok;
       });
-      if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'prereq_not_met' }); continue; }
+      if (!legalSems.length) { rejected.push({ course_id: cid, reason: 'prereq_not_met' }); return null; }
     }
 
     const hrs = info.hours || cm?.weekly_hours || cm?.semester_hours || 0;
     let target = legalSems.filter(s => hoursOf(s) + hrs <= max).sort((a, b) => hoursOf(a) - hoursOf(b))[0];
-    if (!target) { rejected.push({ course_id: cid, reason: 'no_capacity' }); continue; }
+    if (!target) { rejected.push({ course_id: cid, reason: 'no_capacity' }); return null; }
+    return { hrs, target };
+  };
 
-    target.course_ids.push(cid);
+  const _place = (cid, hit) => {
+    hit.target.course_ids.push(cid);
     placed.add(cid);
-    added.push({ course_id: cid, semester_id: target.semester_id });
+    added.push({ course_id: cid, semester_id: hit.target.semester_id, hours: hit.hrs });
+  };
+
+  // Explicit must-include courses (named by the user or a chat patch) are a HARD
+  // positive requirement — always placed when legal, regardless of the degree-hours
+  // budget (same priority as before this fix).
+  const mustIncSet = new Set((opts.userIntentProfile && opts.userIntentProfile.mustIncludeCourseIds) || []);
+  const mustHave = requested.filter(cid => mustIncSet.has(cid));
+  const soft = requested.filter(cid => !mustIncSet.has(cid));
+
+  for (const cid of mustHave) {
+    const hit = _evalCandidate(cid);
+    if (hit) _place(cid, hit);
+  }
+
+  // Soft domain-text matches (e.g. "דגש על חוזק ותכן") are a PREFERENCE, not a
+  // requirement — they must not be allowed to drive a large overshoot past the
+  // global degree-hours target. Once the remaining gap is closed, stop adding
+  // them; while a gap remains, prefer the legal candidate that comes closest to
+  // closing it (reusing fitRankToGap, the same gap-minimizing logic used by
+  // fillToDegreeTargetLocal) rather than adding every match in encounter order.
+  const requiredHours = opts.requiredHours;
+  const curTotal = () => {
+    try {
+      return buildPlanContextFromState({
+        proposalSemesters: sems.map(s => ({ semester_id: s.semester_id, course_ids: s.course_ids })),
+      }).totalAfterPlan;
+    } catch (_) { return sems.flatMap(s => s.course_ids).reduce((t, cid) => t + (opts.courses[cid]?.hours || 0), 0); }
+  };
+
+  if (typeof requiredHours !== 'number') {
+    // No global target known (e.g. not a fillToTarget build) — fall back to the
+    // previous unconditional behavior for soft matches too.
+    for (const cid of soft) {
+      const hit = _evalCandidate(cid);
+      if (hit) _place(cid, hit);
+    }
+  } else {
+    let remainingSoft = [...soft];
+    while (remainingSoft.length) {
+      const gap = requiredHours - curTotal();
+      if (gap <= 0) {
+        for (const cid of remainingSoft) rejected.push({ course_id: cid, reason: 'target_already_reached' });
+        break;
+      }
+      let best = null; // { idx, cid, hit, fitRank }
+      for (let i = 0; i < remainingSoft.length; i++) {
+        const cid = remainingSoft[i];
+        const hit = _evalCandidate(cid);
+        if (!hit) { remainingSoft.splice(i, 1); i--; continue; } // ineligible — rejection already recorded
+        const fitRank = fitRankToGap(hit.hrs, gap);
+        if (!best || fitRank < best.fitRank) best = { idx: i, cid, hit, fitRank };
+      }
+      if (!best) break; // nothing left was eligible
+      _place(best.cid, best.hit);
+      remainingSoft.splice(best.idx, 1);
+    }
   }
 
   if (!added.length) return { proposal, added: [], rejected };
@@ -15662,7 +15792,26 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
     prefUnmatched = !pool.some(c => _shaarRuachAssessmentScoreLocal(c, assessmentPref) >= 3);
   }
 
+  // Global degree-hours cap: שער-רוח is a real sub-requirement, but it must not
+  // keep adding courses once the OVERALL plan has already reached the degree
+  // target — that would be silent overshoot from a stage that only sees its own
+  // local quota. If the sub-requirement is genuinely still unmet at that point,
+  // stop and surface the conflict instead of overfilling past the cap.
+  const requiredHours = opts.requiredHours;
+  const curGlobalTotal = () => {
+    try {
+      return buildPlanContextFromState({
+        proposalSemesters: sems.map(s => ({ semester_id: s.semester_id, course_ids: s.course_ids })),
+      }).totalAfterPlan;
+    } catch (_) { return null; }
+  };
+  let blockedByGlobalCap = false;
+
   while (totalCredits < target) {
+    if (typeof requiredHours === 'number') {
+      const g = curGlobalTotal();
+      if (typeof g === 'number' && g >= requiredHours) { blockedByGlobalCap = true; exhausted = true; break; }
+    }
     const candidate = _pickBestShaarRuachCandidateLocal(pool, new Set(), opts.userInterestText, assessmentPref);
     if (!candidate) { exhausted = true; break; }
     pool = pool.filter(c => c.course_id !== candidate.course_id);
@@ -15685,10 +15834,13 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
     added.push({ course_id: candidate.course_id, semester_id: semTarget.semester_id, hours: h });
   }
 
-  if (!added.length) return { proposal, added: [], exhausted };
+  if (!added.length) return { proposal, added: [], exhausted, blockedByGlobalCap };
   const warnings_he = [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'];
   if (assessmentPref && prefUnmatched) {
     warnings_he.push('לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת, לכן נבחרו החלופות הקרובות ביותר.');
+  }
+  if (blockedByGlobalCap) {
+    warnings_he.push(`התוכנית הגיעה ל-185 ש"ש לפני שדרישת שער-רוח (${target} ש"ש) הושלמה במלואה; לא הוספתי קורסי שער-רוח נוספים כדי להימנע מחריגה.`);
   }
   return {
     proposal: {
@@ -15696,7 +15848,7 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
       semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)),
       warnings_he,
     },
-    added, exhausted,
+    added, exhausted, blockedByGlobalCap,
   };
 }
 
