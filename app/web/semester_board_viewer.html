@@ -3573,12 +3573,17 @@ function setSidebarTab(tab) {
 }
 
 /** Compact status summary shown at the top of "עוזר AI" — current board state. */
-function buildSidebarStatusSummary() {
+function buildSidebarStatusSummary(opts) {
+  opts = opts || {};
   const planContext = buildPlanContext();
   const analysis = buildCompletionAnalysisLocal(planContext);
   const ctx = buildPlanValidationInputs();
   const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
-  const placedIds = new Set(semObjs.flatMap(s => s.course_ids));
+  // Mandatory/category satisfaction is normally computed off the committed board
+  // (matches the live sidebar). Callers debugging an active, uncommitted draft
+  // (debugCurrentPlan) can override which course ids count as "placed" so the
+  // report reflects the draft being inspected instead of the stale committed board.
+  const placedIds = opts.placedIdsOverride || new Set(semObjs.flatMap(s => s.course_ids));
   const courseHours = {};
   for (const [cid, info] of Object.entries(ctx.courses)) courseHours[cid] = info.hours;
   const hours = getDegreeHoursStatusLocal(analysis, semObjs, courseHours);
@@ -7229,7 +7234,7 @@ function debugCurrentPlan(opts) {
 
   // ── LAYER 3 — degree requirements (mandatory / categories / שער-רוח) ──
   try {
-    const ss = buildSidebarStatusSummary();
+    const ss = buildSidebarStatusSummary(draftActive ? { placedIdsOverride: new Set(currentPlanSems.flatMap(s => s.course_ids)) } : undefined);
     const dpc = buildDegreeProgressContext(draftActive ? { proposalSemesters: currentPlanSems } : {});
     out.layer3_requirements = {
       mandatory: ss.mandatory,

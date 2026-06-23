@@ -261,4 +261,33 @@ describe('Planner Debugger / Explain Mode — debugCurrentPlan()', () => {
       expect(true).toBe(true);
     }
   });
+
+  test('16 — layer3 category status agrees with layer5 while a draft is active, not applied', () => {
+    // Regression: buildSidebarStatusSummary() (layer3's source) always read the
+    // COMMITTED board, even when an uncommitted draft was active — so a category
+    // satisfied only by a draft-only course showed satisfied:false in layer3 while
+    // layer5_selectedExplanation correctly showed that course placed with
+    // categoryRole 'category_required'. debugCurrentPlan() must describe the plan
+    // actually being inspected (the active draft), matching layer1/layer2's
+    // existing draft-awareness, not the stale pre-draft board.
+    const r = JSON.parse(window.eval(`(function(){ ${RESET}
+      degreeHoursProfile = { completed_degree_hours: 135 };
+      _aiPlanLastPreferences = { extra_request_he: 'דגש על חוזק ותכן, ממוצע 82', grade_target: 82 };
+      _aiUserIntentProfile = buildUserIntentProfileLocal(_aiPlanLastPreferences.extra_request_he, { gradeTarget: 82 });
+      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true }); // draft built, NOT applied
+      const d = debugCurrentPlan();
+      const layer5RequiredIds = (d.layer5_selectedExplanation || [])
+        .filter(x => x.categoryRole === 'category_required').map(x => x.id);
+      return JSON.stringify({
+        layer5RequiredIds,
+        layer3Categories: d.layer3_requirements.categories.map(c => ({ name: c.name, satisfied: c.satisfied, placed: c.placed_course_ids })),
+      });
+    })()`));
+    expect(r.layer5RequiredIds.length).toBeGreaterThan(0);
+    for (const cid of r.layer5RequiredIds) {
+      const cat = r.layer3Categories.find(c => c.placed.includes(cid));
+      expect(cat).toBeTruthy();
+      expect(cat.satisfied).toBe(true);
+    }
+  });
 });
