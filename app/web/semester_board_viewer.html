@@ -10108,10 +10108,20 @@ function buildDeterministicReplacementPlan(args) {
   // A hard-excluded course is removed from the requested-focus list too — the user
   // may have named a domain whose course they separately excluded.
   const patchMustInclude = (prefs.must_include_course_ids || []).filter(cid => !hardExcludeSet.has(cid));
-  const requestedAfterExclude = [...new Set([
-    ...patchMustInclude,
+  const _requestedBeforeExclude = [...new Set([
+    ...(prefs.must_include_course_ids || []),
     ...(intent.requested_course_ids || []),
-  ])].filter(cid => !hardExcludeSet.has(cid));
+  ])];
+  const requestedAfterExclude = _requestedBeforeExclude.filter(cid => !hardExcludeSet.has(cid));
+  // Conflict transparency — a course the user just asked to add (chat patch or
+  // free-text request) that is ALSO in the panel's hard-avoid list is silently
+  // dropped above; surface WHY instead of leaving the user guessing. Hard avoid
+  // always wins (per the panel-vs-chat precedence rule), but the user must be told.
+  const _requestedButExcluded = _requestedBeforeExclude.filter(cid => hardExcludeSet.has(cid));
+  if (_requestedButExcluded.length) {
+    proposal.warnings_he = [...(proposal.warnings_he || []), ..._requestedButExcluded.map(cid =>
+      `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
+  }
   // Surface patch must-include in the intent object so the decision trace tags them.
   if (patchMustInclude.length) intent.mustIncludeCourseIds = [...new Set([...patchMustInclude, ...(intent.mustIncludeCourseIds || [])])];
 
