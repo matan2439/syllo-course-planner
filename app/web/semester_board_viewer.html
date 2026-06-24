@@ -79,6 +79,17 @@
   --shadow-premium:  0 10px 28px rgba(76,89,224,.10), 0 2px 6px rgba(17,24,39,.06);
   --border-premium:  1px solid var(--border);
   --surface-raised:  var(--surface);
+
+  /* ── Syllo animated background (light) — see sylloGradientConfig below ── */
+  --syllo-bg-1: #D6CCFF;
+  --syllo-bg-2: #EEF0F5;
+  --syllo-bg-3: #FAFAFC;
+  --syllo-bg-image:
+    radial-gradient(ellipse at 62% 52%, rgba(214,204,255,.56) 0%, rgba(238,240,245,.42) 32%, transparent 64%),
+    linear-gradient(135deg, #FAFAFC 0%, #EEF0F5 48%, #D6CCFF 100%);
+  /* uSpeed is identical (0.3) in both theme configs below, so one shared
+     duration covers both themes — dark does not override this. */
+  --syllo-bg-duration: 28s;
 }
 
 [data-theme="dark"] {
@@ -120,6 +131,14 @@
   --shadow-premium:  0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), var(--glow-accent);
   --border-premium:  1px solid var(--glass-border);
   --surface-raised:  var(--surface2);
+
+  /* ── Syllo animated background (dark) — see sylloGradientConfig below ── */
+  --syllo-bg-1: #606080;
+  --syllo-bg-2: #7C5CFF;
+  --syllo-bg-3: #212121;
+  --syllo-bg-image:
+    radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
+    linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────────────── */
@@ -139,6 +158,53 @@ body {
   background: var(--app-bg-gradient); color: var(--text);
   font-size: 14px; display: flex; flex-direction: column;
   overflow: hidden; transition: background var(--t), color var(--t);
+}
+
+/* ── Syllo animated background ──────────────────────────────────────────
+   sylloGradientConfig — canonical source of truth. This page is a single
+   self-contained static HTML file with no React/bundler pipeline (confirmed:
+   zero React/module-script references; the project's web/ Next.js app is a
+   disconnected placeholder), so a real @shadergradient/react + @react-three/
+   fiber + three integration would require inventing a build step from
+   scratch just for this effect — out of scope for a CSS-only pass. This is
+   the CSS fallback, built to closely match the exact ShaderGradient editor
+   config below so a future React migration can drop in the real component
+   using the same color1/2/3 values with no visual jump.
+
+   Dark  <ShaderGradient color1="#606080" color2="#7C5CFF" color3="#212121"
+     type="waterPlane" cAzimuthAngle={180} cDistance={2.8} cPolarAngle={80}
+     cameraZoom={9.1} rotationX={50} rotationY={0} rotationZ={-60}
+     uDensity={1.5} uSpeed={0.3} uStrength={1.5} uTime={8} reflection={0.1}
+     brightness={0.7} grain="off" pixelDensity={1} animate="on" />
+   Light <ShaderGradient color1="#D6CCFF" color2="#EEF0F5" color3="#FAFAFC"
+     type="waterPlane" cAzimuthAngle={180} cDistance={2.8} cPolarAngle={80}
+     cameraZoom={9.1} rotationX={50} rotationY={0} rotationZ={-60}
+     uDensity={1.5} uSpeed={0.3} uStrength={1.5} uTime={8} reflection={0.1}
+     brightness={1} grain="off" pixelDensity={1} animate="on" />
+
+   `--syllo-bg-image` (set per theme above) is the exact two-layer gradient
+   recipe approximating this: a soft purple halo (radial) over a base plane
+   (linear), themed via the --syllo-bg-1/2/3 = color1/2/3 tokens. Animated
+   only via `transform` (GPU-composited — no repaint/reflow) for a slow,
+   subtle drift, not the colorful/noisy motion the brand direction warns
+   against. `body`'s own flat `background` above is the static fallback
+   underneath if this layer is ever unsupported, disabled, or animation is
+   off (prefers-reduced-motion, handled by the global rule above — no extra
+   code needed since it already targets `*::before`). */
+body::before {
+  content: '';
+  position: fixed; inset: -10%;
+  z-index: -1; pointer-events: none;
+  background-image: var(--syllo-bg-image);
+  background-repeat: no-repeat;
+  will-change: transform;
+  animation: syllo-drift var(--syllo-bg-duration) ease-in-out infinite alternate;
+  transition: background-image var(--t);
+}
+@keyframes syllo-drift {
+  0%   { transform: translate3d(0,0,0)        scale(1);    }
+  50%  { transform: translate3d(1%,-1%,0)      scale(1.02); }
+  100% { transform: translate3d(-0.6%,0.6%,0)  scale(1.01); }
 }
 /* Restore body scroll when modal is NOT open */
 body:not(.prog-modal-open):not(.my-courses-open) { overflow: hidden; }
