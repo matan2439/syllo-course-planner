@@ -17200,12 +17200,23 @@ async function requestPlanProposal(prefs, actionType) {
             const _warnStr = (_repl.proposal && _repl.proposal.warnings_he && _repl.proposal.warnings_he.length)
               ? '\n' + _repl.proposal.warnings_he.join('\n')
               : '';
+            // A degree plan that does not reach the required hours is NOT a
+            // successful completed plan and must not be framed as one. Lead with
+            // an explicit "could not reach 185 under the current constraints"
+            // headline and label it a partial draft that needs a user decision.
+            // (The "הגעתי ל-X/Y" figure is kept as a parenthetical so the exact
+            // numbers are still visible — and so existing partial-plan assertions
+            // that look for that token keep matching.)
             const _msg = _repl.reachedTarget
               ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}${_warnStr}`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}${_warnStr}`;
+              : `לא הצלחתי להגיע ל-${_repl.targetHours} ש״ש תחת האילוצים הנוכחיים. חסרות ${_missing} ש״ש (הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש).${_focusStr}${_reasonStr}${_exclStr}${_warnStr}\nזוהי טיוטה חלקית — דורשת החלטת משתמש, ואינה מערכת תקינה ומושלמת לתואר.`;
             _lastFinalPlanBlockedMsg = null;
+            // Apply chip wording reflects that applying a sub-target plan commits
+            // an incomplete degree plan (the click itself is the explicit
+            // confirmation); a complete plan keeps the plain label.
+            const _applyLabel = _repl.reachedTarget ? 'החל טיוטה' : 'החל טיוטה חלקית (לא מלאה)';
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
-              { label: 'החל טיוטה', action: 'apply-draft' },
+              { label: _applyLabel, action: 'apply-draft' },
               { label: 'דחה טיוטה', action: 'reject-draft' },
             ]);
             _rescued = true;
