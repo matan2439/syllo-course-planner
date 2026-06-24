@@ -4795,6 +4795,22 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
   }
 
+  // Surface material proposal-level caveats on the SUCCESS path. The deterministic
+  // planner records important notes on the final proposal's warnings_he — e.g.
+  // no-final-exam שער-רוח courses flagged "מידע חסר / דורש אישור", panel-vs-chat
+  // hard-avoid conflicts, and "לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת". This
+  // builder previously rendered only the placement diff, so those caveats reached
+  // _aiPlanLastProposal.warnings_he but never the user (the other two message
+  // constructors — activateTentativeDraft and the deterministic-replacement
+  // rescue — already echo warnings_he; this third path did not). Read from the
+  // canonical final proposal so the summary reflects the post-validation result.
+  const _finalWarnings = (newProposal && newProposal.warnings_he)
+    || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he)
+    || [];
+  for (const w of [...new Set(_finalWarnings)]) {
+    if (w && !lines.includes(w)) lines.push(w);
+  }
+
   // Rotate the opening phrase so repeated rebuilds differ visibly.
   const openers = ['עדכנתי את המערכת:', 'הנה מה שהשתנה:', 'סיכום השינויים:', 'בוצע — לסיכום:'];
   const opener = openers[_planChangeSummaryNonce % openers.length];
