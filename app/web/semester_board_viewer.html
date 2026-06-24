@@ -1103,10 +1103,14 @@ body.prog-modal-open .workspace {
 /* ── Semester column ────────────────────────────────────────────────────── */
 .semester-col { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-width: 180px; }
 .sem-hdr { color:#fff; border-radius: var(--radius); padding: 12px 14px 11px; box-shadow: var(--shadow-md); }
-.col-y3a .sem-hdr { background: linear-gradient(135deg, var(--y3a), var(--y3b)); }
-.col-y3b .sem-hdr { background: linear-gradient(135deg, var(--y3b), var(--y3a)); }
-.col-y4a .sem-hdr { background: linear-gradient(135deg, var(--y4a), var(--y4b)); }
-.col-y4b .sem-hdr { background: linear-gradient(135deg, var(--y4b), var(--y4a)); }
+/* `sem.css` (col-y3a/y3b/y4a/y4b) is applied on the SAME element as .sem-hdr,
+   not on an ancestor — these must be compound selectors (no space), or the
+   gradient never matches and the header falls back to transparent bg + white
+   text, which is unreadable on light backgrounds. */
+.sem-hdr.col-y3a { background: linear-gradient(135deg, var(--y3a), var(--y3b)); }
+.sem-hdr.col-y3b { background: linear-gradient(135deg, var(--y3b), var(--y3a)); }
+.sem-hdr.col-y4a { background: linear-gradient(135deg, var(--y4a), var(--y4b)); }
+.sem-hdr.col-y4b { background: linear-gradient(135deg, var(--y4b), var(--y4a)); }
 .sem-title { font-size: .87rem; font-weight: 700; margin-bottom: 5px; direction: rtl; }
 .sem-stats { display: flex; gap: 10px; flex-wrap: wrap; font-size: .68rem; opacity: .9; direction: rtl; }
 .sem-stats span { white-space: nowrap; }
