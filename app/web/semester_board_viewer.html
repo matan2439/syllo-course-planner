@@ -10459,6 +10459,19 @@ function buildDeterministicReplacementPlan(args) {
   const skippedHighRiskFiller = (typeof _skippedHighRiskFiller !== 'undefined' ? _skippedHighRiskFiller : [])
     .filter(s => !_finalPlacedSet.has(s.course_id) && !_skippedSeen.has(s.course_id) && _skippedSeen.add(s.course_id));
 
+  // Bug fix — every repair/fill stage above (repairAddMissingMandatoryLocal,
+  // fillToDegreeTargetLocal, etc.) picks exactly ONE semester per course, with
+  // no awareness that an annual/year-long course (is_annual / placement_policy
+  // 'annual') must occupy ALL of its spans_semesters together. Left unfixed,
+  // the draft shown to the user could contain only one half of an annual
+  // course — caught (correctly) only at apply-time by validateFinalPlan's
+  // 'annual' check. requestPlanProposal's LLM pipeline already calls
+  // normalizeAnnualPlacements as its last structural step; this path
+  // (buildDeterministicReplacementPlan, used directly by
+  // rebuildDraftFromProfileLocal AND as requestPlanProposal's own fallback)
+  // never did. Mirror that here so no caller can show a partial annual draft.
+  normalizeAnnualPlacements(proposal);
+
   // Part E — explicit hours-accounting for the overshoot-minimization gate, shown
   // verbatim in the summary/debug output: target, the baseline right before the
   // uncapped fill stage ran, how much that stage added, the final total, and the
