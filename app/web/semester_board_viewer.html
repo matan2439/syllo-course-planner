@@ -11373,6 +11373,14 @@ function activateTentativeDraft(draft, opts) {
     }
   }
 
+  // Bug fix — draft.confirmedPlacements/tentativePlacements carry exactly ONE
+  // {course_id, semester_id} entry per course (buildPlanningFallback's
+  // placement map is keyed by course_id, last-write-wins), so an annual
+  // course present in both its spans upstream collapses to a single semester
+  // here. Re-apply the same atomic-bundling normalization used everywhere
+  // else in the pipeline before this draft is shown.
+  normalizeAnnualPlacements(proposal);
+
   // Tag the draft so (a) the board's first paint marks tentative courses with
   // the amber "טיוטה" badge and (b) applyProposalDraft uses lenient validation
   // (skips degree-level blockers; only HARD structural violations prevent apply).

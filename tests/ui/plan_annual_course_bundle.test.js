@@ -221,6 +221,32 @@ describe('annual/year-long course bundle integrity', () => {
     expect(r.semBHasCourse).toBe(true);
   });
 
+  test('activateTentativeDraft (the fallback-draft renderer) also bundles an annual course, even when draft.confirmedPlacements carries only ONE of its two spans', () => {
+    // Mirrors the real bug: buildPlanningFallback's placement map is keyed by
+    // course_id (last-write-wins), so an annual course present in both spans
+    // upstream collapses to a single {course_id, semester_id} entry by the
+    // time it reaches activateTentativeDraft — exactly reproduced here without
+    // needing to construct the full upstream gate/fallback machinery.
+    const r = JSON.parse(window.eval(`(function(){
+      ${PATCH_ANNUAL_SCRIPT}
+      for (const semId of Object.keys(state.semesters)) {
+        state.semesters[semId] = state.semesters[semId].filter(cid => cid !== '${ANNUAL_COURSE_ID}');
+      }
+      const draft = {
+        confirmedPlacements: [{ course_id: '${ANNUAL_COURSE_ID}', semester_id: '${SPAN_B}' }],
+        tentativePlacements: [],
+      };
+      activateTentativeDraft(draft, { balance: false });
+      const sems = state.proposalDraft.semesters;
+      return JSON.stringify({
+        inA: (sems['${SPAN_A}'] || []).includes('${ANNUAL_COURSE_ID}'),
+        inB: (sems['${SPAN_B}'] || []).includes('${ANNUAL_COURSE_ID}'),
+      });
+    })()`));
+    expect(r.inA).toBe(true);
+    expect(r.inB).toBe(true);
+  });
+
   test('regression: the apply-time validator still blocks a manually-constructed partial annual placement', () => {
     const r = JSON.parse(window.eval(`(function(){
       ${PATCH_ANNUAL_SCRIPT}
