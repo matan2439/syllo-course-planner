@@ -134,6 +134,24 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('קורס ייחודי עם מעבדה');
   });
 
+  it('instructs the model never to claim a selected course is absent when course_context is provided', () => {
+    const prompt = buildSystemPrompt({
+      program_id: 'mechanical_2027',
+      plan_context: PLAN_CONTEXT,
+      course_context: 'קוד קורס: 0609-1005\nשם קורס: ננו לוויינים 2',
+    });
+    expect(prompt).toContain('לעולם אל תאמר "הקורס לא מופיע במערכת"');
+    expect(prompt).toContain('הקורס קיים במערכת, אבל חסר מידע על');
+  });
+
+  it('does NOT add the course-presence rule when no course_context is provided', () => {
+    const prompt = buildSystemPrompt({
+      program_id: 'mechanical_2027',
+      plan_context: PLAN_CONTEXT,
+    });
+    expect(prompt).not.toContain('לעולם אל תאמר "הקורס לא מופיע במערכת"');
+  });
+
   it('renders semester/lecture/tutorial/lab hours and teaching format from course_context', () => {
     const courseContext = [
       'קוד קורס: 0512-1202',
