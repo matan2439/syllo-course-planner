@@ -11202,6 +11202,10 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
     nextQuestions: questionsForUser,
     messageHe: parts.join('\n'),
     chips,
+    // Carry forward proposal-level warnings (e.g. the panel-vs-chat hard-avoid
+    // conflict note) so activateTentativeDraft's chat message can surface them —
+    // they would otherwise stay buried in eligibleProposal and never be shown.
+    warnings_he: (eligibleProposal && eligibleProposal.warnings_he) || [],
   };
 }
 
@@ -11393,6 +11397,12 @@ function activateTentativeDraft(draft, opts) {
   const assumptionLine = (draft.assumptions && draft.assumptions.length)
     ? `\n${draft.assumptions.join(' ')}`
     : '';
+  // Surface proposal-level warnings (e.g. a panel-vs-chat hard-avoid conflict
+  // note) that would otherwise stay buried in the draft data and never reach
+  // the user-visible message.
+  const warningsLine = (draft.warnings_he && draft.warnings_he.length)
+    ? `\n${draft.warnings_he.join('\n')}`
+    : '';
 
   // Degree-hours accounting (Phase 1) — show total after the draft vs the 185
   // ש"ש target and the remaining gap, so the user sees the plan is aimed at
@@ -11437,7 +11447,7 @@ function activateTentativeDraft(draft, opts) {
     }
   } catch (_) { /* classification unavailable — omit the line */ }
 
-  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
+  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}${warningsLine}`, [
     { label: 'החל טיוטה', action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
@@ -16340,6 +16350,40 @@ function resolveAvoidedCourseIdsLocal(text, map) {
 }
 
 /**
+ * Mirrors resolveAvoidedCourseIdsLocal but for INCLUSION intent ("תוסיף את X",
+ * "הוסף לי את X") — used only to detect a panel-vs-chat conflict (the user asks
+ * to add a course that is hard-avoided) so it can be explained, not silently
+ * dropped. Never used to actually add a course — must-include parsing for that
+ * is handled elsewhere (intent.requested_course_ids / must_include_course_ids).
+ */
+function resolveRequestedCourseIdsLocal(text, map) {
+  const result = new Set();
+  if (!text) return result;
+  map = map || courseMap;
+  const lower = String(text).toLowerCase();
+  const triggers = [
+    'תוסיף', 'הוסף', 'תכלול', 'תשבץ לי', 'אני רוצה את', 'אני רוצה ללמוד',
+    'add ', 'include ', 'i want',
+  ];
+  if (!triggers.some(t => lower.includes(t))) return result;
+
+  const byNorm = new Map();
+  for (const c of Object.values(map)) {
+    if (!c || !c.name_he) continue;
+    const norm = _normalizeCourseNameLocal(c.name_he);
+    if (!norm) continue;
+    if (!byNorm.has(norm)) byNorm.set(norm, []);
+    byNorm.get(norm).push(c.course_id);
+  }
+  const normText = _normalizeCourseNameLocal(text);
+  for (const [norm, ids] of byNorm) {
+    if (norm.length < 3) continue;
+    if (normText.includes(norm)) for (const id of ids) result.add(id);
+  }
+  return result;
+}
+
+/**
  * Issue C — FINAL deterministic post-filter, run AFTER the LLM output and all
  * repairs, BEFORE the proposal becomes an applicable draft. Removes any
  * explicitly-avoided ELECTIVE course from the draft semesters. If the avoided
@@ -16687,6 +16731,15 @@ async function requestPlanProposal(prefs, actionType) {
     if (avoidRemoved.length) {
       showBoardNotify(`הוסרו ${avoidRemoved.length} קורסי בחירה שביקשת להימנע מהם.`);
     }
+    // Conflict transparency — same rule as buildDeterministicReplacementPlan:
+    // if THIS chat message explicitly asked to add a course that the panel
+    // hard-avoids, say so instead of silently never placing it.
+    const _requestedInThisMessage = resolveRequestedCourseIdsLocal(prefs.extra_request_he);
+    const _requestedButExcludedHere = [..._requestedInThisMessage].filter(cid => explicitlyAvoidedIds.has(cid));
+    if (_requestedButExcludedHere.length) {
+      avoidFilteredProposal.warnings_he = [...(avoidFilteredProposal.warnings_he || []), ..._requestedButExcludedHere.map(cid =>
+        `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
+    }
 
     // Issue 1 — FINAL eligibility post-filter: strip any ineligible ELECTIVE
     // (honors-only / explicitly excluded) the LLM/repairs may have included.
@@ -16958,7 +17011,12 @@ async function requestPlanProposal(prefs, actionType) {
         console.log('[planner-e2e-trace]', { messagePath: 'attempting deterministic replacement plan' });
         let _rescued = false;
         try {
-          const _repl = buildDeterministicReplacementPlan({ prefs: _aiPlanLastPreferences, targetHours: DEGREE_REQUIRED_HOURS });
+          // Bug fix: this rescue path used to read the (possibly stale, or
+          // never-set) global _aiPlanLastPreferences instead of THIS call's
+          // own live `prefs` — so panel hard-avoids / chat text passed into
+          // requestPlanProposal could be silently dropped once execution fell
+          // through to the deterministic-replacement fallback.
+          const _repl = buildDeterministicReplacementPlan({ prefs, targetHours: DEGREE_REQUIRED_HOURS });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement candidates count', count: _repl.candidatesConsidered });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement selected count', count: _repl.addedCids.length, confirmed: _repl.confirmedCids.length, tentative: _repl.tentativeCids.length });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement total hours', hours: _repl.totalHours, target: _repl.targetHours, reached: _repl.reachedTarget });
@@ -16985,9 +17043,14 @@ async function requestPlanProposal(prefs, actionType) {
             const _exclStr = (_repl.excludedSkipped && _repl.excludedSkipped.length)
               ? '\nלא שובצו קורסים שביקשת לא לשבץ: ' + _repl.excludedSkipped.map(c => c.name_he).join(', ') + '.'
               : '';
+            // Surface proposal-level warnings (e.g. a panel-vs-chat hard-avoid
+            // conflict note) that would otherwise stay buried in the data.
+            const _warnStr = (_repl.proposal && _repl.proposal.warnings_he && _repl.proposal.warnings_he.length)
+              ? '\n' + _repl.proposal.warnings_he.join('\n')
+              : '';
             const _msg = _repl.reachedTarget
-              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}`;
+              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}${_warnStr}`
+              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}${_warnStr}`;
             _lastFinalPlanBlockedMsg = null;
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
               { label: 'החל טיוטה', action: 'apply-draft' },
