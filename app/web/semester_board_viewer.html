@@ -10473,6 +10473,15 @@ function buildDeterministicReplacementPlan(args) {
       });
     }
   }
+  // A5 — the beforeCids guard above means a hard-avoided course already on the
+  // committed board is INTENTIONALLY preserved (this pipeline never silently
+  // drops a course the user already has), but that conflict was never
+  // surfaced ("surfaced separately" above never actually happened). Warn now
+  // so the user is not left believing the hard-avoid preference is satisfied.
+  const _existingHardAvoidWarnings = buildExistingHardAvoidWarnings(hardExcludeSet, beforeCids, ctx.courses);
+  if (_existingHardAvoidWarnings.length) {
+    proposal.warnings_he = [...(proposal.warnings_he || []), ..._existingHardAvoidWarnings];
+  }
 
   // 5b. Legality audit: remove newly-added courses that are still illegal after
   //     the enforcement pass (wrong semester or unmet prerequisite).
@@ -11233,7 +11242,7 @@ function _formatDomainFocusHe(domainReport) {
  *
  * Does NOT touch state — board is already unchanged (gate cleared proposalDraft).
  */
-function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
+function buildPlanningFallback(eligibleProposal, gateResult, ctx, prefs) {
   if (!gateResult || gateResult.applicable) return null;
 
   const blockers = (gateResult && gateResult.blockers) || [];
@@ -11337,6 +11346,15 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
       questionsForUser.push(`האם כבר השלמת את ${names || 'דרישות הקדם'} (נדרש ל${nameOf(cid)})?`);
     });
   }
+  // A5 — computed ONCE, used both in state.lastPlanningDraft (the object that
+  // activateTentativeDraft is actually called with, via _draft =
+  // state.lastPlanningDraft at this function's call site, and via
+  // handlePlanningFallbackAction's REPLAN_* cases) and in this function's own
+  // return value (used for the chip-prompt message when no placement exists
+  // yet). Without being on BOTH objects, the warning would only ever reach
+  // the chip-prompt path, never the actual rendered draft message — which is
+  // the path that fires for most real partial-plan scenarios.
+  const _existingHardAvoidWarningsB = buildExistingHardAvoidWarnings(buildHardExcludeSetLocal(prefs || {}), boardCids, courses);
   try {
     if (typeof state !== 'undefined' && state) {
       state.lastPlanningDraft = {
@@ -11346,6 +11364,7 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
         assumptions,
         missingData,
         questionsForUser,
+        warnings_he: _existingHardAvoidWarningsB,
         source: 'draft_planner',
         createdAt: Date.now(),
       };
@@ -11407,7 +11426,13 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
     // Carry forward proposal-level warnings (e.g. the panel-vs-chat hard-avoid
     // conflict note) so activateTentativeDraft's chat message can surface them —
     // they would otherwise stay buried in eligibleProposal and never be shown.
-    warnings_he: (eligibleProposal && eligibleProposal.warnings_he) || [],
+    // Plus the same existing-hard-avoid check (computed once, above, and also
+    // stored on state.lastPlanningDraft — see the comment there for why both
+    // copies are needed).
+    warnings_he: [
+      ...((eligibleProposal && eligibleProposal.warnings_he) || []),
+      ..._existingHardAvoidWarningsB,
+    ],
   };
 }
 
@@ -16613,6 +16638,42 @@ function resolveRequestedCourseIdsLocal(text, map) {
 }
 
 /**
+ * A5 edge case — a hard-avoided course that is ALREADY on a board (committed
+ * or draft) and was therefore NOT newly placed must never be silently
+ * invisible to the user. Two cases, each needing a different explanation:
+ *  - mandatory/already-completed: cannot be removed at all — kept with a
+ *    rationale (mirrors applyExplicitAvoidPostFilterLocal's existing
+ *    mandatory-rationale wording).
+ *  - a genuinely-removable elective, preserved only because a given pipeline
+ *    deliberately never silently drops a course the user already has
+ *    committed (e.g. buildDeterministicReplacementPlan's beforeCids guard,
+ *    or buildPlanningFallback which never even checks hard-avoid against the
+ *    existing board): an explicit warning that the preference is NOT
+ *    satisfied while the course remains, and what to do about it.
+ * Returns an array of Hebrew warning lines (possibly empty). Pure/side-effect
+ * free — callers append the result onto their own proposal.warnings_he.
+ */
+function buildExistingHardAvoidWarnings(avoidedIds, committedCidSet, ctxCourses) {
+  if (!avoidedIds || !avoidedIds.size || !committedCidSet || !committedCidSet.size) return [];
+  const isMandatoryOrLocked = (cid) => {
+    const info = (ctxCourses && ctxCourses[cid]) || {};
+    const cm = (typeof courseMap !== 'undefined' && courseMap[cid]) || {};
+    if (info.is_mandatory || info.course_type === 'mandatory' || cm.course_type === 'mandatory' || cm.is_mandatory) return true;
+    if (typeof isCourseCompleted === 'function' && isCourseCompleted(cid)) return true;
+    return false;
+  };
+  const warnings = [];
+  for (const cid of avoidedIds) {
+    if (!committedCidSet.has(cid)) continue;
+    const name = (typeof courseLabelLocal === 'function') ? courseLabelLocal(cid) : cid;
+    warnings.push(isMandatoryOrLocked(cid)
+      ? `הקורס ${name} נשאר כי הוא קורס חובה או הושלם בתוכנית, למרות שביקשת להימנע ממנו.`
+      : `הקורס ${name} כבר נמצא במערכת הנוכחית, אך הוא מסומן ברשימת הקורסים להימנע מהם. כדי לעמוד בהעדפה זו צריך להסיר אותו ידנית או לבנות מערכת מחדש.`);
+  }
+  return warnings;
+}
+
+/**
  * Issue C — FINAL deterministic post-filter, run AFTER the LLM output and all
  * repairs, BEFORE the proposal becomes an applicable draft. Removes any
  * explicitly-avoided ELECTIVE course from the draft semesters. If the avoided
@@ -16644,8 +16705,17 @@ function applyExplicitAvoidPostFilterLocal(proposal, avoidedIds, ctxCourses) {
   const rationales = keptMandatory.map(cid =>
     `הקורס ${courseMap[cid]?.name_he || cid} נשאר כי הוא קורס חובה בתוכנית, למרות שביקשת להימנע ממנו.`
   );
+  // A5 — a removed course (whether freshly LLM-added or already on the
+  // committed board; this filter does not distinguish) must be explained in
+  // the persistent chat message, not just the transient board-notify toast
+  // the caller also shows.
+  const removalRationales = removed.map(cid =>
+    `הקורס ${courseMap[cid]?.name_he || cid} נמצא ברשימת הקורסים להימנע מהם ולכן לא שובץ מחדש.`
+  );
   const next = { ...proposal, semesters };
-  if (rationales.length) next.warnings_he = [...(next.warnings_he || []), ...rationales];
+  if (rationales.length || removalRationales.length) {
+    next.warnings_he = [...(next.warnings_he || []), ...rationales, ...removalRationales];
+  }
   return { proposal: next, removed, keptMandatory };
 }
 
@@ -17201,7 +17271,7 @@ async function requestPlanProposal(prefs, actionType) {
         renderedDraftCards: document.querySelectorAll('#board .course-card').length,
         build: PLANNER_BUILD,
       });
-      const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx);
+      const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx, prefs);
       if (_fallback) {
         // Phase 1 — if the ONLY thing blocking the strict gate is soft (offering
         // uncertainty / degree incompleteness / category / prereq) — i.e. there
