@@ -11346,6 +11346,15 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx, prefs) {
       questionsForUser.push(`האם כבר השלמת את ${names || 'דרישות הקדם'} (נדרש ל${nameOf(cid)})?`);
     });
   }
+  // A5 — computed ONCE, used both in state.lastPlanningDraft (the object that
+  // activateTentativeDraft is actually called with, via _draft =
+  // state.lastPlanningDraft at this function's call site, and via
+  // handlePlanningFallbackAction's REPLAN_* cases) and in this function's own
+  // return value (used for the chip-prompt message when no placement exists
+  // yet). Without being on BOTH objects, the warning would only ever reach
+  // the chip-prompt path, never the actual rendered draft message — which is
+  // the path that fires for most real partial-plan scenarios.
+  const _existingHardAvoidWarningsB = buildExistingHardAvoidWarnings(buildHardExcludeSetLocal(prefs || {}), boardCids, courses);
   try {
     if (typeof state !== 'undefined' && state) {
       state.lastPlanningDraft = {
@@ -11355,6 +11364,7 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx, prefs) {
         assumptions,
         missingData,
         questionsForUser,
+        warnings_he: _existingHardAvoidWarningsB,
         source: 'draft_planner',
         createdAt: Date.now(),
       };
@@ -11416,14 +11426,12 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx, prefs) {
     // Carry forward proposal-level warnings (e.g. the panel-vs-chat hard-avoid
     // conflict note) so activateTentativeDraft's chat message can surface them —
     // they would otherwise stay buried in eligibleProposal and never be shown.
-    // A5 — this function only ever computes what's NEW vs the committed board
-    // (boardCids), so it never notices a hard-avoided course that's already
-    // sitting on that same committed board. Append the same existing-hard-
-    // avoid check used by buildDeterministicReplacementPlan so the conflict is
-    // never silently invisible here either.
+    // Plus the same existing-hard-avoid check (computed once, above, and also
+    // stored on state.lastPlanningDraft — see the comment there for why both
+    // copies are needed).
     warnings_he: [
       ...((eligibleProposal && eligibleProposal.warnings_he) || []),
-      ...buildExistingHardAvoidWarnings(buildHardExcludeSetLocal(prefs || {}), boardCids, courses),
+      ..._existingHardAvoidWarningsB,
     ],
   };
 }

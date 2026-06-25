@@ -28,6 +28,20 @@
  *     it via a transient 3.5s toast (showBoardNotify), never the persistent
  *     chat message. Now also appends a removal rationale to warnings_he
  *     (flows to postPlanChangeSummary via _aiPlanLastProposal).
+ *
+ * Preview verification of the first version of this fix found that B's
+ * warning, while present on buildPlanningFallback's RETURN VALUE, never
+ * reached the real chat message: requestPlanProposal's actual call to
+ * activateTentativeDraft uses `state.lastPlanningDraft` (an object
+ * buildPlanningFallback builds and assigns internally, BEFORE its own
+ * return statement) — not buildPlanningFallback's return value itself. The
+ * two objects are different, and only the return value had warnings_he. Fixed
+ * by computing the warning once and attaching it to BOTH objects. The
+ * end-to-end test below exercises the REAL wiring (full requestPlanProposal,
+ * not a hand-built draft object) specifically to catch this class of gap —
+ * the earlier per-function unit tests passed even with the bug present,
+ * because they tested each function in isolation rather than the actual
+ * connection between them.
  */
 const fs   = require('fs');
 const path = require('path');
@@ -39,7 +53,7 @@ const PROD_BOARD = path.join(__dirname, '..', '..', 'supabase_board_backup_2027_
 const ELECTIVE = '0542-4123'; // תהליכי מעבר חום וחומר — an ordinary, non-mandatory elective in this fixture
 const MANDATORY = '0542-2400'; // תכן מכני (1) — חובה קבוע in this fixture
 
-function createPageSetup() {
+function createPageSetup(aiResponseFn) {
   let h = fs.readFileSync(HTML_PATH, 'utf8');
   const m = h.match(/<script>([\s\S]*?)<\/script>/);
   const src = m[1];
@@ -57,6 +71,9 @@ function createPageSetup() {
     const u = String(url);
     if (u.includes('/api/board') || u.includes('semester_board')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(JSON.parse(boardJson)) });
+    }
+    if (u.includes('/api/ai/generate-plan')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(aiResponseFn ? aiResponseFn(window) : { semesters: [], warnings_he: [] }) });
     }
     return Promise.reject(new Error('network-stub: ' + u));
   };
@@ -177,6 +194,56 @@ describe('A5 — hard-avoided course already exists on the committed board', () 
     })()`));
     expect(r2.joined).toContain('כבר נמצא במערכת הנוכחית');
     expect(r2.joined).toContain(name);
+  });
+
+  test('end-to-end: requestPlanProposal\'s REAL call to activateTentativeDraft (via state.lastPlanningDraft) shows the warning — reproduces the exact preview-verification gap', async () => {
+    // Drives the REAL bridge: call buildPlanningFallback with a soft-only
+    // (PARTIAL_OK) gate rejection — exactly the shape requestPlanProposal
+    // produces for a genuine category-requirements gap — then call
+    // activateTentativeDraft with state.lastPlanningDraft (the side-effect
+    // object buildPlanningFallback assigns), EXACTLY as requestPlanProposal's
+    // own call site does at its `if (!_hasHardBlocker && _placementCount > 0)`
+    // branch. This is deterministic (no network/gate-shape flakiness) while
+    // still exercising the real connection between the two functions, which
+    // is exactly where the gap was hiding (see preview-verification note
+    // above): a first version of this fix worked when buildPlanningFallback
+    // was unit-tested in isolation, but failed for real because the actual
+    // call site never reads buildPlanningFallback's return value at all.
+    ({ dom, window } = createPageSetup());
+    await waitForInit(window);
+    placeOnBoard(window, ELECTIVE, 'year_3_semester_a');
+
+    const r = JSON.parse(window.eval(`(function(){
+      const eligibleProposal = {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['${ELECTIVE}'] },
+          { semester_id: 'year_4_semester_a', course_ids: ['0542-4220'] },
+        ],
+      };
+      const gateResult = { applicable: false, blockers: [{ cause: 'category_requirements' }] };
+      const ctx = { courses: {} };
+      const _fallback = buildPlanningFallback(eligibleProposal, gateResult, ctx, { strongly_avoided_course_ids: ['${ELECTIVE}'] });
+      const _blockerCauses = gateResult.blockers.map(b => b.cause);
+      const _HARD_STRUCTURAL = new Set(['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual']);
+      const _hasHardBlocker = _blockerCauses.some(c => _HARD_STRUCTURAL.has(c));
+      const _draft = state.lastPlanningDraft;
+      const _placementCount = _draft ? ((_draft.confirmedPlacements||[]).length + (_draft.tentativePlacements||[]).length) : 0;
+      _aiChatMessages = [];
+      let usedRealCallSite = false;
+      if (_fallback && !_hasHardBlocker && _placementCount > 0) {
+        usedRealCallSite = true;
+        activateTentativeDraft(_draft, { balance: false, fromBuild: true });
+      }
+      const msgs = (_aiChatMessages||[]).map(mm => mm.text || '');
+      const sems = (state.proposalDraft && state.proposalDraft.semesters) || state.semesters;
+      const allIds = Object.values(sems).flat();
+      return JSON.stringify({ usedRealCallSite, stillOnBoard: allIds.includes('${ELECTIVE}'), joined: msgs.join('\\n') });
+    })()`));
+    const name = window.eval(`courseMap['${ELECTIVE}'].name_he`);
+    expect(r.usedRealCallSite).toBe(true);
+    expect(r.stillOnBoard).toBe(true);
+    expect(r.joined).toContain('כבר נמצא במערכת הנוכחית');
+    expect(r.joined).toContain(name);
   });
 
   test('test_mandatory_or_locked_existing_hard_avoid_explains_not_removed', async () => {
