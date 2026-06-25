@@ -1564,6 +1564,18 @@ body.prog-modal-open .workspace {
   border-radius: var(--radius); direction: rtl;
 }
 
+/* Data-quality audit banner — a course with no real title (catalog import
+   gap) is never shown as a normal card; this is the only place it appears,
+   purely informational (never draggable/schedulable). */
+.board-data-audit-banner {
+  flex-basis: 100%;
+  padding: 10px 16px;
+  font-size: .82rem; line-height: 1.5; direction: rtl;
+  background: var(--warn-soft); color: var(--text);
+  border: 1px solid var(--warning); border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+
 /* ── State messages ──────────────────────────────────────────────────────── */
 .state-msg { padding: 60px 24px; text-align: center; color: var(--text-muted); }
 .state-err  { color: var(--danger); }
@@ -2408,7 +2420,14 @@ function buildPlanContext() {
   const category_requirements = (programRequirements?.categories || []).map(cat => {
     const placed = _categoryPlacedCount(cat);
     const candidates = (cat.course_ids || [])
-      .filter(cid => courseMap[cid] && !placedIds.has(cid) && !excludedFromProposalIds.has(cid))
+      // Data-quality gate — a course with no real name (catalog import gap)
+      // must never be offered to the LLM as a legal candidate. It cannot be
+      // displayed/described, so "pick it to fill the category" is never a
+      // valid instruction. See buildDeterministicReplacementPlan's matching
+      // defense-in-depth sweep for the same rule on the deterministic side.
+      .filter(cid => courseMap[cid] && isCourseRenderable(courseMap[cid])
+        && classifyCourseSchedulability(courseMap[cid]) !== 'unschedulable_missing_data'
+        && !placedIds.has(cid) && !excludedFromProposalIds.has(cid))
       .map(cid => {
         const c = courseMap[cid];
         const legal = getLegalSemestersLocal(c);
@@ -2454,7 +2473,8 @@ function buildPlanContext() {
     name: 'קורסי שער רוח',
     required_credits: shaarRuachRequiredCredits,
     candidates: SHAAR_RUACH_COURSES
-      .filter(c => !placedIds.has(c.course_id) && !excludedFromProposalIds.has(c.course_id))
+      // Same data-quality gate as category_requirements.candidates above.
+      .filter(c => !!c.name_he && !placedIds.has(c.course_id) && !excludedFromProposalIds.has(c.course_id))
       .map(c => {
         const cm = courseMap[c.course_id] || {};
         return {
@@ -6606,6 +6626,7 @@ function requestPlanProposalFromDraft(prefs, actionType) {
 }
 
 function renderBoard() {
+  _namelessOnBoardIds = new Set();
   const emptyHint = allPlacedIds().size === 0
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
     : '';
@@ -6640,7 +6661,7 @@ function renderBoard() {
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg => {
+  const yearGroupsHtml = yearGroups.map(yg => {
     // Issue 1 — annual courses for this year render once as a unified spanning
     // block INSIDE the course-card area, BELOW the semester headers, spanning
     // both semester columns (grid-column: 1 / -1). The annual band appears as
@@ -6657,6 +6678,17 @@ function renderBoard() {
       </div>
     </div>`;
   }).join('');
+
+  // Data-quality audit — _namelessOnBoardIds is populated as a side effect of
+  // the semZoneHtml() calls above, so it must be read AFTER yearGroupsHtml is
+  // built. A nameless committed-board course is never shown as a normal card
+  // (see semZoneHtml); this banner is the only place it's surfaced, and it is
+  // explicitly NOT a draggable/schedulable element — purely informational.
+  const dataAuditBanner = _namelessOnBoardIds.size
+    ? `<div class="board-data-audit-banner">⚠ נמצאו קורסים עם מידע חסר שאינם זמינים לשיבוץ עד השלמת היבוא (${_namelessOnBoardIds.size}): ${[..._namelessOnBoardIds].map(esc).join(', ')}</div>`
+    : '';
+
+  document.getElementById('board').innerHTML = emptyHint + dataAuditBanner + draftBanner + yearGroupsHtml;
 
   if (draftDiff) {
     document.getElementById('board-draft-apply').addEventListener('click', applyProposalDraft);
@@ -7844,6 +7876,12 @@ function semHeaderHtml(sem) {
   </div>`;
 }
 
+// Data-quality audit accumulator — populated by semZoneHtml during a
+// renderBoard() pass with any committed-board course that has no real title
+// (catalog import gap). Reset at the top of renderBoard() so it always
+// reflects the most recent render, never stale data from a previous pass.
+let _namelessOnBoardIds = new Set();
+
 /**
  * Issue 1 — render just the semester zone (courses) without the header.
  * Used to place course cards in a separate grid area below the annual band.
@@ -7854,7 +7892,17 @@ function semZoneHtml(sem, draftDiff) {
   // Issue 1 — annual courses are NOT rendered as per-column cards; they render
   // once as a unified spanning block INSIDE the course-card area, before the
   // normal semester courses (see annualBandHtml / renderBoard). Exclude them.
+  // Data-quality gate — a course with no real title (catalog import gap) must
+  // never render as a normal board card, even if it's somehow already placed
+  // on the committed board. renderBoard() surfaces it as a data-audit warning
+  // instead (collected into _namelessOnBoardIds, reset at the top of each
+  // renderBoard() pass).
   let cards = ids.filter(id => !isAnnualCourse(courseMap[id]))
+    .filter(id => {
+      const c = courseMap[id];
+      if (c && !isCourseRenderable(c)) { _namelessOnBoardIds.add(id); return false; }
+      return true;
+    })
     .map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
   // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
   if (draftDiff) {
@@ -10669,6 +10717,35 @@ function buildDeterministicReplacementPlan(args) {
   // rebuildDraftFromProfileLocal AND as requestPlanProposal's own fallback)
   // never did. Mirror that here so no caller can show a partial annual draft.
   normalizeAnnualPlacements(proposal);
+
+  // Overload transparency — a semester can be structurally over the user's
+  // max weekly hours purely from fixed/effectively-fixed mandatory courses,
+  // with zero legal way to reduce it (confirmed in production: year_3_semester_a
+  // can total 26 ש"ש from mandatory courses alone, each with only ONE legal
+  // semester this catalog year, against a 25 ש"ש user preference). Silently
+  // exceeding the user's stated preference is exactly the kind of unexplained
+  // violation this codebase has been fixing all session — read-only call
+  // (result discarded, NOT reassigned to `proposal`) purely to get a FRESH
+  // unmovedOverloaded report reflecting every repair that ran above, without
+  // risking a late, unaudited move (the 5c comment above explains why no
+  // further repairPlanLoad call should mutate the proposal at this point).
+  try {
+    if (prefs.max_weekly_hours != null) {
+      const _overloadReport = repairPlanLoad(proposal, ctx).unmovedOverloaded || [];
+      const _overloadWarnings = _overloadReport
+        .filter(o => o.hours > prefs.max_weekly_hours)
+        .map(o => {
+          const semLbl = _formatSemIdHe(o.semester_id);
+          if (o.movable.length > 0) {
+            return `${semLbl} עומס ${o.hours}/${prefs.max_weekly_hours} ש"ש — נמצאו קורסים גמישים אך לא נמצא שיבוץ חוקי שמפחית את העומס.`;
+          }
+          const fixedCount = (o.not_movable_reasons || []).filter(r => r.reason === 'fixed_mandatory').length;
+          const noTargetCount = (o.not_movable_reasons || []).filter(r => r.reason === 'no_legal_target').length;
+          return `${semLbl} עומס ${o.hours}/${prefs.max_weekly_hours} ש"ש — כל הקורסים בסמסטר זה הם חובה (${fixedCount} קבועה${noTargetCount ? `, ${noTargetCount} גמישה ללא חלופת סמסטר חוקית השנה` : ''}); לא ניתן להפחית את העומס מתחת ל-${prefs.max_weekly_hours} ש"ש מבלי לבטל קורס חובה.`;
+        });
+      if (_overloadWarnings.length) proposal.warnings_he = [...(proposal.warnings_he || []), ..._overloadWarnings];
+    }
+  } catch (_) { /* reporting only — never block the plan on this */ }
 
   // Part E — explicit hours-accounting for the overshoot-minimization gate, shown
   // verbatim in the summary/debug output: target, the baseline right before the
