@@ -1921,6 +1921,35 @@ function _formatSemIdHe(id) {
 }
 
 /**
+ * Shared partial-plan contract — every planner path that can produce a
+ * below-target draft (deterministic-replacement rescue, activateTentativeDraft/
+ * buildPlanningFallback, the LLM-accepted path, any repair/fill-to-target
+ * fallback) must use the SAME framing so a below-target plan never reads like
+ * a successful completed one. Returns null when the plan already reaches
+ * target (the caller keeps its normal complete-plan wording/apply label).
+ *
+ * `reached`, when explicitly passed (true/false), is the AUTHORITATIVE
+ * completeness signal and overrides the hours comparison — some callers (the
+ * deterministic-replacement rescue's getDegreeHoursStatusLocal) also factor in
+ * category-requirement satisfaction, not just raw hours, so totalHours >=
+ * targetHours alone is not always sufficient to call a plan complete. When
+ * omitted, falls back to the plain hours comparison (the only signal callers
+ * like activateTentativeDraft/computeDegreeProgress have).
+ */
+function buildPartialPlanContract(totalHours, targetHours, reached) {
+  if (totalHours == null || targetHours == null) return null;
+  const isReached = (typeof reached === 'boolean') ? reached : (totalHours >= targetHours);
+  if (isReached) return null;
+  const missing = Math.max(0, Math.round(targetHours - totalHours));
+  return {
+    leadLine: `לא הצלחתי להגיע ל-${targetHours} ש״ש תחת האילוצים הנוכחיים. חסרות ${missing} ש״ש (הגעתי ל-${Math.round(totalHours)}/${targetHours} ש״ש).`,
+    partialTagLine: 'זוהי טיוטה חלקית — דורשת החלטת משתמש, ואינה מערכת תקינה ומושלמת לתואר.',
+    applyLabel: 'החל טיוטה חלקית (לא מלאה)',
+    missing,
+  };
+}
+
+/**
  * PART B — Year 1/2 mandatory mechanical-engineering courses. The active
  * board (SEMESTERS/courseMap) only covers years 3-4, but "הקורסים שלי" needs
  * to let users mark year 1/2 mandatory courses (often postponed) as
@@ -4816,7 +4845,21 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   const opener = openers[_planChangeSummaryNonce % openers.length];
   _planChangeSummaryNonce++;
 
-  postStatusMessage([opener, ...lines].join('\n'));
+  // This is the LLM-accepted SUCCESS_WITH_CHANGES path — the gate found the
+  // proposal structurally applicable, but "applicable" does not mean it
+  // reaches the degree-hour target. A below-target result must use the SAME
+  // partial-plan contract as every other planner path (the persistent
+  // board-draft-apply banner already reflects this; this leads the message).
+  let _partialLead = '';
+  try {
+    if (typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
+      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+      if (partial) _partialLead = `${partial.leadLine}\n${partial.partialTagLine}\n\n`;
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+
+  postStatusMessage(`${_partialLead}${[opener, ...lines].join('\n')}`);
 }
 
 /**
@@ -6567,12 +6610,27 @@ function renderBoard() {
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
     : '';
   // PART E — banner shown above the board while an AI draft overlay is active.
+  // This is the single canonical apply surface for ANY active draft (chat-chip
+  // labels mirror it but this banner is what's always visible). A below-target
+  // draft must use the SAME partial-plan contract as the chat messages so the
+  // apply action never looks like committing a normal valid final plan.
   const draftDiff = computeDraftDiff();
+  let _boardDraftPartial = null;
+  try {
+    if (draftDiff && state.proposalDraft && typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, { semesters: state.proposalDraft.semesters });
+      _boardDraftPartial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+    }
+  } catch (_) { /* progress model unavailable — fall back to the normal label */ }
+  const _draftBannerLabel = _boardDraftPartial
+    ? 'טיוטת AI חלקית פעילה — אינה משלימה את דרישת השעות לתואר. ערוך על הלוח ואז אשר או דחה'
+    : 'טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה';
+  const _draftApplyLabel = _boardDraftPartial ? _boardDraftPartial.applyLabel : 'החל טיוטה';
   const draftBanner = draftDiff
     ? `<div class="board-draft-banner">
-        <span>טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה</span>
+        <span>${esc(_draftBannerLabel)}</span>
         <div class="board-draft-banner-actions">
-          <button class="btn btn-primary btn-sm" id="board-draft-apply">החל טיוטה</button>
+          <button class="btn btn-primary btn-sm" id="board-draft-apply">${esc(_draftApplyLabel)}</button>
           <button class="btn btn-sm" id="board-draft-reject">דחה</button>
           <button class="btn btn-sm" id="board-draft-back-ai">חזור לעוזר AI</button>
         </div>
@@ -11459,7 +11517,18 @@ function commitConfirmedPlacementsToBoard(draft) {
   }
   const lbl = cid => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
   const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
-  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.`);
+  // This path commits directly to the real board (no apply step), but a
+  // below-target result must still use the shared partial-plan contract
+  // wording so it's not mistaken for a complete degree plan.
+  let _commitPartialLine = '';
+  try {
+    if (typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, null);
+      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+      if (partial) _commitPartialLine = `\n${partial.leadLine}\n${partial.partialTagLine}`;
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.${_commitPartialLine}`);
 }
 
 /**
@@ -11558,20 +11627,22 @@ function activateTentativeDraft(draft, opts) {
 
   // Degree-hours accounting (Phase 1) — show total after the draft vs the 185
   // ש"ש target and the remaining gap, so the user sees the plan is aimed at
-  // COMPLETING the degree, not just "adding some courses". Best-effort: degrades
-  // silently when the progress model is unavailable.
+  // COMPLETING the degree, not just "adding some courses". A below-target
+  // result uses the SAME partial-plan contract (buildPartialPlanContract) as
+  // the deterministic-replacement rescue path, so the framing never drifts
+  // between planner paths. Best-effort: degrades silently when the progress
+  // model is unavailable.
   let hoursLine = '';
+  let partialContract = null;
   try {
     if (typeof computeDegreeProgress === 'function' && state.proposalDraft) {
       const draftState = { semesters: state.proposalDraft.semesters };
       const prog = computeDegreeProgress({}, state, draftState);
       if (prog && prog.required != null && prog.total_after != null) {
-        const approx = prog.unknown_hours_count > 0 ? '~' : '';
-        hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}.`;
-        if (prog.remaining > 0) {
-          hoursLine += ` חסרות עוד כ-${Math.round(prog.remaining)} ש״ש להשלמת התואר — אפשר להוסיף קורסי בחירה נוספים.`;
-        } else if (prog.total_after >= prog.required) {
-          hoursLine += ' הטיוטה מגיעה לדרישת השעות לתואר.';
+        partialContract = buildPartialPlanContract(prog.total_after, prog.required);
+        if (!partialContract) {
+          const approx = prog.unknown_hours_count > 0 ? '~' : '';
+          hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}. הטיוטה מגיעה לדרישת השעות לתואר.`;
         }
       }
     }
@@ -11599,8 +11670,14 @@ function activateTentativeDraft(draft, opts) {
     }
   } catch (_) { /* classification unavailable — omit the line */ }
 
-  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}${warningsLine}`, [
-    { label: 'החל טיוטה', action: 'apply-draft' },
+  // Below-target plans MUST lead with the shared partial-plan contract line so
+  // the message never reads like a successful completed plan, and the apply
+  // chip must say so explicitly (see buildPartialPlanContract).
+  const _leadLine = partialContract ? `${partialContract.leadLine}\n` : '';
+  const _tagLine = partialContract ? `\n${partialContract.partialTagLine}` : '';
+  const _applyLabel = partialContract ? partialContract.applyLabel : 'החל טיוטה';
+  postAssistantMessage(`${_leadLine}${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${_tagLine}${assumptionLine}${warningsLine}`, [
+    { label: _applyLabel, action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
 }
@@ -17187,7 +17264,6 @@ async function requestPlanProposal(prefs, actionType) {
             });
             const _cards = document.querySelectorAll('#board .course-card').length;
             console.log('[planner-e2e-trace]', { messagePath: 'replacement rendered cards count', count: _cards });
-            const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
             const _reasonStr = (_repl.gapReasons && _repl.gapReasons.length) ? '\nסיבות:\n• ' + _repl.gapReasons.join('\n• ') : '';
             const _focusStr = _formatDomainFocusHe(_repl.domainReport);
             // Surface hard-excluded courses so the user knows the planner honored
@@ -17201,20 +17277,18 @@ async function requestPlanProposal(prefs, actionType) {
               ? '\n' + _repl.proposal.warnings_he.join('\n')
               : '';
             // A degree plan that does not reach the required hours is NOT a
-            // successful completed plan and must not be framed as one. Lead with
-            // an explicit "could not reach 185 under the current constraints"
-            // headline and label it a partial draft that needs a user decision.
-            // (The "הגעתי ל-X/Y" figure is kept as a parenthetical so the exact
-            // numbers are still visible — and so existing partial-plan assertions
-            // that look for that token keep matching.)
-            const _msg = _repl.reachedTarget
+            // successful completed plan and must not be framed as one — use the
+            // shared partial-plan contract (buildPartialPlanContract) so this path
+            // and activateTentativeDraft never drift apart in wording.
+            const _partial = buildPartialPlanContract(_repl.totalHours, _repl.targetHours, _repl.reachedTarget);
+            const _msg = !_partial
               ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}${_warnStr}`
-              : `לא הצלחתי להגיע ל-${_repl.targetHours} ש״ש תחת האילוצים הנוכחיים. חסרות ${_missing} ש״ש (הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש).${_focusStr}${_reasonStr}${_exclStr}${_warnStr}\nזוהי טיוטה חלקית — דורשת החלטת משתמש, ואינה מערכת תקינה ומושלמת לתואר.`;
+              : `${_partial.leadLine}${_focusStr}${_reasonStr}${_exclStr}${_warnStr}\n${_partial.partialTagLine}`;
             _lastFinalPlanBlockedMsg = null;
             // Apply chip wording reflects that applying a sub-target plan commits
             // an incomplete degree plan (the click itself is the explicit
             // confirmation); a complete plan keeps the plain label.
-            const _applyLabel = _repl.reachedTarget ? 'החל טיוטה' : 'החל טיוטה חלקית (לא מלאה)';
+            const _applyLabel = _partial ? _partial.applyLabel : 'החל טיוטה';
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
               { label: _applyLabel, action: 'apply-draft' },
               { label: 'דחה טיוטה', action: 'reject-draft' },
