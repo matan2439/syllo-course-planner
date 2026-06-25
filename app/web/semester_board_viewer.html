@@ -24,11 +24,11 @@
   --bg2:       #EEEFF5;
   --surface:   #FFFFFF;
   --surface2:  #F3F4F9;
-  --border:    #E5E7EB;
-  --border2:   #D1D5DB;
+  --border:    #D7DBE3;
+  --border2:   #C2C8D2;
   --text:      #111827;
-  --text-muted:#6B7280;
-  --text-faint:#5F6B78;
+  --text-muted:#5B6472;
+  --text-faint:#4B5563;
   --radius:    10px;
   --shadow:    0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.05);
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
@@ -55,21 +55,21 @@
 
   --mand-accent:#2563EB; --mand-bg:#EFF6FF; --mand-lock-bg:#DBEAFE;
   --elec-accent:#7C3AED; --elec-bg:#FFFFFF;
-  --blk-accent: #9CA3AF; --blk-bg: #F9FAFB;
-  --miss-accent:#F59E0B; --miss-bg: #FFFBEB;
+  --blk-accent: #7B8493; --blk-bg: #F4F5F7;
+  --miss-accent:#D97706; --miss-bg: #FFF7E8;
 
   --y3a:#2563EB; --y3b:#1D4ED8; --y4a:#7C3AED; --y4b:#6D28D9;
   --sidebar-w:284px;
   --hdr-h:54px;
 
   /* ── Category accent colors (2027 program) ── */
-  --cat-fluids-accent:  #0891B2; --cat-fluids-bg:  rgba(8,145,178,.06);
-  --cat-solids-accent:  #D97706; --cat-solids-bg:  rgba(217,119,6,.06);
-  --cat-systems-accent: #7C3AED; --cat-systems-bg: rgba(124,58,237,.06);
-  --cat-labs-accent:    #059669; --cat-labs-bg:    rgba(5,150,105,.06);
-  --cat-other-accent:   #64748B; --cat-other-bg:   rgba(100,116,139,.04);
-  --cat-specelective-accent: #DB2777; --cat-specelective-bg: rgba(219,39,119,.06);
-  --cat-shaarruach-accent:   #4F46E5; --cat-shaarruach-bg:   rgba(79,70,229,.06);
+  --cat-fluids-accent:  #0E7490; --cat-fluids-bg:  rgba(8,145,178,.12);
+  --cat-solids-accent:  #B45309; --cat-solids-bg:  rgba(217,119,6,.12);
+  --cat-systems-accent: #6D28D9; --cat-systems-bg: rgba(124,58,237,.11);
+  --cat-labs-accent:    #047857; --cat-labs-bg:    rgba(5,150,105,.12);
+  --cat-other-accent:   #475569; --cat-other-bg:   rgba(100,116,139,.09);
+  --cat-specelective-accent: #BE185D; --cat-specelective-bg: rgba(219,39,119,.11);
+  --cat-shaarruach-accent:   #4338CA; --cat-shaarruach-bg:   rgba(79,70,229,.11);
 
   /* ── Premium surface tokens (light: kept subtle/clean) ── */
   --glass-bg:        rgba(255,255,255,.72);
@@ -1918,6 +1918,35 @@ function _formatSemIdHe(id) {
   if (!m) return id;
   const YEAR_HE = { 1:'א', 2:'ב', 3:'ג', 4:'ד', 5:'ה', 6:'ו' };
   return `שנה ${YEAR_HE[parseInt(m[1])] || m[1]}׳ — סמסטר ${m[2].toLowerCase() === 'a' ? 'א' : 'ב'}׳`;
+}
+
+/**
+ * Shared partial-plan contract — every planner path that can produce a
+ * below-target draft (deterministic-replacement rescue, activateTentativeDraft/
+ * buildPlanningFallback, the LLM-accepted path, any repair/fill-to-target
+ * fallback) must use the SAME framing so a below-target plan never reads like
+ * a successful completed one. Returns null when the plan already reaches
+ * target (the caller keeps its normal complete-plan wording/apply label).
+ *
+ * `reached`, when explicitly passed (true/false), is the AUTHORITATIVE
+ * completeness signal and overrides the hours comparison — some callers (the
+ * deterministic-replacement rescue's getDegreeHoursStatusLocal) also factor in
+ * category-requirement satisfaction, not just raw hours, so totalHours >=
+ * targetHours alone is not always sufficient to call a plan complete. When
+ * omitted, falls back to the plain hours comparison (the only signal callers
+ * like activateTentativeDraft/computeDegreeProgress have).
+ */
+function buildPartialPlanContract(totalHours, targetHours, reached) {
+  if (totalHours == null || targetHours == null) return null;
+  const isReached = (typeof reached === 'boolean') ? reached : (totalHours >= targetHours);
+  if (isReached) return null;
+  const missing = Math.max(0, Math.round(targetHours - totalHours));
+  return {
+    leadLine: `לא הצלחתי להגיע ל-${targetHours} ש״ש תחת האילוצים הנוכחיים. חסרות ${missing} ש״ש (הגעתי ל-${Math.round(totalHours)}/${targetHours} ש״ש).`,
+    partialTagLine: 'זוהי טיוטה חלקית — דורשת החלטת משתמש, ואינה מערכת תקינה ומושלמת לתואר.',
+    applyLabel: 'החל טיוטה חלקית (לא מלאה)',
+    missing,
+  };
 }
 
 /**
@@ -4795,12 +4824,42 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
   }
 
+  // Surface material proposal-level caveats on the SUCCESS path. The deterministic
+  // planner records important notes on the final proposal's warnings_he — e.g.
+  // no-final-exam שער-רוח courses flagged "מידע חסר / דורש אישור", panel-vs-chat
+  // hard-avoid conflicts, and "לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת". This
+  // builder previously rendered only the placement diff, so those caveats reached
+  // _aiPlanLastProposal.warnings_he but never the user (the other two message
+  // constructors — activateTentativeDraft and the deterministic-replacement
+  // rescue — already echo warnings_he; this third path did not). Read from the
+  // canonical final proposal so the summary reflects the post-validation result.
+  const _finalWarnings = (newProposal && newProposal.warnings_he)
+    || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he)
+    || [];
+  for (const w of [...new Set(_finalWarnings)]) {
+    if (w && !lines.includes(w)) lines.push(w);
+  }
+
   // Rotate the opening phrase so repeated rebuilds differ visibly.
   const openers = ['עדכנתי את המערכת:', 'הנה מה שהשתנה:', 'סיכום השינויים:', 'בוצע — לסיכום:'];
   const opener = openers[_planChangeSummaryNonce % openers.length];
   _planChangeSummaryNonce++;
 
-  postStatusMessage([opener, ...lines].join('\n'));
+  // This is the LLM-accepted SUCCESS_WITH_CHANGES path — the gate found the
+  // proposal structurally applicable, but "applicable" does not mean it
+  // reaches the degree-hour target. A below-target result must use the SAME
+  // partial-plan contract as every other planner path (the persistent
+  // board-draft-apply banner already reflects this; this leads the message).
+  let _partialLead = '';
+  try {
+    if (typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
+      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+      if (partial) _partialLead = `${partial.leadLine}\n${partial.partialTagLine}\n\n`;
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+
+  postStatusMessage(`${_partialLead}${[opener, ...lines].join('\n')}`);
 }
 
 /**
@@ -6551,12 +6610,27 @@ function renderBoard() {
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
     : '';
   // PART E — banner shown above the board while an AI draft overlay is active.
+  // This is the single canonical apply surface for ANY active draft (chat-chip
+  // labels mirror it but this banner is what's always visible). A below-target
+  // draft must use the SAME partial-plan contract as the chat messages so the
+  // apply action never looks like committing a normal valid final plan.
   const draftDiff = computeDraftDiff();
+  let _boardDraftPartial = null;
+  try {
+    if (draftDiff && state.proposalDraft && typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, { semesters: state.proposalDraft.semesters });
+      _boardDraftPartial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+    }
+  } catch (_) { /* progress model unavailable — fall back to the normal label */ }
+  const _draftBannerLabel = _boardDraftPartial
+    ? 'טיוטת AI חלקית פעילה — אינה משלימה את דרישת השעות לתואר. ערוך על הלוח ואז אשר או דחה'
+    : 'טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה';
+  const _draftApplyLabel = _boardDraftPartial ? _boardDraftPartial.applyLabel : 'החל טיוטה';
   const draftBanner = draftDiff
     ? `<div class="board-draft-banner">
-        <span>טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה</span>
+        <span>${esc(_draftBannerLabel)}</span>
         <div class="board-draft-banner-actions">
-          <button class="btn btn-primary btn-sm" id="board-draft-apply">החל טיוטה</button>
+          <button class="btn btn-primary btn-sm" id="board-draft-apply">${esc(_draftApplyLabel)}</button>
           <button class="btn btn-sm" id="board-draft-reject">דחה</button>
           <button class="btn btn-sm" id="board-draft-back-ai">חזור לעוזר AI</button>
         </div>
@@ -11443,7 +11517,18 @@ function commitConfirmedPlacementsToBoard(draft) {
   }
   const lbl = cid => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
   const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
-  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.`);
+  // This path commits directly to the real board (no apply step), but a
+  // below-target result must still use the shared partial-plan contract
+  // wording so it's not mistaken for a complete degree plan.
+  let _commitPartialLine = '';
+  try {
+    if (typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, null);
+      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+      if (partial) _commitPartialLine = `\n${partial.leadLine}\n${partial.partialTagLine}`;
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.${_commitPartialLine}`);
 }
 
 /**
@@ -11542,20 +11627,22 @@ function activateTentativeDraft(draft, opts) {
 
   // Degree-hours accounting (Phase 1) — show total after the draft vs the 185
   // ש"ש target and the remaining gap, so the user sees the plan is aimed at
-  // COMPLETING the degree, not just "adding some courses". Best-effort: degrades
-  // silently when the progress model is unavailable.
+  // COMPLETING the degree, not just "adding some courses". A below-target
+  // result uses the SAME partial-plan contract (buildPartialPlanContract) as
+  // the deterministic-replacement rescue path, so the framing never drifts
+  // between planner paths. Best-effort: degrades silently when the progress
+  // model is unavailable.
   let hoursLine = '';
+  let partialContract = null;
   try {
     if (typeof computeDegreeProgress === 'function' && state.proposalDraft) {
       const draftState = { semesters: state.proposalDraft.semesters };
       const prog = computeDegreeProgress({}, state, draftState);
       if (prog && prog.required != null && prog.total_after != null) {
-        const approx = prog.unknown_hours_count > 0 ? '~' : '';
-        hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}.`;
-        if (prog.remaining > 0) {
-          hoursLine += ` חסרות עוד כ-${Math.round(prog.remaining)} ש״ש להשלמת התואר — אפשר להוסיף קורסי בחירה נוספים.`;
-        } else if (prog.total_after >= prog.required) {
-          hoursLine += ' הטיוטה מגיעה לדרישת השעות לתואר.';
+        partialContract = buildPartialPlanContract(prog.total_after, prog.required);
+        if (!partialContract) {
+          const approx = prog.unknown_hours_count > 0 ? '~' : '';
+          hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}. הטיוטה מגיעה לדרישת השעות לתואר.`;
         }
       }
     }
@@ -11583,8 +11670,14 @@ function activateTentativeDraft(draft, opts) {
     }
   } catch (_) { /* classification unavailable — omit the line */ }
 
-  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}${warningsLine}`, [
-    { label: 'החל טיוטה', action: 'apply-draft' },
+  // Below-target plans MUST lead with the shared partial-plan contract line so
+  // the message never reads like a successful completed plan, and the apply
+  // chip must say so explicitly (see buildPartialPlanContract).
+  const _leadLine = partialContract ? `${partialContract.leadLine}\n` : '';
+  const _tagLine = partialContract ? `\n${partialContract.partialTagLine}` : '';
+  const _applyLabel = partialContract ? partialContract.applyLabel : 'החל טיוטה';
+  postAssistantMessage(`${_leadLine}${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${_tagLine}${assumptionLine}${warningsLine}`, [
+    { label: _applyLabel, action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
 }
@@ -17171,7 +17264,6 @@ async function requestPlanProposal(prefs, actionType) {
             });
             const _cards = document.querySelectorAll('#board .course-card').length;
             console.log('[planner-e2e-trace]', { messagePath: 'replacement rendered cards count', count: _cards });
-            const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
             const _reasonStr = (_repl.gapReasons && _repl.gapReasons.length) ? '\nסיבות:\n• ' + _repl.gapReasons.join('\n• ') : '';
             const _focusStr = _formatDomainFocusHe(_repl.domainReport);
             // Surface hard-excluded courses so the user knows the planner honored
@@ -17184,12 +17276,21 @@ async function requestPlanProposal(prefs, actionType) {
             const _warnStr = (_repl.proposal && _repl.proposal.warnings_he && _repl.proposal.warnings_he.length)
               ? '\n' + _repl.proposal.warnings_he.join('\n')
               : '';
-            const _msg = _repl.reachedTarget
+            // A degree plan that does not reach the required hours is NOT a
+            // successful completed plan and must not be framed as one — use the
+            // shared partial-plan contract (buildPartialPlanContract) so this path
+            // and activateTentativeDraft never drift apart in wording.
+            const _partial = buildPartialPlanContract(_repl.totalHours, _repl.targetHours, _repl.reachedTarget);
+            const _msg = !_partial
               ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}${_warnStr}`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}${_warnStr}`;
+              : `${_partial.leadLine}${_focusStr}${_reasonStr}${_exclStr}${_warnStr}\n${_partial.partialTagLine}`;
             _lastFinalPlanBlockedMsg = null;
+            // Apply chip wording reflects that applying a sub-target plan commits
+            // an incomplete degree plan (the click itself is the explicit
+            // confirmation); a complete plan keeps the plain label.
+            const _applyLabel = _partial ? _partial.applyLabel : 'החל טיוטה';
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
-              { label: 'החל טיוטה', action: 'apply-draft' },
+              { label: _applyLabel, action: 'apply-draft' },
               { label: 'דחה טיוטה', action: 'reject-draft' },
             ]);
             _rescued = true;
