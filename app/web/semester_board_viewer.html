@@ -5979,17 +5979,47 @@ function formatFull185SummaryLocal(plan) {
   // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
   const profile = (plan && plan.userIntentProfile) || _aiUserIntentProfile || {};
   const notes = [];
+  // Summary integrity: a hard-exclude request can be honored for an elective but
+  // CANNOT remove a locked/fixed-mandatory course already on the board (mandatory
+  // placement always wins — see validateFinalPlan's mandatory check). Check the
+  // ACTUAL final draft before claiming "not placed", so this note never contradicts
+  // the real board the user is looking at.
+  const _draftPlacedForNotes = new Set(((plan && plan.proposal && plan.proposal.semesters) || [])
+    .flatMap(s => s.course_ids || []));
+  // Contradictory-request invariant: when must-include and hard-exclude name the
+  // SAME course (e.g. panel hard-avoid + a later chat "include it"), hard-avoid
+  // wins (see rebuildDraftFromProfileLocal/repair paths), but that resolution was
+  // previously silent — visible only in proposal.warnings_he, which this summary
+  // never read. Surface the conflict explicitly so the user knows WHY their
+  // explicit chat request was not honored.
+  const _hardExcludeSet = new Set(profile.hardExcludeCourseIds || []);
+  for (const cid of (profile.mustIncludeCourseIds || [])) {
+    if (_hardExcludeSet.has(cid)) {
+      const nm = (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
+      notes.push(`${nm} מבוקש גם לכלול וגם להחריג (סתירה) — החרגה חזקה גוברת, ולכן לא שובץ. הסר אותו מרשימת ההימנעות כדי לכלול אותו.`);
+    }
+  }
   for (const cid of (profile.hardExcludeCourseIds || [])) {
     const nm = (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
-    notes.push(`${nm} לא שובצה כי ביקשת לא לשבץ אותה.`);
+    if (_hardExcludeSet.has(cid) && (profile.mustIncludeCourseIds || []).includes(cid)) continue; // already covered by the conflict note above
+    if (_draftPlacedForNotes.has(cid)) {
+      notes.push(`${nm} נשארה בתוכנית למרות בקשתך — היא קורס חובה קבוע שלא ניתן להחריג.`);
+    } else {
+      notes.push(`${nm} לא שובצה כי ביקשת לא לשבץ אותה.`);
+    }
   }
   if (profile.shaarRuachAssessmentPref === 'prefer_no_exam') {
-    const usedUnknown = ((plan && plan.completionAdded) || []).some(a => {
-      const c = (typeof courseMap !== 'undefined') ? courseMap[a.course_id] : null;
-      return c && _isShaarRuachLocal(c) && _hasFinalExamLocal(c) == null;
-    });
+    // Invariant: unknown exam data is not positive evidence for "no final exam".
+    // Check EVERY שער-רוח course in the FINAL draft (not just the completion-fill
+    // step) — a course can reach the board via must-include, mandatory category
+    // fill, or the initial seed, and an unknown-assessment course placed through
+    // any of those paths must still be flagged, never reported as a clean match.
+    const shaarRuachPlacedIds = ((plan && plan.proposal && plan.proposal.semesters) || [])
+      .flatMap(s => s.course_ids || [])
+      .filter(cid => { const c = courseMap[cid]; return c && _isShaarRuachLocal(c); });
+    const usedUnknown = shaarRuachPlacedIds.some(cid => _hasFinalExamLocal(courseMap[cid]) == null);
     notes.push(usedUnknown
-      ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה.'
+      ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה (דורשים אישור ידני לפני הגשה).'
       : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
   }
   if (profile.gradeTarget != null) notes.push(`העדפתי קורסים עם סיכון ציונים נמוך/בינוני כדי לשמור על יעד ממוצע ${profile.gradeTarget}.`);
@@ -9162,6 +9192,66 @@ function classifyCourseSchedulability(c) {
   // for a legal plan; it would only ever land via an "any semester" guess.
   return 'unschedulable_missing_data';
 }
+
+/**
+ * Phase 6 data-quality / trust-layer audit — read-only, no side effects. Walks the
+ * full repository (courseMap) and counts the data gaps that the planner's trust
+ * semantics depend on: missing semester/offering data, missing assessment data
+ * (finalExam unknown), missing prerequisite data, annual-course span counts,
+ * courses with no legal placement at all, and inconsistent/missing hours. Used
+ * for debugging and reporting — never called from the planning pipeline itself.
+ */
+function auditCourseCatalogForPlannerReliability() {
+  const courses = (typeof courseMap !== 'undefined') ? Object.values(courseMap) : [];
+  const missingSemesterData = [];
+  const missingAssessmentData = [];
+  const missingPrerequisiteData = [];
+  const annualCourses = [];
+  const impossibleToSchedule = [];
+  const inconsistentHours = [];
+
+  for (const c of courses) {
+    if (!c) continue;
+    const hasEffective = Array.isArray(c.effective_allowed_semesters) && c.effective_allowed_semesters.length > 0;
+    const hasOffered = Array.isArray(c.offered_semesters) && c.offered_semesters.length > 0;
+    if (!hasEffective && !hasOffered) missingSemesterData.push(c.course_id);
+
+    if (_hasFinalExamLocal(c) == null) missingAssessmentData.push(c.course_id);
+
+    const hasPrereqText = !!(c.prerequisites_raw_text || c.syllabus_prerequisites_he);
+    const hasParsedGroups = Array.isArray(c.prereq_groups) && c.prereq_groups.length > 0;
+    if (!hasPrereqText && !Array.isArray(c.prerequisites)) missingPrerequisiteData.push(c.course_id);
+    else if (hasPrereqText && !hasParsedGroups && !(Array.isArray(c.prerequisites) && c.prerequisites.length)) {
+      missingPrerequisiteData.push(c.course_id);
+    }
+
+    if (isAnnualCourse(c)) {
+      const spans = (c.spans_semesters && c.spans_semesters.length) ? c.spans_semesters
+        : ((c.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : []);
+      annualCourses.push({ course_id: c.course_id, name_he: c.name_he, requiredSpans: spans });
+    }
+
+    if (classifyCourseSchedulability(c) === 'unschedulable_missing_data') impossibleToSchedule.push(c.course_id);
+
+    const weekly = c.weekly_hours, semHours = c.semester_hours;
+    if (weekly != null && semHours != null && Math.abs(weekly - semHours) > 0.01) {
+      inconsistentHours.push({ course_id: c.course_id, weekly_hours: weekly, semester_hours: semHours });
+    } else if (weekly == null && semHours == null) {
+      inconsistentHours.push({ course_id: c.course_id, weekly_hours: null, semester_hours: null });
+    }
+  }
+
+  return {
+    totalCourses: courses.length,
+    missingSemesterData: { count: missingSemesterData.length, courseIds: missingSemesterData },
+    missingAssessmentData: { count: missingAssessmentData.length, courseIds: missingAssessmentData },
+    missingPrerequisiteData: { count: missingPrerequisiteData.length, courseIds: missingPrerequisiteData },
+    annualCourses: { count: annualCourses.length, courses: annualCourses },
+    impossibleToSchedule: { count: impossibleToSchedule.length, courseIds: impossibleToSchedule },
+    inconsistentHours: { count: inconsistentHours.length, courses: inconsistentHours },
+  };
+}
+window.auditCourseCatalogForPlannerReliability = auditCourseCatalogForPlannerReliability;
 
 /* True when a course is officially flexible in the program but this year's actual
    offering restricts it to a single semester (effective narrower than program-level) */
@@ -16745,7 +16835,11 @@ function buildExistingHardAvoidWarnings(avoidedIds, committedCidSet, ctxCourses)
     const name = (typeof courseLabelLocal === 'function') ? courseLabelLocal(cid) : cid;
     warnings.push(isMandatoryOrLocked(cid)
       ? `הקורס ${name} נשאר כי הוא קורס חובה או הושלם בתוכנית, למרות שביקשת להימנע ממנו.`
-      : `הקורס ${name} כבר נמצא במערכת הנוכחית, אך הוא מסומן ברשימת הקורסים להימנע מהם. כדי לעמוד בהעדפה זו צריך להסיר אותו ידנית או לבנות מערכת מחדש.`);
+      // "בנה מערכת מחדש" deliberately never silently drops a course already on the
+      // committed board (see buildDeterministicReplacementPlan's beforeCids guard) —
+      // so rebuilding will NOT remove this course. Manual removal is the only path;
+      // the warning must not promise an action that doesn't actually happen.
+      : `הקורס ${name} כבר נמצא במערכת הנוכחית, אך הוא מסומן ברשימת הקורסים להימנע מהם. בנייה מחדש לא תסיר אותו (היא לא מורידה קורסים שכבר על הלוח) — יש להסיר אותו ידנית מהלוח.`);
   }
   return warnings;
 }

@@ -151,4 +151,52 @@ describe('planner reliability matrix — hard-avoid + summary integrity', () => 
     })()`));
     expect(r.claimedButMissing).toEqual([]);
   });
+
+  test('regression: a hard-exclude request for a locked mandatory course is reported as "stayed (mandatory)", never as "not placed"', async () => {
+    // Found via live browser QA: a user asking to avoid a mandatory, board-locked
+    // course got a "שים לב" note claiming it was NOT placed, while it was actually
+    // still on the board (mandatory courses can never be excluded). The note must
+    // match the real final draft, not blindly echo the user's request back.
+    ({ dom, window } = createPageSetup((win) => {
+      const sems = JSON.parse(win.eval('JSON.stringify(SEMESTERS.map(s=>({semester_id:s.id, course_ids:[...(state.semesters[s.id]||[])]})))'));
+      return { semesters: sems, warnings_he: [] };
+    }));
+    await waitForInit(window);
+
+    const r = JSON.parse(window.eval(`(function(){
+      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
+      const mandatory = Object.values(courseMap).find(c => c && c.course_type === 'mandatory' &&
+        (plan.proposal.semesters||[]).some(s => (s.course_ids||[]).includes(c.course_id)));
+      if (!mandatory) return JSON.stringify({ skip: true });
+      plan.userIntentProfile = Object.assign({}, plan.userIntentProfile, { hardExcludeCourseIds: [mandatory.course_id] });
+      const summary = formatFull185SummaryLocal(plan);
+      const stillPlaced = (plan.proposal.semesters||[]).some(s => (s.course_ids||[]).includes(mandatory.course_id));
+      const noteLine = summary.split('\\n').find(l => l.includes(mandatory.name_he)) || '';
+      return JSON.stringify({ skip: false, stillPlaced, noteLine, name: mandatory.name_he });
+    })()`));
+    if (r.skip) return; // no mandatory course on this fixture's board — nothing to assert
+    expect(r.stillPlaced).toBe(true);
+    expect(r.noteLine).not.toContain('לא שובצה כי ביקשת');
+    expect(r.noteLine).toContain('נשארה בתוכנית');
+  });
+
+  test('regression: contradictory must-include + hard-exclude on the SAME course surfaces an explicit conflict note (not silence)', async () => {
+    // Found via live browser QA ("contradictory user" scenario): panel hard-avoids
+    // a course, then chat asks to include the same course. The deterministic
+    // engine correctly excludes it (hard-avoid wins) and records the conflict in
+    // proposal.warnings_he, but formatFull185SummaryLocal never read warnings_he —
+    // the user never saw why their explicit request was ignored.
+    ({ dom, window } = createPageSetup((win) => {
+      const sems = JSON.parse(win.eval('JSON.stringify(SEMESTERS.map(s=>({semester_id:s.id, course_ids:[...(state.semesters[s.id]||[])]})))'));
+      return { semesters: sems, warnings_he: [] };
+    }));
+    await waitForInit(window);
+
+    const r = JSON.parse(window.eval(`(function(){
+      const plan = { proposal: { semesters: [] }, userIntentProfile: { mustIncludeCourseIds: ['${'0542-4223'}'], hardExcludeCourseIds: ['${'0542-4223'}'] } };
+      const summary = formatFull185SummaryLocal(plan);
+      return JSON.stringify({ noteLine: summary.split('\\n').find(l => l.includes('סתירה')) || '' });
+    })()`));
+    expect(r.noteLine).toContain('גם לכלול וגם להחריג');
+  });
 });

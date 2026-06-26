@@ -287,4 +287,26 @@ describe('A5 — hard-avoided course already exists on the committed board', () 
     ])`));
     expect(r).toEqual([[], [], []]);
   });
+
+  test('regression: the existing-hard-avoid warning never tells the user that rebuilding will remove the course (it does not — beforeCids deliberately preserves it)', async () => {
+    // Found via live browser QA: the warning said "...או לבנות מערכת מחדש" (or
+    // rebuild the system) as if rebuilding fixes it, but buildDeterministicReplacementPlan's
+    // beforeCids guard means a rebuild NEVER drops a course already on the board.
+    // A user who rebuilds expecting removal per the warning's own advice would see
+    // the course still there with no further explanation — the message must not
+    // promise an action the system doesn't actually take.
+    ({ dom, window } = createPageSetup());
+    await waitForInit(window);
+    placeOnBoard(window, ELECTIVE, 'year_3_semester_a');
+    const r = JSON.parse(window.eval(`(function(){
+      const plan = buildDeterministicReplacementPlan({ targetHours: 185, fillToTarget: true, prefs: { strongly_avoided_course_ids: ['${ELECTIVE}'] } });
+      const allIds = Object.values(proposalSemestersToMap(plan.proposal.semesters)).flat();
+      return JSON.stringify({ stillOnBoard: allIds.includes('${ELECTIVE}'), warnings: plan.proposal.warnings_he || [] });
+    })()`));
+    expect(r.stillOnBoard).toBe(true);
+    const w = r.warnings.find(x => x.includes('כבר נמצא במערכת הנוכחית'));
+    expect(w).toBeTruthy();
+    expect(w).not.toContain('לבנות מערכת מחדש');
+    expect(w).toContain('להסיר אותו ידנית');
+  });
 });

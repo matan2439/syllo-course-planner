@@ -105,4 +105,21 @@ describe('no-final-exam preference: unknown-data courses are never presented as 
     const hasMissingDataWarning = r.warnings.some(w => w.includes('מידע חסר') && w.includes('תולדות האנושות'));
     expect(hasMissingDataWarning).toBe(true);
   });
+
+  test('regression: the chat "שים לב" summary note flags unknown-exam שער-רוח placements regardless of which fill stage added them', () => {
+    // Found via live browser QA: formatFull185SummaryLocal's note only scanned
+    // plan.completionAdded (the completion-fill step), so a שער-רוח course that
+    // reached the board via must-include / mandatory-category fill / the initial
+    // seed was invisible to the check — the note then falsely declared the
+    // no-exam preference fully satisfied even though the only שער-רוח courses
+    // placed had unknown assessment data.
+    const r = JSON.parse(window.eval(`(function(){
+      const plan = { proposal: { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['${UNKNOWN_EXAM_COURSE_ID}'] }] },
+        userIntentProfile: { shaarRuachAssessmentPref: 'prefer_no_exam' }, completionAdded: [] };
+      const summary = formatFull185SummaryLocal(plan);
+      return JSON.stringify({ noteLine: summary.split('\\n').find(l => l.includes('שער רוח')) || '' });
+    })()`));
+    expect(r.noteLine).toContain('לא נמצאו מספיק');
+    expect(r.noteLine).not.toContain('ככל שהיה מידע זמין');
+  });
 });
