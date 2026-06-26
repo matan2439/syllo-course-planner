@@ -9194,19 +9194,41 @@ function classifyCourseSchedulability(c) {
 }
 
 /**
- * Phase 6 data-quality / trust-layer audit — read-only, no side effects. Walks the
- * full repository (courseMap) and counts the data gaps that the planner's trust
- * semantics depend on: missing semester/offering data, missing assessment data
- * (finalExam unknown), missing prerequisite data, annual-course span counts,
- * courses with no legal placement at all, and inconsistent/missing hours. Used
- * for debugging and reporting — never called from the planning pipeline itself.
+ * Phase 6 data-quality / trust-layer audit — read-only, no side effects. Walks
+ * the FULL planner course universe (courseMap — already the union of board-
+ * placed courses, program_repository_courses, and audit/PDF-program data per
+ * init() — plus the years-1/2 fixed-curriculum constant, which courseMap never
+ * holds) and counts the data gaps the planner's trust semantics depend on:
+ * missing semester/offering data, missing assessment data (finalExam unknown),
+ * missing prerequisite data, annual-course span counts, courses with no legal
+ * placement at all, and inconsistent/missing hours. Also cross-checks the
+ * COMMITTED BOARD directly for a course occupying 2+ semester slots in the
+ * same year-group without an is_annual/placement_policy flag — catches a
+ * DUPLICATE placement with missing metadata. It cannot catch the inverse
+ * failure (a course missing ONE of its required slots, with no duplicate to
+ * flag) — that needs an external "this should be annual" source, which
+ * doesn't exist in the board data itself. Concretely: 0542-3792 in the
+ * production board backup carries placement_policy:'flexible', no
+ * spans_semesters, and the backup's raw board lists it in only ONE of its two
+ * real semester slots — a genuine data gap in that snapshot, not something
+ * this audit (or the planner) can detect from the backup alone. See
+ * tests/ui/catalog_reliability_audit.test.js for both cases. Used for
+ * debugging and reporting — never called from the planning pipeline itself.
  */
 function auditCourseCatalogForPlannerReliability() {
-  const courses = (typeof courseMap !== 'undefined') ? Object.values(courseMap) : [];
+  const courseMapCourses = (typeof courseMap !== 'undefined') ? Object.values(courseMap) : [];
+  // Years-1/2 fixed curriculum is never in courseMap (year-3/4 board only) but is
+  // still part of the planner's course universe (degree-hour accounting reads it).
+  // It has no offering/assessment/prerequisite data by design (fixed single semester,
+  // foundational, always satisfied) — reported as its own coverage count, not run
+  // through the year-3/4 trust checks below (different, simpler data shape).
+  const year12Courses = (typeof YEAR_1_2_MANDATORY_COURSES !== 'undefined') ? YEAR_1_2_MANDATORY_COURSES : [];
+  const courses = courseMapCourses;
   const missingSemesterData = [];
   const missingAssessmentData = [];
   const missingPrerequisiteData = [];
   const annualCourses = [];
+  const annualMetadataInconsistencies = [];
   const impossibleToSchedule = [];
   const inconsistentHours = [];
 
@@ -9229,6 +9251,10 @@ function auditCourseCatalogForPlannerReliability() {
       const spans = (c.spans_semesters && c.spans_semesters.length) ? c.spans_semesters
         : ((c.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : []);
       annualCourses.push({ course_id: c.course_id, name_he: c.name_he, requiredSpans: spans });
+      if (spans.length < 2) {
+        annualMetadataInconsistencies.push({ course_id: c.course_id, name_he: c.name_he,
+          issue: 'flagged is_annual but spans_semesters has fewer than 2 entries', spans });
+      }
     }
 
     if (classifyCourseSchedulability(c) === 'unschedulable_missing_data') impossibleToSchedule.push(c.course_id);
@@ -9241,12 +9267,42 @@ function auditCourseCatalogForPlannerReliability() {
     }
   }
 
+  // Cross-check: a course placed in 2+ semester slots of the SAME year-group on
+  // the actual committed board, but NOT flagged is_annual, is either a genuine
+  // duplicate-placement bug or an annual course with incomplete source metadata
+  // (the latter is what this audit exists to catch — see function doc comment).
+  if (typeof state !== 'undefined' && state && state.semesters && typeof SEMESTERS !== 'undefined') {
+    const yearOf = semId => (String(semId).match(/^(year_\d+)_/) || [])[1] || semId;
+    const semsByYearForCourse = {};
+    for (const [semId, ids] of Object.entries(state.semesters)) {
+      const yr = yearOf(semId);
+      for (const cid of (ids || [])) {
+        semsByYearForCourse[cid] = semsByYearForCourse[cid] || {};
+        semsByYearForCourse[cid][yr] = (semsByYearForCourse[cid][yr] || new Set());
+        semsByYearForCourse[cid][yr].add(semId);
+      }
+    }
+    for (const [cid, byYear] of Object.entries(semsByYearForCourse)) {
+      const c = courseMap[cid];
+      if (!c || isAnnualCourse(c)) continue;
+      for (const semSet of Object.values(byYear)) {
+        if (semSet.size >= 2) {
+          annualMetadataInconsistencies.push({ course_id: cid, name_he: c.name_he,
+            issue: 'placed in 2+ semesters of the same year but not flagged is_annual/placement_policy:annual',
+            placedIn: [...semSet], declaredPlacementPolicy: c.placement_policy || null });
+        }
+      }
+    }
+  }
+
   return {
     totalCourses: courses.length,
+    year12FixedCurriculumCourses: year12Courses.length,
     missingSemesterData: { count: missingSemesterData.length, courseIds: missingSemesterData },
     missingAssessmentData: { count: missingAssessmentData.length, courseIds: missingAssessmentData },
     missingPrerequisiteData: { count: missingPrerequisiteData.length, courseIds: missingPrerequisiteData },
     annualCourses: { count: annualCourses.length, courses: annualCourses },
+    annualMetadataInconsistencies: { count: annualMetadataInconsistencies.length, courses: annualMetadataInconsistencies },
     impossibleToSchedule: { count: impossibleToSchedule.length, courseIds: impossibleToSchedule },
     inconsistentHours: { count: inconsistentHours.length, courses: inconsistentHours },
   };
