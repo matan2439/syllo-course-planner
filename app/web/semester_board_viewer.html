@@ -1610,6 +1610,14 @@ body.prog-modal-open .workspace {
   border: var(--border-premium); border-radius: var(--radius); padding: 9px 11px;
   box-shadow: var(--shadow);
 }
+.sb-status-summary-label {
+  grid-column: 1 / -1; font-size: .68rem; font-weight: 700; color: var(--text-muted);
+  text-transform: none; letter-spacing: .01em; margin-bottom: 2px;
+}
+.sb-status-summary-draft {
+  border: 1px dashed var(--accent, #4c8dff); background: var(--surface2);
+}
+.sb-status-summary-draft .sb-status-summary-label { color: var(--accent, #4c8dff); }
 
 /* ── Degree-progress summary block (PART A) ─────────────────────────────── */
 .degree-progress {
@@ -3480,9 +3488,17 @@ function renderChips() {
         ? mkChip('בעיות דרישות', invalidCt, true)
         : mkChip('תוכנית תקינה', '✓', false))
     : '';
+  // "מוצבים" always reflects the committed board (allPlacedIds() — unchanged).
+  // While a draft is pending, the board itself overlays the draft's (likely
+  // different) course count, so add a labeled, draft-specific chip rather than
+  // silently leaving "מוצבים" looking stale next to the previewed board.
+  const draftPlacedChip = state.proposalDraft
+    ? mkChip('מוצבים (טיוטה)', new Set(Object.values(state.proposalDraft.semesters).flat()).size, false)
+    : '';
   document.getElementById('hdr-chips').innerHTML = [
     mkChip('סה״כ', Object.keys(courseMap).length, false),
     mkChip('מוצבים', placed, false),
+    draftPlacedChip,
     mkChip('במאגר', state.repo.length, false),
     mkChip('חסרות שעות', noHours, noHours > 0),
     planChip,
@@ -3735,7 +3751,13 @@ function buildSidebarStatusSummary(opts) {
   const planContext = buildPlanContext();
   const analysis = buildCompletionAnalysisLocal(planContext);
   const ctx = buildPlanValidationInputs();
-  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
+  // opts.semestersOverride (e.g. state.proposalDraft.semesters) swaps the board
+  // source for EVERY number below (hours/peak/overloaded/illegal), not just
+  // placedIds — hours flow through getDegreeHoursStatusLocal -> computeDegreeProgress,
+  // the same canonical pipeline renderBoard()'s draft banner already uses, so a
+  // draft-totals caller can never disagree with the board overlay.
+  const semSource = opts.semestersOverride || state.semesters;
+  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: semSource[s.id] || [] }));
   // Mandatory/category satisfaction is normally computed off the committed board
   // (matches the live sidebar). Callers debugging an active, uncommitted draft
   // (debugCurrentPlan) can override which course ids count as "placed" so the
@@ -4276,15 +4298,37 @@ function renderAiTab() {
 
   const legalOk = s.illegal_placements.length === 0 && !_hasPrereqOrderViolationLocal();
 
+  // A pending AI draft overlays the board (renderBoard()/activeSemestersMap())
+  // with a DIFFERENT set of placed courses than the committed board these
+  // headline numbers are computed from. Without a second, explicitly labeled
+  // row here, the right panel silently shows stale committed-board totals next
+  // to a board preview showing the draft — the exact ambiguity reported in the
+  // follow-up bug. Keep the existing row's totals/behavior unchanged (Option B,
+  // least invasive) and add a separate, clearly labeled draft row only when a
+  // draft is actually pending.
+  const draftS = state.proposalDraft
+    ? buildSidebarStatusSummary({ semestersOverride: state.proposalDraft.semesters })
+    : null;
+  const draftLegalOk = draftS ? draftS.illegal_placements.length === 0 : null;
+
   panel.innerHTML = `
     <div class="sb-head"><div class="sb-head-title">עוזר AI</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
       <div class="sb-status-summary sb-status-summary-compact">
+        ${draftS ? '<div class="sb-status-summary-label">לוח נוכחי (מאושר)</div>' : ''}
         ${mkChip('חוקיות', legalOk ? 'תקין' : 'בעיות', !legalOk)}
         ${mkChip('שעות', `${s.hours.total_after_plan}/${s.hours.degree_required_hours}`, false)}
         ${s.general ? mkChip('שער רוח', `${s.general.placed}/${s.general.required}`, !s.general.satisfied) : ''}
         ${mkChip('עומס', `${s.peak} ש״ש`, false)}
       </div>
+      ${draftS ? `
+      <div class="sb-status-summary sb-status-summary-compact sb-status-summary-draft">
+        <div class="sb-status-summary-label">🔶 טיוטה לפני החלה (לא מאושרת)</div>
+        ${mkChip('חוקיות', draftLegalOk ? 'תקין' : 'בעיות', !draftLegalOk)}
+        ${mkChip('שעות', `${draftS.hours.total_after_plan}/${draftS.hours.degree_required_hours}`, false)}
+        ${draftS.general ? mkChip('שער רוח', `${draftS.general.placed}/${draftS.general.required}`, !draftS.general.satisfied) : ''}
+        ${mkChip('עומס', `${draftS.peak} ש״ש`, false)}
+      </div>` : ''}
 
       <div id="ai-build-status" class="ai-build-status" hidden></div>
 
