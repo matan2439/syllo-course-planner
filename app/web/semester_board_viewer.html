@@ -4222,9 +4222,19 @@ function sidebarQuickActionPrefs() {
     preferred_categories:    _aiPlanLastPreferences?.preferred_categories ?? [],
     wanted_course_ids:       wanted,
     unwanted_course_ids:     unwanted,
-    // Panel "avoid/exclude" is a HARD exclusion — include every strongUnwanted id,
-    // not only those also marked unwanted (the panel sets the strong list directly).
-    strongly_avoided_course_ids: [...new Set([...(_aiPickerState.strongUnwanted || []), ...strongUnwanted])],
+    // Panel "avoid/exclude" chips are HARD exclusions for generated optional/
+    // elective courses — adding a red chip is the user's explicit "do not
+    // schedule this". The chip's click handler (setupCoursePicker) only fills
+    // `unwanted`, so the hard list must derive from the FULL avoid list, not
+    // just the 🚫-toggled `strongUnwanted` subset (the previous bug: a plain
+    // avoid chip was a soft scoring penalty the planner/summary could ignore,
+    // so a hard-avoided course could still be scheduled and reported as placed).
+    // A chip deliberately downgraded via the blocked-build "אפשר בחירה פחות
+    // קשורה" flow lives in `softUnwanted` and intentionally stays soft.
+    strongly_avoided_course_ids: [...new Set([
+      ...(_aiPickerState.strongUnwanted || []),
+      ...unwanted.filter(cid => !(_aiPickerState.softUnwanted || []).includes(cid)),
+    ])],
     soft_avoided_course_ids: (_aiPickerState.softUnwanted || []),
     // Panel שער-רוח final-assessment preference (e.g. prefer_no_exam) — feeds ranking.
     shaarRuachAssessmentPref: _aiPickerState.shaarRuachAssessmentPref ?? _aiPlanLastPreferences?.shaarRuachAssessmentPref ?? null,
@@ -5903,6 +5913,39 @@ function _planContextConsistencyErrorLocal() {
 }
 
 /**
+ * Workload-cap caveat — semesters in the ACTIVE draft whose weekly load exceeds
+ * the user's SELECTED max (prefs.max_weekly_hours), each classified by whether
+ * the user can act on it (movable electives present) or not (fixed-mandatory
+ * load alone already exceeds the cap). Shared by formatFull185SummaryLocal (the
+ * rebuild/בנה-מחדש path) AND activateTentativeDraft (the LLM success path) so a
+ * plan over the user's cap can never be presented as a clean full success on
+ * either path. Returns { userMax, overCapSems:[{sid,hours,hasMovable}], notes:[] }.
+ */
+function buildUserMaxOverloadNoteLocal() {
+  const userMax = (typeof _aiPlanLastPreferences === 'object' && _aiPlanLastPreferences
+    && Number.isFinite(_aiPlanLastPreferences.max_weekly_hours)) ? _aiPlanLastPreferences.max_weekly_hours : null;
+  const overCapSems = [];
+  const notes = [];
+  if (userMax != null && typeof state !== 'undefined' && state.proposalDraft && state.proposalDraft.semesters) {
+    for (const [sid, ids] of Object.entries(state.proposalDraft.semesters)) {
+      const h = (ids || []).reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+      if (h > userMax + 0.01) {
+        const movable = (ids || []).filter(cid => {
+          const c = courseMap[cid];
+          return c && c.course_type !== 'mandatory' && !c.is_mandatory;
+        });
+        const hours = Math.round(h * 10) / 10;
+        overCapSems.push({ sid, hours, hasMovable: movable.length > 0 });
+        notes.push(movable.length
+          ? `ב${_formatSemIdHe(sid)} יש ${hours} ש״ש — מעל המקסימום שביקשת (${userMax} ש״ש). אפשר להסיר או להזיז קורס בחירה כדי לרדת לעומס המבוקש.`
+          : `ב${_formatSemIdHe(sid)} יש ${hours} ש״ש — מעל המקסימום שביקשת (${userMax} ש״ש), אך החריגה נובעת מקורסי חובה קבועים בלבד שלא ניתן להסיר. לא ניתן לרדת ל-${userMax} ש״ש בלי לדחות קורסי חובה.`);
+      }
+    }
+  }
+  return { userMax, overCapSems, notes };
+}
+
+/**
  * Part F — CONCISE build summary: status line + per-focus counts + brief blockers +
  * exclusion / שער-רוח notes. No exhaustive per-course list (that is shown only when
  * the user asks "פתח פירוט מלא" / "למה כל קורס נבחר?", via formatFull185DetailLocal).
@@ -5915,9 +5958,23 @@ function formatFull185SummaryLocal(plan) {
   const required = ds.required;
   if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש.';
 
+  // Workload-cap integrity — a plan that exceeds the user's SELECTED max weekly
+  // load is not a clean full success even at full 185h. The shared helper reads
+  // the over-cap semesters from the FINAL draft so neither the headline nor the
+  // notes can over-claim "מערכת חוקית מלאה" while a semester sits above the
+  // requested cap. (computeDraftStatusLocal intentionally stays hours-only — see
+  // its tests; the user-cap caveat lives here, in the summary layer.)
+  const _capInfo = buildUserMaxOverloadNoteLocal();
+  const _overCapSems = _capInfo.overCapSems;
+
   const lines = [];
-  if (ds.status === 'legal_full') lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
-  else lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
+  if (ds.status === 'legal_full' && !_overCapSems.length) {
+    lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
+  } else if (ds.status === 'legal_full' && _overCapSems.length) {
+    lines.push(`⚠️ הגעתי לכל ${required} ש״ש (${ds.total}/${required}), אבל המערכת חורגת מהעומס המקסימלי שביקשת (${_capInfo.userMax} ש״ש) — זו אינה תוכנית מלאה ונקייה: היא דורשת ויתור על מגבלת העומס שבחרת.`);
+  } else {
+    lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
+  }
 
   // Completion-state guard — when the plan is below the degree target, state plainly
   // that this is a conservative / grade-safe DRAFT and NOT a complete 185-ש"ש degree
@@ -5979,6 +6036,11 @@ function formatFull185SummaryLocal(plan) {
   // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
   const profile = (plan && plan.userIntentProfile) || _aiUserIntentProfile || {};
   const notes = [];
+  // Workload-cap notes — name each over-cap semester and whether the user can act
+  // on it (movable electives present) or not (fixed-mandatory load alone exceeds
+  // the cap, so it cannot drop without deferring required courses). Pushed first
+  // so the cap caveat is never truncated by the notes.slice(0, 6) cap below.
+  for (const n of _capInfo.notes) notes.push(n);
   // Summary integrity: a hard-exclude request can be honored for an elective but
   // CANNOT remove a locked/fixed-mandatory course already on the board (mandatory
   // placement always wins — see validateFinalPlan's mandatory check). Check the
@@ -6018,7 +6080,12 @@ function formatFull185SummaryLocal(plan) {
       .flatMap(s => s.course_ids || [])
       .filter(cid => { const c = courseMap[cid]; return c && _isShaarRuachLocal(c); });
     const usedUnknown = shaarRuachPlacedIds.some(cid => _hasFinalExamLocal(courseMap[cid]) == null);
-    notes.push(usedUnknown
+    // Summary integrity: don't claim "selected by your no-exam preference" when
+    // no שער-רוח course was actually placed — that would imply the preference was
+    // satisfied when nothing was added.
+    notes.push(!shaarRuachPlacedIds.length
+      ? 'לא שובצו קורסי שער רוח בטיוטה זו, כך שהעדפת "ללא מבחן" טרם הוחלה — בחר/י קורסי שער רוח כדי להחילה.'
+      : usedUnknown
       ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה (דורשים אישור ידני לפני הגשה).'
       : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
   }
@@ -11882,6 +11949,13 @@ function activateTentativeDraft(draft, opts) {
   // model is unavailable.
   let hoursLine = '';
   let partialContract = null;
+  // Workload-cap integrity (shared with formatFull185SummaryLocal): a plan that
+  // reaches the hours target but exceeds the user's selected max weekly load is
+  // NOT a clean success. validateFinalPlan only WARNS on this band and that
+  // warning never reached this message, so an over-cap plan used to read as
+  // "מגיעה לדרישת השעות לתואר" with no caveat. Surface it here.
+  const _capInfo = (typeof buildUserMaxOverloadNoteLocal === 'function') ? buildUserMaxOverloadNoteLocal() : { overCapSems: [], notes: [] };
+  const _overCap = _capInfo.overCapSems.length > 0;
   try {
     if (typeof computeDegreeProgress === 'function' && state.proposalDraft) {
       const draftState = { semesters: state.proposalDraft.semesters };
@@ -11890,11 +11964,14 @@ function activateTentativeDraft(draft, opts) {
         partialContract = buildPartialPlanContract(prog.total_after, prog.required);
         if (!partialContract) {
           const approx = prog.unknown_hours_count > 0 ? '~' : '';
-          hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}. הטיוטה מגיעה לדרישת השעות לתואר.`;
+          hoursLine = _overCap
+            ? `\n⚠️ סה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required} — מגיע לדרישת השעות, אך חורג מהעומס המקסימלי שביקשת (${_capInfo.userMax} ש״ש), ולכן אינו תכנית מלאה ונקייה.`
+            : `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}. הטיוטה מגיעה לדרישת השעות לתואר.`;
         }
       }
     }
   } catch (_) { /* progress model unavailable — omit the line */ }
+  const capLine = _capInfo.notes.length ? `\n${_capInfo.notes.join('\n')}` : '';
 
   // CASE 2 — courses that could not be scheduled because they have no usable data
   // (no name / hours / offering signal) are SKIPPED, not treated as a blocker.
@@ -11924,7 +12001,7 @@ function activateTentativeDraft(draft, opts) {
   const _leadLine = partialContract ? `${partialContract.leadLine}\n` : '';
   const _tagLine = partialContract ? `\n${partialContract.partialTagLine}` : '';
   const _applyLabel = partialContract ? partialContract.applyLabel : 'החל טיוטה';
-  postAssistantMessage(`${_leadLine}${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${_tagLine}${assumptionLine}${warningsLine}`, [
+  postAssistantMessage(`${_leadLine}${head}${summaryLine}${hoursLine}${capLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${_tagLine}${assumptionLine}${warningsLine}`, [
     { label: _applyLabel, action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
