@@ -85,6 +85,34 @@ describe('buildConcisePlanSummaryLines — pure structured formatter', () => {
     expect(out).not.toContain('עדכנתי את המערכת');
   });
 
+  test('half-hour values are preserved exactly — 186.5/185 renders as "186.5/185", never rounded to 187 or 186.50', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 186.5, required: 185, missing: 0,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('186.5/185');
+    expect(out).not.toContain('187/185');
+    expect(out).not.toContain('186.50');
+  });
+
+  test('integer values stay clean — 185/185 renders without a trailing .0', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 185, required: 185, missing: 0,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('185/185');
+    expect(out).not.toContain('185.0/185');
+  });
+
+  test('partial half-hour missing figure is also preserved (e.g. 183.5/185 — חסרות 1.5)', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'partial', total: 183.5, required: 185, missing: 1.5,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('183.5/185');
+    expect(out).toContain('חסרות 1.5');
+  });
+
   test('183/185 → ⚠️ partial status line with exact missing hours, never ✅/complete', () => {
     const out = window.eval(`buildConcisePlanSummaryLines({
       status: 'partial', total: 183, required: 185, missing: 2,

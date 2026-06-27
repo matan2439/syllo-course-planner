@@ -4854,11 +4854,18 @@ function _proposalPlacementMap(proposal) {
  *   notPerfect: [string], decisions: [string], details: [string],
  * }
  */
+// Half weekly-hours are meaningful (courses commonly carry .5 ש"ש) — round only
+// to kill float noise (e.g. 186.49999999) and never to a whole integer, so
+// 186.5 always renders as "186.5", never "187" or "186.50".
+function _fmtHoursLocal(n) {
+  if (n == null || !Number.isFinite(n)) return String(n);
+  return String(Math.round(n * 10) / 10);
+}
 function buildConcisePlanSummaryLines(parts) {
   parts = parts || {};
   const uniq = arr => [...new Set((arr || []).filter(Boolean))];
   const cap4 = arr => uniq(arr).slice(0, 4);
-  const total = parts.total, required = parts.required, missing = parts.missing;
+  const total = _fmtHoursLocal(parts.total), required = _fmtHoursLocal(parts.required), missing = _fmtHoursLocal(parts.missing);
   const changed = parts.changed || {};
 
   let statusLine;
@@ -4930,8 +4937,11 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   let _total = null, _required = DEGREE_REQUIRED_HOURS, _missing = 0;
   try {
     const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
-    _total = Math.round(prog.total_after); _required = Math.round(prog.required);
-    _missing = Math.max(0, _required - _total);
+    // Preserve .5 — degree hours are meaningful at half-hour granularity and must
+    // match the panel/board exactly (round only to kill float noise, never to int).
+    _total = Math.round(prog.total_after * 10) / 10;
+    _required = Math.round(prog.required * 10) / 10;
+    _missing = Math.max(0, Math.round((_required - _total) * 10) / 10);
   } catch (_) {}
   const status = (_total == null) ? 'partial' : (_total >= _required ? 'full' : 'partial');
 
