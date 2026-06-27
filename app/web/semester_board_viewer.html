@@ -4870,6 +4870,7 @@ function buildConcisePlanSummaryLines(parts) {
 
   let statusLine;
   if (parts.status === 'full') statusLine = `✅ מערכת תקינה: ${total}/${required} ש״ש`;
+  else if (parts.status === 'full_needs_approval') statusLine = `⚠️ טיוטה מלאה אך דורשת אישור: ${total}/${required} ש״ש`;
   else if (parts.status === 'partial') statusLine = `⚠️ טיוטה חלקית: ${total}/${required} ש״ש — חסרות ${missing} ש״ש`;
   else statusLine = '❌ אין מערכת חוקית תחת האילוצים הנוכחיים';
 
@@ -4932,8 +4933,8 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     return;
   }
 
-  // Hours status (the single source for the ✅/⚠️ status line) from the canonical
-  // degree-progress model — NEVER claims "complete" below target.
+  // Hours total/required/missing (NOT the final status — a plan can be hours-
+  // complete and still need a ⚠️ if it carries unresolved warnings; see below).
   let _total = null, _required = DEGREE_REQUIRED_HOURS, _missing = 0;
   try {
     const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
@@ -4943,11 +4944,17 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     _required = Math.round(prog.required * 10) / 10;
     _missing = Math.max(0, Math.round((_required - _total) * 10) / 10);
   } catch (_) {}
-  const status = (_total == null) ? 'partial' : (_total >= _required ? 'full' : 'partial');
+  const _hoursSatisfied = (_total != null) && (_total >= _required);
 
   // Classify the planner's own warnings_he into the structured sections, collapsing
-  // duplicates: the overload is stated ONCE (not as a blocker AND a warning), and the
-  // per-course "שער רוח … מידע חסר" lines collapse to a single counted line.
+  // duplicates: the overload is stated ONCE regardless of which Hebrew form is used
+  // (עומס the noun, עמוס the adjective — both must be caught) and regardless of
+  // SOURCE (a proposal warning vs. a validateFinalPlan blocker about the same
+  // semester) — the FINAL REPAIR RESULT (warnings_he, computed from the actual
+  // repairPlanLoad/buildUserMaxOverloadNoteLocal pass) always wins over a generic/
+  // stale blocker message, per the requirement that conflicting overload text must
+  // converge on the concrete final-repair-result line.
+  const _OVERLOAD_RE = /עומס|עמוס|מעל המקסימום/;
   const _finalWarnings = [...new Set((newProposal && newProposal.warnings_he)
     || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he) || [])];
   const notPerfect = [], decisions = [], details = [];
@@ -4956,7 +4963,7 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   const _hardCap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : 26;
   for (const w of _finalWarnings) {
     if (/מידע חסר|סוג סיום לא ידוע|בחינה סופית/.test(w)) { _shaarUnknownCount++; continue; }
-    if (/עומס|מעל המקסימום/.test(w)) {
+    if (_OVERLOAD_RE.test(w)) {
       if (!_overloadSeen) { notPerfect.push(w); _overloadSeen = true; } // one overload line only
       continue;
     }
@@ -4970,11 +4977,24 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     notPerfect.push(`${_shaarUnknownCount} קורסי שער רוח עם סוג סיום לא ידוע — דורשים אישור ידני לפני שמתקיימת העדפת "ללא מבחן".`);
     decisions.push('לאשר קורס שער רוח אחד עם סוג סיום לא ידוע, או לבחור חלופה עם נתונים מלאים');
   }
-  // Validation blockers (prereq / offering / category) — already-Hebrew, capped.
-  for (const b of uniqBlockers.slice(0, 2)) notPerfect.push(b);
+  // Validation blockers (prereq / offering / category) — already-Hebrew. An
+  // overload-shaped blocker is SKIPPED here when warnings_he already produced the
+  // (more concrete) overload line above, so the same semester is never named twice;
+  // it is only used as a fallback when warnings_he had no overload line at all.
+  for (const b of uniqBlockers.slice(0, 2)) {
+    if (_OVERLOAD_RE.test(b)) { if (!_overloadSeen) { notPerfect.push(b); _overloadSeen = true; } continue; }
+    notPerfect.push(b);
+  }
   // Actionable options driven by the actual gap.
   if (_overloadSeen && _userMax != null && _userMax < _hardCap) decisions.push(`להעלות את מקסימום העומס ל-${_hardCap} ש״ש (החריגה היא בקורסי חובה בלבד)`);
-  if (status === 'partial') decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+  if (!_hoursSatisfied) decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+
+  // Final status — ✅ requires hours satisfied AND no unresolved warning that needs
+  // user approval or violates a stated preference (unknown שער-רוח exam type, an
+  // over-cap semester, or an open hard-avoid conflict). Hours-complete-but-unresolved
+  // is "מלאה אך דורשת אישור" — never plain ✅.
+  const _hasUnresolvedWarnings = _shaarUnknownCount > 0 || _overloadSeen || _hardAvoidSeen;
+  const status = !_hoursSatisfied ? 'partial' : (_hasUnresolvedWarnings ? 'full_needs_approval' : 'full');
 
   postStatusMessage(buildConcisePlanSummaryLines({
     status, total: _total, required: _required, missing: _missing,

@@ -215,6 +215,122 @@ describe('postPlanChangeSummary — concise, de-duplicated integration', () => {
     expect(r.noOldOpener).toBe(true);
     expect(r.notAWall).toBe(true);
     expect(r.shaarUnknown).toBeLessThanOrEqual(1);
+    // This exact production scenario reaches/overshoots 185 hours BUT carries
+    // unresolved warnings (unknown-exam שער-רוח + a 26/25 overload) — it must
+    // render ⚠️ "דורשת אישור", never plain ✅, and the overload must appear once.
+    expect(r.last).toContain('⚠️ טיוטה מלאה אך דורשת אישור');
+    expect(r.last).not.toContain('✅');
+    expect(r.overloadMentions).toBeGreaterThanOrEqual(1);
+  });
+
+  test('REQ 1/2: hours satisfied + unresolved שער-רוח warnings → ⚠️, never ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['SR1'] = { course_id: 'SR1', name_he: 'שער רוח לא ידוע' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['SR1'] }],
+        warnings_he: ['שער רוח לא ידוע: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית.'],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('⚠️');
+    expect(r.last).not.toContain('✅');
+  });
+
+  test('REQ 3: user max 25, peak 26 (no approval given) → ⚠️, never ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV1'] = { course_id: 'OV1', name_he: 'קורס בחירה' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV1'] }],
+        warnings_he: ['שנה ג׳ — סמסטר א׳ עומס 26/25 ש"ש — כל הקורסים בסמסטר זה הם חובה; לא ניתן להפחית את העומס.'],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('⚠️');
+    expect(r.last).not.toContain('✅');
+  });
+
+  test('REQ 4: both Hebrew overload forms (עומס + עמוס) collapse into ONE line', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      _aiPlanLastValidation = null;
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV2'] = { course_id: 'OV2', name_he: 'קורס בחירה לבדיקה' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV2'] }],
+        // "עומס" (noun) and "עמוס" (adjective) — both must be caught by the same classifier.
+        warnings_he: [
+          'שנה ג׳ — סמסטר א׳ עומס 26/25 ש"ש — לא ניתן להפחית את העומס.',
+          'שנה ג׳ — סמסטר א׳ עדיין עמוס ב-26 ש״ש, אך לא ניתן להעביר קורסים נוספים מבלי לפגוע בדרישות התואר.',
+        ],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      // Only count overload STATEMENTS (the "למה זה עדיין לא מושלם" section) — a
+      // "להעלות את מקסימום העומס" line under "החלטות שנדרשות ממך" is an action, not
+      // a second statement of the same problem, and must not be double-counted.
+      const section = (last.split('למה זה עדיין לא מושלם')[1] || '').split('החלטות שנדרשות ממך')[0];
+      const overloadLines = section.split('\\n').filter(l => /עומס|עמוס/.test(l));
+      return JSON.stringify({ last, overloadLineCount: overloadLines.length });
+    })()`));
+    expect(r.overloadLineCount).toBe(1);
+  });
+
+  test('REQ 5: conflicting overload messages (blocker vs. final warnings_he) — the final repair result wins', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV3'] = { course_id: 'OV3', name_he: 'קורס בחירה לבדיקה 3' };
+      // The FINAL repair result (warnings_he) correctly says NOT movable.
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV3'] }],
+        warnings_he: ['שנה ג׳ — סמסטר א׳ עדיין עמוס ב-26 ש״ש, אך לא ניתן להעביר קורסים נוספים מבלי לפגוע בדרישות התואר.'],
+      };
+      // A STALE/generic validation blocker claims (incorrectly) that movable courses exist.
+      _aiPlanLastValidation = {
+        finalPlan: { blockers: [{ cause: 'overload', message_he: 'סמסטר שנה ג׳ — סמסטר א׳ עמוס מדי (26 ש"ש) למרות שניתן להעביר קורסים גמישים.' }] },
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      const section = (last.split('למה זה עדיין לא מושלם')[1] || '').split('החלטות שנדרשות ממך')[0];
+      const overloadLines = section.split('\\n').filter(l => /עומס|עמוס/.test(l));
+      return JSON.stringify({ last, overloadLineCount: overloadLines.length, keptFinalResult: last.includes('לא ניתן להעביר קורסים נוספים מבלי לפגוע'), keptStaleBlocker: last.includes('למרות שניתן להעביר קורסים גמישים') });
+    })()`));
+    expect(r.overloadLineCount).toBe(1);
+    expect(r.keptFinalResult).toBe(true);
+    expect(r.keptStaleBlocker).toBe(false);
+  });
+
+  test('REQ 5 (clean plan): a truly clean complete plan with no warnings still renders ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      _aiPlanLastValidation = null;
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['CLEAN1'] = { course_id: 'CLEAN1', name_he: 'קורס נקי' };
+      _aiPlanLastProposal = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['CLEAN1'] }], warnings_he: [] };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('✅');
+    expect(r.last).not.toContain('⚠️');
   });
 });
 
