@@ -10773,6 +10773,7 @@ function buildDeterministicReplacementPlan(args) {
   // BUG FIX: Only fill if the baseline doesn't already exceed the target.
   let _fill = { added: [] };
   let _skippedHighRiskFiller = [];
+  let _lastResortPlaced = [];
   // Hours-accounting for the overshoot-minimization report (Part E) — the baseline
   // is the total just BEFORE the uncapped fill-to-target stage runs (i.e. after
   // mandatory/domain/elective/general/intent-completion already ran their own
@@ -10785,6 +10786,7 @@ function buildDeterministicReplacementPlan(args) {
     if (_baselineTotal < targetHours) {
       try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
       if (_fill.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._fill.skippedHighRiskFiller);
+      if (_fill.lastResortHighRiskPlaced) _lastResortPlaced.push(..._fill.lastResortHighRiskPlaced);
     }
   }
 
@@ -10810,7 +10812,7 @@ function buildDeterministicReplacementPlan(args) {
       try { _before = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _before = 0; }
       if (_before >= targetHours) break;
       let _added = 0;
-      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; if (_f.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._f.skippedHighRiskFiller); } catch (_) {}
+      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; if (_f.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._f.skippedHighRiskFiller); if (_f.lastResortHighRiskPlaced) _lastResortPlaced.push(..._f.lastResortHighRiskPlaced); } catch (_) {}
       try { const enf2 = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: _balanceCtx.maxHoursPerSemester }); proposal = enf2.proposal || proposal; } catch (_) {}
       try { proposal = repairPlanLoad(proposal, _balanceCtx).proposal || proposal; } catch (_) {}
       let _after;
@@ -10888,7 +10890,7 @@ function buildDeterministicReplacementPlan(args) {
     for (let _i = 0; _i < 8; _i++) {
       let _b; try { _b = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _b = 0; }
       if (_b >= targetHours) break;
-      try { proposal = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }).proposal || proposal; } catch (_) {}
+      try { const _ff = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _ff.proposal || proposal; if (_ff.lastResortHighRiskPlaced) _lastResortPlaced.push(..._ff.lastResortHighRiskPlaced); } catch (_) {}
       try {
         const _a2 = auditDraftLegality(proposal, { completedCourseIds: _completedSet });
         const _bad = new Set([..._a2.illegalSemesterPlacements, ..._a2.missingPrerequisites]
@@ -11034,6 +11036,21 @@ function buildDeterministicReplacementPlan(args) {
   const skippedHighRiskFiller = (typeof _skippedHighRiskFiller !== 'undefined' ? _skippedHighRiskFiller : [])
     .filter(s => !_finalPlacedSet.has(s.course_id) && !_skippedSeen.has(s.course_id) && _skippedSeen.add(s.course_id));
 
+  // Completion-first transparency — any very-hard course placed ONLY to reach the
+  // target (no lower-risk legal alternative remained) is surfaced as a single honest
+  // note, so the user can keep the complete plan or drop those courses for a lighter
+  // partial one. Deduped and intersected with the final board (a later sweep may have
+  // removed one).
+  const _lrSeen = new Set();
+  const lastResortHighRiskPlaced = (typeof _lastResortPlaced !== 'undefined' ? _lastResortPlaced : [])
+    .filter(x => _finalPlacedSet.has(x.course_id) && !_lrSeen.has(x.course_id) && _lrSeen.add(x.course_id));
+  if (lastResortHighRiskPlaced.length) {
+    const _n = lastResortHighRiskPlaced.length;
+    const _names = lastResortHighRiskPlaced.map(x => x.name_he).join(', ');
+    proposal.warnings_he = [...new Set([...(proposal.warnings_he || []),
+      `${_n} קורס${_n > 1 ? 'ים' : ''} בסיכון ציונים גבוה (${_names}) שוב${_n > 1 ? 'צו' : 'ץ'} כדי להגיע ל-${targetHours} ש״ש — לא נמצאה חלופה קלה יותר חוקית. אפשר להסיר ולהישאר עם תכנית חלקית קלה יותר.`])];
+  }
+
   // Bug fix — every repair/fill stage above (repairAddMissingMandatoryLocal,
   // fillToDegreeTargetLocal, etc.) picks exactly ONE semester per course, with
   // no awareness that an annual/year-long course (is_annual / placement_policy
@@ -11096,6 +11113,7 @@ function buildDeterministicReplacementPlan(args) {
     confirmedCids,
     tentativeCids,
     skippedHighRiskFiller,
+    lastResortHighRiskPlaced,
     confirmedPlacements: confirmedCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     tentativePlacements: tentativeCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     totalHours,
@@ -11237,6 +11255,11 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const _gradeRiskOf = (cm) => (typeof _gradeRiskScoreLocal === 'function') ? (_gradeRiskScoreLocal(cm).risk || 0) : 0;
   const HIGH_RISK_FILLER_CUTOFF = 0.9;
   const skippedHighRiskFiller = [];
+  // Completion-first: very-hard fillers are DEFERRED (not discarded) so safer/relevant
+  // courses are placed first; if the plan is still below target after exhausting them,
+  // the deferred ones are placed as a last resort (lowest-risk first) so degree
+  // completion — the PRIMARY objective — is never sacrificed to grade-safety.
+  const deferredHighRisk = [];
 
   // ── Minimize-overshoot gate — once the remaining deficit is small, the next
   // course added should be the one that comes CLOSEST to closing it (exact fit >
@@ -11280,13 +11303,17 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
       // category minimum, do NOT place it as filler. Record it as a deliberately
       // skipped high-risk filler and remove it from the pool so the gap is surfaced.
       if (_gradeRiskOf(cm) >= HIGH_RISK_FILLER_CUTOFF && !_isMandatoryCourse(cid) && !_userPreferred(cid) && !_satisfiesUnmetCategoryMin(cid)) {
-        skippedHighRiskFiller.push({
-          course_id: cid, name_he: cm.name_he || cid,
-          risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
-          tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
-          categories: _catsOf(cid).map(c => c.category_id),
-          hours: hrs,
-          reason: 'high_risk_filler_not_category_required',
+        // DEFER (don't discard) — placed later only if completion still needs it.
+        deferredHighRisk.push({
+          cid, risk: Math.round(_gradeRiskOf(cm) * 100) / 100, hours: hrs,
+          meta: {
+            course_id: cid, name_he: cm.name_he || cid,
+            risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
+            tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
+            categories: _catsOf(cid).map(c => c.category_id),
+            hours: hrs,
+            reason: 'high_risk_filler_not_category_required',
+          },
         });
         pool.splice(i, 1); i--;
         continue;
@@ -11303,11 +11330,54 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
     added.push({ course_id: best.cid, semester_id: best.target.semester_id, hours: best.info.hours || best.hours || 0 });
     pool.splice(best.idx, 1);
   }
+
+  // ── Completion-first last resort ──────────────────────────────────────────
+  // Degree completion is the PRIMARY objective and outranks grade-safety. Every
+  // safer/relevant legal candidate is now placed; if the plan is STILL below target,
+  // place the deferred very-hard courses — LOWEST grade-risk first, then best gap-fit —
+  // re-checking legality (offering semester, prereqs, hard-cap fit) against the current
+  // board. Each is tagged so the summary can explain it was used only because no
+  // lower-risk legal alternative remained. Deferred courses NOT needed for completion
+  // stay surfaced as skipped (honest over-selection reporting, unchanged).
+  const lastResortHighRiskPlaced = [];
+  if (curTotal() < required && deferredHighRisk.length) {
+    deferredHighRisk.sort((a, b) => (a.risk - b.risk) || (a.hours - b.hours));
+    for (const cand of deferredHighRisk) {
+      if (curTotal() >= required) break;
+      const cid = cand.cid;
+      if (placed.has(cid) || hardExcluded(cid) || _alreadyDone(cid)) continue;
+      const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+      if (!cm) continue;
+      const info = opts.courses[cid] || {};
+      const hrs = info.hours || cand.hours || hoursForCourseId(cid) || 0;
+      if (shaarRuachIdsSet.has(cid) && shaarRuachCap > 0
+        && shaarRuachBaseCompleted + shaarRuachHoursInProposal() + hrs > shaarRuachCap + 1e-6) continue;
+      const legal = (typeof getLegalSemestersLocal === 'function') ? getLegalSemestersLocal({ ...cm, ...info }, opts.knownSemesterIds).semesters : opts.knownSemesterIds;
+      const allowed = (legal && legal.length) ? legal : opts.knownSemesterIds;
+      let legalSems = sems.filter(s => allowed.includes(s.semester_id));
+      if (!legalSems.length) continue;
+      const semIdx = {}; sems.forEach((s, idx) => { for (const c2 of s.course_ids) if (c2 !== cid) semIdx[c2] = idx; });
+      legalSems = legalSems.filter(s => prereqsSatisfiedForPlacementLocal(cid, sems.findIndex(x => x.semester_id === s.semester_id), semIdx, completed).ok);
+      const fit = legalSems.filter(s => hoursOf(s) + hrs <= max);
+      if (!fit.length) continue;
+      const target = fit.sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      target.course_ids.push(cid); placed.add(cid);
+      added.push({ course_id: cid, semester_id: target.semester_id, hours: hrs });
+      lastResortHighRiskPlaced.push({ course_id: cid, name_he: cm.name_he || cid, risk: cand.risk, hours: hrs, reason: 'last_resort_completion_no_safer_alternative' });
+    }
+  }
+  // Deferred courses NOT used for completion → surfaced as skipped (over-selection).
+  const _placedLastResort = new Set(lastResortHighRiskPlaced.map(x => x.course_id));
+  for (const cand of deferredHighRisk) {
+    if (!_placedLastResort.has(cand.cid)) skippedHighRiskFiller.push(cand.meta);
+  }
+
   const finalHours = curTotal();
   return {
     proposal: { ...proposal, semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)) },
     added,
     skippedHighRiskFiller,
+    lastResortHighRiskPlaced,
     baselineHours,
     finalHours,
     targetHours: required,
