@@ -215,7 +215,10 @@ describe('test_all_below_target_paths_share_partial_contract', () => {
       const msgs = (_aiChatMessages||[]).map(mm => mm.text || '');
       return JSON.stringify({ joined: msgs.join('\\n') });
     })()`));
-    expect(r.joined).toContain('לא הצלחתי להגיע ל-185');
+    // postPlanChangeSummary now leads with the concise structured status line
+    // (Part B). The partial-plan CONTRACT is preserved — it still clearly signals
+    // below-target with the exact missing-hours figure — just in the new form.
+    expect(r.joined).toMatch(/⚠️ טיוטה חלקית: \d+\/185 ש״ש — חסרות \d+ ש״ש/);
     expect(r.joined).toContain('טיוטה חלקית');
   });
 

@@ -70,20 +70,32 @@ describe('success-path summary surfaces proposal warnings (postPlanChangeSummary
   beforeAll(async () => { dom = loadProdBoard(); window = dom.window; await waitForInit(window); }, 25000);
   afterAll(() => dom && dom.window.close());
 
-  test('postPlanChangeSummary includes a no-final-exam "מידע חסר / דורש אישור" caveat present on the final proposal', () => {
+  test('postPlanChangeSummary conveys the no-final-exam שער-רוח caveat — collapsed to one counted line (Part B), not the per-course wall', () => {
     const r = JSON.parse(window.eval(`(function(){
       _aiChatMessages = [];
-      const warn = 'תולדות האנושות - 3,000 השנים הראשונות: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית, לכן אינו מאומת כתואם את ההעדפה "בלי בחינה סופית".';
-      // Canonical final proposal carries the computed warnings (as the live planner produces).
-      _aiPlanLastProposal = { semesters: [{ semester_id:'year_3_semester_a', course_ids:['0609-1005'] }], warnings_he: [warn] };
+      // Three different שער-רוח courses each flagged "מידע חסר" — the OLD builder
+      // appended all three verbatim (a wall); the concise format collapses them.
+      const warns = [
+        'תולדות האנושות - 3,000 השנים הראשונות: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית, לכן אינו מאומת כתואם את ההעדפה "בלי בחינה סופית".',
+        'מהי תרבות ? בין מערב למזרח: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית.',
+        'מיינדפולנס ובודהיזם: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית.',
+      ];
+      _aiPlanLastProposal = { semesters: [{ semester_id:'year_3_semester_a', course_ids:['0609-1005'] }], warnings_he: warns };
       const prev = { semesters: [{ semester_id:'year_3_semester_a', course_ids:[] }] };
       const next = { semesters: [{ semester_id:'year_3_semester_a', course_ids:['0609-1005'] }] };
       postPlanChangeSummary(prev, next, {});
       const msgs = (_aiChatMessages||[]).map(mm => mm.text || '');
-      return JSON.stringify({ joined: msgs.join('\\n') });
+      const joined = msgs.join('\\n');
+      return JSON.stringify({ joined, perCourseLines: (joined.match(/מידע חסר/g) || []).length });
     })()`));
-    expect(r.joined).toContain('מידע חסר / דורש אישור');
-    expect(r.joined).toContain('תולדות האנושות');
+    // The caveat is conveyed (the user is told some שער-רוח courses have unknown exam status)…
+    expect(r.joined).toContain('שער רוח');
+    expect(r.joined).toContain('סוג סיום לא ידוע');
+    expect(r.joined).toContain('אישור');
+    // …but collapsed: the three per-course "מידע חסר" lines are NOT dumped verbatim
+    // (the course name may still appear once as an ADDED course under "מה השתנה" —
+    // that is the placement diff, not the warning wall).
+    expect(r.perCourseLines).toBe(0);
   });
 
   test('postPlanChangeSummary surfaces a panel-vs-chat hard-avoid conflict note carried on the final proposal', () => {

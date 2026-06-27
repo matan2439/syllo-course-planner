@@ -4838,6 +4838,58 @@ function _proposalPlacementMap(proposal) {
   }
   return map;
 }
+
+/**
+ * PURE scannable-summary formatter (Part B). Turns already-computed summary parts
+ * into the required structure — a status line, then ≤4-bullet sections
+ * (מה השתנה / למה זה עדיין לא מושלם / החלטות שנדרשות ממך) and a compact
+ * פרטים נוספים tail. Every section is de-duplicated and hard-capped at 4 bullets,
+ * and empty sections are omitted, so the output can never regress to a wall of
+ * repeated text. The chat renderer is textContent-only, so this returns plain
+ * text (no real <details> collapse is possible); the tail is kept short instead.
+ *
+ * parts: {
+ *   status: 'full'|'partial'|'none', total, required, missing,
+ *   changed: { added:[names], removed:[names], moved:[{name,to}] },
+ *   notPerfect: [string], decisions: [string], details: [string],
+ * }
+ */
+function buildConcisePlanSummaryLines(parts) {
+  parts = parts || {};
+  const uniq = arr => [...new Set((arr || []).filter(Boolean))];
+  const cap4 = arr => uniq(arr).slice(0, 4);
+  const total = parts.total, required = parts.required, missing = parts.missing;
+  const changed = parts.changed || {};
+
+  let statusLine;
+  if (parts.status === 'full') statusLine = `✅ מערכת תקינה: ${total}/${required} ש״ש`;
+  else if (parts.status === 'partial') statusLine = `⚠️ טיוטה חלקית: ${total}/${required} ש״ש — חסרות ${missing} ש״ש`;
+  else statusLine = '❌ אין מערכת חוקית תחת האילוצים הנוכחיים';
+
+  const out = [statusLine];
+  const addSection = (title, bullets) => {
+    const b = cap4(bullets);
+    if (!b.length) return;
+    out.push('', title);
+    for (const x of b) out.push('• ' + x);
+  };
+
+  // 1. מה השתנה — added / removed / moved, each collapsed to one comma-joined bullet.
+  const fmtList = (arr) => `${uniq(arr).slice(0, 4).join(', ')}${uniq(arr).length > 4 ? ` ועוד ${uniq(arr).length - 4}` : ''}`;
+  const changeBullets = [];
+  if ((changed.added || []).length)   changeBullets.push(`נוספו: ${fmtList(changed.added)}`);
+  if ((changed.removed || []).length) changeBullets.push(`הוסרו: ${fmtList(changed.removed)}`);
+  for (const m of (changed.moved || []).slice(0, 2)) changeBullets.push(`${m.name} עבר ל${m.to}`);
+  addSection('מה השתנה', changeBullets);
+
+  addSection('למה זה עדיין לא מושלם', parts.notPerfect);
+  addSection('החלטות שנדרשות ממך', parts.decisions);
+
+  const details = uniq(parts.details).slice(0, 3);
+  if (details.length) { out.push('', 'פרטים נוספים'); for (const d of details) out.push('• ' + d); }
+
+  return out.join('\n');
+}
 function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   const before = _proposalPlacementMap(prevProposal);
   const after = _proposalPlacementMap(newProposal);
@@ -4852,36 +4904,15 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     if (!(cid in after)) removed.push(cid);
   }
 
-  const lines = [];
   const lbl = (cid) => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
   const semLbl = _formatSemIdHe;
-  const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
-
-  if (added.length) lines.push(`נוספו: ${cap(added, 4)}.`);
-  if (removed.length) lines.push(`הוסרו: ${cap(removed, 4)}.`);
-  if (movedC.length) {
-    lines.push(...movedC.slice(0, 4).map(m => `${lbl(m.cid)} עבר ל${semLbl(m.to)}.`));
-    if (movedC.length > 4) lines.push(`ועוד ${movedC.length - 4} העברות.`);
-  }
-
-  // Honored constraints derived from prefs (echo only the user-set ones).
-  const honored = [];
-  const loadTargets = (prefs && prefs.semester_load_targets) || {};
-  for (const [sid, mode] of Object.entries(loadTargets)) {
-    if (mode === 'reduce') honored.push(`הופחת העומס ב${semLbl(sid)}`);
-  }
-  if (prefs && prefs.requested_moves && Object.keys(prefs.requested_moves).length && movedC.length) {
-    // already reflected in the moved lines above
-  }
-  if (honored.length) lines.push(`התחשבתי ב: ${honored.join('; ')}.`);
 
   // Remaining blockers (grouped) from the latest validation, if any.
   const v = _aiPlanLastValidation;
-  const blockerLines = [
+  const uniqBlockers = [...new Set([
     ...(((v && v.finalPlan && v.finalPlan.blockers) || []).map(b => b.message_he).filter(Boolean)),
     ...(((v && v.completeness && v.completeness.reasons) || [])),
-  ].filter(Boolean);
-  const uniqBlockers = [...new Set(blockerLines)];
+  ].filter(Boolean))];
 
   // When no courses were actually added/removed/moved relative to the committed
   // board, skip the success opener — claiming success contradicts an empty diff.
@@ -4894,46 +4925,57 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     return;
   }
 
-  if (uniqBlockers.length) {
-    lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
-  }
-
-  // Surface material proposal-level caveats on the SUCCESS path. The deterministic
-  // planner records important notes on the final proposal's warnings_he — e.g.
-  // no-final-exam שער-רוח courses flagged "מידע חסר / דורש אישור", panel-vs-chat
-  // hard-avoid conflicts, and "לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת". This
-  // builder previously rendered only the placement diff, so those caveats reached
-  // _aiPlanLastProposal.warnings_he but never the user (the other two message
-  // constructors — activateTentativeDraft and the deterministic-replacement
-  // rescue — already echo warnings_he; this third path did not). Read from the
-  // canonical final proposal so the summary reflects the post-validation result.
-  const _finalWarnings = (newProposal && newProposal.warnings_he)
-    || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he)
-    || [];
-  for (const w of [...new Set(_finalWarnings)]) {
-    if (w && !lines.includes(w)) lines.push(w);
-  }
-
-  // Rotate the opening phrase so repeated rebuilds differ visibly.
-  const openers = ['עדכנתי את המערכת:', 'הנה מה שהשתנה:', 'סיכום השינויים:', 'בוצע — לסיכום:'];
-  const opener = openers[_planChangeSummaryNonce % openers.length];
-  _planChangeSummaryNonce++;
-
-  // This is the LLM-accepted SUCCESS_WITH_CHANGES path — the gate found the
-  // proposal structurally applicable, but "applicable" does not mean it
-  // reaches the degree-hour target. A below-target result must use the SAME
-  // partial-plan contract as every other planner path (the persistent
-  // board-draft-apply banner already reflects this; this leads the message).
-  let _partialLead = '';
+  // Hours status (the single source for the ✅/⚠️ status line) from the canonical
+  // degree-progress model — NEVER claims "complete" below target.
+  let _total = null, _required = DEGREE_REQUIRED_HOURS, _missing = 0;
   try {
-    if (typeof computeDegreeProgress === 'function') {
-      const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
-      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
-      if (partial) _partialLead = `${partial.leadLine}\n${partial.partialTagLine}\n\n`;
-    }
-  } catch (_) { /* progress model unavailable — omit the line */ }
+    const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
+    _total = Math.round(prog.total_after); _required = Math.round(prog.required);
+    _missing = Math.max(0, _required - _total);
+  } catch (_) {}
+  const status = (_total == null) ? 'partial' : (_total >= _required ? 'full' : 'partial');
 
-  postStatusMessage(`${_partialLead}${[opener, ...lines].join('\n')}`);
+  // Classify the planner's own warnings_he into the structured sections, collapsing
+  // duplicates: the overload is stated ONCE (not as a blocker AND a warning), and the
+  // per-course "שער רוח … מידע חסר" lines collapse to a single counted line.
+  const _finalWarnings = [...new Set((newProposal && newProposal.warnings_he)
+    || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he) || [])];
+  const notPerfect = [], decisions = [], details = [];
+  let _shaarUnknownCount = 0, _overloadSeen = false, _hardAvoidSeen = false;
+  const _userMax = (prefs && Number.isFinite(prefs.max_weekly_hours)) ? prefs.max_weekly_hours : null;
+  const _hardCap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : 26;
+  for (const w of _finalWarnings) {
+    if (/מידע חסר|סוג סיום לא ידוע|בחינה סופית/.test(w)) { _shaarUnknownCount++; continue; }
+    if (/עומס|מעל המקסימום/.test(w)) {
+      if (!_overloadSeen) { notPerfect.push(w); _overloadSeen = true; } // one overload line only
+      continue;
+    }
+    if (/להימנע|החרגה|להחריג/.test(w)) {
+      if (!_hardAvoidSeen) { notPerfect.push(w); _hardAvoidSeen = true; decisions.push('להסיר אילוץ הימנעות אחד מהעדפות התכנון כדי לשבץ קורס שביקשת'); }
+      continue;
+    }
+    details.push(w);
+  }
+  if (_shaarUnknownCount > 0) {
+    notPerfect.push(`${_shaarUnknownCount} קורסי שער רוח עם סוג סיום לא ידוע — דורשים אישור ידני לפני שמתקיימת העדפת "ללא מבחן".`);
+    decisions.push('לאשר קורס שער רוח אחד עם סוג סיום לא ידוע, או לבחור חלופה עם נתונים מלאים');
+  }
+  // Validation blockers (prereq / offering / category) — already-Hebrew, capped.
+  for (const b of uniqBlockers.slice(0, 2)) notPerfect.push(b);
+  // Actionable options driven by the actual gap.
+  if (_overloadSeen && _userMax != null && _userMax < _hardCap) decisions.push(`להעלות את מקסימום העומס ל-${_hardCap} ש״ש (החריגה היא בקורסי חובה בלבד)`);
+  if (status === 'partial') decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+
+  postStatusMessage(buildConcisePlanSummaryLines({
+    status, total: _total, required: _required, missing: _missing,
+    changed: {
+      added: added.map(lbl),
+      removed: removed.map(lbl),
+      moved: movedC.map(m => ({ name: lbl(m.cid), to: semLbl(m.to) })),
+    },
+    notPerfect, decisions, details,
+  }));
+  _planChangeSummaryNonce++;
 }
 
 /**
