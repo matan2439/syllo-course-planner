@@ -27,7 +27,8 @@ import {
 
 export const GOAL_STACK = [
   'degree_completion',
-  'requirements',
+  'requirements_mandatory',
+  'requirements_category',
   'legality',
   'balance',
   'preferences',
@@ -82,16 +83,23 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const dh = degreeHours(state, model);
   const g1 = Math.min(dh, model.degreeRequiredHours);
 
-  // 2. requirements — mandatory placed + categories satisfied.
-  const g2 = mandatoryPlaced(state, model) + categoriesSatisfied(state, model);
+  // 2a. requirements (mandatory) — fraction of mandatory courses placed.
+  const mandTotal = model.requiredMandatoryCourseIds.length;
+  const g2a = mandTotal > 0 ? mandatoryPlaced(state, model) / mandTotal : 1;
+
+  // 2b. requirements (categories) — fraction of categories satisfied.
+  const catTotal = model.categories.length;
+  const g2b = catTotal > 0 ? categoriesSatisfied(state, model) / catTotal : 1;
 
   // 3. legality — penalize semesters over the hard cap and over the user cap.
   const overHard = loads.filter(h => h > model.hardCap).length;
   const overUser = loads.filter(h => h > model.maxHoursPerSemester).length;
   const g3 = -(overHard * 10 + overUser);
 
-  // 4. balance — minimize the spread between the busiest and quietest semester.
-  const spread = loads.length ? Math.max(...loads) - Math.min(...loads) : 0;
+  // 4. balance — minimize the spread between busiest and quietest *non-empty* semester.
+  //    Empty semesters are intentional placeholders and must not widen the spread.
+  const activeLs = loads.filter(h => h > 0);
+  const spread = activeLs.length > 1 ? Math.max(...activeLs) - Math.min(...activeLs) : 0;
   const g4 = -spread;
 
   // 5. preferences — wanted courses placed.
@@ -103,7 +111,7 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   for (const cid of placed) totalDifficulty += model.profiles.get(cid)?.difficulty_score ?? 0;
   const g6 = -totalDifficulty;
 
-  return [g1, g2, g3, g4, g5, g6];
+  return [g1, g2a, g2b, g3, g4, g5, g6];
 }
 
 /** Compare two score vectors lexicographically: >0 if a is better than b. */

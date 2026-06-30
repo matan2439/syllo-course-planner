@@ -7,7 +7,7 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours } from './planner_goals';
+import { degreeHours as computeDegreeHours, scorePlan, compareScore } from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -15,6 +15,14 @@ import {
   placedCourseIds,
   semesterOf,
 } from './planner_types';
+
+function preferenceScore(model: ConstraintModel, id: string): number {
+  const p = model.profiles.get(id);
+  if (!p) return 0;
+  if (p.is_wanted) return 1;
+  if (p.is_unwanted) return -1;
+  return 0;
+}
 
 export function isExcluded(model: ConstraintModel, id: string): boolean {
   return model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true;
@@ -98,6 +106,33 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
     const here = semesterOf(state, id);
     for (const sem of legalSemestersFor(model, id)) {
       if (sem !== here) actions.push({ type: 'MOVE_COURSE', courseId: id, toSemester: sem });
+    }
+  }
+
+  // 6. replace — swap a low-preference placed course for a higher-preference unplaced one.
+  //    Only for the top-3 worst-scoring placed movable courses; top-3 replacements each.
+  const scoredPlaced = [...placed]
+    .filter(id => isMovable(model, id))
+    .map(id => ({ id, pref: preferenceScore(model, id) }))
+    .sort((a, b) => a.pref - b.pref)  // worst first
+    .slice(0, 3);
+
+  for (const { id: outId, pref: outPref } of scoredPlaced) {
+    const sem = semesterOf(state, outId);
+    if (!sem) continue;
+    const candidates = [...model.profiles.entries()]
+      .filter(([inId, p]) =>
+        !placed.has(inId) &&
+        !model.completedCourseIds.has(inId) &&
+        !isExcluded(model, inId) &&
+        preferenceScore(model, inId) > outPref &&
+        legalSemestersFor(model, inId).includes(sem),
+      )
+      .sort((a, b) => preferenceScore(model, b[0]) - preferenceScore(model, a[0]))
+      .slice(0, 3);
+
+    for (const [inId] of candidates) {
+      actions.push({ type: 'REPLACE_COURSE', outId, inId, semesterId: sem });
     }
   }
 

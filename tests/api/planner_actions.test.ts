@@ -63,6 +63,7 @@ describe('enumerateActions — Group 4 degree-fill null-hours guard', () => {
   });
 
   it('terminates with STOP within maxSteps when only null-hours electives remain for degree fill', () => {
+    // ponytail: kept from existing suite — verifies P0 fix 1.5
     const profiles = new Map<string, CourseProfile>();
     // A mandatory to ensure there's real content, but only null-hours electives for degree-fill gap
     profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 5, placement_policy: 'fixed',
@@ -85,5 +86,32 @@ describe('enumerateActions — Group 4 degree-fill null-hours guard', () => {
     expect(stops.length).toBeGreaterThan(0);
     // Must have stopped, not looped forever
     expect(trace.length).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('enumerateActions — REPLACE_COURSE', () => {
+  it('includes REPLACE_COURSE mutation when a wanted course could replace a placed unwanted one', () => {
+    // 'LOW' is placed (not wanted). 'HIGH' is available and wanted.
+    // After fix: enumerateActions should emit REPLACE_COURSE { outId:'LOW', inId:'HIGH' }.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('LOW', profile('LOW', { is_wanted: false, hours: 4, placement_policy: 'elective' }));
+    profiles.set('HIGH', profile('HIGH', { is_wanted: true, hours: 4, placement_policy: 'elective' }));
+
+    const m = baseModel({
+      profiles,
+      wantedCourseIds: new Set(['HIGH']),
+      degreeRequiredHours: 4,
+      priorHours: 4, // already satisfied so no degree-fill ADD_COURSE noise
+    });
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['LOW'];
+
+    const actions = enumerateActions(state, m);
+    const replacements = actions.filter(a => a.type === 'REPLACE_COURSE');
+
+    expect(
+      replacements.some(a => (a as any).outId === 'LOW' && (a as any).inId === 'HIGH'),
+    ).toBe(true);
   });
 });

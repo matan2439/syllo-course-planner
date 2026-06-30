@@ -80,9 +80,9 @@ function withCourses(sem: string, ids: string[]): PlanState {
 }
 
 describe('GOAL_STACK', () => {
-  it('lists the six prioritized goals, completion first', () => {
+  it('lists the seven prioritized goals, completion first', () => {
     expect(GOAL_STACK[0]).toBe('degree_completion');
-    expect(GOAL_STACK).toHaveLength(6);
+    expect(GOAL_STACK).toHaveLength(7);
     expect(GOAL_STACK[GOAL_STACK.length - 1]).toBe('difficulty_comfort');
   });
 });
@@ -107,13 +107,17 @@ describe('scorePlan — goal priority is lexicographic', () => {
     expect(compareScore(scorePlan(withCat, m), scorePlan(withoutCat, m))).toBeGreaterThan(0);
   });
 
-  it('with higher goals equal, a balanced load outranks a lopsided one (goal 4)', () => {
+  it('with higher goals equal, balanced and lopsided plans score equally when both fit within capacity (g4)', () => {
+    // After the g4 fix, spread is computed over non-empty semesters only.
+    // lopsided (8h in one sem): non-empty=[8], spread=0, g4=0.
+    // balanced (4h + 4h): non-empty=[4,4], spread=0, g4=0.
+    // Same courses → same g6. Result: tied. G3 (legality) already handles over-cap loads.
     const m = model({ degreeRequiredHours: 8, categories: [] });
     const balanced = emptyState(SEMS);
     balanced.semesters['year_3_semester_a'] = ['e0']; // 4h
     balanced.semesters['year_3_semester_b'] = ['e1']; // 4h
     const lopsided = withCourses('year_3_semester_a', ['e0', 'e1']); // 8h in one sem
-    expect(compareScore(scorePlan(balanced, m), scorePlan(lopsided, m))).toBeGreaterThan(0);
+    expect(compareScore(scorePlan(balanced, m), scorePlan(lopsided, m))).toBe(0);
   });
 
   it('with all else equal, lower total difficulty wins (goal 6, tiebreaker)', () => {
@@ -130,5 +134,50 @@ describe('scorePlan — goal priority is lexicographic', () => {
     const a = withCourses('year_3_semester_a', ['e0', 'e1']);
     const b = withCourses('year_3_semester_a', ['e0', 'e1']);
     expect(compareScore(scorePlan(a, m), scorePlan(b, m))).toBe(0);
+  });
+});
+
+describe('scorePlan — g2 mandatory vs category priority', () => {
+  it('placing a mandatory course outranks satisfying a category when hours are equal', () => {
+    // Both plans place one 4h course (g1 tied, both short of degree target).
+    // Plan A: places the mandatory course (no category satisfied).
+    // Plan B: satisfies the category (no mandatory placed).
+    // After fix: mandatory completion is a higher sub-goal than category satisfaction.
+    const m = model({
+      degreeRequiredHours: 20,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'cat', name: 'cat', required: 1, candidateIds: ['CAT'] }],
+    });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));
+    m.profiles.set('CAT', profile('CAT', { category_id: 'cat', hours: 4 }));
+
+    const withMandatory = emptyState(SEMS);
+    withMandatory.semesters['year_3_semester_a'] = ['MAND'];
+
+    const withCategory = emptyState(SEMS);
+    withCategory.semesters['year_3_semester_a'] = ['CAT'];
+
+    expect(compareScore(scorePlan(withMandatory, m), scorePlan(withCategory, m))).toBeGreaterThan(0);
+  });
+});
+
+describe('scorePlan — g4 empty semester penalty', () => {
+  it('a board with one non-empty semester is not penalized vs two equally-loaded semesters', () => {
+    // Use a 2-semester model so empty-semester effect is unambiguous.
+    // oneActive: one course in sem-A, sem-B empty.
+    //   Before fix: spread = 4-0 = 4, g4 = -4.
+    //   After fix:  spread = max([4])-min([4]) = 0, g4 = 0.
+    // twoBalanced: one course in each sem (equal load, no empty sem).
+    //   Both before and after fix: spread = 4-4 = 0, g4 = 0.
+    // g1 is equal (both capped at degreeRequiredHours=4).
+    // After fix: oneActive should be >= twoBalanced (same g4=0, oneActive wins g6 by fewer courses).
+    // Before fix: oneActive loses at g4 (-4 vs 0) → compareScore < 0.
+    const SEMS2 = ['year_3_semester_a', 'year_3_semester_b'];
+    const m = model({ degreeRequiredHours: 4, categories: [], knownSemesterIds: SEMS2 });
+
+    const oneActive: PlanState = { semesters: { 'year_3_semester_a': ['e0'], 'year_3_semester_b': [] } };
+    const twoBalanced: PlanState = { semesters: { 'year_3_semester_a': ['e0'], 'year_3_semester_b': ['e1'] } };
+
+    expect(compareScore(scorePlan(oneActive, m), scorePlan(twoBalanced, m))).toBeGreaterThanOrEqual(0);
   });
 });
