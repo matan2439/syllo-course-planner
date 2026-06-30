@@ -44,6 +44,8 @@ export interface AgentResult {
   gaps: GapRecord[];
   /** Present when SearchCapability returned BeamSearchMeta. */
   meta?: BeamSearchMeta;
+  /** Hebrew rationale from ExplanationCapability; absent when cap absent or throws. */
+  rationale_he?: string;
 }
 
 export interface PlannerAgentOptions {
@@ -149,8 +151,14 @@ export class PlannerAgent {
       : diffToTrace(initialState, searchResult.finalState);
 
     // Post-search explanation (never before/during search)
+    let rationale_he: string | undefined;
     if (explanation) {
-      await explanation.explain(trace);
+      try {
+        rationale_he = await explanation.explain(trace);
+      } catch (err) {
+        console.warn('[PlannerAgent] ExplanationCapability.explain failed:', err instanceof Error ? err.message : String(err));
+        // rationale_he stays undefined; caller provides deterministic fallback
+      }
     }
 
     return {
@@ -158,6 +166,7 @@ export class PlannerAgent {
       trace,
       gaps,
       meta: searchResult.meta,
+      rationale_he,
     };
   }
 }

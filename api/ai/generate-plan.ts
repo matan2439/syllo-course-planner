@@ -1,18 +1,19 @@
 /**
  * POST /api/ai/generate-plan
  *
- * Generates a personalized semester-plan proposal. As of the agentic refactor
- * this is a THIN WRAPPER over the deterministic Planner Worker: it builds the
- * ConstraintModel (full universe from board_json when available, else from the
- * client plan_context), seeds the worker from the current board, drives it (the
- * LLM orchestrator when a model is configured, otherwise the deterministic
- * greedy orchestrator), and returns the SAME PlanProposal response contract as
- * before — plus an additive, optional `trace`.
+ * Generates a personalized semester-plan proposal. Supports two code paths:
  *
- * The response is a PREVIEW ONLY — the client validates it and the user must
- * confirm before any board state changes. The response shape (semesters, moves,
- * warnings_he, rationale_he, requirements_status, errors, blocked) is unchanged
- * so the existing apply/reject UI flow keeps working without modification.
+ * DEFAULT (AI_USE_AGENTIC_PLANNER unset):
+ *   PlannerWorker + GreedyOrchestrator / LlmOrchestrator (unchanged).
+ *
+ * AGENTIC (AI_USE_AGENTIC_PLANNER=true):
+ *   PlannerAgent + BeamSearchStrategy. LlmExplainer is injected as an
+ *   ExplanationCapability in production; omitted in dev mode so no LLM
+ *   step-selection or explanation calls happen.
+ *
+ * Both paths produce the SAME PlanProposal response contract (semesters, moves,
+ * warnings_he, rationale_he, requirements_status, errors, blocked) plus the
+ * additive optional `trace`. The apply/reject UI flow is unaffected.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -22,11 +23,16 @@ import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
 import { LlmOrchestrator } from './planner_orchestrator';
+import { PlannerAgent } from './planner_agent';
+import { BeamSearchStrategy } from './planner_search_beam';
+import { LlmExplainer } from './llm_explainer';
+import { validateCandidate } from './planner_validate';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
-import type { ConstraintModel, PlanState } from './planner_types';
+import type { SearchCapability } from './planner_capabilities';
+import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -117,34 +123,53 @@ function overloadGate(
   return errors;
 }
 
-/** Convert the worker's final plan to the PlanProposal response shape. */
-function toProposal(worker: PlannerWorker, model: ConstraintModel, initialState: PlanState) {
-  const finalPlan = worker.getPlan();
-  const semesters = model.knownSemesterIds
-    .filter(id => (finalPlan.semesters[id] ?? []).length > 0)
-    .map(id => ({ semester_id: id, course_ids: finalPlan.semesters[id] }));
+/**
+ * Deterministic Hebrew rationale — used when ExplanationCapability is absent or
+ * throws (dev mode / LLM failure fallback).
+ */
+function deterministicRationale(finalState: PlanState, model: ConstraintModel): string {
+  const placed = Object.values(finalState.semesters).flat();
+  const totalHours = model.priorHours + placed.reduce((s, id) => s + (model.profiles.get(id)?.hours ?? 0), 0);
+  return placed.length === 0
+    ? 'תוכנית אוטומטית — לא שובצו קורסים חדשים.'
+    : `תוכנית אוטומטית — ${placed.length} קורסים, ${totalHours} ש"ש לקראת השלמת התואר.`;
+}
 
-  // moves: diff the seeded board against the final plan.
+/**
+ * Option B toProposal — pure function of (finalState, model, initialState, pinnedHome, rationale_he).
+ * No PlannerWorker dependency; shared by both the worker and agentic paths.
+ */
+function toProposal(
+  finalState: PlanState,
+  model: ConstraintModel,
+  initialState: PlanState,
+  pinnedHome: Record<string, string>,
+  rationale_he: string,
+) {
+  const semesters = model.knownSemesterIds
+    .filter(id => (finalState.semesters[id] ?? []).length > 0)
+    .map(id => ({ semester_id: id, course_ids: finalState.semesters[id] }));
+
+  // moves: diff initial board against final plan
   const initialSemOf: Record<string, string> = {};
   for (const [sem, ids] of Object.entries(initialState.semesters)) for (const id of ids) initialSemOf[id] = sem;
   const moves: Array<{ course_id: string; from: string | null; to: string }> = [];
-  for (const [sem, ids] of Object.entries(finalPlan.semesters)) {
+  for (const [sem, ids] of Object.entries(finalState.semesters)) {
     for (const id of ids) {
       const from = initialSemOf[id] ?? null;
       if (from !== sem) moves.push({ course_id: id, from, to: sem });
     }
   }
 
-  const report = worker.validateCandidate();
-  const st = worker.getState();
-  const placed = new Set(Object.values(finalPlan.semesters).flat());
+  const report = validateCandidate(finalState, model, pinnedHome);
+  const placed = new Set(Object.values(finalState.semesters).flat());
 
   const requirements_status: Array<{ name: string; required: number; placed: number; satisfied: boolean }> = [];
   requirements_status.push({
     name: 'קורסי חובה',
     required: model.requiredMandatoryCourseIds.length,
     placed: model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length,
-    satisfied: st.mandatoryPlaced === model.requiredMandatoryCourseIds.length,
+    satisfied: model.requiredMandatoryCourseIds.every(id => placed.has(id)),
   });
   for (const cat of model.categories) {
     const p = cat.candidateIds.filter(id => placed.has(id)).length;
@@ -158,9 +183,21 @@ function toProposal(worker: PlannerWorker, model: ConstraintModel, initialState:
     const c = model.categories.find(x => x.id === cid);
     warnings_he.push(`דרישת קטגוריה לא מולאה: ${c?.name ?? cid}.`);
   }
-  warnings_he.push(...worker.validate().warnings);
+  // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
+  warnings_he.push(...report.warnings);
 
-  return { semesters, moves, warnings_he, rationale_he: worker.explain().summary_he, requirements_status };
+  return { semesters, moves, warnings_he, rationale_he, requirements_status };
+}
+
+/** Build pinnedHome map from model.pinnedCourseIds + initialState positions. */
+function buildPinnedHome(model: ConstraintModel, initialState: PlanState): Record<string, string> {
+  const pinnedHome: Record<string, string> = {};
+  for (const cid of model.pinnedCourseIds) {
+    for (const [sem, ids] of Object.entries(initialState.semesters)) {
+      if (ids.includes(cid)) { pinnedHome[cid] = sem; break; }
+    }
+  }
+  return pinnedHome;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -187,10 +224,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!(await runQuotaCheck(session_token, dbUrl, res))) return;
   }
 
-  // Model — always plan over the full course universe.
-  // 1. DB available: query board_json from database (production path).
-  // 2. DB absent: load committed local snapshot from data/boards/{program_id}.json.
-  // 3. Neither available: hard error — never fall back to client-subset planning.
+  // Board — always plan over the full course universe.
   let board: any = null;
   if (dbUrl) {
     const pv = parseProgramVersionId(program_id);
@@ -205,25 +239,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     sendError(res, 503, 'תוכנית הלימודים המלאה אינה זמינה. נא לנסות שוב מאוחר יותר.', 'NO_UNIVERSE');
     return;
   }
+
   const model = buildModel(board, plan_context, preferences);
   const initialState = planContextToState(plan_context, model);
-
-  const worker = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
+  const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
-  const useLlm = !isDevMode() && !!modelCfg;
-  try {
-    if (useLlm) await new LlmOrchestrator(modelCfg!.model, { maxSteps: 24 }).run(worker);
-    else worker.run(500, 'greedy');
-  } catch (err) {
-    console.error('[ai/generate-plan] orchestrator error, finishing greedily:', err instanceof Error ? err.message : String(err));
-    worker.run(500, 'greedy');
+
+  let proposal: ReturnType<typeof toProposal>;
+  let traceForResponse: unknown[];
+  let hitMaxSteps = false;
+  let useLlm = false;
+
+  if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
+    // ── PlannerAgent path (Phase 5+) ─────────────────────────────────────────
+    const useLlmExplain = !isDevMode() && !!modelCfg;
+    const explanation = useLlmExplain ? new LlmExplainer(modelCfg!.model) : undefined;
+    useLlm = useLlmExplain;
+
+    const searchCap: SearchCapability<PlanState, PlannerMutation> = {
+      search: (s, deps, opts) => new BeamSearchStrategy<PlanState, PlannerMutation>().explore(s, deps, opts),
+    };
+    const agent = new PlannerAgent({
+      model, initialState, pinnedHome, search: searchCap, explanation, maxSteps: 150, beamWidth: 6,
+    });
+
+    let agentResult;
+    try {
+      agentResult = await agent.run();
+    } catch (err) {
+      console.error('[ai/generate-plan] PlannerAgent error, falling back to greedy:', err instanceof Error ? err.message : String(err));
+      const fallback = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
+      fallback.run(500, 'greedy');
+      agentResult = { finalState: fallback.getPlan(), trace: fallback.getTrace(), gaps: [], meta: undefined, rationale_he: fallback.explain().summary_he };
+    }
+
+    const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
+    proposal = toProposal(agentResult.finalState, model, initialState, pinnedHome, rationale_he);
+    traceForResponse = agentResult.trace;
+    hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
+
+  } else {
+    // ── PlannerWorker path (default) ─────────────────────────────────────────
+    const worker = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
+    useLlm = !isDevMode() && !!modelCfg;
+    try {
+      if (useLlm) await new LlmOrchestrator(modelCfg!.model, { maxSteps: 24 }).run(worker);
+      else worker.run(500, 'greedy');
+    } catch (err) {
+      console.error('[ai/generate-plan] orchestrator error, finishing greedily:', err instanceof Error ? err.message : String(err));
+      worker.run(500, 'greedy');
+    }
+
+    proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
+    traceForResponse = worker.getTrace();
+    hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
 
-  const proposal = toProposal(worker, model, initialState);
   const blockingErrors = overloadGate(proposal.semesters, model, preferences);
 
-  // If the planner hit the step limit before reaching the goal, surface a warning and block.
-  const hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
     blockingErrors.push('PLANNER_STEP_LIMIT');
@@ -240,6 +313,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...proposal,
     errors: blockingErrors,
     blocked: blockingErrors.length > 0,
-    trace: worker.getTrace(),
+    trace: traceForResponse,
   });
 }

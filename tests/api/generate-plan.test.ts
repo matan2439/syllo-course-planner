@@ -1,4 +1,6 @@
 import handler, { preferencesSchema, priorHoursFromContext } from '../../api/ai/generate-plan';
+import { LlmExplainer } from '../../api/ai/llm_explainer';
+import type { ExplanationCapability } from '../../api/ai/planner_capabilities';
 import { randomUUID } from 'crypto';
 import { KNOWN_SEMESTER_IDS } from '../../api/ai/plan_validation';
 
@@ -129,6 +131,120 @@ describe('priorHoursFromContext — formula spec', () => {
   it('returns 0 when total_hours_progress absent', () => {
     expect(priorHoursFromContext({})).toBe(0);
     expect(priorHoursFromContext(null)).toBe(0);
+  });
+});
+
+// ── Phase 5: PlannerAgent path ────────────────────────────────────────────────
+
+describe('generate-plan PlannerAgent path (Phase 5)', () => {
+  beforeEach(() => {
+    process.env.AI_DEV_MODE = 'true';
+    process.env.AI_DEV_BYPASS_QUOTA = 'true';
+    process.env.AI_USE_AGENTIC_PLANNER = 'true';
+  });
+  afterEach(() => {
+    delete process.env.AI_DEV_MODE;
+    delete process.env.AI_DEV_BYPASS_QUOTA;
+    delete process.env.AI_USE_AGENTIC_PLANNER;
+  });
+
+  // 1 — response contract shape unchanged
+  it('(PlannerAgent) returns exact contract keys with correct types', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    expect(res.statusCode).toBe(200);
+    const b = res._body;
+    expect(Array.isArray(b.semesters)).toBe(true);
+    expect(Array.isArray(b.moves)).toBe(true);
+    expect(Array.isArray(b.warnings_he)).toBe(true);
+    expect(typeof b.rationale_he).toBe('string');
+    expect(Array.isArray(b.requirements_status)).toBe(true);
+    expect(Array.isArray(b.errors)).toBe(true);
+    expect(typeof b.blocked).toBe('boolean');
+    expect(Array.isArray(b.trace)).toBe(true);
+  });
+
+  // 2 — valid requirements_status shape
+  it('(PlannerAgent) requirements_status rows have the {name,required,placed,satisfied} shape', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    expect(res.statusCode).toBe(200);
+    for (const row of res._body.requirements_status) {
+      expect(typeof row.name).toBe('string');
+      expect(typeof row.required).toBe('number');
+      expect(typeof row.placed).toBe('number');
+      expect(typeof row.satisfied).toBe('boolean');
+    }
+  });
+
+  // 2b — blocked invariant
+  it('(PlannerAgent) blocked === (errors.length > 0)', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    const b = res._body;
+    expect(b.blocked).toBe(b.errors.length > 0);
+  });
+
+  // 3 — LLM explanation fallback: dev mode → no LlmExplainer → deterministic rationale_he
+  it('(PlannerAgent) rationale_he is a non-empty string when LLM unavailable (dev mode)', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    expect(typeof res._body.rationale_he).toBe('string');
+    expect(res._body.rationale_he.length).toBeGreaterThan(0);
+  });
+
+  // 4 — LLM is not called in dev mode (succeeds without any AI_MODEL)
+  it('(PlannerAgent) succeeds without AI_MODEL configured in dev mode', async () => {
+    const saved = process.env.AI_MODEL;
+    delete process.env.AI_MODEL;
+    try {
+      const res = makeRes();
+      await handler(makeReq(REQ_BODY), res);
+      expect(res.statusCode).toBe(200);
+    } finally {
+      if (saved !== undefined) process.env.AI_MODEL = saved;
+    }
+  });
+
+  // 5 — No step-selection LLM: trace field is an array (beam search is deterministic)
+  it('(PlannerAgent) trace field is an array produced by deterministic beam search', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res._body.trace)).toBe(true);
+    // Trace from PlannerAgent is PlannerMutation[] (not PlannerAction[])
+    // — additive field, clients ignore shape they don't understand
+  });
+
+  // 5b — response minus trace is still the exact legacy shape
+  it('(PlannerAgent) response minus trace is the exact legacy shape', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    const { trace, ...legacy } = res._body;
+    expect(Object.keys(legacy).sort()).toEqual(
+      ['blocked', 'errors', 'moves', 'rationale_he', 'requirements_status', 'semesters', 'warnings_he'].sort(),
+    );
+  });
+});
+
+// 6 — LlmExplainer interface shape
+describe('LlmExplainer (Phase 5)', () => {
+  // LlmExplainer takes a LanguageModel; use {} as unknown cast for unit tests
+  const mockModel = {} as import('ai').LanguageModel;
+
+  it('implements ExplanationCapability and returns a string', async () => {
+    const explainer: ExplanationCapability = new LlmExplainer(mockModel);
+    const result = await explainer.explain([]);
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('produces a non-empty string for a single ADD_COURSE mutation', async () => {
+    const explainer = new LlmExplainer(mockModel);
+    const trace = [{ type: 'ADD_COURSE', courseId: 'c1', semesterId: 's1' }];
+    const result = await explainer.explain(trace);
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
   });
 });
 

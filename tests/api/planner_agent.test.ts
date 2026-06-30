@@ -265,4 +265,25 @@ describe('PlannerAgent', () => {
     // meta is optional — just verify property access doesn't throw
     void result.meta;
   });
+
+  // Phase 5 additions — rationale_he in AgentResult
+
+  test('ExplanationCapability result is returned as rationale_he in AgentResult', async () => {
+    const explanation: ExplanationCapability = {
+      explain: async (_trace) => 'תוכנית מעולה',
+    };
+    const agent = new PlannerAgent({ model: makeModel(), initialState: INITIAL_STATE, search: noopSearch(), explanation });
+    const result = await agent.run();
+    expect(result.rationale_he).toBe('תוכנית מעולה');
+  });
+
+  test('ExplanationCapability failure is caught; rationale_he is undefined in result', async () => {
+    const explanation: ExplanationCapability = {
+      explain: async (_trace) => { throw new Error('LLM timeout'); },
+    };
+    const agent = new PlannerAgent({ model: makeModel(), initialState: INITIAL_STATE, search: noopSearch(), explanation });
+    const result = await agent.run();
+    // Failure is caught — result still returned, rationale_he is absent (caller uses fallback)
+    expect(result.rationale_he).toBeUndefined();
+  });
 });
