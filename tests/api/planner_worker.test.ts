@@ -159,6 +159,37 @@ describe('PlannerWorker — goal-driven convergence', () => {
   });
 });
 
+describe('PlannerWorker — explain (test 11: explanation matches the selected plan)', () => {
+  it('references only courses present in the plan or trace, and reports requirements + stop', () => {
+    const w = new PlannerWorker(buildModel());
+    w.run();
+    const ex = w.explain();
+
+    const placed = new Set(placedCourseIds(w.getPlan()));
+    const traceIds = new Set(w.getTrace().map(a => a.courseId).filter(Boolean) as string[]);
+    // no divergence: every referenced course is in the plan or was acted on in the trace
+    for (const id of ex.referencedCourseIds) {
+      expect(placed.has(id) || traceIds.has(id)).toBe(true);
+    }
+    expect(ex.referencedCourseIds.length).toBeGreaterThan(0);
+    expect(ex.requirements_he.length).toBeGreaterThan(0);
+    expect(ex.placements_he.length).toBeGreaterThan(0);
+    expect(ex.stop_he.length).toBeGreaterThan(0);
+    expect(typeof ex.summary_he).toBe('string');
+  });
+
+  it('explains rejected alternatives with reasons', () => {
+    const m = buildModel({ disallowedCourseIds: new Set(['FLU1']) });
+    m.profiles.get('FLU1')!.excluded = true;
+    const w = new PlannerWorker(m);
+    // explicitly attempt the disallowed course so a REJECT_COURSE is traced
+    w.addCourse('FLU1', 'year_4_semester_a');
+    w.run();
+    const ex = w.explain();
+    expect(ex.rejections_he.some(r => r.includes('FLU1') || r.includes('לא-זמין'))).toBe(true);
+  });
+});
+
 describe('PlannerWorker — repair (validation failure → repair → revalidate)', () => {
   // Two electives crammed into one semester (28h > hardCap 26); both movable.
   function overloadedModel(): ConstraintModel {

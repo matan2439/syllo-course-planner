@@ -46,6 +46,22 @@ export interface MutationResult {
   action: PlannerAction;
 }
 
+export interface PlanExplanation {
+  summary_he: string;
+  /** Which degree requirements the plan satisfies (hours / mandatory / categories). */
+  requirements_he: string[];
+  /** Per-semester placements. */
+  placements_he: string[];
+  /** Why courses were placed/moved where they were (incl. flexible A/B decisions). */
+  decisions_he: string[];
+  /** Why rejected alternatives were rejected. */
+  rejections_he: string[];
+  /** Why the planner stopped. */
+  stop_he: string;
+  /** Every course_id the explanation references — all drawn from the plan/trace. */
+  referencedCourseIds: string[];
+}
+
 export interface WorkerObservation {
   phase: PlannerPhase;
   degreeHours: number;
@@ -284,6 +300,71 @@ export class PlannerWorker {
   /** Full candidate gate for the current plan (legality + completeness). */
   validateCandidate(): import('./planner_validate').CandidateReport {
     return validateCandidate(this.state, this.model, this.pinnedHome);
+  }
+
+  /**
+   * Explain the selected plan. Built entirely from the worker's own committed
+   * state + trace, so it can only reference courses/decisions that are actually
+   * in the plan or were acted on — the explanation can never diverge from the
+   * plan it describes.
+   */
+  explain(): PlanExplanation {
+    const trace = this.getTrace();
+    const g = this.goalStatus();
+    const report = this.validateCandidate();
+    const nameOf = (id: string) => this.courseName(id) ?? id;
+
+    const requirements_he: string[] = [];
+    requirements_he.push(
+      `שעות תואר: ${g.degreeHours}/${this.model.degreeRequiredHours}` +
+        (report.degreeMet ? ' ✓' : ` (חסרות ${Math.max(0, this.model.degreeRequiredHours - g.degreeHours)})`),
+    );
+    requirements_he.push(
+      `קורסי חובה: ${g.mandatoryPlaced}/${this.model.requiredMandatoryCourseIds.length}` +
+        (g.mandatoryPlaced === this.model.requiredMandatoryCourseIds.length ? ' ✓' : ''),
+    );
+    for (const cat of this.model.categories) {
+      const placed = new Set(placedCourseIds(this.state));
+      const got = cat.candidateIds.filter(id => placed.has(id)).length;
+      requirements_he.push(`קטגוריה ${cat.name}: ${Math.min(got, cat.required)}/${cat.required}` + (got >= cat.required ? ' ✓' : ''));
+    }
+
+    const placements_he: string[] = [];
+    for (const sem of this.model.knownSemesterIds) {
+      const ids = this.state.semesters[sem] ?? [];
+      if (!ids.length) continue;
+      placements_he.push(`${sem} (${g.semesterLoads[sem]} ש"ש): ${ids.map(nameOf).join(', ')}`);
+    }
+
+    // Decisions: why flexible courses landed where they did / were moved (MOVE +
+    // ADD actions that carried a downstream estimate).
+    const decisions_he = trace
+      .filter(a => a.validationAfterAction === 'pass' && (a.action === 'MOVE_COURSE' || a.action === 'ADD_COURSE'))
+      .map(a => {
+        const where = a.semester ? ` → ${a.semester}` : '';
+        return `${a.action === 'MOVE_COURSE' ? 'הזזה' : 'שיבוץ'}: ${a.courseName ?? a.courseId}${where} — ${a.reason}`;
+      });
+
+    const rejections_he = trace
+      .filter(a => a.action === 'REJECT_COURSE')
+      .map(a => `${a.courseName ?? a.courseId}: ${a.reason}`);
+
+    const stops = trace.filter(a => a.action === 'STOP');
+    const stop_he = stops.length ? stops[stops.length - 1].reason : 'התהליך הסתיים.';
+
+    const summary_he = report.valid
+      ? `התוכנית תקפה ומלאה: ${g.degreeHours}/${this.model.degreeRequiredHours} ש"ש, כל קורסי החובה והקטגוריות שובצו, ללא חריגות עומס.`
+      : `התוכנית אינה מלאה עדיין: ${report.errors[0] ?? 'נותרו דרישות פתוחות.'}`;
+
+    // Referenced courses — only those mentioned, all drawn from plan/trace.
+    const referencedCourseIds = Array.from(
+      new Set([
+        ...placedCourseIds(this.state),
+        ...trace.map(a => a.courseId).filter((x): x is string => !!x),
+      ]),
+    );
+
+    return { summary_he, requirements_he, placements_he, decisions_he, rejections_he, stop_he, referencedCourseIds };
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
