@@ -18,7 +18,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
-import { buildConstraintModel, buildModelFromPlanContext, planContextToState } from './planner_model';
+import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
 import { LlmOrchestrator } from './planner_orchestrator';
@@ -75,7 +75,7 @@ async function runQuotaCheck(session_token: string, dbUrl: string, res: VercelRe
   return true;
 }
 
-function priorHoursFromContext(ctx: any): number {
+export function priorHoursFromContext(ctx: any): number {
   const thp = ctx?.total_hours_progress ?? {};
   // currently_planned_hours is excluded: board-placed courses are already seeded
   // into initialState by planContextToState — counting them here too would

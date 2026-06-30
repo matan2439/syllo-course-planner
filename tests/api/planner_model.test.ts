@@ -11,7 +11,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { buildConstraintModel, buildModelFromPlanContext, planContextToState } from '../../api/ai/planner_model';
+import { buildConstraintModel, planContextToState } from '../../api/ai/planner_model';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import { GreedyOrchestrator } from '../../api/ai/planner_orchestrator';
 import { placedCourseIds } from '../../api/ai/planner_types';
@@ -126,42 +126,42 @@ describe('ME-2027 greedy oracle (real board, end-to-end)', () => {
 
 // ── priorHours double-count guard ─────────────────────────────────────────────
 
-describe('buildModelFromPlanContext — priorHours does not double-count board-placed courses', () => {
-  // Simulate a scenario where a client (correctly or incorrectly) sends
-  // currently_planned_hours that may overlap with board-placed course hours.
-  // After the fix, priorHours should equal known_completed_hours only.
-
-  const planCtx = {
-    semesters: [
-      { id: 'year_3_semester_a', courses: [
-        { course_id: 'BOARD1', name_he: 'בוצע א', hours: 10, course_type: 'elective', placement_policy: 'elective' },
-        { course_id: 'BOARD2', name_he: 'בוצע ב', hours: 10, course_type: 'elective', placement_policy: 'elective' },
-      ] },
+const DOUBLE_COUNT_BOARD = {
+  semesters: [
+    { semester_id: 'year_3_semester_a', courses: [
+      { course_id: 'BOARD1', name_he: 'בוצע א', weekly_hours: 10, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
+      { course_id: 'BOARD2', name_he: 'בוצע ב', weekly_hours: 10, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
+    ] },
+  ],
+  metadata: {
+    completed_course_ids: [],
+    program_requirements_categories: { total_required_hours: 185, categories: [] },
+    program_repository_courses: [
+      { course_id: 'BOARD1', weekly_hours: 10, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
+      { course_id: 'BOARD2', weekly_hours: 10, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
     ],
-    category_requirements: [],
-    total_hours_progress: {
-      known_completed_hours: 100,
-      // Simulates an old/buggy client that includes board-placed course hours here.
-      currently_planned_hours: 20,
-      degree_required_hours: 185,
-    },
-    personal_status: { completed: [] },
-  };
+  },
+};
+const PLACED_CTX = { semesters: [{ id: 'year_3_semester_a', courses: [
+  { course_id: 'BOARD1' }, { course_id: 'BOARD2' },
+] }] };
 
-  it('priorHours equals known_completed_hours (currently_planned_hours excluded after fix)', () => {
-    const model = buildModelFromPlanContext(planCtx);
-    // After fix: priorHours should be 100 (known_completed only).
-    // Before fix: priorHours was 120 (100 + 20), causing a double-count when BOARD1+BOARD2 are also seeded.
-    expect(model.priorHours).toBe(100);
+describe('priorHours + seeded board must not double-count', () => {
+  // priorHoursFromContext (generate-plan.ts) returns known_completed_hours only —
+  // NOT + currently_planned_hours. Board-placed courses are separately seeded into
+  // initialState by planContextToState, so adding them to priorHours would count them twice.
+
+  it('degreeHours = priorHours(100) + placedHours(20) = 120, not 140', () => {
+    // Correct formula: priorHours = known_completed_hours = 100 (no double-count)
+    const model = buildConstraintModel(DOUBLE_COUNT_BOARD as any, { priorHours: 100 });
+    const state = planContextToState(PLACED_CTX, model);
+    expect(computeDegreeHours(state, model)).toBe(120);
   });
 
-  it('degreeHours with seeded board equals priorHours + placedHours (not priorHours + 20 + placedHours)', () => {
-    const model = buildModelFromPlanContext(planCtx);
-    const seededState = planContextToState(planCtx as any, model);
-    const dh = computeDegreeHours(seededState, model);
-    // BOARD1 + BOARD2 = 20 placed hours; priorHours = 100 → degreeHours = 120
-    expect(dh).toBe(120);
-    // Before fix: would have been 140 (120 priorHours + 20 placed = double-count)
-    expect(dh).not.toBe(140);
+  it('if priorHours were 120 (buggy: +currently_planned_hours), degreeHours would be 140', () => {
+    // Regression witness: this is what the old formula produced with currently_planned_hours=20
+    const buggyModel = buildConstraintModel(DOUBLE_COUNT_BOARD as any, { priorHours: 120 });
+    const state = planContextToState(PLACED_CTX, buggyModel);
+    expect(computeDegreeHours(state, buggyModel)).toBe(140);
   });
 });

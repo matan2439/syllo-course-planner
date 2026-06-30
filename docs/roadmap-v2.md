@@ -1,6 +1,23 @@
 # Planner V2 Roadmap
-_V1 complete (2026-06-30). This file is now the V2 roadmap._
+_V1 complete (2026-06-30). P0 fixes complete (2026-06-30, commit e645004 + cleanup). This file is now the V2 roadmap._
 _See `.remember/remember.md` for full canonical project state._
+
+---
+
+## P0 Status — COMPLETE (commit e645004 + cleanup checkpoint)
+
+All six P0 correctness fixes are done and regression-tested:
+
+| Fix | Description | Status |
+|---|---|---|
+| 1.1 | Memoize `buildValidationContext` | ✅ DONE |
+| 1.2 | Remove `currently_planned_hours` from `priorHours` | ✅ DONE |
+| 1.3 | Dynamic semester IDs in validator | ✅ DONE |
+| 1.4 | Emit STOP trace on step-limit hit | ✅ DONE |
+| 1.5 | Exclude null-hours courses from degree fill | ✅ DONE |
+| DB-less | Full local board snapshot; 503 on unknown program | ✅ DONE (moved from P1/Section 3) |
+
+Cleanup: dead `buildModelFromPlanContext`/`planContextToBoard` removed from codebase; `priorHoursFromContext` exported and unit-tested. `npm test` green, `tsc --noEmit` clean.
 
 ---
 
@@ -24,7 +41,7 @@ V2 goals (in priority order):
 
 ## Section 1 — Critical Fixes (P0, fix before any deploy)
 
-### 1.1 Memoize `buildValidationContext`
+### 1.1 Memoize `buildValidationContext` ✅ DONE
 
 **Problem:** `buildValidationContext(model, pinnedHome)` is called on every `validatePlanState` invocation — which happens inside `enumerateActions` (filter pass), inside `estimateFinalScore`'s greedy rollout, and inside every `tryApply`. For a typical ME-2027 run: ~500 steps × ~30 candidate actions × `getLegalSemesters` over ~300 profiles × 4 semesters = ~1.4B operations per run. Measured: the bottleneck is here.
 
@@ -48,7 +65,7 @@ this._validationCtx = buildValidationContext(model, pinnedCourseHome);
 
 ---
 
-### 1.2 Fix `priorHours` double-counting
+### 1.2 Fix `priorHours` double-counting ✅ DONE
 
 **Problem:** In `generate-plan.ts`:
 ```ts
@@ -79,7 +96,7 @@ The board-planned hours are already counted by `placedHours` via `planContextToS
 
 ---
 
-### 1.3 Fix `KNOWN_SEMESTER_IDS` hardcoding
+### 1.3 Fix `KNOWN_SEMESTER_IDS` hardcoding ✅ DONE
 
 **Problem:** `api/ai/plan_validation.ts` contains:
 ```ts
@@ -103,7 +120,7 @@ Inside, replace `KNOWN_SEMESTER_IDS` with `opts?.knownSemesterIds ?? KNOWN_SEMES
 
 ---
 
-### 1.4 Emit STOP trace on step-limit hit
+### 1.4 Emit STOP trace on step-limit hit ✅ DONE
 
 **Problem:** When `run(maxSteps)` exits because `step >= maxSteps`, no `STOP` action is emitted to the trace, no warning appears in `warnings_he`, and the response `blocked` flag stays `false`. The client silently receives an incomplete plan with no indication it was cut short.
 
@@ -125,7 +142,7 @@ Surface this in `generate-plan.ts` warnings_he.
 
 ---
 
-### 1.5 Exclude null-hours courses from degree fill
+### 1.5 Exclude null-hours courses from degree fill ✅ DONE
 
 **Problem:** Courses with `hours: null` contribute 0 to `placedHours`. If only null-hours courses remain as eligible candidates for the degree-hours goal, the planner can loop placing and re-placing them (they satisfy g1's add-action filter but never advance the count).
 
@@ -265,7 +282,7 @@ Fix: `spread = max(loads) - min(non-empty semester loads)`.
 
 ---
 
-## Section 3 — DB-less Path Fix (P1)
+## Section 3 — DB-less Path Fix ✅ DONE (moved to P0, commit e645004)
 
 ### 3.1 The Problem
 

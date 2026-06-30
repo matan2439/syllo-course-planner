@@ -1,4 +1,4 @@
-import handler, { preferencesSchema } from '../../api/ai/generate-plan';
+import handler, { preferencesSchema, priorHoursFromContext } from '../../api/ai/generate-plan';
 import { randomUUID } from 'crypto';
 import { KNOWN_SEMESTER_IDS } from '../../api/ai/plan_validation';
 
@@ -110,6 +110,25 @@ describe('generate-plan response contract (backward compatibility)', () => {
     expect(Object.keys(legacy).sort()).toEqual(
       ['blocked', 'errors', 'moves', 'rationale_he', 'requirements_status', 'semesters', 'warnings_he'].sort(),
     );
+  });
+});
+
+describe('priorHoursFromContext — formula spec', () => {
+  it('returns known_completed_hours only, ignores currently_planned_hours', () => {
+    expect(priorHoursFromContext({
+      total_hours_progress: { known_completed_hours: 100, currently_planned_hours: 20 },
+    })).toBe(100);
+  });
+
+  it('prefers manual_completed_degree_hours over known_completed_hours', () => {
+    expect(priorHoursFromContext({
+      total_hours_progress: { manual_completed_degree_hours: 150, known_completed_hours: 100, currently_planned_hours: 20 },
+    })).toBe(150);
+  });
+
+  it('returns 0 when total_hours_progress absent', () => {
+    expect(priorHoursFromContext({})).toBe(0);
+    expect(priorHoursFromContext(null)).toBe(0);
   });
 });
 
