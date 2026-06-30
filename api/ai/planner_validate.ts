@@ -48,6 +48,7 @@ export function validatePlanState(
   state: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string> = {},
+  ctx?: PlanValidationContext,
 ): StateValidation {
   const proposal: PlanProposal = {
     semesters: model.knownSemesterIds
@@ -58,7 +59,7 @@ export function validatePlanState(
     rationale_he: '',
     requirements_status: [],
   };
-  const res = validatePlanProposal(proposal, buildValidationContext(model, pinnedHome));
+  const res = validatePlanProposal(proposal, ctx ?? buildValidationContext(model, pinnedHome));
   return { valid: res.errors.length === 0, errors: res.errors, warnings: res.warnings };
 }
 

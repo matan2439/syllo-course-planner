@@ -19,6 +19,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
 import { buildConstraintModel, buildModelFromPlanContext, planContextToState } from './planner_model';
+import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
 import { LlmOrchestrator } from './planner_orchestrator';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
@@ -76,12 +77,14 @@ async function runQuotaCheck(session_token: string, dbUrl: string, res: VercelRe
 
 function priorHoursFromContext(ctx: any): number {
   const thp = ctx?.total_hours_progress ?? {};
-  return thp.manual_completed_degree_hours ?? ((thp.known_completed_hours ?? 0) + (thp.currently_planned_hours ?? 0));
+  // currently_planned_hours is excluded: board-placed courses are already seeded
+  // into initialState by planContextToState — counting them here too would
+  // inflate degreeHours and make the planner stop early.
+  return thp.manual_completed_degree_hours ?? (thp.known_completed_hours ?? 0);
 }
 
-/** Build the model from board_json (preferred, full universe) or the plan_context. */
+/** Build the model from board_json (full universe). board is always non-null here. */
 function buildModel(board: any, ctx: any, prefs: Preferences): ConstraintModel {
-  if (!board) return buildModelFromPlanContext(ctx, prefs);
   return buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
     wantedCourseIds: prefs.wanted_course_ids,
@@ -184,13 +187,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!(await runQuotaCheck(session_token, dbUrl, res))) return;
   }
 
-  // Model — prefer the full universe from board_json; fall back to plan_context.
+  // Model — always plan over the full course universe.
+  // 1. DB available: query board_json from database (production path).
+  // 2. DB absent: load committed local snapshot from data/boards/{program_id}.json.
+  // 3. Neither available: hard error — never fall back to client-subset planning.
   let board: any = null;
   if (dbUrl) {
     const pv = parseProgramVersionId(program_id);
     if (pv) {
       try { board = await queryBoardJson(dbUrl, pv.base, pv.year); } catch { board = null; }
     }
+  }
+  if (!board) {
+    board = loadLocalBoardJson(program_id);
+  }
+  if (!board) {
+    sendError(res, 503, 'תוכנית הלימודים המלאה אינה זמינה. נא לנסות שוב מאוחר יותר.', 'NO_UNIVERSE');
+    return;
   }
   const model = buildModel(board, plan_context, preferences);
   const initialState = planContextToState(plan_context, model);
@@ -208,6 +221,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const proposal = toProposal(worker, model, initialState);
   const blockingErrors = overloadGate(proposal.semesters, model, preferences);
+
+  // If the planner hit the step limit before reaching the goal, surface a warning and block.
+  const hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
+  if (hitMaxSteps) {
+    proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
+    blockingErrors.push('PLANNER_STEP_LIMIT');
+  }
 
   if (!isBypassQuota() && dbUrl) {
     await Promise.allSettled([

@@ -11,10 +11,11 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { buildConstraintModel } from '../../api/ai/planner_model';
+import { buildConstraintModel, buildModelFromPlanContext, planContextToState } from '../../api/ai/planner_model';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import { GreedyOrchestrator } from '../../api/ai/planner_orchestrator';
 import { placedCourseIds } from '../../api/ai/planner_types';
+import { degreeHours as computeDegreeHours } from '../../api/ai/planner_goals';
 
 const REAL_BOARD = JSON.parse(
   readFileSync(join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json'), 'utf8'),
@@ -120,5 +121,47 @@ describe('ME-2027 greedy oracle (real board, end-to-end)', () => {
     // all four required categories satisfied, nothing over the hard cap
     expect(w.getState().allCategoriesSatisfied).toBe(true);
     expect(Math.max(...Object.values(w.getState().semesterLoads))).toBeLessThanOrEqual(26);
+  });
+});
+
+// ── priorHours double-count guard ─────────────────────────────────────────────
+
+describe('buildModelFromPlanContext — priorHours does not double-count board-placed courses', () => {
+  // Simulate a scenario where a client (correctly or incorrectly) sends
+  // currently_planned_hours that may overlap with board-placed course hours.
+  // After the fix, priorHours should equal known_completed_hours only.
+
+  const planCtx = {
+    semesters: [
+      { id: 'year_3_semester_a', courses: [
+        { course_id: 'BOARD1', name_he: 'בוצע א', hours: 10, course_type: 'elective', placement_policy: 'elective' },
+        { course_id: 'BOARD2', name_he: 'בוצע ב', hours: 10, course_type: 'elective', placement_policy: 'elective' },
+      ] },
+    ],
+    category_requirements: [],
+    total_hours_progress: {
+      known_completed_hours: 100,
+      // Simulates an old/buggy client that includes board-placed course hours here.
+      currently_planned_hours: 20,
+      degree_required_hours: 185,
+    },
+    personal_status: { completed: [] },
+  };
+
+  it('priorHours equals known_completed_hours (currently_planned_hours excluded after fix)', () => {
+    const model = buildModelFromPlanContext(planCtx);
+    // After fix: priorHours should be 100 (known_completed only).
+    // Before fix: priorHours was 120 (100 + 20), causing a double-count when BOARD1+BOARD2 are also seeded.
+    expect(model.priorHours).toBe(100);
+  });
+
+  it('degreeHours with seeded board equals priorHours + placedHours (not priorHours + 20 + placedHours)', () => {
+    const model = buildModelFromPlanContext(planCtx);
+    const seededState = planContextToState(planCtx as any, model);
+    const dh = computeDegreeHours(seededState, model);
+    // BOARD1 + BOARD2 = 20 placed hours; priorHours = 100 → degreeHours = 120
+    expect(dh).toBe(120);
+    // Before fix: would have been 140 (120 priorHours + 20 placed = double-count)
+    expect(dh).not.toBe(140);
   });
 });

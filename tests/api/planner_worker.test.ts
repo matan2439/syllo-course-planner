@@ -254,3 +254,28 @@ describe('PlannerWorker — downstream-impact reasoning (a legal action is not a
     expect(semesterOf(w.getPlan(), 'NARROW')).toBe('year_4_semester_b');
   });
 });
+
+describe('PlannerWorker — STOP trace on maxSteps limit', () => {
+  it('records a STOP action with maxSteps reason when the step limit is hit before goal', () => {
+    // Model needs enough required work that 1 step cannot reach the goal
+    const w = new PlannerWorker(buildModel(), undefined, { lookahead: false });
+    w.run(1, 'greedy'); // goal requires many steps, 1 is never enough
+
+    const trace = w.getTrace();
+    const stops = trace.filter(a => a.action === 'STOP');
+    expect(stops.length).toBeGreaterThan(0);
+    const maxStepsStop = stops.find(a => a.reason?.includes('maxSteps'));
+    expect(maxStepsStop).toBeDefined();
+  });
+
+  it('does NOT emit a maxSteps STOP when the goal is reached within the limit', () => {
+    // Trivial model: 0 required hours, already satisfied
+    const trivialModel = buildModel({ degreeRequiredHours: 0 });
+    const w = new PlannerWorker(trivialModel, undefined, { lookahead: false });
+    w.run(500, 'greedy');
+
+    const trace = w.getTrace();
+    const maxStepsStops = trace.filter(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
+    expect(maxStepsStops.length).toBe(0);
+  });
+});

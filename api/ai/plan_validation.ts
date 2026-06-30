@@ -95,15 +95,21 @@ export function normalizeSemesterId(raw: string | null | undefined): string | nu
  * reported via the returned `dropped` list, so the caller can surface a
  * Hebrew warning and treat those courses as unplaced.
  */
-export function normalizePlanProposal(proposal: PlanProposal): {
+export function normalizePlanProposal(
+  proposal: PlanProposal,
+  opts?: { knownSemesterIds?: string[] },
+): {
   proposal: PlanProposal;
   dropped: Array<{ course_id: string; raw_semester_id: string }>;
 } {
+  const knownIds: readonly string[] = opts?.knownSemesterIds ?? KNOWN_SEMESTER_IDS;
   const dropped: Array<{ course_id: string; raw_semester_id: string }> = [];
   const bySemester = new Map<string, string[]>();
 
   for (const sem of proposal.semesters) {
-    const normalized = normalizeSemesterId(sem.semester_id);
+    // First try canonical normalization; if that fails, check if raw id is in knownIds directly.
+    const normalized = normalizeSemesterId(sem.semester_id) ??
+      (knownIds.includes(sem.semester_id.trim()) ? sem.semester_id.trim() : null);
     if (!normalized) {
       for (const cid of sem.course_ids) dropped.push({ course_id: cid, raw_semester_id: sem.semester_id });
       continue;
@@ -123,7 +129,7 @@ export function normalizePlanProposal(proposal: PlanProposal): {
   return {
     proposal: {
       ...proposal,
-      semesters: KNOWN_SEMESTER_IDS
+      semesters: knownIds
         .filter(id => bySemester.has(id))
         .map(id => ({ semester_id: id, course_ids: bySemester.get(id)! })),
       moves: proposal.moves.map(m => ({ ...m, from: normalizeSide(m.from), to: normalizeSide(m.to) ?? m.to })),
@@ -231,6 +237,7 @@ export interface PlanValidationResult {
 export function validatePlanProposal(
   proposal: PlanProposal,
   ctx: PlanValidationContext,
+  opts?: { knownSemesterIds?: string[] },
 ): PlanValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];

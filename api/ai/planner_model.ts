@@ -199,8 +199,9 @@ export function planContextToBoard(ctx: PlanContextLike): any {
 /** Build a ConstraintModel from a plan_context (degraded universe; dev / fallback). */
 export function buildModelFromPlanContext(ctx: PlanContextLike, prefs: PlanPrefsLike = {}): ConstraintModel {
   const thp = ctx.total_hours_progress ?? {};
-  const priorHours = thp.manual_completed_degree_hours
-    ?? ((thp.known_completed_hours ?? 0) + (thp.currently_planned_hours ?? 0));
+  // currently_planned_hours excluded: board-placed courses are seeded into
+  // initialState by planContextToState — adding them here too would double-count.
+  const priorHours = thp.manual_completed_degree_hours ?? (thp.known_completed_hours ?? 0);
   return buildConstraintModel(planContextToBoard(ctx), {
     completedCourseIds: (ctx.personal_status?.completed ?? []).map(c => c.course_id),
     wantedCourseIds: prefs.wanted_course_ids,

@@ -28,7 +28,8 @@ import {
   bestLegalSemester,
   isExcluded,
 } from './planner_actions';
-import { validatePlanState, validateCandidate } from './planner_validate';
+import { validatePlanState, validateCandidate, buildValidationContext } from './planner_validate';
+import type { PlanValidationContext } from './plan_validation';
 import { projectFeasibility, estimateFinalScore } from './planner_lookahead';
 import { PlannerTracer, type PlannerAction, type PlannerPhase } from './planner_trace';
 import {
@@ -110,6 +111,8 @@ export class PlannerWorker {
   /** Committed positions of pinned courses (must not move). */
   private pinnedHome: Record<string, string> = {};
   private opts: Required<WorkerOptions>;
+  /** Cached validation context — pure function of (model, pinnedHome), built once. */
+  private readonly _validationCtx: PlanValidationContext;
 
   constructor(private model: ConstraintModel, initial?: PlanState, opts: WorkerOptions = {}) {
     this.state = initial ? cloneState(initial) : emptyState(model.knownSemesterIds);
@@ -118,6 +121,7 @@ export class PlannerWorker {
       const sem = this.semesterOfLocal(cid);
       if (sem) this.pinnedHome[cid] = sem;
     }
+    this._validationCtx = buildValidationContext(model, this.pinnedHome);
   }
 
   // ── public read API ─────────────────────────────────────────────────────────
@@ -191,7 +195,7 @@ export class PlannerWorker {
 
   /** Validate the current (or given) plan state against the deterministic validators. */
   validate(state: PlanState = this.state) {
-    return validatePlanState(state, this.model, this.pinnedHome);
+    return validatePlanState(state, this.model, this.pinnedHome, this._validationCtx);
   }
 
   /** All reasonable next actions given the current state (delegates to the shared enumerator). */
@@ -282,6 +286,9 @@ export class PlannerWorker {
     for (let i = 0; i < maxSteps; i++) {
       const a = this.step(by);
       if (!a || a.action === 'STOP') return;
+    }
+    if (!this.isGoalReached()) {
+      this.recordStop(`לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`);
     }
   }
 

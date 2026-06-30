@@ -86,7 +86,7 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   // 4. degree-hour fill — only while short; each elective at its best semester.
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
-      if (!consider(id) || p.is_mandatory) continue;
+      if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0) continue;
       const sem = bestLegalSemester(state, model, id);
       if (sem) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
     }

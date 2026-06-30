@@ -620,3 +620,63 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
     expect(ctx.maxHoursPerSemester).toBe(14);
   });
 });
+
+// ── Dynamic semester IDs ──────────────────────────────────────────────────────
+
+describe('normalizePlanProposal — knownSemesterIds option', () => {
+  it('keeps a non-KNOWN semester when it is in knownSemesterIds', () => {
+    const proposal: PlanProposal = {
+      semesters: [{ semester_id: 'year_2_semester_a', course_ids: ['EARLY'] }],
+      moves: [], warnings_he: [], rationale_he: '', requirements_status: [],
+    };
+    const { proposal: norm, dropped } = normalizePlanProposal(proposal, { knownSemesterIds: ['year_2_semester_a', 'year_3_semester_a'] });
+    expect(dropped).toHaveLength(0);
+    const sem = norm.semesters.find(s => s.semester_id === 'year_2_semester_a');
+    expect(sem).toBeDefined();
+    expect(sem?.course_ids).toContain('EARLY');
+  });
+
+  it('drops a course in a semester not in knownSemesterIds', () => {
+    const proposal: PlanProposal = {
+      semesters: [{ semester_id: 'year_2_semester_a', course_ids: ['EARLY'] }],
+      moves: [], warnings_he: [], rationale_he: '', requirements_status: [],
+    };
+    // default knownSemesterIds = KNOWN_SEMESTER_IDS (years 3-4 only)
+    const { dropped } = normalizePlanProposal(proposal);
+    expect(dropped.map(d => d.course_id)).toContain('EARLY');
+  });
+});
+
+describe('validatePlanState — dynamic knownSemesterIds via model', () => {
+  it('validates courses in year_2_semester_a when model includes that semester', () => {
+    // This test exercises the planner_validate path — import buildValidationContext
+    // and validatePlanState directly to confirm year_2 semester is not silently dropped.
+    const { validatePlanState, buildValidationContext } = require('../../api/ai/planner_validate');
+    const { emptyState } = require('../../api/ai/planner_types');
+
+    const knownSemesterIds = ['year_2_semester_a', 'year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
+    const profiles = new Map();
+    profiles.set('EARLY', {
+      course_id: 'EARLY', hours: 3, is_mandatory: true, prerequisites: [],
+      effective_allowed_semesters: ['year_2_semester_a'],
+    });
+
+    const model: any = {
+      profiles, knownSemesterIds,
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['EARLY'],
+      categories: [], degreeRequiredHours: 3, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+
+    const state = emptyState(knownSemesterIds);
+    state.semesters['year_2_semester_a'] = ['EARLY'];
+
+    // Without dynamic semester IDs, validatePlanState would not check year_2_semester_a courses.
+    // With the fix, the proposal built from model.knownSemesterIds includes year_2_semester_a.
+    const result = validatePlanState(state, model, {});
+    // EARLY is placed in its only legal semester — no errors expected
+    expect(result.errors).toHaveLength(0);
+  });
+});
