@@ -132,12 +132,56 @@ describe('PlannerWorker — goal-driven convergence', () => {
     expect(Math.max(...Object.values(w.getState().semesterLoads))).toBeLessThanOrEqual(26);
   });
 
+  it('places a hard-but-required course rather than stopping short (completion over difficulty, test 6)', () => {
+    // EASY alone (4h) cannot reach the 8h target; HARD (difficulty 5) is required
+    // to complete. High difficulty must never block a needed placement.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('EASY', profile('EASY', { hours: 4, difficulty_score: 1 }));
+    profiles.set('HARD', profile('HARD', { hours: 4, difficulty_score: 5 }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: [], categories: [],
+      degreeRequiredHours: 8, priorHours: 0, maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m);
+    w.run();
+    expect(w.isGoalReached()).toBe(true);
+    expect(placedCourseIds(w.getPlan())).toContain('HARD');
+  });
+
   it('never places an explicitly disallowed course', () => {
     const m = buildModel({ disallowedCourseIds: new Set(['FLU1']) });
     m.profiles.get('FLU1')!.excluded = true;
     const w = new PlannerWorker(m);
     w.run();
     expect(placedCourseIds(w.getPlan())).not.toContain('FLU1');
+  });
+});
+
+describe('PlannerWorker — repair (validation failure → repair → revalidate)', () => {
+  // Two electives crammed into one semester (28h > hardCap 26); both movable.
+  function overloadedModel(): ConstraintModel {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('X', profile('X', { hours: 14 }));
+    profiles.set('Y', profile('Y', { hours: 14 }));
+    return {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: [], categories: [],
+      degreeRequiredHours: 28, priorHours: 0, maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+  }
+
+  it('repairs an over-cap semester (test 3 / test 9) and records a REPAIR-phase action', () => {
+    const start: PlanState = emptyState(SEMS);
+    start.semesters['year_3_semester_a'] = ['X', 'Y']; // 28h > 26
+    const w = new PlannerWorker(overloadedModel(), start);
+    expect(w.validate().valid).toBe(false); // starts invalid (overload)
+    const report = w.repair();
+    expect(report.valid).toBe(true); // overload resolved
+    expect(Math.max(...Object.values(w.getState().semesterLoads))).toBeLessThanOrEqual(26);
+    expect(w.getTrace().some(a => a.phase === 'REPAIR')).toBe(true);
   });
 });
 

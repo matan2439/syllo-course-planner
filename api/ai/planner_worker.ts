@@ -28,7 +28,7 @@ import {
   bestLegalSemester,
   isExcluded,
 } from './planner_actions';
-import { validatePlanState } from './planner_validate';
+import { validatePlanState, validateCandidate } from './planner_validate';
 import { projectFeasibility, estimateFinalScore } from './planner_lookahead';
 import { PlannerTracer, type PlannerAction, type PlannerPhase } from './planner_trace';
 import {
@@ -166,7 +166,11 @@ export class PlannerWorker {
   }
 
   private phase(): PlannerPhase {
-    return this.isGoalReached() ? 'DONE' : 'CONSTRUCT_PLAN';
+    if (this.isGoalReached()) return 'DONE';
+    const g = this.goalStatus();
+    // An over-cap semester is a legality breach — the loop is repairing it.
+    if (Object.values(g.semesterLoads).some(h => h > this.model.hardCap)) return 'REPAIR';
+    return 'CONSTRUCT_PLAN';
   }
 
   /** Validate the current (or given) plan state against the deterministic validators. */
@@ -265,6 +269,23 @@ export class PlannerWorker {
     }
   }
 
+  /**
+   * Repair the current plan: drive the Observe→Reason→Act→Validate loop until no
+   * legal improvement remains. The same loop that builds a plan also repairs one
+   * — over-cap semesters lower the legality goal, so balancing moves (and missing
+   * requirement fills) are chosen until the plan is legal and complete. Returns
+   * the resulting candidate report.
+   */
+  repair(maxSteps = 500): import('./planner_validate').CandidateReport {
+    this.run(maxSteps, 'greedy');
+    return validateCandidate(this.state, this.model, this.pinnedHome);
+  }
+
+  /** Full candidate gate for the current plan (legality + completeness). */
+  validateCandidate(): import('./planner_validate').CandidateReport {
+    return validateCandidate(this.state, this.model, this.pinnedHome);
+  }
+
   // ── internals ─────────────────────────────────────────────────────────────
 
   private isExcluded(id: string): boolean {
@@ -301,6 +322,10 @@ export class PlannerWorker {
     const before = this.state;
     const beforeTotal = computeDegreeHours(before, this.model);
     const errorsBefore = this.validate(before).errors;
+    // Phase reflects the state in which the action was DECIDED (e.g. a balancing
+    // move decided while a semester is over-cap is a REPAIR action), so capture
+    // it before the mutation commits.
+    const phaseBefore = this.phase();
     const next = applyMutation(before, mut);
 
     const ids = this.mutationIds(mut);
@@ -309,7 +334,7 @@ export class PlannerWorker {
       const action = this.tracer.record({
         action: actionType, ...ids, reason: `${reason} — לא ניתן לביצוע`,
         beforeTotal, afterTotal: beforeTotal, validationAfterAction: 'fail',
-        phase: this.phase(), by, constraintsChecked: [], ...meta,
+        phase: phaseBefore, by, constraintsChecked: [], ...meta,
       });
       return { accepted: false, errorsIntroduced: [], action };
     }
@@ -323,7 +348,7 @@ export class PlannerWorker {
         action: actionType === 'ADD_COURSE' ? 'REJECT_COURSE' : actionType,
         ...ids, reason: introduced[0],
         beforeTotal, afterTotal, validationAfterAction: 'fail',
-        phase: this.phase(), by, constraintsChecked: CONSTRAINTS_CHECKED, ...meta,
+        phase: phaseBefore, by, constraintsChecked: CONSTRAINTS_CHECKED, ...meta,
       });
       return { accepted: false, errorsIntroduced: introduced, action };
     }
@@ -332,7 +357,7 @@ export class PlannerWorker {
     const action = this.tracer.record({
       action: actionType, ...ids, reason,
       beforeTotal, afterTotal, validationAfterAction: 'pass',
-      phase: this.phase(), by, constraintsChecked: CONSTRAINTS_CHECKED, ...meta,
+      phase: phaseBefore, by, constraintsChecked: CONSTRAINTS_CHECKED, ...meta,
     });
     return { accepted: true, errorsIntroduced: [], action };
   }

@@ -9,7 +9,8 @@
 
 import { validatePlanProposal, type PlanValidationContext, type PlanProposal } from './plan_validation';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import type { ConstraintModel, PlanState } from './planner_types';
+import { type ConstraintModel, type PlanState, placedCourseIds } from './planner_types';
+import { degreeHours as computeDegreeHours } from './planner_goals';
 
 export function buildValidationContext(
   model: ConstraintModel,
@@ -59,4 +60,75 @@ export function validatePlanState(
   };
   const res = validatePlanProposal(proposal, buildValidationContext(model, pinnedHome));
   return { valid: res.errors.length === 0, errors: res.errors, warnings: res.warnings };
+}
+
+/**
+ * The full candidate gate every plan must pass before it can be shown as final.
+ * Combines hard legality (validatePlanState) with degree-requirement
+ * completeness (185-hours / mandatory / categories) and the disallowed-course
+ * rule. `valid` requires BOTH legality and completeness — no invalid or
+ * incomplete plan is ever valid (so the planner never stops at 183/185).
+ */
+export interface CandidateReport {
+  valid: boolean;
+  /** Hard legality: no validator errors (offering, prereqs, overload, duplicates, pinned). */
+  legal: boolean;
+  /** Degree requirements met: hours target + all mandatory placed + all categories satisfied. */
+  complete: boolean;
+  errors: string[];
+  warnings: string[];
+  constraintsChecked: string[];
+  degreeHours: number;
+  degreeMet: boolean;
+  missingMandatory: string[];
+  unsatisfiedCategories: string[];
+  disallowedPlaced: string[];
+  overCapSemesters: string[];
+}
+
+export function validateCandidate(
+  state: PlanState,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string> = {},
+): CandidateReport {
+  const legality = validatePlanState(state, model, pinnedHome);
+  const placed = new Set(placedCourseIds(state));
+
+  const degreeHours = computeDegreeHours(state, model);
+  const degreeMet = degreeHours >= model.degreeRequiredHours;
+
+  const missingMandatory = model.requiredMandatoryCourseIds.filter(
+    id => !placed.has(id) && !model.completedCourseIds.has(id),
+  );
+  const unsatisfiedCategories = model.categories
+    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
+    .map(cat => cat.id);
+  const disallowedPlaced = [...placed].filter(
+    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
+  );
+  const overCapSemesters = model.knownSemesterIds.filter(
+    sem => (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0) > model.hardCap,
+  );
+
+  const errors = [...legality.errors];
+  if (!degreeMet) {
+    errors.push(`התוכנית אינה משלימה את שעות התואר: ${degreeHours}/${model.degreeRequiredHours} ש"ש.`);
+  }
+  for (const id of missingMandatory) errors.push(`קורס חובה חסר: ${model.profiles.get(id)?.name_he ?? id}.`);
+  for (const cid of unsatisfiedCategories) {
+    const cat = model.categories.find(c => c.id === cid);
+    errors.push(`דרישת קטגוריה לא מולאה: ${cat?.name ?? cid}.`);
+  }
+  for (const id of disallowedPlaced) errors.push(`קורס לא-זמין שובץ בתוכנית: ${model.profiles.get(id)?.name_he ?? id}.`);
+
+  const legal = legality.valid;
+  const complete = degreeMet && missingMandatory.length === 0 && unsatisfiedCategories.length === 0;
+  const valid = legal && complete && disallowedPlaced.length === 0;
+
+  return {
+    valid, legal, complete,
+    errors, warnings: legality.warnings,
+    constraintsChecked: ['degree_hours', 'mandatory', 'category', 'prerequisites', 'semester_load', 'offering', 'disallowed', 'duplicates'],
+    degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, disallowedPlaced, overCapSemesters,
+  };
 }
