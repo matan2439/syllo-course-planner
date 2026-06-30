@@ -21,6 +21,7 @@ import {
   compareScore,
   applyMutation,
   degreeHours as computeDegreeHours,
+  GOAL_STACK,
 } from './planner_goals';
 import {
   enumerateActions,
@@ -201,6 +202,17 @@ export class PlannerWorker {
   /** All reasonable next actions given the current state (delegates to the shared enumerator). */
   enumerateActions(state: PlanState = this.state): PlannerMutation[] {
     return enumerateActions(state, this.model);
+  }
+
+  /** Next actions ranked by resulting plan score descending, capped at `limit`. */
+  rankActions(limit = 20): Array<PlannerMutation & { score: number[] }> {
+    return this.enumerateActions()
+      .map(a => {
+        const next = applyMutation(this.state, a);
+        return { ...a, score: next ? scorePlan(next, this.model) : GOAL_STACK.map(() => -Infinity) };
+      })
+      .sort((a, b) => compareScore(b.score, a.score))
+      .slice(0, limit);
   }
 
   // ── deterministic tools ───────────────────────────────────────────────────

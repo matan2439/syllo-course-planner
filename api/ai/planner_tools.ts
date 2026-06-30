@@ -44,7 +44,7 @@ export function buildPlannerTools(worker: PlannerWorker) {
       description: 'קבל את הפעולות החוקיות האפשריות הבאות (קורסים מועמדים לשיבוץ/הזזה), מדורגות לפי תרומה למטרות.',
       parameters: z.object({}),
       execute: async () => ({
-        actions: worker.enumerateActions().slice(0, 20),
+        actions: worker.rankActions(),
         ...snapshot(worker),
       }),
     }),
