@@ -32,6 +32,7 @@ export const GOAL_STACK = [
   'legality',
   'balance',
   'preferences',
+  'unwanted_avoidance',
   'difficulty_comfort',
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
@@ -106,12 +107,15 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const placed = new Set(placedCourseIds(state));
   const g5 = [...model.wantedCourseIds].filter(id => placed.has(id)).length;
 
+  // 5b. unwanted avoidance — penalise each unwanted course placed.
+  const g5b = -[...placed].filter(id => model.profiles.get(id)?.is_unwanted).length;
+
   // 6. difficulty / comfort — lower total difficulty preferred (tiebreaker).
   let totalDifficulty = 0;
   for (const cid of placed) totalDifficulty += model.profiles.get(cid)?.difficulty_score ?? 0;
   const g6 = -totalDifficulty;
 
-  return [g1, g2a, g2b, g3, g4, g5, g6];
+  return [g1, g2a, g2b, g3, g4, g5, g5b, g6];
 }
 
 /** Compare two score vectors lexicographically: >0 if a is better than b. */

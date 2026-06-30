@@ -80,9 +80,9 @@ function withCourses(sem: string, ids: string[]): PlanState {
 }
 
 describe('GOAL_STACK', () => {
-  it('lists the seven prioritized goals, completion first', () => {
+  it('lists the eight prioritized goals, completion first', () => {
     expect(GOAL_STACK[0]).toBe('degree_completion');
-    expect(GOAL_STACK).toHaveLength(7);
+    expect(GOAL_STACK).toHaveLength(8);
     expect(GOAL_STACK[GOAL_STACK.length - 1]).toBe('difficulty_comfort');
   });
 });
@@ -158,6 +158,21 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     withCategory.semesters['year_3_semester_a'] = ['CAT'];
 
     expect(compareScore(scorePlan(withMandatory, m), scorePlan(withCategory, m))).toBeGreaterThan(0);
+  });
+});
+
+describe('scorePlan — g5b unwanted_avoidance penalty', () => {
+  it('a plan with an unwanted placed course scores worse than one with a neutral course', () => {
+    // Both plans reach degree target (4h), g1 tied. No mandatory/categories, so g2a=g2b=1.
+    // Neither is wanted, so g5=0. BAD is unwanted → g5b = -1. GOOD is neutral → g5b = 0.
+    const m = model({ degreeRequiredHours: 4, categories: [], requiredMandatoryCourseIds: [] });
+    m.profiles.set('BAD', profile('BAD', { is_unwanted: true, hours: 4 }));
+    m.profiles.set('GOOD', profile('GOOD', { is_unwanted: false, hours: 4 }));
+
+    const withUnwanted = withCourses('year_3_semester_a', ['BAD']);
+    const withNeutral = withCourses('year_3_semester_a', ['GOOD']);
+
+    expect(compareScore(scorePlan(withNeutral, m), scorePlan(withUnwanted, m))).toBeGreaterThan(0);
   });
 });
 

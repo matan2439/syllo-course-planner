@@ -89,6 +89,41 @@ describe('enumerateActions — Group 4 degree-fill null-hours guard', () => {
   });
 });
 
+describe('enumerateActions — is_unwanted excluded from degree-fill', () => {
+  it('does not include is_unwanted courses in degree-fill ADD_COURSE actions', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('BAD', profile('BAD', { is_unwanted: true, hours: 4 }));
+    profiles.set('GOOD', profile('GOOD', { is_unwanted: false, hours: 4 }));
+
+    const m = baseModel({ profiles, degreeRequiredHours: 8, priorHours: 0 });
+    const state = emptyState(SEMS);
+
+    const actions = enumerateActions(state, m);
+    const addIds = actions.filter(a => a.type === 'ADD_COURSE').map(a => (a as any).courseId);
+
+    expect(addIds).not.toContain('BAD');
+    expect(addIds).toContain('GOOD');
+  });
+
+  it('still includes is_unwanted course as a category candidate when required', () => {
+    // If BAD is the only candidate for a required category, it must still be enumerable.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('BAD', profile('BAD', { is_unwanted: true, hours: 4, category_id: 'cat' }));
+
+    const m = baseModel({
+      profiles,
+      categories: [{ id: 'cat', name: 'cat', required: 1, candidateIds: ['BAD'] }],
+      degreeRequiredHours: 4,
+    });
+    const state = emptyState(SEMS);
+
+    const actions = enumerateActions(state, m);
+    const addIds = actions.filter(a => a.type === 'ADD_COURSE').map(a => (a as any).courseId);
+
+    expect(addIds).toContain('BAD');
+  });
+});
+
 describe('enumerateActions — REPLACE_COURSE', () => {
   it('includes REPLACE_COURSE mutation when a wanted course could replace a placed unwanted one', () => {
     // 'LOW' is placed (not wanted). 'HIGH' is available and wanted.
