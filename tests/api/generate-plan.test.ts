@@ -1,4 +1,117 @@
-import { preferencesSchema } from '../../api/ai/generate-plan';
+import handler, { preferencesSchema } from '../../api/ai/generate-plan';
+import { randomUUID } from 'crypto';
+import { KNOWN_SEMESTER_IDS } from '../../api/ai/plan_validation';
+
+// ── Backward-compatibility: response contract (run via dev bypass — no DB/model) ──
+
+const PLAN_CONTEXT = {
+  program_name: 'בדיקה',
+  semesters: [
+    { id: 'year_3_semester_a', label: "שנה ג׳ א׳", total_hours: 4, courses: [
+      { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+    ] },
+    { id: 'year_3_semester_b', label: "שנה ג׳ ב׳", total_hours: 0, courses: [] },
+    { id: 'year_4_semester_a', label: "שנה ד׳ א׳", total_hours: 0, courses: [] },
+    { id: 'year_4_semester_b', label: "שנה ד׳ ב׳", total_hours: 0, courses: [] },
+  ],
+  category_requirements: [
+    { name: 'זורמים', category_id: 'fluids', required: 1, placed: 0, candidates: [
+      { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+    ] },
+  ],
+  total_hours_progress: { known_completed_hours: 177, degree_required_hours: 185 },
+  personal_status: { completed: [] },
+  mandatory_unplaced: [],
+};
+
+function makeReq(body: any, method = 'POST') {
+  return { method, body } as any;
+}
+function makeRes() {
+  const res: any = {
+    statusCode: 0,
+    setHeader: jest.fn().mockReturnThis(),
+    status: jest.fn(function (this: any, c: number) { this.statusCode = c; return this; }),
+    json: jest.fn(function (this: any, b: any) { this._body = b; return this; }),
+    write: jest.fn(),
+    end: jest.fn(),
+  };
+  return res;
+}
+
+const REQ_BODY = {
+  program_id: 'test_program_2027',
+  plan_context: PLAN_CONTEXT,
+  preferences: {},
+  session_token: randomUUID(),
+};
+
+describe('generate-plan response contract (backward compatibility)', () => {
+  beforeEach(() => {
+    process.env.AI_DEV_MODE = 'true';
+    process.env.AI_DEV_BYPASS_QUOTA = 'true';
+  });
+  afterEach(() => {
+    delete process.env.AI_DEV_MODE;
+    delete process.env.AI_DEV_BYPASS_QUOTA;
+  });
+
+  it('returns the exact contract keys with correct types (+ additive trace)', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    expect(res.statusCode).toBe(200);
+    const b = res._body;
+    expect(Array.isArray(b.semesters)).toBe(true);
+    expect(Array.isArray(b.moves)).toBe(true);
+    expect(Array.isArray(b.warnings_he)).toBe(true);
+    expect(typeof b.rationale_he).toBe('string');
+    expect(Array.isArray(b.requirements_status)).toBe(true);
+    expect(Array.isArray(b.errors)).toBe(true);
+    expect(typeof b.blocked).toBe('boolean');
+    expect(Array.isArray(b.trace)).toBe(true); // additive
+  });
+
+  it('every semester_id is canonical and no course is placed twice', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    const b = res._body;
+    const seen = new Set<string>();
+    for (const sem of b.semesters) {
+      expect(KNOWN_SEMESTER_IDS).toContain(sem.semester_id);
+      for (const cid of sem.course_ids) {
+        expect(seen.has(cid)).toBe(false);
+        seen.add(cid);
+      }
+    }
+  });
+
+  it('requirements_status rows have the {name,required,placed,satisfied} shape', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    for (const row of res._body.requirements_status) {
+      expect(typeof row.name).toBe('string');
+      expect(typeof row.required).toBe('number');
+      expect(typeof row.placed).toBe('number');
+      expect(typeof row.satisfied).toBe('boolean');
+    }
+  });
+
+  it('blocked === (errors.length > 0)', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    const b = res._body;
+    expect(b.blocked).toBe(b.errors.length > 0);
+  });
+
+  it('the response minus trace is still a valid current-shape object (client can ignore trace)', async () => {
+    const res = makeRes();
+    await handler(makeReq(REQ_BODY), res);
+    const { trace, ...legacy } = res._body;
+    expect(Object.keys(legacy).sort()).toEqual(
+      ['blocked', 'errors', 'moves', 'rationale_he', 'requirements_status', 'semesters', 'warnings_he'].sort(),
+    );
+  });
+});
 
 describe('generate-plan preferencesSchema', () => {
   it('accepts a valid action_type', () => {
