@@ -4405,6 +4405,13 @@ function renderAiTab() {
       <div id="ai-build-version" style="font-size:10px;color:#aaa;text-align:right;padding:2px 8px 4px;user-select:text" title="גרסת הפלנר — לשימוש לאימות">Build: ${PLANNER_BUILD}</div>
     </div>`;
 
+  // Step 9 — read-only planner trace panel, appended only when the debug flag is
+  // on. Additive; does not affect the apply/reject draft flow above.
+  if (isPlannerDebugEnabled()) {
+    const __tracePanel = renderPlannerTracePanel();
+    if (__tracePanel) panel.insertAdjacentHTML('beforeend', __tracePanel);
+  }
+
   // PART E — one-click repair buttons (diagnostics-driven, populate proposalDraft).
   panel.querySelectorAll('.repair-btn[data-repair]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -13236,6 +13243,65 @@ async function fetchBoardJSON(prog) {
 let _aiPlanLastPreferences = null;
 let _aiPlanLastProposal    = null;
 let _aiPlanLastAnalysis    = null;
+
+// ── Step 9: planner trace debug panel (READ-ONLY, debug-flag-gated) ───────────
+// Captures the additive `trace` from the /api/ai/generate-plan response and
+// renders it in a debug panel. Never touches the apply/reject draft flow.
+let _aiPlanLastTrace = [];
+
+function setPlannerTrace(trace) { _aiPlanLastTrace = Array.isArray(trace) ? trace : []; }
+
+function isPlannerDebugEnabled() {
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem('tau_planner_debug') === '1') return true; } catch (_) {}
+  try { if (typeof location !== 'undefined' && /[?&]debug=1\b/.test(location.search || '')) return true; } catch (_) {}
+  return false;
+}
+
+function _escTrace(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function buildPlannerTraceJson() {
+  let prog = null;
+  try { prog = (typeof localStorage !== 'undefined' && localStorage.getItem('tau_program')) || null; } catch (_) {}
+  return JSON.stringify({
+    program: prog,
+    generated_at: new Date().toISOString(),
+    actions: Array.isArray(_aiPlanLastTrace) ? _aiPlanLastTrace : [],
+  }, null, 2);
+}
+
+function downloadPlannerTrace() {
+  try {
+    const blob = new Blob([buildPlannerTraceJson()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'planner-trace.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 0);
+  } catch (_) {}
+}
+
+function renderPlannerTracePanel() {
+  if (!isPlannerDebugEnabled()) return '';
+  const tr = Array.isArray(_aiPlanLastTrace) ? _aiPlanLastTrace : [];
+  if (!tr.length) return '';
+  const rows = tr.map(a => {
+    const name = _escTrace(a.courseName || a.courseId || '');
+    const sem  = a.semester ? ` → ${_escTrace(a.semester)}` : '';
+    const ok   = a.validationAfterAction === 'pass' ? '✓' : '✗';
+    return `<div class="planner-trace-row" data-action="${_escTrace(a.action)}" style="font-size:11px;border-bottom:1px solid #eee;padding:3px 0">`
+      + `<span>#${_escTrace(a.step)}</span> <b>${_escTrace(a.action)}</b> ${name}${sem} `
+      + `<span style="color:#888">(${_escTrace(a.beforeTotal)}→${_escTrace(a.afterTotal)} ש"ש)</span> <span>${ok}</span>`
+      + `<div style="color:#666">${_escTrace(a.reason)}</div></div>`;
+  }).join('');
+  return `<details class="planner-trace-panel" data-planner-trace style="margin:8px;padding:6px;border:1px dashed #bbb;border-radius:6px" open>`
+    + `<summary style="cursor:pointer;font-weight:600">מסלול התכנון (debug) — ${tr.length} פעולות</summary>`
+    + `<button type="button" onclick="downloadPlannerTrace()" style="margin:6px 0">הורד trace JSON</button>`
+    + `<div class="planner-trace-list">${rows}</div></details>`;
+}
+
 let _aiPlanLastCtx         = null;
 let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הקורסים" toggle
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
@@ -17308,6 +17374,8 @@ async function requestPlanProposal(prefs, actionType) {
       if (genBtn) genBtn.disabled = false;
       throw new Error(errMsg);
     }
+    // Step 9 — capture the additive planner trace (read-only, for the debug panel).
+    setPlannerTrace(data.trace);
 
     // Issue 3 — capture server-side blocked flag + blocking error messages so
     // the chat/preview can present this as an invalid result rather than success.
