@@ -70,6 +70,12 @@ export interface CourseProfile {
   is_wanted: boolean;
   is_unwanted: boolean;
 
+  // ── annual course deduplication ───────────────────────────────────────────
+  /** Shared ID for annual course pairs (e.g. semester A + semester B of the same course). */
+  root_course_id?: string;
+  /** When true, only one of the paired annual courses counts toward degree hours. */
+  count_hours_once?: boolean;
+
   // ── exclusion / disallowed status (never dropped — flagged) ───────────────
   excluded: boolean;
   exclusion_reason: string | null;
@@ -212,6 +218,9 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
 
     is_wanted: wanted.has(id),
     is_unwanted: isUnwanted,
+
+    root_course_id: typeof raw.root_course_id === 'string' ? raw.root_course_id : undefined,
+    count_hours_once: raw.count_hours_once === true ? true : undefined,
 
     excluded,
     exclusion_reason,

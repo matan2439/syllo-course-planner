@@ -37,11 +37,18 @@ export const GOAL_STACK = [
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
 
-/** Total weekly hours placed (counting each course once). */
+/** Total weekly hours placed, deduplicating annual course pairs by root_course_id. */
 export function placedHours(state: PlanState, model: ConstraintModel): number {
+  const seenRoots = new Set<string>();
   let sum = 0;
   for (const cid of placedCourseIds(state)) {
-    sum += model.profiles.get(cid)?.hours ?? 0;
+    const p = model.profiles.get(cid);
+    if (!p) continue;
+    if (p.count_hours_once && p.root_course_id) {
+      if (seenRoots.has(p.root_course_id)) continue;
+      seenRoots.add(p.root_course_id);
+    }
+    sum += p.hours ?? 0;
   }
   return sum;
 }

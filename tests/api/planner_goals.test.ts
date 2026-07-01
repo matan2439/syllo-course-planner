@@ -176,6 +176,36 @@ describe('scorePlan — g5b unwanted_avoidance penalty', () => {
   });
 });
 
+describe('placedHours — annual course deduplication', () => {
+  it('two courses sharing root_course_id with count_hours_once count as one in g1', () => {
+    // Annual courses: course_A (semester A) and course_B (semester B) are the same annual
+    // course across two semesters. Both placed → degreeHours should be 3, not 6.
+    const m = model({ degreeRequiredHours: 40, categories: [], priorHours: 0 });
+    m.profiles.set('ANN_A', profile('ANN_A', { hours: 3, root_course_id: 'ANN', count_hours_once: true }));
+    m.profiles.set('ANN_B', profile('ANN_B', { hours: 3, root_course_id: 'ANN', count_hours_once: true }));
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANN_A'];
+    state.semesters['year_3_semester_b'] = ['ANN_B'];
+
+    const score = scorePlan(state, m);
+    // g1 = min(degreeHours, degreeRequiredHours). degreeHours must be 3 (deduplicated), not 6.
+    expect(score[0]).toBe(3);
+  });
+
+  it('courses without root_course_id are not deduplicated (normal behaviour)', () => {
+    const m = model({ degreeRequiredHours: 40, categories: [], priorHours: 0 });
+    m.profiles.set('C1', profile('C1', { hours: 3 }));
+    m.profiles.set('C2', profile('C2', { hours: 3 }));
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['C1', 'C2'];
+
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(6); // 3 + 3, no dedup
+  });
+});
+
 describe('scorePlan — g4 empty semester penalty', () => {
   it('a board with one non-empty semester is not penalized vs two equally-loaded semesters', () => {
     // Use a 2-semester model so empty-semester effect is unambiguous.
