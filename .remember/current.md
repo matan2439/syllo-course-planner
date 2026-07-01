@@ -48,16 +48,22 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
 
-Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, an actual clarification UX layer that calls `applyClarificationAnswers`, or first production wiring decision).
+**Clarification Loop Harness shipped** (`c3cf5ed`) — the loop that proves the clarification contract's two existing halves actually compose across repeated runs:
+- New `api/ai/academic_clarification_loop.ts`: `clarifyRequest(req)` runs `DeterministicClarificationCapability` directly off an `AcademicDecisionRequest` (mirrors `AcademicDecisionAgent.run()`'s own req→`ClarificationPlanningContext` mapping, but standalone — no `ProgramProvider`/board/`PlanningCapability` needed, so the pure question/answer loop is testable without constructing a full agent). `applyClarificationLoopAnswers(req, answers)` validates each answer's value shape (string list / number / non-empty text) against its stable question id *before* delegating to `applyClarificationAnswers` — an invalid answer (e.g. a string where `max_weekly_hours` expects a number) is dropped from the merge and returned in `invalidAnswers`, so it never silently makes the request look "complete" (this was an explicit gap: `applyClarificationAnswers` itself does raw casts with no validation). `runClarificationLoopStep(agent, req)` is a thin wrapper (duck-typed `ClarificationLoopAgent` interface — works with a fake, a factory-created, or the real `AcademicDecisionAgent`) that runs one pass and extracts the loop-relevant fields.
+- Proven end-to-end: first request (missing everything) → 5 stable questions → apply all/partial/invalid answers → re-run → answered questions disappear in the same deterministic order, critical-field blocking unblocks once `completed_courses`/`excluded_courses` are answered, non-blocking mode keeps delegating to planning throughout. 17 new tests, all written test-first (RED confirmed — module didn't exist — before implementation).
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into `AcademicDecisionAgent`, the factory, or any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, an actual clarification UX layer that calls the new loop harness, or first production wiring decision).
 
 ## Test status
-API tests: 686/686 (was 676; net +10 — new `academic_clarification_answers.test.ts`, all written test-first with a real RED per test). `tsc --noEmit`: clean.
+API tests: 703/703 (was 686; net +17 — new `academic_clarification_loop.test.ts`, all written test-first with a real RED per test). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
 
 ## Next step
-Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; next phase is unscoped — ready whenever approved. Candidates: real Simulation/Decision/Persistence implementations, an actual clarification UX consuming `applyClarificationAnswers`, or first production wiring decision.
+Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; the clarification contract is now closed-loop and testable. Next phase is unscoped — ready whenever approved. Candidates: real Simulation/Decision/Persistence implementations, an actual clarification UX (CLI/chat/form) consuming the loop harness, or first production wiring decision.
 
 ## Boundaries
 No Alembic/deploy/merge without approval. Never touch Supabase directly (incl. read-only). Never commit `.claude/settings.local.json` or `.claude/skills/`.
