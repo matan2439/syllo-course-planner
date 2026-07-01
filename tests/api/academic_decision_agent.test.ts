@@ -104,8 +104,17 @@ class FakeProgramProvider implements ProgramProvider {
   buildModel = jest.fn((_boardJson: any, _opts: any = {}) => this.model);
 }
 
-function fakePlanning(result: AgentResult = PLANNED_RESULT): PlanningCapability {
-  return { run: jest.fn(async () => result) };
+/**
+ * Returns a PlanningCapability-factory (the shape AcademicDecisionDeps.planning
+ * now requires) with its inner `run` jest.fn exposed as `.run`, so existing
+ * call-order/call-count assertions (`planning.run`) keep working unchanged
+ * while `planning` itself is directly usable as `deps.planning`.
+ */
+function fakePlanning(result: AgentResult = PLANNED_RESULT): ((req: AcademicDecisionRequest) => PlanningCapability) & { run: jest.Mock } {
+  const run = jest.fn(async () => result);
+  const factory = ((_req: AcademicDecisionRequest) => ({ run })) as unknown as ((req: AcademicDecisionRequest) => PlanningCapability) & { run: jest.Mock };
+  factory.run = run;
+  return factory;
 }
 
 const REQ: AcademicDecisionRequest = { programId: 'whatever_2027' };

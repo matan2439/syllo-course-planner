@@ -29,7 +29,7 @@ import type { PlanningCapability, AgentResult } from '../../api/ai/planner_agent
 import { buildConstraintModel } from '../../api/ai/planner_model';
 import { NoOpClarificationCapability } from '../../api/ai/academic_decision_types';
 import type { ClarificationCapability } from '../../api/ai/academic_decision_types';
-import { AcademicDecisionAgent } from '../../api/ai/academic_decision_agent';
+import { AcademicDecisionAgent, type AcademicDecisionRequest } from '../../api/ai/academic_decision_agent';
 import {
   createDefaultAcademicDecisionAgent,
   type DefaultAcademicDecisionAgentOptions,
@@ -122,8 +122,12 @@ class FakeProgramProvider implements ProgramProvider {
   );
 }
 
-function fakePlanning(result: AgentResult): PlanningCapability {
-  return { run: jest.fn(async () => result) };
+/** See academic_decision_agent.test.ts's fakePlanning for why this shape. */
+function fakePlanning(result: AgentResult): ((req: AcademicDecisionRequest) => PlanningCapability) & { run: jest.Mock } {
+  const run = jest.fn(async () => result);
+  const factory = ((_req: AcademicDecisionRequest) => ({ run })) as unknown as ((req: AcademicDecisionRequest) => PlanningCapability) & { run: jest.Mock };
+  factory.run = run;
+  return factory;
 }
 
 const FIXED_RESULT: AgentResult = {
@@ -136,15 +140,12 @@ const FIXED_RESULT: AgentResult = {
 
 describe('createDefaultAcademicDecisionAgent', () => {
   test('returns an AcademicDecisionAgent, with zero I/O at construction time', () => {
-    const agent = createDefaultAcademicDecisionAgent({
-      orchestrationRequest: { programId: 'whatever_2027' },
-    });
+    const agent = createDefaultAcademicDecisionAgent();
     expect(agent).toBeInstanceOf(AcademicDecisionAgent);
   });
 
   test('wires no-op Clarification/Simulation/Decision/Persistence defaults — a gappy plan resolves unchanged', async () => {
     const opts: DefaultAcademicDecisionAgentOptions = {
-      orchestrationRequest: { programId: 'whatever_2027' },
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
         planning: fakePlanning(FIXED_RESULT),
@@ -163,7 +164,6 @@ describe('createDefaultAcademicDecisionAgent', () => {
     const clarify = jest.fn(async () => { /* no-op */ });
     const clarification: ClarificationCapability = { clarify };
     const opts: DefaultAcademicDecisionAgentOptions = {
-      orchestrationRequest: { programId: 'whatever_2027' },
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
         planning: fakePlanning(FIXED_RESULT),
@@ -177,15 +177,14 @@ describe('createDefaultAcademicDecisionAgent', () => {
   });
 
   test('default clarification is a fresh NoOpClarificationCapability, not shared mutable state', () => {
-    const agentA = createDefaultAcademicDecisionAgent({ orchestrationRequest: { programId: 'a_2027' } });
-    const agentB = createDefaultAcademicDecisionAgent({ orchestrationRequest: { programId: 'b_2027' } });
+    const agentA = createDefaultAcademicDecisionAgent();
+    const agentB = createDefaultAcademicDecisionAgent();
     expect(agentA).not.toBe(agentB);
   });
 
   test('default planning wiring delegates to the real PlannerAgent/BeamSearchStrategy via runPlanningOrchestration', async () => {
     const provider = new FakeProgramProvider({ realBoardBuild: true });
     const opts: DefaultAcademicDecisionAgentOptions = {
-      orchestrationRequest: { programId: 'whatever_2027' },
       overrides: { programProvider: provider }, // planning left at its real default
     };
     const agent = createDefaultAcademicDecisionAgent(opts);
@@ -199,7 +198,6 @@ describe('createDefaultAcademicDecisionAgent', () => {
   test('wires a real LlmExplainer as ExplanationCapability when a languageModel is supplied', async () => {
     const provider = new FakeProgramProvider({ realBoardBuild: true });
     const opts: DefaultAcademicDecisionAgentOptions = {
-      orchestrationRequest: { programId: 'whatever_2027' },
       overrides: { programProvider: provider },
       languageModel: {} as LanguageModel, // LlmExplainer's Phase-5 explain() never calls the model
     };
@@ -211,8 +209,56 @@ describe('createDefaultAcademicDecisionAgent', () => {
   });
 });
 
-describe('AcademicDecisionAgent — unchanged by this epic', () => {
-  test('still constructible directly with hand-built deps (no factory required)', () => {
+describe('programId drift between Observe and Plan — single source of truth', () => {
+  // DefaultAcademicDecisionAgentOptions has no programId field at all anymore
+  // (see file header) — Observe and Plan can only ever see req.programId from
+  // agent.run(req). This is the regression test for the seam the previous
+  // epic documented: it FAILED under the old orchestrationRequest.programId
+  // design (Plan silently kept using the factory-bound id).
+  test('succeeds and uses the SAME programId for Observe and Plan when called once', async () => {
+    const provider = new FakeProgramProvider({ realBoardBuild: true });
+    const agent = createDefaultAcademicDecisionAgent({ overrides: { programProvider: provider } });
+
+    const result = await agent.run({ programId: 'whatever_2027' });
+
+    const programIdsSeen = provider.loadBoard.mock.calls.map(([programId]) => programId);
+    expect(programIdsSeen).toEqual(['whatever_2027', 'whatever_2027']);
+    expect(result.agentResult.finalState.semesters['y1s1']).toContain('MAND');
+  });
+
+  test('re-derives Plan from the live programId on every run() call — no staleness across repeated calls', async () => {
+    const provider = new FakeProgramProvider({ realBoardBuild: true });
+    const agent = createDefaultAcademicDecisionAgent({ overrides: { programProvider: provider } });
+
+    await agent.run({ programId: 'first_2027' });
+    await agent.run({ programId: 'second_2027' });
+
+    // 2 calls x (Observe + Plan) = 4 loadBoard calls; each pair must match.
+    const programIdsSeen = provider.loadBoard.mock.calls.map(([programId]) => programId);
+    expect(programIdsSeen).toEqual(['first_2027', 'first_2027', 'second_2027', 'second_2027']);
+  });
+
+  test('a mismatch failure point is moot by construction: the Plan-stage request has no independent programId to diverge before planning starts', async () => {
+    // Overriding `planning` entirely bypasses this guarantee by design — a
+    // fully custom PlanningCapability factory owns its own programId
+    // handling. The default wiring (exercised above) never exposes a way to
+    // set one independently, so there is no runtime "reject on mismatch"
+    // path to test: the type system removes the second programId field.
+    const clarify = jest.fn(async () => { /* no-op */ });
+    const agent = createDefaultAcademicDecisionAgent({
+      overrides: {
+        programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
+        planning: fakePlanning(FIXED_RESULT),
+        clarification: { clarify },
+      },
+    });
+    await agent.run({ programId: 'whatever_2027' });
+    expect(clarify).toHaveBeenCalled();
+  });
+});
+
+describe('AcademicDecisionAgent — still constructible directly, no factory required', () => {
+  test('constructible with hand-built deps', () => {
     const agent = new AcademicDecisionAgent({
       planning: fakePlanning(FIXED_RESULT),
       clarification: new NoOpClarificationCapability(),

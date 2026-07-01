@@ -17,14 +17,16 @@
  * planner_orchestration.ts — those files are untouched and unaware this
  * factory exists.
  *
- * Known seam (documented, not fixed here): `orchestrationRequest.programId`
- * (used to build the Plan-stage closure) and the `programId` later passed to
- * `agent.run(...)` (used for AcademicDecisionAgent's own top-level Observe /
- * gap-detection stage) are independent — callers must pass matching values
- * themselves. Unifying them would require either exposing
- * AcademicDecisionAgent's internal Observe-stage model (a refactor of that
- * class) or making the class call runPlanningOrchestration itself — both
- * explicitly out of scope for this epic.
+ * Single source of truth for programId/dbUrl: `AcademicDecisionDeps.planning`
+ * is now `(req: AcademicDecisionRequest) => PlanningCapability` (see
+ * academic_decision_agent.ts). This factory's default `planning` closure
+ * merges `opts.planPreferences` (everything else runPlanningOrchestration
+ * accepts — completedCourseIds, wantedCourseIds, etc.) with `req.programId`
+ * / `req.dbUrl` at call time, so Observe and Plan always see the exact same
+ * program id — there is no longer a field where a second, independent
+ * programId could even be written. (Previously `orchestrationRequest`
+ * carried its own frozen `programId`, which could silently drift from the
+ * one passed to `agent.run(...)` — see git history for the bug this closed.)
  *
  * Also documented: the top-level `ValidationCapability` slot is left unwired
  * by default. A real implementation would need the same
@@ -38,7 +40,7 @@
  */
 
 import type { LanguageModel } from 'ai';
-import { AcademicDecisionAgent, type AcademicDecisionDeps } from './academic_decision_agent';
+import { AcademicDecisionAgent, type AcademicDecisionDeps, type AcademicDecisionRequest } from './academic_decision_agent';
 import {
   NoOpClarificationCapability,
   NoOpSimulationCapability,
@@ -59,8 +61,12 @@ import type { PlanningCapability } from './planner_agent';
 import type { PlanState, PlannerMutation } from './planner_types';
 
 export interface DefaultAcademicDecisionAgentOptions {
-  /** Forwarded to the Plan stage's runPlanningOrchestration call unless overrides.planning replaces it entirely. */
-  orchestrationRequest: OrchestrationRequest;
+  /**
+   * Everything runPlanningOrchestration accepts EXCEPT programId/dbUrl —
+   * those always come from the AcademicDecisionRequest passed to
+   * agent.run(...), never from here. See file header.
+   */
+  planPreferences?: Omit<OrchestrationRequest, 'programId' | 'dbUrl'>;
   /** Enables the real LlmExplainer as the default ExplanationCapability. Omit to leave explanation unset (matches PlannerAgent's own optional-explanation behavior). */
   languageModel?: LanguageModel;
   overrides?: {
@@ -71,8 +77,8 @@ export interface DefaultAcademicDecisionAgentOptions {
     policy?: PolicyProvider;
     maxSteps?: number;
     beamWidth?: number;
-    /** Full override of the Plan stage — bypasses runPlanningOrchestration entirely. */
-    planning?: PlanningCapability;
+    /** Full override of the Plan stage — bypasses runPlanningOrchestration entirely. Caller owns programId consistency for whatever this returns. */
+    planning?: (req: AcademicDecisionRequest) => PlanningCapability;
     clarification?: ClarificationCapability;
     validation?: ValidationCapability;
     simulation?: SimulationCapability;
@@ -82,7 +88,7 @@ export interface DefaultAcademicDecisionAgentOptions {
 }
 
 export function createDefaultAcademicDecisionAgent(
-  opts: DefaultAcademicDecisionAgentOptions,
+  opts: DefaultAcademicDecisionAgentOptions = {},
 ): AcademicDecisionAgent {
   const overrides = opts.overrides ?? {};
 
@@ -93,17 +99,20 @@ export function createDefaultAcademicDecisionAgent(
   const knowledge = overrides.knowledge ?? new PassThroughKnowledgeCapability();
   const explanation = overrides.explanation ?? (opts.languageModel ? new LlmExplainer(opts.languageModel) : undefined);
 
-  const planning: PlanningCapability = overrides.planning ?? {
-    run: () => runPlanningOrchestration(opts.orchestrationRequest, {
-      programProvider,
-      search,
-      knowledge,
-      explanation,
-      policy: overrides.policy,
-      maxSteps: overrides.maxSteps,
-      beamWidth: overrides.beamWidth,
-    }),
-  };
+  const planning: (req: AcademicDecisionRequest) => PlanningCapability = overrides.planning ?? ((req) => ({
+    run: () => runPlanningOrchestration(
+      { ...opts.planPreferences, programId: req.programId, dbUrl: req.dbUrl },
+      {
+        programProvider,
+        search,
+        knowledge,
+        explanation,
+        policy: overrides.policy,
+        maxSteps: overrides.maxSteps,
+        beamWidth: overrides.beamWidth,
+      },
+    ),
+  }));
 
   const deps: AcademicDecisionDeps = {
     programProvider,

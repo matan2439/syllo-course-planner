@@ -5,9 +5,10 @@
  *   Observe (ProgramProvider)
  *   -> Detect Gaps (pure detectGaps, over the Observe-stage model)
  *   -> Clarify if needed
- *   -> Plan (delegates entirely to an injected PlanningCapability — a black
- *      box; PlannerAgent's own internal detect-gaps/enrich/search/explain
- *      flow is untouched and unaware of this pipeline)
+ *   -> Plan (delegates entirely to a PlanningCapability built from the SAME
+ *      AcademicDecisionRequest passed to run() — a black box; PlannerAgent's
+ *      own internal detect-gaps/enrich/search/explain flow is untouched and
+ *      unaware of this pipeline)
  *   -> Validate if wired
  *   -> Simulate if needed
  *   -> Decide if needed
@@ -43,8 +44,13 @@ export interface AcademicDecisionRequest {
 export interface AcademicDecisionDeps {
   /** Defaults to TauProgramProvider. */
   programProvider?: ProgramProvider;
-  /** Required — the Plan stage. Treated as a black box; already bound to its own model. */
-  planning: PlanningCapability;
+  /**
+   * Required — builds the Plan stage from the SAME AcademicDecisionRequest
+   * passed to run(). This is the single source of truth for programId/dbUrl:
+   * Observe (above) and Plan (the PlanningCapability this returns) can never
+   * see different program ids, because both are derived from one `req`.
+   */
+  planning: (req: AcademicDecisionRequest) => PlanningCapability;
   clarification?: ClarificationCapability;
   validation?: ValidationCapability;
   simulation?: SimulationCapability;
@@ -80,8 +86,8 @@ export class AcademicDecisionAgent {
       await clarification.clarify({ gaps });
     }
 
-    // Plan — PlanningCapability is a black box
-    const planned = await this.deps.planning.run();
+    // Plan — built from the same `req` as Observe, then treated as a black box
+    const planned = await this.deps.planning(req).run();
 
     // Validate if wired
     if (this.deps.validation) {
