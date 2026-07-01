@@ -4,6 +4,7 @@ _Live planning items only. Completed work lives in history.md. Design invariants
 
 ## Priority order (per 2026-07-01 architecture review)
 
+0. **Wire `overloadAccepted`/`overloadConfirmedAt` from request/preferences into `buildConstraintModel`** — `e8a5d04` made the PolicyProvider-internal semantics consistent (`assessCompleteness`/`isGoal` now agree with `validate()`), but no caller passes a real value into `BuildModelOptions` yet, so the fix is currently inert in production. Needs the request/preferences layer (wherever the user's "אפשר חריגה בעומס" confirmation is captured today for the legacy `completion_analysis.ts` path) threaded into the `buildConstraintModel` call site(s). Not started.
 1. Institution/program identity in `ConstraintModel` — no `institution_id`/`program_id`/`catalog_year` anywhere; courses keyed by bare `course_id` globally. Cheapest to add before a second real program exists.
 2. Load-cap constants from board data — `HARD_LOAD_CAP`/`DEFAULT_MAX_HOURS_PER_SEMESTER`/`SOFT_LOAD_MAX` are hardcoded, unlike `degreeRequiredHours` which correctly reads from board metadata.
 3. `KnowledgeCapability.resolve()` return contract — currently returns `void`; no way to feed resolved facts back into `ConstraintModel` before search. Fix the interface and add a resumable-search seam in `BeamSearchStrategy.explore()` before building the real P2 syllabus-enrichment implementation on top.
