@@ -24,6 +24,7 @@ import {
   cloneState,
   placedCourseIds,
 } from './planner_types';
+import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
 
 export const GOAL_STACK = [
   'degree_completion',
@@ -156,9 +157,16 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
     .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
     .map(cat => cat.id);
 
-  const overCapSemesters = model.knownSemesterIds.filter(
-    sem => (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0) > model.hardCap,
-  );
+  // Phase 2C overload override — must agree with plan_validation.ts's policy:
+  // hours > ABSOLUTE_MAX_REASONABLE always blocks; hours > model.hardCap only
+  // blocks when the user hasn't explicitly confirmed the overload.
+  const overloadConfirmed = model.overloadAccepted === true && !!model.overloadConfirmedAt;
+  const overCapSemesters = model.knownSemesterIds.filter(sem => {
+    const hours = (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0);
+    if (hours > ABSOLUTE_MAX_REASONABLE) return true;
+    if (hours > model.hardCap && !overloadConfirmed) return true;
+    return false;
+  });
 
   return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters };
 }

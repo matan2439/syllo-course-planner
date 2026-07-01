@@ -39,6 +39,10 @@ export function buildValidationContext(
     maxHoursPerSemester: model.maxHoursPerSemester,
     pinnedCourseIds: model.pinnedCourseIds,
     currentSemesterByCourseId: pinnedHome,
+    // Same source of truth as assessCompleteness's overload override, so
+    // validate() and isGoal/assessCompleteness never disagree.
+    overloadAccepted: model.overloadAccepted,
+    overloadConfirmedAt: model.overloadConfirmedAt,
   };
 }
 

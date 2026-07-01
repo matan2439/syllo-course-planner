@@ -243,6 +243,41 @@ describe('assessCompleteness', () => {
     expect(r.overCapSemesters).toEqual(['year_3_semester_a']);
   });
 
+  // Phase 2C overload-override parity with plan_validation.ts's Phase 2C policy
+  // (validatePlanState honors overloadAccepted+overloadConfirmedAt; assessCompleteness
+  // must agree so isGoal/validate never disagree about the same plan).
+  it('does not report an over-hardCap semester as over-cap when overload is confirmed', () => {
+    const m = model({
+      degreeRequiredHours: 4, categories: [], hardCap: 26,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+    });
+    // 7 courses x 4h = 28h: over hardCap(26), under ABSOLUTE_MAX_REASONABLE(30)
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6']);
+    const r = assessCompleteness(state, m);
+    expect(r.overCapSemesters).toEqual([]);
+  });
+
+  it('still reports over-cap when overloadAccepted is true but overloadConfirmedAt is missing', () => {
+    const m = model({
+      degreeRequiredHours: 4, categories: [], hardCap: 26,
+      overloadAccepted: true, // overloadConfirmedAt intentionally not set
+    });
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6']); // 28h
+    const r = assessCompleteness(state, m);
+    expect(r.overCapSemesters).toEqual(['year_3_semester_a']);
+  });
+
+  it('still reports over-cap above ABSOLUTE_MAX_REASONABLE even with overload confirmed', () => {
+    const m = model({
+      degreeRequiredHours: 4, categories: [], hardCap: 26,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+    });
+    // 8 courses x 4h = 32h: over ABSOLUTE_MAX_REASONABLE(30) — never overridable
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7']);
+    const r = assessCompleteness(state, m);
+    expect(r.overCapSemesters).toEqual(['year_3_semester_a']);
+  });
+
   it('returns empty gap lists and degreeMet=true when everything is satisfied', () => {
     const m = model({ requiredMandatoryCourseIds: ['MAND'], degreeRequiredHours: 12, hardCap: 26 });
     m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));

@@ -41,6 +41,10 @@ export interface BuildModelOptions {
    * to the summed hours of the completed courses present in the universe.
    */
   priorHours?: number;
+  /** Phase 2C — user explicitly confirmed overload above HARD_LOAD_CAP. */
+  overloadAccepted?: boolean;
+  /** Phase 2C — timestamp of that confirmation. */
+  overloadConfirmedAt?: number | null;
 }
 
 function uniq<T>(xs: T[]): T[] {
@@ -104,6 +108,8 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     priorHours,
     maxHoursPerSemester: opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER,
     hardCap: HARD_LOAD_CAP,
+    overloadAccepted: opts.overloadAccepted,
+    overloadConfirmedAt: opts.overloadConfirmedAt,
     disallowedCourseIds,
     pinnedCourseIds,
     wantedCourseIds,

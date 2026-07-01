@@ -160,6 +160,33 @@ describe('TauPolicyProvider.isGoal — derived from assessCompleteness', () => {
   });
 });
 
+describe('TauPolicyProvider — isGoal/validate agreement on confirmed overload', () => {
+  // Regression: assessCompleteness/isGoal must not disagree with validate() about
+  // overload acceptance. Both must honor overloadAccepted+overloadConfirmedAt the
+  // same way, since both are driven by the same ConstraintModel fields.
+  test('isGoal is true and validate is valid for an over-hardCap semester with confirmed overload', () => {
+    // s1 gets 7 courses x 4h = 28h: over hardCap(20 here), under ABSOLUTE_MAX_REASONABLE(30).
+    const profiles = Array.from({ length: 7 }, (_, i) => makeProfile(`c${i}`, { hours: 4, effective_allowed_semesters: ['s1'] }));
+    const model = makeModel(profiles, {
+      degreeRequiredHours: 0, hardCap: 20,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+    });
+    const state: PlanState = { semesters: { s1: profiles.map(p => p.course_id), s2: [] } };
+
+    expect(policy.isGoal(state, model)).toBe(true);
+    expect(policy.validate(state, model, {}).valid).toBe(true);
+  });
+
+  test('isGoal is false and validate is invalid for the same overload when not confirmed', () => {
+    const profiles = Array.from({ length: 7 }, (_, i) => makeProfile(`c${i}`, { hours: 4, effective_allowed_semesters: ['s1'] }));
+    const model = makeModel(profiles, { degreeRequiredHours: 0, hardCap: 20 }); // no overload override
+    const state: PlanState = { semesters: { s1: profiles.map(p => p.course_id), s2: [] } };
+
+    expect(policy.isGoal(state, model)).toBe(false);
+    expect(policy.validate(state, model, {}).valid).toBe(false);
+  });
+});
+
 describe('TauPolicyProvider.validate', () => {
   test('returns {valid: true} for a legal state', () => {
     const model = makeModel([makeProfile('c1')]); // effective_allowed_semesters: ['s1']

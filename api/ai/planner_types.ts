@@ -40,6 +40,10 @@ export interface ConstraintModel {
   maxHoursPerSemester: number;
   /** Absolute per-semester blocking cap (HARD_LOAD_CAP). */
   hardCap: number;
+  /** Phase 2C — user explicitly clicked "אפשר חריגה בעומס" (downgrades hardCap-only overload to a warning). */
+  overloadAccepted?: boolean;
+  /** Phase 2C — timestamp of that confirmation. Required alongside overloadAccepted to actually bypass hardCap. */
+  overloadConfirmedAt?: number | null;
   /** Hard-excluded course_ids (explicit user exclusion / disallowed). */
   disallowedCourseIds: Set<string>;
   /** Pinned course_ids that must stay in their current semester. */

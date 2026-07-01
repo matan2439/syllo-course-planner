@@ -81,6 +81,19 @@ describe('buildConstraintModel — program-agnostic extraction', () => {
     expect(m.profiles.get('CS-T2')!.excluded).toBe(true);
     expect(m.maxHoursPerSemester).toBe(18);
   });
+
+  it('threads the overload-override options through to the model (default: unset)', () => {
+    const withoutOverride = buildConstraintModel(CS_BOARD as any);
+    expect(withoutOverride.overloadAccepted).toBeUndefined();
+    expect(withoutOverride.overloadConfirmedAt).toBeUndefined();
+
+    const confirmedAt = Date.now();
+    const withOverride = buildConstraintModel(CS_BOARD as any, {
+      overloadAccepted: true, overloadConfirmedAt: confirmedAt,
+    });
+    expect(withOverride.overloadAccepted).toBe(true);
+    expect(withOverride.overloadConfirmedAt).toBe(confirmedAt);
+  });
 });
 
 describe('buildConstraintModel — real ME-2027 board', () => {
