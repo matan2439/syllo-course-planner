@@ -159,3 +159,18 @@ describe('buildModelFromRequest — overload-override threading', () => {
     expect(model.overloadConfirmedAt).toBeUndefined();
   });
 });
+
+describe('buildModelFromRequest — program identity threading (Phase 0)', () => {
+  it('derives programId/catalogYear from body.program_id (already parsed elsewhere in this file)', () => {
+    const model = buildModelFromRequest(BOARD, { ...VALID_BODY, program_id: 'mechanical_engineering_2027' } as any);
+    expect(model.programId).toBe('mechanical_engineering');
+    expect(model.catalogYear).toBe(2027);
+    expect(model.institutionId).toBeUndefined(); // never fabricated
+  });
+
+  it('leaves identity fields unset when program_id is malformed (no behavior change)', () => {
+    const model = buildModelFromRequest(BOARD, { ...VALID_BODY, program_id: 'not-a-valid-id' } as any);
+    expect(model.programId).toBeUndefined();
+    expect(model.catalogYear).toBeUndefined();
+  });
+});
