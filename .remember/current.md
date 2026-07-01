@@ -1,6 +1,6 @@
 # Current — read this first
 
-Branch: main @ 7fdfc1c (AcademicDecisionAgent programId drift seam closed, complete)
+Branch: main @ a4cfc00 (deterministic ClarificationCapability shipped, complete)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
 
 ## Direction change (2026-07-01)
@@ -25,10 +25,18 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `planner_agent.ts`, `planner_capabilities.ts`, `planner_orchestration.ts`, `program_provider.ts`, `generate-plan.ts`, `planner-run.ts`, and `PlannerWorker` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path. Top-level `ValidationCapability` remains intentionally unwired (documented in `academic_decision_factory.ts`, unchanged from the prior epic — explicitly out of scope again this epic).
 
-Nothing in progress — awaiting direction on the next epic (e.g. real Clarification/Simulation/Decision/Persistence implementations, or first production wiring decision).
+**Deterministic ClarificationCapability shipped** (`a4cfc00`) — `ClarificationCapability` is no longer a no-op shell:
+- New `api/ai/academic_clarification.ts`: `DeterministicClarificationCapability`, rule-based (no LLM/I/O), inspects a `ClarificationPlanningContext` (`completedCourseIds`/`currentCourseIds`/`excludedCourseIds`/`maxWeeklyHours`/`track`) and returns `{ needsClarification, missingInputs: MissingInput[], questions? }`. `completedCourses` and `excludedCourses` are `critical: true` (prerequisite validation / prior "excluded course still scheduled" bugs depend on them); `currentCourses`/`maxWeeklyHours`/`track` are `critical: false`.
+- `academic_decision_types.ts`: `ClarificationCapability.clarify` signature changed from `(req: { gaps }) => Promise<void>` to `(req: { gaps, context }) => Promise<ClarificationResult>`. `NoOpClarificationCapability` now returns `{ needsClarification: false, missingInputs: [] }` instead of resolving void.
+- `academic_decision_agent.ts`: Clarify now **always** runs before Plan (previously gated on the unrelated top-level `detectGaps` profile-data-quality scan — that gate made no sense once Clarify started inspecting user-supplied request fields instead). `AcademicDecisionRequest` gained `currentCourseIds?`, `track?`, `blockOnMissingCriticalInputs?` (default false, purely observational). `AcademicDecisionResult` gained `clarification: ClarificationResult` and `blocked: boolean`; `agentResult` is now optional, absent only when `blocked: true`. Blocking (when opted in and a critical input is missing) returns `{ blocked: true, clarification, gaps }` and never calls `planning(req).run()` — explicit/testable, not a thrown error.
+- `academic_decision_factory.ts`: default `clarification` changed from `NoOpClarificationCapability` to `DeterministicClarificationCapability` — still fully overridable via `opts.overrides.clarification`.
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, natural-language clarification UX, or first production wiring decision).
 
 ## Test status
-API tests: 650/650 (was 647; net +3 in `academic_decision_factory.test.ts` — 1 old seam-drift test replaced by 3 new single-source-of-truth tests; `academic_decision_agent.test.ts`'s `fakePlanning` helper reshaped to match the new `planning` signature, test count unchanged at 10). `tsc --noEmit`: clean.
+API tests: 664/664 (was 650; net +14 — 9 new in `academic_clarification.test.ts`, +5 net across `academic_decision_agent.test.ts`/`academic_decision_factory.test.ts` for the blocking/non-blocking clarify-stage behavior). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
