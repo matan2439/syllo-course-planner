@@ -4,14 +4,15 @@ _Live planning items only. Completed work lives in history.md. Design invariants
 
 ## Priority order (per 2026-07-01 architecture review)
 
-0. **Wire `overloadAccepted`/`overloadConfirmedAt` from request/preferences into `buildConstraintModel`** — `e8a5d04` made the PolicyProvider-internal semantics consistent (`assessCompleteness`/`isGoal` now agree with `validate()`), but no caller passes a real value into `BuildModelOptions` yet, so the fix is currently inert in production. Needs the request/preferences layer (wherever the user's "אפשר חריגה בעומס" confirmation is captured today for the legacy `completion_analysis.ts` path) threaded into the `buildConstraintModel` call site(s). Not started.
-1. Institution/program identity in `ConstraintModel` — no `institution_id`/`program_id`/`catalog_year` anywhere; courses keyed by bare `course_id` globally. Cheapest to add before a second real program exists.
-2. Load-cap constants from board data — `HARD_LOAD_CAP`/`DEFAULT_MAX_HOURS_PER_SEMESTER`/`SOFT_LOAD_MAX` are hardcoded, unlike `degreeRequiredHours` which correctly reads from board metadata.
-3. `KnowledgeCapability.resolve()` return contract — currently returns `void`; no way to feed resolved facts back into `ConstraintModel` before search. Fix the interface and add a resumable-search seam in `BeamSearchStrategy.explore()` before building the real P2 syllabus-enrichment implementation on top.
-4. Retire client JS shadow engine — `app/web/semester_board_viewer.html`'s ~20 `*Local` functions (scoring/validation/repair/degree-progress) independently reimplement server logic. Largest single "one canonical implementation" violation in the codebase. Prerequisite: streaming endpoint (below) stable.
-5. Second synthetic program for genericity proof — `data/boards/test_program_2027.json` has identical semester ids/hour target/category shape to the TAU fixture; doesn't actually exercise cross-program generality. Build a structurally different program and run the reliability matrix (`docs/product-goal.md` §13) against it.
-6. Delete dead trace actions — `VALIDATE`/`SCORE`/`REPAIR` in `PLANNER_ACTION_TYPES`, confirmed no producer/consumer. Free deletion, do opportunistically.
-7. Track/specialization model — extend `CategoryReq` with `equivalentGroups`/`trackId`, `ConstraintModel` with `activeTrack`/`coRequisites`. Sequence last — don't build twice against a still-duplicated foundation (items above).
+_Item 0 (wire `overloadAccepted`/`overloadConfirmedAt` into `buildConstraintModel`) shipped `1dcbc41`/`03b3dac` — see history.md. Next recommended: item 1 below._
+
+0. Institution/program identity in `ConstraintModel` — no `institution_id`/`program_id`/`catalog_year` anywhere; courses keyed by bare `course_id` globally. Cheapest to add before a second real program exists.
+1. Load-cap constants from board data — `HARD_LOAD_CAP`/`DEFAULT_MAX_HOURS_PER_SEMESTER`/`SOFT_LOAD_MAX` are hardcoded, unlike `degreeRequiredHours` which correctly reads from board metadata.
+2. `KnowledgeCapability.resolve()` return contract — currently returns `void`; no way to feed resolved facts back into `ConstraintModel` before search. Fix the interface and add a resumable-search seam in `BeamSearchStrategy.explore()` before building the real P2 syllabus-enrichment implementation on top.
+3. Retire client JS shadow engine — `app/web/semester_board_viewer.html`'s ~20 `*Local` functions (scoring/validation/repair/degree-progress) independently reimplement server logic. Largest single "one canonical implementation" violation in the codebase. Prerequisite: streaming endpoint (below) stable.
+4. Second synthetic program for genericity proof — `data/boards/test_program_2027.json` has identical semester ids/hour target/category shape to the TAU fixture; doesn't actually exercise cross-program generality. Build a structurally different program and run the reliability matrix (`docs/product-goal.md` §13) against it.
+5. Delete dead trace actions — `VALIDATE`/`SCORE`/`REPAIR` in `PLANNER_ACTION_TYPES`, confirmed no producer/consumer. Free deletion, do opportunistically.
+6. Track/specialization model — extend `CategoryReq` with `equivalentGroups`/`trackId`, `ConstraintModel` with `activeTrack`/`coRequisites`. Sequence last — don't build twice against a still-duplicated foundation (items above).
 
 ## Other open items (not yet prioritized against the above)
 
