@@ -1,6 +1,6 @@
 # Current — read this first
 
-Branch: main @ f8ad9e6 (AcademicDecisionAgent default composition factory, complete)
+Branch: main @ 7fdfc1c (AcademicDecisionAgent programId drift seam closed, complete)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
 
 ## Direction change (2026-07-01)
@@ -21,10 +21,14 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `planner_orchestration.ts`, and `academic_decision_agent.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path.
 
-Nothing in progress — awaiting direction on the next epic (e.g. resolving the double-Observe seam, real Clarification/Simulation/Decision/Persistence implementations, or first production wiring decision).
+**programId drift seam closed** (`7fdfc1c`) — `AcademicDecisionDeps.planning` changed from a static `PlanningCapability` to `(req: AcademicDecisionRequest) => PlanningCapability`; `AcademicDecisionAgent.run()` now calls `this.deps.planning(req).run()`, so Plan is always built from the exact same `req` Observe used. `DefaultAcademicDecisionAgentOptions.orchestrationRequest` (which carried its own frozen `programId`) was replaced with `planPreferences?: Omit<OrchestrationRequest, 'programId'|'dbUrl'>` — there is no longer any field where a second, independent programId could be written; the factory's default `planning` closure merges `planPreferences` with `req.programId`/`req.dbUrl` at call time. Proven via a RED test written against the pre-fix code first (confirmed it failed for the real reason: a second `run()` call with a different programId silently kept planning against the first one), then GREEN after the fix, plus a same-instance repeated-calls regression test. `overrides.planning` (full override) still exists for callers who want to bypass this guarantee entirely and own their own program-id handling.
+
+`planner_agent.ts`, `planner_capabilities.ts`, `planner_orchestration.ts`, `program_provider.ts`, `generate-plan.ts`, `planner-run.ts`, and `PlannerWorker` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path. Top-level `ValidationCapability` remains intentionally unwired (documented in `academic_decision_factory.ts`, unchanged from the prior epic — explicitly out of scope again this epic).
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Clarification/Simulation/Decision/Persistence implementations, or first production wiring decision).
 
 ## Test status
-API tests: 647/647 (was 640; +7 `academic_decision_factory.test.ts`). `tsc --noEmit`: clean.
+API tests: 650/650 (was 647; net +3 in `academic_decision_factory.test.ts` — 1 old seam-drift test replaced by 3 new single-source-of-truth tests; `academic_decision_agent.test.ts`'s `fakePlanning` helper reshaped to match the new `planning` signature, test count unchanged at 10). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
