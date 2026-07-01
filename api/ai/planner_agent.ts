@@ -14,7 +14,6 @@
  */
 
 import { applyMutation as applyMutationFn } from './planner_goals';
-import { enumerateActions } from './planner_actions';
 import { buildValidationContext } from './planner_validate';
 import {
   detectGaps,
@@ -115,7 +114,7 @@ export class PlannerAgent implements PlanningCapability {
 
     // SearchDeps closures — ConstraintModel never passed to SearchStrategy directly
     const deps: SearchDeps<PlanState, PlannerMutation> = {
-      generateActions: (s) => enumerateActions(s, model),
+      generateActions: (s) => policy.generateActions(s, model),
       // ponytail: applyMutationFn returns null for structurally impossible actions;
       // enumerateActions should never produce those, so ?? s is a safe defensive fallback
       applyMutation: (s, a) => applyMutationFn(s, a) ?? s,

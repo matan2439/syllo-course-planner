@@ -321,6 +321,7 @@ describe('PlannerAgent', () => {
         degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
       }),
       validate: (_s, _m, _p, _c) => ({ valid: false, reason: 'sentinel-reason' }),
+      generateActions: (_s, _m) => [],
     };
 
     let capturedDeps: SearchDeps<PlanState, PlannerMutation> | undefined;
@@ -334,5 +335,30 @@ describe('PlannerAgent', () => {
     expect(capturedDeps!.score(INITIAL_STATE)).toEqual([999]);
     expect(capturedDeps!.compareScore([1], [2])).toBe(42);
     expect(capturedDeps!.validate(INITIAL_STATE)).toEqual({ valid: false, reason: 'sentinel-reason' });
+  });
+
+  // Phase 1a — enumerateActions moved behind PolicyProvider.generateActions
+
+  test('deps.generateActions uses the injected PolicyProvider.generateActions, not enumerateActions directly', async () => {
+    const sentinelAction: PlannerMutation = { type: 'ADD_COURSE', courseId: 'sentinel', semesterId: 's1' };
+    const stubPolicy: PolicyProvider = {
+      isGoal: (_s, _m) => true,
+      score: (_s, _m) => [0],
+      compareScore: (_a, _b) => 0,
+      assessCompleteness: (_s, _m) => ({
+        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
+      }),
+      validate: (_s, _m, _p, _c) => ({ valid: true }),
+      generateActions: (_s, _m) => [sentinelAction],
+    };
+
+    let capturedDeps: SearchDeps<PlanState, PlannerMutation> | undefined;
+    const mockSearch: SearchCapability<PlanState, PlannerMutation> = {
+      search: (s, deps, _opts) => { capturedDeps = deps; return { finalState: s }; },
+    };
+    const agent = new PlannerAgent({ model: makeModel(), initialState: INITIAL_STATE, search: mockSearch, policy: stubPolicy });
+    await agent.run();
+
+    expect(capturedDeps!.generateActions(INITIAL_STATE)).toEqual([sentinelAction]);
   });
 });

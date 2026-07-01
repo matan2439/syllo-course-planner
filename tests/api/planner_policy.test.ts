@@ -13,6 +13,7 @@
 
 import { TauPolicyProvider } from '../../api/ai/planner_policy';
 import { scorePlan, compareScore, assessCompleteness } from '../../api/ai/planner_goals';
+import { enumerateActions } from '../../api/ai/planner_actions';
 import type { ConstraintModel, PlanState, CategoryReq } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 
@@ -184,6 +185,17 @@ describe('TauPolicyProvider — isGoal/validate agreement on confirmed overload'
 
     expect(policy.isGoal(state, model)).toBe(false);
     expect(policy.validate(state, model, {}).valid).toBe(false);
+  });
+});
+
+describe('TauPolicyProvider.generateActions — delegation', () => {
+  test('matches the standalone enumerateActions function for a representative state', () => {
+    const model = makeModel(
+      [makeProfile('c1', { is_mandatory: true, hours: 4 }), makeProfile('c2', { hours: 4 })],
+      { requiredMandatoryCourseIds: ['c1'], degreeRequiredHours: 8, hardCap: 20 },
+    );
+    const state: PlanState = { semesters: { s1: [], s2: [] } };
+    expect(policy.generateActions(state, model)).toEqual(enumerateActions(state, model));
   });
 });
 

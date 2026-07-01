@@ -15,8 +15,9 @@ import {
   type CompletenessAssessment,
 } from './planner_goals';
 import { validatePlanState, buildValidationContext } from './planner_validate';
+import { enumerateActions } from './planner_actions';
 import type { PlanValidationContext } from './plan_validation';
-import { type ConstraintModel, type PlanState } from './planner_types';
+import { type ConstraintModel, type PlanState, type PlannerMutation } from './planner_types';
 
 export interface PolicyProvider {
   isGoal(state: PlanState, model: ConstraintModel): boolean;
@@ -30,6 +31,8 @@ export interface PolicyProvider {
     pinnedHome: Record<string, string>,
     ctx?: PlanValidationContext,
   ): { valid: boolean; reason?: string };
+  /** Candidate next moves worth exploring from this state — the action-generation strategy. */
+  generateActions(state: PlanState, model: ConstraintModel): PlannerMutation[];
 }
 
 /** TAU's current goal/scoring/validation rules — moved from planner_agent.ts unchanged. */
@@ -64,5 +67,9 @@ export class TauPolicyProvider implements PolicyProvider {
   ): { valid: boolean; reason?: string } {
     const r = validatePlanState(state, model, pinnedHome, ctx ?? buildValidationContext(model, pinnedHome));
     return { valid: r.valid, reason: r.errors[0] };
+  }
+
+  generateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
+    return enumerateActions(state, model);
   }
 }
