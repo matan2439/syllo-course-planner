@@ -29,6 +29,7 @@ import {
   type AcademicDecisionDeps,
   type AcademicDecisionRequest,
 } from '../../api/ai/academic_decision_agent';
+import { DeterministicClarificationCapability } from '../../api/ai/academic_clarification';
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ describe('AcademicDecisionAgent — board not found', () => {
 });
 
 describe('AcademicDecisionAgent — Clarify stage', () => {
-  const NO_ISSUES: ClarificationResult = { needsClarification: false, missingInputs: [] };
+  const NO_ISSUES: ClarificationResult = { needsClarification: false, missingInputs: [], questions: [] };
 
   test('calls clarification before planning, passing the top-level gaps and the request-derived context', async () => {
     const clarify = jest.fn(async () => NO_ISSUES);
@@ -201,6 +202,7 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const clarify = jest.fn(async () => ({
       needsClarification: true,
       missingInputs: [{ field: 'completedCourses' as const, critical: true, message: 'x' }],
+      questions: [],
     }));
     const planning = fakePlanning();
     const deps: AcademicDecisionDeps = {
@@ -220,6 +222,7 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const clarificationResult = {
       needsClarification: true,
       missingInputs: [{ field: 'completedCourses' as const, critical: true, message: 'x' }],
+      questions: [],
     };
     const clarify = jest.fn(async () => clarificationResult);
     const planning = fakePlanning();
@@ -241,6 +244,7 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const clarify = jest.fn(async () => ({
       needsClarification: true,
       missingInputs: [{ field: 'track' as const, critical: false, message: 'x' }],
+      questions: [],
     }));
     const planning = fakePlanning();
     const deps: AcademicDecisionDeps = {
@@ -259,6 +263,7 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const clarify = jest.fn(async () => ({
       needsClarification: true,
       missingInputs: [{ field: 'excludedCourses' as const, critical: true, message: 'x' }],
+      questions: [],
     }));
     const deps: AcademicDecisionDeps = {
       programProvider: new FakeProgramProvider(CLEAN_MODEL),
@@ -270,6 +275,47 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     await expect(agent.run({ ...REQ, blockOnMissingCriticalInputs: true })).resolves.toMatchObject({
       blocked: true,
     });
+  });
+
+  test('non-blocking mode: with the real DeterministicClarificationCapability, structured questions come back alongside a delegated plan', async () => {
+    const planning = fakePlanning();
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning,
+      clarification: new DeterministicClarificationCapability(),
+    };
+    const agent = new AcademicDecisionAgent(deps);
+    // Bare REQ has no buildModelOptions/currentCourseIds/track — every input is missing.
+    const result = await agent.run(REQ);
+
+    expect(planning.run).toHaveBeenCalledTimes(1);
+    expect(result.blocked).toBe(false);
+    expect(result.clarification.questions.map((q) => q.id)).toEqual([
+      'completed_courses',
+      'current_courses',
+      'excluded_courses',
+      'max_weekly_hours',
+      'track_or_focus',
+    ]);
+  });
+
+  test('blocked mode: with the real DeterministicClarificationCapability, the blocked result carries the structured questions for the critical missing inputs', async () => {
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning: fakePlanning(),
+      clarification: new DeterministicClarificationCapability(),
+    };
+    const agent = new AcademicDecisionAgent(deps);
+    const result = await agent.run({ ...REQ, blockOnMissingCriticalInputs: true });
+
+    expect(result.blocked).toBe(true);
+    expect(result.agentResult).toBeUndefined();
+    expect(result.clarification.questions).toContainEqual(
+      expect.objectContaining({ id: 'completed_courses', critical: true }),
+    );
+    expect(result.clarification.questions).toContainEqual(
+      expect.objectContaining({ id: 'excluded_courses', critical: true }),
+    );
   });
 });
 

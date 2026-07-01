@@ -163,7 +163,7 @@ describe('createDefaultAcademicDecisionAgent', () => {
     expect(result.gaps).toEqual([{ courseId: 'c1', gapType: 'null_hours' }]);
   });
 
-  test('default clarification is DeterministicClarificationCapability — reports missing inputs for a bare request', async () => {
+  test('default clarification is DeterministicClarificationCapability — reports missing inputs and structured questions for a bare request', async () => {
     const opts: DefaultAcademicDecisionAgentOptions = {
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
@@ -177,10 +177,20 @@ describe('createDefaultAcademicDecisionAgent', () => {
     expect(result.clarification.missingInputs).toContainEqual(
       expect.objectContaining({ field: 'completedCourses', critical: true }),
     );
+    expect(result.clarification.questions).toContainEqual(
+      expect.objectContaining({ id: 'completed_courses', inputKey: 'completedCourseIds', critical: true, required: true }),
+    );
+    expect(result.clarification.questions.map((q) => q.id)).toEqual([
+      'completed_courses',
+      'current_courses',
+      'excluded_courses',
+      'max_weekly_hours',
+      'track_or_focus',
+    ]);
   });
 
   test('allows dependency overrides — a custom ClarificationCapability replaces the deterministic default', async () => {
-    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [] }));
+    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [], questions: [] }));
     const clarification: ClarificationCapability = { clarify };
     const opts: DefaultAcademicDecisionAgentOptions = {
       overrides: {
@@ -263,7 +273,7 @@ describe('programId drift between Observe and Plan — single source of truth', 
     // handling. The default wiring (exercised above) never exposes a way to
     // set one independently, so there is no runtime "reject on mismatch"
     // path to test: the type system removes the second programId field.
-    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [] }));
+    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [], questions: [] }));
     const agent = createDefaultAcademicDecisionAgent({
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),

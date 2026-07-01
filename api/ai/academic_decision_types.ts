@@ -42,10 +42,39 @@ export interface MissingInput {
   message: string;
 }
 
+export type ClarificationAnswerType =
+  | 'course_ids'
+  | 'course_id_list'
+  | 'number'
+  | 'text'
+  | 'single_choice'
+  | 'multi_choice'
+  | 'boolean';
+
+/**
+ * A stable, machine-readable question derived from a MissingInput — the
+ * contract a future UI or LLM layer can act on directly (render a form field,
+ * or feed to a prompt) without re-deriving meaning from free-form strings.
+ */
+export interface ClarificationQuestion {
+  /** Stable, unique, snake_case identifier — e.g. 'completed_courses'. */
+  id: string;
+  /** The ClarificationPlanningContext field this question fills in. */
+  inputKey: string;
+  required: boolean;
+  critical: boolean;
+  answerType: ClarificationAnswerType;
+  question: string;
+  rationale?: string;
+  examples?: string[];
+  options?: Array<{ value: string; label: string }>;
+}
+
 export interface ClarificationResult {
   needsClarification: boolean;
   missingInputs: MissingInput[];
-  questions?: string[];
+  /** Always present — one ClarificationQuestion per MissingInput, in the same order. Empty when nothing is missing. */
+  questions: ClarificationQuestion[];
   warnings?: string[];
 }
 
@@ -61,7 +90,7 @@ export interface ClarificationCapability {
 /** ponytail: reports nothing missing until a real clarification flow (user Q&A) ships */
 export class NoOpClarificationCapability implements ClarificationCapability {
   async clarify(_request: ClarificationRequest): Promise<ClarificationResult> {
-    return { needsClarification: false, missingInputs: [] };
+    return { needsClarification: false, missingInputs: [], questions: [] };
   }
 }
 

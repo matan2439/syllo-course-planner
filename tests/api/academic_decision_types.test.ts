@@ -33,11 +33,12 @@ const AGENT_RESULT: AgentResult = {
 describe('ClarificationCapability', () => {
   test('accepts a matching object literal', async () => {
     const cap: ClarificationCapability = {
-      clarify: async (_req: ClarificationRequest) => ({ needsClarification: false, missingInputs: [] }),
+      clarify: async (_req: ClarificationRequest) => ({ needsClarification: false, missingInputs: [], questions: [] }),
     };
     await expect(cap.clarify({ gaps: [], context: {} })).resolves.toEqual({
       needsClarification: false,
       missingInputs: [],
+      questions: [],
     });
   });
 
@@ -45,7 +46,7 @@ describe('ClarificationCapability', () => {
     const cap: ClarificationCapability = new NoOpClarificationCapability();
     await expect(
       cap.clarify({ gaps: [{ courseId: 'c1', gapType: 'null_hours' }], context: {} }),
-    ).resolves.toEqual({ needsClarification: false, missingInputs: [] });
+    ).resolves.toEqual({ needsClarification: false, missingInputs: [], questions: [] });
   });
 });
 

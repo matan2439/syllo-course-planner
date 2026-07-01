@@ -87,3 +87,101 @@ describe('DeterministicClarificationCapability', () => {
     expect(req).toEqual(snapshot);
   });
 });
+
+describe('DeterministicClarificationCapability — structured ClarificationQuestion contract', () => {
+  const cap = new DeterministicClarificationCapability();
+  const ALL_ORDERED_IDS = [
+    'completed_courses',
+    'current_courses',
+    'excluded_courses',
+    'max_weekly_hours',
+    'track_or_focus',
+  ];
+
+  test('missing completed courses produces a completed_courses question', async () => {
+    const result = await cap.clarify(makeRequest({ ...FULLY_ANSWERED, completedCourseIds: undefined }));
+    expect(result.questions).toContainEqual(
+      expect.objectContaining({
+        id: 'completed_courses',
+        inputKey: 'completedCourseIds',
+        answerType: 'course_id_list',
+        critical: true,
+        required: true,
+      }),
+    );
+  });
+
+  test('missing current/in-progress courses produces a current_courses question', async () => {
+    const result = await cap.clarify(makeRequest({ ...FULLY_ANSWERED, currentCourseIds: undefined }));
+    expect(result.questions).toContainEqual(
+      expect.objectContaining({
+        id: 'current_courses',
+        inputKey: 'currentCourseIds',
+        answerType: 'course_id_list',
+        critical: false,
+      }),
+    );
+  });
+
+  test('missing excluded courses produces an excluded_courses question', async () => {
+    const result = await cap.clarify(makeRequest({ ...FULLY_ANSWERED, excludedCourseIds: undefined }));
+    expect(result.questions).toContainEqual(
+      expect.objectContaining({
+        id: 'excluded_courses',
+        inputKey: 'excludedCourseIds',
+        answerType: 'course_id_list',
+        critical: true,
+        required: true,
+      }),
+    );
+  });
+
+  test('missing max weekly hours produces a max_weekly_hours question with numeric answer type', async () => {
+    const result = await cap.clarify(makeRequest({ ...FULLY_ANSWERED, maxWeeklyHours: undefined }));
+    expect(result.questions).toContainEqual(
+      expect.objectContaining({
+        id: 'max_weekly_hours',
+        inputKey: 'maxWeeklyHours',
+        answerType: 'number',
+        critical: false,
+      }),
+    );
+  });
+
+  test('missing track/focus produces a track_or_focus question', async () => {
+    const result = await cap.clarify(makeRequest({ ...FULLY_ANSWERED, track: undefined }));
+    expect(result.questions).toContainEqual(
+      expect.objectContaining({ id: 'track_or_focus', inputKey: 'track', critical: false }),
+    );
+  });
+
+  test('question order is deterministic: completed, current, excluded, maxWeeklyHours, track', async () => {
+    const result = await cap.clarify(makeRequest({}));
+    expect(result.questions.map((q) => q.id)).toEqual(ALL_ORDERED_IDS);
+  });
+
+  test('questions are derived from missingInputs — same count and same critical flags, in the same order', async () => {
+    const result = await cap.clarify(makeRequest({ completedCourseIds: ['c1'], excludedCourseIds: [] }));
+    expect(result.questions.length).toBe(result.missingInputs.length);
+    expect(result.questions.map((q) => q.critical)).toEqual(result.missingInputs.map((m) => m.critical));
+  });
+
+  test('no questions are produced when no clarification is needed', async () => {
+    const result = await cap.clarify(makeRequest(FULLY_ANSWERED));
+    expect(result.questions).toEqual([]);
+  });
+
+  test('question IDs are stable and unique', async () => {
+    const result = await cap.clarify(makeRequest({}));
+    const ids = result.questions.map((q) => q.id);
+    expect(ids).toEqual(ALL_ORDERED_IDS);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test('does not mutate the request when generating questions', async () => {
+    const req = makeRequest({});
+    const snapshot = JSON.parse(JSON.stringify(req));
+    await cap.clarify(req);
+    expect(req).toEqual(snapshot);
+  });
+});
