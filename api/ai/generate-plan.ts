@@ -16,12 +16,16 @@
  * additive optional `trace`. The apply/reject UI flow is unaffected.
  *
  * CLARIFICATION PREFLIGHT (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT=true, default disabled):
- *   Opt-in only — when unset/false, behavior is identical to the above. When
- *   enabled, runs the deterministic clarification check
- *   (runClarificationPreflight, academic_clarification_preflight.ts) before
- *   either planner path. If a critical input is missing, returns
- *   { needsClarification: true, clarification, viewModel } instead of a
- *   PlanProposal — neither planner path runs, no board/model is loaded.
+ *   Opt-in only — when unset/false, behavior is identical to the above (any
+ *   clarification_answers in the request body are ignored). When enabled,
+ *   runs the deterministic clarification check (resumeClarificationPreflight,
+ *   academic_clarification_preflight.ts) before either planner path, applying
+ *   any optional clarification_answers first. If a critical input is still
+ *   missing, returns { needsClarification: true, clarification, viewModel }
+ *   instead of a PlanProposal — neither planner path runs, no board/model is
+ *   loaded. Once all critical inputs are present (whether from the original
+ *   request or from clarification_answers), execution falls through to the
+ *   existing planning path below unchanged.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -41,7 +45,7 @@ import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
-import { runClarificationPreflight } from './academic_clarification_preflight';
+import { resumeClarificationPreflight } from './academic_clarification_preflight';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -61,12 +65,19 @@ export const preferencesSchema = z.object({
   overload_confirmed_at:   z.number().nullish(),
 });
 
+const clarificationAnswerSchema = z.object({
+  questionId: z.string(),
+  value: z.union([z.array(z.string()), z.string(), z.number()]),
+});
+
 const requestSchema = z.object({
   program_id:    z.string().min(1, 'program_id is required'),
   plan_context:  z.any(),
   course_context: z.string().max(8000).optional(),
   preferences:   preferencesSchema,
   session_token: z.string().uuid('session_token must be a valid UUID'),
+  // Additive, optional — only consumed when AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT is enabled.
+  clarification_answers: z.array(clarificationAnswerSchema).optional(),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;
@@ -231,7 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     return;
   }
-  const { program_id, plan_context, preferences, session_token } = parsed.data;
+  const { program_id, plan_context, preferences, session_token, clarification_answers } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
@@ -242,24 +253,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   // Clarification preflight — additive, opt-in only (default disabled, behavior
-  // otherwise unchanged). When a critical input is missing, returns a
-  // structured clarification response instead of delegating to either planner
-  // path below. See academic_clarification_preflight.ts.
+  // otherwise unchanged). When a critical input is still missing after any
+  // supplied clarification_answers are applied, returns a structured
+  // clarification response instead of delegating to either planner path
+  // below. See academic_clarification_preflight.ts.
   if (process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT === 'true') {
-    const preflight = await runClarificationPreflight({
-      programId: program_id,
-      dbUrl,
-      buildModelOptions: {
-        completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
-        disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
-        maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
+    const resumed = await resumeClarificationPreflight(
+      {
+        programId: program_id,
+        dbUrl,
+        buildModelOptions: {
+          completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+          disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
+          maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
+        },
       },
-    });
-    if (preflight.blocked) {
+      clarification_answers ?? [],
+    );
+    if (resumed.blocked) {
       res.status(200).json({
         needsClarification: true,
-        clarification: preflight.clarification,
-        viewModel: preflight.viewModel,
+        clarification: resumed.clarification,
+        viewModel: resumed.viewModel,
       });
       return;
     }
