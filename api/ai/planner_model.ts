@@ -23,7 +23,7 @@
 
 import { buildCourseProfiles } from './course_profile';
 import { DEGREE_REQUIRED_HOURS } from './completion_analysis';
-import { HARD_LOAD_CAP, DEFAULT_MAX_HOURS_PER_SEMESTER } from './load_constants';
+import { HARD_LOAD_CAP, DEFAULT_MAX_HOURS_PER_SEMESTER, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import { type ConstraintModel, type CategoryReq, type PlanState, emptyState } from './planner_types';
 
 export interface BuildModelOptions {
@@ -51,6 +51,12 @@ export interface BuildModelOptions {
   programId?: string;
   /** Phase 0 — catalog year, derived from the request's program_id where already parsed. */
   catalogYear?: number | string;
+  /** Phase 1b — per-semester blocking cap override. Defaults to HARD_LOAD_CAP. */
+  hardCap?: number;
+  /** Phase 1b — preferred-range ceiling override. Defaults to SOFT_LOAD_MAX. */
+  softLoadMax?: number;
+  /** Phase 1b — never-overridable blocking ceiling override. Defaults to ABSOLUTE_MAX_REASONABLE. */
+  absoluteMaxReasonable?: number;
 }
 
 function uniq<T>(xs: T[]): T[] {
@@ -113,7 +119,9 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     degreeRequiredHours,
     priorHours,
     maxHoursPerSemester: opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER,
-    hardCap: HARD_LOAD_CAP,
+    hardCap: opts.hardCap ?? HARD_LOAD_CAP,
+    softLoadMax: opts.softLoadMax ?? SOFT_LOAD_MAX,
+    absoluteMaxReasonable: opts.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE,
     overloadAccepted: opts.overloadAccepted,
     overloadConfirmedAt: opts.overloadConfirmedAt,
     disallowedCourseIds,

@@ -40,6 +40,10 @@ export interface ConstraintModel {
   maxHoursPerSemester: number;
   /** Absolute per-semester blocking cap (HARD_LOAD_CAP). */
   hardCap: number;
+  /** Phase 1b — preferred-range ceiling above which a mild-overload warning fires. Defaults to SOFT_LOAD_MAX. */
+  softLoadMax?: number;
+  /** Phase 1b — never-overridable blocking ceiling. Defaults to ABSOLUTE_MAX_REASONABLE. */
+  absoluteMaxReasonable?: number;
   /** Phase 2C — user explicitly clicked "אפשר חריגה בעומס" (downgrades hardCap-only overload to a warning). */
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp of that confirmation. Required alongside overloadAccepted to actually bypass hardCap. */

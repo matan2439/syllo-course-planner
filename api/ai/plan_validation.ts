@@ -172,6 +172,12 @@ export interface PlanValidationContext {
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp at which the user confirmed the overload. Required (alongside overloadAccepted) to actually downgrade > HARD_LOAD_CAP from error to warning. */
   overloadConfirmedAt?: number | null;
+  /** Phase 1b — per-semester blocking cap override (from ConstraintModel.hardCap). Defaults to load_constants.ts's HARD_LOAD_CAP. */
+  hardCap?: number;
+  /** Phase 1b — preferred-range ceiling override (from ConstraintModel.softLoadMax). Defaults to load_constants.ts's SOFT_LOAD_MAX. */
+  softLoadMax?: number;
+  /** Phase 1b — never-overridable blocking ceiling override (from ConstraintModel.absoluteMaxReasonable). Defaults to load_constants.ts's ABSOLUTE_MAX_REASONABLE. */
+  absoluteMaxReasonable?: number;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
   /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
@@ -332,30 +338,36 @@ export function validatePlanProposal(
 
     // 5. Phase 2C unified overload policy (single source of truth — must
     // match load_constants.ts and the client-side validatePlanProposalLocal):
-    //   - hrs > ABSOLUTE_MAX_REASONABLE (30): always blocking ERROR.
-    //   - hrs > HARD_LOAD_CAP (26): blocking ERROR unless user explicitly
+    //   - hrs > absoluteMaxReasonable (default 30): always blocking ERROR.
+    //   - hrs > hardCap (default 26): blocking ERROR unless user explicitly
     //     confirmed overload (overloadAccepted && overloadConfirmedAt); then
     //     downgraded to a WARNING containing "חריגה בעומס שאושרה ידנית".
-    //   - hrs > SOFT_LOAD_MAX (22) and ≤ HARD_LOAD_CAP: WARNING.
-    //   - hrs ≤ SOFT_LOAD_MAX: no message.
-    if (semHours > ABSOLUTE_MAX_REASONABLE) {
+    //   - hrs > softLoadMax (default 22) and ≤ hardCap: WARNING.
+    //   - hrs ≤ softLoadMax: no message.
+    // Phase 1b — thresholds are sourced from ctx (populated from
+    // ConstraintModel), falling back to load_constants.ts when ctx omits them,
+    // so any existing caller that never sets these fields sees no change.
+    const hardCap = ctx.hardCap ?? HARD_LOAD_CAP;
+    const softLoadMax = ctx.softLoadMax ?? SOFT_LOAD_MAX;
+    const absoluteMaxReasonable = ctx.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
+    if (semHours > absoluteMaxReasonable) {
       errors.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE} ש"ש. לא ניתן להחיל את התוכנית.`,
+        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${absoluteMaxReasonable} ש"ש. לא ניתן להחיל את התוכנית.`,
       );
-    } else if (semHours > HARD_LOAD_CAP) {
+    } else if (semHours > hardCap) {
       const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
       if (userConfirmed) {
         warnings.push(
-          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${HARD_LOAD_CAP}) — חריגה בעומס שאושרה ידנית.`,
+          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${hardCap}) — חריגה בעומס שאושרה ידנית.`,
         );
       } else {
         errors.push(
-          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP} ש"ש). נדרש אישור חריגה מפורש.`,
+          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${hardCap} ש"ש). נדרש אישור חריגה מפורש.`,
         );
       }
-    } else if (semHours > SOFT_LOAD_MAX) {
+    } else if (semHours > softLoadMax) {
       warnings.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${SOFT_LOAD_MAX} ש"ש).`,
+        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
       );
     }
   }

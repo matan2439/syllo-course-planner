@@ -161,9 +161,10 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
   // hours > ABSOLUTE_MAX_REASONABLE always blocks; hours > model.hardCap only
   // blocks when the user hasn't explicitly confirmed the overload.
   const overloadConfirmed = model.overloadAccepted === true && !!model.overloadConfirmedAt;
+  const absoluteMaxReasonable = model.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
   const overCapSemesters = model.knownSemesterIds.filter(sem => {
     const hours = (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0);
-    if (hours > ABSOLUTE_MAX_REASONABLE) return true;
+    if (hours > absoluteMaxReasonable) return true;
     if (hours > model.hardCap && !overloadConfirmed) return true;
     return false;
   });

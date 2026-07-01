@@ -338,6 +338,69 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.filter(w => w.includes('שעות שבועיות'))).toEqual([]);
   });
 
+  // Phase 1b — hardCap/softLoadMax/absoluteMaxReasonable are now sourced from
+  // ctx (populated from ConstraintModel), falling back to load_constants.ts's
+  // defaults when ctx omits them — so a different PolicyProvider/program can
+  // override thresholds without editing this shared file.
+  it('Phase 1b — a raised ctx.hardCap lets 27h through (no longer blocks at the default 26)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      hardCap: 40,
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('Phase 1b — a raised ctx.absoluteMaxReasonable lets 31h through (no longer always-blocking at the default 30)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      hardCap: 40, absoluteMaxReasonable: 50,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+      courses: { A: { hours: 31 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('Phase 1b — a lowered ctx.softLoadMax produces the mild-overload warning earlier than the default 22', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      softLoadMax: 5,
+      courses: { A: { hours: 10 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('10') && w.includes('מעל הטווח המומלץ'))).toBe(true);
+  });
+
+  it('Phase 1b — omitting hardCap/softLoadMax/absoluteMaxReasonable from ctx falls back to load_constants.ts defaults (no behavior change)', () => {
+    // Identical scenario to "27h blocks without overload acceptance" above, with ctx
+    // omitting the new fields entirely — pins that the default path is unchanged.
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('27') && e.includes('המגבלה הקשיחה'))).toBe(true);
+  });
+
   it('rejects a plan that omits not-completed mandatory courses', () => {
     const ctx: PlanValidationContext = {
       ...BASE_CTX,

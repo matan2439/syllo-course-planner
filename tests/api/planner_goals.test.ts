@@ -278,6 +278,21 @@ describe('assessCompleteness', () => {
     expect(r.overCapSemesters).toEqual(['year_3_semester_a']);
   });
 
+  // Phase 1b — absoluteMaxReasonable is now a model field (defaulting to
+  // load_constants.ts's ABSOLUTE_MAX_REASONABLE), so a PolicyProvider serving a
+  // different program/institution can raise it without editing shared code.
+  it('respects a model-level absoluteMaxReasonable override (raises the previously-fixed ceiling)', () => {
+    const m = model({
+      degreeRequiredHours: 4, categories: [], hardCap: 26,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+      absoluteMaxReasonable: 40, // raised above the default 30
+    });
+    // 8 courses x 4h = 32h: over the default ABSOLUTE_MAX_REASONABLE(30), under this model's 40
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7']);
+    const r = assessCompleteness(state, m);
+    expect(r.overCapSemesters).toEqual([]);
+  });
+
   it('returns empty gap lists and degreeMet=true when everything is satisfied', () => {
     const m = model({ requiredMandatoryCourseIds: ['MAND'], degreeRequiredHours: 12, hardCap: 26 });
     m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));

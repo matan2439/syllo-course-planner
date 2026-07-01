@@ -43,6 +43,11 @@ export function buildValidationContext(
     // validate() and isGoal/assessCompleteness never disagree.
     overloadAccepted: model.overloadAccepted,
     overloadConfirmedAt: model.overloadConfirmedAt,
+    // Phase 1b — same source of truth as assessCompleteness's load-cap
+    // thresholds, so validate() and isGoal/assessCompleteness never disagree.
+    hardCap: model.hardCap,
+    softLoadMax: model.softLoadMax,
+    absoluteMaxReasonable: model.absoluteMaxReasonable,
   };
 }
 

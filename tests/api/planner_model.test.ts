@@ -12,6 +12,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { buildConstraintModel, planContextToState } from '../../api/ai/planner_model';
+import { HARD_LOAD_CAP, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from '../../api/ai/load_constants';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import { GreedyOrchestrator } from '../../api/ai/planner_orchestrator';
 import { placedCourseIds, emptyState } from '../../api/ai/planner_types';
@@ -107,6 +108,22 @@ describe('buildConstraintModel — program-agnostic extraction', () => {
     expect(withIdentity.institutionId).toBeUndefined(); // never fabricated
     expect(withIdentity.programId).toBe('mechanical_engineering');
     expect(withIdentity.catalogYear).toBe(2027);
+  });
+
+  it('defaults load-cap thresholds to load_constants.ts (no behavior change)', () => {
+    const m = buildConstraintModel(CS_BOARD as any);
+    expect(m.hardCap).toBe(HARD_LOAD_CAP);
+    expect(m.softLoadMax).toBe(SOFT_LOAD_MAX);
+    expect(m.absoluteMaxReasonable).toBe(ABSOLUTE_MAX_REASONABLE);
+  });
+
+  it('threads load-cap threshold overrides through to the model', () => {
+    const m = buildConstraintModel(CS_BOARD as any, {
+      hardCap: 99, softLoadMax: 50, absoluteMaxReasonable: 120,
+    });
+    expect(m.hardCap).toBe(99);
+    expect(m.softLoadMax).toBe(50);
+    expect(m.absoluteMaxReasonable).toBe(120);
   });
 });
 
