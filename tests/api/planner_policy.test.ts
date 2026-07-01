@@ -12,7 +12,7 @@
  */
 
 import { TauPolicyProvider } from '../../api/ai/planner_policy';
-import { scorePlan, compareScore } from '../../api/ai/planner_goals';
+import { scorePlan, compareScore, assessCompleteness } from '../../api/ai/planner_goals';
 import type { ConstraintModel, PlanState, CategoryReq } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 
@@ -131,6 +131,32 @@ describe('TauPolicyProvider.score / compareScore — delegation', () => {
     const a = [1, 2, 3];
     const b = [1, 2, 4];
     expect(policy.compareScore(a, b)).toBe(compareScore(a, b));
+  });
+});
+
+describe('TauPolicyProvider.assessCompleteness — delegation', () => {
+  test('matches the standalone assessCompleteness function', () => {
+    const cat: CategoryReq = { id: 'cat_1', name: 'Cat', required: 1, candidateIds: ['c2'] };
+    const model = makeModel(
+      [makeProfile('c1', { is_mandatory: true, hours: 4 }), makeProfile('c2', { hours: 4 })],
+      { requiredMandatoryCourseIds: ['c1'], categories: [cat], degreeRequiredHours: 8, hardCap: 20 },
+    );
+    const state: PlanState = { semesters: { s1: ['c1'], s2: [] } }; // c2 unplaced — a real gap
+    expect(policy.assessCompleteness(state, model)).toEqual(assessCompleteness(state, model));
+  });
+});
+
+describe('TauPolicyProvider.isGoal — derived from assessCompleteness', () => {
+  test('isGoal is false whenever assessCompleteness reports any gap', () => {
+    const cat: CategoryReq = { id: 'cat_1', name: 'Cat', required: 1, candidateIds: ['c2'] };
+    const model = makeModel(
+      [makeProfile('c1', { is_mandatory: true, hours: 4 }), makeProfile('c2', { hours: 4 })],
+      { requiredMandatoryCourseIds: ['c1'], categories: [cat], degreeRequiredHours: 8, hardCap: 20 },
+    );
+    const state: PlanState = { semesters: { s1: ['c1'], s2: [] } }; // c2 unplaced
+    const gaps = policy.assessCompleteness(state, model);
+    expect(gaps.missingMandatory.length + gaps.unsatisfiedCategories.length).toBeGreaterThan(0);
+    expect(policy.isGoal(state, model)).toBe(false);
   });
 });
 

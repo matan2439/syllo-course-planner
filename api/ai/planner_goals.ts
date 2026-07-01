@@ -125,6 +125,44 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   return [g1, g2a, g2b, g3, g4, g5, g5b, g6];
 }
 
+export interface CompletenessAssessment {
+  degreeHours: number;
+  degreeMet: boolean;
+  /** requiredMandatoryCourseIds not yet placed (and not already completed). */
+  missingMandatory: string[];
+  /** category ids whose placed-candidate count is below their required count. */
+  unsatisfiedCategories: string[];
+  /** semester ids whose total placed hours exceed model.hardCap. */
+  overCapSemesters: string[];
+}
+
+/**
+ * The shared degree-completion judgment — the single source of truth for
+ * "what's missing" behind both TauPolicyProvider.isGoal (a boolean derived
+ * from this) and validateCandidate's CandidateReport (the detailed gaps).
+ * Pure: no I/O, no mutation.
+ */
+export function assessCompleteness(state: PlanState, model: ConstraintModel): CompletenessAssessment {
+  const placed = new Set(placedCourseIds(state));
+
+  const dh = degreeHours(state, model);
+  const degreeMet = dh >= model.degreeRequiredHours;
+
+  const missingMandatory = model.requiredMandatoryCourseIds.filter(
+    id => !placed.has(id) && !model.completedCourseIds.has(id),
+  );
+
+  const unsatisfiedCategories = model.categories
+    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
+    .map(cat => cat.id);
+
+  const overCapSemesters = model.knownSemesterIds.filter(
+    sem => (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0) > model.hardCap,
+  );
+
+  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters };
+}
+
 /** Compare two score vectors lexicographically: >0 if a is better than b. */
 export function compareScore(a: number[], b: number[]): number {
   const n = Math.max(a.length, b.length);

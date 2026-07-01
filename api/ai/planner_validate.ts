@@ -10,7 +10,11 @@
 import { validatePlanProposal, type PlanValidationContext, type PlanProposal } from './plan_validation';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { type ConstraintModel, type PlanState, placedCourseIds } from './planner_types';
-import { degreeHours as computeDegreeHours } from './planner_goals';
+import { assessCompleteness } from './planner_goals';
+// Type-only — erased at compile time, so this does NOT create a runtime
+// circular import back from planner_policy.ts (which imports validatePlanState
+// and buildValidationContext from this file for TauPolicyProvider.validate).
+import type { PolicyProvider } from './planner_policy';
 
 export function buildValidationContext(
   model: ConstraintModel,
@@ -91,24 +95,25 @@ export function validateCandidate(
   state: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string> = {},
+  /**
+   * Only the assessCompleteness method is needed here, so the parameter is
+   * duck-typed against that one capability rather than the full PolicyProvider —
+   * a real PolicyProvider instance (e.g. TauPolicyProvider) satisfies this too.
+   * Defaults to the standalone assessCompleteness function directly, matching
+   * TauPolicyProvider's own delegation — not a `new TauPolicyProvider()` default,
+   * which would require a value import from planner_policy.ts and reintroduce
+   * the cycle the type-only import above avoids.
+   */
+  policy: Pick<PolicyProvider, 'assessCompleteness'> = { assessCompleteness },
 ): CandidateReport {
   const legality = validatePlanState(state, model, pinnedHome);
   const placed = new Set(placedCourseIds(state));
 
-  const degreeHours = computeDegreeHours(state, model);
-  const degreeMet = degreeHours >= model.degreeRequiredHours;
+  const { degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters } =
+    policy.assessCompleteness(state, model);
 
-  const missingMandatory = model.requiredMandatoryCourseIds.filter(
-    id => !placed.has(id) && !model.completedCourseIds.has(id),
-  );
-  const unsatisfiedCategories = model.categories
-    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
-    .map(cat => cat.id);
   const disallowedPlaced = [...placed].filter(
     id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
-  );
-  const overCapSemesters = model.knownSemesterIds.filter(
-    sem => (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0) > model.hardCap,
   );
 
   const errors = [...legality.errors];

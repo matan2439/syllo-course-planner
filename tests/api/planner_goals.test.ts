@@ -6,7 +6,7 @@
  *   > 5 user preferences > 6 difficulty/comfort.
  */
 
-import { scorePlan, compareScore, GOAL_STACK } from '../../api/ai/planner_goals';
+import { scorePlan, compareScore, GOAL_STACK, assessCompleteness } from '../../api/ai/planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -203,6 +203,56 @@ describe('placedHours — annual course deduplication', () => {
 
     const score = scorePlan(state, m);
     expect(score[0]).toBe(6); // 3 + 3, no dedup
+  });
+});
+
+describe('assessCompleteness', () => {
+  // The shared completeness judgment used by both TauPolicyProvider.isGoal
+  // (planner_policy.ts) and validateCandidate (planner_validate.ts) — moved
+  // here so both consumers delegate to one implementation instead of each
+  // recomputing degreeMet/missingMandatory/unsatisfiedCategories/overCapSemesters.
+
+  it('reports a missing mandatory course', () => {
+    const m = model({ requiredMandatoryCourseIds: ['MAND'], categories: [], degreeRequiredHours: 4 });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));
+    const state = withCourses('year_3_semester_a', ['e0']); // MAND never placed
+    const r = assessCompleteness(state, m);
+    expect(r.missingMandatory).toEqual(['MAND']);
+    expect(r.degreeMet).toBe(true);
+  });
+
+  it('reports an unsatisfied category', () => {
+    const m = model({ degreeRequiredHours: 4 }); // default categories: fluids <- catFluid
+    const state = withCourses('year_3_semester_a', ['e0']); // catFluid never placed
+    const r = assessCompleteness(state, m);
+    expect(r.unsatisfiedCategories).toEqual(['fluids']);
+  });
+
+  it('reports degreeMet=false and the actual degreeHours when below target', () => {
+    const m = model({ degreeRequiredHours: 40, categories: [] });
+    const state = withCourses('year_3_semester_a', ['e0']); // 4h < 40
+    const r = assessCompleteness(state, m);
+    expect(r.degreeMet).toBe(false);
+    expect(r.degreeHours).toBe(4);
+  });
+
+  it('reports an over-cap semester by id', () => {
+    const m = model({ degreeRequiredHours: 4, categories: [], hardCap: 10 });
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h > hardCap 10
+    const r = assessCompleteness(state, m);
+    expect(r.overCapSemesters).toEqual(['year_3_semester_a']);
+  });
+
+  it('returns empty gap lists and degreeMet=true when everything is satisfied', () => {
+    const m = model({ requiredMandatoryCourseIds: ['MAND'], degreeRequiredHours: 12, hardCap: 26 });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['MAND', 'catFluid', 'e0']; // 4+4+4 = 12
+    const r = assessCompleteness(state, m);
+    expect(r.degreeMet).toBe(true);
+    expect(r.missingMandatory).toEqual([]);
+    expect(r.unsatisfiedCategories).toEqual([]);
+    expect(r.overCapSemesters).toEqual([]);
   });
 });
 

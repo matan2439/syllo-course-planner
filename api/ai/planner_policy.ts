@@ -8,15 +8,22 @@
  * no behavior change from what planner_agent.ts did inline before.
  */
 
-import { scorePlan, compareScore as compareScoreFn, degreeHours } from './planner_goals';
+import {
+  scorePlan,
+  compareScore as compareScoreFn,
+  assessCompleteness,
+  type CompletenessAssessment,
+} from './planner_goals';
 import { validatePlanState, buildValidationContext } from './planner_validate';
 import type { PlanValidationContext } from './plan_validation';
-import { type ConstraintModel, type PlanState, placedCourseIds } from './planner_types';
+import { type ConstraintModel, type PlanState } from './planner_types';
 
 export interface PolicyProvider {
   isGoal(state: PlanState, model: ConstraintModel): boolean;
   score(state: PlanState, model: ConstraintModel): number[];
   compareScore(a: number[], b: number[]): number;
+  /** Degree-completion gaps (mandatory/category/hours/over-cap) — shared by isGoal and validateCandidate. */
+  assessCompleteness(state: PlanState, model: ConstraintModel): CompletenessAssessment;
   validate(
     state: PlanState,
     model: ConstraintModel,
@@ -28,16 +35,17 @@ export interface PolicyProvider {
 /** TAU's current goal/scoring/validation rules — moved from planner_agent.ts unchanged. */
 export class TauPolicyProvider implements PolicyProvider {
   isGoal(state: PlanState, model: ConstraintModel): boolean {
-    const placed = new Set(placedCourseIds(state));
-    const loads = Object.values(state.semesters).map(
-      list => list.reduce((s, id) => s + (model.profiles.get(id)?.hours ?? 0), 0),
+    const c = this.assessCompleteness(state, model);
+    return (
+      c.overCapSemesters.length === 0 &&
+      c.degreeMet &&
+      c.missingMandatory.length === 0 &&
+      c.unsatisfiedCategories.length === 0
     );
-    if (loads.some(h => h > model.hardCap)) return false;
-    if (degreeHours(state, model) < model.degreeRequiredHours) return false;
-    if (!model.requiredMandatoryCourseIds.every(id => placed.has(id))) return false;
-    return model.categories.every(
-      cat => cat.candidateIds.filter(id => placed.has(id)).length >= cat.required,
-    );
+  }
+
+  assessCompleteness(state: PlanState, model: ConstraintModel): CompletenessAssessment {
+    return assessCompleteness(state, model);
   }
 
   score(state: PlanState, model: ConstraintModel): number[] {

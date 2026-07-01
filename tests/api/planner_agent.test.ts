@@ -317,6 +317,9 @@ describe('PlannerAgent', () => {
       isGoal: (_s, _m) => true,
       score: (_s, _m) => [999],
       compareScore: (_a, _b) => 42,
+      assessCompleteness: (_s, _m) => ({
+        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
+      }),
       validate: (_s, _m, _p, _c) => ({ valid: false, reason: 'sentinel-reason' }),
     };
 
