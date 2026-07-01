@@ -50,6 +50,12 @@ export interface ConstraintModel {
   pinnedCourseIds: Set<string>;
   /** course_ids the user explicitly wants. */
   wantedCourseIds: Set<string>;
+  /** Phase 0 — institution identity. Left undefined until a real multi-institution source exists. */
+  institutionId?: string;
+  /** Phase 0 — program identity, derived from the request's program_id where already parsed. */
+  programId?: string;
+  /** Phase 0 — catalog year, derived from the request's program_id where already parsed. */
+  catalogYear?: number | string;
 }
 
 /** The mutable plan: semester_id → ordered course_ids placed there. */

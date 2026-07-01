@@ -45,6 +45,12 @@ export interface BuildModelOptions {
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp of that confirmation. */
   overloadConfirmedAt?: number | null;
+  /** Phase 0 — institution identity. Leave unset unless a real source exists. */
+  institutionId?: string;
+  /** Phase 0 — program identity, derived from the request's program_id where already parsed. */
+  programId?: string;
+  /** Phase 0 — catalog year, derived from the request's program_id where already parsed. */
+  catalogYear?: number | string;
 }
 
 function uniq<T>(xs: T[]): T[] {
@@ -113,6 +119,9 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     disallowedCourseIds,
     pinnedCourseIds,
     wantedCourseIds,
+    institutionId: opts.institutionId,
+    programId: opts.programId,
+    catalogYear: opts.catalogYear,
   };
 }
 

@@ -94,6 +94,20 @@ describe('buildConstraintModel — program-agnostic extraction', () => {
     expect(withOverride.overloadAccepted).toBe(true);
     expect(withOverride.overloadConfirmedAt).toBe(confirmedAt);
   });
+
+  it('threads institution/program identity options through to the model (default: unset)', () => {
+    const withoutIdentity = buildConstraintModel(CS_BOARD as any);
+    expect(withoutIdentity.institutionId).toBeUndefined();
+    expect(withoutIdentity.programId).toBeUndefined();
+    expect(withoutIdentity.catalogYear).toBeUndefined();
+
+    const withIdentity = buildConstraintModel(CS_BOARD as any, {
+      programId: 'mechanical_engineering', catalogYear: 2027,
+    });
+    expect(withIdentity.institutionId).toBeUndefined(); // never fabricated
+    expect(withIdentity.programId).toBe('mechanical_engineering');
+    expect(withIdentity.catalogYear).toBe(2027);
+  });
 });
 
 describe('buildConstraintModel — real ME-2027 board', () => {
