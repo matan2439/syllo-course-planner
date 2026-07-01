@@ -90,7 +90,11 @@ export function priorHoursFromContext(ctx: any): number {
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */
-export function buildModel(board: any, ctx: any, prefs: Preferences): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string): ConstraintModel {
+  // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
+  // already used above to route the board_json lookup, reused here for the
+  // model's programId/catalogYear. No institutionId source exists yet.
+  const pv = program_id ? parseProgramVersionId(program_id) : null;
   return buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
     wantedCourseIds: prefs.wanted_course_ids,
@@ -101,6 +105,8 @@ export function buildModel(board: any, ctx: any, prefs: Preferences): Constraint
     priorHours: priorHoursFromContext(ctx),
     overloadAccepted: prefs.overload_accepted,
     overloadConfirmedAt: prefs.overload_confirmed_at,
+    programId: pv?.base,
+    catalogYear: pv?.year,
   });
 }
 
@@ -242,7 +248,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const model = buildModel(board, plan_context, preferences);
+  const model = buildModel(board, plan_context, preferences, program_id);
   const initialState = planContextToState(plan_context, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();

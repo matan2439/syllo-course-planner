@@ -152,6 +152,25 @@ describe('buildModel — overload-override threading', () => {
   });
 });
 
+describe('buildModel — program identity threading (Phase 0)', () => {
+  it('derives programId/catalogYear from the request program_id already parsed by this file', () => {
+    const model = buildModel(PLAN_CONTEXT as any, PLAN_CONTEXT, {} as any, 'mechanical_engineering_2027');
+    expect(model.programId).toBe('mechanical_engineering');
+    expect(model.catalogYear).toBe(2027);
+    expect(model.institutionId).toBeUndefined(); // never fabricated
+  });
+
+  it('leaves identity fields unset when program_id is omitted or malformed (no behavior change)', () => {
+    const noId = buildModel(PLAN_CONTEXT as any, PLAN_CONTEXT, {} as any);
+    expect(noId.programId).toBeUndefined();
+    expect(noId.catalogYear).toBeUndefined();
+
+    const malformed = buildModel(PLAN_CONTEXT as any, PLAN_CONTEXT, {} as any, 'not-a-valid-id');
+    expect(malformed.programId).toBeUndefined();
+    expect(malformed.catalogYear).toBeUndefined();
+  });
+});
+
 // ── Phase 5: PlannerAgent path ────────────────────────────────────────────────
 
 describe('generate-plan PlannerAgent path (Phase 5)', () => {
