@@ -1,6 +1,6 @@
 # Current — read this first
 
-Branch: main @ 1bfddff (structured ClarificationQuestion contract shipped + handoff docs, complete)
+Branch: main @ f0cdcdf (clarification-answer round trip shipped, handoff docs pending in same session)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
 Fast-start: for a compact, source-based bootstrap (last 8 commits, architecture-file status, next epic, first commands to run), read `.remember/session_bootstrap.md` instead of this whole file.
 
@@ -41,16 +41,23 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
 
-Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, natural-language clarification UX consuming these questions, or first production wiring decision).
+**Clarification-answer round trip shipped** (`f0cdcdf`) — the first piece of infrastructure that *consumes* the `ClarificationQuestion` contract, not just produces it:
+- New `api/ai/academic_clarification_answers.ts`: `applyClarificationAnswers(req: AcademicDecisionRequest, answers: ClarificationAnswer[]): AcademicDecisionRequest`. Pure, no-I/O. `ClarificationAnswer = { questionId: string, value: string[] | string | number }`. Matches answers to requests by the 5 stable question ids `DeterministicClarificationCapability` already produces (`completed_courses`/`current_courses`/`excluded_courses`/`max_weekly_hours`/`track_or_focus`) and writes into the exact same `AcademicDecisionRequest` fields `AcademicDecisionAgent.run()` reads to build a `ClarificationPlanningContext` — it is the inverse of that mapping, so a caller can round-trip: `run()` → get `clarification.questions` → collect answers → `applyClarificationAnswers(req, answers)` → `run()` again with the merged request.
+- Unrecognized `questionId`s are silently ignored (forward-compatible with future question ids). Multiple answers for the same question in one batch: last one wins. Does not mutate the input request. Does not introduce a spurious empty `buildModelOptions: {}` when the original request had none and no answer touched it (caught by an invariant test during TDD — this was a real bug in the first draft, fixed before commit).
+- Not wired into `AcademicDecisionAgent`, the factory, or any production path — it's a standalone function a future clarification UX (CLI prompt loop, chat turn, form submission) is expected to call between two `agent.run()` invocations, owning its own I/O.
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, an actual clarification UX layer that calls `applyClarificationAnswers`, or first production wiring decision).
 
 ## Test status
-API tests: 676/676 (was 664; net +12 — 10 new structured-question tests in `academic_clarification.test.ts`, +2 new real-capability integration tests in `academic_decision_agent.test.ts`; one existing factory test extended in place with question-shape assertions, no count change there). `tsc --noEmit`: clean.
+API tests: 686/686 (was 676; net +10 — new `academic_clarification_answers.test.ts`, all written test-first with a real RED per test). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
 
 ## Next step
-Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; next phase is unscoped — ready whenever approved.
+Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; next phase is unscoped — ready whenever approved. Candidates: real Simulation/Decision/Persistence implementations, an actual clarification UX consuming `applyClarificationAnswers`, or first production wiring decision.
 
 ## Boundaries
 No Alembic/deploy/merge without approval. Never touch Supabase directly (incl. read-only). Never commit `.claude/settings.local.json` or `.claude/skills/`.
