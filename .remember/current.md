@@ -54,16 +54,24 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into `AcademicDecisionAgent`, the factory, or any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
 
-Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, an actual clarification UX layer that calls the new loop harness, or first production wiring decision).
+**Clarification UX Consumer / View-Model Adapter shipped** (`05bb47e`) — the first consumer-facing adapter over the clarification contract, still no UI:
+- New `api/ai/academic_clarification_view_model.ts`: `buildClarificationViewModel(clarification: ClarificationResult, options?: { blocking?: boolean; invalidAnswers?: InvalidClarificationAnswer[] })` — pure, no-I/O. Maps `ClarificationResult` (produced by `DeterministicClarificationCapability`, unchanged) into a stable, UI-ready `ClarificationViewModel` (`needsUserInput`, `title`, `summary`, `blocking`, `items: ClarificationViewModelItem[]`, `primaryActionLabel`, `secondaryActionLabel?`). Each `items` entry carries `id`/`inputKey`/`label`/`prompt`/`answerType`/`required`/`critical`/`examples?`/`options?`/`validationMessage?`, one per `ClarificationQuestion`, same order, stable ids preserved exactly (`completed_courses`/`current_courses`/`excluded_courses`/`max_weekly_hours`/`track_or_focus`).
+- Does not re-derive or duplicate what's missing — consumes `ClarificationQuestion[]` as-is; `label` is a deterministic string transform of the existing stable `id` (snake_case → Title Case), not new decision logic. `blocking` is a caller-supplied fact (intended source: `AcademicDecisionResult.blocked`), never recomputed here. `invalidAnswers` (from `academic_clarification_loop.ts`'s `applyClarificationLoopAnswers`) surface as per-item `validationMessage`, keyed by question id. Does not mutate the input `ClarificationResult` (verified by a dedicated test).
+- No React/DOM/Supabase/LLM-client/production-planner imports (verified by a dedicated test that scans only `import`/`require` lines in the module, to avoid false positives from its own doc-comment prose). 13 new tests, all written test-first (RED confirmed — module didn't exist — before implementation); one false-positive caught during RED→GREEN: the "no forbidden imports" test initially scanned the whole file body and flagged its own header comment, fixed by scoping the scan to import/require lines only.
+- Not wired into `AcademicDecisionAgent`, the factory, the loop harness, or any production path — a standalone adapter a future UI is expected to call with the output of `agent.run()`/`clarifyRequest()`/`applyClarificationLoopAnswers()`.
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, actual UI consuming the new view-model adapter, or first production wiring decision).
 
 ## Test status
-API tests: 703/703 (was 686; net +17 — new `academic_clarification_loop.test.ts`, all written test-first with a real RED per test). `tsc --noEmit`: clean.
+API tests: 716/716 (was 703; net +13 — new `academic_clarification_view_model.test.ts`, all written test-first with a real RED per test). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
 
 ## Next step
-Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; the clarification contract is now closed-loop and testable. Next phase is unscoped — ready whenever approved. Candidates: real Simulation/Decision/Persistence implementations, an actual clarification UX (CLI/chat/form) consuming the loop harness, or first production wiring decision.
+Get direction on the pytest leak before running pytest broadly again (unrelated to the AcademicDecisionAgent track). Phase 2 and 2b (ProgramProvider, runPlanningOrchestration) are done; the clarification contract is now closed-loop, testable, and has a UI-ready view-model adapter. Next phase is unscoped — ready whenever approved. Candidates: real Simulation/Decision/Persistence implementations, actual UI consuming `buildClarificationViewModel`, or first production wiring decision.
 
 ## Boundaries
 No Alembic/deploy/merge without approval. Never touch Supabase directly (incl. read-only). Never commit `.claude/settings.local.json` or `.claude/skills/`.
