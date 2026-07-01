@@ -29,6 +29,7 @@ import type {
 import type { SearchDeps } from '../../api/ai/planner_search_types';
 import type { ConstraintModel, PlanState, PlannerMutation, CategoryReq } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
+import type { PolicyProvider } from '../../api/ai/planner_policy';
 
 // ── Minimal fixtures ──────────────────────────────────────────────────────────
 
@@ -285,5 +286,50 @@ describe('PlannerAgent', () => {
     const result = await agent.run();
     // Failure is caught — result still returned, rationale_he is absent (caller uses fallback)
     expect(result.rationale_he).toBeUndefined();
+  });
+
+  // PolicyProvider extraction — default and injected
+
+  test('uses the default TauPolicyProvider when no policy option is passed', async () => {
+    const cat: CategoryReq = { id: 'cat_1', name: 'Known Category', required: 1, candidateIds: ['c2'] };
+    const model = makeModel(
+      [makeProfile('c1', { is_mandatory: true, hours: 4 }), makeProfile('c2', { hours: 4 })],
+      [cat],
+    );
+    model.requiredMandatoryCourseIds = ['c1'];
+    model.degreeRequiredHours = 8;
+
+    let capturedDeps: SearchDeps<PlanState, PlannerMutation> | undefined;
+    const mockSearch: SearchCapability<PlanState, PlannerMutation> = {
+      search: (s, deps, _opts) => { capturedDeps = deps; return { finalState: s }; },
+    };
+    const agent = new PlannerAgent({ model, initialState: INITIAL_STATE, search: mockSearch });
+    await agent.run();
+
+    const goalState: PlanState = { semesters: { s1: ['c1', 'c2'], s2: [] } };
+    const nonGoalState: PlanState = { semesters: { s1: [], s2: [] } };
+    expect(capturedDeps!.isGoal(goalState)).toBe(true);
+    expect(capturedDeps!.isGoal(nonGoalState)).toBe(false);
+  });
+
+  test('uses an injected custom PolicyProvider instead of the default', async () => {
+    const stubPolicy: PolicyProvider = {
+      isGoal: (_s, _m) => true,
+      score: (_s, _m) => [999],
+      compareScore: (_a, _b) => 42,
+      validate: (_s, _m, _p, _c) => ({ valid: false, reason: 'sentinel-reason' }),
+    };
+
+    let capturedDeps: SearchDeps<PlanState, PlannerMutation> | undefined;
+    const mockSearch: SearchCapability<PlanState, PlannerMutation> = {
+      search: (s, deps, _opts) => { capturedDeps = deps; return { finalState: s }; },
+    };
+    const agent = new PlannerAgent({ model: makeModel(), initialState: INITIAL_STATE, search: mockSearch, policy: stubPolicy });
+    await agent.run();
+
+    expect(capturedDeps!.isGoal(INITIAL_STATE)).toBe(true);
+    expect(capturedDeps!.score(INITIAL_STATE)).toEqual([999]);
+    expect(capturedDeps!.compareScore([1], [2])).toBe(42);
+    expect(capturedDeps!.validate(INITIAL_STATE)).toEqual({ valid: false, reason: 'sentinel-reason' });
   });
 });

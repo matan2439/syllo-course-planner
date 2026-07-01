@@ -1,8 +1,10 @@
 /**
  * Phase 4 — PlannerAgent.
  *
- * Owns: ConstraintModel, SearchDeps closures, detectGaps dispatch,
- * trace-from-meta (primary) and diffToTrace (fallback).
+ * Owns: SearchDeps closures, detectGaps dispatch, trace-from-meta (primary)
+ * and diffToTrace (fallback). Goal/scoring/validation judgment is NOT owned
+ * here — it's delegated to a PolicyProvider (default: TauPolicyProvider),
+ * so this file contains no institution-specific degree-rule arithmetic.
  *
  * Design invariants (roadmap-v2.md §2.1):
  *   - SearchStrategy never receives ConstraintModel directly.
@@ -11,14 +13,9 @@
  *   - diffToTrace is fallback only (when SearchResult.meta is absent).
  */
 
-import {
-  scorePlan,
-  compareScore,
-  applyMutation as applyMutationFn,
-  degreeHours,
-} from './planner_goals';
+import { applyMutation as applyMutationFn } from './planner_goals';
 import { enumerateActions } from './planner_actions';
-import { validatePlanState, buildValidationContext } from './planner_validate';
+import { buildValidationContext } from './planner_validate';
 import {
   detectGaps,
   type SearchCapability,
@@ -27,6 +24,7 @@ import {
   type ExplanationCapability,
   type GapRecord,
 } from './planner_capabilities';
+import { type PolicyProvider, TauPolicyProvider } from './planner_policy';
 import type { SearchDeps, BeamSearchMeta } from './planner_search_types';
 import {
   type ConstraintModel,
@@ -48,6 +46,15 @@ export interface AgentResult {
   rationale_he?: string;
 }
 
+/**
+ * Defined here (not in planner_capabilities.ts) because it references
+ * AgentResult, which lives in this file — putting it in planner_capabilities.ts
+ * would create a circular import back into planner_agent.ts.
+ */
+export interface PlanningCapability {
+  run(): Promise<AgentResult>;
+}
+
 export interface PlannerAgentOptions {
   model: ConstraintModel;
   initialState: PlanState;
@@ -56,23 +63,10 @@ export interface PlannerAgentOptions {
   knowledge?: KnowledgeCapability;
   validation?: ValidationCapability;
   explanation?: ExplanationCapability;
+  /** Goal/scoring/validation rules. Defaults to TauPolicyProvider. */
+  policy?: PolicyProvider;
   maxSteps?: number;
   beamWidth?: number;
-}
-
-// ── Goal check (mirrors PlannerWorker.isGoalReached, standalone) ──────────────
-
-function isGoalState(state: PlanState, model: ConstraintModel): boolean {
-  const placed = new Set(placedCourseIds(state));
-  const loads = Object.values(state.semesters).map(
-    list => list.reduce((s, id) => s + (model.profiles.get(id)?.hours ?? 0), 0),
-  );
-  if (loads.some(h => h > model.hardCap)) return false;
-  if (degreeHours(state, model) < model.degreeRequiredHours) return false;
-  if (!model.requiredMandatoryCourseIds.every(id => placed.has(id))) return false;
-  return model.categories.every(
-    cat => cat.candidateIds.filter(id => placed.has(id)).length >= cat.required,
-  );
 }
 
 // ── diffToTrace — fallback when meta is absent ────────────────────────────────
@@ -99,7 +93,7 @@ function diffToTrace(initial: PlanState, final: PlanState): PlannerMutation[] {
 
 // ── PlannerAgent ──────────────────────────────────────────────────────────────
 
-export class PlannerAgent {
+export class PlannerAgent implements PlanningCapability {
   constructor(private opts: PlannerAgentOptions) {}
 
   async run(): Promise<AgentResult> {
@@ -111,6 +105,7 @@ export class PlannerAgent {
       knowledge,
       validation,
       explanation,
+      policy = new TauPolicyProvider(),
       maxSteps = 150,
       beamWidth,
     } = this.opts;
@@ -126,12 +121,11 @@ export class PlannerAgent {
       applyMutation: (s, a) => applyMutationFn(s, a) ?? s,
       validate: (s) => {
         if (validation) return validation.validateState(s);
-        const r = validatePlanState(s, model, pinnedHome, validationCtx);
-        return { valid: r.valid, reason: r.errors[0] };
+        return policy.validate(s, model, pinnedHome, validationCtx);
       },
-      score: (s) => scorePlan(s, model),
-      compareScore,
-      isGoal: (s) => isGoalState(s, model),
+      score: (s) => policy.score(s, model),
+      compareScore: (a, b) => policy.compareScore(a, b),
+      isGoal: (s) => policy.isGoal(s, model),
     };
 
     // Detect gaps before search
