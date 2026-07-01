@@ -1,6 +1,6 @@
 # Current — read this first
 
-Branch: main @ 5c323d3 (AcademicDecisionAgent pipeline-shell epic — AcademicDecisionAgent + Clarification/Simulation/Decision/Persistence capability shells, complete)
+Branch: main @ f8ad9e6 (AcademicDecisionAgent default composition factory, complete)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
 
 ## Direction change (2026-07-01)
@@ -15,10 +15,16 @@ Phase 0 shipped (`232271a`, `0b45b98`, `e16ba9c`) — institution/program identi
 
 Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`, `planner_orchestration.ts`, `program_provider.ts`, `generate-plan.ts`, `planner-run.ts`, and `PlannerWorker` are all untouched (confirmed via `git status`/`git diff --stat` — only the 4 new files appear). Not wired into any production path. The duplicate top-level `detectGaps` call (also run internally by `PlannerAgent`) is intentional — pure function, cheap, avoids hoisting logic out of `PlannerAgent`.
 
-Nothing in progress — awaiting direction on the next epic (e.g. wiring `AcademicDecisionAgent` to actually construct/inject its own `PlanningCapability` via `runPlanningOrchestration`, or building out real Clarification/Simulation/Decision/Persistence implementations).
+**Default composition factory shipped** (`f8ad9e6`) — new `api/ai/academic_decision_factory.ts`: `createDefaultAcademicDecisionAgent(opts)` proves `AcademicDecisionAgent` is constructible from real building blocks (`TauProgramProvider`, `PlannerAgent`, `BeamSearchStrategy`, `PassThroughKnowledgeCapability`, `LlmExplainer`) *without* changing `AcademicDecisionAgent` itself — it stays a clean class that only receives deps. The factory's Plan-stage `planning: PlanningCapability` is a closure over the existing, untouched `runPlanningOrchestration`; `AcademicDecisionAgent` never calls it directly. Every capability slot is overridable via `opts.overrides`. Two documented, deliberately-unwired seams (not fixed this epic, no forced refactor):
+- `orchestrationRequest.programId` (bound at factory-construction time, for the Plan stage) and the `programId` passed later to `agent.run(...)` (for the Observe/top-level-gap-check stage) are independent — callers must pass matching values themselves.
+- Top-level `ValidationCapability` stays unwired by default — it would need the Plan stage's own `ConstraintModel`/`pinnedHome`/`PlanValidationContext`, which only exists inside the `runPlanningOrchestration` closure; wiring it would mean a third independent board load. Real per-candidate validation (`TauPolicyProvider.validate`) already runs unchanged inside PlannerAgent's search — plan correctness isn't weakened.
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `planner_orchestration.ts`, and `academic_decision_agent.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path.
+
+Nothing in progress — awaiting direction on the next epic (e.g. resolving the double-Observe seam, real Clarification/Simulation/Decision/Persistence implementations, or first production wiring decision).
 
 ## Test status
-API tests: 640/640 (was 622; +8 `academic_decision_types.test.ts`, +10 `academic_decision_agent.test.ts`). `tsc --noEmit`: clean.
+API tests: 647/647 (was 640; +7 `academic_decision_factory.test.ts`). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
