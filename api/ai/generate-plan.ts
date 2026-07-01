@@ -46,6 +46,7 @@ import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
+import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -256,7 +257,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // otherwise unchanged). When a critical input is still missing after any
   // supplied clarification_answers are applied, returns a structured
   // clarification response instead of delegating to either planner path
-  // below. See academic_clarification_preflight.ts.
+  // below. See academic_clarification_preflight.ts. Once unblocked, any valid
+  // clarification_answers are also merged into the actual planning inputs
+  // (plan_context/preferences) below — not just used to satisfy the gate. See
+  // academic_clarification_plan_inputs.ts.
+  let effectivePlanContext = plan_context;
+  let effectivePreferences = preferences;
   if (process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT === 'true') {
     const resumed = await resumeClarificationPreflight(
       {
@@ -278,6 +284,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       });
       return;
     }
+    const merged = mergeClarificationAnswersIntoGeneratePlanInputs(plan_context, preferences, clarification_answers ?? []);
+    effectivePlanContext = merged.planContext;
+    effectivePreferences = merged.preferences;
   }
 
   // Board — always plan over the full course universe.
@@ -296,8 +305,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const model = buildModel(board, plan_context, preferences, program_id);
-  const initialState = planContextToState(plan_context, model);
+  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id);
+  const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
 
@@ -351,7 +360,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
 
-  const blockingErrors = overloadGate(proposal.semesters, model, preferences);
+  const blockingErrors = overloadGate(proposal.semesters, model, effectivePreferences);
 
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
