@@ -2,9 +2,10 @@
 _V1 complete (2026-06-30). P0 fixes complete (2026-06-30, commit e645004 + cleanup). This file is now the V2 roadmap._
 _**P1 complete (2026-07-01, commits 19f3045 / b440b05 / 2fdb0d3).** 564/564 tests green, tsc clean._
 _**P2-A complete (2026-07-01, commit d86252a)** — dead `generateCandidates` removed._
-_**P2-C is NOT complete — see §4.3 and §8.** The commit message ("annual course deduplication via root_course_id") overstates it: the type + one consumer exist, but no production code populates `root_course_id`, so the dedup is currently inert and the one real annual course in production is double-counted. Verified 2026-07-01._
+_**P2-C is now actually complete (commit `45286c5`, 2026-07-01)** — see §4.3. Commit `2119c6d` had only shipped the type + one consumer; `root_course_id` is now populated at the extraction script (`scripts/fix_annual_and_offering_data.py`) and propagated into both `data/parsed_json/mechanical_semester_board_2027.json` and `data/boards/mechanical_engineering_2027.json`. Regression test added against the real board path in `tests/api/planner_model.test.ts`. Full API suite (563/563) and `tsc --noEmit` clean._
 _**§8 (2026-07-01) is a full architecture review against `docs/product-goal.md`'s generic-engine vision — read it before starting new planner work.**_
-_See `.remember/remember.md` for full canonical project state, score vector, and blocked/deferred items._
+_**Open environment issue (2026-07-01, unresolved):** a full `pytest` run leaks live connections to the Supabase Postgres host (39+ ESTABLISHED sockets observed, never closed) — root cause not found; do not run unfiltered `pytest` with a real `DATABASE_URL` set until diagnosed. See `.remember/architecture.md` "Environment notes"._
+_See `.remember/current.md` for current status/blockers and `.remember/architecture.md` for full canonical architecture, score vector, and design invariants (superseding `.remember/remember.md`, which is now legacy)._
 
 ---
 
@@ -431,31 +432,13 @@ Update `validatePlanProposal` to handle `equivalentGroups`.
 
 ### 4.3 Annual Course Deduplication
 
-**Status: NOT complete (verified 2026-07-01), despite commit `2119c6d` claiming it.** `count_hours_once: boolean` and `root_course_id?: string` were added to `CourseProfile`, and `placedHours()` in `planner_goals.ts` does dedupe when both are set — but **no production code writes `root_course_id`** (verified by grepping every non-test file in `scripts/` and `app/`). The one real annual course in production data, `0542-3792` (`year_3_semester_a` + `year_3_semester_b`, 4 hours each, `count_hours_once=true`), has its hours **double-counted (8 instead of 4) today**, because the dedup guard requires `root_course_id` too and it's always absent. `count_hours_once` itself is populated only by `scripts/fix_annual_and_offering_data.py`, a hand-written, hardcoded-to-3-course-IDs patch script — not a generalizable pipeline stage. Separately, `app/analysis/board_audit.py` enforces `is_annual`/`spans_semesters` invariants on raw board JSON, but those fields never reach `CourseProfile` at all — two disconnected annual-course representations exist today, and passing the audit does not guarantee the planner will dedupe correctly.
+**Status: COMPLETE (commit `45286c5`, 2026-07-01).** Commit `2119c6d` had only added `count_hours_once: boolean` and `root_course_id?: string` to `CourseProfile` and the `placedHours()` dedup consumer, without any producer — `root_course_id` was never written anywhere. Fixed by populating it at the one place `is_annual`/`count_hours_once` were already stamped for the real board: `_make_annual()` in `scripts/fix_annual_and_offering_data.py` now also sets `root_course_id := course_id` (self-referential — the real annual course `0542-3792` is the *same* `course_id` placed in both `year_3_semester_a` and `year_3_semester_b`, and `buildCourseProfiles` merges same-`course_id` placements into one `CourseProfile`, so no cross-id linking is needed). Applied to both `data/parsed_json/mechanical_semester_board_2027.json` and `data/boards/mechanical_engineering_2027.json` directly, since no automated regeneration pipeline connects them (see `.remember/architecture.md`, Data layer). Also lifted `is_annual`/`spans_semesters` into `CourseProfile` (`course_profile.ts`), and tightened `board_audit.py`'s annual check to require `root_course_id` whenever `is_annual` is set — closing the gap between the two previously-disconnected annual representations.
 
-**Corrected design — canonical pipeline, one owner:**
-```
-Board extraction/enrichment (scripts/course_planner_pipeline.py or the relevant enrichment step)
-  → detect is_annual from syllabus text / offering data (board_audit._text_says_annual already does this)
-  → derive root_course_id deterministically (course-numbering convention or institutional course-family id)
-  → write is_annual, root_course_id, count_hours_once, spans_semesters onto every placement
-    of that course_id, at extraction time — never as a downstream per-course patch script
-CourseProfile (course_profile.ts)
-  → lift is_annual + spans_semesters into CourseProfile alongside root_course_id/count_hours_once
-    (currently missing)
-board_audit.py
-  → assert against the SAME fields CourseProfile reads, so an audit pass actually guarantees
-    planner correctness instead of coincidentally not crashing
-planner_goals.ts (placedHours/degreeHours)
-  → unchanged in shape once the data is real
-```
-The canonical owner is **board extraction**, the only stage that ever sees the raw signal (syllabus text, numbering convention) needed to *derive* `root_course_id` instead of hand-listing it.
+**Regression test:** `tests/api/planner_model.test.ts` — exercises the *real* `buildCourseProfiles`/`buildConstraintModel` path against `data/parsed_json/mechanical_semester_board_2027.json` (not a hand-constructed fixture that sets `root_course_id` directly, which is exactly the blind spot that hid the bug the first time — see `planner_goals.test.ts`'s pre-existing hand-fixture test, which is *not* real-board and would not have caught this). Confirmed RED (8h, not 4h) before the fix, GREEN after.
 
-**Affected modules:** board extraction/enrichment scripts (new derivation logic), `api/ai/course_profile.ts` (lift `is_annual`/`spans_semesters`), `app/analysis/board_audit.py` (tighten to check the same fields the planner reads).
+**Verification:** Full API suite (563/563), `tsc --noEmit` clean, `tests/test_board_audit.py` (19/19, including the strict real-board assertion `test_real_board_passes_extended_integrity_for_three_target_courses`).
 
-**Tests to add:** A test exercising the *real* `buildCourseProfiles`/`buildConstraintModel` path against `data/boards/mechanical_engineering_2027.json` (not a hand-constructed fixture that sets `root_course_id` directly) must assert `placedHours()` counts `0542-3792` once. The prior P2-C tests almost certainly used a fixture that set `root_course_id` by hand, which is exactly why this shipped broken — same blind-spot pattern documented in `.remember/remember.md` for the panel-pref-wiring hard-avoid bug.
-
-**Priority:** P1 — this is a live production correctness bug, not a P2 nicety. See `§8` roadmap item 1.
+**Not touched as part of this fix:** Supabase (`sync:board`/`update-board-json.mjs`), any Alembic migration, JS test timeouts, `.venv` state — tracked separately.
 
 ---
 
@@ -614,7 +597,7 @@ Full review conducted against `docs/product-goal.md`'s generic-engine vision (7-
 
 **What's not right, in priority order (see `.remember/remember.md` for full per-item detail — Current architecture / Why-or-why-not future-proof / Recommended architecture / Now-or-later / Migration cost / Risk of postponing was captured there):**
 
-1. **Live bug:** annual course `0542-3792` is double-counted in `degreeHours` today because `root_course_id` (§4.3) is never populated in production. Not a "P2-C prepared" item — an active correctness bug.
+1. **~~Live bug~~ FIXED (commit `45286c5`, 2026-07-01):** annual course `0542-3792` was double-counted in `degreeHours` because `root_course_id` (§4.3) was never populated in production. Now fixed at the extraction script; see §4.3 for detail.
 2. **No `institution_id`/`program_id`/`catalog_year` anywhere in `ConstraintModel`** — courses are keyed by bare `course_id` globally, contradicting `product-goal.md` §4's own namespacing requirement. Cheapest to add now, before a second real program exists; expensive to retrofit after.
 3. **Load-cap constants (`HARD_LOAD_CAP=26`, `DEFAULT_MAX_HOURS_PER_SEMESTER=20`) have no board-data override path at all** — unlike `degreeRequiredHours`, which correctly does. A different university's weekly-load model can't express itself through data today.
 4. **`KnowledgeCapability.resolve()` returns `void`** — even a real syllabus-enrichment implementation has no way to get resolved facts back into `ConstraintModel` before search runs. Fix the interface contract before building the real P2 implementation on top of it.
@@ -623,7 +606,9 @@ Full review conducted against `docs/product-goal.md`'s generic-engine vision (7-
 7. **`data/boards/test_program_2027.json` does not prove cross-program generality** — identical semester ids, identical 185-hour target, identical category shape to the TAU fixture. `product-goal.md` §14.5's genericity-proof gate has not actually been exercised.
 8. **`VALIDATE`/`SCORE`/`REPAIR` trace actions confirmed dead** (§7.2) — free deletion, do opportunistically.
 
-**Prioritized roadmap from the review (highest architectural value → lowest):** (1) fix the live annual-dedup bug at the extraction stage → (2) add institution/program identity to `ConstraintModel` → (3) source load caps from board data → (4) fix the `KnowledgeCapability` return contract + resumable-search seam (design only, don't implement the LLM call yet) → (5) retire the client JS shadow engine → (6) build a genuinely structurally-different second synthetic program and run the reliability matrix against it → (7) delete the dead trace actions → (8) track/specialization model (§4.2), sequenced last so it isn't built twice against a still-buggy/duplicated foundation.
+**Prioritized roadmap from the review (highest architectural value → lowest):** ~~(1) fix the live annual-dedup bug at the extraction stage~~ **DONE (`45286c5`)** → (2) add institution/program identity to `ConstraintModel` → (3) source load caps from board data → (4) fix the `KnowledgeCapability` return contract + resumable-search seam (design only, don't implement the LLM call yet) → (5) retire the client JS shadow engine → (6) build a genuinely structurally-different second synthetic program and run the reliability matrix against it → (7) delete the dead trace actions → (8) track/specialization model (§4.2), sequenced last so it isn't built twice against a still-buggy/duplicated foundation.
+
+**Next up per this ranking: item 2** (institution/program identity), still awaiting explicit go-ahead — not started.
 
 ---
 
