@@ -1,6 +1,7 @@
 # Planner V2 Roadmap
 _V1 complete (2026-06-30). P0 fixes complete (2026-06-30, commit e645004 + cleanup). This file is now the V2 roadmap._
-_See `.remember/remember.md` for full canonical project state._
+_**P1 complete (2026-07-01, commits 19f3045 / b440b05 / 2fdb0d3).** 564/564 tests green, tsc clean._
+_See `.remember/remember.md` for full canonical project state, score vector, and blocked/deferred items._
 
 ---
 
@@ -34,8 +35,8 @@ V2 goals (in priority order):
 6. Clean up remaining debt.
 
 **Two architectural decisions locked in for V2:**
-- Search: **Beam Search** (not A*, not MCTS, not greedy). See Section 2 for rationale.
-- DB-less fallback: **Not acceptable**. Must always plan over the full course universe. See Section 3.
+- Search: **Agentic Planner with pluggable SearchStrategy** (first impl: BeamSearchStrategy). See Section 2.
+- DB-less fallback: **Not acceptable**. Must always plan over the full course universe. See Section 3 (DONE).
 
 ---
 
@@ -158,84 +159,168 @@ Surface this in `generate-plan.ts` warnings_he.
 
 ---
 
-## Section 2 — Search Architecture Evolution (P1)
+## Section 2 — Agentic Planner Architecture (P1)
 
-### 2.1 Search Architecture Decision
+> **NOT YET IMPLEMENTED.** The architecture below is approved and locked. No code for it exists yet.
+> Implementation begins with `api/ai/planner_search_types.ts` (Phase 1). See `# Next Conversation` below.
 
-**Current:** Greedy hill-climber with single-committed-path + myopic rollout.
-- One path. Cannot backtrack. Committed decisions cannot be revisited.
-- Rollout (`greedyComplete`) is itself myopic — deepens a bad choice instead of pruning it.
-- Acceptance condition `fin > curFinal || imm > current` (OR) can commit a locally-better but globally-worse move.
-- `generateCandidates` was implemented to branch on A/B placements but is never called; only one plan is returned.
+### 2.1 Architecture Overview
 
-**Why not A\*:** State space is exponential (each course can be placed in any of 4+ semesters). No tractable admissible heuristic. Memory cost is unbounded for the full search tree.
+The P1 architecture replaces the greedy `PlannerWorker` + `Orchestrator` with an **Agentic Planner** pattern. The agent owns the planning world, decides when to invoke capabilities, and delegates search to a pluggable `SearchStrategy`.
 
-**Why not MCTS:** MCTS derives power from randomized simulation/rollouts for exploration. The determinism requirement eliminates its main advantage. UCB1 requires many random playouts per node — expensive and non-deterministic.
-
-**Why not pure A\* with `estimateFinalScore` as heuristic:** `estimateFinalScore` is inadmissible (greedy rollout can be worse than optimal), so A\* cannot guarantee optimality anyway, with added memory overhead.
-
-**Recommended: Beam Search with width k=4–8**
-
-Beam search maintains k active `PlanState` beams simultaneously:
-1. At each step, enumerate actions from ALL k beams → `k × |actions|` candidates.
-2. Score each resulting state with `scorePlan`.
-3. Keep the global k-best states (pruning the rest).
-4. Repeat until all k beams are terminal.
-
-Properties:
-- **Eliminates rollouts.** The beam IS the lookahead — no `greedyComplete` needed. ~6× faster.
-- **Deterministic** given fixed k and scoring function.
-- **Naturally produces k terminal plans** → replaces `generateCandidates`.
-- **Compatible** with `projectFeasibility`, `validatePlanState`, `scorePlan` unchanged.
-- **Bounded memory:** O(k × |state|).
-- **Each beam has its own trace** → explainability preserved.
-
-### 2.2 Beam Search Implementation Plan
-
-**New module:** `api/ai/planner_search.ts`
-
-```ts
-interface BeamState {
-  state: PlanState;
-  trace: PlannerAction[];
-  score: number[];
-}
-
-function beamSearch(
-  model: ConstraintModel,
-  initialState: PlanState,
-  opts: { width: number; maxSteps: number }
-): BeamState[]
+```
+generate-plan.ts (handler)
+    │
+    └─ PlannerAgent                          — api/ai/planner_agent.ts
+           owns: ConstraintModel, initialState, capability registry
+           │
+           ├─ Capability Registry
+           │     ├─ SearchCapability         — invokes a SearchStrategy
+           │     ├─ KnowledgeCapability      — detectGaps + future LLM/syllabus enrichment
+           │     ├─ ValidationCapability     — wraps validatePlanState/validateCandidate
+           │     └─ ExplanationCapability    — LlmExplainer (post-search only)
+           │
+           ├─ SearchStrategy interface       — api/ai/planner_search_types.ts
+           │     explore(initialState, deps, opts): SearchResult
+           │     deps = SearchDeps (closures only — no ConstraintModel import)
+           │
+           └─ BeamSearchStrategy (P1)        — api/ai/planner_search_beam.ts
+                 width = 6 (default, configurable)
+                 returns: SearchResult { finalState, trace, meta: BeamSearchMeta }
 ```
 
-**Algorithm:**
-1. Initialize with k=1 beam = initialState.
-2. Each iteration:
-   a. For each beam: `enumerateActions(beam.state, model)`
-   b. For each action: apply tentatively, `projectFeasibility`, `validatePlanState`, `scorePlan`
-   c. Collect all (resultState, score, action) tuples across all beams
-   d. Sort by `compareScore` descending, keep top-k distinct states
-3. Terminal: all beams have `isGoalReached` or no actions expand.
-4. Return all terminal beams sorted by score.
+**Flow:**
+1. `PlannerAgent` builds `ConstraintModel` and `SearchDeps` closures.
+2. Agent calls `detectGaps` (pure scan) → if gaps and `KnowledgeCapability` is available, may enrich `CourseProfile`s before or during search (on-demand, not a mandatory pre-search phase).
+3. Agent invokes `SearchCapability` → `BeamSearchStrategy.explore(initialState, deps, opts)`.
+4. Strategy returns `SearchResult` with `meta: BeamSearchMeta` (primary debug record).
+5. Agent builds `PlannerAction` trace from `meta.chosenPath` (primary). `diffToTrace` is a fallback only when `meta` is absent (e.g. a future CP-SAT integration).
+6. Agent invokes `ExplanationCapability` → `LlmExplainer` generates Hebrew prose from the trace.
+7. `toProposal(finalState, trace, model, initialState)` builds HTTP response (no live `PlannerWorker` instance — Option B signature).
 
-**PlannerWorker changes:**
-- `run()` delegates to `beamSearch` when `opts.searchMode === 'beam'`
-- Greedy remains as fallback (`opts.searchMode === 'greedy'`)
+### 2.2 SearchStrategy Interface and SearchDeps
 
-**Affected modules:** New `api/ai/planner_search.ts`, `api/ai/planner_worker.ts`, `api/ai/generate-plan.ts`
+`SearchStrategy` must be maximally generic. It **never imports `ConstraintModel`** or any planner-internal types. It operates on `PlanState` through injected closures only.
 
-**Tests to add:**
-- Beam width k=1 produces same result as greedy (simple cases)
-- Beam width k=4 on ME-2027 produces ≥2 distinct terminal plans
-- All terminal plans pass `validateCandidate`
+```ts
+// api/ai/planner_search_types.ts
 
-**Migration risk:** Medium. Worker interface changes. Greedy stays as fallback. No endpoint contract change.
+interface SearchDeps<S, A> {
+  generateActions: (state: S) => A[];
+  applyMutation:   (state: S, action: A) => S;
+  validate:        (state: S) => boolean;
+  score:           (state: S) => number[];
+  compareScore:    (a: number[], b: number[]) => number;
+  isGoal:          (state: S) => boolean;
+}
+
+interface CandidateRecord {
+  action: unknown;
+  resultState: unknown;
+  score: number[];
+  rejected: boolean;
+  rejectReason?: string;  // 'validation_failed' | 'pruned_by_beam' | 'duplicate'
+}
+
+interface DepthRecord {
+  depth: number;
+  candidates: CandidateRecord[];
+  survivors: unknown[];  // states that entered next depth
+}
+
+type TerminationReason = 'goal_reached' | 'max_steps' | 'no_legal_expansion';
+
+interface BeamSearchMeta {
+  beamWidth: number;
+  depthRecords: DepthRecord[];
+  chosenPath: unknown[];         // the action sequence of the best terminal state
+  terminationReason: TerminationReason;
+  alternativePaths: unknown[][];  // unchosen legal terminal paths (up to k-1)
+}
+
+interface SearchResult<S> {
+  finalState: S;
+  meta?: BeamSearchMeta;  // present for BeamSearchStrategy; absent for future CP-SAT
+}
+
+interface SearchStrategy<S, A> {
+  explore(
+    initialState: S,
+    deps: SearchDeps<S, A>,
+    opts: { maxSteps: number; width?: number }
+  ): SearchResult<S>;
+}
+```
+
+**`PlannerAgent` builds `SearchDeps` once**, capturing `ConstraintModel` in closure scope:
+```ts
+const deps: SearchDeps<PlanState, PlanMutation> = {
+  generateActions: (s) => enumerateActions(s, model),
+  applyMutation:   (s, a) => applyMutation(s, a),
+  validate:        (s) => validatePlanState(s, model, pinnedHome, validationCtx).valid,
+  score:           (s) => scorePlan(s, model),
+  compareScore,
+  isGoal:          (s) => isGoalReached(s, model),
+};
+```
+
+### 2.3 BeamSearchStrategy (P1 — first SearchStrategy implementation)
+
+> **Beam Search is NOT the architecture.** It is the first `SearchStrategy` implementation. Future strategies (`CpSatStrategy`, `AStarStrategy`) drop in via the same interface.
+
+**Algorithm (width k=6 default):**
+1. Initialize beam: `[initialState]`.
+2. Each step:
+   a. For each beam state: `generateActions(state)` → for each action: `applyMutation`, `validate`, `score`.
+   b. Record all candidates in `DepthRecord` (including rejected, with reason).
+   c. Sort all valid candidates by `compareScore` descending; keep top-k distinct states (dedup by state fingerprint).
+   d. Pruned candidates recorded with `rejectReason: 'pruned_by_beam'`.
+3. Terminate when: all beams satisfy `isGoal`, or `maxSteps` reached, or no valid expansion exists.
+4. Return best terminal beam as `finalState`; populate `BeamSearchMeta` with full per-depth records.
+
+**Eliminates:** `greedyComplete`, `estimateFinalScore`, per-step rollouts. The beam width IS the lookahead.
+
+**New modules:**
+- `api/ai/planner_search_types.ts` — types only (Phase 1)
+- `api/ai/planner_search_beam.ts` — `BeamSearchStrategy` implementation (Phase 2)
+- `api/ai/planner_capabilities.ts` — capability interfaces + `detectGaps` (Phase 3)
+- `api/ai/planner_agent.ts` — `PlannerAgent` orchestrator (Phase 4)
+
+**Existing modules (zero changes needed):**
+- `enumerateActions`, `applyMutation`, `scorePlan`, `compareScore`, `validatePlanState`, `buildValidationContext`, `validateCandidate` — reused as-is via `SearchDeps` closures.
+- `PlannerWorker`, `GreedyOrchestrator`, `LlmOrchestrator` — retained; `LlmOrchestrator` still used by `planner-run.ts` streaming endpoint (untouched in P1).
+
+**Tests to add (TDD — write before each phase):**
+- Phase 1: compile-time shape check on `SearchStrategy` interface
+- Phase 2: `BeamSearchStrategy` width=1 converges on trivial board; width=6 produces k distinct terminal states; `meta.depthRecords` cover all candidates; `terminationReason` correct for each exit path; deduplication removes identical states
+- Phase 3: `detectGaps` returns expected gap list on boards with null/ambiguous profiles; returns empty on clean board
+- Phase 4: `PlannerAgent` end-to-end on ME-2027 board; trace built from `meta.chosenPath`; `diffToTrace` fallback used when `meta` absent
+- Phase 5: `generate-plan.ts` response contract unchanged; `toProposal` Option B signature; LLM called only after search
+
+**Migration risk:** Medium. `PlannerWorker` still present and unchanged; `generate-plan.ts` wires to `PlannerAgent` only when feature-flagged or after full phase 5 completion. Greedy path remains as fallback.
 
 **Priority:** P1.
 
 ---
 
-### 2.3 Fix `REPLACE_COURSE` enumeration
+### 2.4 KnowledgeCapability and detectGaps
+
+**`detectGaps` (ships in P1):** Pure scan of `ConstraintModel.profiles` for ambiguous or incomplete `CourseProfile` fields:
+- `hours == null` — unknown credit hours
+- `category_id` unresolved / not present in `model.categories`
+- `prerequisites` contains course IDs not in `model.profiles`
+
+Returns `GapRecord[]`. No I/O, no LLM calls.
+
+**`KnowledgeCapability` interface (ships in P1 as interface + pass-through only):** `resolve(gaps: GapRecord[]): Promise<void>`. Real implementation (LLM/syllabus enrichment via `extract_syllabus_facts` tool) is explicitly **NOT part of P1** — ships in P2.
+
+**`PlannerAgent` flow:** calls `detectGaps` before search. If gaps are found and `KnowledgeCapability` has a real resolver, the agent may invoke it and then re-run or resume. In P1, `KnowledgeCapability.resolve()` is a no-op pass-through — gaps are logged but not filled.
+
+**Knowledge acquisition is not a mandatory linear pre-search phase.** The Agent decides when to invoke `KnowledgeCapability`. If gaps are discovered mid-reasoning, the agent may invoke it and resume. This is the extension seam for future autonomous enrichment.
+
+---
+
+### 2.5 Fix `REPLACE_COURSE` enumeration
 
 **Problem:** `enumerateActions` never generates `REPLACE_COURSE` mutations. A placed course can only be replaced if the LLM explicitly calls the `replace_course` tool. In greedy mode, a bad placement can never be corrected by substitution.
 
@@ -254,7 +339,7 @@ function beamSearch(
 
 ---
 
-### 2.4 Fix goal scoring bugs
+### 2.6 Fix goal scoring bugs
 
 **g2 — incommensurable units:**
 
@@ -434,15 +519,86 @@ Superseded by beam search (Section 2.2). Terminal beams replace `generateCandida
 
 ## LLM Role in V2 (Summary)
 
-**Not used for:** Step-by-step course selection, scoring/ranking actions, any hard facts.
+**The LLM is NEVER responsible for planning decisions.** It has no visibility into the search process and is invoked only after `PlannerAgent` has produced a final `PlanState` and `PlannerAction` trace.
 
-**Used for:**
-1. **Explanation** — Hebrew prose derived from selected plan + trace
-2. **Preference disambiguation** — interpreting `extra_request_he` free-text
-3. **Syllabus extraction** — `extract_syllabus_facts` tool, cached, provenance-tagged
-4. **Ambiguity resolution** — near-equal plans where tiebreaker requires preference interpretation
+**Not used for:** Step-by-step course selection, scoring/ranking actions, search strategy choices, any hard planning facts.
 
-In V2: `LlmOrchestrator` runs AFTER beam search completes. It receives k terminal plans and generates explanation + ranked recommendation with rationale.
+**Used for (post-search only):**
+1. **Explanation** — `LlmExplainer` (inside `ExplanationCapability`) generates Hebrew prose from the final plan + trace
+2. **Preference disambiguation** — interpreting `extra_request_he` free-text before or after search
+3. **Ambiguity resolution** — near-equal candidates where tiebreaker requires preference interpretation
+4. **Future (P2+): Syllabus intelligence** — `KnowledgeCapability` real impl: `extract_syllabus_facts` tool, cached, provenance-tagged
+
+**Wiring in P1:** `ExplanationCapability` calls `LlmExplainer` (new class) after `PlannerAgent` completes search and builds the trace. `LlmOrchestrator` (old tool-calling step-driver) is retained unchanged and still used by the `planner-run.ts` streaming endpoint — it is NOT called in the new `generate-plan.ts` path.
+
+---
+
+## Design Invariants
+
+Every architectural rule future work must not violate:
+
+1. **`SearchStrategy` never imports `ConstraintModel`.** It operates exclusively through `SearchDeps` closures. Any `SearchStrategy` that reaches into `ConstraintModel` internals violates this invariant.
+
+2. **`PlannerAgent` owns `ConstraintModel`.** It is the only component that constructs, reads, or passes `ConstraintModel` to other parts. `SearchStrategy`, `BeamSearchStrategy`, and capability implementations receive closures, not the model object.
+
+3. **`PlannerAgent` owns all capabilities.** No component below the agent layer (strategies, validators) may invoke LLMs, read syllabi, or enrich `CourseProfile`s. Only the agent decides when and which capability to invoke.
+
+4. **`SearchResult.meta` is the primary debugging mechanism.** The per-depth `CandidateRecord[]` (considered actions, rejection reasons, scores, survivors) is the authoritative record of why a path was chosen. A final-state diff alone is never sufficient.
+
+5. **`diffToTrace` is a fallback only.** It is used exclusively when a `SearchStrategy` does not produce `meta` (e.g. a future CP-SAT integration). For `BeamSearchStrategy`, `meta.chosenPath` is always the trace source.
+
+6. **The LLM is never the planner.** It is invoked only after `PlannerAgent` has produced a final `PlanState` and trace. No LLM output may influence `SearchStrategy` execution, action selection, or scoring.
+
+7. **`KnowledgeCapability` is on-demand, not a mandatory pipeline phase.** The agent decides when to invoke it. Missing or ambiguous course data discovered during reasoning may trigger enrichment; it is not a required pre-search gate.
+
+8. **`detectGaps` is always pure and side-effect-free.** It scans `ConstraintModel.profiles` only; it never reads files, calls APIs, or mutates any state.
+
+9. **`toProposal` Option B signature.** `toProposal(finalState, trace, model, initialState, pinnedHome?, rationaleOverride?)` — no live `PlannerWorker` instance passed. The `loadBeam` mutation path on `PlannerWorker` is never called from `toProposal`.
+
+10. **`PlannerWorker`, `GreedyOrchestrator`, `LlmOrchestrator` are not modified in P1.** The streaming `planner-run.ts` endpoint uses them unchanged. P1 adds a new code path in `generate-plan.ts` only.
+
+11. **All planner behavior changes require TDD.** Every new module has a failing test before implementation code. Every phase has a regression run before commit.
+
+12. **No Alembic migrations applied without explicit user approval.** No deploys without explicit user approval.
+
+---
+
+## P1 Status — COMPLETE (2026-07-01)
+
+All eight P1 phases shipped. Score vector is now **8D**. 564/564 tests green. `tsc --noEmit` clean.
+
+| Phase | Commit | Description |
+|---|---|---|
+| Ph 1 | `cd18929` | SearchStrategy interface + types |
+| Ph 1.1 | `a1e8dfe` | Tighten SearchStrategy interfaces |
+| Ph 2 | `064e87b` | BeamSearchStrategy |
+| Ph 3 | `48be405` | Capability interfaces + detectGaps |
+| Ph 4 | `0c4d11a` | PlannerAgent |
+| Ph 5 | `9f9e8cb` | Wire PlannerAgent into generate-plan |
+| Ph 6 | `19f3045` | REPLACE_COURSE enumeration + g2/g4 scoring fixes |
+| Ph 7 | `b440b05` | is_unwanted exclusion + unwanted_avoidance (g5b) |
+| Ph 8 | `2fdb0d3` | rank_candidates sorted by plan score |
+
+---
+
+## Next Work — Recommended Starting Points
+
+Decision required before implementing:
+
+1. **Annual course deduplication (Section 4.3)** — needs a `root_course_id` / `annual_group_id` field to identify paired courses; `count_hours_once: boolean` alone is insufficient. Decide whether board_json already carries this field or whether the board schema must be extended first.
+
+2. **Retire `generateCandidates`** (Section 7.4) — dead code post-beam-search. Straightforward cleanup PR, no decision needed.
+
+3. **Multiple-track requirement architecture (Section 4.2)** — design session required; extends `CategoryReq` with `equivalentGroups` and `ConstraintModel` with `activeTrack`/`coRequisites`; affects `validatePlanProposal`.
+
+4. **UI + client-engine cleanup (Sections 6.2, 7.5)** — wire streaming endpoint into UI and retire client-side JS mirrors; prerequisite: streaming endpoint proven stable in production.
+
+5. **Real `KnowledgeCapability` (P2+)** — LLM/syllabus enrichment via `extract_syllabus_facts`; not in scope until core planning is proven stable in production.
+
+**Hard boundaries (unchanged):**
+- Do not apply Alembic migration without explicit user approval.
+- Do not deploy without explicit user approval.
+- Do not touch UI (Sections 6.x) without explicit approval.
 
 ---
 
@@ -465,9 +621,11 @@ In V2: `LlmOrchestrator` runs AFTER beam search completes. It receives k termina
 | 1.3 | Non-ME semester board validates correctly |
 | 1.4 | Short maxSteps run emits STOP with reason |
 | 1.5 | Null-hours only board terminates in STOP |
-| 2.1 | Beam k=4 on ME-2027: ≥2 terminal plans, all valid |
-| 2.3 | REPLACE_COURSE in enumerateActions on sub-optimal board |
-| 2.4 | Score vector unit tests for g2/g4 fixes |
-| 3.1 | DB absent + local file → full universe (profile count check) |
+| 2.3 (Phase 2) | `BeamSearchStrategy` width=6 on ME-2027: ≥2 distinct terminal plans, all valid; `meta.depthRecords` populated |
+| 2.4 (Phase 3) | `detectGaps` returns expected gaps on board with null-hours/unresolved profiles |
+| 2.1 (Phase 4) | `PlannerAgent` end-to-end: trace built from `meta.chosenPath`, not diffToTrace |
+| 2.5 | REPLACE_COURSE in enumerateActions on sub-optimal board |
+| 2.6 | Score vector unit tests for g2/g4 fixes |
+| 3.1 | DB absent + local file → full universe (profile count check) — ✅ DONE |
 | 4.2 | Equivalent group counted once |
 | Full | `npm test` green (all suites); `tsc --noEmit` clean |
