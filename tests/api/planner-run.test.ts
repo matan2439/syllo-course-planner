@@ -22,7 +22,7 @@ jest.mock('../../api/ai/_quota', () => ({
   logUsageEvent: jest.fn().mockResolvedValue(undefined),
 }));
 
-import handler from '../../api/ai/planner-run';
+import handler, { buildModelFromRequest } from '../../api/ai/planner-run';
 import { queryBoardJson } from '../../api/board';
 import { createRun, markRunFinal } from '../../api/ai/_planner_runs';
 
@@ -139,5 +139,23 @@ describe('POST /api/ai/planner-run', () => {
     expect(events[events.length - 1].type).toBe('done');
     expect(createRun).not.toHaveBeenCalled();   // no persistence without a DB
     expect(markRunFinal).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildModelFromRequest — overload-override threading', () => {
+  it('threads preferences.overload_accepted/overload_confirmed_at into the model', () => {
+    const confirmedAt = Date.now();
+    const model = buildModelFromRequest(BOARD, {
+      ...VALID_BODY,
+      preferences: { overload_accepted: true, overload_confirmed_at: confirmedAt },
+    } as any);
+    expect(model.overloadAccepted).toBe(true);
+    expect(model.overloadConfirmedAt).toBe(confirmedAt);
+  });
+
+  it('leaves the model override unset when preferences omit it (no behavior change)', () => {
+    const model = buildModelFromRequest(BOARD, VALID_BODY as any);
+    expect(model.overloadAccepted).toBeUndefined();
+    expect(model.overloadConfirmedAt).toBeUndefined();
   });
 });
