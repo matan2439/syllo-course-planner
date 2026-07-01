@@ -1,7 +1,8 @@
 # Current — read this first
 
-Branch: main @ 3853aeb (structured ClarificationQuestion contract shipped, complete)
+Branch: main @ 1bfddff (structured ClarificationQuestion contract shipped + handoff docs, complete)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
+Fast-start: for a compact, source-based bootstrap (last 8 commits, architecture-file status, next epic, first commands to run), read `.remember/session_bootstrap.md` instead of this whole file.
 
 ## Direction change (2026-07-01)
 The existing production planner is now frozen: do NOT modify `generate-plan` default behavior, `PlannerWorker`/`planner-run` production paths, UI, API contracts, DB/migrations, or feature flags. All new work targets the future `AcademicDecisionAgent → DecisionCapability → SimulationCapability → PlanningCapability (PlannerAgent) → SearchCapability` architecture, built infrastructure-only behind the scenes with no production wiring until the whole stack is complete. Full phase-ordered roadmap is in `.remember/roadmap.md`.
