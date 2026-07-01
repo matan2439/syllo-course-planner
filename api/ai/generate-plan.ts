@@ -90,7 +90,7 @@ export function priorHoursFromContext(ctx: any): number {
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */
-function buildModel(board: any, ctx: any, prefs: Preferences): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences): ConstraintModel {
   return buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
     wantedCourseIds: prefs.wanted_course_ids,
@@ -99,6 +99,8 @@ function buildModel(board: any, ctx: any, prefs: Preferences): ConstraintModel {
     pinnedCourseIds: ctx?.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
     priorHours: priorHoursFromContext(ctx),
+    overloadAccepted: prefs.overload_accepted,
+    overloadConfirmedAt: prefs.overload_confirmed_at,
   });
 }
 

@@ -1,4 +1,4 @@
-import handler, { preferencesSchema, priorHoursFromContext } from '../../api/ai/generate-plan';
+import handler, { preferencesSchema, priorHoursFromContext, buildModel } from '../../api/ai/generate-plan';
 import { LlmExplainer } from '../../api/ai/llm_explainer';
 import type { ExplanationCapability } from '../../api/ai/planner_capabilities';
 import { randomUUID } from 'crypto';
@@ -131,6 +131,24 @@ describe('priorHoursFromContext — formula spec', () => {
   it('returns 0 when total_hours_progress absent', () => {
     expect(priorHoursFromContext({})).toBe(0);
     expect(priorHoursFromContext(null)).toBe(0);
+  });
+});
+
+describe('buildModel — overload-override threading', () => {
+  it('threads preferences.overload_accepted/overload_confirmed_at into the model', () => {
+    const confirmedAt = Date.now();
+    const model = buildModel(PLAN_CONTEXT as any, PLAN_CONTEXT, {
+      overload_accepted: true,
+      overload_confirmed_at: confirmedAt,
+    } as any);
+    expect(model.overloadAccepted).toBe(true);
+    expect(model.overloadConfirmedAt).toBe(confirmedAt);
+  });
+
+  it('leaves the model override unset when preferences omit it (no behavior change)', () => {
+    const model = buildModel(PLAN_CONTEXT as any, PLAN_CONTEXT, {} as any);
+    expect(model.overloadAccepted).toBeUndefined();
+    expect(model.overloadConfirmedAt).toBeUndefined();
   });
 });
 
