@@ -1,6 +1,6 @@
 # Current — read this first
 
-Branch: main @ a4cfc00 (deterministic ClarificationCapability shipped, complete)
+Branch: main @ 3853aeb (structured ClarificationQuestion contract shipped, complete)
 Session rule: read only this file by default; ask before opening architecture.md, roadmap.md, history.md, docs/*, or git log.
 
 ## Direction change (2026-07-01)
@@ -33,10 +33,17 @@ Both new files are pure additions. `planner_agent.ts`, `planner_capabilities.ts`
 
 `generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
 
-Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, natural-language clarification UX, or first production wiring decision).
+**Structured ClarificationQuestion contract shipped** (`3853aeb`) — clarification output is now directly actionable by a future UI/LLM layer, not just free-form strings:
+- `academic_decision_types.ts`: new `ClarificationAnswerType` union (`course_ids`/`course_id_list`/`number`/`text`/`single_choice`/`multi_choice`/`boolean`) and `ClarificationQuestion` (`id`, `inputKey`, `required`, `critical`, `answerType`, `question`, optional `rationale`/`examples`/`options`). `ClarificationResult.questions` changed from optional `string[]` to required `ClarificationQuestion[]` — always an array, empty when nothing is missing. `NoOpClarificationCapability` updated to return `questions: []`.
+- `academic_clarification.ts`: `DeterministicClarificationCapability` now derives `questions` from the same `missingInputs` array it already built (no separate/divergent logic) via a `QUESTION_SPECS` lookup table keyed by `MissingInputField`, giving stable ids (`completed_courses`/`current_courses`/`excluded_courses`/`max_weekly_hours`/`track_or_focus`) in deterministic order. `completed_courses`/`excluded_courses` are `required: true` (mirroring their `critical: true`); the rest are soft (`required: false`). `track_or_focus` uses `answerType: 'text'` with generic (non-TAU-specific) `examples` rather than hard-coded `options`, per the epic's explicit ask to avoid baking in Mechanical-Engineering-only categories.
+- `academic_decision_agent.ts` and `academic_decision_factory.ts` needed **zero changes** — they already pass the whole `ClarificationResult` through unchanged, so the wider `questions` shape flows through for free. Verified via two new agent-level integration tests using the *real* `DeterministicClarificationCapability` (not a fake): one confirms non-blocking mode still delegates planning while returning all 5 ordered questions, the other confirms `blocked: true` mode carries the two critical questions (`completed_courses`, `excluded_courses`) and never calls `planning.run()`.
+
+`generate-plan.ts`, `planner-run.ts`, `PlannerWorker`, `PlannerAgent`, and `planner_orchestration.ts` are all untouched (confirmed via `git diff` — empty for all). Not wired into any production path; `AI_USE_AGENTIC_PLANNER` behavior unaffected.
+
+Nothing in progress — awaiting direction on the next epic (e.g. real Simulation/Decision/Persistence implementations, natural-language clarification UX consuming these questions, or first production wiring decision).
 
 ## Test status
-API tests: 664/664 (was 650; net +14 — 9 new in `academic_clarification.test.ts`, +5 net across `academic_decision_agent.test.ts`/`academic_decision_factory.test.ts` for the blocking/non-blocking clarify-stage behavior). `tsc --noEmit`: clean.
+API tests: 676/676 (was 664; net +12 — 10 new structured-question tests in `academic_clarification.test.ts`, +2 new real-capability integration tests in `academic_decision_agent.test.ts`; one existing factory test extended in place with question-shape assertions, no count change there). `tsc --noEmit`: clean.
 
 ## Blocker
 Full `pytest` run leaks live Supabase TCP connections (39+, never closed). Root cause not found. Do not run unfiltered pytest with a real DATABASE_URL until diagnosed. Detail: architecture.md "Environment notes".
