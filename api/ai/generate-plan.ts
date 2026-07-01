@@ -14,6 +14,14 @@
  * Both paths produce the SAME PlanProposal response contract (semesters, moves,
  * warnings_he, rationale_he, requirements_status, errors, blocked) plus the
  * additive optional `trace`. The apply/reject UI flow is unaffected.
+ *
+ * CLARIFICATION PREFLIGHT (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT=true, default disabled):
+ *   Opt-in only — when unset/false, behavior is identical to the above. When
+ *   enabled, runs the deterministic clarification check
+ *   (runClarificationPreflight, academic_clarification_preflight.ts) before
+ *   either planner path. If a critical input is missing, returns
+ *   { needsClarification: true, clarification, viewModel } instead of a
+ *   PlanProposal — neither planner path runs, no board/model is loaded.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -33,6 +41,7 @@ import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
+import { runClarificationPreflight } from './academic_clarification_preflight';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -230,6 +239,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!isBypassQuota()) {
     if (!dbUrl) { sendError(res, 503, 'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.', 'NO_DATABASE_URL'); return; }
     if (!(await runQuotaCheck(session_token, dbUrl, res))) return;
+  }
+
+  // Clarification preflight — additive, opt-in only (default disabled, behavior
+  // otherwise unchanged). When a critical input is missing, returns a
+  // structured clarification response instead of delegating to either planner
+  // path below. See academic_clarification_preflight.ts.
+  if (process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT === 'true') {
+    const preflight = await runClarificationPreflight({
+      programId: program_id,
+      dbUrl,
+      buildModelOptions: {
+        completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+        disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
+        maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
+      },
+    });
+    if (preflight.blocked) {
+      res.status(200).json({
+        needsClarification: true,
+        clarification: preflight.clarification,
+        viewModel: preflight.viewModel,
+      });
+      return;
+    }
   }
 
   // Board — always plan over the full course universe.
