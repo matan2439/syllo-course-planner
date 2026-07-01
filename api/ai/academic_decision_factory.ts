@@ -42,7 +42,6 @@
 import type { LanguageModel } from 'ai';
 import { AcademicDecisionAgent, type AcademicDecisionDeps, type AcademicDecisionRequest } from './academic_decision_agent';
 import {
-  NoOpClarificationCapability,
   NoOpSimulationCapability,
   PassThroughDecisionCapability,
   NoOpPersistenceCapability,
@@ -51,6 +50,7 @@ import {
   type DecisionCapability,
   type PersistenceCapability,
 } from './academic_decision_types';
+import { DeterministicClarificationCapability } from './academic_clarification';
 import { runPlanningOrchestration, type OrchestrationRequest } from './planner_orchestration';
 import { ProgramProvider, TauProgramProvider } from './program_provider';
 import { PassThroughKnowledgeCapability, type KnowledgeCapability, type ExplanationCapability, type ValidationCapability, type SearchCapability } from './planner_capabilities';
@@ -117,7 +117,7 @@ export function createDefaultAcademicDecisionAgent(
   const deps: AcademicDecisionDeps = {
     programProvider,
     planning,
-    clarification: overrides.clarification ?? new NoOpClarificationCapability(),
+    clarification: overrides.clarification ?? new DeterministicClarificationCapability(),
     validation: overrides.validation,
     simulation: overrides.simulation ?? new NoOpSimulationCapability(),
     decision: overrides.decision ?? new PassThroughDecisionCapability(),

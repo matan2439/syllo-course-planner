@@ -14,22 +14,54 @@ import type { GapRecord } from './planner_capabilities';
 
 // ── ClarificationCapability ───────────────────────────────────────────────────
 
+/** User-supplied planning inputs relevant to clarification, sourced from AcademicDecisionRequest. */
+export interface ClarificationPlanningContext {
+  completedCourseIds?: string[];
+  currentCourseIds?: string[];
+  excludedCourseIds?: string[];
+  maxWeeklyHours?: number;
+  track?: string;
+}
+
 export interface ClarificationRequest {
   gaps: GapRecord[];
+  context: ClarificationPlanningContext;
+}
+
+export type MissingInputField =
+  | 'completedCourses'
+  | 'currentCourses'
+  | 'excludedCourses'
+  | 'maxWeeklyHours'
+  | 'track';
+
+export interface MissingInput {
+  field: MissingInputField;
+  /** True when planning correctness depends on this input (see academic_clarification.ts for rationale per field). */
+  critical: boolean;
+  message: string;
+}
+
+export interface ClarificationResult {
+  needsClarification: boolean;
+  missingInputs: MissingInput[];
+  questions?: string[];
+  warnings?: string[];
 }
 
 /**
- * Invoked by AcademicDecisionAgent before Plan, only when the top-level
- * detectGaps scan finds gaps. No-op by default (NoOpClarificationCapability).
+ * Invoked by AcademicDecisionAgent before Plan, on every run. Observational by
+ * default: reporting missing inputs never blocks planning unless the caller
+ * opts in via AcademicDecisionRequest.blockOnMissingCriticalInputs.
  */
 export interface ClarificationCapability {
-  clarify(request: ClarificationRequest): Promise<void>;
+  clarify(request: ClarificationRequest): Promise<ClarificationResult>;
 }
 
-/** ponytail: no-op until a real clarification flow (user Q&A) ships */
+/** ponytail: reports nothing missing until a real clarification flow (user Q&A) ships */
 export class NoOpClarificationCapability implements ClarificationCapability {
-  async clarify(_request: ClarificationRequest): Promise<void> {
-    // intentional no-op
+  async clarify(_request: ClarificationRequest): Promise<ClarificationResult> {
+    return { needsClarification: false, missingInputs: [] };
   }
 }
 

@@ -144,7 +144,7 @@ describe('createDefaultAcademicDecisionAgent', () => {
     expect(agent).toBeInstanceOf(AcademicDecisionAgent);
   });
 
-  test('wires no-op Clarification/Simulation/Decision/Persistence defaults — a gappy plan resolves unchanged', async () => {
+  test('wires no-op Simulation/Decision/Persistence defaults — a gappy plan resolves unchanged (clarification is non-blocking by default)', async () => {
     const opts: DefaultAcademicDecisionAgentOptions = {
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
@@ -154,14 +154,33 @@ describe('createDefaultAcademicDecisionAgent', () => {
     const agent = createDefaultAcademicDecisionAgent(opts);
     const result = await agent.run({ programId: 'whatever_2027' });
 
-    // No custom Clarification/Simulation/Decision/Persistence supplied — the
-    // no-op defaults must not alter the planned result at all.
+    // No custom Simulation/Decision/Persistence supplied, and
+    // blockOnMissingCriticalInputs defaults to false — the planned result
+    // must come through unchanged even though the deterministic clarification
+    // default will report missing inputs (no buildModelOptions on this req).
+    expect(result.blocked).toBe(false);
     expect(result.agentResult).toEqual(FIXED_RESULT);
     expect(result.gaps).toEqual([{ courseId: 'c1', gapType: 'null_hours' }]);
   });
 
-  test('allows dependency overrides — a custom ClarificationCapability replaces the no-op default', async () => {
-    const clarify = jest.fn(async () => { /* no-op */ });
+  test('default clarification is DeterministicClarificationCapability — reports missing inputs for a bare request', async () => {
+    const opts: DefaultAcademicDecisionAgentOptions = {
+      overrides: {
+        programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),
+        planning: fakePlanning(FIXED_RESULT),
+      },
+    };
+    const agent = createDefaultAcademicDecisionAgent(opts);
+    const result = await agent.run({ programId: 'whatever_2027' });
+
+    expect(result.clarification.needsClarification).toBe(true);
+    expect(result.clarification.missingInputs).toContainEqual(
+      expect.objectContaining({ field: 'completedCourses', critical: true }),
+    );
+  });
+
+  test('allows dependency overrides — a custom ClarificationCapability replaces the deterministic default', async () => {
+    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [] }));
     const clarification: ClarificationCapability = { clarify };
     const opts: DefaultAcademicDecisionAgentOptions = {
       overrides: {
@@ -173,10 +192,10 @@ describe('createDefaultAcademicDecisionAgent', () => {
     const agent = createDefaultAcademicDecisionAgent(opts);
     await agent.run({ programId: 'whatever_2027' });
 
-    expect(clarify).toHaveBeenCalledWith({ gaps: [{ courseId: 'c1', gapType: 'null_hours' }] });
+    expect(clarify).toHaveBeenCalledWith({ gaps: [{ courseId: 'c1', gapType: 'null_hours' }], context: {} });
   });
 
-  test('default clarification is a fresh NoOpClarificationCapability, not shared mutable state', () => {
+  test('default clarification is a fresh DeterministicClarificationCapability, not shared mutable state', () => {
     const agentA = createDefaultAcademicDecisionAgent();
     const agentB = createDefaultAcademicDecisionAgent();
     expect(agentA).not.toBe(agentB);
@@ -191,7 +210,7 @@ describe('createDefaultAcademicDecisionAgent', () => {
     const result = await agent.run({ programId: 'whatever_2027' });
 
     // Real PlannerAgent + BeamSearchStrategy must have placed the fixed mandatory course.
-    expect(result.agentResult.finalState.semesters['y1s1']).toContain('MAND');
+    expect(result.agentResult!.finalState.semesters['y1s1']).toContain('MAND');
     expect(result.gaps).toEqual([]); // clean fixed-placement board — no top-level gaps
   });
 
@@ -204,8 +223,8 @@ describe('createDefaultAcademicDecisionAgent', () => {
     const agent = createDefaultAcademicDecisionAgent(opts);
     const result = await agent.run({ programId: 'whatever_2027' });
 
-    expect(typeof result.agentResult.rationale_he).toBe('string');
-    expect(result.agentResult.rationale_he!.length).toBeGreaterThan(0);
+    expect(typeof result.agentResult!.rationale_he).toBe('string');
+    expect(result.agentResult!.rationale_he!.length).toBeGreaterThan(0);
   });
 });
 
@@ -223,7 +242,7 @@ describe('programId drift between Observe and Plan — single source of truth', 
 
     const programIdsSeen = provider.loadBoard.mock.calls.map(([programId]) => programId);
     expect(programIdsSeen).toEqual(['whatever_2027', 'whatever_2027']);
-    expect(result.agentResult.finalState.semesters['y1s1']).toContain('MAND');
+    expect(result.agentResult!.finalState.semesters['y1s1']).toContain('MAND');
   });
 
   test('re-derives Plan from the live programId on every run() call — no staleness across repeated calls', async () => {
@@ -244,7 +263,7 @@ describe('programId drift between Observe and Plan — single source of truth', 
     // handling. The default wiring (exercised above) never exposes a way to
     // set one independently, so there is no runtime "reject on mismatch"
     // path to test: the type system removes the second programId field.
-    const clarify = jest.fn(async () => { /* no-op */ });
+    const clarify = jest.fn(async () => ({ needsClarification: false, missingInputs: [] }));
     const agent = createDefaultAcademicDecisionAgent({
       overrides: {
         programProvider: new FakeProgramProvider({ model: GAPPY_MODEL }),

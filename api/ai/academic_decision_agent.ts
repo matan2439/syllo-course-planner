@@ -4,7 +4,11 @@
  *
  *   Observe (ProgramProvider)
  *   -> Detect Gaps (pure detectGaps, over the Observe-stage model)
- *   -> Clarify if needed
+ *   -> Clarify (always runs; observational only — reports missing planning
+ *      inputs via ClarificationResult, never blocks Plan unless the caller
+ *      opts in with `blockOnMissingCriticalInputs: true` and a critical
+ *      input is missing, in which case Plan is skipped and the result comes
+ *      back with `blocked: true` instead of an AgentResult)
  *   -> Plan (delegates entirely to a PlanningCapability built from the SAME
  *      AcademicDecisionRequest passed to run() — a black box; PlannerAgent's
  *      own internal detect-gaps/enrich/search/explain flow is untouched and
@@ -30,6 +34,7 @@ import {
   PassThroughDecisionCapability,
   NoOpPersistenceCapability,
   type ClarificationCapability,
+  type ClarificationResult,
   type SimulationCapability,
   type DecisionCapability,
   type PersistenceCapability,
@@ -39,6 +44,12 @@ export interface AcademicDecisionRequest {
   programId: string;
   dbUrl?: string;
   buildModelOptions?: BuildModelOptions;
+  /** In-progress courses — not yet in buildModelOptions.completedCourseIds. Clarification-only for now; not consumed by Plan. */
+  currentCourseIds?: string[];
+  /** Track/focus preference (e.g. design, fluids, systems). Clarification-only for now; not consumed by Plan. */
+  track?: string;
+  /** When true, a critical missing clarification input blocks Plan entirely (see AcademicDecisionResult.blocked). Defaults to false — observational only. */
+  blockOnMissingCriticalInputs?: boolean;
 }
 
 export interface AcademicDecisionDeps {
@@ -59,9 +70,14 @@ export interface AcademicDecisionDeps {
 }
 
 export interface AcademicDecisionResult {
-  agentResult: AgentResult;
+  /** Absent only when `blocked` is true — Plan never ran. */
+  agentResult?: AgentResult;
   /** Top-level pre-Plan gap scan (Observe-stage model) — separate from AgentResult.gaps, which is PlanningCapability's own internal scan over whatever model it was built from. */
   gaps: GapRecord[];
+  /** Result of the Clarify stage, which now always runs before Plan. */
+  clarification: ClarificationResult;
+  /** True when a critical missing input, combined with `blockOnMissingCriticalInputs: true`, stopped Plan from running. */
+  blocked: boolean;
 }
 
 export class AcademicDecisionAgent {
@@ -80,10 +96,22 @@ export class AcademicDecisionAgent {
     // Detect gaps
     const gaps = detectGaps(model);
 
-    // Clarify if needed
-    if (gaps.length > 0) {
-      const clarification = this.deps.clarification ?? new NoOpClarificationCapability();
-      await clarification.clarify({ gaps });
+    // Clarify — always runs before Plan, regardless of top-level gaps
+    const clarification = this.deps.clarification ?? new NoOpClarificationCapability();
+    const clarificationResult = await clarification.clarify({
+      gaps,
+      context: {
+        completedCourseIds: req.buildModelOptions?.completedCourseIds,
+        currentCourseIds: req.currentCourseIds,
+        excludedCourseIds: req.buildModelOptions?.disallowedCourseIds,
+        maxWeeklyHours: req.buildModelOptions?.maxHoursPerSemester,
+        track: req.track,
+      },
+    });
+
+    const hasCriticalMissingInput = clarificationResult.missingInputs.some((m) => m.critical);
+    if (req.blockOnMissingCriticalInputs && hasCriticalMissingInput) {
+      return { gaps, clarification: clarificationResult, blocked: true };
     }
 
     // Plan — built from the same `req` as Observe, then treated as a black box
@@ -111,6 +139,6 @@ export class AcademicDecisionAgent {
     const persistence = this.deps.persistence ?? new NoOpPersistenceCapability();
     await persistence.persist(decided);
 
-    return { agentResult: decided, gaps };
+    return { agentResult: decided, gaps, clarification: clarificationResult, blocked: false };
   }
 }

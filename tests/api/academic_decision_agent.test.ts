@@ -19,6 +19,7 @@ import type { PlanningCapability, AgentResult } from '../../api/ai/planner_agent
 import type { ValidationCapability } from '../../api/ai/planner_capabilities';
 import type {
   ClarificationCapability,
+  ClarificationResult,
   SimulationCapability,
   DecisionCapability,
   PersistenceCapability,
@@ -160,8 +161,10 @@ describe('AcademicDecisionAgent — board not found', () => {
 });
 
 describe('AcademicDecisionAgent — Clarify stage', () => {
-  test('calls clarification before planning when the top-level gap check finds gaps', async () => {
-    const clarify = jest.fn(async () => { /* no-op */ });
+  const NO_ISSUES: ClarificationResult = { needsClarification: false, missingInputs: [] };
+
+  test('calls clarification before planning, passing the top-level gaps and the request-derived context', async () => {
+    const clarify = jest.fn(async () => NO_ISSUES);
     const clarification: ClarificationCapability = { clarify };
     const planning = fakePlanning();
     const deps: AcademicDecisionDeps = {
@@ -172,13 +175,16 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const agent = new AcademicDecisionAgent(deps);
     await agent.run(REQ);
 
-    expect(clarify).toHaveBeenCalledWith({ gaps: [{ courseId: 'c1', gapType: 'null_hours' }] });
+    expect(clarify).toHaveBeenCalledWith({
+      gaps: [{ courseId: 'c1', gapType: 'null_hours' }],
+      context: {},
+    });
     expect((planning.run as jest.Mock).mock.invocationCallOrder[0])
       .toBeGreaterThan(clarify.mock.invocationCallOrder[0]);
   });
 
-  test('does not call clarification when there are no top-level gaps', async () => {
-    const clarify = jest.fn(async () => { /* no-op */ });
+  test('calls clarification even when there are no top-level gaps — it inspects request inputs, not profile gaps', async () => {
+    const clarify = jest.fn(async () => NO_ISSUES);
     const clarification: ClarificationCapability = { clarify };
     const deps: AcademicDecisionDeps = {
       programProvider: new FakeProgramProvider(CLEAN_MODEL),
@@ -188,7 +194,82 @@ describe('AcademicDecisionAgent — Clarify stage', () => {
     const agent = new AcademicDecisionAgent(deps);
     await agent.run(REQ);
 
-    expect(clarify).not.toHaveBeenCalled();
+    expect(clarify).toHaveBeenCalledWith({ gaps: [], context: {} });
+  });
+
+  test('with default non-blocking behavior, planning still runs even when clarification reports missing critical inputs', async () => {
+    const clarify = jest.fn(async () => ({
+      needsClarification: true,
+      missingInputs: [{ field: 'completedCourses' as const, critical: true, message: 'x' }],
+    }));
+    const planning = fakePlanning();
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning,
+      clarification: { clarify },
+    };
+    const agent = new AcademicDecisionAgent(deps);
+    const result = await agent.run(REQ);
+
+    expect(planning.run).toHaveBeenCalledTimes(1);
+    expect(result.blocked).toBe(false);
+    expect(result.agentResult).toEqual(PLANNED_RESULT);
+  });
+
+  test('with blockOnMissingCriticalInputs: true, planning is not delegated when a critical input is missing', async () => {
+    const clarificationResult = {
+      needsClarification: true,
+      missingInputs: [{ field: 'completedCourses' as const, critical: true, message: 'x' }],
+    };
+    const clarify = jest.fn(async () => clarificationResult);
+    const planning = fakePlanning();
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning,
+      clarification: { clarify },
+    };
+    const agent = new AcademicDecisionAgent(deps);
+    const result = await agent.run({ ...REQ, blockOnMissingCriticalInputs: true });
+
+    expect(planning.run).not.toHaveBeenCalled();
+    expect(result.blocked).toBe(true);
+    expect(result.agentResult).toBeUndefined();
+    expect(result.clarification).toEqual(clarificationResult);
+  });
+
+  test('blockOnMissingCriticalInputs: true does not block when only non-critical inputs are missing', async () => {
+    const clarify = jest.fn(async () => ({
+      needsClarification: true,
+      missingInputs: [{ field: 'track' as const, critical: false, message: 'x' }],
+    }));
+    const planning = fakePlanning();
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning,
+      clarification: { clarify },
+    };
+    const agent = new AcademicDecisionAgent(deps);
+    const result = await agent.run({ ...REQ, blockOnMissingCriticalInputs: true });
+
+    expect(planning.run).toHaveBeenCalledTimes(1);
+    expect(result.blocked).toBe(false);
+  });
+
+  test('a blocked result is an explicit, testable value — run() resolves, it does not throw', async () => {
+    const clarify = jest.fn(async () => ({
+      needsClarification: true,
+      missingInputs: [{ field: 'excludedCourses' as const, critical: true, message: 'x' }],
+    }));
+    const deps: AcademicDecisionDeps = {
+      programProvider: new FakeProgramProvider(CLEAN_MODEL),
+      planning: fakePlanning(),
+      clarification: { clarify },
+    };
+    const agent = new AcademicDecisionAgent(deps);
+
+    await expect(agent.run({ ...REQ, blockOnMissingCriticalInputs: true })).resolves.toMatchObject({
+      blocked: true,
+    });
   });
 });
 
