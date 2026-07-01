@@ -14,8 +14,8 @@ import { join } from 'path';
 import { buildConstraintModel, planContextToState } from '../../api/ai/planner_model';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import { GreedyOrchestrator } from '../../api/ai/planner_orchestrator';
-import { placedCourseIds } from '../../api/ai/planner_types';
-import { degreeHours as computeDegreeHours } from '../../api/ai/planner_goals';
+import { placedCourseIds, emptyState } from '../../api/ai/planner_types';
+import { degreeHours as computeDegreeHours, placedHours } from '../../api/ai/planner_goals';
 
 const REAL_BOARD = JSON.parse(
   readFileSync(join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json'), 'utf8'),
@@ -96,6 +96,27 @@ describe('buildConstraintModel — real ME-2027 board', () => {
     expect(m.requiredMandatoryCourseIds.length).toBe(12);
     // full universe profiled
     expect(m.profiles.size).toBeGreaterThan(40);
+  });
+});
+
+describe('placedHours — real ME-2027 annual course (0542-3792) is deduplicated', () => {
+  // 0542-3792 is a real annual course: the SAME course_id, placed identically in
+  // both year_3_semester_a and year_3_semester_b (not two sibling ids sharing a
+  // root — see buildCourseProfiles, which merges same-course_id placements into
+  // one CourseProfile). This must use the real board (not a hand-built fixture
+  // that sets root_course_id directly) — a hand fixture is exactly what hid this
+  // bug the first time.
+  it('counts 0542-3792 once (4h) even though it is placed in both its semesters', () => {
+    const m = buildConstraintModel(REAL_BOARD);
+    const profile = m.profiles.get('0542-3792');
+    expect(profile).toBeDefined();
+    expect(profile!.count_hours_once).toBe(true);
+
+    const state = emptyState(m.knownSemesterIds);
+    state.semesters['year_3_semester_a'] = ['0542-3792'];
+    state.semesters['year_3_semester_b'] = ['0542-3792'];
+
+    expect(placedHours(state, m)).toBe(profile!.hours);
   });
 });
 

@@ -71,6 +71,10 @@ export interface CourseProfile {
   is_unwanted: boolean;
 
   // ── annual course deduplication ───────────────────────────────────────────
+  /** True for a year-long course physically placed in more than one semester. */
+  is_annual?: boolean;
+  /** The semester ids this annual course spans (e.g. both halves of the year). */
+  spans_semesters?: string[];
   /** Shared ID for annual course pairs (e.g. semester A + semester B of the same course). */
   root_course_id?: string;
   /** When true, only one of the paired annual courses counts toward degree hours. */
@@ -219,6 +223,8 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
     is_wanted: wanted.has(id),
     is_unwanted: isUnwanted,
 
+    is_annual: raw.is_annual === true ? true : undefined,
+    spans_semesters: Array.isArray(raw.spans_semesters) ? strArr(raw.spans_semesters) : undefined,
     root_course_id: typeof raw.root_course_id === 'string' ? raw.root_course_id : undefined,
     count_hours_once: raw.count_hours_once === true ? true : undefined,
 
