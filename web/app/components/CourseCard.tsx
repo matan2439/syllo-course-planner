@@ -50,7 +50,7 @@ export default function CourseCard({ course }: { course: CourseVM }) {
             href={course.syllabusUrl}
             target="_blank"
             rel="noreferrer"
-            className="opacity-0 transition-opacity duration-150 hover:text-[var(--purple)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] group-hover:opacity-100"
+            className="opacity-70 transition-[opacity,color] duration-150 hover:text-[var(--purple)] hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
           >
             סילבוס ↗
           </a>
