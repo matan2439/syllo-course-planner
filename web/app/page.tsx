@@ -1,29 +1,58 @@
+import Link from 'next/link'
+import BrandLogo from './components/BrandLogo'
+import ShaderGradientBackground from './components/ShaderGradientBackground'
+
+const FEATURES = [
+  'עוזר AI שבונה תוכנית מלאה',
+  'לוח סמסטרים אינטראקטיבי',
+  'בדיקת דרישות התואר אוטומטית',
+]
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="max-w-md w-full space-y-6 text-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">
-            מתכנן לימודים — TAU
+    <>
+      <ShaderGradientBackground />
+
+      <div className="flex min-h-screen flex-col">
+        <header className="flex items-center gap-3 px-6 py-5 sm:px-10">
+          <BrandLogo size={30} />
+          <span className="text-sm font-semibold tracking-tight">
+            מתכנן לימודים
+          </span>
+        </header>
+
+        <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
+          <h1 className="rise max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+            התואר שלך, מתוכנן חכם
           </h1>
-          <p className="text-gray-500 text-sm">
-            אוניברסיטת תל אביב
-          </p>
-        </div>
 
-        <div className="rounded-xl border border-purple-100 bg-purple-50 px-6 py-4">
-          <p className="text-purple-700 font-medium text-sm">
-            גרסת האינטרנט בפיתוח
+          <p className="rise rise-1 mt-4 max-w-md text-base leading-relaxed text-[var(--text-muted)]">
+            עוזר AI שבונה איתך את לוח הסמסטרים — אוניברסיטת תל אביב
           </p>
-          <p className="text-purple-500 text-xs mt-1">
-            Web interface coming soon
-          </p>
-        </div>
 
-        <p className="text-xs text-gray-400">
-          Step 0 — Next.js skeleton
-        </p>
+          <div className="rise rise-2 mt-9">
+            <Link
+              href="/planner"
+              className="inline-block rounded-full bg-[var(--purple-strong)] px-8 py-3.5 text-base font-semibold text-white shadow-[var(--shadow-premium)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
+            >
+              התחלת תכנון עם AI
+            </Link>
+          </div>
+
+          <ul className="rise rise-3 mt-12 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm text-[var(--text-muted)]">
+            {FEATURES.map((f, i) => (
+              <li key={f} className="flex items-center gap-2">
+                {i > 0 && <span aria-hidden className="opacity-40">·</span>}
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+        </main>
+
+        <footer className="px-6 py-5 text-center text-xs text-[var(--text-muted)] opacity-70">
+          אוניברסיטת תל אביב
+        </footer>
       </div>
-    </main>
+    </>
   )
 }

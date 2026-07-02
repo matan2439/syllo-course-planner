@@ -2,11 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens — same palette as the canonical planner theme in
+      app/web/semester_board_viewer.html, keyed off the OS scheme here. ── */
 :root {
-  --bg:      #F7F7FB;
-  --purple:  #7C3AED;
+  color-scheme: light dark;
+
+  --bg:         #FAFAFC;
+  --text:       #111827;
+  --text-muted: #6B7280;
+  --purple:     #7C3AED;
+  --purple-strong: #6D28D9;
+  --surface:    rgba(255, 255, 255, 0.72);
+  --border:     rgba(17, 24, 39, 0.08);
+  --shadow-premium: 0 10px 28px rgba(76, 89, 224, 0.10), 0 2px 6px rgba(17, 24, 39, 0.06);
+
+  /* Syllo animated background (light) — see ShaderGradientBackground.tsx */
+  --syllo-bg-image:
+    radial-gradient(ellipse at 62% 52%, rgba(214,204,255,.56) 0%, rgba(238,240,245,.42) 32%, transparent 64%),
+    linear-gradient(135deg, #FAFAFC 0%, #EEF0F5 48%, #D6CCFF 100%);
+  --syllo-bg-duration: 28s;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #0F1117;
+    --text:       #F9FAFB;
+    --text-muted: #A1A1AA;
+    --purple:     #A78BFA;
+    --purple-strong: #8B5CF6;
+    --surface:    rgba(23, 26, 35, 0.62);
+    --border:     rgba(167, 139, 250, 0.16);
+    --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
+
+    /* Syllo animated background (dark) */
+    --syllo-bg-image:
+      radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
+      linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
+  }
 }
 
 html {
-  font-family: 'Heebo', 'Segoe UI', system-ui, sans-serif;
+  /* Matches the planner HTML's stack so /planner ↔ landing feel continuous */
+  font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Syllo animated background layer ── */
+.syllo-bg {
+  position: fixed;
+  inset: -10%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--syllo-bg-image);
+  background-repeat: no-repeat;
+  will-change: transform;
+  animation: syllo-drift var(--syllo-bg-duration) ease-in-out infinite alternate;
+}
+@keyframes syllo-drift {
+  0%   { transform: translate3d(0, 0, 0)          scale(1);    }
+  50%  { transform: translate3d(1%, -1%, 0)       scale(1.02); }
+  100% { transform: translate3d(-0.6%, 0.6%, 0)   scale(1.01); }
+}
+
+/* ── Entrance motion ── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise   { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.rise-1 { animation-delay: 0.06s; }
+.rise-2 { animation-delay: 0.12s; }
+.rise-3 { animation-delay: 0.18s; }
+
+/* ── Reduced motion: freeze everything, same rule as the planner HTML ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
