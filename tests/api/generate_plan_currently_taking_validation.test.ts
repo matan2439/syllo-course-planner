@@ -4,16 +4,15 @@
  * currentlyPlannedCourseIds (via buildValidationContext, planner_validate.ts),
  * so a currently-taking course is never re-proposed by the planner.
  *
- * Flag-gated only (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT), per explicit
- * direction: personal_status.currently_taking is already sent by the live
- * frontend (app/web/semester_board_viewer.html) on every request, so reading
- * it unconditionally in generate-plan.ts's buildModel() would be a real
- * default-behavior change for existing production traffic. Instead,
- * generate-plan.ts's buildModel() only receives currentlyPlannedCourseIds
- * (a new, additive parameter) from inside the existing
- * AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT-gated block; the flag-off call site
- * always passes undefined, so default (flag-off) behavior is provably
- * unchanged (test 1 below).
+ * Originally flag-gated (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT) only; since
+ * the "honor currently_taking on the default path" epic this is an explicitly
+ * approved default-behavior change: personal_status.currently_taking is
+ * already sent by the live frontend (app/web/semester_board_viewer.html) on
+ * every request, and ignoring it caused incorrect prerequisite/eligibility
+ * behavior. generate-plan.ts's handler now computes currentlyPlannedCourseIds
+ * unconditionally (from effectivePlanContext, so clarification_answers still
+ * layer on top when the flag is enabled) — tests 1/1b prove the default path,
+ * tests 2-5 the flagged paths.
  *
  * Reuses the MAND (mandatory, completed) + FLU (sole "fluids" category
  * candidate) fixture from generate_plan_clarification_propagation.test.ts —
@@ -95,12 +94,21 @@ describe('generate-plan — currently_taking courses excluded from validation/re
     delete process.env.AI_USE_AGENTIC_PLANNER;
   });
 
-  test('1. flag disabled: personal_status.currently_taking is inert, FLU is still placed', async () => {
+  test('1. flag disabled (default production path): personal_status.currently_taking excludes FLU from the proposal', async () => {
     const res = makeRes();
     await handler(
       makeReq(baseReqBody({ plan_context: withCurrentlyTaking(['FLU']) })),
       res,
     );
+    const b = res._body;
+    expect(res.statusCode).toBe(200);
+    const placedIds = b.semesters.flatMap((s: any) => s.course_ids);
+    expect(placedIds).not.toContain('FLU');
+  });
+
+  test('1b. flag disabled, no currently_taking: FLU is still placed (no false-positive exclusion on the default path)', async () => {
+    const res = makeRes();
+    await handler(makeReq(baseReqBody()), res);
     const b = res._body;
     expect(res.statusCode).toBe(200);
     const placedIds = b.semesters.flatMap((s: any) => s.course_ids);
