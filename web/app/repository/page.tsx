@@ -1,17 +1,18 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import Link from 'next/link'
-import { adaptBoard, type RawBoard } from '../../lib/board'
+import type { RawBoard } from '../../lib/board'
+import { adaptRepository } from '../../lib/repository'
 import BrandLogo from '../components/BrandLogo'
-import SemesterColumn from '../components/SemesterColumn'
+import RepositoryExplorer from '../components/RepositoryExplorer'
 import ShaderGradientBackground from '../components/ShaderGradientBackground'
 
-export const metadata = { title: 'לוח סמסטרים — מתכנן לימודים' }
+export const metadata = { title: 'מאגר קורסים — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
 
-// Read-only Next-native rendering of the same board JSON the canonical
-// planner consumes. /planner remains the interactive, canonical surface;
-// this page is the first migrated slice (cards + semester columns).
+// Read-only Next-native repository over the same board JSON the canonical
+// planner consumes (metadata.program_repository_courses). /planner remains
+// the interactive, canonical surface.
 const BOARD_JSON = path.resolve(
   process.cwd(),
   '..',
@@ -20,15 +21,15 @@ const BOARD_JSON = path.resolve(
   'mechanical_semester_board_2027.json'
 )
 
-export default async function BoardPage() {
+export default async function RepositoryPage() {
   const raw = JSON.parse(await readFile(BOARD_JSON, 'utf8')) as RawBoard
-  const board = adaptBoard(raw)
+  const repo = adaptRepository(raw)
 
   return (
     <>
       <ShaderGradientBackground />
 
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 sm:px-6">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 sm:px-6">
         <header className="flex items-center justify-between py-5">
           <Link
             href="/"
@@ -41,10 +42,10 @@ export default async function BoardPage() {
           </Link>
           <nav className="flex items-center gap-2">
             <Link
-              href="/repository"
+              href="/board"
               className="rounded-full px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
             >
-              מאגר קורסים
+              לוח סמסטרים
             </Link>
             <Link
               href="/planner"
@@ -56,18 +57,14 @@ export default async function BoardPage() {
         </header>
 
         <main className="flex-1 pb-16">
-          <div className="rise mb-6">
-            <h1 className="text-xl font-bold tracking-tight">לוח סמסטרים</h1>
+          <div className="rise mb-6 text-center">
+            <h1 className="text-xl font-bold tracking-tight">מאגר קורסים</h1>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
               הנדסה מכנית · 2027 (תשפ״ז) — תצוגה בלבד
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {board.semesters.map((s, i) => (
-              <SemesterColumn key={s.id} semester={s} index={i} />
-            ))}
-          </div>
+          <RepositoryExplorer repo={repo} />
         </main>
       </div>
     </>

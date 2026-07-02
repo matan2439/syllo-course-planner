@@ -45,6 +45,16 @@ test('/board page renders through the board adapter (Next-native slice)', () => 
   expect(page).toContain('adaptBoard');
 });
 
+test('/repository page renders through the repository adapter', () => {
+  const page = read('web/app/repository/page.tsx');
+  expect(page).toContain('adaptRepository');
+});
+
+test('/board offers calm navigation to the repository', () => {
+  const page = read('web/app/board/page.tsx');
+  expect(page).toContain('/repository');
+});
+
 test('theme-aware logo assets exist at the documented convention paths', () => {
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-light.svg'))).toBe(true);
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-dark.svg'))).toBe(true);
