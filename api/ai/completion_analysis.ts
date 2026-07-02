@@ -1882,11 +1882,35 @@ export interface LegalSemestersResult {
  *  - elective: effective_allowed_semesters / offered_semesters if known,
  *    else any remaining known semester (not confident — warning, not block).
  */
+/**
+ * offered_semesters records term-of-year letters ("A"/"B") while the board's
+ * semester ids are full ids (year_3_semester_a …). Map each offered value onto
+ * the known ids: an exact known-id match passes through; a term letter expands
+ * to every known id whose trailing _-segment is that letter; anything else is
+ * kept verbatim (vocabularies that don't use term letters behave as before).
+ */
+function mapOfferedToKnownSemesters(offered: string[], knownSemesterIds: string[]): string[] {
+  if (!knownSemesterIds.length) return offered;
+  const out: string[] = [];
+  for (const o of offered) {
+    if (knownSemesterIds.includes(o)) { out.push(o); continue; }
+    // Hebrew half-letters appear in real board data (see the viewer's
+    // normalizeLegalSemesterIdsLocal, which handles the same vocabulary).
+    const term = o.trim().toLowerCase().replace(/^א$/, 'a').replace(/^ב$/, 'b');
+    const matches = knownSemesterIds.filter(k => k.toLowerCase().split('_').pop() === term);
+    out.push(...(matches.length ? matches : [o]));
+  }
+  return [...new Set(out)];
+}
+
 export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: string[] = []): LegalSemestersResult {
   const effective = course.effective_allowed_semesters?.length ? course.effective_allowed_semesters : null;
   const program = course.program_allowed_semesters?.length
     ? course.program_allowed_semesters
     : (course.allowed_semesters?.length ? course.allowed_semesters : null);
+  const offered = course.offered_semesters?.length
+    ? mapOfferedToKnownSemesters(course.offered_semesters, knownSemesterIds)
+    : null;
 
   if (course.placement_policy === 'fixed') {
     const fixed = course.recommended_semester
@@ -1898,13 +1922,13 @@ export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: 
   if (course.placement_policy === 'flexible' || course.course_type === 'mandatory') {
     if (effective) return { semesters: effective, confident: true };
     if (program) return { semesters: program, confident: true };
-    if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+    if (offered) return { semesters: offered, confident: false };
     return { semesters: knownSemesterIds, confident: false };
   }
 
   // elective
   if (effective) return { semesters: effective, confident: true };
-  if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+  if (offered) return { semesters: offered, confident: false };
   return { semesters: knownSemesterIds, confident: false };
 }
 
