@@ -158,8 +158,10 @@ export interface PlanValidationContext {
   completedCourseIds: Set<string>;
   /**
    * course_ids the user is currently_taking or has planned (personal_status).
-   * Such courses are already accounted for as prior progress and must not be
-   * (re-)proposed by the planner (Phase 1 proposal-dedup).
+   * Such courses are already accounted for as prior progress: they must not be
+   * (re-)proposed by the planner (Phase 1 proposal-dedup, rule 2a) and they
+   * satisfy prerequisites of proposed courses like completed courses do
+   * (rule 4 — strictly earlier than every proposal semester by construction).
    */
   currentlyPlannedCourseIds?: Set<string>;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
@@ -323,7 +325,10 @@ export function validatePlanProposal(
       ]);
       const targetIdx = semOrder.get(sem.semester_id)!;
       for (const prereq of prereqUnion) {
-        if (ctx.completedCourseIds.has(prereq)) continue;
+        // A currently-taking course is prior progress: rule 2a guarantees it can
+        // never appear in the proposal, so it is strictly earlier than every
+        // proposed semester and satisfies the prereq like a completed course.
+        if (ctx.completedCourseIds.has(prereq) || ctx.currentlyPlannedCourseIds?.has(prereq)) continue;
         const pIdx = courseSemIdx.get(prereq);
         if (pIdx === undefined) {
           errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);
