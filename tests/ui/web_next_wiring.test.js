@@ -33,6 +33,11 @@ test('data route serves the static board JSON fallback the planner HTML fetches'
   expect(route).toMatch(/data[/\\'",\s]+parsed_json/);
 });
 
+test('/board page renders through the board adapter (Next-native slice)', () => {
+  const page = read('web/app/board/page.tsx');
+  expect(page).toContain('adaptBoard');
+});
+
 test('theme-aware logo assets exist at the documented convention paths', () => {
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-light.svg'))).toBe(true);
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-dark.svg'))).toBe(true);
