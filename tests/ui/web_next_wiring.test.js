@@ -26,6 +26,13 @@ test('landing page links to /planner', () => {
   expect(page).toContain('/planner');
 });
 
+test('data route serves the static board JSON fallback the planner HTML fetches', () => {
+  // The HTML's fetchBoardJSON falls back to ../../data/parsed_json/*.json
+  // (→ /data/parsed_json/* when served at /planner), so Next must expose it.
+  const route = read('web/app/data/parsed_json/[file]/route.ts');
+  expect(route).toMatch(/data[/\\'",\s]+parsed_json/);
+});
+
 test('theme-aware logo assets exist at the documented convention paths', () => {
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-light.svg'))).toBe(true);
   expect(fs.existsSync(path.join(ROOT, 'web/public/brand/logo-dark.svg'))).toBe(true);

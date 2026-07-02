@@ -26,6 +26,10 @@ cd web && npm run dev # :3001, /planner wraps the HTML, /api/* proxied to :3000
 
 Set `PLANNER_API_ORIGIN` to point `/api/*` at a different backend origin.
 
+Without `vercel dev`, `/planner` still works: the HTML's board loader falls
+back to static JSON, served by `app/data/parsed_json/[file]/route.ts` from the
+repo's `data/parsed_json/` (AI endpoints still need the backend).
+
 ## Conventions
 
 - **Brand assets:** `public/brand/logo-light.svg` + `public/brand/logo-dark.svg`,
