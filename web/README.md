@@ -9,6 +9,7 @@ light/dark via `prefers-color-scheme`.
 |---|---|
 | Landing / entry | `app/page.tsx` (Next, real UI) |
 | Planner (board, repo, AI) | `/planner` route → serves the canonical static `app/web/semester_board_viewer.html` unchanged |
+| Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
 
 The static HTML file remains the **single source of truth** for the planner UI
 and is what production Vercel serves at `/` (see root `vercel.json`). The Next
@@ -52,12 +53,16 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 
 ## Remaining migration phases (not yet done)
 
-1. **Board read-only view** — render semesters/courses in React from
-   `/api/board/:programId`, behind a `/board` route; compare against the HTML.
-2. **Course repository** — searchable repo panel as components.
-3. **AI panel** — chat entry + draft plan presentation (UI only; planner logic
+1. ~~Board read-only view~~ — done: `/board` (reads the static JSON directly;
+   switch its data source to `/api/board/:programId` when the backend is
+   wired).
+2. **Course repository** — searchable repo panel as components (reuse
+   `CourseCard`; data comes from `metadata.program_repository_courses`).
+3. **Board interactivity** — placement/moves in React state (must reuse the
+   planner's legality rules server-side; do not reimplement them in UI).
+4. **AI panel** — chat entry + draft plan presentation (UI only; planner logic
    stays server-side, untouched).
-4. **Cutover** — point `vercel.json` `/` at the Next app, keep the HTML
+5. **Cutover** — point `vercel.json` `/` at the Next app, keep the HTML
    reachable until parity is verified, then retire it.
 
 Planner logic, constraints, and AI runtime belong to the planner workstream —

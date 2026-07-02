@@ -30,12 +30,18 @@ export default function Home() {
             עוזר AI שבונה איתך את לוח הסמסטרים — אוניברסיטת תל אביב
           </p>
 
-          <div className="rise rise-2 mt-9">
+          <div className="rise rise-2 mt-9 flex flex-col items-center gap-4">
             <Link
               href="/planner"
               className="inline-block rounded-full bg-[var(--purple-strong)] px-8 py-3.5 text-base font-semibold text-white shadow-[var(--shadow-premium)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
             >
               התחלת תכנון עם AI
+            </Link>
+            <Link
+              href="/board"
+              className="text-sm text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
+            >
+              צפייה בלוח הסמסטרים
             </Link>
           </div>
 

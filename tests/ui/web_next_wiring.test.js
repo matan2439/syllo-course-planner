@@ -26,11 +26,18 @@ test('landing page links to /planner', () => {
   expect(page).toContain('/planner');
 });
 
-test('data route serves the static board JSON fallback the planner HTML fetches', () => {
-  // The HTML's fetchBoardJSON falls back to ../../data/parsed_json/*.json
-  // (→ /data/parsed_json/* when served at /planner), so Next must expose it.
-  const route = read('web/app/data/parsed_json/[file]/route.ts');
-  expect(route).toMatch(/data[/\\'",\s]+parsed_json/);
+test('landing page offers the read-only board as a quiet secondary route', () => {
+  const page = read('web/app/page.tsx');
+  expect(page).toContain('/board');
+});
+
+test('data route serves the static JSON fallbacks the planner HTML fetches', () => {
+  // The HTML loads ../../data/parsed_json/*.json (board, audit) and
+  // ../../data/programs/*.json (program definition) relative to /planner,
+  // so Next must expose both directories read-only.
+  const route = read('web/app/data/[dir]/[file]/route.ts');
+  expect(route).toContain('parsed_json');
+  expect(route).toContain('programs');
 });
 
 test('/board page renders through the board adapter (Next-native slice)', () => {
