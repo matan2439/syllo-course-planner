@@ -379,10 +379,13 @@ export function validatePlanProposal(
 
   // 6. partial-plan check — every not-completed mandatory course must appear,
   // reported with the exact missing course IDs/names (PART C) — never a
-  // generic "missing mandatory" message without a concrete list.
+  // generic "missing mandatory" message without a concrete list. A
+  // currently-taking course is already accounted for (rule 2a forbids
+  // re-proposing it), so its absence from the proposal is not a gap.
   if (ctx.requiredMandatoryCourseIds) {
     const missingMandatory = ctx.requiredMandatoryCourseIds.filter(
-      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid),
+      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid) &&
+        !ctx.currentlyPlannedCourseIds?.has(cid),
     );
     for (const cid of missingMandatory) {
       errors.push(`קורס חובה חסר: ${courseLabel(cid, ctx.courseNames)}.`);

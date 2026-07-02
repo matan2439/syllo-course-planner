@@ -137,6 +137,47 @@ describe('buildConstraintModel — program-agnostic extraction', () => {
   });
 });
 
+describe('buildConstraintModel — currently-taking mandatory requirement accounting', () => {
+  it('excludes a currently-taking mandatory course from requiredMandatoryCourseIds', () => {
+    const m = buildConstraintModel(CS_BOARD as any, {
+      currentlyPlannedCourseIds: ['CS-M1'],
+    });
+    // Rule 2a forbids re-proposing a currently-taking course, so requiring it
+    // to appear in the plan would be an impossible requirement.
+    expect(m.requiredMandatoryCourseIds).not.toContain('CS-M1');
+    // It is still part of the model's currently-planned set (rule 2a input).
+    expect(m.currentlyPlannedCourseIds!.has('CS-M1')).toBe(true);
+  });
+
+  it('negative: a mandatory course neither completed nor currently taking stays required', () => {
+    const m = buildConstraintModel(CS_BOARD as any, {
+      currentlyPlannedCourseIds: ['CS-T1'], // unrelated elective
+    });
+    expect(m.requiredMandatoryCourseIds).toContain('CS-M1');
+  });
+
+  it('completed-course accounting unchanged: completed mandatory stays excluded, priorHours unchanged', () => {
+    const m = buildConstraintModel(CS_BOARD as any, {
+      completedCourseIds: ['CS-M1'],
+    });
+    expect(m.requiredMandatoryCourseIds).not.toContain('CS-M1');
+    // CS-DONE (6h, board metadata) + CS-M1 (5h) — completed semantics untouched.
+    expect(m.priorHours).toBe(11);
+  });
+
+  it('dedup: a course in both completed and currently_taking is accounted for once, without contradiction', () => {
+    const m = buildConstraintModel(CS_BOARD as any, {
+      completedCourseIds: ['CS-M1'],
+      currentlyPlannedCourseIds: ['CS-M1'],
+    });
+    expect(m.requiredMandatoryCourseIds).not.toContain('CS-M1');
+    // no duplicate entries anywhere in the required set
+    expect(new Set(m.requiredMandatoryCourseIds).size).toBe(m.requiredMandatoryCourseIds.length);
+    // completed wins for prior-hours purposes, counted once
+    expect(m.priorHours).toBe(11);
+  });
+});
+
 describe('buildConstraintModel — real ME-2027 board', () => {
   it('extracts 185 hours, the four required categories, and the mandatory set', () => {
     const m = buildConstraintModel(REAL_BOARD);

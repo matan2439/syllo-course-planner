@@ -102,10 +102,14 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
       candidateIds: (c.course_ids ?? []) as string[],
     }));
 
-  // Mandatory courses still required: is_mandatory and not yet completed.
+  // Mandatory courses still required: is_mandatory and not yet accounted for.
+  // A currently-taking course is prior progress: rule 2a forbids re-proposing
+  // it, so keeping it "required" would be an impossible requirement.
   const requiredMandatoryCourseIds: string[] = [];
   for (const [id, p] of profiles) {
-    if (p.is_mandatory && !completedCourseIds.has(id)) requiredMandatoryCourseIds.push(id);
+    if (p.is_mandatory && !completedCourseIds.has(id) && !currentlyPlannedCourseIds.has(id)) {
+      requiredMandatoryCourseIds.push(id);
+    }
   }
 
   // Prior accrued hours — the remaining-degree-gap baseline.
