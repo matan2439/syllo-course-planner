@@ -111,13 +111,17 @@ export function priorHoursFromContext(ctx: any): number {
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */
-export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[]): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
   // already used above to route the board_json lookup, reused here for the
   // model's programId/catalogYear. No institutionId source exists yet.
   const pv = program_id ? parseProgramVersionId(program_id) : null;
   return buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+    // Flag-gated (see AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT block in handler()):
+    // undefined on the default path, so behavior there is unchanged even though
+    // ctx.personal_status.currently_taking is already sent by the live frontend.
+    currentlyPlannedCourseIds,
     wantedCourseIds: prefs.wanted_course_ids,
     unwantedCourseIds: prefs.unwanted_course_ids,
     disallowedCourseIds: prefs.disallowed_course_ids ?? prefs.strongly_avoided_course_ids,
@@ -263,6 +267,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // academic_clarification_plan_inputs.ts.
   let effectivePlanContext = plan_context;
   let effectivePreferences = preferences;
+  // Flag-gated (see buildModel()): stays undefined on the default path, so
+  // plan_context.personal_status.currently_taking — already sent by the live
+  // frontend on every request — has no default-behavior effect here.
+  let currentlyPlannedCourseIds: string[] | undefined;
   if (process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT === 'true') {
     const resumed = await resumeClarificationPreflight(
       {
@@ -287,6 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const merged = mergeClarificationAnswersIntoGeneratePlanInputs(plan_context, preferences, clarification_answers ?? []);
     effectivePlanContext = merged.planContext;
     effectivePreferences = merged.preferences;
+    currentlyPlannedCourseIds = (effectivePlanContext?.personal_status?.currently_taking ?? []).map((c: any) => c.course_id);
   }
 
   // Board — always plan over the full course universe.
@@ -305,7 +314,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id);
+  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds);
   const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();

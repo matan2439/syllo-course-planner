@@ -35,6 +35,7 @@ export function buildValidationContext(
   }
   return {
     completedCourseIds: model.completedCourseIds,
+    currentlyPlannedCourseIds: model.currentlyPlannedCourseIds,
     courses,
     maxHoursPerSemester: model.maxHoursPerSemester,
     pinnedCourseIds: model.pinnedCourseIds,

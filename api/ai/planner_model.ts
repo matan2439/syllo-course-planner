@@ -29,6 +29,8 @@ import { type ConstraintModel, type CategoryReq, type PlanState, emptyState } fr
 export interface BuildModelOptions {
   /** course_ids the user has completed (merged with board metadata.completed_course_ids). */
   completedCourseIds?: string[];
+  /** course_ids the user is currently taking/in-progress (must not be re-proposed by the planner). */
+  currentlyPlannedCourseIds?: string[];
   wantedCourseIds?: string[];
   unwantedCourseIds?: string[];
   /** Hard-excluded course_ids (explicit user exclusion / disallowed). */
@@ -71,6 +73,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   const disallowedCourseIds = new Set<string>(opts.disallowedCourseIds ?? []);
   const wantedCourseIds = new Set<string>(opts.wantedCourseIds ?? []);
   const pinnedCourseIds = new Set<string>(opts.pinnedCourseIds ?? []);
+  const currentlyPlannedCourseIds = new Set<string>(opts.currentlyPlannedCourseIds ?? []);
 
   const profiles = buildCourseProfiles(boardJson, {
     completedCourseIds,
@@ -114,6 +117,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     profiles,
     knownSemesterIds,
     completedCourseIds,
+    currentlyPlannedCourseIds,
     requiredMandatoryCourseIds,
     categories,
     degreeRequiredHours,

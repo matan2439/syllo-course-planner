@@ -29,6 +29,8 @@ export interface ConstraintModel {
   knownSemesterIds: string[];
   /** Courses the user already completed (never re-placed). */
   completedCourseIds: Set<string>;
+  /** Courses the user is currently taking/in-progress (already accounted for as prior progress; must not be re-proposed). Always set by buildConstraintModel (defaults to empty); optional here so hand-built fixtures don't need to supply it. */
+  currentlyPlannedCourseIds?: Set<string>;
   /** Not-completed mandatory course_ids that must appear in the plan. */
   requiredMandatoryCourseIds: string[];
   categories: CategoryReq[];

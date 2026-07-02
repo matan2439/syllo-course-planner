@@ -83,6 +83,16 @@ describe('buildConstraintModel — program-agnostic extraction', () => {
     expect(m.maxHoursPerSemester).toBe(18);
   });
 
+  it('threads currentlyPlannedCourseIds through to the model (default: empty set)', () => {
+    const withoutCurrent = buildConstraintModel(CS_BOARD as any);
+    expect(withoutCurrent.currentlyPlannedCourseIds!.size).toBe(0);
+
+    const withCurrent = buildConstraintModel(CS_BOARD as any, {
+      currentlyPlannedCourseIds: ['CS-T1'],
+    });
+    expect(withCurrent.currentlyPlannedCourseIds!.has('CS-T1')).toBe(true);
+  });
+
   it('threads the overload-override options through to the model (default: unset)', () => {
     const withoutOverride = buildConstraintModel(CS_BOARD as any);
     expect(withoutOverride.overloadAccepted).toBeUndefined();
