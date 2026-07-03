@@ -17,11 +17,18 @@ export default function SemesterColumn({
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
         <div className="flex shrink-0 items-center gap-1.5">
+          {semester.courses.length > 0 && (
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {semester.courses.length} קורסים
+            </span>
+          )}
           {semester.totalWeeklyHours != null && (
             <Badge>{semester.totalWeeklyHours} ש״ש</Badge>
           )}
           {semester.warnings.length > 0 && (
-            <Badge variant="warn">{semester.warnings.length} אזהרות</Badge>
+            <span title={semester.warnings.join(' · ')} className="cursor-help">
+              <Badge variant="warn">{semester.warnings.length} אזהרות</Badge>
+            </span>
           )}
         </div>
       </header>
