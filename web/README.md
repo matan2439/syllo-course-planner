@@ -52,19 +52,38 @@ repo's `data/parsed_json/` (AI endpoints still need the backend).
 `npx jest --config jest.ui.config.js tests/ui/web_next_wiring.test.js`)
 fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 
-## Remaining migration phases (not yet done)
+## Static-HTML reduction roadmap
 
-1. ~~Board read-only view~~ — done: `/board` (reads the static JSON directly;
-   switch its data source to `/api/board/:programId` when the backend is
-   wired).
-2. ~~Course repository~~ — done: `/repository` (searchable, grouped by the
-   data's categories).
-3. **Board interactivity** — placement/moves in React state (must reuse the
-   planner's legality rules server-side; do not reimplement them in UI).
-4. **AI panel** — chat entry + draft plan presentation (UI only; planner logic
-   stays server-side, untouched).
-5. **Cutover** — point `vercel.json` `/` at the Next app, keep the HTML
-   reachable until parity is verified, then retire it.
+### What still lives only in `app/web/semester_board_viewer.html`
+| Section | Nature | Extraction difficulty |
+|---|---|---|
+| Header (emoji buttons: הקורסים שלי / החלפת תואר / איפוס / לילה) | pure UI + localStorage state | low — Next shell already replaces the frame |
+| Program-selection modal | UI + program registry (embedded list) | low-medium |
+| Sidebar repository panel (search, categories, add-to-board) | UI + board mutations | medium — read-only part already exists at `/repository` |
+| Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | medium — read-only render is safe; do NOT recompute requirements |
+| Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
+| AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream |
+| Course details / My-Courses / exam-preference modals | UI + localStorage | medium |
+| Theme toggle (`tau_theme`) | pure UI | bridged — `/planner` seeds it from the OS scheme |
+
+### Next-native pieces that already exist
+`ProductShell`, `ShaderGradientBackground`, `BrandLogo`, `Card`/`Badge`/
+`EmptyState`, `CourseCard`, `SemesterColumn`, `RepositoryExplorer` +
+`RepositoryCourseCard`, adapters `lib/board.ts` (+ `planOverview`) and
+`lib/repository.ts`, routes `/plan`, `/board`, `/repository`.
+
+### Recommended next 3 slices
+1. **Progress panel (read-only)** on `/plan` — render
+   `metadata.program_requirements_categories` counts as shipped (display
+   only, no requirement recomputation).
+2. **Program picker** as a Next page/modal reusing the embedded program
+   registry shape — entry point for multi-program support.
+3. **AI entry presentation** — Next-native preference form + loading/result
+   layout posting to the existing `/api/ai/*` contract (logic untouched);
+   coordinate with the planner workstream before starting.
+
+Cutover (point `vercel.json` `/` at Next, retire the HTML) stays last, after
+board interactivity and the AI panel reach parity.
 
 Planner logic, constraints, and AI runtime belong to the planner workstream —
 do not modify them from here.
