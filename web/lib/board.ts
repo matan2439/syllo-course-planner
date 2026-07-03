@@ -44,6 +44,7 @@ type RawSemester = {
 export type RawBoard = {
   semesters: RawSemester[]
   metadata?: Record<string, unknown>
+  summary?: { total_courses?: number }
 }
 
 export type CourseVM = {
@@ -66,6 +67,19 @@ export type SemesterVM = {
 }
 
 export type BoardVM = { semesters: SemesterVM[] }
+
+/** Calm counts for the /plan hub — data-shipped, no planner calculation. */
+export function planOverview(raw: RawBoard): {
+  plannedCourses: number
+  semesterCount: number
+} {
+  return {
+    plannedCourses:
+      raw.summary?.total_courses ??
+      raw.semesters.reduce((n, s) => n + (s.courses?.length ?? 0), 0),
+    semesterCount: raw.semesters.length,
+  }
+}
 
 function adaptCourse(c: RawCourse): CourseVM {
   return {

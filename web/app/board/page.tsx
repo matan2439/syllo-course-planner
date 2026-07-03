@@ -1,10 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import Link from 'next/link'
 import { adaptBoard, type RawBoard } from '../../lib/board'
-import BrandLogo from '../components/BrandLogo'
+import ProductShell from '../components/ProductShell'
 import SemesterColumn from '../components/SemesterColumn'
-import ShaderGradientBackground from '../components/ShaderGradientBackground'
 
 export const metadata = { title: 'לוח סמסטרים — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
@@ -25,51 +23,16 @@ export default async function BoardPage() {
   const board = adaptBoard(raw)
 
   return (
-    <>
-      <ShaderGradientBackground />
-
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 sm:px-6">
-        <header className="flex items-center justify-between py-5">
-          <Link
-            href="/"
-            className="flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
-          >
-            <BrandLogo size={26} />
-            <span className="text-sm font-semibold tracking-tight">
-              מתכנן לימודים
-            </span>
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Link
-              href="/repository"
-              className="rounded-full px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
-            >
-              מאגר קורסים
-            </Link>
-            <Link
-              href="/planner"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1.5 text-xs font-medium transition-colors duration-150 hover:border-purple-500/40 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
-            >
-              למתכנן המלא
-            </Link>
-          </nav>
-        </header>
-
-        <main className="flex-1 pb-16">
-          <div className="rise mb-6">
-            <h1 className="text-xl font-bold tracking-tight">לוח סמסטרים</h1>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              הנדסה מכנית · 2027 (תשפ״ז) — תצוגה בלבד
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {board.semesters.map((s, i) => (
-              <SemesterColumn key={s.id} semester={s} index={i} />
-            ))}
-          </div>
-        </main>
+    <ProductShell
+      active="board"
+      title="לוח סמסטרים"
+      subtitle="הנדסה מכנית · 2027 (תשפ״ז) — תצוגה בלבד"
+    >
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        {board.semesters.map((s, i) => (
+          <SemesterColumn key={s.id} semester={s} index={i} />
+        ))}
       </div>
-    </>
+    </ProductShell>
   )
 }

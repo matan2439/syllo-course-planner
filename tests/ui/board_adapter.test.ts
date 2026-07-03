@@ -5,7 +5,7 @@
  * mapping; no planner logic, no credit/hour calculation (totals come
  * from the data).
  */
-import { adaptBoard, SEMESTER_ORDER } from '../../web/lib/board';
+import { adaptBoard, planOverview, SEMESTER_ORDER } from '../../web/lib/board';
 
 const rawBoard = {
   semesters: [
@@ -70,6 +70,18 @@ test('known semesters get Hebrew titles; totals come from data untouched', () =>
   expect(sem.totalWeeklyHours).toBe(26);
   expect(sem.averageDifficulty).toBe(2.3);
   expect(sem.warnings).toEqual(['עומס גבוה']);
+});
+
+test('planOverview exposes the data-shipped counts for the /plan hub', () => {
+  const overview = planOverview({
+    ...rawBoard,
+    summary: { total_courses: 12 },
+  });
+  expect(overview).toEqual({ plannedCourses: 12, semesterCount: 2 });
+});
+
+test('planOverview falls back to counting placed courses when summary is missing', () => {
+  expect(planOverview(rawBoard).plannedCourses).toBe(2);
 });
 
 test('maps course essentials for the card', () => {

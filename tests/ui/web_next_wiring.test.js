@@ -26,9 +26,9 @@ test('landing page links to /planner', () => {
   expect(page).toContain('/planner');
 });
 
-test('landing page offers the read-only board as a quiet secondary route', () => {
+test('landing page offers the plan hub as a quiet secondary route', () => {
   const page = read('web/app/page.tsx');
-  expect(page).toContain('/board');
+  expect(page).toMatch(/href="\/plan"/);
 });
 
 test('data route serves the static JSON fallbacks the planner HTML fetches', () => {
@@ -50,9 +50,32 @@ test('/repository page renders through the repository adapter', () => {
   expect(page).toContain('adaptRepository');
 });
 
-test('/board offers calm navigation to the repository', () => {
-  const page = read('web/app/board/page.tsx');
-  expect(page).toContain('/repository');
+test('/plan hub renders the data-shipped overview inside the shell', () => {
+  const page = read('web/app/plan/page.tsx');
+  expect(page).toContain('planOverview');
+  expect(page).toContain('ProductShell');
+});
+
+test('the shared shell navigates to all planner surfaces', () => {
+  const shell = read('web/app/components/ProductShell.tsx');
+  expect(shell).toContain('/repository');
+  expect(shell).toContain('/board');
+  expect(shell).toContain('/planner');
+  expect(shell).toContain('/plan');
+});
+
+test('board and repository render inside the shared ProductShell', () => {
+  expect(read('web/app/components/ProductShell.tsx')).toContain('ShaderGradientBackground');
+  expect(read('web/app/board/page.tsx')).toContain('ProductShell');
+  expect(read('web/app/repository/page.tsx')).toContain('ProductShell');
+});
+
+test('/planner seeds the static planner theme from the OS scheme', () => {
+  // The HTML defaults to light unless localStorage tau_theme is set; the
+  // wrapper injects a seed so dark-mode users get visual continuity.
+  const route = read('web/app/planner/route.ts');
+  expect(route).toContain('tau_theme');
+  expect(route).toContain('prefers-color-scheme');
 });
 
 test('theme-aware logo assets exist at the documented convention paths', () => {
