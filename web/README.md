@@ -60,7 +60,7 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 | Header (emoji buttons: הקורסים שלי / החלפת תואר / איפוס / לילה) | pure UI + localStorage state | low — Next shell already replaces the frame |
 | Program-selection modal | UI + program registry (embedded list) | low-medium |
 | Sidebar repository panel (search, categories, add-to-board) | UI + board mutations | medium — read-only part already exists at `/repository` |
-| Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | medium — read-only render is safe; do NOT recompute requirements |
+| Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | extracted read-only — `/plan` renders `program_requirements_validation` as shipped (`lib/requirements.ts` + `RequirementsProgressPanel`); the HTML panel remains canonical until cutover |
 | Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
 | AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream |
 | Course details / My-Courses / exam-preference modals | UI + localStorage | medium |
@@ -73,14 +73,13 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 `lib/repository.ts`, routes `/plan`, `/board`, `/repository`.
 
 ### Recommended next 3 slices
-1. **Progress panel (read-only)** on `/plan` — render
-   `metadata.program_requirements_categories` counts as shipped (display
-   only, no requirement recomputation).
-2. **Program picker** as a Next page/modal reusing the embedded program
+1. **Program picker** as a Next page/modal reusing the embedded program
    registry shape — entry point for multi-program support.
-3. **AI entry presentation** — Next-native preference form + loading/result
+2. **AI entry presentation** — Next-native preference form + loading/result
    layout posting to the existing `/api/ai/*` contract (logic untouched);
    coordinate with the planner workstream before starting.
+3. **Course details modal** (read-only) — syllabus summary/links from the
+   repository course fields, reusing the shared Card primitives.
 
 Cutover (point `vercel.json` `/` at Next, retire the HTML) stays last, after
 board interactivity and the AI panel reach parity.

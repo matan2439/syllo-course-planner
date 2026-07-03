@@ -2,8 +2,10 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import Link from 'next/link'
 import { planOverview, type RawBoard } from '../../lib/board'
+import { adaptRequirements } from '../../lib/requirements'
 import ProductShell from '../components/ProductShell'
-import { Badge, Card } from '../components/ui'
+import RequirementsProgressPanel from '../components/RequirementsProgressPanel'
+import { Badge, Card, EmptyState } from '../components/ui'
 
 export const metadata = { title: 'תכנון — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
@@ -43,6 +45,7 @@ const SECTIONS = [
 export default async function PlanPage() {
   const raw = JSON.parse(await readFile(BOARD_JSON, 'utf8')) as RawBoard
   const overview = planOverview(raw)
+  const requirements = adaptRequirements(raw)
 
   return (
     <ProductShell
@@ -85,6 +88,14 @@ export default async function PlanPage() {
             </Card>
           </Link>
         ))}
+      </div>
+
+      <div className="rise rise-3 mt-10">
+        {requirements ? (
+          <RequirementsProgressPanel requirements={requirements} />
+        ) : (
+          <EmptyState>נתוני דרישות התואר אינם זמינים כרגע</EmptyState>
+        )}
       </div>
     </ProductShell>
   )

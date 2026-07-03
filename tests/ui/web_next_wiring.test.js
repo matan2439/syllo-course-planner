@@ -56,6 +56,11 @@ test('/plan hub renders the data-shipped overview inside the shell', () => {
   expect(page).toContain('ProductShell');
 });
 
+test('/plan renders the requirements progress panel from shipped metadata', () => {
+  expect(read('web/app/plan/page.tsx')).toContain('adaptRequirements');
+  expect(read('web/app/components/RequirementsProgressPanel.tsx')).toContain('RequirementCategoryCard');
+});
+
 test('the shared shell navigates to all planner surfaces', () => {
   const shell = read('web/app/components/ProductShell.tsx');
   expect(shell).toContain('/repository');

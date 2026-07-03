@@ -24,6 +24,7 @@ const BADGE_VARIANTS = {
   neutral: 'bg-black/[.04] text-[var(--text-muted)] dark:bg-white/[.06]',
   purple: 'bg-purple-600/10 text-purple-700 dark:bg-purple-400/10 dark:text-purple-300',
   warn: 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
 } as const
 
 export function Badge({
