@@ -80,10 +80,13 @@ function withCourses(sem: string, ids: string[]): PlanState {
 }
 
 describe('GOAL_STACK', () => {
-  it('lists the eight prioritized goals, completion first', () => {
+  it('lists the prioritized goals, completion first and balance split into peak+spread', () => {
     expect(GOAL_STACK[0]).toBe('degree_completion');
-    expect(GOAL_STACK).toHaveLength(8);
+    expect(GOAL_STACK).toHaveLength(9);
     expect(GOAL_STACK[GOAL_STACK.length - 1]).toBe('difficulty_comfort');
+    // balance is now two goals: peak (primary) above spread (secondary tiebreak).
+    expect((GOAL_STACK as readonly string[]).indexOf('balance_peak'))
+      .toBeLessThan((GOAL_STACK as readonly string[]).indexOf('balance_spread'));
   });
 });
 
@@ -107,17 +110,17 @@ describe('scorePlan — goal priority is lexicographic', () => {
     expect(compareScore(scorePlan(withCat, m), scorePlan(withoutCat, m))).toBeGreaterThan(0);
   });
 
-  it('with higher goals equal, balanced and lopsided plans score equally when both fit within capacity (g4)', () => {
-    // After the g4 fix, spread is computed over non-empty semesters only.
-    // lopsided (8h in one sem): non-empty=[8], spread=0, g4=0.
-    // balanced (4h + 4h): non-empty=[4,4], spread=0, g4=0.
-    // Same courses → same g6. Result: tied. G3 (legality) already handles over-cap loads.
+  it('with higher goals equal, a balanced plan beats a lopsided one (g4a peak: lower peak wins)', () => {
+    // Load Distribution Policy: peak is the primary balance goal.
+    // balanced (4h + 4h): peak = 4.
+    // lopsided (8h in one sem): peak = 8.
+    // Same courses/hours → g1/g2/g3 equal; balanced wins on g4a (lower peak).
     const m = model({ degreeRequiredHours: 8, categories: [] });
     const balanced = emptyState(SEMS);
     balanced.semesters['year_3_semester_a'] = ['e0']; // 4h
     balanced.semesters['year_3_semester_b'] = ['e1']; // 4h
     const lopsided = withCourses('year_3_semester_a', ['e0', 'e1']); // 8h in one sem
-    expect(compareScore(scorePlan(balanced, m), scorePlan(lopsided, m))).toBe(0);
+    expect(compareScore(scorePlan(balanced, m), scorePlan(lopsided, m))).toBeGreaterThan(0);
   });
 
   it('with all else equal, lower total difficulty wins (goal 6, tiebreaker)', () => {

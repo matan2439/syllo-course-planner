@@ -2,21 +2,17 @@
  * Dual-Semester Load-Balancing Preference — unit + worker level.
  *
  * A course legally offered in BOTH Semester A and Semester B must not be biased
- * toward A merely because A is enumerated first: the shared plan score already
- * carries a balance goal (planner_goals.ts g4 = -spread over non-empty
- * semesters), so when A is heavier than B the worker must place the dual course
- * in B, and when B is heavier it must place it in A. Single-semester courses,
- * disallowed courses, and the "B when A is over-cap" behavior must be unchanged.
+ * toward A merely because A is enumerated first: the shared plan score carries a
+ * balance goal (planner_goals.ts), so when A is heavier than B the worker places
+ * the dual course in B, and when B is heavier it places it in A. Single-semester
+ * courses, disallowed courses, and the "B when A is over-cap" behavior are
+ * unchanged.
  *
- * INVESTIGATION NOTE (systematic-debugging Phase 1): this behavior is ALREADY
- * produced by the pre-existing g4 balance goal shared by the greedy worker and
- * the beam/agentic path (both rank via scorePlan/compareScore). The prior epic
- * (0804113) unblocked it by mapping offered_semesters term letters onto real
- * semester ids. These tests LOCK that behavior against regression; no scoring
- * change was required. The one residual A-preference (empty B → consolidation)
- * is a case the scoring model genuinely rates A-better and is asserted as a
- * documented control, per the epic's "A may still be selected when equally good
- * or better under the scoring model".
+ * NOTE: the balance goal is now g4a (peak load, primary) + g4b (spread,
+ * secondary) after the Load Distribution Policy epic. The formerly-recorded
+ * "empty B → consolidate into A" seam is now RESOLVED: opening an empty B to
+ * lower the peak is preferred (see the empty-B test below and the dedicated
+ * planner_load_distribution_policy.test.ts).
  */
 
 import { getLegalSemesters } from '../../api/ai/completion_analysis';
@@ -172,16 +168,16 @@ describe('planner load-balancing preference (greedy worker)', () => {
     expect(w.validateCandidate().unsatisfiedCategories).toContain('dc');
   });
 
-  test('control: A has load, B EMPTY → DUAL consolidates into A (scoring model rates A better; permitted)', () => {
+  test('A has load, B EMPTY → DUAL opens B to lower the peak (Load Distribution Policy)', () => {
     const model = buildConstraintModel(board([fixed('FIXA', SEM_A, 8), dual()], [DUAL_CAT], 12));
     const w = new PlannerWorker(model);
     w.run(200);
-    expect(semOf(w, 'DUAL')).toBe(SEM_A);
-    // documents WHY: with an empty B, g4 (spread over non-empty semesters) rates
-    // A-consolidation (spread 0) above B-spread (spread 4).
-    const inA = { semesters: { [SEM_A]: ['FIXA', 'DUAL'], [SEM_B]: [] } };
+    expect(semOf(w, 'DUAL')).toBe(SEM_B);
+    // WHY: g4a (peak) rates B-placement [8,4] peak 8 above A-consolidation
+    // [12,0] peak 12 — opening an empty semester to reduce the peak is preferred.
     const inB = { semesters: { [SEM_A]: ['FIXA'], [SEM_B]: ['DUAL'] } };
-    expect(compareScore(scorePlan(inA, model), scorePlan(inB, model))).toBeGreaterThan(0);
+    const inA = { semesters: { [SEM_A]: ['FIXA', 'DUAL'], [SEM_B]: [] } };
+    expect(compareScore(scorePlan(inB, model), scorePlan(inA, model))).toBeGreaterThan(0);
   });
 });
 

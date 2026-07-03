@@ -6,7 +6,13 @@
  *   1. degree_completion   — reach the required degree hours (e.g. 185).
  *   2. requirements        — place all mandatory courses + satisfy all categories.
  *   3. legality            — no semester over the hard cap / over the user cap.
- *   4. balance             — even weekly load across semesters.
+ *   4a. balance (peak)     — minimize the heaviest semester's load (minimum user
+ *                            burden); opening a lighter/empty semester to lower
+ *                            the peak is preferred over consolidating onto a
+ *                            heavy one.
+ *   4b. balance (spread)   — secondary: among equal-peak plans, prefer a tighter
+ *                            distribution across non-empty semesters (never a
+ *                            reason to open an empty semester on its own).
  *   5. preferences         — place the courses the user wants.
  *   6. difficulty_comfort  — lower total difficulty (pure tiebreaker; never a
  *                            reason to skip a required course).
@@ -31,7 +37,8 @@ export const GOAL_STACK = [
   'requirements_mandatory',
   'requirements_category',
   'legality',
-  'balance',
+  'balance_peak',
+  'balance_spread',
   'preferences',
   'unwanted_avoidance',
   'difficulty_comfort',
@@ -105,11 +112,21 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const overUser = loads.filter(h => h > model.maxHoursPerSemester).length;
   const g3 = -(overHard * 10 + overUser);
 
-  // 4. balance — minimize the spread between busiest and quietest *non-empty* semester.
-  //    Empty semesters are intentional placeholders and must not widen the spread.
+  // 4a. balance (peak) — minimize the heaviest semester's load (minimum user
+  //     burden). Peak is taken over ALL semesters (empty ones count as 0), so a
+  //     plan that opens a lighter/empty semester to reduce the busiest semester
+  //     scores better than one that consolidates onto an already-heavy semester
+  //     (e.g. [16,4] peak 16 beats [20,0] peak 20). Over-cap is still handled at
+  //     the higher-priority g3, so this only ranks otherwise-legal plans.
+  const g4a = loads.length ? -Math.max(...loads) : 0;
+
+  // 4b. balance (spread) — secondary tiebreak: among equal-peak plans, prefer a
+  //     tighter distribution across *non-empty* semesters. This never rewards
+  //     opening an empty semester on its own (it only breaks ties once the peak
+  //     is equal), so it does not scatter courses for its own sake.
   const activeLs = loads.filter(h => h > 0);
   const spread = activeLs.length > 1 ? Math.max(...activeLs) - Math.min(...activeLs) : 0;
-  const g4 = -spread;
+  const g4b = -spread;
 
   // 5. preferences — wanted courses placed.
   const placed = new Set(placedCourseIds(state));
@@ -123,7 +140,7 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   for (const cid of placed) totalDifficulty += model.profiles.get(cid)?.difficulty_score ?? 0;
   const g6 = -totalDifficulty;
 
-  return [g1, g2a, g2b, g3, g4, g5, g5b, g6];
+  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, g6];
 }
 
 export interface CompletenessAssessment {
