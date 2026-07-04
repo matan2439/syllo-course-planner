@@ -11,6 +11,7 @@ light/dark via `prefers-color-scheme`.
 | Planner (board, repo, AI) | `/planner` route → serves the canonical static `app/web/semester_board_viewer.html` unchanged |
 | Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
 | Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`) |
+| AI planning entry (presentation) | `/ai-plan` — `AiPlanningExperience` preference form + staged loading/result/error choreography. No planner call yet; hands off to the canonical assistant at `/planner` |
 
 The static HTML file remains the **single source of truth** for the planner UI
 and is what production Vercel serves at `/` (see root `vercel.json`). The Next
@@ -62,20 +63,21 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 | Sidebar repository panel (search, categories, add-to-board) | UI + board mutations | medium — read-only part already exists at `/repository` |
 | Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | extracted read-only — `/plan` renders `program_requirements_validation` as shipped (`lib/requirements.ts` + `RequirementsProgressPanel`); the HTML panel remains canonical until cutover |
 | Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
-| AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream |
+| AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream. Presentation entry extracted at `/ai-plan` (`AiPlanningExperience`): preference form + loading/result/error states, no planner call yet, hands off to `/planner` |
 | Course details / My-Courses / exam-preference modals | UI + localStorage | medium |
 | Theme toggle (`tau_theme`) | pure UI | bridged — `/planner` seeds it from the OS scheme |
 
 ### Next-native pieces that already exist
 `ProductShell`, `ShaderGradientBackground`, `BrandLogo`, `Card`/`Badge`/
 `EmptyState`, `CourseCard`, `SemesterColumn`, `RepositoryExplorer` +
-`RepositoryCourseCard`, adapters `lib/board.ts` (+ `planOverview`) and
-`lib/repository.ts`, routes `/plan`, `/board`, `/repository`.
+`RepositoryCourseCard`, `AiPlanningExperience`, adapters `lib/board.ts`
+(+ `planOverview`) and `lib/repository.ts`, routes `/plan`, `/board`,
+`/repository`, `/ai-plan`.
 
 ### Recommended next 3 slices
-1. **AI entry presentation** — Next-native preference form + loading/result
-   layout posting to the existing `/api/ai/*` contract (logic untouched);
-   coordinate with the planner workstream before starting.
+1. **Wire the AI entry** — post the `/ai-plan` preference form to the existing
+   `/api/ai/*` contract (logic untouched) and render a real draft in place of
+   the presentation-only result shell; coordinate with the planner workstream.
 2. **Course details modal** (read-only) — syllabus summary/links from the
    repository course fields, reusing the shared Card primitives.
 3. **My-Courses status view** (read-only) — render the localStorage-backed
