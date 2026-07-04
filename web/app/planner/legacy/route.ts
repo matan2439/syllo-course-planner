@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-// The planner UI is still the canonical single-file static HTML that production
-// Vercel serves at "/" (see /vercel.json). This route wraps it into the Next
-// app without duplicating the 16k-line file, so both surfaces stay in sync
-// until sections are migrated into real components.
+// Raw legacy planner: the canonical single-file static HTML, served in its own
+// document context so its 16k lines of scripts, localStorage and theme run
+// unchanged. /planner (page.tsx) embeds this via an iframe inside ProductShell;
+// this route is also the honest raw fallback if the frame ever fails.
 // Assumes Next runs with cwd = web/ (its `npm run dev`/`build` default).
 const PLANNER_HTML = path.resolve(
   process.cwd(),
@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic'
 // untouched): the HTML defaults to light unless localStorage tau_theme is
 // set, which breaks visual continuity for dark-OS users arriving from the
 // Next pages. Seed the theme from prefers-color-scheme on first visit; an
-// explicit in-app toggle still wins afterwards.
+// explicit in-app toggle still wins afterwards. Same-origin with the shell, so
+// the seed shares localStorage with the rest of the product.
 const THEME_SEED = `<script>try{if(!localStorage.getItem('tau_theme')&&matchMedia('(prefers-color-scheme: dark)').matches){localStorage.setItem('tau_theme','dark');document.documentElement.dataset.theme='dark';}}catch(e){}</script>`
 
 export async function GET() {

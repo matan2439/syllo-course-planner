@@ -16,14 +16,24 @@ test('canonical static planner HTML exists', () => {
   expect(fs.existsSync(path.join(ROOT, 'app/web/semester_board_viewer.html'))).toBe(true);
 });
 
-test('/planner route serves the canonical HTML file', () => {
-  const route = read('web/app/planner/route.ts');
+test('/planner/legacy route serves the canonical HTML file', () => {
+  const route = read('web/app/planner/legacy/route.ts');
   expect(route).toMatch(/app[/\\'",\s]+web[/\\'",\s]+semester_board_viewer\.html/);
 });
 
-test('landing page links to /planner', () => {
+test('/planner is a product-shell surface wrapping the legacy planner frame', () => {
+  const page = read('web/app/planner/page.tsx');
+  expect(page).toContain('ProductShell');
+  expect(page).toContain('LegacyPlannerFrame');
+});
+
+test('the legacy planner frame embeds the raw /planner/legacy route', () => {
+  expect(read('web/app/components/LegacyPlannerFrame.tsx')).toContain('/planner/legacy');
+});
+
+test('landing primary CTA starts the guided flow, not the raw planner', () => {
   const page = read('web/app/page.tsx');
-  expect(page).toContain('/planner');
+  expect(page).toContain('/ai-plan');
 });
 
 test('landing page offers the plan hub as a quiet secondary route', () => {
@@ -107,12 +117,28 @@ test('board and repository render inside the shared ProductShell', () => {
   expect(read('web/app/repository/page.tsx')).toContain('ProductShell');
 });
 
-test('/planner seeds the static planner theme from the OS scheme', () => {
+test('/planner/legacy seeds the static planner theme from the OS scheme', () => {
   // The HTML defaults to light unless localStorage tau_theme is set; the
-  // wrapper injects a seed so dark-mode users get visual continuity.
-  const route = read('web/app/planner/route.ts');
+  // legacy wrapper injects a seed so dark-mode users get visual continuity
+  // even inside the embedded frame (same-origin localStorage).
+  const route = read('web/app/planner/legacy/route.ts');
   expect(route).toContain('tau_theme');
   expect(route).toContain('prefers-color-scheme');
+});
+
+test('a global route-transition template wraps every surface', () => {
+  const template = read('web/app/template.tsx');
+  expect(template).toContain('route-fade');
+});
+
+test('the route transition and reduced-motion rules live in globals', () => {
+  const css = read('web/app/globals.css');
+  expect(css).toContain('route-fade');
+  expect(css).toContain('prefers-reduced-motion');
+});
+
+test('ProductShell supports a full-bleed variant for the embedded planner', () => {
+  expect(read('web/app/components/ProductShell.tsx')).toContain('fullBleed');
 });
 
 test('theme-aware logo assets exist at the documented convention paths', () => {

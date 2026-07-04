@@ -7,8 +7,9 @@ light/dark via `prefers-color-scheme`.
 
 | Surface | Where it lives |
 |---|---|
-| Landing / entry | `app/page.tsx` (Next, real UI) |
-| Planner (board, repo, AI) | `/planner` route → serves the canonical static `app/web/semester_board_viewer.html` unchanged |
+| Landing / entry | `app/page.tsx` (Next, real UI). Primary CTA → `/ai-plan` (guided flow); no direct jump into raw HTML |
+| Main planner (board, repo, AI) | `/planner` — Next **product-shell page** (`ProductShell fullBleed` + `LegacyPlannerFrame`) that embeds the canonical planner via a same-origin iframe. Gradient, brand and cross-navigation frame it; theme + saved program persist across the frame |
+| Raw legacy planner | `/planner/legacy` — the canonical `app/web/semester_board_viewer.html` served unchanged (own document context, all scripts intact). Also the honest fallback if the frame fails |
 | Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
 | Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`) |
 | AI planning entry (presentation) | `/ai-plan` — `AiPlanningExperience` preference form + staged loading/result/error choreography. No planner call yet; hands off to the canonical assistant at `/planner` |
@@ -44,8 +45,15 @@ repo's `data/parsed_json/` (AI endpoints still need the backend).
   same `color1/2/3` values so there is no visual jump.
 - **Design tokens:** `app/globals.css` `:root` variables mirror the planner
   HTML's palette; dark mode is the OS scheme.
+- **Product shell:** every Next surface renders inside `ProductShell` (gradient,
+  brand, section nav, `?program` preservation). The planner uses its
+  `fullBleed` variant to frame the embedded legacy iframe.
+- **Route transitions:** `app/template.tsx` (Next remounts it per navigation) +
+  the `.route-fade` class in globals give one subtle, vertical-only (RTL-safe)
+  entrance for every route. No motion library.
 - **Reduced motion:** the global `prefers-reduced-motion` rule freezes all
-  animation — do not add per-component opt-outs.
+  animation (including `.route-fade` and the gradient) — do not add
+  per-component opt-outs.
 
 ## Guard test
 

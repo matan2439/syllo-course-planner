@@ -23,14 +23,18 @@ export default function ProductShell({
   subtitle,
   width = 'wide',
   programId,
+  fullBleed = false,
   children,
 }: {
   active?: ShellSection
-  title: string
+  title?: string
   subtitle?: string
   width?: 'wide' | 'narrow'
   /** Non-default selections are preserved across section navigation. */
   programId?: string
+  /** Edge-to-edge, viewport-height frame (embedded legacy planner). No title
+   *  block or max-width container; the child fills the remaining height. */
+  fullBleed?: boolean
   children: ReactNode
 }) {
   const query = programQuery(programId)
@@ -39,11 +43,15 @@ export default function ProductShell({
       <ShaderGradientBackground />
 
       <div
-        className={`mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
-          width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
-        }`}
+        className={
+          fullBleed
+            ? 'flex h-screen flex-col px-4 sm:px-6'
+            : `mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
+                width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
+              }`
+        }
       >
-        <header className="flex items-center justify-between gap-3 py-5">
+        <header className="flex shrink-0 items-center justify-between gap-3 py-5">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
@@ -78,15 +86,23 @@ export default function ProductShell({
           </nav>
         </header>
 
-        <main className="flex-1 pb-16">
-          <div className="rise mb-6">
-            <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-            {subtitle && (
-              <p className="mt-1 text-sm text-[var(--text-muted)]">{subtitle}</p>
+        {fullBleed ? (
+          <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+        ) : (
+          <main className="flex-1 pb-16">
+            {title && (
+              <div className="rise mb-6">
+                <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+                {subtitle && (
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-          {children}
-        </main>
+            {children}
+          </main>
+        )}
       </div>
     </>
   )
