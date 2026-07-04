@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 const SECTIONS = [
   {
-    href: '/planner',
+    href: '/ai-plan',
     title: 'תכנון עם AI',
     description: 'מספרים מה חשוב לכם — והעוזר בונה תוכנית',
     primary: true,

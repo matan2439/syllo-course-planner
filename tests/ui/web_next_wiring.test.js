@@ -75,11 +75,29 @@ test('the shell preserves a non-default program selection on nav links', () => {
   expect(read('web/app/components/ProductShell.tsx')).toContain('programQuery');
 });
 
+test('/ai-plan resolves the selected program like every other surface', () => {
+  const page = read('web/app/ai-plan/page.tsx');
+  expect(page).toContain('getProgram');
+  expect(page).toContain('AiPlanningExperience');
+});
+
+test('/plan AI section and the shell CTA route to the guided /ai-plan entry', () => {
+  expect(read('web/app/plan/page.tsx')).toContain("'/ai-plan'");
+  expect(read('web/app/components/ProductShell.tsx')).toContain('/ai-plan');
+});
+
+test('the AI experience ships honest loading and error state copy', () => {
+  const xp = read('web/app/components/AiPlanningExperience.tsx');
+  expect(xp).toContain('בודק דרישות'); // staged loading, same language as the canonical panel
+  expect(xp).toContain('לא הצלחנו לבנות תוכנית כרגע'); // calm error state
+  expect(xp).toContain('/planner'); // hands off to the real assistant, no fake generation
+});
+
 test('the shared shell navigates to all planner surfaces', () => {
   const shell = read('web/app/components/ProductShell.tsx');
   expect(shell).toContain('/repository');
   expect(shell).toContain('/board');
-  expect(shell).toContain('/planner');
+  expect(shell).toContain('/ai-plan'); // canonical /planner is one hop away via the AI entry
   expect(shell).toContain('/plan');
 });
 
