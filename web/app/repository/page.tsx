@@ -1,36 +1,37 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
-import type { RawBoard } from '../../lib/board'
+import { programSubtitle, readBoardForProgram } from '../../lib/board-data'
+import { getProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
 import ProductShell from '../components/ProductShell'
 import RepositoryExplorer from '../components/RepositoryExplorer'
+import { EmptyState } from '../components/ui'
 
 export const metadata = { title: 'מאגר קורסים — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
 
 // Read-only Next-native repository over the same board JSON the canonical
-// planner consumes (metadata.program_repository_courses). /planner remains
-// the interactive, canonical surface.
-const BOARD_JSON = path.resolve(
-  process.cwd(),
-  '..',
-  'data',
-  'parsed_json',
-  'mechanical_semester_board_2027.json'
-)
-
-export default async function RepositoryPage() {
-  const raw = JSON.parse(await readFile(BOARD_JSON, 'utf8')) as RawBoard
-  const repo = adaptRepository(raw)
+// planner consumes (metadata.program_repository_courses).
+export default async function RepositoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ program?: string }>
+}) {
+  const { program: programParam } = await searchParams
+  const program = getProgram(programParam)
+  const raw = await readBoardForProgram(program)
 
   return (
     <ProductShell
       active="repository"
       title="מאגר קורסים"
-      subtitle="הנדסה מכנית · 2027 (תשפ״ז) — תצוגה בלבד"
+      subtitle={programSubtitle(program, 'תצוגה בלבד')}
       width="narrow"
+      programId={program.id}
     >
-      <RepositoryExplorer repo={repo} />
+      {raw ? (
+        <RepositoryExplorer repo={adaptRepository(raw)} />
+      ) : (
+        <EmptyState>מאגר הקורסים לתוכנית זו עדיין לא זמין כאן</EmptyState>
+      )}
     </ProductShell>
   )
 }

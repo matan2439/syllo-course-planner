@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { programQuery } from '../../lib/programs'
 import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
 
@@ -21,14 +22,18 @@ export default function ProductShell({
   title,
   subtitle,
   width = 'wide',
+  programId,
   children,
 }: {
-  active: ShellSection
+  active?: ShellSection
   title: string
   subtitle?: string
   width?: 'wide' | 'narrow'
+  /** Non-default selections are preserved across section navigation. */
+  programId?: string
   children: ReactNode
 }) {
+  const query = programQuery(programId)
   return (
     <>
       <ShaderGradientBackground />
@@ -53,7 +58,7 @@ export default function ProductShell({
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.key}
-                href={item.href}
+                href={`${item.href}${query}`}
                 aria-current={item.key === active ? 'page' : undefined}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] ${
                   item.key === active

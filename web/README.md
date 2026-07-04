@@ -58,7 +58,7 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 | Section | Nature | Extraction difficulty |
 |---|---|---|
 | Header (emoji buttons: הקורסים שלי / החלפת תואר / איפוס / לילה) | pure UI + localStorage state | low — Next shell already replaces the frame |
-| Program-selection modal | UI + program registry (embedded list) | low-medium |
+| Program-selection modal | UI + program registry (embedded list) | extracted read-only — `/programs` renders the family cards from `lib/programs.ts`, a typed mirror of the embedded registry (drift-guarded by `tests/ui/programs_adapter.test.ts`); selection travels as `?program=` across `/plan`, `/board`, `/repository` (default omitted). The HTML modal remains canonical for the interactive planner |
 | Sidebar repository panel (search, categories, add-to-board) | UI + board mutations | medium — read-only part already exists at `/repository` |
 | Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | extracted read-only — `/plan` renders `program_requirements_validation` as shipped (`lib/requirements.ts` + `RequirementsProgressPanel`); the HTML panel remains canonical until cutover |
 | Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
@@ -73,13 +73,18 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 `lib/repository.ts`, routes `/plan`, `/board`, `/repository`.
 
 ### Recommended next 3 slices
-1. **Program picker** as a Next page/modal reusing the embedded program
-   registry shape — entry point for multi-program support.
-2. **AI entry presentation** — Next-native preference form + loading/result
+1. **AI entry presentation** — Next-native preference form + loading/result
    layout posting to the existing `/api/ai/*` contract (logic untouched);
    coordinate with the planner workstream before starting.
-3. **Course details modal** (read-only) — syllabus summary/links from the
+2. **Course details modal** (read-only) — syllabus summary/links from the
    repository course fields, reusing the shared Card primitives.
+3. **My-Courses status view** (read-only) — render the localStorage-backed
+   personal statuses the HTML tracks, without mutating them.
+
+Known limitation: only the 2027 board JSON ships in this checkout, so
+non-default programs render a calm "not available here" fallback on
+`/plan`, `/board` and `/repository` (production boards come from
+`/api/board`).
 
 Cutover (point `vercel.json` `/` at Next, retire the HTML) stays last, after
 board interactivity and the AI panel reach parity.

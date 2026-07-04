@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import Link from 'next/link'
-import { planOverview, type RawBoard } from '../../lib/board'
+import { planOverview } from '../../lib/board'
+import { programSubtitle, readBoardForProgram } from '../../lib/board-data'
+import { getProgram, programQuery } from '../../lib/programs'
 import { adaptRequirements } from '../../lib/requirements'
 import ProductShell from '../components/ProductShell'
 import RequirementsProgressPanel from '../components/RequirementsProgressPanel'
@@ -9,17 +9,6 @@ import { Badge, Card, EmptyState } from '../components/ui'
 
 export const metadata = { title: 'תכנון — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
-
-// Planner hub: calm status + the three planning surfaces. This shell is the
-// bridge away from the static HTML — AI planning still opens the canonical
-// /planner until that surface is migrated.
-const BOARD_JSON = path.resolve(
-  process.cwd(),
-  '..',
-  'data',
-  'parsed_json',
-  'mechanical_semester_board_2027.json'
-)
 
 const SECTIONS = [
   {
@@ -42,28 +31,52 @@ const SECTIONS = [
   },
 ] as const
 
-export default async function PlanPage() {
-  const raw = JSON.parse(await readFile(BOARD_JSON, 'utf8')) as RawBoard
-  const overview = planOverview(raw)
-  const requirements = adaptRequirements(raw)
+// Planner hub: calm status + the three planning surfaces. This shell is the
+// bridge away from the static HTML — AI planning still opens the canonical
+// /planner until that surface is migrated.
+export default async function PlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ program?: string }>
+}) {
+  const { program: programParam } = await searchParams
+  const program = getProgram(programParam)
+  const raw = await readBoardForProgram(program)
+  const query = programQuery(program.id)
+
+  const overview = raw ? planOverview(raw) : null
+  const requirements = raw ? adaptRequirements(raw) : null
 
   return (
     <ProductShell
       active="plan"
       title="תכנון"
-      subtitle="הנדסה מכנית · 2027 (תשפ״ז)"
+      subtitle={programSubtitle(program)}
       width="narrow"
+      programId={program.id}
     >
       <div className="rise mb-8 flex flex-wrap items-center gap-2">
-        <Badge variant="purple">{overview.plannedCourses} קורסים מתוכננים</Badge>
-        <Badge>{overview.semesterCount} סמסטרים</Badge>
+        {overview && (
+          <>
+            <Badge variant="purple">
+              {overview.plannedCourses} קורסים מתוכננים
+            </Badge>
+            <Badge>{overview.semesterCount} סמסטרים</Badge>
+          </>
+        )}
+        <Link
+          href="/programs"
+          className="text-xs text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+        >
+          החלפת תוכנית
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {SECTIONS.map((s, i) => (
           <Link
             key={s.href}
-            href={s.href}
+            href={`${s.href}${query}`}
             className={`rise group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)] ${
               i > 0 ? `rise-${Math.min(i, 3)}` : ''
             }`}
@@ -94,7 +107,16 @@ export default async function PlanPage() {
         {requirements ? (
           <RequirementsProgressPanel requirements={requirements} />
         ) : (
-          <EmptyState>נתוני דרישות התואר אינם זמינים כרגע</EmptyState>
+          <EmptyState>
+            נתוני התוכנית עדיין לא זמינים כאן
+            <br />
+            <Link
+              href="/programs"
+              className="mt-2 inline-block text-[var(--purple)] hover:underline"
+            >
+              בחירת תוכנית אחרת
+            </Link>
+          </EmptyState>
         )}
       </div>
     </ProductShell>

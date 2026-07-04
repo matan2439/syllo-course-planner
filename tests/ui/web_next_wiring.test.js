@@ -61,6 +61,20 @@ test('/plan renders the requirements progress panel from shipped metadata', () =
   expect(read('web/app/components/RequirementsProgressPanel.tsx')).toContain('RequirementCategoryCard');
 });
 
+test('/programs picker renders the shipped program families', () => {
+  expect(read('web/app/programs/page.tsx')).toContain('listProgramFamilies');
+});
+
+test('plan, board and repository resolve the program from the query param', () => {
+  for (const page of ['plan', 'board', 'repository']) {
+    expect(read(`web/app/${page}/page.tsx`)).toContain('getProgram');
+  }
+});
+
+test('the shell preserves a non-default program selection on nav links', () => {
+  expect(read('web/app/components/ProductShell.tsx')).toContain('programQuery');
+});
+
 test('the shared shell navigates to all planner surfaces', () => {
   const shell = read('web/app/components/ProductShell.tsx');
   expect(shell).toContain('/repository');
