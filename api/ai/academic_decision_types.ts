@@ -11,6 +11,7 @@
 
 import type { AgentResult } from './planner_agent';
 import type { GapRecord } from './planner_capabilities';
+import type { AcademicInterestProfile } from './academic_interest_profile';
 
 // ── ClarificationCapability ───────────────────────────────────────────────────
 
@@ -21,6 +22,15 @@ export interface ClarificationPlanningContext {
   excludedCourseIds?: string[];
   maxWeeklyHours?: number;
   track?: string;
+  /**
+   * Opt-in: interest clarification questions (academic_focus_areas etc., see
+   * academic_clarification.ts) only fire when this field is explicitly present
+   * (even an empty profile) and not yet "meaningful"
+   * (hasMeaningfulAcademicInterests, academic_interest_profile.ts). Left
+   * entirely absent, behavior is byte-identical to before this field existed —
+   * required so every pre-existing caller (none of which set it) is unaffected.
+   */
+  academicInterestProfile?: AcademicInterestProfile;
 }
 
 export interface ClarificationRequest {
@@ -33,7 +43,12 @@ export type MissingInputField =
   | 'currentCourses'
   | 'excludedCourses'
   | 'maxWeeklyHours'
-  | 'track';
+  | 'track'
+  | 'academicFocusAreas'
+  | 'academicAvoidAreas'
+  | 'courseStylePreferences'
+  | 'optimizationPriorities'
+  | 'careerGoals';
 
 export interface MissingInput {
   field: MissingInputField;
