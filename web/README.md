@@ -11,7 +11,7 @@ light/dark via `prefers-color-scheme`.
 | Main planner (board, repo, AI) | `/planner` — Next **product-shell page** (`ProductShell fullBleed` + `LegacyPlannerFrame`) that embeds the canonical planner via a same-origin iframe. Gradient, brand and cross-navigation frame it; theme + saved program persist across the frame. Cross-cutting legacy actions (my courses / change degree / reset), the current-program label and a theme toggle are mirrored as product-styled controls in an outer toolbar — they call the legacy globals same-origin (reset is confirmation-gated). The theme toggle writes the legacy's own `tau_theme` and sets `data-theme` on both the shell and the iframe (a pre-paint bootstrap in `layout.tsx` seeds the shell from `tau_theme` so the two never desync across reloads/pages; `suppressHydrationWarning` covers the bootstrap mutation). The legacy in-frame toolbar is untouched and still works. Not yet mirrored: the live `hdr-chips` board-status counters — so `.page-hdr` is not hidden this slice |
 | Raw legacy planner | `/planner/legacy` — the canonical `app/web/semester_board_viewer.html` served unchanged (own document context, all scripts intact). Also the honest fallback if the frame fails |
 | Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
-| Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`) |
+| Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`). Selecting a course opens a Next-native, read-only **course-details modal** (`CourseDetailsPanel` + `lib/course-details.ts`) — no board mutation, decoupled from the legacy iframe |
 | AI planning entry (presentation) | `/ai-plan` — `AiPlanningExperience` preference form + staged loading/result/error choreography. No planner call yet; hands off to the canonical assistant at `/planner` |
 
 The static HTML file remains the **single source of truth** for the planner UI
@@ -72,22 +72,25 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 | Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | extracted read-only — `/plan` renders `program_requirements_validation` as shipped (`lib/requirements.ts` + `RequirementsProgressPanel`); the HTML panel remains canonical until cutover |
 | Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
 | AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream. Presentation entry extracted at `/ai-plan` (`AiPlanningExperience`): preference form + loading/result/error states, no planner call yet, hands off to `/planner` |
-| Course details / My-Courses / exam-preference modals | UI + localStorage | medium |
+| Course details / My-Courses / exam-preference modals | UI + localStorage | course-details **extracted read-only** — `CourseDetailsPanel` (`lib/course-details.ts` VM) renders name/id/hours/credits/category/offered/prereqs/syllabus from the repository fields at `/repository`, decoupled from the iframe; a live `/planner`-iframe selection bridge is the deferred follow-up (needs a sanctioned legacy hook — reading `courseMap` on card click would double-open the legacy modal). My-Courses / exam-preference still legacy-only |
 | Theme toggle (`tau_theme`) | pure UI | bridged — `/planner` seeds it from the OS scheme |
 
 ### Next-native pieces that already exist
 `ProductShell`, `ShaderGradientBackground`, `BrandLogo`, `Card`/`Badge`/
 `EmptyState`, `CourseCard`, `SemesterColumn`, `RepositoryExplorer` +
-`RepositoryCourseCard`, `AiPlanningExperience`, adapters `lib/board.ts`
-(+ `planOverview`) and `lib/repository.ts`, routes `/plan`, `/board`,
-`/repository`, `/ai-plan`.
+`RepositoryCourseCard`, `CourseDetailsPanel`, `AiPlanningExperience`, adapters
+`lib/board.ts` (+ `planOverview`), `lib/repository.ts` and `lib/course-details.ts`,
+routes `/plan`, `/board`, `/repository`, `/ai-plan`.
 
 ### Recommended next 3 slices
 1. **Wire the AI entry** — post the `/ai-plan` preference form to the existing
    `/api/ai/*` contract (logic untouched) and render a real draft in place of
    the presentation-only result shell; coordinate with the planner workstream.
-2. **Course details modal** (read-only) — syllabus summary/links from the
-   repository course fields, reusing the shared Card primitives.
+2. ~~**Course details modal** (read-only)~~ — **done.** `CourseDetailsPanel`
+   renders the repository course fields (name/id/hours/credits/category/offered/
+   prereqs/syllabus) as a decoupled read-only modal at `/repository`. Follow-up:
+   a same-origin `/planner`-iframe selection bridge (needs a sanctioned legacy
+   hook so it does not double-open the legacy modal).
 3. **My-Courses status view** (read-only) — render the localStorage-backed
    personal statuses the HTML tracks, without mutating them.
 
