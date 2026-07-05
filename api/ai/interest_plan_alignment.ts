@@ -33,6 +33,7 @@
  */
 
 import { matchCourseToAcademicInterests } from './interest_course_match';
+import type { MatchedFocusArea, MatchedStyle, AvoidedAreaMatch } from './interest_course_match';
 import type { AcademicInterestProfile } from './academic_interest_profile';
 import { hasMeaningfulAcademicInterests } from './academic_interest_profile';
 import type { CourseTopicProfile } from './course_topic_profile';
@@ -46,6 +47,12 @@ export interface InterestPlanCourseMatch {
   focusMatchScore: number;
   styleMatchScore: number;
   avoidPenalty: number;
+  /** Per-area breakdown from matchCourseToAcademicInterests — preserved for downstream explanation (scorecards). */
+  matchedFocusAreas: MatchedFocusArea[];
+  /** Per-style breakdown from matchCourseToAcademicInterests — preserved for downstream explanation (scorecards). */
+  matchedStyles: MatchedStyle[];
+  /** Avoided-area breakdown from matchCourseToAcademicInterests — preserved for downstream explanation (scorecards). */
+  avoidedAreas: AvoidedAreaMatch[];
 }
 
 export interface InterestPlanAlignmentResult {
@@ -103,6 +110,9 @@ export function scorePlanInterestAlignment(input: {
       focusMatchScore: match.focusMatchScore,
       styleMatchScore: match.styleMatchScore,
       avoidPenalty: match.avoidPenalty,
+      matchedFocusAreas: match.matchedFocusAreas,
+      matchedStyles: match.matchedStyles,
+      avoidedAreas: match.avoidedAreas,
     });
   }
 

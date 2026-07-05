@@ -71,7 +71,16 @@ describe('scorePlanInterestAlignment', () => {
     // C2 (unmatched) must not drag the average toward 0 — only C1 (fit=1) counts.
     expect(result.interestAlignmentScore).toBe(1);
     expect(result.courseMatches).toEqual([
-      { courseId: 'C1', interestFitScore: 1, focusMatchScore: 1, styleMatchScore: 0, avoidPenalty: 0 },
+      {
+        courseId: 'C1',
+        interestFitScore: 1,
+        focusMatchScore: 1,
+        styleMatchScore: 0,
+        avoidPenalty: 0,
+        matchedFocusAreas: [{ area: 'fluids', userWeight: 1, courseWeight: 1, contribution: 1 }],
+        matchedStyles: [],
+        avoidedAreas: [],
+      },
     ]);
   });
 
@@ -180,7 +189,69 @@ describe('scorePlanInterestAlignment', () => {
       plannedCourseIds: ['C1'],
     });
     expect(result.courseMatches).toEqual([
-      { courseId: 'C1', interestFitScore: 0.6, focusMatchScore: 0.6, styleMatchScore: 0, avoidPenalty: 0 },
+      {
+        courseId: 'C1',
+        interestFitScore: 0.6,
+        focusMatchScore: 0.6,
+        styleMatchScore: 0,
+        avoidPenalty: 0,
+        matchedFocusAreas: [{ area: 'fluids', userWeight: 1, courseWeight: 0.6, contribution: 0.6 }],
+        matchedStyles: [],
+        avoidedAreas: [],
+      },
+    ]);
+  });
+
+  test('courseMatches preserves the rich matchedFocusAreas breakdown from matchCourseToAcademicInterests', () => {
+    const profile = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'fluids', weight: 0.8 }] });
+    const result = scorePlanInterestAlignment({
+      academicInterestProfile: profile,
+      courseTopicProfilesByCourseId: {
+        C1: normalizeCourseTopicProfile({ courseId: 'C1', topics: [{ area: 'fluids', weight: 0.5 }] }),
+      },
+      plannedCourseIds: ['C1'],
+    });
+    expect(result.courseMatches[0].matchedFocusAreas).toEqual([
+      { area: 'fluids', userWeight: 0.8, courseWeight: 0.5, contribution: 0.4 },
+    ]);
+  });
+
+  test('courseMatches preserves the rich matchedStyles breakdown from matchCourseToAcademicInterests', () => {
+    const profile = normalizeAcademicInterestProfile({
+      courseStylePreferences: [{ style: 'project_based', weight: 0.6 }],
+    });
+    const result = scorePlanInterestAlignment({
+      academicInterestProfile: profile,
+      courseTopicProfilesByCourseId: {
+        C1: normalizeCourseTopicProfile({ courseId: 'C1', styles: [{ style: 'project_based', weight: 0.5 }] }),
+      },
+      plannedCourseIds: ['C1'],
+    });
+    expect(result.courseMatches[0].matchedStyles).toEqual([
+      { style: 'project_based', userWeight: 0.6, courseWeight: 0.5, contribution: 0.3 },
+    ]);
+  });
+
+  test('courseMatches preserves the rich avoidedAreas breakdown from matchCourseToAcademicInterests', () => {
+    const profile = normalizeAcademicInterestProfile({
+      focusAreas: [{ area: 'fluids', weight: 1 }],
+      avoidAreas: [{ area: 'materials', weight: 0.7 }],
+    });
+    const result = scorePlanInterestAlignment({
+      academicInterestProfile: profile,
+      courseTopicProfilesByCourseId: {
+        C1: normalizeCourseTopicProfile({
+          courseId: 'C1',
+          topics: [
+            { area: 'fluids', weight: 0.8 },
+            { area: 'materials', weight: 0.6 },
+          ],
+        }),
+      },
+      plannedCourseIds: ['C1'],
+    });
+    expect(result.courseMatches[0].avoidedAreas).toEqual([
+      { area: 'materials', userWeight: 0.7, courseWeight: 0.6, penalty: 0.42 },
     ]);
   });
 

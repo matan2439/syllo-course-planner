@@ -25,6 +25,9 @@ function match(overrides: Partial<InterestPlanCourseMatch> & { courseId: string 
     focusMatchScore: 0,
     styleMatchScore: 0,
     avoidPenalty: 0,
+    matchedFocusAreas: [],
+    matchedStyles: [],
+    avoidedAreas: [],
     ...overrides,
   };
 }
@@ -67,6 +70,99 @@ describe('buildInterestPlanScorecard', () => {
       alignment({ interestAlignmentScore: 0.6, matchedCourseIds: ['C3', 'C1', 'C2', 'C4'], courseMatches }),
     );
     expect(scorecard.topAlignedCourses.map((c) => c.courseId)).toEqual(['C1', 'C2', 'C3', 'C4']);
+  });
+
+  test('matchedFocusAreas groups by area across courseMatches, aggregating contribution and courseIds — no recomputation', () => {
+    const courseMatches = [
+      match({
+        courseId: 'C2',
+        matchedFocusAreas: [{ area: 'fluids', userWeight: 1, courseWeight: 0.5, contribution: 0.5 }],
+      }),
+      match({
+        courseId: 'C1',
+        matchedFocusAreas: [
+          { area: 'fluids', userWeight: 1, courseWeight: 0.3, contribution: 0.3 },
+          { area: 'materials', userWeight: 1, courseWeight: 0.9, contribution: 0.9 },
+        ],
+      }),
+      match({
+        courseId: 'C3',
+        matchedFocusAreas: [{ area: 'materials', userWeight: 1, courseWeight: 0.1, contribution: 0.1 }],
+      }),
+    ];
+    const scorecard = buildInterestPlanScorecard(
+      alignment({ matchedCourseIds: ['C2', 'C1', 'C3'], courseMatches }),
+    );
+    // materials (0.9+0.1=1.0) ranks above fluids (0.5+0.3=0.8) — proves aggregation, not a fresh weight*weight recompute.
+    expect(scorecard.matchedFocusAreas).toEqual([
+      { area: 'materials', contribution: 1, courseIds: ['C1', 'C3'] },
+      { area: 'fluids', contribution: 0.8, courseIds: ['C1', 'C2'] },
+    ]);
+  });
+
+  test('matchedFocusAreas sorts by contribution desc, then area asc (canonical enum order) on a tie', () => {
+    const courseMatches = [
+      match({
+        courseId: 'C1',
+        matchedFocusAreas: [{ area: 'materials', userWeight: 1, courseWeight: 0.5, contribution: 0.5 }],
+      }),
+      match({
+        courseId: 'C2',
+        matchedFocusAreas: [{ area: 'fluids', userWeight: 1, courseWeight: 0.5, contribution: 0.5 }],
+      }),
+    ];
+    const scorecard = buildInterestPlanScorecard(
+      alignment({ matchedCourseIds: ['C1', 'C2'], courseMatches }),
+    );
+    // fluids precedes materials in ACADEMIC_FOCUS_AREAS canonical order.
+    expect(scorecard.matchedFocusAreas.map((g) => g.area)).toEqual(['fluids', 'materials']);
+  });
+
+  test('matchedStyles groups by style across courseMatches, aggregating contribution and courseIds — no recomputation', () => {
+    const courseMatches = [
+      match({
+        courseId: 'C2',
+        matchedStyles: [{ style: 'project_based', userWeight: 1, courseWeight: 0.4, contribution: 0.4 }],
+      }),
+      match({
+        courseId: 'C1',
+        matchedStyles: [
+          { style: 'project_based', userWeight: 1, courseWeight: 0.1, contribution: 0.1 },
+          { style: 'lab_based', userWeight: 1, courseWeight: 0.7, contribution: 0.7 },
+        ],
+      }),
+    ];
+    const scorecard = buildInterestPlanScorecard(
+      alignment({ matchedCourseIds: ['C2', 'C1'], courseMatches }),
+    );
+    expect(scorecard.matchedStyles).toEqual([
+      { style: 'lab_based', contribution: 0.7, courseIds: ['C1'] },
+      { style: 'project_based', contribution: 0.5, courseIds: ['C1', 'C2'] },
+    ]);
+  });
+
+  test('matchedStyles sorts by contribution desc, then style asc (canonical enum order) on a tie', () => {
+    const courseMatches = [
+      match({
+        courseId: 'C1',
+        matchedStyles: [{ style: 'theoretical', userWeight: 1, courseWeight: 0.5, contribution: 0.5 }],
+      }),
+      match({
+        courseId: 'C2',
+        matchedStyles: [{ style: 'exam_light', userWeight: 1, courseWeight: 0.5, contribution: 0.5 }],
+      }),
+    ];
+    const scorecard = buildInterestPlanScorecard(
+      alignment({ matchedCourseIds: ['C1', 'C2'], courseMatches }),
+    );
+    // exam_light precedes theoretical in COURSE_STYLES canonical order.
+    expect(scorecard.matchedStyles.map((g) => g.style)).toEqual(['exam_light', 'theoretical']);
+  });
+
+  test('matchedFocusAreas and matchedStyles are empty when no courseMatches carry a breakdown', () => {
+    const scorecard = buildInterestPlanScorecard(alignment());
+    expect(scorecard.matchedFocusAreas).toEqual([]);
+    expect(scorecard.matchedStyles).toEqual([]);
   });
 
   test('avoidRiskCourses sorted by avoidPenalty desc, then courseId asc; zero-penalty courses excluded', () => {
@@ -218,6 +314,10 @@ describe('buildInterestPlanScorecard', () => {
       expect(scorecard.avoidRiskCourses.map((c) => c.courseId)).toEqual(['C2']);
       expect(scorecard.notes.some((n) => n.toLowerCase().includes('no topic profile'))).toBe(true);
       expect(scorecard.notes.some((n) => n.toLowerCase().includes('avoid'))).toBe(true);
+      // Grouped explanation fields reflect the real per-course breakdown preserved on the alignment result.
+      expect(scorecard.matchedFocusAreas).toEqual([
+        { area: 'fluids', contribution: 1.4, courseIds: ['C1', 'C2'] },
+      ]);
     });
 
     test('an empty profile against real courses yields a neutral scorecard with the no-interests note', () => {

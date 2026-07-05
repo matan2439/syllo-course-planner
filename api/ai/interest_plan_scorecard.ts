@@ -10,22 +10,21 @@
  * already present on the alignment result (courseMatches, matchedCourseIds,
  * unmatchedCourseIds, notes). Pure and total: never mutates its input.
  *
- * matchedFocusAreas/matchedStyles are kept in the type (per-area/per-style
- * breakdown grouped by AcademicFocusArea/CourseStyle with contributing
- * courseIds) but are always empty arrays here: InterestPlanAlignmentResult's
- * courseMatches only carries aggregate focusMatchScore/styleMatchScore per
- * course, not the per-area/per-style breakdown that matchCourseToAcademicInterests
- * (interest_course_match.ts) computes internally and discards before storing.
- * Populating these fields for real would require re-matching against the
- * original AcademicInterestProfile/CourseTopicProfile — which this function,
- * by design and by its single-argument signature, does not have access to and
- * must not recompute. Left honestly empty rather than fabricated.
+ * matchedFocusAreas/matchedStyles group the per-area/per-style breakdown that
+ * InterestPlanAlignmentResult.courseMatches now preserves (each entry carries
+ * matchCourseToAcademicInterests' own matchedFocusAreas/matchedStyles/
+ * avoidedAreas verbatim). Grouping here is pure aggregation over data already
+ * present on the input — summing each area/style's contribution across every
+ * course that contributes to it, and collecting the contributing courseIds —
+ * never a re-match against AcademicInterestProfile/CourseTopicProfile, which
+ * this function's single-argument signature has no access to anyway.
  *
  * FOUNDATION EPIC ONLY. Not wired into generate-plan.ts, PlannerWorker,
  * planner-run.ts, or any UI. Planner scoring (planner_goals.ts) and default
  * generated plans are untouched.
  */
 
+import { ACADEMIC_FOCUS_AREAS, COURSE_STYLES } from './academic_interest_profile';
 import type { AcademicFocusArea, CourseStyle } from './academic_interest_profile';
 import type { InterestPlanAlignmentResult, InterestPlanCourseMatch } from './interest_plan_alignment';
 
@@ -64,6 +63,66 @@ function toScorecardItem(m: InterestPlanCourseMatch): InterestCourseScorecardIte
     styleMatchScore: m.styleMatchScore,
     avoidPenalty: m.avoidPenalty,
   };
+}
+
+/** Sum a Map<K, {contribution, courseIds}> into sorted, deterministic grouped rows. */
+function toSortedGroups<K extends string>(
+  byKey: Map<K, { contribution: number; courseIds: Set<string> }>,
+  canonical: readonly K[],
+): Array<{ key: K; contribution: number; courseIds: string[] }> {
+  return [...byKey.entries()]
+    .map(([key, { contribution, courseIds }]) => ({
+      key,
+      contribution,
+      courseIds: [...courseIds].sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => b.contribution - a.contribution || canonical.indexOf(a.key) - canonical.indexOf(b.key));
+}
+
+/**
+ * Group courseMatches[*].matchedFocusAreas by area, summing contribution across
+ * every contributing course and collecting the courseIds that contributed — pure
+ * aggregation over data already on the input, no recomputation. Sorted by
+ * contribution desc, then area asc (canonical ACADEMIC_FOCUS_AREAS order, matching
+ * this codebase's normalize/merge conventions elsewhere).
+ */
+function groupMatchedFocusAreas(
+  courseMatches: readonly InterestPlanCourseMatch[],
+): InterestPlanScorecard['matchedFocusAreas'] {
+  const byArea = new Map<AcademicFocusArea, { contribution: number; courseIds: Set<string> }>();
+  for (const m of courseMatches) {
+    for (const f of m.matchedFocusAreas) {
+      const existing = byArea.get(f.area) ?? { contribution: 0, courseIds: new Set<string>() };
+      existing.contribution += f.contribution;
+      existing.courseIds.add(m.courseId);
+      byArea.set(f.area, existing);
+    }
+  }
+  return toSortedGroups(byArea, ACADEMIC_FOCUS_AREAS).map(({ key, contribution, courseIds }) => ({
+    area: key,
+    contribution,
+    courseIds,
+  }));
+}
+
+/** Same aggregation as groupMatchedFocusAreas, over courseMatches[*].matchedStyles grouped by style. */
+function groupMatchedStyles(
+  courseMatches: readonly InterestPlanCourseMatch[],
+): InterestPlanScorecard['matchedStyles'] {
+  const byStyle = new Map<CourseStyle, { contribution: number; courseIds: Set<string> }>();
+  for (const m of courseMatches) {
+    for (const s of m.matchedStyles) {
+      const existing = byStyle.get(s.style) ?? { contribution: 0, courseIds: new Set<string>() };
+      existing.contribution += s.contribution;
+      existing.courseIds.add(m.courseId);
+      byStyle.set(s.style, existing);
+    }
+  }
+  return toSortedGroups(byStyle, COURSE_STYLES).map(({ key, contribution, courseIds }) => ({
+    style: key,
+    contribution,
+    courseIds,
+  }));
 }
 
 function summaryLevelFor(score: number): InterestPlanScorecard['summaryLevel'] {
@@ -116,8 +175,8 @@ export function buildInterestPlanScorecard(
     topAlignedCourses,
     avoidRiskCourses,
     unmatchedCourseIds,
-    matchedFocusAreas: [],
-    matchedStyles: [],
+    matchedFocusAreas: groupMatchedFocusAreas(alignmentResult.courseMatches),
+    matchedStyles: groupMatchedStyles(alignmentResult.courseMatches),
     notes,
   };
 }
