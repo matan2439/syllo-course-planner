@@ -112,6 +112,9 @@ def _make_annual(board: dict, cid: str) -> None:
         "is_annual": True,
         "spans_semesters": [SEM_A, SEM_B],
         "count_hours_once": True,
+        # Both placements share this course_id (buildCourseProfiles merges same-
+        # course_id placements into one CourseProfile), so the root is the id itself.
+        "root_course_id": cid,
         "semester_load_hours_by_semester": {SEM_A: weekly, SEM_B: weekly},
         "placement_policy": "annual",
         "annual_note": (

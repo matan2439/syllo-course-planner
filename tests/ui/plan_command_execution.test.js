@@ -216,7 +216,7 @@ describe('Command execution — requested_moves + semester_load_targets consumed
   });
 
   // ── 4) change summary: reflects an ACTUAL move + varies on repeat ──────────
-  test('change summary reflects an actual moved course and varies on repeated calls', () => {
+  test('change summary reflects an actual moved course and is a stable structured message', () => {
     const out = window.eval(`(function(){
       _aiChatMessages = [];
       _planChangeSummaryNonce = 0;
@@ -231,17 +231,20 @@ describe('Command execution — requested_moves + semester_load_targets consumed
       ] };
       postPlanChangeSummary(prev, next, {});
       var first = _aiChatMessages[_aiChatMessages.length-1].text;
-      // Repeat the SAME diff — opener must rotate so the text differs.
+      // Repeat the SAME diff — the concise structured summary (Part B) is now
+      // deterministic (no rotating cosmetic opener), so identical input → identical
+      // scannable output.
       postPlanChangeSummary(prev, next, {});
       var second = _aiChatMessages[_aiChatMessages.length-1].text;
       return JSON.stringify({ first: first, second: second });
     })()`);
     const parsed = JSON.parse(out);
-    // Mentions the actual moved course + its destination.
+    // Mentions the actual moved course + its destination, under "מה השתנה".
     expect(parsed.first).toContain('קורס שעבר');
     expect(parsed.first).toContain('סמסטר');
-    // Repeated rebuild varies the text.
-    expect(parsed.second).not.toBe(parsed.first);
+    expect(parsed.first).toContain('מה השתנה');
+    // Deterministic, stable output for identical input.
+    expect(parsed.second).toBe(parsed.first);
   });
 
   test('change summary lists added and removed courses derived from the real diff', () => {

@@ -1,32 +1,52 @@
 /**
  * POST /api/ai/generate-plan
  *
- * Generates a personalized semester-plan proposal as structured JSON
- * (see api/ai/plan_validation.ts for the schema). The proposal is a
- * PREVIEW ONLY — the client must validate it (validatePlanProposal) and
- * the user must explicitly confirm before any local board state changes.
+ * Generates a personalized semester-plan proposal. Supports two code paths:
  *
- * Reuses the same provider selection / quota / dev-mode infrastructure as
- * /api/ai/course-planner (no changes to that logic).
+ * DEFAULT (AI_USE_AGENTIC_PLANNER unset):
+ *   PlannerWorker + GreedyOrchestrator / LlmOrchestrator (unchanged).
+ *
+ * AGENTIC (AI_USE_AGENTIC_PLANNER=true):
+ *   PlannerAgent + BeamSearchStrategy. LlmExplainer is injected as an
+ *   ExplanationCapability in production; omitted in dev mode so no LLM
+ *   step-selection or explanation calls happen.
+ *
+ * Both paths produce the SAME PlanProposal response contract (semesters, moves,
+ * warnings_he, rationale_he, requirements_status, errors, blocked) plus the
+ * additive optional `trace`. The apply/reject UI flow is unaffected.
+ *
+ * CLARIFICATION PREFLIGHT (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT=true, default disabled):
+ *   Opt-in only — when unset/false, behavior is identical to the above (any
+ *   clarification_answers in the request body are ignored). When enabled,
+ *   runs the deterministic clarification check (resumeClarificationPreflight,
+ *   academic_clarification_preflight.ts) before either planner path, applying
+ *   any optional clarification_answers first. If a critical input is still
+ *   missing, returns { needsClarification: true, clarification, viewModel }
+ *   instead of a PlanProposal — neither planner path runs, no board/model is
+ *   loaded. Once all critical inputs are present (whether from the original
+ *   request or from clarification_answers), execution falls through to the
+ *   existing planning path below unchanged.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateObject } from 'ai';
 import { z } from 'zod';
-import { buildSystemPrompt, type PlanContext } from './_context';
+import { parseProgramVersionId, queryBoardJson } from '../board';
+import { buildConstraintModel, planContextToState } from './planner_model';
+import { loadLocalBoardJson } from './board_loader';
+import { PlannerWorker } from './planner_worker';
+import { LlmOrchestrator } from './planner_orchestrator';
+import { PlannerAgent } from './planner_agent';
+import { BeamSearchStrategy } from './planner_search_beam';
+import { LlmExplainer } from './llm_explainer';
+import { validateCandidate } from './planner_validate';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
-import {
-  resolveModel,
-  isDevMode,
-  isBypassQuota,
-  sendError,
-  PROVIDER_LABEL,
-  PROVIDER_KEY_ENV,
-  type AiProvider,
-} from './course-planner';
-import { planProposalSchema, normalizePlanProposal, droppedPlacementWarnings } from './plan_validation';
-import { buildCompletionAnalysis, formatCompletionMessages, getSemesterLoad } from './completion_analysis';
+import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
+import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
+import type { SearchCapability } from './planner_capabilities';
+import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
+import { resumeClarificationPreflight } from './academic_clarification_preflight';
+import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -36,6 +56,9 @@ export const preferencesSchema = z.object({
   preferred_categories:    z.array(z.string()).optional(),
   wanted_course_ids:       z.array(z.string()).optional(),
   unwanted_course_ids:     z.array(z.string()).optional(),
+  // Hard exclusions (additive, optional — older clients omit these).
+  disallowed_course_ids:        z.array(z.string()).optional(),
+  strongly_avoided_course_ids:  z.array(z.string()).optional(),
   extra_request_he:        z.string().max(1000).optional(),
   action_type:             z.enum(['full_plan', 'balance_load', 'add_electives', 'fix_prerequisites', 'minimal_changes']).optional(),
   pinned_course_ids:       z.array(z.string()).optional(),
@@ -43,291 +66,324 @@ export const preferencesSchema = z.object({
   overload_confirmed_at:   z.number().nullish(),
 });
 
-const ACTION_TYPE_HE: Record<string, string> = {
-  full_plan:          'בנה תוכנית מלאה ומאוזנת לכל הסמסטרים שנותרו, כולל כל קורסי החובה וכמה שיותר מדרישות הבחירה.',
-  balance_load:       'המטרה העיקרית היא איזון עומס השעות בין הסמסטרים על בסיס הלוח הנוכחי — העבר קורסים גמישים/בחירה בין סמסטרים כדי לאזן את העומס, מבלי להוסיף קורסים חדשים שלא נדרשים לכך.',
-  add_electives:      'המטרה העיקרית היא להשלים דרישות בחירה שטרם מולאו — הוסף קורסי בחירה מתאימים מבלי לשנות את שיבוץ הקורסים הקיימים אלא אם הכרחי.',
-  fix_prerequisites:  'המטרה העיקרית היא לתקן בעיות דרישות קדם — שנה את סדר/שיבוץ הקורסים כך שדרישות הקדם יתמלאו, עם כמה שפחות שינויים אחרים.',
-  minimal_changes:    'הצע שינוי מינימלי בלבד — בצע את כמות השינויים הקטנה ביותר האפשרית בלוח הנוכחי כדי לשפר אותו, ושמור על שאר השיבוצים כפי שהם.',
-};
+const clarificationAnswerSchema = z.object({
+  questionId: z.string(),
+  value: z.union([z.array(z.string()), z.string(), z.number()]),
+});
 
 const requestSchema = z.object({
   program_id:    z.string().min(1, 'program_id is required'),
-  plan_context:  z.any(), // validated by buildSystemPrompt's lenient consumer; same shape as course-planner
+  plan_context:  z.any(),
   course_context: z.string().max(8000).optional(),
   preferences:   preferencesSchema,
   session_token: z.string().uuid('session_token must be a valid UUID'),
+  // Additive, optional — only consumed when AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT is enabled.
+  clarification_answers: z.array(clarificationAnswerSchema).optional(),
 });
 
-function isTestModeBypass(): boolean {
-  return process.env.AI_TEST_MODE === 'true';
-}
+type Preferences = z.infer<typeof preferencesSchema>;
 
 async function runQuotaCheck(session_token: string, dbUrl: string, res: VercelResponse): Promise<boolean> {
   let quota;
   try {
     quota = await checkAndEnsureSession(session_token, dbUrl);
   } catch (err) {
-    const errClass = (err as any)?.constructor?.name ?? 'UnknownError';
-    const errMsg   = err instanceof Error ? err.message : String(err);
-    console.error(`[ai/generate-plan] quota DB error [${errClass}]:`, errMsg);
+    console.error('[ai/generate-plan] quota DB error:', err instanceof Error ? err.message : String(err));
     sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.', 'DB_ERROR', { phase: 'quota_check' });
     return false;
   }
   if (!quota.allowed) {
-    if (isTestModeBypass()) {
-      res.setHeader('X-AI-Quota-Bypass', 'true');
-      return true;
-    }
+    if (isTestModeBypass()) { res.setHeader('X-AI-Quota-Bypass', 'true'); return true; }
     sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
-      credits_used: quota.credits_used,
-      free_limit:   quota.free_limit,
-      credits_paid: quota.credits_paid,
-      remaining:    0,
+      credits_used: quota.credits_used, free_limit: quota.free_limit, credits_paid: quota.credits_paid, remaining: 0,
     });
     return false;
   }
   return true;
 }
 
-function preferencesToHebrew(prefs: z.infer<typeof preferencesSchema>): string {
-  const lines: string[] = [];
-  if (prefs.max_weekly_hours != null) lines.push(`- עומס מקסימלי לשבוע בכל סמסטר: ${prefs.max_weekly_hours} שעות.`);
-  if (prefs.balance_load) lines.push('- העדפה לאיזון העומס בין הסמסטרים.');
-  if (prefs.avoid_multiple_labs) lines.push('- להימנע משיבוץ מספר קורסים עם מעבדה באותו סמסטר.');
-  if (prefs.avoid_multiple_projects) lines.push('- להימנע משיבוץ מספר קורסים עם פרויקט/דוחות מרובים באותו סמסטר.');
-  if (prefs.preferred_categories?.length) lines.push(`- העדפה לקטגוריות בחירה: ${prefs.preferred_categories.join(', ')}.`);
-  if (prefs.wanted_course_ids?.length) lines.push(`- קורסים שהמשתמש רוצה לכלול: ${prefs.wanted_course_ids.join(', ')}.`);
-  if (prefs.unwanted_course_ids?.length) lines.push(`- קורסים שהמשתמש לא רוצה לכלול (אם אפשרי): ${prefs.unwanted_course_ids.join(', ')}.`);
-  if (prefs.extra_request_he) lines.push(`- בקשה נוספת מהמשתמש: ${prefs.extra_request_he}`);
-  if (prefs.pinned_course_ids?.length) lines.push(`- קורסים מסומנים כ"אל תזיז" (אסור להזיז אותם מהסמסטר הנוכחי שלהם בלוח): ${prefs.pinned_course_ids.join(', ')}.`);
-  return lines.length ? lines.join('\n') : 'לא הוגדרו העדפות מיוחדות.';
+export function priorHoursFromContext(ctx: any): number {
+  const thp = ctx?.total_hours_progress ?? {};
+  // currently_planned_hours is excluded: board-placed courses are already seeded
+  // into initialState by planContextToState — counting them here too would
+  // inflate degreeHours and make the planner stop early.
+  return thp.manual_completed_degree_hours ?? (thp.known_completed_hours ?? 0);
+}
+
+/** Build the model from board_json (full universe). board is always non-null here. */
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[]): ConstraintModel {
+  // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
+  // already used above to route the board_json lookup, reused here for the
+  // model's programId/catalogYear. No institutionId source exists yet.
+  const pv = program_id ? parseProgramVersionId(program_id) : null;
+  return buildConstraintModel(board, {
+    completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+    currentlyPlannedCourseIds,
+    wantedCourseIds: prefs.wanted_course_ids,
+    unwantedCourseIds: prefs.unwanted_course_ids,
+    disallowedCourseIds: prefs.disallowed_course_ids ?? prefs.strongly_avoided_course_ids,
+    pinnedCourseIds: ctx?.pinned_course_ids,
+    maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
+    priorHours: priorHoursFromContext(ctx),
+    overloadAccepted: prefs.overload_accepted,
+    overloadConfirmedAt: prefs.overload_confirmed_at,
+    programId: pv?.base,
+    catalogYear: pv?.year,
+  });
+}
+
+/** Same overload gate as before: block above the hard cap / absolute max. */
+function overloadGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+  prefs: Preferences,
+): string[] {
+  const courseHours: Record<string, { hours?: number | null }> = {};
+  for (const [id, p] of model.profiles) courseHours[id] = { hours: p.hours };
+  const userConfirmed = prefs.overload_accepted === true && !!prefs.overload_confirmed_at;
+  const errors: string[] = [];
+  for (const sem of semesters) {
+    const hrs = getSemesterLoad(sem, courseHours);
+    if (hrs > ABSOLUTE_MAX_REASONABLE) {
+      errors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE}. לא ניתן להחיל את התוכנית.`);
+    } else if (hrs > HARD_LOAD_CAP && !userConfirmed) {
+      errors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP}). נדרש אישור חריגה מפורש לפני החלת התוכנית.`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * Deterministic Hebrew rationale — used when ExplanationCapability is absent or
+ * throws (dev mode / LLM failure fallback).
+ */
+function deterministicRationale(finalState: PlanState, model: ConstraintModel): string {
+  const placed = Object.values(finalState.semesters).flat();
+  const totalHours = model.priorHours + placed.reduce((s, id) => s + (model.profiles.get(id)?.hours ?? 0), 0);
+  return placed.length === 0
+    ? 'תוכנית אוטומטית — לא שובצו קורסים חדשים.'
+    : `תוכנית אוטומטית — ${placed.length} קורסים, ${totalHours} ש"ש לקראת השלמת התואר.`;
+}
+
+/**
+ * Option B toProposal — pure function of (finalState, model, initialState, pinnedHome, rationale_he).
+ * No PlannerWorker dependency; shared by both the worker and agentic paths.
+ */
+function toProposal(
+  finalState: PlanState,
+  model: ConstraintModel,
+  initialState: PlanState,
+  pinnedHome: Record<string, string>,
+  rationale_he: string,
+) {
+  const semesters = model.knownSemesterIds
+    .filter(id => (finalState.semesters[id] ?? []).length > 0)
+    .map(id => ({ semester_id: id, course_ids: finalState.semesters[id] }));
+
+  // moves: diff initial board against final plan
+  const initialSemOf: Record<string, string> = {};
+  for (const [sem, ids] of Object.entries(initialState.semesters)) for (const id of ids) initialSemOf[id] = sem;
+  const moves: Array<{ course_id: string; from: string | null; to: string }> = [];
+  for (const [sem, ids] of Object.entries(finalState.semesters)) {
+    for (const id of ids) {
+      const from = initialSemOf[id] ?? null;
+      if (from !== sem) moves.push({ course_id: id, from, to: sem });
+    }
+  }
+
+  const report = validateCandidate(finalState, model, pinnedHome);
+  const placed = new Set(Object.values(finalState.semesters).flat());
+
+  const requirements_status: Array<{ name: string; required: number; placed: number; satisfied: boolean }> = [];
+  requirements_status.push({
+    name: 'קורסי חובה',
+    required: model.requiredMandatoryCourseIds.length,
+    placed: model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length,
+    satisfied: model.requiredMandatoryCourseIds.every(id => placed.has(id)),
+  });
+  for (const cat of model.categories) {
+    const p = cat.candidateIds.filter(id => placed.has(id)).length;
+    requirements_status.push({ name: cat.name, required: cat.required, placed: Math.min(p, cat.required), satisfied: p >= cat.required });
+  }
+
+  const warnings_he: string[] = [];
+  if (!report.degreeMet) warnings_he.push(`התוכנית משלימה ${report.degreeHours}/${model.degreeRequiredHours} ש"ש.`);
+  for (const id of report.missingMandatory) warnings_he.push(`חסר קורס חובה: ${model.profiles.get(id)?.name_he ?? id}.`);
+  for (const cid of report.unsatisfiedCategories) {
+    const c = model.categories.find(x => x.id === cid);
+    warnings_he.push(`דרישת קטגוריה לא מולאה: ${c?.name ?? cid}.`);
+  }
+  // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
+  warnings_he.push(...report.warnings);
+
+  return { semesters, moves, warnings_he, rationale_he, requirements_status };
+}
+
+/** Build pinnedHome map from model.pinnedCourseIds + initialState positions. */
+function buildPinnedHome(model: ConstraintModel, initialState: PlanState): Record<string, string> {
+  const pinnedHome: Record<string, string> = {};
+  for (const cid of model.pinnedCourseIds) {
+    for (const [sem, ids] of Object.entries(initialState.semesters)) {
+      if (ids.includes(cid)) { pinnedHome[cid] = sem; break; }
+    }
+  }
+  return pinnedHome;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
-  if (req.method !== 'POST') {
-    sendError(res, 405, 'Method not allowed');
-    return;
-  }
+  if (req.method !== 'POST') { sendError(res, 405, 'Method not allowed'); return; }
 
   const parsed = requestSchema.safeParse(req.body);
   if (!parsed.success) {
-    const issues = parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }));
-    console.error('[ai/generate-plan] validation failed:', JSON.stringify(issues));
-    sendError(res, 400, 'Invalid request', 'INVALID_REQUEST', { issues });
+    sendError(res, 400, 'Invalid request', 'INVALID_REQUEST', {
+      issues: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })),
+    });
     return;
   }
-
-  const { program_id, plan_context, course_context, preferences, session_token } = parsed.data;
-
-  // ── Dev mode fast path — return a deterministic mock proposal ──────────────
-  if (isDevMode()) {
-    if (isBypassQuota()) {
-      res.status(200).json(mockPlanProposal(plan_context as PlanContext));
-      return;
-    }
-    const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-    if (!dbUrl) {
-      sendError(res, 503, 'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.', 'NO_DATABASE_URL');
-      return;
-    }
-    const allowed = await runQuotaCheck(session_token, dbUrl, res);
-    if (!allowed) return;
-    await Promise.allSettled([
-      incrementCreditsUsed(session_token, dbUrl),
-      logUsageEvent(session_token, 'dev-mock-plan', dbUrl),
-    ]);
-    res.status(200).json(mockPlanProposal(plan_context as PlanContext));
-    return;
-  }
-
-  // ── Production path ─────────────────────────────────────────────────────────
-  const modelConfig = resolveModel();
-  if (!modelConfig) {
-    const requested = (process.env.AI_PROVIDER ?? '').trim().toLowerCase();
-    const provider: AiProvider = requested === 'anthropic' || requested === 'openai' || requested === 'google' ? requested : 'openai';
-    const keyEnv = PROVIDER_KEY_ENV[provider];
-    sendError(res, 503, `לא הוגדר מפתח AI עבור ${PROVIDER_LABEL[provider]}. הוסף ${keyEnv}.`, 'NO_API_KEY');
-    return;
-  }
+  const { program_id, plan_context, preferences, session_token, clarification_answers } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-  if (!dbUrl) {
-    sendError(res, 503, 'Database not configured. Set DATABASE_URL to enable AI quota tracking.', 'NO_DATABASE_URL');
-    return;
+
+  // Quota gate — unchanged behavior: required unless an explicit dev bypass.
+  if (!isBypassQuota()) {
+    if (!dbUrl) { sendError(res, 503, 'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.', 'NO_DATABASE_URL'); return; }
+    if (!(await runQuotaCheck(session_token, dbUrl, res))) return;
   }
 
-  const allowed = await runQuotaCheck(session_token, dbUrl, res);
-  if (!allowed) return;
-
-  const baseSystemPrompt = buildSystemPrompt({
-    program_id,
-    plan_context: plan_context as PlanContext,
-    course_context,
-  });
-
-  const completionAnalysis = buildCompletionAnalysis(plan_context as PlanContext);
-  const completionLines = formatCompletionMessages(completionAnalysis);
-  const completionSection = `## משימת השלמת תואר מחושבת
-זוהי המטרה שחושבה מראש מהלוח הנוכחי — תכנן כלפיה, אל תנחש:
-${completionLines.map(l => `- ${l}`).join('\n')}
-${preferences.max_weekly_hours != null ? `- העדפת המשתמש למגבלת שעות שבועית: ${preferences.max_weekly_hours} ש"ש לסמסטר.` : '- לא הוגדרה מגבלת שעות מפורשת — שאף לא לחרוג מ-18 ש"ש לסמסטר ככל הניתן.'}
-
-הנחיות מחייבות נוספות:
-- "קורסים שהמשתמש רוצה לכלול" הם העדפה בלבד, לא התוכנית כולה.
-- אם יש קטגוריות בחירה עם דרישות שלא מולאו, עליך להוסיף עבורן קורסי בחירה מהמועמדים שצוינו — זו עדיפות ראשונה.
-- לאחר מילוי דרישות הקטגוריות, אזן את העומס בין הסמסטרים באמצעות הקורסים הניתנים להזזה שצוינו.
-- קורסי בחירה (electives) הם כלי האיזון העיקרי — הם הגמישים ביותר. כאשר סמסטר עמוס מדי, נסה קודם כל להעביר ממנו קורסי בחירה לסמסטר אחר חוקי, ורק לאחר מכן קורסי חובה גמישים.
-- אסור להשאיר סמסטר עמוס מדי כל עוד קיימים קורסי בחירה הניתנים להזזה שיכולים לפתור זאת — אל תשמר את הפריסה העמוסה הקיימת רק כי כך היא הייתה.
-- אסור להשאיר סמסטר עם 27 ש"ש (או כל עומס חורג משמעותית) אם קיימים קורסים הניתנים להזזה שיכולים לפתור זאת.
-- "קורסים שהמשתמש רוצה לכלול" (wanted) ניתנים גם הם להעברה לסמסטר חוקי אחר אם זה משפר את האיזון, אלא אם הם מסומנים כ"אל תזיז" (pinned).
-- המטרה היא לוח זמנים מאוזן ושמיש בפועל, לא שימור הפריסה העמוסה הנוכחית.
-- קטגוריות הבחירה הן דרישות חובה של התואר, לא העדפות משתמש. עליך לשבץ לפחות קורס אחד מכל קטגוריה נדרשת אם קיים מועמד חוקי.
-- אם לא ניתן למלא דרישה כלשהי, הסבר במפורש מדוע ב-warnings_he.
-`;
-
-  const planSystemPrompt = `${baseSystemPrompt}
-
-${completionSection}
-
-## משימה: בניית תוכנית סמסטרים מותאמת אישית
-
-המשתמש ביקש שתבנה הצעת תוכנית סמסטרים מעודכנת, בהתאם להעדפות הבאות:
-
-${preferencesToHebrew(preferences)}
-
-${preferences.action_type && preferences.action_type !== 'full_plan' ? `## סוג הפעולה המבוקשת\n${ACTION_TYPE_HE[preferences.action_type]}\n` : ''}
-${preferences.pinned_course_ids?.length ? `## קורסים מסומנים כ"אל תזיז"\nאסור בשום אופן להזיז את הקורסים הבאים מהסמסטר הנוכחי שלהם בלוח: ${preferences.pinned_course_ids.join(', ')}. אם קורס כזה משובץ כיום בסמסטר מסוים, הוא חייב להישאר באותו סמסטר בדיוק בתוכנית המוצעת.\n` : ''}
-${(!preferences.action_type || preferences.action_type === 'full_plan') ? `חשוב מאוד: עליך לבנות תוכנית מלאה להשלמת התואר עבור כל הסמסטרים שנותרו — לא רק להוסיף את הקורסים שהמשתמש ביקש. אסור להחזיר תוכנית חלקית שמכילה רק את הקורסים המבוקשים (wanted_course_ids) בתוספת הקורסים הקבועים שכבר משובצים. "קורסים שהמשתמש רוצה לכלול" הם העדפה בלבד, לא רשימת הקורסים המלאה.` : 'בהתאם לסוג הפעולה שצוין למעלה, התמקד בשינוי המבוקש בלבד והימנע משינויים נוספים שלא נדרשים.'}
-
-הנחיות מחייבות:
-- אסור לשבץ קורס שמופיע ב"סטטוס אישי" כ"הושלם" (completed) — קורסים אלה אינם חוזרים לתוכנית.
-- קורסים "בלימוד כעת" (currently_taking) ו"מתוכננים" (planned) יש לשבץ בהתאם לסטטוס שלהם ולא להסיר אותם ללא סיבה.
-- כל קורס מחויב (mandatory) שלא הושלם חייב להיות משובץ בתוכנית, בסמסטר מתוך effective_allowed_semesters שלו אם זה מוגדר. קורסי חובה גמישים (effective_allowed_semesters עם יותר מאפשרות אחת) — בחר עבורם את הסמסטר שמאזן את העומס בצורה הטובה ביותר.
-- הוסף קורסי בחירה (electives) כדי למלא ככל הניתן את דרישות הקטגוריות (category requirements) — לא רק קורסים שהמשתמש ביקש. קורסים שהמשתמש סימן כ"להימנע" הם אילוץ רך: הוסף אותם רק אם נדרשים למילוי דרישה ואין חלופה סבירה.
-- אין לשבץ קורס פעמיים.
-- אין לחרוג מ-effective_allowed_semesters כאשר הוא מוגדר עבור קורס.
-- התחשב בדרישות קדם, בדרישות הקטגוריות (קורסי בחירה), ובנתוני העומס מהסילבוס.
-${preferences.max_weekly_hours != null ? `- מגבלת השעות השבועיות (${preferences.max_weekly_hours} ש״ש לסמסטר) היא אילוץ מחייב ורציני: חלק את הקורסים בין הסמסטרים — כולל קורסי חובה גמישים וקורסי בחירה — כך שאף סמסטר לא יחרוג ממנה. אל תשאיר סמסטר עמוס אם ניתן להעביר קורס גמיש/בחירה לסמסטר אחר. אם פיזור מוחלט בלתי אפשרי בגלל קורסים שמותרים רק בסמסטר מסוים (חובה קבוע), צמצם את החריגה למינימום האפשרי וציין זאת במפורש ב-warnings_he יחד עם הסיבה.` : ''}
-
-ב-requirements_status החזר שורה לכל אחד מהבאים, אם ידוע:
-- "קורסי חובה" — כמה קורסי חובה שלא הושלמו שובצו מתוך הסך הכול שנותר.
-- כל קטגוריית בחירה (category requirement) שצוינה בהקשר — כמה קורסים שובצו מתוך הנדרש.
-- "שעות/נקודות שנותרו" — אם ניתן להעריך מהנתונים שסופקו.
-אם לא ניתן למלא דרישה כלשהי במלואה, הסבר מדוע ב-warnings_he והצע קורסים מתאימים להמשך.
-
-החזר אך ורק אובייקט JSON התואם בדיוק לסכימה הבאה (ללא טקסט נוסף):
-{
-  "semesters": [{ "semester_id": "string", "course_ids": ["string"] }],
-  "moves": [{ "course_id": "string", "from": "string|null", "to": "string" }],
-  "warnings_he": ["string"],
-  "rationale_he": "string — הסבר קצר בעברית לבחירות שנעשו",
-  "requirements_status": [{ "name": "string", "required": number, "placed": number, "satisfied": boolean }]
-}`;
-
-  // Valid semester ids for this plan — used to keep the AI's semester_id
-  // values consistent, and to retry with a stricter reminder if it deviates.
-  const validSemesterIds = ((plan_context as PlanContext).semesters ?? []).map(s => s.id);
-  const semesterIdHint = validSemesterIds.length
-    ? `\n\nחשוב: שדה semester_id בכל סמסטר חייב להיות אחד מהערכים המדויקים הבאים (ללא שינוי): ${validSemesterIds.map(id => `"${id}"`).join(', ')}.`
-    : '';
-
-  let object: z.infer<typeof planProposalSchema> | null = null;
-  let lastErr: unknown = null;
-
-  // Up to 2 attempts: structured output occasionally returns malformed JSON
-  // or paraphrased semester_id values — retry once with a stricter reminder.
-  for (let attempt = 0; attempt < 2 && !object; attempt++) {
-    try {
-      const result = await generateObject({
-        model: modelConfig.model,
-        schema: planProposalSchema,
-        system: planSystemPrompt + (attempt > 0 ? semesterIdHint : ''),
-        prompt: attempt > 0
-          ? 'הפלט הקודם לא תאם את הסכימה הנדרשת. בנה מחדש את הצעת התוכנית, והקפד להחזיר JSON תקין בלבד התואם בדיוק לסכימה, עם semester_id מתוך הרשימה שצוינה.'
-          : 'בנה את הצעת התוכנית לפי ההנחיות וההעדפות שלעיל.',
+  // Clarification preflight — additive, opt-in only (default disabled, behavior
+  // otherwise unchanged). When a critical input is still missing after any
+  // supplied clarification_answers are applied, returns a structured
+  // clarification response instead of delegating to either planner path
+  // below. See academic_clarification_preflight.ts. Once unblocked, any valid
+  // clarification_answers are also merged into the actual planning inputs
+  // (plan_context/preferences) below — not just used to satisfy the gate. See
+  // academic_clarification_plan_inputs.ts.
+  let effectivePlanContext = plan_context;
+  let effectivePreferences = preferences;
+  if (process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT === 'true') {
+    const resumed = await resumeClarificationPreflight(
+      {
+        programId: program_id,
+        dbUrl,
+        buildModelOptions: {
+          completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+          disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
+          maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
+        },
+      },
+      clarification_answers ?? [],
+    );
+    if (resumed.blocked) {
+      res.status(200).json({
+        needsClarification: true,
+        clarification: resumed.clarification,
+        viewModel: resumed.viewModel,
       });
-      object = result.object;
-    } catch (err) {
-      lastErr = err;
-      console.error(`[ai/generate-plan] generateObject attempt ${attempt + 1} failed:`, err instanceof Error ? err.message : String(err));
+      return;
+    }
+    const merged = mergeClarificationAnswersIntoGeneratePlanInputs(plan_context, preferences, clarification_answers ?? []);
+    effectivePlanContext = merged.planContext;
+    effectivePreferences = merged.preferences;
+  }
+  // Unconditional (explicitly approved default-behavior change): the live
+  // frontend already sends personal_status.currently_taking on every request,
+  // and ignoring it let a currently-taken course be re-proposed by the planner.
+  const currentlyPlannedCourseIds: string[] =
+    (effectivePlanContext?.personal_status?.currently_taking ?? []).map((c: any) => c.course_id);
+
+  // Board — always plan over the full course universe.
+  let board: any = null;
+  if (dbUrl) {
+    const pv = parseProgramVersionId(program_id);
+    if (pv) {
+      try { board = await queryBoardJson(dbUrl, pv.base, pv.year); } catch { board = null; }
     }
   }
-
-  if (!object) {
-    sendError(res, 503, 'לא ניתן ליצור הצעת תוכנית כעת — תשובת ה-AI לא תאמה את הפורמט הנדרש. נסה שוב.', 'AI_PROVIDER_ERROR',
-      { detail: lastErr instanceof Error ? lastErr.message : String(lastErr) });
+  if (!board) {
+    board = loadLocalBoardJson(program_id);
+  }
+  if (!board) {
+    sendError(res, 503, 'תוכנית הלימודים המלאה אינה זמינה. נא לנסות שוב מאוחר יותר.', 'NO_UNIVERSE');
     return;
   }
 
-  await Promise.allSettled([
-    incrementCreditsUsed(session_token, dbUrl),
-    logUsageEvent(session_token, modelConfig.name, dbUrl),
-  ]);
+  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds);
+  const initialState = planContextToState(effectivePlanContext, model);
+  const pinnedHome = buildPinnedHome(model, initialState);
+  const modelCfg = resolveModel();
 
-  // Normalize semester_id values (Hebrew labels, casing variants, etc.) to
-  // the canonical ids used by the board, and surface any placements that
-  // could not be mapped as Hebrew warnings instead of silently dropping them.
-  const { proposal: normalized, dropped } = normalizePlanProposal(object);
-  if (dropped.length) {
-    const courseNames: Record<string, string> = {};
-    for (const sem of (plan_context as PlanContext).semesters ?? []) {
-      for (const c of sem.courses) {
-        if (c.name_he) courseNames[c.course_id] = c.name_he;
-      }
+  let proposal: ReturnType<typeof toProposal>;
+  let traceForResponse: unknown[];
+  let hitMaxSteps = false;
+  let useLlm = false;
+
+  if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
+    // ── PlannerAgent path (Phase 5+) ─────────────────────────────────────────
+    const useLlmExplain = !isDevMode() && !!modelCfg;
+    const explanation = useLlmExplain ? new LlmExplainer(modelCfg!.model) : undefined;
+    useLlm = useLlmExplain;
+
+    const searchCap: SearchCapability<PlanState, PlannerMutation> = {
+      search: (s, deps, opts) => new BeamSearchStrategy<PlanState, PlannerMutation>().explore(s, deps, opts),
+    };
+    const agent = new PlannerAgent({
+      model, initialState, pinnedHome, search: searchCap, explanation, maxSteps: 150, beamWidth: 6,
+    });
+
+    let agentResult;
+    try {
+      agentResult = await agent.run();
+    } catch (err) {
+      console.error('[ai/generate-plan] PlannerAgent error, falling back to greedy:', err instanceof Error ? err.message : String(err));
+      const fallback = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
+      fallback.run(500, 'greedy');
+      agentResult = { finalState: fallback.getPlan(), trace: fallback.getTrace(), gaps: [], meta: undefined, rationale_he: fallback.explain().summary_he };
     }
-    normalized.warnings_he = [
-      ...normalized.warnings_he,
-      ...droppedPlacementWarnings(dropped, courseNames),
-    ];
+
+    const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
+    proposal = toProposal(agentResult.finalState, model, initialState, pinnedHome, rationale_he);
+    traceForResponse = agentResult.trace;
+    hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
+
+  } else {
+    // ── PlannerWorker path (default) ─────────────────────────────────────────
+    const worker = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
+    useLlm = !isDevMode() && !!modelCfg;
+    try {
+      if (useLlm) await new LlmOrchestrator(modelCfg!.model, { maxSteps: 24 }).run(worker);
+      else worker.run(500, 'greedy');
+    } catch (err) {
+      console.error('[ai/generate-plan] orchestrator error, finishing greedily:', err instanceof Error ? err.message : String(err));
+      worker.run(500, 'greedy');
+    }
+
+    proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
+    traceForResponse = worker.getTrace();
+    hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
 
-  // Defensive overload gate — server-side enforcement of HARD_LOAD_CAP /
-  // ABSOLUTE_MAX_REASONABLE. Even if the client mis-sends or skips client-side
-  // validation, the proposal must be marked as blocked when a semester
-  // exceeds the absolute max, or exceeds the hard cap without explicit user
-  // confirmation (overload_accepted + overload_confirmed_at).
-  const overloadAccepted = preferences.overload_accepted === true;
-  const overloadConfirmedAt = preferences.overload_confirmed_at;
-  const userConfirmedOverload = overloadAccepted && !!overloadConfirmedAt;
-  const courseHoursMap: Record<string, { hours?: number | null }> = {};
-  for (const sem of (plan_context as PlanContext).semesters ?? []) {
-    for (const c of sem.courses) {
-      if (c.course_id) courseHoursMap[c.course_id] = { hours: c.hours ?? null };
-    }
+  const blockingErrors = overloadGate(proposal.semesters, model, effectivePreferences);
+
+  if (hitMaxSteps) {
+    proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
+    blockingErrors.push('PLANNER_STEP_LIMIT');
   }
-  const blockingErrors: string[] = [];
-  for (const sem of normalized.semesters) {
-    const hrs = getSemesterLoad(sem, courseHoursMap);
-    if (hrs > ABSOLUTE_MAX_REASONABLE) {
-      blockingErrors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE}. לא ניתן להחיל את התוכנית.`);
-    } else if (hrs > HARD_LOAD_CAP && !userConfirmedOverload) {
-      blockingErrors.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP}). נדרש אישור חריגה מפורש לפני החלת התוכנית.`);
-    }
+
+  if (!isBypassQuota() && dbUrl) {
+    await Promise.allSettled([
+      incrementCreditsUsed(session_token, dbUrl),
+      logUsageEvent(session_token, useLlm ? (modelCfg?.name ?? 'llm') : 'greedy', dbUrl),
+    ]);
   }
 
   res.status(200).json({
-    ...normalized,
+    ...proposal,
     errors: blockingErrors,
     blocked: blockingErrors.length > 0,
+    trace: traceForResponse,
   });
-}
-
-/** Deterministic mock proposal for dev mode — echoes the current plan unchanged. */
-function mockPlanProposal(planContext: PlanContext): unknown {
-  return {
-    semesters: (planContext.semesters ?? []).map(s => ({
-      semester_id: s.id,
-      course_ids: s.courses.map(c => c.course_id),
-    })),
-    moves: [],
-    warnings_he: ['[מצב פיתוח] זוהי תוכנית לדוגמה — אין קריאה לספק AI אמיתי.'],
-    rationale_he: 'מצב פיתוח: התוכנית המוצעת זהה לתוכנית הנוכחית (ללא קריאת AI אמיתית).',
-    requirements_status: [],
-  };
 }

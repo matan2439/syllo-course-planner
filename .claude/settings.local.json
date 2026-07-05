@@ -14,7 +14,30 @@
       "Bash(git *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\matan\\\\tau-course-planner\" -Recurse -Force)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(python -m http.server 8099)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8099/app/web/semester_board_viewer.html\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8099/data/parsed_json/mechanical_semester_board_2027.json\")",
+      "Bash(grep -E '\\\\.\\(py|ts|js\\)$')",
+      "Bash(xargs grep -l \"course-planner\\\\|generate-plan\")",
+      "Bash(grep -E \"\\\\.\\(ts|js|tsx|jsx\\)$\")",
+      "Bash(grep -E \"\\\\.ts$\")"
     ]
-  }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          }
+        ]
+      }
+    ]
+  },
+  "description": "Impeccable design detector: runs after Edit/Write/MultiEdit on UI files and surfaces findings as system reminders."
 }

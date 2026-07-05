@@ -306,6 +306,12 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
                     "error", "annual_bad_span", cid,
                     f"is_annual course must have spans_semesters of length 2, got {spans}",
                 ))
+            if not c.get("root_course_id"):
+                issues.append(AuditIssue(
+                    "error", "annual_missing_root_course_id", cid,
+                    "is_annual course must have root_course_id set (planner_goals.placedHours "
+                    "dedupes on it; without it the course's hours are double-counted)",
+                ))
 
     # CHECK 3 — Component conflicts: lecture/course + lab pairs (same base course id,
     # differing only by suffix) whose effective semesters conflict without syllabus

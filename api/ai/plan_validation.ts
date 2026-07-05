@@ -95,15 +95,21 @@ export function normalizeSemesterId(raw: string | null | undefined): string | nu
  * reported via the returned `dropped` list, so the caller can surface a
  * Hebrew warning and treat those courses as unplaced.
  */
-export function normalizePlanProposal(proposal: PlanProposal): {
+export function normalizePlanProposal(
+  proposal: PlanProposal,
+  opts?: { knownSemesterIds?: string[] },
+): {
   proposal: PlanProposal;
   dropped: Array<{ course_id: string; raw_semester_id: string }>;
 } {
+  const knownIds: readonly string[] = opts?.knownSemesterIds ?? KNOWN_SEMESTER_IDS;
   const dropped: Array<{ course_id: string; raw_semester_id: string }> = [];
   const bySemester = new Map<string, string[]>();
 
   for (const sem of proposal.semesters) {
-    const normalized = normalizeSemesterId(sem.semester_id);
+    // First try canonical normalization; if that fails, check if raw id is in knownIds directly.
+    const normalized = normalizeSemesterId(sem.semester_id) ??
+      (knownIds.includes(sem.semester_id.trim()) ? sem.semester_id.trim() : null);
     if (!normalized) {
       for (const cid of sem.course_ids) dropped.push({ course_id: cid, raw_semester_id: sem.semester_id });
       continue;
@@ -123,7 +129,7 @@ export function normalizePlanProposal(proposal: PlanProposal): {
   return {
     proposal: {
       ...proposal,
-      semesters: KNOWN_SEMESTER_IDS
+      semesters: knownIds
         .filter(id => bySemester.has(id))
         .map(id => ({ semester_id: id, course_ids: bySemester.get(id)! })),
       moves: proposal.moves.map(m => ({ ...m, from: normalizeSide(m.from), to: normalizeSide(m.to) ?? m.to })),
@@ -152,8 +158,10 @@ export interface PlanValidationContext {
   completedCourseIds: Set<string>;
   /**
    * course_ids the user is currently_taking or has planned (personal_status).
-   * Such courses are already accounted for as prior progress and must not be
-   * (re-)proposed by the planner (Phase 1 proposal-dedup).
+   * Such courses are already accounted for as prior progress: they must not be
+   * (re-)proposed by the planner (Phase 1 proposal-dedup, rule 2a) and they
+   * satisfy prerequisites of proposed courses like completed courses do
+   * (rule 4 — strictly earlier than every proposal semester by construction).
    */
   currentlyPlannedCourseIds?: Set<string>;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
@@ -166,6 +174,12 @@ export interface PlanValidationContext {
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp at which the user confirmed the overload. Required (alongside overloadAccepted) to actually downgrade > HARD_LOAD_CAP from error to warning. */
   overloadConfirmedAt?: number | null;
+  /** Phase 1b — per-semester blocking cap override (from ConstraintModel.hardCap). Defaults to load_constants.ts's HARD_LOAD_CAP. */
+  hardCap?: number;
+  /** Phase 1b — preferred-range ceiling override (from ConstraintModel.softLoadMax). Defaults to load_constants.ts's SOFT_LOAD_MAX. */
+  softLoadMax?: number;
+  /** Phase 1b — never-overridable blocking ceiling override (from ConstraintModel.absoluteMaxReasonable). Defaults to load_constants.ts's ABSOLUTE_MAX_REASONABLE. */
+  absoluteMaxReasonable?: number;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
   /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
@@ -231,6 +245,7 @@ export interface PlanValidationResult {
 export function validatePlanProposal(
   proposal: PlanProposal,
   ctx: PlanValidationContext,
+  opts?: { knownSemesterIds?: string[] },
 ): PlanValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -310,7 +325,10 @@ export function validatePlanProposal(
       ]);
       const targetIdx = semOrder.get(sem.semester_id)!;
       for (const prereq of prereqUnion) {
-        if (ctx.completedCourseIds.has(prereq)) continue;
+        // A currently-taking course is prior progress: rule 2a guarantees it can
+        // never appear in the proposal, so it is strictly earlier than every
+        // proposed semester and satisfies the prereq like a completed course.
+        if (ctx.completedCourseIds.has(prereq) || ctx.currentlyPlannedCourseIds?.has(prereq)) continue;
         const pIdx = courseSemIdx.get(prereq);
         if (pIdx === undefined) {
           errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);
@@ -325,40 +343,49 @@ export function validatePlanProposal(
 
     // 5. Phase 2C unified overload policy (single source of truth — must
     // match load_constants.ts and the client-side validatePlanProposalLocal):
-    //   - hrs > ABSOLUTE_MAX_REASONABLE (30): always blocking ERROR.
-    //   - hrs > HARD_LOAD_CAP (26): blocking ERROR unless user explicitly
+    //   - hrs > absoluteMaxReasonable (default 30): always blocking ERROR.
+    //   - hrs > hardCap (default 26): blocking ERROR unless user explicitly
     //     confirmed overload (overloadAccepted && overloadConfirmedAt); then
     //     downgraded to a WARNING containing "חריגה בעומס שאושרה ידנית".
-    //   - hrs > SOFT_LOAD_MAX (22) and ≤ HARD_LOAD_CAP: WARNING.
-    //   - hrs ≤ SOFT_LOAD_MAX: no message.
-    if (semHours > ABSOLUTE_MAX_REASONABLE) {
+    //   - hrs > softLoadMax (default 22) and ≤ hardCap: WARNING.
+    //   - hrs ≤ softLoadMax: no message.
+    // Phase 1b — thresholds are sourced from ctx (populated from
+    // ConstraintModel), falling back to load_constants.ts when ctx omits them,
+    // so any existing caller that never sets these fields sees no change.
+    const hardCap = ctx.hardCap ?? HARD_LOAD_CAP;
+    const softLoadMax = ctx.softLoadMax ?? SOFT_LOAD_MAX;
+    const absoluteMaxReasonable = ctx.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
+    if (semHours > absoluteMaxReasonable) {
       errors.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE} ש"ש. לא ניתן להחיל את התוכנית.`,
+        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${absoluteMaxReasonable} ש"ש. לא ניתן להחיל את התוכנית.`,
       );
-    } else if (semHours > HARD_LOAD_CAP) {
+    } else if (semHours > hardCap) {
       const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
       if (userConfirmed) {
         warnings.push(
-          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${HARD_LOAD_CAP}) — חריגה בעומס שאושרה ידנית.`,
+          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${hardCap}) — חריגה בעומס שאושרה ידנית.`,
         );
       } else {
         errors.push(
-          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP} ש"ש). נדרש אישור חריגה מפורש.`,
+          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${hardCap} ש"ש). נדרש אישור חריגה מפורש.`,
         );
       }
-    } else if (semHours > SOFT_LOAD_MAX) {
+    } else if (semHours > softLoadMax) {
       warnings.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${SOFT_LOAD_MAX} ש"ש).`,
+        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
       );
     }
   }
 
   // 6. partial-plan check — every not-completed mandatory course must appear,
   // reported with the exact missing course IDs/names (PART C) — never a
-  // generic "missing mandatory" message without a concrete list.
+  // generic "missing mandatory" message without a concrete list. A
+  // currently-taking course is already accounted for (rule 2a forbids
+  // re-proposing it), so its absence from the proposal is not a gap.
   if (ctx.requiredMandatoryCourseIds) {
     const missingMandatory = ctx.requiredMandatoryCourseIds.filter(
-      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid),
+      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid) &&
+        !ctx.currentlyPlannedCourseIds?.has(cid),
     );
     for (const cid of missingMandatory) {
       errors.push(`קורס חובה חסר: ${courseLabel(cid, ctx.courseNames)}.`);

@@ -1,0 +1,385 @@
+/**
+ * plan_concise_summary.test.js
+ *
+ * Part B (summary quality) + Part A reporting requirements.
+ *
+ * Root cause of the long/duplicated summary: postPlanChangeSummary concatenated
+ * the placement diff + "נותרו חסמים" blockers + EVERY proposal warning verbatim,
+ * so the overload was stated twice (once as a blocker, once as a warning), the 3
+ * separate "שער רוח … מידע חסר" lines were each appended, and there was no status
+ * line, no section structure, and no actionable-options section.
+ *
+ * Fix: a single PURE formatter, buildConcisePlanSummaryLines(parts), produces the
+ * required scannable structure — a status line, then ≤4-bullet sections
+ * (מה השתנה / למה זה עדיין לא מושלם / החלטות שנדרשות ממך) and a compact
+ * פרטים נוספים tail. Both summary paths (postPlanChangeSummary and the
+ * deterministic formatFull185SummaryLocal) feed it, so neither can regress to a
+ * wall of duplicated text.
+ *
+ * Part A finding locked here: in the ME-2027 catalog, מעבר חם (heat transfer,
+ * 0542-3620) has exactly ONE legal semester (year_3_semester_a), so it is NOT a
+ * movable course — the 26 ש״ש peak is structurally irreducible, and the summary
+ * must say so with a concrete reason rather than pretend it can be balanced away.
+ */
+const fs = require('fs');
+const path = require('path');
+const { JSDOM } = require('jsdom');
+
+const HTML_PATH = path.join(__dirname, '..', '..', 'app', 'web', 'semester_board_viewer.html');
+const BOARD_JSON_PATH = path.join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json');
+
+const HEAT = '0542-3620'; // מעבר חם — single legal semester (year_3_semester_a)
+
+function loadPage() {
+  let html = fs.readFileSync(HTML_PATH, 'utf8');
+  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+  const scriptSrc = scriptMatch[1];
+  html = html.replace(scriptMatch[0], '');
+  const dom = new JSDOM(html, {
+    url: 'http://localhost/app/web/semester_board_viewer.html',
+    runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
+  });
+  const { window } = dom;
+  window.localStorage.setItem('tau_program', 'mechanical_engineering_2027');
+  window.fetch = (url) => {
+    const u = String(url);
+    if (u.includes('mechanical_semester_board_2027.json')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(JSON.parse(fs.readFileSync(BOARD_JSON_PATH, 'utf8'))) });
+    }
+    if (u.includes('/api/')) return Promise.reject(new Error('network down'));
+    return Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('not found') });
+  };
+  window.confirm = () => false; window.alert = () => {};
+  const s = window.document.createElement('script');
+  s.textContent = scriptSrc;
+  window.document.body.appendChild(s);
+  return dom;
+}
+
+function waitForInit(window) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if (window.eval('typeof state !== "undefined" && !!state && !!state.semesters && typeof courseMap !== "undefined" && Object.keys(courseMap).length > 0')) return resolve();
+      if (Date.now() - start > 20000) return reject(new Error('init timeout'));
+      setTimeout(tick, 10);
+    };
+    tick();
+  });
+}
+
+describe('buildConcisePlanSummaryLines — pure structured formatter', () => {
+  let dom, window;
+  beforeAll(async () => { dom = loadPage(); window = dom.window; await waitForInit(window); });
+  afterAll(() => dom.window.close());
+
+  test('full legal plan → ✅ status line, no partial/incomplete wording', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 185, required: 185, missing: 0,
+      changed: { added: ['א','ב'], removed: [], moved: [] },
+      notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('✅');
+    expect(out).toContain('185/185');
+    expect(out).not.toContain('טיוטה חלקית');
+    expect(out).not.toContain('עדכנתי את המערכת');
+  });
+
+  test('half-hour values are preserved exactly — 186.5/185 renders as "186.5/185", never rounded to 187 or 186.50', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 186.5, required: 185, missing: 0,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('186.5/185');
+    expect(out).not.toContain('187/185');
+    expect(out).not.toContain('186.50');
+  });
+
+  test('integer values stay clean — 185/185 renders without a trailing .0', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 185, required: 185, missing: 0,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('185/185');
+    expect(out).not.toContain('185.0/185');
+  });
+
+  test('partial half-hour missing figure is also preserved (e.g. 183.5/185 — חסרות 1.5)', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'partial', total: 183.5, required: 185, missing: 1.5,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('183.5/185');
+    expect(out).toContain('חסרות 1.5');
+  });
+
+  test('183/185 → ⚠️ partial status line with exact missing hours, never ✅/complete', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'partial', total: 183, required: 185, missing: 2,
+      changed: { added: ['א'], removed: [], moved: [] },
+      notPerfect: ['חסרות 2 ש״ש'], decisions: ['להעלות את מקסימום העומס'], details: [],
+    })`);
+    expect(out).toContain('⚠️');
+    expect(out).toContain('183/185');
+    expect(out).toContain('חסרות 2');
+    expect(out).not.toContain('✅');
+    expect(out).not.toContain('מערכת תקינה');
+    // Must NOT claim it added courses to COMPLETE the degree when it didn't reach 185.
+    expect(out).not.toContain('נוספו קורסים כדי להשלים');
+  });
+
+  test('no legal plan → ❌ status line', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'none', total: 0, required: 185, missing: 185,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).toContain('❌');
+    expect(out).toContain('אין מערכת חוקית');
+  });
+
+  test('each main section is capped at 4 bullets', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'partial', total: 180, required: 185, missing: 5,
+      changed: { added: ['א','ב','ג','ד','ה','ו'], removed: [], moved: [] },
+      notPerfect: ['n1','n2','n3','n4','n5','n6'],
+      decisions: ['d1','d2','d3','d4','d5'],
+      details: [],
+    })`);
+    // Count bullet lines under each section by splitting on the section headers.
+    const bulletCount = (section) => {
+      const body = out.split(section)[1] || '';
+      const lines = body.split('\n').slice(1); // lines after the header
+      let n = 0;
+      for (const ln of lines) { if (ln.trim().startsWith('•')) n++; else if (ln.trim()) break; }
+      return n;
+    };
+    expect(bulletCount('מה השתנה')).toBeLessThanOrEqual(4);
+    expect(bulletCount('למה זה עדיין לא מושלם')).toBeLessThanOrEqual(4);
+    expect(bulletCount('החלטות שנדרשות ממך')).toBeLessThanOrEqual(4);
+  });
+
+  test('duplicate bullets within a section are de-duplicated', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'partial', total: 183, required: 185, missing: 2,
+      changed: { added: [], removed: [], moved: [] },
+      notPerfect: ['שנה ג׳ — סמסטר א׳ עמוס: 26/25', 'שנה ג׳ — סמסטר א׳ עמוס: 26/25'],
+      decisions: [], details: [],
+    })`);
+    const occurrences = (out.match(/עמוס: 26\/25/g) || []).length;
+    expect(occurrences).toBe(1);
+  });
+
+  test('empty sections are omitted entirely (a clean full plan is just the status line)', () => {
+    const out = window.eval(`buildConcisePlanSummaryLines({
+      status: 'full', total: 185, required: 185, missing: 0,
+      changed: { added: [], removed: [], moved: [] }, notPerfect: [], decisions: [], details: [],
+    })`);
+    expect(out).not.toContain('למה זה עדיין לא מושלם');
+    expect(out).not.toContain('החלטות שנדרשות ממך');
+    expect(out).not.toContain('פרטים נוספים');
+  });
+});
+
+describe('postPlanChangeSummary — concise, de-duplicated integration', () => {
+  let dom, window;
+  beforeAll(async () => { dom = loadPage(); window = dom.window; await waitForInit(window); });
+  afterAll(() => dom.window.close());
+
+  test('a built plan posts ONE structured message with a status line and no duplicated overload paragraph', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      degreeHoursProfile = { completed_degree_hours: 128.5 };
+      _aiPickerState = { wanted: ['0542-4220','0542-4223'], unwanted: ['0542-4120'], strongUnwanted: [], shaarRuachAssessmentPref: 'prefer_no_exam', _initialized: true };
+      const p = sidebarQuickActionPrefs(); p.max_weekly_hours = 25; _aiPlanLastPreferences = p; _aiUserIntentProfile = null;
+      state.proposalDraft = null;
+      _aiChatMessages = [];
+      const before = { semesters: mapToProposalSemesters(state.semesters) };
+      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
+      const after = { semesters: mapToProposalSemesters(state.proposalDraft.semesters) };
+      _aiPlanLastProposal = plan.proposal;
+      postPlanChangeSummary(before, after, p);
+      const msgs = _aiChatMessages.filter(m => m.role === 'assistant');
+      const last = msgs[msgs.length - 1].text;
+      // Count distinct overload mentions (semester over the user cap) — must be 1.
+      const overloadMentions = (last.match(/26\\/25|מעל המקסימום|עמוס/g) || []).length;
+      // Count שער-רוח "unknown exam" mentions — must be collapsed to at most 1.
+      const shaarUnknown = (last.match(/מידע חסר/g) || []).length;
+      return JSON.stringify({
+        last,
+        hasStatusLine: /✅|⚠️|❌/.test(last),
+        notAWall: last.split('\\n').length < 18,
+        noOldOpener: !last.includes('עדכנתי את המערכת'),
+        overloadMentions, shaarUnknown,
+      });
+    })()`));
+    expect(r.hasStatusLine).toBe(true);
+    expect(r.noOldOpener).toBe(true);
+    expect(r.notAWall).toBe(true);
+    expect(r.shaarUnknown).toBeLessThanOrEqual(1);
+    // This exact production scenario reaches/overshoots 185 hours BUT carries
+    // unresolved warnings (unknown-exam שער-רוח + a 26/25 overload) — it must
+    // render ⚠️ "דורשת אישור", never plain ✅, and the overload must appear once.
+    expect(r.last).toContain('⚠️ טיוטה מלאה אך דורשת אישור');
+    expect(r.last).not.toContain('✅');
+    expect(r.overloadMentions).toBeGreaterThanOrEqual(1);
+  });
+
+  test('REQ 1/2: hours satisfied + unresolved שער-רוח warnings → ⚠️, never ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['SR1'] = { course_id: 'SR1', name_he: 'שער רוח לא ידוע' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['SR1'] }],
+        warnings_he: ['שער רוח לא ידוע: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית.'],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('⚠️');
+    expect(r.last).not.toContain('✅');
+  });
+
+  test('REQ 3: user max 25, peak 26 (no approval given) → ⚠️, never ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV1'] = { course_id: 'OV1', name_he: 'קורס בחירה' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV1'] }],
+        warnings_he: ['שנה ג׳ — סמסטר א׳ עומס 26/25 ש"ש — כל הקורסים בסמסטר זה הם חובה; לא ניתן להפחית את העומס.'],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('⚠️');
+    expect(r.last).not.toContain('✅');
+  });
+
+  test('REQ 4: both Hebrew overload forms (עומס + עמוס) collapse into ONE line', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      _aiPlanLastValidation = null;
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV2'] = { course_id: 'OV2', name_he: 'קורס בחירה לבדיקה' };
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV2'] }],
+        // "עומס" (noun) and "עמוס" (adjective) — both must be caught by the same classifier.
+        warnings_he: [
+          'שנה ג׳ — סמסטר א׳ עומס 26/25 ש"ש — לא ניתן להפחית את העומס.',
+          'שנה ג׳ — סמסטר א׳ עדיין עמוס ב-26 ש״ש, אך לא ניתן להעביר קורסים נוספים מבלי לפגוע בדרישות התואר.',
+        ],
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      // Only count overload STATEMENTS (the "למה זה עדיין לא מושלם" section) — a
+      // "להעלות את מקסימום העומס" line under "החלטות שנדרשות ממך" is an action, not
+      // a second statement of the same problem, and must not be double-counted.
+      const section = (last.split('למה זה עדיין לא מושלם')[1] || '').split('החלטות שנדרשות ממך')[0];
+      const overloadLines = section.split('\\n').filter(l => /עומס|עמוס/.test(l));
+      return JSON.stringify({ last, overloadLineCount: overloadLines.length });
+    })()`));
+    expect(r.overloadLineCount).toBe(1);
+  });
+
+  test('REQ 5: conflicting overload messages (blocker vs. final warnings_he) — the final repair result wins', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['OV3'] = { course_id: 'OV3', name_he: 'קורס בחירה לבדיקה 3' };
+      // The FINAL repair result (warnings_he) correctly says NOT movable.
+      _aiPlanLastProposal = {
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['OV3'] }],
+        warnings_he: ['שנה ג׳ — סמסטר א׳ עדיין עמוס ב-26 ש״ש, אך לא ניתן להעביר קורסים נוספים מבלי לפגוע בדרישות התואר.'],
+      };
+      // A STALE/generic validation blocker claims (incorrectly) that movable courses exist.
+      _aiPlanLastValidation = {
+        finalPlan: { blockers: [{ cause: 'overload', message_he: 'סמסטר שנה ג׳ — סמסטר א׳ עמוס מדי (26 ש"ש) למרות שניתן להעביר קורסים גמישים.' }] },
+      };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      const section = (last.split('למה זה עדיין לא מושלם')[1] || '').split('החלטות שנדרשות ממך')[0];
+      const overloadLines = section.split('\\n').filter(l => /עומס|עמוס/.test(l));
+      return JSON.stringify({ last, overloadLineCount: overloadLines.length, keptFinalResult: last.includes('לא ניתן להעביר קורסים נוספים מבלי לפגוע'), keptStaleBlocker: last.includes('למרות שניתן להעביר קורסים גמישים') });
+    })()`));
+    expect(r.overloadLineCount).toBe(1);
+    expect(r.keptFinalResult).toBe(true);
+    expect(r.keptStaleBlocker).toBe(false);
+  });
+
+  test('REQ 5 (clean plan): a truly clean complete plan with no warnings still renders ✅', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      _aiPlanLastValidation = null;
+      degreeHoursProfile = { completed_degree_hours: 200 }; // hours-satisfied regardless of test diff
+      courseMap['CLEAN1'] = { course_id: 'CLEAN1', name_he: 'קורס נקי' };
+      _aiPlanLastProposal = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['CLEAN1'] }], warnings_he: [] };
+      const prev = { semesters: [{ semester_id: 'year_3_semester_a', course_ids: [] }] };
+      const next = _aiPlanLastProposal;
+      postPlanChangeSummary(prev, next, { max_weekly_hours: 25 });
+      const last = _aiChatMessages.filter(m => m.role === 'assistant').slice(-1)[0].text;
+      return JSON.stringify({ last });
+    })()`));
+    expect(r.last).toContain('✅');
+    expect(r.last).not.toContain('⚠️');
+  });
+});
+
+describe('Part A — load reduction is correct, and the irreducible case is explained', () => {
+  let dom, window;
+  beforeAll(async () => { dom = loadPage(); window = dom.window; await waitForInit(window); });
+  afterAll(() => dom.window.close());
+
+  test('positive: repairPlanLoad MOVES a genuinely movable course out of an over-cap semester', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      // Synthetic elective with TWO legal semesters, parked in an over-cap semester.
+      const FAKE = 'TEST-MOVABLE-1';
+      courseMap[FAKE] = { course_id: FAKE, name_he: 'בחירה ניידת', weekly_hours: 4, course_type: 'elective',
+        effective_allowed_semesters: ['year_3_semester_a','year_4_semester_b'], allowed_semesters: ['year_3_semester_a','year_4_semester_b'] };
+      const ctx = buildPlanValidationInputs();
+      ctx.courses[FAKE] = { hours: 4, effective_allowed_semesters: ['year_3_semester_a','year_4_semester_b'], course_type: 'elective', name_he: 'בחירה ניידת' };
+      ctx.maxHoursPerSemester = 25;
+      // year_3_semester_a fixed-mandatory load is already high; add the fake to push it over 25.
+      const proposal = { semesters: mapToProposalSemesters(state.semesters) };
+      const a = proposal.semesters.find(s => s.semester_id === 'year_3_semester_a');
+      a.course_ids = [...a.course_ids, FAKE];
+      const beforeSem = 'year_3_semester_a';
+      const res = repairPlanLoad(proposal, ctx);
+      const afterSem = res.proposal.semesters.find(s => (s.course_ids||[]).includes(FAKE)).semester_id;
+      return JSON.stringify({ beforeSem, afterSem, moved: beforeSem !== afterSem });
+    })()`));
+    expect(r.moved).toBe(true);
+  });
+
+  test('negative: מעבר חם has one legal semester, is NOT moved, and the overload note states the concrete reason', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      const ctx = buildPlanValidationInputs();
+      ctx.maxHoursPerSemester = 25;
+      const proposal = { semesters: mapToProposalSemesters(state.semesters) };
+      const res = repairPlanLoad(proposal, ctx);
+      const heatSemBefore = proposal.semesters.find(s => (s.course_ids||[]).includes('${HEAT}'))?.semester_id;
+      const heatSemAfter = res.proposal.semesters.find(s => (s.course_ids||[]).includes('${HEAT}'))?.semester_id;
+      const over = (res.unmovedOverloaded || []).find(o => o.semester_id === 'year_3_semester_a');
+      const heatReason = over && (over.not_movable_reasons || []).find(x => x.course_id === '${HEAT}');
+      return JSON.stringify({
+        heatLegalSemesters: (courseMap['${HEAT}'].effective_allowed_semesters || []),
+        heatMoved: heatSemBefore !== heatSemAfter,
+        heatReason: heatReason ? heatReason.reason : null,
+        overReported: !!over,
+      });
+    })()`));
+    expect(r.heatLegalSemesters).toEqual(['year_3_semester_a']);
+    expect(r.heatMoved).toBe(false);
+    expect(r.overReported).toBe(true);
+    expect(r.heatReason).toBe('no_legal_target');
+  });
+});

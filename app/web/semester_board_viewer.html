@@ -24,11 +24,11 @@
   --bg2:       #EEEFF5;
   --surface:   #FFFFFF;
   --surface2:  #F3F4F9;
-  --border:    #E5E7EB;
-  --border2:   #D1D5DB;
+  --border:    #D7DBE3;
+  --border2:   #C2C8D2;
   --text:      #111827;
-  --text-muted:#6B7280;
-  --text-faint:#5F6B78;
+  --text-muted:#5B6472;
+  --text-faint:#4B5563;
   --radius:    10px;
   --shadow:    0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.05);
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
@@ -55,21 +55,21 @@
 
   --mand-accent:#2563EB; --mand-bg:#EFF6FF; --mand-lock-bg:#DBEAFE;
   --elec-accent:#7C3AED; --elec-bg:#FFFFFF;
-  --blk-accent: #9CA3AF; --blk-bg: #F9FAFB;
-  --miss-accent:#F59E0B; --miss-bg: #FFFBEB;
+  --blk-accent: #7B8493; --blk-bg: #F4F5F7;
+  --miss-accent:#D97706; --miss-bg: #FFF7E8;
 
   --y3a:#2563EB; --y3b:#1D4ED8; --y4a:#7C3AED; --y4b:#6D28D9;
   --sidebar-w:284px;
   --hdr-h:54px;
 
   /* ── Category accent colors (2027 program) ── */
-  --cat-fluids-accent:  #0891B2; --cat-fluids-bg:  rgba(8,145,178,.06);
-  --cat-solids-accent:  #D97706; --cat-solids-bg:  rgba(217,119,6,.06);
-  --cat-systems-accent: #7C3AED; --cat-systems-bg: rgba(124,58,237,.06);
-  --cat-labs-accent:    #059669; --cat-labs-bg:    rgba(5,150,105,.06);
-  --cat-other-accent:   #64748B; --cat-other-bg:   rgba(100,116,139,.04);
-  --cat-specelective-accent: #DB2777; --cat-specelective-bg: rgba(219,39,119,.06);
-  --cat-shaarruach-accent:   #4F46E5; --cat-shaarruach-bg:   rgba(79,70,229,.06);
+  --cat-fluids-accent:  #0E7490; --cat-fluids-bg:  rgba(8,145,178,.12);
+  --cat-solids-accent:  #B45309; --cat-solids-bg:  rgba(217,119,6,.12);
+  --cat-systems-accent: #6D28D9; --cat-systems-bg: rgba(124,58,237,.11);
+  --cat-labs-accent:    #047857; --cat-labs-bg:    rgba(5,150,105,.12);
+  --cat-other-accent:   #475569; --cat-other-bg:   rgba(100,116,139,.09);
+  --cat-specelective-accent: #BE185D; --cat-specelective-bg: rgba(219,39,119,.11);
+  --cat-shaarruach-accent:   #4338CA; --cat-shaarruach-bg:   rgba(79,70,229,.11);
 
   /* ── Premium surface tokens (light: kept subtle/clean) ── */
   --glass-bg:        rgba(255,255,255,.72);
@@ -1564,6 +1564,18 @@ body.prog-modal-open .workspace {
   border-radius: var(--radius); direction: rtl;
 }
 
+/* Data-quality audit banner — a course with no real title (catalog import
+   gap) is never shown as a normal card; this is the only place it appears,
+   purely informational (never draggable/schedulable). */
+.board-data-audit-banner {
+  flex-basis: 100%;
+  padding: 10px 16px;
+  font-size: .82rem; line-height: 1.5; direction: rtl;
+  background: var(--warn-soft); color: var(--text);
+  border: 1px solid var(--warning); border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+
 /* ── State messages ──────────────────────────────────────────────────────── */
 .state-msg { padding: 60px 24px; text-align: center; color: var(--text-muted); }
 .state-err  { color: var(--danger); }
@@ -1598,6 +1610,14 @@ body.prog-modal-open .workspace {
   border: var(--border-premium); border-radius: var(--radius); padding: 9px 11px;
   box-shadow: var(--shadow);
 }
+.sb-status-summary-label {
+  grid-column: 1 / -1; font-size: .68rem; font-weight: 700; color: var(--text-muted);
+  text-transform: none; letter-spacing: .01em; margin-bottom: 2px;
+}
+.sb-status-summary-draft {
+  border: 1px dashed var(--accent, #4c8dff); background: var(--surface2);
+}
+.sb-status-summary-draft .sb-status-summary-label { color: var(--accent, #4c8dff); }
 
 /* ── Degree-progress summary block (PART A) ─────────────────────────────── */
 .degree-progress {
@@ -1918,6 +1938,35 @@ function _formatSemIdHe(id) {
   if (!m) return id;
   const YEAR_HE = { 1:'א', 2:'ב', 3:'ג', 4:'ד', 5:'ה', 6:'ו' };
   return `שנה ${YEAR_HE[parseInt(m[1])] || m[1]}׳ — סמסטר ${m[2].toLowerCase() === 'a' ? 'א' : 'ב'}׳`;
+}
+
+/**
+ * Shared partial-plan contract — every planner path that can produce a
+ * below-target draft (deterministic-replacement rescue, activateTentativeDraft/
+ * buildPlanningFallback, the LLM-accepted path, any repair/fill-to-target
+ * fallback) must use the SAME framing so a below-target plan never reads like
+ * a successful completed one. Returns null when the plan already reaches
+ * target (the caller keeps its normal complete-plan wording/apply label).
+ *
+ * `reached`, when explicitly passed (true/false), is the AUTHORITATIVE
+ * completeness signal and overrides the hours comparison — some callers (the
+ * deterministic-replacement rescue's getDegreeHoursStatusLocal) also factor in
+ * category-requirement satisfaction, not just raw hours, so totalHours >=
+ * targetHours alone is not always sufficient to call a plan complete. When
+ * omitted, falls back to the plain hours comparison (the only signal callers
+ * like activateTentativeDraft/computeDegreeProgress have).
+ */
+function buildPartialPlanContract(totalHours, targetHours, reached) {
+  if (totalHours == null || targetHours == null) return null;
+  const isReached = (typeof reached === 'boolean') ? reached : (totalHours >= targetHours);
+  if (isReached) return null;
+  const missing = Math.max(0, Math.round(targetHours - totalHours));
+  return {
+    leadLine: `לא הצלחתי להגיע ל-${targetHours} ש״ש תחת האילוצים הנוכחיים. חסרות ${missing} ש״ש (הגעתי ל-${Math.round(totalHours)}/${targetHours} ש״ש).`,
+    partialTagLine: 'זוהי טיוטה חלקית — דורשת החלטת משתמש, ואינה מערכת תקינה ומושלמת לתואר.',
+    applyLabel: 'החל טיוטה חלקית (לא מלאה)',
+    missing,
+  };
 }
 
 /**
@@ -2379,7 +2428,14 @@ function buildPlanContext() {
   const category_requirements = (programRequirements?.categories || []).map(cat => {
     const placed = _categoryPlacedCount(cat);
     const candidates = (cat.course_ids || [])
-      .filter(cid => courseMap[cid] && !placedIds.has(cid) && !excludedFromProposalIds.has(cid))
+      // Data-quality gate — a course with no real name (catalog import gap)
+      // must never be offered to the LLM as a legal candidate. It cannot be
+      // displayed/described, so "pick it to fill the category" is never a
+      // valid instruction. See buildDeterministicReplacementPlan's matching
+      // defense-in-depth sweep for the same rule on the deterministic side.
+      .filter(cid => courseMap[cid] && isCourseRenderable(courseMap[cid])
+        && classifyCourseSchedulability(courseMap[cid]) !== 'unschedulable_missing_data'
+        && !placedIds.has(cid) && !excludedFromProposalIds.has(cid))
       .map(cid => {
         const c = courseMap[cid];
         const legal = getLegalSemestersLocal(c);
@@ -2425,7 +2481,8 @@ function buildPlanContext() {
     name: 'קורסי שער רוח',
     required_credits: shaarRuachRequiredCredits,
     candidates: SHAAR_RUACH_COURSES
-      .filter(c => !placedIds.has(c.course_id) && !excludedFromProposalIds.has(c.course_id))
+      // Same data-quality gate as category_requirements.candidates above.
+      .filter(c => !!c.name_he && !placedIds.has(c.course_id) && !excludedFromProposalIds.has(c.course_id))
       .map(c => {
         const cm = courseMap[c.course_id] || {};
         return {
@@ -3431,9 +3488,17 @@ function renderChips() {
         ? mkChip('בעיות דרישות', invalidCt, true)
         : mkChip('תוכנית תקינה', '✓', false))
     : '';
+  // "מוצבים" always reflects the committed board (allPlacedIds() — unchanged).
+  // While a draft is pending, the board itself overlays the draft's (likely
+  // different) course count, so add a labeled, draft-specific chip rather than
+  // silently leaving "מוצבים" looking stale next to the previewed board.
+  const draftPlacedChip = state.proposalDraft
+    ? mkChip('מוצבים (טיוטה)', new Set(Object.values(state.proposalDraft.semesters).flat()).size, false)
+    : '';
   document.getElementById('hdr-chips').innerHTML = [
     mkChip('סה״כ', Object.keys(courseMap).length, false),
     mkChip('מוצבים', placed, false),
+    draftPlacedChip,
     mkChip('במאגר', state.repo.length, false),
     mkChip('חסרות שעות', noHours, noHours > 0),
     planChip,
@@ -3686,7 +3751,13 @@ function buildSidebarStatusSummary(opts) {
   const planContext = buildPlanContext();
   const analysis = buildCompletionAnalysisLocal(planContext);
   const ctx = buildPlanValidationInputs();
-  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: state.semesters[s.id] || [] }));
+  // opts.semestersOverride (e.g. state.proposalDraft.semesters) swaps the board
+  // source for EVERY number below (hours/peak/overloaded/illegal), not just
+  // placedIds — hours flow through getDegreeHoursStatusLocal -> computeDegreeProgress,
+  // the same canonical pipeline renderBoard()'s draft banner already uses, so a
+  // draft-totals caller can never disagree with the board overlay.
+  const semSource = opts.semestersOverride || state.semesters;
+  const semObjs = SEMESTERS.map(s => ({ semester_id: s.id, course_ids: semSource[s.id] || [] }));
   // Mandatory/category satisfaction is normally computed off the committed board
   // (matches the live sidebar). Callers debugging an active, uncommitted draft
   // (debugCurrentPlan) can override which course ids count as "placed" so the
@@ -4173,9 +4244,19 @@ function sidebarQuickActionPrefs() {
     preferred_categories:    _aiPlanLastPreferences?.preferred_categories ?? [],
     wanted_course_ids:       wanted,
     unwanted_course_ids:     unwanted,
-    // Panel "avoid/exclude" is a HARD exclusion — include every strongUnwanted id,
-    // not only those also marked unwanted (the panel sets the strong list directly).
-    strongly_avoided_course_ids: [...new Set([...(_aiPickerState.strongUnwanted || []), ...strongUnwanted])],
+    // Panel "avoid/exclude" chips are HARD exclusions for generated optional/
+    // elective courses — adding a red chip is the user's explicit "do not
+    // schedule this". The chip's click handler (setupCoursePicker) only fills
+    // `unwanted`, so the hard list must derive from the FULL avoid list, not
+    // just the 🚫-toggled `strongUnwanted` subset (the previous bug: a plain
+    // avoid chip was a soft scoring penalty the planner/summary could ignore,
+    // so a hard-avoided course could still be scheduled and reported as placed).
+    // A chip deliberately downgraded via the blocked-build "אפשר בחירה פחות
+    // קשורה" flow lives in `softUnwanted` and intentionally stays soft.
+    strongly_avoided_course_ids: [...new Set([
+      ...(_aiPickerState.strongUnwanted || []),
+      ...unwanted.filter(cid => !(_aiPickerState.softUnwanted || []).includes(cid)),
+    ])],
     soft_avoided_course_ids: (_aiPickerState.softUnwanted || []),
     // Panel שער-רוח final-assessment preference (e.g. prefer_no_exam) — feeds ranking.
     shaarRuachAssessmentPref: _aiPickerState.shaarRuachAssessmentPref ?? _aiPlanLastPreferences?.shaarRuachAssessmentPref ?? null,
@@ -4217,15 +4298,37 @@ function renderAiTab() {
 
   const legalOk = s.illegal_placements.length === 0 && !_hasPrereqOrderViolationLocal();
 
+  // A pending AI draft overlays the board (renderBoard()/activeSemestersMap())
+  // with a DIFFERENT set of placed courses than the committed board these
+  // headline numbers are computed from. Without a second, explicitly labeled
+  // row here, the right panel silently shows stale committed-board totals next
+  // to a board preview showing the draft — the exact ambiguity reported in the
+  // follow-up bug. Keep the existing row's totals/behavior unchanged (Option B,
+  // least invasive) and add a separate, clearly labeled draft row only when a
+  // draft is actually pending.
+  const draftS = state.proposalDraft
+    ? buildSidebarStatusSummary({ semestersOverride: state.proposalDraft.semesters })
+    : null;
+  const draftLegalOk = draftS ? draftS.illegal_placements.length === 0 : null;
+
   panel.innerHTML = `
     <div class="sb-head"><div class="sb-head-title">עוזר AI</div></div>
     <div class="sb-body" style="display:flex;flex-direction:column;gap:10px">
       <div class="sb-status-summary sb-status-summary-compact">
+        ${draftS ? '<div class="sb-status-summary-label">לוח נוכחי (מאושר)</div>' : ''}
         ${mkChip('חוקיות', legalOk ? 'תקין' : 'בעיות', !legalOk)}
         ${mkChip('שעות', `${s.hours.total_after_plan}/${s.hours.degree_required_hours}`, false)}
         ${s.general ? mkChip('שער רוח', `${s.general.placed}/${s.general.required}`, !s.general.satisfied) : ''}
         ${mkChip('עומס', `${s.peak} ש״ש`, false)}
       </div>
+      ${draftS ? `
+      <div class="sb-status-summary sb-status-summary-compact sb-status-summary-draft">
+        <div class="sb-status-summary-label">🔶 טיוטה לפני החלה (לא מאושרת)</div>
+        ${mkChip('חוקיות', draftLegalOk ? 'תקין' : 'בעיות', !draftLegalOk)}
+        ${mkChip('שעות', `${draftS.hours.total_after_plan}/${draftS.hours.degree_required_hours}`, false)}
+        ${draftS.general ? mkChip('שער רוח', `${draftS.general.placed}/${draftS.general.required}`, !draftS.general.satisfied) : ''}
+        ${mkChip('עומס', `${draftS.peak} ש״ש`, false)}
+      </div>` : ''}
 
       <div id="ai-build-status" class="ai-build-status" hidden></div>
 
@@ -4301,6 +4404,13 @@ function renderAiTab() {
       <div id="ai-proposal-card"></div>
       <div id="ai-build-version" style="font-size:10px;color:#aaa;text-align:right;padding:2px 8px 4px;user-select:text" title="גרסת הפלנר — לשימוש לאימות">Build: ${PLANNER_BUILD}</div>
     </div>`;
+
+  // Step 9 — read-only planner trace panel, appended only when the debug flag is
+  // on. Additive; does not affect the apply/reject draft flow above.
+  if (isPlannerDebugEnabled()) {
+    const __tracePanel = renderPlannerTracePanel();
+    if (__tracePanel) panel.insertAdjacentHTML('beforeend', __tracePanel);
+  }
 
   // PART E — one-click repair buttons (diagnostics-driven, populate proposalDraft).
   panel.querySelectorAll('.repair-btn[data-repair]').forEach(btn => {
@@ -4735,6 +4845,66 @@ function _proposalPlacementMap(proposal) {
   }
   return map;
 }
+
+/**
+ * PURE scannable-summary formatter (Part B). Turns already-computed summary parts
+ * into the required structure — a status line, then ≤4-bullet sections
+ * (מה השתנה / למה זה עדיין לא מושלם / החלטות שנדרשות ממך) and a compact
+ * פרטים נוספים tail. Every section is de-duplicated and hard-capped at 4 bullets,
+ * and empty sections are omitted, so the output can never regress to a wall of
+ * repeated text. The chat renderer is textContent-only, so this returns plain
+ * text (no real <details> collapse is possible); the tail is kept short instead.
+ *
+ * parts: {
+ *   status: 'full'|'partial'|'none', total, required, missing,
+ *   changed: { added:[names], removed:[names], moved:[{name,to}] },
+ *   notPerfect: [string], decisions: [string], details: [string],
+ * }
+ */
+// Half weekly-hours are meaningful (courses commonly carry .5 ש"ש) — round only
+// to kill float noise (e.g. 186.49999999) and never to a whole integer, so
+// 186.5 always renders as "186.5", never "187" or "186.50".
+function _fmtHoursLocal(n) {
+  if (n == null || !Number.isFinite(n)) return String(n);
+  return String(Math.round(n * 10) / 10);
+}
+function buildConcisePlanSummaryLines(parts) {
+  parts = parts || {};
+  const uniq = arr => [...new Set((arr || []).filter(Boolean))];
+  const cap4 = arr => uniq(arr).slice(0, 4);
+  const total = _fmtHoursLocal(parts.total), required = _fmtHoursLocal(parts.required), missing = _fmtHoursLocal(parts.missing);
+  const changed = parts.changed || {};
+
+  let statusLine;
+  if (parts.status === 'full') statusLine = `✅ מערכת תקינה: ${total}/${required} ש״ש`;
+  else if (parts.status === 'full_needs_approval') statusLine = `⚠️ טיוטה מלאה אך דורשת אישור: ${total}/${required} ש״ש`;
+  else if (parts.status === 'partial') statusLine = `⚠️ טיוטה חלקית: ${total}/${required} ש״ש — חסרות ${missing} ש״ש`;
+  else statusLine = '❌ אין מערכת חוקית תחת האילוצים הנוכחיים';
+
+  const out = [statusLine];
+  const addSection = (title, bullets) => {
+    const b = cap4(bullets);
+    if (!b.length) return;
+    out.push('', title);
+    for (const x of b) out.push('• ' + x);
+  };
+
+  // 1. מה השתנה — added / removed / moved, each collapsed to one comma-joined bullet.
+  const fmtList = (arr) => `${uniq(arr).slice(0, 4).join(', ')}${uniq(arr).length > 4 ? ` ועוד ${uniq(arr).length - 4}` : ''}`;
+  const changeBullets = [];
+  if ((changed.added || []).length)   changeBullets.push(`נוספו: ${fmtList(changed.added)}`);
+  if ((changed.removed || []).length) changeBullets.push(`הוסרו: ${fmtList(changed.removed)}`);
+  for (const m of (changed.moved || []).slice(0, 2)) changeBullets.push(`${m.name} עבר ל${m.to}`);
+  addSection('מה השתנה', changeBullets);
+
+  addSection('למה זה עדיין לא מושלם', parts.notPerfect);
+  addSection('החלטות שנדרשות ממך', parts.decisions);
+
+  const details = uniq(parts.details).slice(0, 3);
+  if (details.length) { out.push('', 'פרטים נוספים'); for (const d of details) out.push('• ' + d); }
+
+  return out.join('\n');
+}
 function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   const before = _proposalPlacementMap(prevProposal);
   const after = _proposalPlacementMap(newProposal);
@@ -4749,36 +4919,15 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     if (!(cid in after)) removed.push(cid);
   }
 
-  const lines = [];
   const lbl = (cid) => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
   const semLbl = _formatSemIdHe;
-  const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
-
-  if (added.length) lines.push(`נוספו: ${cap(added, 4)}.`);
-  if (removed.length) lines.push(`הוסרו: ${cap(removed, 4)}.`);
-  if (movedC.length) {
-    lines.push(...movedC.slice(0, 4).map(m => `${lbl(m.cid)} עבר ל${semLbl(m.to)}.`));
-    if (movedC.length > 4) lines.push(`ועוד ${movedC.length - 4} העברות.`);
-  }
-
-  // Honored constraints derived from prefs (echo only the user-set ones).
-  const honored = [];
-  const loadTargets = (prefs && prefs.semester_load_targets) || {};
-  for (const [sid, mode] of Object.entries(loadTargets)) {
-    if (mode === 'reduce') honored.push(`הופחת העומס ב${semLbl(sid)}`);
-  }
-  if (prefs && prefs.requested_moves && Object.keys(prefs.requested_moves).length && movedC.length) {
-    // already reflected in the moved lines above
-  }
-  if (honored.length) lines.push(`התחשבתי ב: ${honored.join('; ')}.`);
 
   // Remaining blockers (grouped) from the latest validation, if any.
   const v = _aiPlanLastValidation;
-  const blockerLines = [
+  const uniqBlockers = [...new Set([
     ...(((v && v.finalPlan && v.finalPlan.blockers) || []).map(b => b.message_he).filter(Boolean)),
     ...(((v && v.completeness && v.completeness.reasons) || [])),
-  ].filter(Boolean);
-  const uniqBlockers = [...new Set(blockerLines)];
+  ].filter(Boolean))];
 
   // When no courses were actually added/removed/moved relative to the committed
   // board, skip the success opener — claiming success contradicts an empty diff.
@@ -4791,16 +4940,79 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
     return;
   }
 
-  if (uniqBlockers.length) {
-    lines.push(`נותרו חסמים: ${uniqBlockers.slice(0, 3).join('; ')}${uniqBlockers.length > 3 ? ' …' : ''}.`);
+  // Hours total/required/missing (NOT the final status — a plan can be hours-
+  // complete and still need a ⚠️ if it carries unresolved warnings; see below).
+  let _total = null, _required = DEGREE_REQUIRED_HOURS, _missing = 0;
+  try {
+    const prog = computeDegreeProgress({}, state, { semesters: proposalSemestersToMap(newProposal.semesters) });
+    // Preserve .5 — degree hours are meaningful at half-hour granularity and must
+    // match the panel/board exactly (round only to kill float noise, never to int).
+    _total = Math.round(prog.total_after * 10) / 10;
+    _required = Math.round(prog.required * 10) / 10;
+    _missing = Math.max(0, Math.round((_required - _total) * 10) / 10);
+  } catch (_) {}
+  const _hoursSatisfied = (_total != null) && (_total >= _required);
+
+  // Classify the planner's own warnings_he into the structured sections, collapsing
+  // duplicates: the overload is stated ONCE regardless of which Hebrew form is used
+  // (עומס the noun, עמוס the adjective — both must be caught) and regardless of
+  // SOURCE (a proposal warning vs. a validateFinalPlan blocker about the same
+  // semester) — the FINAL REPAIR RESULT (warnings_he, computed from the actual
+  // repairPlanLoad/buildUserMaxOverloadNoteLocal pass) always wins over a generic/
+  // stale blocker message, per the requirement that conflicting overload text must
+  // converge on the concrete final-repair-result line.
+  const _OVERLOAD_RE = /עומס|עמוס|מעל המקסימום/;
+  const _finalWarnings = [...new Set((newProposal && newProposal.warnings_he)
+    || (typeof _aiPlanLastProposal !== 'undefined' && _aiPlanLastProposal && _aiPlanLastProposal.warnings_he) || [])];
+  const notPerfect = [], decisions = [], details = [];
+  let _shaarUnknownCount = 0, _overloadSeen = false, _hardAvoidSeen = false;
+  const _userMax = (prefs && Number.isFinite(prefs.max_weekly_hours)) ? prefs.max_weekly_hours : null;
+  const _hardCap = (typeof HARD_LOAD_CAP !== 'undefined') ? HARD_LOAD_CAP : 26;
+  for (const w of _finalWarnings) {
+    if (/מידע חסר|סוג סיום לא ידוע|בחינה סופית/.test(w)) { _shaarUnknownCount++; continue; }
+    if (_OVERLOAD_RE.test(w)) {
+      if (!_overloadSeen) { notPerfect.push(w); _overloadSeen = true; } // one overload line only
+      continue;
+    }
+    if (/להימנע|החרגה|להחריג/.test(w)) {
+      if (!_hardAvoidSeen) { notPerfect.push(w); _hardAvoidSeen = true; decisions.push('להסיר אילוץ הימנעות אחד מהעדפות התכנון כדי לשבץ קורס שביקשת'); }
+      continue;
+    }
+    details.push(w);
   }
+  if (_shaarUnknownCount > 0) {
+    notPerfect.push(`${_shaarUnknownCount} קורסי שער רוח עם סוג סיום לא ידוע — דורשים אישור ידני לפני שמתקיימת העדפת "ללא מבחן".`);
+    decisions.push('לאשר קורס שער רוח אחד עם סוג סיום לא ידוע, או לבחור חלופה עם נתונים מלאים');
+  }
+  // Validation blockers (prereq / offering / category) — already-Hebrew. An
+  // overload-shaped blocker is SKIPPED here when warnings_he already produced the
+  // (more concrete) overload line above, so the same semester is never named twice;
+  // it is only used as a fallback when warnings_he had no overload line at all.
+  for (const b of uniqBlockers.slice(0, 2)) {
+    if (_OVERLOAD_RE.test(b)) { if (!_overloadSeen) { notPerfect.push(b); _overloadSeen = true; } continue; }
+    notPerfect.push(b);
+  }
+  // Actionable options driven by the actual gap.
+  if (_overloadSeen && _userMax != null && _userMax < _hardCap) decisions.push(`להעלות את מקסימום העומס ל-${_hardCap} ש״ש (החריגה היא בקורסי חובה בלבד)`);
+  if (!_hoursSatisfied) decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
 
-  // Rotate the opening phrase so repeated rebuilds differ visibly.
-  const openers = ['עדכנתי את המערכת:', 'הנה מה שהשתנה:', 'סיכום השינויים:', 'בוצע — לסיכום:'];
-  const opener = openers[_planChangeSummaryNonce % openers.length];
+  // Final status — ✅ requires hours satisfied AND no unresolved warning that needs
+  // user approval or violates a stated preference (unknown שער-רוח exam type, an
+  // over-cap semester, or an open hard-avoid conflict). Hours-complete-but-unresolved
+  // is "מלאה אך דורשת אישור" — never plain ✅.
+  const _hasUnresolvedWarnings = _shaarUnknownCount > 0 || _overloadSeen || _hardAvoidSeen;
+  const status = !_hoursSatisfied ? 'partial' : (_hasUnresolvedWarnings ? 'full_needs_approval' : 'full');
+
+  postStatusMessage(buildConcisePlanSummaryLines({
+    status, total: _total, required: _required, missing: _missing,
+    changed: {
+      added: added.map(lbl),
+      removed: removed.map(lbl),
+      moved: movedC.map(m => ({ name: lbl(m.cid), to: semLbl(m.to) })),
+    },
+    notPerfect, decisions, details,
+  }));
   _planChangeSummaryNonce++;
-
-  postStatusMessage([opener, ...lines].join('\n'));
 }
 
 /**
@@ -5824,6 +6036,39 @@ function _planContextConsistencyErrorLocal() {
 }
 
 /**
+ * Workload-cap caveat — semesters in the ACTIVE draft whose weekly load exceeds
+ * the user's SELECTED max (prefs.max_weekly_hours), each classified by whether
+ * the user can act on it (movable electives present) or not (fixed-mandatory
+ * load alone already exceeds the cap). Shared by formatFull185SummaryLocal (the
+ * rebuild/בנה-מחדש path) AND activateTentativeDraft (the LLM success path) so a
+ * plan over the user's cap can never be presented as a clean full success on
+ * either path. Returns { userMax, overCapSems:[{sid,hours,hasMovable}], notes:[] }.
+ */
+function buildUserMaxOverloadNoteLocal() {
+  const userMax = (typeof _aiPlanLastPreferences === 'object' && _aiPlanLastPreferences
+    && Number.isFinite(_aiPlanLastPreferences.max_weekly_hours)) ? _aiPlanLastPreferences.max_weekly_hours : null;
+  const overCapSems = [];
+  const notes = [];
+  if (userMax != null && typeof state !== 'undefined' && state.proposalDraft && state.proposalDraft.semesters) {
+    for (const [sid, ids] of Object.entries(state.proposalDraft.semesters)) {
+      const h = (ids || []).reduce((t, cid) => t + (hoursForCourseId(cid) || 0), 0);
+      if (h > userMax + 0.01) {
+        const movable = (ids || []).filter(cid => {
+          const c = courseMap[cid];
+          return c && c.course_type !== 'mandatory' && !c.is_mandatory;
+        });
+        const hours = Math.round(h * 10) / 10;
+        overCapSems.push({ sid, hours, hasMovable: movable.length > 0 });
+        notes.push(movable.length
+          ? `ב${_formatSemIdHe(sid)} יש ${hours} ש״ש — מעל המקסימום שביקשת (${userMax} ש״ש). אפשר להסיר או להזיז קורס בחירה כדי לרדת לעומס המבוקש.`
+          : `ב${_formatSemIdHe(sid)} יש ${hours} ש״ש — מעל המקסימום שביקשת (${userMax} ש״ש), אך החריגה נובעת מקורסי חובה קבועים בלבד שלא ניתן להסיר. לא ניתן לרדת ל-${userMax} ש״ש בלי לדחות קורסי חובה.`);
+      }
+    }
+  }
+  return { userMax, overCapSems, notes };
+}
+
+/**
  * Part F — CONCISE build summary: status line + per-focus counts + brief blockers +
  * exclusion / שער-רוח notes. No exhaustive per-course list (that is shown only when
  * the user asks "פתח פירוט מלא" / "למה כל קורס נבחר?", via formatFull185DetailLocal).
@@ -5836,9 +6081,23 @@ function formatFull185SummaryLocal(plan) {
   const required = ds.required;
   if (ds.status === 'illegal_blocked') return 'בטיוטה יש בעיות חוקיות — תקן או בנה מחדש.';
 
+  // Workload-cap integrity — a plan that exceeds the user's SELECTED max weekly
+  // load is not a clean full success even at full 185h. The shared helper reads
+  // the over-cap semesters from the FINAL draft so neither the headline nor the
+  // notes can over-claim "מערכת חוקית מלאה" while a semester sits above the
+  // requested cap. (computeDraftStatusLocal intentionally stays hours-only — see
+  // its tests; the user-cap caveat lives here, in the summary layer.)
+  const _capInfo = buildUserMaxOverloadNoteLocal();
+  const _overCapSems = _capInfo.overCapSems;
+
   const lines = [];
-  if (ds.status === 'legal_full') lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
-  else lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
+  if (ds.status === 'legal_full' && !_overCapSems.length) {
+    lines.push(`בניתי מערכת חוקית מלאה: ${ds.total}/${required} ש״ש.`);
+  } else if (ds.status === 'legal_full' && _overCapSems.length) {
+    lines.push(`⚠️ הגעתי לכל ${required} ש״ש (${ds.total}/${required}), אבל המערכת חורגת מהעומס המקסימלי שביקשת (${_capInfo.userMax} ש״ש) — זו אינה תוכנית מלאה ונקייה: היא דורשת ויתור על מגבלת העומס שבחרת.`);
+  } else {
+    lines.push(`בניתי טיוטה חוקית חלקית: ${ds.total}/${required} ש״ש — חסרות ${ds.missing} ש״ש.`);
+  }
 
   // Completion-state guard — when the plan is below the degree target, state plainly
   // that this is a conservative / grade-safe DRAFT and NOT a complete 185-ש"ש degree
@@ -5900,17 +6159,57 @@ function formatFull185SummaryLocal(plan) {
   // "שים לב" notes: explicit user exclusions + שער-רוח assessment note.
   const profile = (plan && plan.userIntentProfile) || _aiUserIntentProfile || {};
   const notes = [];
+  // Workload-cap notes — name each over-cap semester and whether the user can act
+  // on it (movable electives present) or not (fixed-mandatory load alone exceeds
+  // the cap, so it cannot drop without deferring required courses). Pushed first
+  // so the cap caveat is never truncated by the notes.slice(0, 6) cap below.
+  for (const n of _capInfo.notes) notes.push(n);
+  // Summary integrity: a hard-exclude request can be honored for an elective but
+  // CANNOT remove a locked/fixed-mandatory course already on the board (mandatory
+  // placement always wins — see validateFinalPlan's mandatory check). Check the
+  // ACTUAL final draft before claiming "not placed", so this note never contradicts
+  // the real board the user is looking at.
+  const _draftPlacedForNotes = new Set(((plan && plan.proposal && plan.proposal.semesters) || [])
+    .flatMap(s => s.course_ids || []));
+  // Contradictory-request invariant: when must-include and hard-exclude name the
+  // SAME course (e.g. panel hard-avoid + a later chat "include it"), hard-avoid
+  // wins (see rebuildDraftFromProfileLocal/repair paths), but that resolution was
+  // previously silent — visible only in proposal.warnings_he, which this summary
+  // never read. Surface the conflict explicitly so the user knows WHY their
+  // explicit chat request was not honored.
+  const _hardExcludeSet = new Set(profile.hardExcludeCourseIds || []);
+  for (const cid of (profile.mustIncludeCourseIds || [])) {
+    if (_hardExcludeSet.has(cid)) {
+      const nm = (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
+      notes.push(`${nm} מבוקש גם לכלול וגם להחריג (סתירה) — החרגה חזקה גוברת, ולכן לא שובץ. הסר אותו מרשימת ההימנעות כדי לכלול אותו.`);
+    }
+  }
   for (const cid of (profile.hardExcludeCourseIds || [])) {
     const nm = (typeof courseMap !== 'undefined' && courseMap[cid] && courseMap[cid].name_he) || cid;
-    notes.push(`${nm} לא שובצה כי ביקשת לא לשבץ אותה.`);
+    if (_hardExcludeSet.has(cid) && (profile.mustIncludeCourseIds || []).includes(cid)) continue; // already covered by the conflict note above
+    if (_draftPlacedForNotes.has(cid)) {
+      notes.push(`${nm} נשארה בתוכנית למרות בקשתך — היא קורס חובה קבוע שלא ניתן להחריג.`);
+    } else {
+      notes.push(`${nm} לא שובצה כי ביקשת לא לשבץ אותה.`);
+    }
   }
   if (profile.shaarRuachAssessmentPref === 'prefer_no_exam') {
-    const usedUnknown = ((plan && plan.completionAdded) || []).some(a => {
-      const c = (typeof courseMap !== 'undefined') ? courseMap[a.course_id] : null;
-      return c && _isShaarRuachLocal(c) && _hasFinalExamLocal(c) == null;
-    });
-    notes.push(usedUnknown
-      ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה.'
+    // Invariant: unknown exam data is not positive evidence for "no final exam".
+    // Check EVERY שער-רוח course in the FINAL draft (not just the completion-fill
+    // step) — a course can reach the board via must-include, mandatory category
+    // fill, or the initial seed, and an unknown-assessment course placed through
+    // any of those paths must still be flagged, never reported as a clean match.
+    const shaarRuachPlacedIds = ((plan && plan.proposal && plan.proposal.semesters) || [])
+      .flatMap(s => s.course_ids || [])
+      .filter(cid => { const c = courseMap[cid]; return c && _isShaarRuachLocal(c); });
+    const usedUnknown = shaarRuachPlacedIds.some(cid => _hasFinalExamLocal(courseMap[cid]) == null);
+    // Summary integrity: don't claim "selected by your no-exam preference" when
+    // no שער-רוח course was actually placed — that would imply the preference was
+    // satisfied when nothing was added.
+    notes.push(!shaarRuachPlacedIds.length
+      ? 'לא שובצו קורסי שער רוח בטיוטה זו, כך שהעדפת "ללא מבחן" טרם הוחלה — בחר/י קורסי שער רוח כדי להחילה.'
+      : usedUnknown
+      ? 'לא נמצאו מספיק קורסי שער רוח ללא מבחן עם נתונים מלאים, לכן הוצעו גם קורסים עם מטלת סיום לא ידועה (דורשים אישור ידני לפני הגשה).'
       : 'קורסי שער רוח נבחרו לפי העדפה ללא מבחן ככל שהיה מידע זמין.');
   }
   if (profile.gradeTarget != null) notes.push(`העדפתי קורסים עם סיכון ציונים נמוך/בינוני כדי לשמור על יעד ממוצע ${profile.gradeTarget}.`);
@@ -6547,16 +6846,32 @@ function requestPlanProposalFromDraft(prefs, actionType) {
 }
 
 function renderBoard() {
+  _namelessOnBoardIds = new Set();
   const emptyHint = allPlacedIds().size === 0
     ? `<div class="board-empty-hint">עדיין לא שובצו קורסים. גרור קורסים מהמאגר או השתמש בעתיד בעוזר AI לבניית תוכנית.</div>`
     : '';
   // PART E — banner shown above the board while an AI draft overlay is active.
+  // This is the single canonical apply surface for ANY active draft (chat-chip
+  // labels mirror it but this banner is what's always visible). A below-target
+  // draft must use the SAME partial-plan contract as the chat messages so the
+  // apply action never looks like committing a normal valid final plan.
   const draftDiff = computeDraftDiff();
+  let _boardDraftPartial = null;
+  try {
+    if (draftDiff && state.proposalDraft && typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, { semesters: state.proposalDraft.semesters });
+      _boardDraftPartial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+    }
+  } catch (_) { /* progress model unavailable — fall back to the normal label */ }
+  const _draftBannerLabel = _boardDraftPartial
+    ? 'טיוטת AI חלקית פעילה — אינה משלימה את דרישת השעות לתואר. ערוך על הלוח ואז אשר או דחה'
+    : 'טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה';
+  const _draftApplyLabel = _boardDraftPartial ? _boardDraftPartial.applyLabel : 'החל טיוטה';
   const draftBanner = draftDiff
     ? `<div class="board-draft-banner">
-        <span>טיוטת AI פעילה — ערוך על הלוח ואז אשר או דחה</span>
+        <span>${esc(_draftBannerLabel)}</span>
         <div class="board-draft-banner-actions">
-          <button class="btn btn-primary btn-sm" id="board-draft-apply">החל טיוטה</button>
+          <button class="btn btn-primary btn-sm" id="board-draft-apply">${esc(_draftApplyLabel)}</button>
           <button class="btn btn-sm" id="board-draft-reject">דחה</button>
           <button class="btn btn-sm" id="board-draft-back-ai">חזור לעוזר AI</button>
         </div>
@@ -6566,7 +6881,7 @@ function renderBoard() {
     { label: "שנה ג׳", sems: SEMESTERS.slice(0, 2) },
     { label: "שנה ד׳", sems: SEMESTERS.slice(2, 4) },
   ];
-  document.getElementById('board').innerHTML = emptyHint + draftBanner + yearGroups.map(yg => {
+  const yearGroupsHtml = yearGroups.map(yg => {
     // Issue 1 — annual courses for this year render once as a unified spanning
     // block INSIDE the course-card area, BELOW the semester headers, spanning
     // both semester columns (grid-column: 1 / -1). The annual band appears as
@@ -6583,6 +6898,17 @@ function renderBoard() {
       </div>
     </div>`;
   }).join('');
+
+  // Data-quality audit — _namelessOnBoardIds is populated as a side effect of
+  // the semZoneHtml() calls above, so it must be read AFTER yearGroupsHtml is
+  // built. A nameless committed-board course is never shown as a normal card
+  // (see semZoneHtml); this banner is the only place it's surfaced, and it is
+  // explicitly NOT a draggable/schedulable element — purely informational.
+  const dataAuditBanner = _namelessOnBoardIds.size
+    ? `<div class="board-data-audit-banner">⚠ נמצאו קורסים עם מידע חסר שאינם זמינים לשיבוץ עד השלמת היבוא (${_namelessOnBoardIds.size}): ${[..._namelessOnBoardIds].map(esc).join(', ')}</div>`
+    : '';
+
+  document.getElementById('board').innerHTML = emptyHint + dataAuditBanner + draftBanner + yearGroupsHtml;
 
   if (draftDiff) {
     document.getElementById('board-draft-apply').addEventListener('click', applyProposalDraft);
@@ -7770,6 +8096,12 @@ function semHeaderHtml(sem) {
   </div>`;
 }
 
+// Data-quality audit accumulator — populated by semZoneHtml during a
+// renderBoard() pass with any committed-board course that has no real title
+// (catalog import gap). Reset at the top of renderBoard() so it always
+// reflects the most recent render, never stale data from a previous pass.
+let _namelessOnBoardIds = new Set();
+
 /**
  * Issue 1 — render just the semester zone (courses) without the header.
  * Used to place course cards in a separate grid area below the annual band.
@@ -7780,7 +8112,17 @@ function semZoneHtml(sem, draftDiff) {
   // Issue 1 — annual courses are NOT rendered as per-column cards; they render
   // once as a unified spanning block INSIDE the course-card area, before the
   // normal semester courses (see annualBandHtml / renderBoard). Exclude them.
+  // Data-quality gate — a course with no real title (catalog import gap) must
+  // never render as a normal board card, even if it's somehow already placed
+  // on the committed board. renderBoard() surfaces it as a data-audit warning
+  // instead (collected into _namelessOnBoardIds, reset at the top of each
+  // renderBoard() pass).
   let cards = ids.filter(id => !isAnnualCourse(courseMap[id]))
+    .filter(id => {
+      const c = courseMap[id];
+      if (c && !isCourseRenderable(c)) { _namelessOnBoardIds.add(id); return false; }
+      return true;
+    })
     .map(id => cardHtml(courseMap[id], true, draftDiff)).join('');
   // PART B — courses the draft removed from this semester: shown faded with a "יוסר" badge.
   if (draftDiff) {
@@ -9041,6 +9383,122 @@ function classifyCourseSchedulability(c) {
   return 'unschedulable_missing_data';
 }
 
+/**
+ * Phase 6 data-quality / trust-layer audit — read-only, no side effects. Walks
+ * the FULL planner course universe (courseMap — already the union of board-
+ * placed courses, program_repository_courses, and audit/PDF-program data per
+ * init() — plus the years-1/2 fixed-curriculum constant, which courseMap never
+ * holds) and counts the data gaps the planner's trust semantics depend on:
+ * missing semester/offering data, missing assessment data (finalExam unknown),
+ * missing prerequisite data, annual-course span counts, courses with no legal
+ * placement at all, and inconsistent/missing hours. Also cross-checks the
+ * COMMITTED BOARD directly for a course occupying 2+ semester slots in the
+ * same year-group without an is_annual/placement_policy flag — catches a
+ * DUPLICATE placement with missing metadata. It cannot catch the inverse
+ * failure (a course missing ONE of its required slots, with no duplicate to
+ * flag) — that needs an external "this should be annual" source, which
+ * doesn't exist in the board data itself. Concretely: 0542-3792 in the
+ * production board backup carries placement_policy:'flexible', no
+ * spans_semesters, and the backup's raw board lists it in only ONE of its two
+ * real semester slots — a genuine data gap in that snapshot, not something
+ * this audit (or the planner) can detect from the backup alone. See
+ * tests/ui/catalog_reliability_audit.test.js for both cases. Used for
+ * debugging and reporting — never called from the planning pipeline itself.
+ */
+function auditCourseCatalogForPlannerReliability() {
+  const courseMapCourses = (typeof courseMap !== 'undefined') ? Object.values(courseMap) : [];
+  // Years-1/2 fixed curriculum is never in courseMap (year-3/4 board only) but is
+  // still part of the planner's course universe (degree-hour accounting reads it).
+  // It has no offering/assessment/prerequisite data by design (fixed single semester,
+  // foundational, always satisfied) — reported as its own coverage count, not run
+  // through the year-3/4 trust checks below (different, simpler data shape).
+  const year12Courses = (typeof YEAR_1_2_MANDATORY_COURSES !== 'undefined') ? YEAR_1_2_MANDATORY_COURSES : [];
+  const courses = courseMapCourses;
+  const missingSemesterData = [];
+  const missingAssessmentData = [];
+  const missingPrerequisiteData = [];
+  const annualCourses = [];
+  const annualMetadataInconsistencies = [];
+  const impossibleToSchedule = [];
+  const inconsistentHours = [];
+
+  for (const c of courses) {
+    if (!c) continue;
+    const hasEffective = Array.isArray(c.effective_allowed_semesters) && c.effective_allowed_semesters.length > 0;
+    const hasOffered = Array.isArray(c.offered_semesters) && c.offered_semesters.length > 0;
+    if (!hasEffective && !hasOffered) missingSemesterData.push(c.course_id);
+
+    if (_hasFinalExamLocal(c) == null) missingAssessmentData.push(c.course_id);
+
+    const hasPrereqText = !!(c.prerequisites_raw_text || c.syllabus_prerequisites_he);
+    const hasParsedGroups = Array.isArray(c.prereq_groups) && c.prereq_groups.length > 0;
+    if (!hasPrereqText && !Array.isArray(c.prerequisites)) missingPrerequisiteData.push(c.course_id);
+    else if (hasPrereqText && !hasParsedGroups && !(Array.isArray(c.prerequisites) && c.prerequisites.length)) {
+      missingPrerequisiteData.push(c.course_id);
+    }
+
+    if (isAnnualCourse(c)) {
+      const spans = (c.spans_semesters && c.spans_semesters.length) ? c.spans_semesters
+        : ((c.effective_allowed_semesters && c.effective_allowed_semesters.length) ? c.effective_allowed_semesters : []);
+      annualCourses.push({ course_id: c.course_id, name_he: c.name_he, requiredSpans: spans });
+      if (spans.length < 2) {
+        annualMetadataInconsistencies.push({ course_id: c.course_id, name_he: c.name_he,
+          issue: 'flagged is_annual but spans_semesters has fewer than 2 entries', spans });
+      }
+    }
+
+    if (classifyCourseSchedulability(c) === 'unschedulable_missing_data') impossibleToSchedule.push(c.course_id);
+
+    const weekly = c.weekly_hours, semHours = c.semester_hours;
+    if (weekly != null && semHours != null && Math.abs(weekly - semHours) > 0.01) {
+      inconsistentHours.push({ course_id: c.course_id, weekly_hours: weekly, semester_hours: semHours });
+    } else if (weekly == null && semHours == null) {
+      inconsistentHours.push({ course_id: c.course_id, weekly_hours: null, semester_hours: null });
+    }
+  }
+
+  // Cross-check: a course placed in 2+ semester slots of the SAME year-group on
+  // the actual committed board, but NOT flagged is_annual, is either a genuine
+  // duplicate-placement bug or an annual course with incomplete source metadata
+  // (the latter is what this audit exists to catch — see function doc comment).
+  if (typeof state !== 'undefined' && state && state.semesters && typeof SEMESTERS !== 'undefined') {
+    const yearOf = semId => (String(semId).match(/^(year_\d+)_/) || [])[1] || semId;
+    const semsByYearForCourse = {};
+    for (const [semId, ids] of Object.entries(state.semesters)) {
+      const yr = yearOf(semId);
+      for (const cid of (ids || [])) {
+        semsByYearForCourse[cid] = semsByYearForCourse[cid] || {};
+        semsByYearForCourse[cid][yr] = (semsByYearForCourse[cid][yr] || new Set());
+        semsByYearForCourse[cid][yr].add(semId);
+      }
+    }
+    for (const [cid, byYear] of Object.entries(semsByYearForCourse)) {
+      const c = courseMap[cid];
+      if (!c || isAnnualCourse(c)) continue;
+      for (const semSet of Object.values(byYear)) {
+        if (semSet.size >= 2) {
+          annualMetadataInconsistencies.push({ course_id: cid, name_he: c.name_he,
+            issue: 'placed in 2+ semesters of the same year but not flagged is_annual/placement_policy:annual',
+            placedIn: [...semSet], declaredPlacementPolicy: c.placement_policy || null });
+        }
+      }
+    }
+  }
+
+  return {
+    totalCourses: courses.length,
+    year12FixedCurriculumCourses: year12Courses.length,
+    missingSemesterData: { count: missingSemesterData.length, courseIds: missingSemesterData },
+    missingAssessmentData: { count: missingAssessmentData.length, courseIds: missingAssessmentData },
+    missingPrerequisiteData: { count: missingPrerequisiteData.length, courseIds: missingPrerequisiteData },
+    annualCourses: { count: annualCourses.length, courses: annualCourses },
+    annualMetadataInconsistencies: { count: annualMetadataInconsistencies.length, courses: annualMetadataInconsistencies },
+    impossibleToSchedule: { count: impossibleToSchedule.length, courseIds: impossibleToSchedule },
+    inconsistentHours: { count: inconsistentHours.length, courses: inconsistentHours },
+  };
+}
+window.auditCourseCatalogForPlannerReliability = auditCourseCatalogForPlannerReliability;
+
 /* True when a course is officially flexible in the program but this year's actual
    offering restricts it to a single semester (effective narrower than program-level) */
 function isOfferingRestrictedFlex(c) {
@@ -10223,10 +10681,20 @@ function buildDeterministicReplacementPlan(args) {
   // A hard-excluded course is removed from the requested-focus list too — the user
   // may have named a domain whose course they separately excluded.
   const patchMustInclude = (prefs.must_include_course_ids || []).filter(cid => !hardExcludeSet.has(cid));
-  const requestedAfterExclude = [...new Set([
-    ...patchMustInclude,
+  const _requestedBeforeExclude = [...new Set([
+    ...(prefs.must_include_course_ids || []),
     ...(intent.requested_course_ids || []),
-  ])].filter(cid => !hardExcludeSet.has(cid));
+  ])];
+  const requestedAfterExclude = _requestedBeforeExclude.filter(cid => !hardExcludeSet.has(cid));
+  // Conflict transparency — a course the user just asked to add (chat patch or
+  // free-text request) that is ALSO in the panel's hard-avoid list is silently
+  // dropped above; surface WHY instead of leaving the user guessing. Hard avoid
+  // always wins (per the panel-vs-chat precedence rule), but the user must be told.
+  const _requestedButExcluded = _requestedBeforeExclude.filter(cid => hardExcludeSet.has(cid));
+  if (_requestedButExcluded.length) {
+    proposal.warnings_he = [...(proposal.warnings_he || []), ..._requestedButExcluded.map(cid =>
+      `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
+  }
   // Surface patch must-include in the intent object so the decision trace tags them.
   if (patchMustInclude.length) intent.mustIncludeCourseIds = [...new Set([...patchMustInclude, ...(intent.mustIncludeCourseIds || [])])];
 
@@ -10312,6 +10780,7 @@ function buildDeterministicReplacementPlan(args) {
   // BUG FIX: Only fill if the baseline doesn't already exceed the target.
   let _fill = { added: [] };
   let _skippedHighRiskFiller = [];
+  let _lastResortPlaced = [];
   // Hours-accounting for the overshoot-minimization report (Part E) — the baseline
   // is the total just BEFORE the uncapped fill-to-target stage runs (i.e. after
   // mandatory/domain/elective/general/intent-completion already ran their own
@@ -10324,6 +10793,7 @@ function buildDeterministicReplacementPlan(args) {
     if (_baselineTotal < targetHours) {
       try { _fill = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _fill.proposal || proposal; } catch (_) {}
       if (_fill.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._fill.skippedHighRiskFiller);
+      if (_fill.lastResortHighRiskPlaced) _lastResortPlaced.push(..._fill.lastResortHighRiskPlaced);
     }
   }
 
@@ -10349,7 +10819,7 @@ function buildDeterministicReplacementPlan(args) {
       try { _before = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _before = 0; }
       if (_before >= targetHours) break;
       let _added = 0;
-      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; if (_f.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._f.skippedHighRiskFiller); } catch (_) {}
+      try { const _f = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _f.proposal || proposal; _added = (_f.added || []).length; if (_f.skippedHighRiskFiller) _skippedHighRiskFiller.push(..._f.skippedHighRiskFiller); if (_f.lastResortHighRiskPlaced) _lastResortPlaced.push(..._f.lastResortHighRiskPlaced); } catch (_) {}
       try { const enf2 = enforceLegalPlacementsLocal(proposal, { courses: ctx.courses, maxHoursPerSemester: _balanceCtx.maxHoursPerSemester }); proposal = enf2.proposal || proposal; } catch (_) {}
       try { proposal = repairPlanLoad(proposal, _balanceCtx).proposal || proposal; } catch (_) {}
       let _after;
@@ -10389,6 +10859,15 @@ function buildDeterministicReplacementPlan(args) {
       });
     }
   }
+  // A5 — the beforeCids guard above means a hard-avoided course already on the
+  // committed board is INTENTIONALLY preserved (this pipeline never silently
+  // drops a course the user already has), but that conflict was never
+  // surfaced ("surfaced separately" above never actually happened). Warn now
+  // so the user is not left believing the hard-avoid preference is satisfied.
+  const _existingHardAvoidWarnings = buildExistingHardAvoidWarnings(hardExcludeSet, beforeCids, ctx.courses);
+  if (_existingHardAvoidWarnings.length) {
+    proposal.warnings_he = [...(proposal.warnings_he || []), ..._existingHardAvoidWarnings];
+  }
 
   // 5b. Legality audit: remove newly-added courses that are still illegal after
   //     the enforcement pass (wrong semester or unmet prerequisite).
@@ -10418,7 +10897,7 @@ function buildDeterministicReplacementPlan(args) {
     for (let _i = 0; _i < 8; _i++) {
       let _b; try { _b = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _b = 0; }
       if (_b >= targetHours) break;
-      try { proposal = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }).proposal || proposal; } catch (_) {}
+      try { const _ff = fillToDegreeTargetLocal(proposal, analysis, { ...repairOpts, requiredHours: targetHours }); proposal = _ff.proposal || proposal; if (_ff.lastResortHighRiskPlaced) _lastResortPlaced.push(..._ff.lastResortHighRiskPlaced); } catch (_) {}
       try {
         const _a2 = auditDraftLegality(proposal, { completedCourseIds: _completedSet });
         const _bad = new Set([..._a2.illegalSemesterPlacements, ..._a2.missingPrerequisites]
@@ -10564,6 +11043,63 @@ function buildDeterministicReplacementPlan(args) {
   const skippedHighRiskFiller = (typeof _skippedHighRiskFiller !== 'undefined' ? _skippedHighRiskFiller : [])
     .filter(s => !_finalPlacedSet.has(s.course_id) && !_skippedSeen.has(s.course_id) && _skippedSeen.add(s.course_id));
 
+  // Completion-first transparency — any very-hard course placed ONLY to reach the
+  // target (no lower-risk legal alternative remained) is surfaced as a single honest
+  // note, so the user can keep the complete plan or drop those courses for a lighter
+  // partial one. Deduped and intersected with the final board (a later sweep may have
+  // removed one).
+  const _lrSeen = new Set();
+  const lastResortHighRiskPlaced = (typeof _lastResortPlaced !== 'undefined' ? _lastResortPlaced : [])
+    .filter(x => _finalPlacedSet.has(x.course_id) && !_lrSeen.has(x.course_id) && _lrSeen.add(x.course_id));
+  if (lastResortHighRiskPlaced.length) {
+    const _n = lastResortHighRiskPlaced.length;
+    const _names = lastResortHighRiskPlaced.map(x => x.name_he).join(', ');
+    proposal.warnings_he = [...new Set([...(proposal.warnings_he || []),
+      `${_n} קורס${_n > 1 ? 'ים' : ''} בסיכון ציונים גבוה (${_names}) שוב${_n > 1 ? 'צו' : 'ץ'} כדי להגיע ל-${targetHours} ש״ש — לא נמצאה חלופה קלה יותר חוקית. אפשר להסיר ולהישאר עם תכנית חלקית קלה יותר.`])];
+  }
+
+  // Bug fix — every repair/fill stage above (repairAddMissingMandatoryLocal,
+  // fillToDegreeTargetLocal, etc.) picks exactly ONE semester per course, with
+  // no awareness that an annual/year-long course (is_annual / placement_policy
+  // 'annual') must occupy ALL of its spans_semesters together. Left unfixed,
+  // the draft shown to the user could contain only one half of an annual
+  // course — caught (correctly) only at apply-time by validateFinalPlan's
+  // 'annual' check. requestPlanProposal's LLM pipeline already calls
+  // normalizeAnnualPlacements as its last structural step; this path
+  // (buildDeterministicReplacementPlan, used directly by
+  // rebuildDraftFromProfileLocal AND as requestPlanProposal's own fallback)
+  // never did. Mirror that here so no caller can show a partial annual draft.
+  normalizeAnnualPlacements(proposal);
+
+  // Overload transparency — a semester can be structurally over the user's
+  // max weekly hours purely from fixed/effectively-fixed mandatory courses,
+  // with zero legal way to reduce it (confirmed in production: year_3_semester_a
+  // can total 26 ש"ש from mandatory courses alone, each with only ONE legal
+  // semester this catalog year, against a 25 ש"ש user preference). Silently
+  // exceeding the user's stated preference is exactly the kind of unexplained
+  // violation this codebase has been fixing all session — read-only call
+  // (result discarded, NOT reassigned to `proposal`) purely to get a FRESH
+  // unmovedOverloaded report reflecting every repair that ran above, without
+  // risking a late, unaudited move (the 5c comment above explains why no
+  // further repairPlanLoad call should mutate the proposal at this point).
+  try {
+    if (prefs.max_weekly_hours != null) {
+      const _overloadReport = repairPlanLoad(proposal, ctx).unmovedOverloaded || [];
+      const _overloadWarnings = _overloadReport
+        .filter(o => o.hours > prefs.max_weekly_hours)
+        .map(o => {
+          const semLbl = _formatSemIdHe(o.semester_id);
+          if (o.movable.length > 0) {
+            return `${semLbl} עומס ${o.hours}/${prefs.max_weekly_hours} ש"ש — נמצאו קורסים גמישים אך לא נמצא שיבוץ חוקי שמפחית את העומס.`;
+          }
+          const fixedCount = (o.not_movable_reasons || []).filter(r => r.reason === 'fixed_mandatory').length;
+          const noTargetCount = (o.not_movable_reasons || []).filter(r => r.reason === 'no_legal_target').length;
+          return `${semLbl} עומס ${o.hours}/${prefs.max_weekly_hours} ש"ש — כל הקורסים בסמסטר זה הם חובה (${fixedCount} קבועה${noTargetCount ? `, ${noTargetCount} גמישה ללא חלופת סמסטר חוקית השנה` : ''}); לא ניתן להפחית את העומס מתחת ל-${prefs.max_weekly_hours} ש"ש מבלי לבטל קורס חובה.`;
+        });
+      if (_overloadWarnings.length) proposal.warnings_he = [...(proposal.warnings_he || []), ..._overloadWarnings];
+    }
+  } catch (_) { /* reporting only — never block the plan on this */ }
+
   // Part E — explicit hours-accounting for the overshoot-minimization gate, shown
   // verbatim in the summary/debug output: target, the baseline right before the
   // uncapped fill stage ran, how much that stage added, the final total, and the
@@ -10584,6 +11120,7 @@ function buildDeterministicReplacementPlan(args) {
     confirmedCids,
     tentativeCids,
     skippedHighRiskFiller,
+    lastResortHighRiskPlaced,
     confirmedPlacements: confirmedCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     tentativePlacements: tentativeCids.map(cid => ({ course_id: cid, semester_id: semOfCid[cid] })),
     totalHours,
@@ -10725,6 +11262,11 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
   const _gradeRiskOf = (cm) => (typeof _gradeRiskScoreLocal === 'function') ? (_gradeRiskScoreLocal(cm).risk || 0) : 0;
   const HIGH_RISK_FILLER_CUTOFF = 0.9;
   const skippedHighRiskFiller = [];
+  // Completion-first: very-hard fillers are DEFERRED (not discarded) so safer/relevant
+  // courses are placed first; if the plan is still below target after exhausting them,
+  // the deferred ones are placed as a last resort (lowest-risk first) so degree
+  // completion — the PRIMARY objective — is never sacrificed to grade-safety.
+  const deferredHighRisk = [];
 
   // ── Minimize-overshoot gate — once the remaining deficit is small, the next
   // course added should be the one that comes CLOSEST to closing it (exact fit >
@@ -10768,13 +11310,17 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
       // category minimum, do NOT place it as filler. Record it as a deliberately
       // skipped high-risk filler and remove it from the pool so the gap is surfaced.
       if (_gradeRiskOf(cm) >= HIGH_RISK_FILLER_CUTOFF && !_isMandatoryCourse(cid) && !_userPreferred(cid) && !_satisfiesUnmetCategoryMin(cid)) {
-        skippedHighRiskFiller.push({
-          course_id: cid, name_he: cm.name_he || cid,
-          risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
-          tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
-          categories: _catsOf(cid).map(c => c.category_id),
-          hours: hrs,
-          reason: 'high_risk_filler_not_category_required',
+        // DEFER (don't discard) — placed later only if completion still needs it.
+        deferredHighRisk.push({
+          cid, risk: Math.round(_gradeRiskOf(cm) * 100) / 100, hours: hrs,
+          meta: {
+            course_id: cid, name_he: cm.name_he || cid,
+            risk: Math.round(_gradeRiskOf(cm) * 100) / 100,
+            tau_factor_avg_grade: (typeof cm.tau_factor_avg_grade === 'number') ? cm.tau_factor_avg_grade : null,
+            categories: _catsOf(cid).map(c => c.category_id),
+            hours: hrs,
+            reason: 'high_risk_filler_not_category_required',
+          },
         });
         pool.splice(i, 1); i--;
         continue;
@@ -10791,11 +11337,54 @@ function fillToDegreeTargetLocal(proposal, analysis, opts) {
     added.push({ course_id: best.cid, semester_id: best.target.semester_id, hours: best.info.hours || best.hours || 0 });
     pool.splice(best.idx, 1);
   }
+
+  // ── Completion-first last resort ──────────────────────────────────────────
+  // Degree completion is the PRIMARY objective and outranks grade-safety. Every
+  // safer/relevant legal candidate is now placed; if the plan is STILL below target,
+  // place the deferred very-hard courses — LOWEST grade-risk first, then best gap-fit —
+  // re-checking legality (offering semester, prereqs, hard-cap fit) against the current
+  // board. Each is tagged so the summary can explain it was used only because no
+  // lower-risk legal alternative remained. Deferred courses NOT needed for completion
+  // stay surfaced as skipped (honest over-selection reporting, unchanged).
+  const lastResortHighRiskPlaced = [];
+  if (curTotal() < required && deferredHighRisk.length) {
+    deferredHighRisk.sort((a, b) => (a.risk - b.risk) || (a.hours - b.hours));
+    for (const cand of deferredHighRisk) {
+      if (curTotal() >= required) break;
+      const cid = cand.cid;
+      if (placed.has(cid) || hardExcluded(cid) || _alreadyDone(cid)) continue;
+      const cm = (typeof courseMap !== 'undefined') ? courseMap[cid] : null;
+      if (!cm) continue;
+      const info = opts.courses[cid] || {};
+      const hrs = info.hours || cand.hours || hoursForCourseId(cid) || 0;
+      if (shaarRuachIdsSet.has(cid) && shaarRuachCap > 0
+        && shaarRuachBaseCompleted + shaarRuachHoursInProposal() + hrs > shaarRuachCap + 1e-6) continue;
+      const legal = (typeof getLegalSemestersLocal === 'function') ? getLegalSemestersLocal({ ...cm, ...info }, opts.knownSemesterIds).semesters : opts.knownSemesterIds;
+      const allowed = (legal && legal.length) ? legal : opts.knownSemesterIds;
+      let legalSems = sems.filter(s => allowed.includes(s.semester_id));
+      if (!legalSems.length) continue;
+      const semIdx = {}; sems.forEach((s, idx) => { for (const c2 of s.course_ids) if (c2 !== cid) semIdx[c2] = idx; });
+      legalSems = legalSems.filter(s => prereqsSatisfiedForPlacementLocal(cid, sems.findIndex(x => x.semester_id === s.semester_id), semIdx, completed).ok);
+      const fit = legalSems.filter(s => hoursOf(s) + hrs <= max);
+      if (!fit.length) continue;
+      const target = fit.sort((a, b) => hoursOf(a) - hoursOf(b))[0];
+      target.course_ids.push(cid); placed.add(cid);
+      added.push({ course_id: cid, semester_id: target.semester_id, hours: hrs });
+      lastResortHighRiskPlaced.push({ course_id: cid, name_he: cm.name_he || cid, risk: cand.risk, hours: hrs, reason: 'last_resort_completion_no_safer_alternative' });
+    }
+  }
+  // Deferred courses NOT used for completion → surfaced as skipped (over-selection).
+  const _placedLastResort = new Set(lastResortHighRiskPlaced.map(x => x.course_id));
+  for (const cand of deferredHighRisk) {
+    if (!_placedLastResort.has(cand.cid)) skippedHighRiskFiller.push(cand.meta);
+  }
+
   const finalHours = curTotal();
   return {
     proposal: { ...proposal, semesters: sems.filter(s => s.course_ids.length > 0 || (proposal.semesters || []).some(ps => ps.semester_id === s.semester_id)) },
     added,
     skippedHighRiskFiller,
+    lastResortHighRiskPlaced,
     baselineHours,
     finalHours,
     targetHours: required,
@@ -11136,7 +11725,7 @@ function _formatDomainFocusHe(domainReport) {
  *
  * Does NOT touch state — board is already unchanged (gate cleared proposalDraft).
  */
-function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
+function buildPlanningFallback(eligibleProposal, gateResult, ctx, prefs) {
   if (!gateResult || gateResult.applicable) return null;
 
   const blockers = (gateResult && gateResult.blockers) || [];
@@ -11240,6 +11829,15 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
       questionsForUser.push(`האם כבר השלמת את ${names || 'דרישות הקדם'} (נדרש ל${nameOf(cid)})?`);
     });
   }
+  // A5 — computed ONCE, used both in state.lastPlanningDraft (the object that
+  // activateTentativeDraft is actually called with, via _draft =
+  // state.lastPlanningDraft at this function's call site, and via
+  // handlePlanningFallbackAction's REPLAN_* cases) and in this function's own
+  // return value (used for the chip-prompt message when no placement exists
+  // yet). Without being on BOTH objects, the warning would only ever reach
+  // the chip-prompt path, never the actual rendered draft message — which is
+  // the path that fires for most real partial-plan scenarios.
+  const _existingHardAvoidWarningsB = buildExistingHardAvoidWarnings(buildHardExcludeSetLocal(prefs || {}), boardCids, courses);
   try {
     if (typeof state !== 'undefined' && state) {
       state.lastPlanningDraft = {
@@ -11249,6 +11847,7 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
         assumptions,
         missingData,
         questionsForUser,
+        warnings_he: _existingHardAvoidWarningsB,
         source: 'draft_planner',
         createdAt: Date.now(),
       };
@@ -11307,6 +11906,16 @@ function buildPlanningFallback(eligibleProposal, gateResult, ctx) {
     nextQuestions: questionsForUser,
     messageHe: parts.join('\n'),
     chips,
+    // Carry forward proposal-level warnings (e.g. the panel-vs-chat hard-avoid
+    // conflict note) so activateTentativeDraft's chat message can surface them —
+    // they would otherwise stay buried in eligibleProposal and never be shown.
+    // Plus the same existing-hard-avoid check (computed once, above, and also
+    // stored on state.lastPlanningDraft — see the comment there for why both
+    // copies are needed).
+    warnings_he: [
+      ...((eligibleProposal && eligibleProposal.warnings_he) || []),
+      ..._existingHardAvoidWarningsB,
+    ],
   };
 }
 
@@ -11416,7 +12025,18 @@ function commitConfirmedPlacementsToBoard(draft) {
   }
   const lbl = cid => (typeof courseLabelLocal === 'function' ? courseLabelLocal(cid) : cid);
   const cap = (arr, n) => arr.slice(0, n).map(lbl).join(', ') + (arr.length > n ? ` ועוד ${arr.length - n}` : '');
-  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.`);
+  // This path commits directly to the real board (no apply step), but a
+  // below-target result must still use the shared partial-plan contract
+  // wording so it's not mistaken for a complete degree plan.
+  let _commitPartialLine = '';
+  try {
+    if (typeof computeDegreeProgress === 'function') {
+      const prog = computeDegreeProgress({}, state, null);
+      const partial = buildPartialPlanContract(prog && prog.total_after, prog && prog.required);
+      if (partial) _commitPartialLine = `\n${partial.leadLine}\n${partial.partialTagLine}`;
+    }
+  } catch (_) { /* progress model unavailable — omit the line */ }
+  postStatusMessage(`הוספתי ללוח ${diff.added.length} קורסים בטוחים: ${cap(diff.added, 6)}.${_commitPartialLine}`);
 }
 
 /**
@@ -11461,6 +12081,14 @@ function activateTentativeDraft(draft, opts) {
     }
   }
 
+  // Bug fix — draft.confirmedPlacements/tentativePlacements carry exactly ONE
+  // {course_id, semester_id} entry per course (buildPlanningFallback's
+  // placement map is keyed by course_id, last-write-wins), so an annual
+  // course present in both its spans upstream collapses to a single semester
+  // here. Re-apply the same atomic-bundling normalization used everywhere
+  // else in the pipeline before this draft is shown.
+  normalizeAnnualPlacements(proposal);
+
   // Tag the draft so (a) the board's first paint marks tentative courses with
   // the amber "טיוטה" badge and (b) applyProposalDraft uses lenient validation
   // (skips degree-level blockers; only HARD structural violations prevent apply).
@@ -11498,27 +12126,45 @@ function activateTentativeDraft(draft, opts) {
   const assumptionLine = (draft.assumptions && draft.assumptions.length)
     ? `\n${draft.assumptions.join(' ')}`
     : '';
+  // Surface proposal-level warnings (e.g. a panel-vs-chat hard-avoid conflict
+  // note) that would otherwise stay buried in the draft data and never reach
+  // the user-visible message.
+  const warningsLine = (draft.warnings_he && draft.warnings_he.length)
+    ? `\n${draft.warnings_he.join('\n')}`
+    : '';
 
   // Degree-hours accounting (Phase 1) — show total after the draft vs the 185
   // ש"ש target and the remaining gap, so the user sees the plan is aimed at
-  // COMPLETING the degree, not just "adding some courses". Best-effort: degrades
-  // silently when the progress model is unavailable.
+  // COMPLETING the degree, not just "adding some courses". A below-target
+  // result uses the SAME partial-plan contract (buildPartialPlanContract) as
+  // the deterministic-replacement rescue path, so the framing never drifts
+  // between planner paths. Best-effort: degrades silently when the progress
+  // model is unavailable.
   let hoursLine = '';
+  let partialContract = null;
+  // Workload-cap integrity (shared with formatFull185SummaryLocal): a plan that
+  // reaches the hours target but exceeds the user's selected max weekly load is
+  // NOT a clean success. validateFinalPlan only WARNS on this band and that
+  // warning never reached this message, so an over-cap plan used to read as
+  // "מגיעה לדרישת השעות לתואר" with no caveat. Surface it here.
+  const _capInfo = (typeof buildUserMaxOverloadNoteLocal === 'function') ? buildUserMaxOverloadNoteLocal() : { overCapSems: [], notes: [] };
+  const _overCap = _capInfo.overCapSems.length > 0;
   try {
     if (typeof computeDegreeProgress === 'function' && state.proposalDraft) {
       const draftState = { semesters: state.proposalDraft.semesters };
       const prog = computeDegreeProgress({}, state, draftState);
       if (prog && prog.required != null && prog.total_after != null) {
-        const approx = prog.unknown_hours_count > 0 ? '~' : '';
-        hoursLine = `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}.`;
-        if (prog.remaining > 0) {
-          hoursLine += ` חסרות עוד כ-${Math.round(prog.remaining)} ש״ש להשלמת התואר — אפשר להוסיף קורסי בחירה נוספים.`;
-        } else if (prog.total_after >= prog.required) {
-          hoursLine += ' הטיוטה מגיעה לדרישת השעות לתואר.';
+        partialContract = buildPartialPlanContract(prog.total_after, prog.required);
+        if (!partialContract) {
+          const approx = prog.unknown_hours_count > 0 ? '~' : '';
+          hoursLine = _overCap
+            ? `\n⚠️ סה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required} — מגיע לדרישת השעות, אך חורג מהעומס המקסימלי שביקשת (${_capInfo.userMax} ש״ש), ולכן אינו תכנית מלאה ונקייה.`
+            : `\nסה״כ ש״ש לאחר השיבוץ: ${approx}${Math.round(prog.total_after)}/${prog.required}. הטיוטה מגיעה לדרישת השעות לתואר.`;
         }
       }
     }
   } catch (_) { /* progress model unavailable — omit the line */ }
+  const capLine = _capInfo.notes.length ? `\n${_capInfo.notes.join('\n')}` : '';
 
   // CASE 2 — courses that could not be scheduled because they have no usable data
   // (no name / hours / offering signal) are SKIPPED, not treated as a blocker.
@@ -11542,8 +12188,14 @@ function activateTentativeDraft(draft, opts) {
     }
   } catch (_) { /* classification unavailable — omit the line */ }
 
-  postAssistantMessage(`${head}${summaryLine}${hoursLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${assumptionLine}`, [
-    { label: 'החל טיוטה', action: 'apply-draft' },
+  // Below-target plans MUST lead with the shared partial-plan contract line so
+  // the message never reads like a successful completed plan, and the apply
+  // chip must say so explicitly (see buildPartialPlanContract).
+  const _leadLine = partialContract ? `${partialContract.leadLine}\n` : '';
+  const _tagLine = partialContract ? `\n${partialContract.partialTagLine}` : '';
+  const _applyLabel = partialContract ? partialContract.applyLabel : 'החל טיוטה';
+  postAssistantMessage(`${_leadLine}${head}${summaryLine}${hoursLine}${capLine}${skippedLine}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.${_tagLine}${assumptionLine}${warningsLine}`, [
+    { label: _applyLabel, action: 'apply-draft' },
     { label: 'דחה טיוטה', action: 'reject-draft' },
   ]);
 }
@@ -12591,6 +13243,65 @@ async function fetchBoardJSON(prog) {
 let _aiPlanLastPreferences = null;
 let _aiPlanLastProposal    = null;
 let _aiPlanLastAnalysis    = null;
+
+// ── Step 9: planner trace debug panel (READ-ONLY, debug-flag-gated) ───────────
+// Captures the additive `trace` from the /api/ai/generate-plan response and
+// renders it in a debug panel. Never touches the apply/reject draft flow.
+let _aiPlanLastTrace = [];
+
+function setPlannerTrace(trace) { _aiPlanLastTrace = Array.isArray(trace) ? trace : []; }
+
+function isPlannerDebugEnabled() {
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem('tau_planner_debug') === '1') return true; } catch (_) {}
+  try { if (typeof location !== 'undefined' && /[?&]debug=1\b/.test(location.search || '')) return true; } catch (_) {}
+  return false;
+}
+
+function _escTrace(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function buildPlannerTraceJson() {
+  let prog = null;
+  try { prog = (typeof localStorage !== 'undefined' && localStorage.getItem('tau_program')) || null; } catch (_) {}
+  return JSON.stringify({
+    program: prog,
+    generated_at: new Date().toISOString(),
+    actions: Array.isArray(_aiPlanLastTrace) ? _aiPlanLastTrace : [],
+  }, null, 2);
+}
+
+function downloadPlannerTrace() {
+  try {
+    const blob = new Blob([buildPlannerTraceJson()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'planner-trace.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (_) {} }, 0);
+  } catch (_) {}
+}
+
+function renderPlannerTracePanel() {
+  if (!isPlannerDebugEnabled()) return '';
+  const tr = Array.isArray(_aiPlanLastTrace) ? _aiPlanLastTrace : [];
+  if (!tr.length) return '';
+  const rows = tr.map(a => {
+    const name = _escTrace(a.courseName || a.courseId || '');
+    const sem  = a.semester ? ` → ${_escTrace(a.semester)}` : '';
+    const ok   = a.validationAfterAction === 'pass' ? '✓' : '✗';
+    return `<div class="planner-trace-row" data-action="${_escTrace(a.action)}" style="font-size:11px;border-bottom:1px solid #eee;padding:3px 0">`
+      + `<span>#${_escTrace(a.step)}</span> <b>${_escTrace(a.action)}</b> ${name}${sem} `
+      + `<span style="color:#888">(${_escTrace(a.beforeTotal)}→${_escTrace(a.afterTotal)} ש"ש)</span> <span>${ok}</span>`
+      + `<div style="color:#666">${_escTrace(a.reason)}</div></div>`;
+  }).join('');
+  return `<details class="planner-trace-panel" data-planner-trace style="margin:8px;padding:6px;border:1px dashed #bbb;border-radius:6px" open>`
+    + `<summary style="cursor:pointer;font-weight:600">מסלול התכנון (debug) — ${tr.length} פעולות</summary>`
+    + `<button type="button" onclick="downloadPlannerTrace()" style="margin:6px 0">הורד trace JSON</button>`
+    + `<div class="planner-trace-list">${rows}</div></details>`;
+}
+
 let _aiPlanLastCtx         = null;
 let _aiPlanShowAllCourses  = false; // PART B — preview "הצג את כל הקורסים" toggle
 let _aiPlanFeasibleMinLoad = null;  // PART C — lowest peak semester load found by the last balancing repair
@@ -15956,6 +16667,16 @@ function repairAddGeneralCoursesLocal(proposal, analysis, opts) {
 
   if (!added.length) return { proposal, added: [], exhausted, blockedByGlobalCap };
   const warnings_he = [...(proposal.warnings_he || []), 'נוספו קורסי שער רוח כדי להשלים את דרישת התואר.'];
+  // Unknown exam/assessment data must never be presented as satisfying the
+  // no-exam preference — it only means "couldn't verify", not "matches". Name
+  // each such added course explicitly so the user knows to confirm it manually,
+  // instead of folding it into the generic "closest alternatives" line below.
+  if (assessmentPref === 'prefer_no_exam') {
+    const unknownAdded = added.filter(a => _hasFinalExamLocal(courseMap[a.course_id]) == null);
+    for (const a of unknownAdded) {
+      warnings_he.push(`${courseMap[a.course_id]?.name_he || a.course_id}: מידע חסר / דורש אישור — לא ידוע אם יש בחינה סופית, לכן אינו מאומת כתואם את ההעדפה "בלי בחינה סופית".`);
+    }
+  }
   if (assessmentPref && prefUnmatched) {
     warnings_he.push('לא נמצאו קורסי שער רוח עם סוג הסיום שביקשת, לכן נבחרו החלופות הקרובות ביותר.');
   }
@@ -16381,6 +17102,11 @@ function _normalizeCourseNameLocal(name) {
   s = s.replace(/(^|\s)ב['׳]?(?=\s|$)/g, ' 2 ').replace(/(^|\s)א['׳]?(?=\s|$)/g, ' 1 ')
        .replace(/(^|\s)ג['׳]?(?=\s|$)/g, ' 3 ').replace(/(^|\s)ד['׳]?(?=\s|$)/g, ' 4 ');
   s = s.replace(/[()[\]{}.,;:!?"״'׳`\-–—_]/g, ' ');
+  // Fold common acceptable Hebrew spelling variants of the same word to one
+  // canonical form (e.g. "לוויינים"/"לווינים"/"לוויינות"/"לווינות" — all valid
+  // spellings of "satellites") so a course title typed/spoken with a different
+  // but equally-correct spelling still resolves to the same canonical course.
+  s = s.replace(/לווי{1,2}נ(ים|ות)/g, 'לוויינים');
   s = s.replace(/\s+/g, ' ').trim();
   return s;
 }
@@ -16430,6 +17156,80 @@ function resolveAvoidedCourseIdsLocal(text, map) {
 }
 
 /**
+ * Mirrors resolveAvoidedCourseIdsLocal but for INCLUSION intent ("תוסיף את X",
+ * "הוסף לי את X") — used only to detect a panel-vs-chat conflict (the user asks
+ * to add a course that is hard-avoided) so it can be explained, not silently
+ * dropped. Never used to actually add a course — must-include parsing for that
+ * is handled elsewhere (intent.requested_course_ids / must_include_course_ids).
+ */
+function resolveRequestedCourseIdsLocal(text, map) {
+  const result = new Set();
+  if (!text) return result;
+  map = map || courseMap;
+  const lower = String(text).toLowerCase();
+  const triggers = [
+    'תוסיף', 'הוסף', 'תכלול', 'תשבץ לי', 'אני רוצה את', 'אני רוצה ללמוד',
+    'add ', 'include ', 'i want',
+  ];
+  if (!triggers.some(t => lower.includes(t))) return result;
+
+  const byNorm = new Map();
+  for (const c of Object.values(map)) {
+    if (!c || !c.name_he) continue;
+    const norm = _normalizeCourseNameLocal(c.name_he);
+    if (!norm) continue;
+    if (!byNorm.has(norm)) byNorm.set(norm, []);
+    byNorm.get(norm).push(c.course_id);
+  }
+  const normText = _normalizeCourseNameLocal(text);
+  for (const [norm, ids] of byNorm) {
+    if (norm.length < 3) continue;
+    if (normText.includes(norm)) for (const id of ids) result.add(id);
+  }
+  return result;
+}
+
+/**
+ * A5 edge case — a hard-avoided course that is ALREADY on a board (committed
+ * or draft) and was therefore NOT newly placed must never be silently
+ * invisible to the user. Two cases, each needing a different explanation:
+ *  - mandatory/already-completed: cannot be removed at all — kept with a
+ *    rationale (mirrors applyExplicitAvoidPostFilterLocal's existing
+ *    mandatory-rationale wording).
+ *  - a genuinely-removable elective, preserved only because a given pipeline
+ *    deliberately never silently drops a course the user already has
+ *    committed (e.g. buildDeterministicReplacementPlan's beforeCids guard,
+ *    or buildPlanningFallback which never even checks hard-avoid against the
+ *    existing board): an explicit warning that the preference is NOT
+ *    satisfied while the course remains, and what to do about it.
+ * Returns an array of Hebrew warning lines (possibly empty). Pure/side-effect
+ * free — callers append the result onto their own proposal.warnings_he.
+ */
+function buildExistingHardAvoidWarnings(avoidedIds, committedCidSet, ctxCourses) {
+  if (!avoidedIds || !avoidedIds.size || !committedCidSet || !committedCidSet.size) return [];
+  const isMandatoryOrLocked = (cid) => {
+    const info = (ctxCourses && ctxCourses[cid]) || {};
+    const cm = (typeof courseMap !== 'undefined' && courseMap[cid]) || {};
+    if (info.is_mandatory || info.course_type === 'mandatory' || cm.course_type === 'mandatory' || cm.is_mandatory) return true;
+    if (typeof isCourseCompleted === 'function' && isCourseCompleted(cid)) return true;
+    return false;
+  };
+  const warnings = [];
+  for (const cid of avoidedIds) {
+    if (!committedCidSet.has(cid)) continue;
+    const name = (typeof courseLabelLocal === 'function') ? courseLabelLocal(cid) : cid;
+    warnings.push(isMandatoryOrLocked(cid)
+      ? `הקורס ${name} נשאר כי הוא קורס חובה או הושלם בתוכנית, למרות שביקשת להימנע ממנו.`
+      // "בנה מערכת מחדש" deliberately never silently drops a course already on the
+      // committed board (see buildDeterministicReplacementPlan's beforeCids guard) —
+      // so rebuilding will NOT remove this course. Manual removal is the only path;
+      // the warning must not promise an action that doesn't actually happen.
+      : `הקורס ${name} כבר נמצא במערכת הנוכחית, אך הוא מסומן ברשימת הקורסים להימנע מהם. בנייה מחדש לא תסיר אותו (היא לא מורידה קורסים שכבר על הלוח) — יש להסיר אותו ידנית מהלוח.`);
+  }
+  return warnings;
+}
+
+/**
  * Issue C — FINAL deterministic post-filter, run AFTER the LLM output and all
  * repairs, BEFORE the proposal becomes an applicable draft. Removes any
  * explicitly-avoided ELECTIVE course from the draft semesters. If the avoided
@@ -16461,8 +17261,17 @@ function applyExplicitAvoidPostFilterLocal(proposal, avoidedIds, ctxCourses) {
   const rationales = keptMandatory.map(cid =>
     `הקורס ${courseMap[cid]?.name_he || cid} נשאר כי הוא קורס חובה בתוכנית, למרות שביקשת להימנע ממנו.`
   );
+  // A5 — a removed course (whether freshly LLM-added or already on the
+  // committed board; this filter does not distinguish) must be explained in
+  // the persistent chat message, not just the transient board-notify toast
+  // the caller also shows.
+  const removalRationales = removed.map(cid =>
+    `הקורס ${courseMap[cid]?.name_he || cid} נמצא ברשימת הקורסים להימנע מהם ולכן לא שובץ מחדש.`
+  );
   const next = { ...proposal, semesters };
-  if (rationales.length) next.warnings_he = [...(next.warnings_he || []), ...rationales];
+  if (rationales.length || removalRationales.length) {
+    next.warnings_he = [...(next.warnings_he || []), ...rationales, ...removalRationales];
+  }
   return { proposal: next, removed, keptMandatory };
 }
 
@@ -16501,16 +17310,35 @@ function applyEligibilityPostFilterLocal(proposal, prefs, ctxCourses) {
   return { proposal: next, removed, keptMandatory };
 }
 
+/**
+ * Union of every source that means "the user explicitly does not want this
+ * course": free-text mentions (resolveAvoidedCourseIdsLocal) AND the
+ * structured "קורסים שאני רוצה להימנע מהם" picker field / hard-exclude list.
+ * Bug fixed here: this set used to come ONLY from free-text resolution, so a
+ * course chosen via the picker (prefs.strongly_avoided_course_ids) was never
+ * passed to the final deterministic safety net (applyExplicitAvoidPostFilterLocal)
+ * — it was only a soft scoring signal, which an AI-generated proposal could
+ * silently override.
+ */
+function computeExplicitlyAvoidedIdsLocal(prefs) {
+  const ids = new Set(resolveAvoidedCourseIdsLocal(prefs.extra_request_he));
+  for (const cid of (prefs.strongly_avoided_course_ids || [])) ids.add(cid);
+  for (const cid of (prefs.hard_exclude_course_ids || [])) ids.add(cid);
+  return ids;
+}
+
 async function requestPlanProposal(prefs, actionType) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
-  // Issue C — resolve explicitly-named avoided courses from the free-text
-  // request and merge them into the strong-unwanted / unwanted preference sets
-  // so pickBestCandidate(ForGap) skips them when alternatives exist. The final
-  // deterministic post-filter below removes any that nonetheless survive.
-  const explicitlyAvoidedIds = resolveAvoidedCourseIdsLocal(prefs.extra_request_he);
-  if (explicitlyAvoidedIds.size) {
-    const ids = [...explicitlyAvoidedIds];
+  // Issue C — resolve explicitly-named avoided courses (free text + the
+  // avoid-list picker + hard excludes) and merge the free-text ones into the
+  // strong-unwanted / unwanted preference sets so pickBestCandidate(ForGap)
+  // skips them when alternatives exist. The final deterministic post-filter
+  // below removes ANY of them that nonetheless survive, regardless of source.
+  const explicitlyAvoidedIds = computeExplicitlyAvoidedIdsLocal(prefs);
+  const freeTextAvoidedIds = resolveAvoidedCourseIdsLocal(prefs.extra_request_he);
+  if (freeTextAvoidedIds.size) {
+    const ids = [...freeTextAvoidedIds];
     prefs.strongly_avoided_course_ids = [...new Set([...(prefs.strongly_avoided_course_ids || []), ...ids])];
     prefs.unwanted_course_ids = [...new Set([...(prefs.unwanted_course_ids || []), ...ids])];
     if (!_aiPickerState.strongUnwanted) _aiPickerState.strongUnwanted = [];
@@ -16546,6 +17374,8 @@ async function requestPlanProposal(prefs, actionType) {
       if (genBtn) genBtn.disabled = false;
       throw new Error(errMsg);
     }
+    // Step 9 — capture the additive planner trace (read-only, for the debug panel).
+    setPlannerTrace(data.trace);
 
     // Issue 3 — capture server-side blocked flag + blocking error messages so
     // the chat/preview can present this as an invalid result rather than success.
@@ -16757,6 +17587,15 @@ async function requestPlanProposal(prefs, actionType) {
       applyExplicitAvoidPostFilterLocal(repairedProposal, explicitlyAvoidedIds, ctx.courses);
     if (avoidRemoved.length) {
       showBoardNotify(`הוסרו ${avoidRemoved.length} קורסי בחירה שביקשת להימנע מהם.`);
+    }
+    // Conflict transparency — same rule as buildDeterministicReplacementPlan:
+    // if THIS chat message explicitly asked to add a course that the panel
+    // hard-avoids, say so instead of silently never placing it.
+    const _requestedInThisMessage = resolveRequestedCourseIdsLocal(prefs.extra_request_he);
+    const _requestedButExcludedHere = [..._requestedInThisMessage].filter(cid => explicitlyAvoidedIds.has(cid));
+    if (_requestedButExcludedHere.length) {
+      avoidFilteredProposal.warnings_he = [...(avoidFilteredProposal.warnings_he || []), ..._requestedButExcludedHere.map(cid =>
+        `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
     }
 
     // Issue 1 — FINAL eligibility post-filter: strip any ineligible ELECTIVE
@@ -16990,7 +17829,7 @@ async function requestPlanProposal(prefs, actionType) {
         renderedDraftCards: document.querySelectorAll('#board .course-card').length,
         build: PLANNER_BUILD,
       });
-      const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx);
+      const _fallback = buildPlanningFallback(eligibleProposal, _gateResult, ctx, prefs);
       if (_fallback) {
         // Phase 1 — if the ONLY thing blocking the strict gate is soft (offering
         // uncertainty / degree incompleteness / category / prereq) — i.e. there
@@ -17029,7 +17868,12 @@ async function requestPlanProposal(prefs, actionType) {
         console.log('[planner-e2e-trace]', { messagePath: 'attempting deterministic replacement plan' });
         let _rescued = false;
         try {
-          const _repl = buildDeterministicReplacementPlan({ prefs: _aiPlanLastPreferences, targetHours: DEGREE_REQUIRED_HOURS });
+          // Bug fix: this rescue path used to read the (possibly stale, or
+          // never-set) global _aiPlanLastPreferences instead of THIS call's
+          // own live `prefs` — so panel hard-avoids / chat text passed into
+          // requestPlanProposal could be silently dropped once execution fell
+          // through to the deterministic-replacement fallback.
+          const _repl = buildDeterministicReplacementPlan({ prefs, targetHours: DEGREE_REQUIRED_HOURS });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement candidates count', count: _repl.candidatesConsidered });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement selected count', count: _repl.addedCids.length, confirmed: _repl.confirmedCids.length, tentative: _repl.tentativeCids.length });
           console.log('[planner-e2e-trace]', { messagePath: 'replacement total hours', hours: _repl.totalHours, target: _repl.targetHours, reached: _repl.reachedTarget });
@@ -17048,7 +17892,6 @@ async function requestPlanProposal(prefs, actionType) {
             });
             const _cards = document.querySelectorAll('#board .course-card').length;
             console.log('[planner-e2e-trace]', { messagePath: 'replacement rendered cards count', count: _cards });
-            const _missing = Math.max(0, Math.round(_repl.targetHours - _repl.totalHours));
             const _reasonStr = (_repl.gapReasons && _repl.gapReasons.length) ? '\nסיבות:\n• ' + _repl.gapReasons.join('\n• ') : '';
             const _focusStr = _formatDomainFocusHe(_repl.domainReport);
             // Surface hard-excluded courses so the user knows the planner honored
@@ -17056,12 +17899,26 @@ async function requestPlanProposal(prefs, actionType) {
             const _exclStr = (_repl.excludedSkipped && _repl.excludedSkipped.length)
               ? '\nלא שובצו קורסים שביקשת לא לשבץ: ' + _repl.excludedSkipped.map(c => c.name_he).join(', ') + '.'
               : '';
-            const _msg = _repl.reachedTarget
-              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}`
-              : `הגעתי ל-${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש. חסרות ${_missing} ש״ש.${_focusStr}${_reasonStr}${_exclStr}`;
+            // Surface proposal-level warnings (e.g. a panel-vs-chat hard-avoid
+            // conflict note) that would otherwise stay buried in the data.
+            const _warnStr = (_repl.proposal && _repl.proposal.warnings_he && _repl.proposal.warnings_he.length)
+              ? '\n' + _repl.proposal.warnings_he.join('\n')
+              : '';
+            // A degree plan that does not reach the required hours is NOT a
+            // successful completed plan and must not be framed as one — use the
+            // shared partial-plan contract (buildPartialPlanContract) so this path
+            // and activateTentativeDraft never drift apart in wording.
+            const _partial = buildPartialPlanContract(_repl.totalHours, _repl.targetHours, _repl.reachedTarget);
+            const _msg = !_partial
+              ? `בניתי מערכת חלופית מתוך הקורסים שניתן לשבץ בוודאות.\nסה״כ ${Math.round(_repl.totalHours)}/${_repl.targetHours} ש״ש.${_focusStr}${_exclStr}${_warnStr}`
+              : `${_partial.leadLine}${_focusStr}${_reasonStr}${_exclStr}${_warnStr}\n${_partial.partialTagLine}`;
             _lastFinalPlanBlockedMsg = null;
+            // Apply chip wording reflects that applying a sub-target plan commits
+            // an incomplete degree plan (the click itself is the explicit
+            // confirmation); a complete plan keeps the plain label.
+            const _applyLabel = _partial ? _partial.applyLabel : 'החל טיוטה';
             postAssistantMessage(`${_msg}\nקורסים עם תג "טיוטה" הם בהנחה ולא מאושרים סופית — אפשר לערוך ולאשר.`, [
-              { label: 'החל טיוטה', action: 'apply-draft' },
+              { label: _applyLabel, action: 'apply-draft' },
               { label: 'דחה טיוטה', action: 'reject-draft' },
             ]);
             _rescued = true;
