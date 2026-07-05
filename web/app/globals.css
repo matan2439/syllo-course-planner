@@ -71,9 +71,15 @@ body {
 /* ── Syllo animated background layer ── */
 .syllo-bg {
   position: fixed;
-  inset: -10%;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
+  overflow: hidden;
+}
+.syllo-bg::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
   background-image: var(--syllo-bg-image);
   background-repeat: no-repeat;
   will-change: transform;
