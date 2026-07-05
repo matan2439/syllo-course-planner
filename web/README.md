@@ -42,7 +42,13 @@ repo's `data/parsed_json/` (AI endpoints still need the backend).
 - **Animated background:** `app/components/ShaderGradientBackground.tsx` — CSS
   port of the canonical Syllo ShaderGradient config (documented in that file
   and in the HTML). A future `@shadergradient/react` integration should use the
-  same `color1/2/3` values so there is no visual jump.
+  same `color1/2/3` values so there is no visual jump. `.syllo-bg` is a
+  viewport-exact (`inset:0`), `overflow:hidden` clip boundary; the drift
+  animation's `-10%` overscan (so `scale(1.02)` never reveals a hard edge)
+  lives on `.syllo-bg::before` instead, clipped by the parent — keeps the same
+  drift headroom without inflating `document.scrollHeight`/`scrollWidth` on
+  mobile (a real, verified ~81px/21px phantom-scroll bug on every
+  `ProductShell` route, fixed without touching `ShaderGradientBackground.tsx`).
 - **Design tokens:** `app/globals.css` `:root` variables mirror the planner
   HTML's palette; dark mode is the OS scheme.
 - **Product shell:** every Next surface renders inside `ProductShell` (gradient,
