@@ -23,8 +23,27 @@
   --syllo-bg-duration: 28s;
 }
 
+/* Dark tokens. Applied two ways so the shell stays in sync with the legacy
+   planner's manual theme (tau_theme → data-theme), while still following the
+   OS by default:
+     - explicit `data-theme="dark"` (user toggled) always wins;
+     - OS dark applies only when the user has NOT made an explicit choice. */
+:root[data-theme='dark'] {
+  --bg:         #0F1117;
+  --text:       #F9FAFB;
+  --text-muted: #A1A1AA;
+  --purple:     #A78BFA;
+  --purple-strong: #8B5CF6;
+  --surface:    rgba(23, 26, 35, 0.62);
+  --border:     rgba(167, 139, 250, 0.16);
+  --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
+  --syllo-bg-image:
+    radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
+    linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg:         #0F1117;
     --text:       #F9FAFB;
     --text-muted: #A1A1AA;
@@ -33,8 +52,6 @@
     --surface:    rgba(23, 26, 35, 0.62);
     --border:     rgba(167, 139, 250, 0.16);
     --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
-
-    /* Syllo animated background (dark) */
     --syllo-bg-image:
       radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
       linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);

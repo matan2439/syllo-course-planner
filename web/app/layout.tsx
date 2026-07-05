@@ -18,7 +18,19 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* Seed the shell theme from the same tau_theme the legacy planner
+            owns, before paint, so an explicit choice made inside /planner
+            survives reload and the shell never desyncs from the iframe.
+            No stored choice → the CSS media query follows the OS. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('tau_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   )

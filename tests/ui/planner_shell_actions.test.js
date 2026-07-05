@@ -61,6 +61,40 @@ test('the outer frame labels the embedded workspace as the full interface', () =
   expect(frame).toContain('הממשק המלא');
 });
 
+test('the planner page feeds the current program label into the outer toolbar', () => {
+  const page = read('web/app/planner/page.tsx');
+  expect(page).toContain('programLabel');
+});
+
+test('the outer toolbar renders a current-program label (mirrors #hdr-prog-name)', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain('programLabel');
+});
+
+test('the outer toolbar has a theme control synced to the legacy tau_theme source', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  // writes the same key the legacy planner reads, and re-applies it in-frame
+  expect(frame).toContain('tau_theme');
+  expect(frame).toContain('applyTheme');
+});
+
+test('the shell can be manually themed via a data-theme attribute override', () => {
+  const css = read('web/app/globals.css');
+  expect(css).toMatch(/\[data-theme=['"]dark['"]\]/);
+});
+
+test('the layout seeds the shell theme from tau_theme before paint (no reload desync)', () => {
+  const layout = read('web/app/layout.tsx');
+  expect(layout).toContain('tau_theme');
+});
+
+test('the html element suppresses the theme-bootstrap hydration mismatch', () => {
+  // the pre-paint script mutates <html data-theme>, which the server cannot
+  // know — without this the browser logs a hydration-mismatch error.
+  const layout = read('web/app/layout.tsx');
+  expect(layout).toContain('suppressHydrationWarning');
+});
+
 test('/planner/legacy route is unchanged and still serves the canonical file', () => {
   const route = read('web/app/planner/legacy/route.ts');
   expect(route).toMatch(/app[/\\'",\s]+web[/\\'",\s]+semester_board_viewer\.html/);

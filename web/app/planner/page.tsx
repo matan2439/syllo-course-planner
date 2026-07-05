@@ -1,3 +1,4 @@
+import { programSubtitle } from '../../lib/board-data'
 import { getProgram, programQuery } from '../../lib/programs'
 import LegacyPlannerFrame from '../components/LegacyPlannerFrame'
 import ProductShell from '../components/ProductShell'
@@ -18,7 +19,10 @@ export default async function PlannerPage({
 
   return (
     <ProductShell fullBleed programId={program.id}>
-      <LegacyPlannerFrame programQuerySuffix={programQuery(program.id)} />
+      <LegacyPlannerFrame
+        programQuerySuffix={programQuery(program.id)}
+        programLabel={programSubtitle(program)}
+      />
     </ProductShell>
   )
 }
