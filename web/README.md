@@ -8,7 +8,7 @@ light/dark via `prefers-color-scheme`.
 | Surface | Where it lives |
 |---|---|
 | Landing / entry | `app/page.tsx` (Next, real UI). Primary CTA → `/ai-plan` (guided flow); no direct jump into raw HTML |
-| Main planner (board, repo, AI) | `/planner` — Next **product-shell page** (`ProductShell fullBleed` + `LegacyPlannerFrame`) that embeds the canonical planner via a same-origin iframe. Gradient, brand and cross-navigation frame it; theme + saved program persist across the frame |
+| Main planner (board, repo, AI) | `/planner` — Next **product-shell page** (`ProductShell fullBleed` + `LegacyPlannerFrame`) that embeds the canonical planner via a same-origin iframe. Gradient, brand and cross-navigation frame it; theme + saved program persist across the frame. Cross-cutting legacy actions (my courses / change degree / reset) are mirrored as product-styled buttons in an outer toolbar labelled "הממשק המלא" — they call the legacy globals same-origin (reset is confirmation-gated); the legacy in-frame toolbar is untouched and still works |
 | Raw legacy planner | `/planner/legacy` — the canonical `app/web/semester_board_viewer.html` served unchanged (own document context, all scripts intact). Also the honest fallback if the frame fails |
 | Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
 | Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`) |

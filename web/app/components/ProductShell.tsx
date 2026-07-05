@@ -45,7 +45,9 @@ export default function ProductShell({
       <div
         className={
           fullBleed
-            ? 'flex h-screen flex-col px-4 sm:px-6'
+            ? // dynamic viewport height + clip so only the iframe scrolls (no
+              // whole-page double-scroll when 100vh exceeds the client area)
+              'flex h-[100dvh] flex-col overflow-hidden px-4 sm:px-6'
             : `mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
                 width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
               }`
