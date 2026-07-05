@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import type { RepositoryVM, RepoCategoryVM } from '../../lib/repository'
+import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-details'
+import CourseDetailsPanel from './CourseDetailsPanel'
 import RepositoryCourseCard from './RepositoryCourseCard'
 import { EmptyState } from './ui'
 
@@ -44,7 +46,13 @@ function RepositorySearch({
   )
 }
 
-function RepositoryCategoryGroup({ category }: { category: RepoCategoryVM }) {
+function RepositoryCategoryGroup({
+  category,
+  onSelect,
+}: {
+  category: RepoCategoryVM
+  onSelect: (course: RepoCategoryVM['courses'][number]) => void
+}) {
   return (
     <section aria-label={category.title}>
       <header className="mb-3 flex items-baseline gap-2 border-b border-[var(--border)] pb-2">
@@ -55,7 +63,11 @@ function RepositoryCategoryGroup({ category }: { category: RepoCategoryVM }) {
       </header>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {category.courses.map((c) => (
-          <RepositoryCourseCard key={c.id} course={c} />
+          <RepositoryCourseCard
+            key={c.id}
+            course={c}
+            onSelect={() => onSelect(c)}
+          />
         ))}
       </div>
     </section>
@@ -64,6 +76,7 @@ function RepositoryCategoryGroup({ category }: { category: RepoCategoryVM }) {
 
 export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
   const [query, setQuery] = useState('')
+  const [selected, setSelected] = useState<CourseDetailsVM | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -104,9 +117,17 @@ export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
         </EmptyState>
       ) : (
         filtered.map((cat) => (
-          <RepositoryCategoryGroup key={cat.id} category={cat} />
+          <RepositoryCategoryGroup
+            key={cat.id}
+            category={cat}
+            onSelect={(course) =>
+              setSelected(buildCourseDetails({ ...course, category: cat.title }))
+            }
+          />
         ))
       )}
+
+      <CourseDetailsPanel course={selected} onClose={() => setSelected(null)} />
     </div>
   )
 }

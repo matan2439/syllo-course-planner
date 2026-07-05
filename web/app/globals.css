@@ -102,6 +102,16 @@ body {
 }
 .route-fade { animation: route-fade 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 
+/* ── Course details modal: one subtle scale+fade entrance (Emil restraint for
+      a productivity surface); frozen by the reduced-motion rule below. ── */
+@keyframes detail-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes detail-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.course-detail-overlay { animation: detail-overlay-in 0.16s ease-out both; }
+.course-detail-panel   { animation: detail-panel-in 0.16s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
