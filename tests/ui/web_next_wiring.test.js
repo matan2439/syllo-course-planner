@@ -120,10 +120,15 @@ test('board and repository render inside the shared ProductShell', () => {
 test('/planner/legacy seeds the static planner theme from the OS scheme', () => {
   // The HTML defaults to light unless localStorage tau_theme is set; the
   // legacy wrapper injects a seed so dark-mode users get visual continuity
-  // even inside the embedded frame (same-origin localStorage).
+  // even inside the embedded frame (same-origin localStorage). The seed
+  // string itself lives in lib/embed-html.ts (shared with the embed=1
+  // injection); the route wires it in via injectPlannerHtml — see
+  // tests/ui/planner_legacy_embed.test.ts for the behavioral proof.
   const route = read('web/app/planner/legacy/route.ts');
-  expect(route).toContain('tau_theme');
-  expect(route).toContain('prefers-color-scheme');
+  expect(route).toContain('injectPlannerHtml');
+  const embedHtml = read('web/lib/embed-html.ts');
+  expect(embedHtml).toContain('tau_theme');
+  expect(embedHtml).toContain('prefers-color-scheme');
 });
 
 test('a global route-transition template wraps every surface', () => {

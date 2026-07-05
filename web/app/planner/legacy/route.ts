@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { injectPlannerHtml } from '../../../lib/embed-html'
 
 // Raw legacy planner: the canonical single-file static HTML, served in its own
 // document context so its 16k lines of scripts, localStorage and theme run
@@ -16,17 +17,10 @@ const PLANNER_HTML = path.resolve(
 
 export const dynamic = 'force-dynamic'
 
-// Presentational bridge, injected at serve time only (the canonical file is
-// untouched): the HTML defaults to light unless localStorage tau_theme is
-// set, which breaks visual continuity for dark-OS users arriving from the
-// Next pages. Seed the theme from prefers-color-scheme on first visit; an
-// explicit in-app toggle still wins afterwards. Same-origin with the shell, so
-// the seed shares localStorage with the rest of the product.
-const THEME_SEED = `<script>try{if(!localStorage.getItem('tau_theme')&&matchMedia('(prefers-color-scheme: dark)').matches){localStorage.setItem('tau_theme','dark');document.documentElement.dataset.theme='dark';}}catch(e){}</script>`
-
-export async function GET() {
+export async function GET(request: Request) {
   const html = await readFile(PLANNER_HTML, 'utf8')
-  return new Response(html.replace('<head>', `<head>${THEME_SEED}`), {
+  const embed = new URL(request.url).searchParams.get('embed') === '1'
+  return new Response(injectPlannerHtml(html, { embed }), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   })
 }

@@ -113,3 +113,48 @@ test('legacy in-frame header buttons still exist (not removed this slice)', () =
   expect(html).toContain('id="btn-change-prog"');
   expect(html).toContain('id="btn-reset"');
 });
+
+/**
+ * Header-seam collapse: the outer toolbar now mirrors the legacy #hdr-chips
+ * live status (סה״כ/מוצבים/במאגר/חסרות שעות) via a same-origin
+ * MutationObserver — renderChips() runs on every state-changing legacy action
+ * (drag/drop, reset, program change, AI draft), so a one-shot read-on-load
+ * would go stale. See tests/ui/chip_status_adapter.test.ts for the pure
+ * parsing contract and tests/ui/planner_legacy_embed.test.ts for the embed=1
+ * serve-time CSS that hides the now-redundant legacy .page-hdr.
+ */
+test('the iframe src requests the embed-scoped legacy header collapse', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain('embed=1');
+});
+
+test('the embed flag is combined correctly with a preserved program query', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  // Must not silently drop ?program=... when appending &embed=1.
+  expect(frame).toMatch(/programQuerySuffix[^;]*embed=1|embed=1[^;]*programQuerySuffix/s);
+});
+
+test('the outer toolbar reads the legacy hdr-chips via a same-origin MutationObserver', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain('MutationObserver');
+  expect(frame).toContain("getElementById('hdr-chips')");
+  expect(frame).toContain('parseChipStatus');
+});
+
+test('the mirrored status uses the pure chip-status adapter, not a recomputed count', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain("from '../../lib/chip-status'");
+});
+
+test('the outer toolbar renders the four mirrored status labels', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain('סה״כ');
+  expect(frame).toContain('מוצבים');
+  expect(frame).toContain('במאגר');
+  expect(frame).toContain('חסרות שעות');
+});
+
+test('the mirrored status re-reads on iframe load (initial + every program change)', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toMatch(/onLoad/);
+});
