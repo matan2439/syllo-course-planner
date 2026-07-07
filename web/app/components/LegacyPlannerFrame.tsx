@@ -94,12 +94,12 @@ export default function LegacyPlannerFrame({
   // synchronous dev-mode mount→cleanup→mount and Fast Refresh re-running.
   //
   // contentDocument.readyState alone is NOT a safe "already loaded" signal:
-  // an iframe's initial about:blank placeholder document also reports
-  // readyState 'complete' immediately, before the real navigation even
-  // starts — checking it would false-positive on the placeholder and skip
-  // attaching the load listener entirely, permanently missing the real load
-  // (verified via instrumented logging). #hdr-chips only exists in the real
-  // legacy document, so its presence is the robust "already loaded" check.
+  // an iframe's initial about:blank placeholder document also reports that
+  // state immediately, before the real navigation even starts — checking it
+  // would false-positive on the placeholder and skip attaching the load
+  // listener entirely, permanently missing the real load (verified via
+  // instrumented logging). #hdr-chips only exists in the real legacy
+  // document, so its presence is the robust "already loaded" check.
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
