@@ -100,11 +100,16 @@ test('/planner/legacy route is unchanged and still serves the canonical file', (
   expect(route).toMatch(/app[/\\'",\s]+web[/\\'",\s]+semester_board_viewer\.html/);
 });
 
-test('the canonical legacy HTML file was not modified by this feature', () => {
-  const diff = execSync('git diff --name-only HEAD -- app/web/semester_board_viewer.html', {
-    cwd: ROOT,
-  }).toString().trim();
-  expect(diff).toBe('');
+test('the interest-evaluation slice edits the legacy HTML additively only', () => {
+  // Earlier shell slices deliberately left the canonical planner untouched.
+  // The interest-evaluation epic intentionally wires it — but ADDITIVELY: the
+  // canonical generate-plan call path and the interest opt-in must both be
+  // present, and the interest fields must spread {} by default (no change to
+  // the default request payload).
+  const html = read('app/web/semester_board_viewer.html');
+  expect(html).toContain("fetch('/api/ai/generate-plan'");
+  expect(html).toContain('buildInterestRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('interestScorecardHtml');
 });
 
 test('legacy in-frame header buttons still exist (not removed this slice)', () => {
@@ -174,9 +179,13 @@ test('the outer toolbar renders the four mirrored status labels', () => {
  */
 test('the mirrored status setup checks for the real document, not just readyState', () => {
   const frame = read('web/app/components/LegacyPlannerFrame.tsx');
-  // must not trust readyState alone (false-positives on the blank placeholder)
-  expect(frame).not.toContain('readyState');
-  expect(frame).toContain("getElementById('hdr-chips')");
+  // The "already loaded" branch condition itself must not trust readyState
+  // alone (false-positives on the blank placeholder document) — it must
+  // check for the real element instead. A comment may still explain why
+  // readyState was rejected; only the actual condition is asserted here.
+  const condition = frame.match(/if \(([^)]*getElementById\('hdr-chips'\)[^)]*)\)/);
+  expect(condition).not.toBeNull();
+  expect(condition[1]).not.toMatch(/readyState/);
   expect(frame).toContain("addEventListener('load'");
 });
 

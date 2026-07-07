@@ -1698,6 +1698,35 @@ body.prog-modal-open .workspace {
 .ai-plan-status.status-ok      { background: var(--easy-bg); color: var(--easy-text); border-color: var(--easy-border); }
 .ai-plan-status.status-warn    { background: var(--med-bg);  color: var(--med-text);  border-color: var(--med-border); }
 .ai-plan-status.status-blocked, .ai-plan-status.status-bad { background: var(--hard-bg); color: var(--hard-text); border-color: var(--hard-border); }
+
+/* Academic-interest evaluation — selection chips + Hebrew scorecard */
+.interest-chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.interest-chip {
+  font: inherit; font-size: .8rem; cursor: pointer; padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted);
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.interest-chip:hover { border-color: var(--purple); color: var(--text); }
+.interest-chip.is-on { background: var(--purple-soft); border-color: var(--purple); color: var(--purple); font-weight: 600; }
+.interest-chip:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .interest-chip { transition: none; } }
+
+.interest-scorecard { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; }
+.interest-scorecard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.interest-scorecard-title { margin: 0; font-size: .95rem; }
+.interest-scorecard-level { font-size: .78rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+.interest-scorecard-level.interest-level-high { background: var(--easy-bg); color: var(--easy-text); border-color: var(--easy-border); }
+.interest-scorecard-level.interest-level-medium { background: var(--med-bg); color: var(--med-text); border-color: var(--med-border); }
+.interest-scorecard-note { margin: 6px 0 0; font-size: .78rem; color: var(--text-muted); line-height: 1.5; }
+.interest-scorecard-lowconf { margin: 8px 0 0; font-size: .82rem; color: var(--text-faint); }
+.interest-sec { margin-top: 12px; }
+.interest-sec h5 { margin: 0 0 5px; font-size: .82rem; color: var(--text-muted); }
+.interest-taglist, .interest-courselist, .interest-notes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.interest-notes { flex-direction: column; }
+.interest-taglist li { font-size: .8rem; padding: 3px 9px; border-radius: 999px; background: var(--purple-soft); color: var(--purple); }
+.interest-courselist li { font-size: .8rem; padding: 3px 9px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); display: inline-flex; align-items: baseline; gap: 6px; }
+.interest-course-id { font-size: .72rem; color: var(--text-faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.interest-notes li { font-size: .8rem; color: var(--text-muted); line-height: 1.5; }
 .ai-plan-msg-list { margin: 0; padding: 0 18px; font-size: .8rem; direction: rtl; }
 .ai-plan-msg-list.msg-error { color: var(--danger); }
 .ai-plan-msg-list.msg-warn { color: var(--warning); }
@@ -4222,6 +4251,205 @@ function repairOvershootToDraft() {
   showBoardNotify(`הוצעה הסרת ${removed.length} קורס/ים לצמצום החריגה מ-185 ש״ש: ${names} — בדוק את הטיוטה.`);
 }
 
+// ── Academic-interest evaluation (opt-in) — request + Hebrew scorecard ───────
+// Additive layer over generate-plan: collect stable machine IDs from the panel,
+// send them only when the user expressed something meaningful, and render the
+// backend's response.interestEvaluation. This never touches planner scoring or
+// plan selection — it evaluates fit, it does not force it. IDs mirror the
+// backend AcademicInterestProfile enums (api/ai/academic_interest_profile.ts).
+const INTEREST_FOCUS_AREA_LABELS_HE = {
+  strength_analysis: 'חוזק / מכניקת מוצקים',
+  finite_elements: 'אלמנטים סופיים / FEA',
+  mechanical_design: 'תכן מכני',
+  heat_transfer: 'מעבר חום',
+  thermal_systems: 'מערכות תרמיות',
+  fluids: 'זרימה',
+  control_systems: 'בקרה',
+  manufacturing: 'ייצור',
+  materials: 'חומרים',
+  biomechanics: 'ביומכניקה',
+  energy: 'אנרגיה',
+  robotics: 'רובוטיקה',
+  general: 'כללי',
+};
+const INTEREST_STYLE_LABELS_HE = {
+  project_based: 'מבוסס פרויקט',
+  exam_light: 'פחות מבחנים',
+  math_heavy: 'מתמטי',
+  practical: 'יישומי',
+  theoretical: 'תיאורטי',
+  lab_based: 'מעבדתי',
+  industry_relevant: 'רלוונטי לתעשייה',
+};
+const INTEREST_PRIORITY_LABELS_HE = {
+  degree_completion: 'סיום תואר',
+  requirement_coverage: 'כיסוי דרישות',
+  interest_alignment: 'התאמה לתחומי עניין',
+  load_balance: 'איזון עומס',
+  low_peak_load: 'עומס שיא נמוך',
+  grade_safety: 'שמירה על ממוצע',
+  schedule_flexibility: 'גמישות מערכת',
+  career_relevance: 'רלוונטיות לקריירה',
+};
+const INTEREST_SUMMARY_LEVEL_LABELS_HE = {
+  none: 'אין התאמה',
+  low: 'התאמה נמוכה',
+  medium: 'התאמה בינונית',
+  high: 'התאמה גבוהה',
+};
+
+function _interestValidIds(list, labels) {
+  return (Array.isArray(list) ? list : []).filter(
+    id => typeof id === 'string' && Object.prototype.hasOwnProperty.call(labels, id),
+  );
+}
+
+/**
+ * Build the additive generate-plan body fragment from the panel's interest
+ * selections. Returns {} when nothing meaningful was expressed (default request
+ * behavior unchanged). Otherwise opts in and sends a machine-readable profile
+ * using the backend's stable enum IDs — never Hebrew labels, never fabricated.
+ */
+function buildInterestRequestFields(interests) {
+  const i = interests || {};
+  const focusAreas = _interestValidIds(i.focusAreas, INTEREST_FOCUS_AREA_LABELS_HE);
+  const avoidAreas = _interestValidIds(i.avoidAreas, INTEREST_FOCUS_AREA_LABELS_HE);
+  const courseStyles = _interestValidIds(i.courseStyles, INTEREST_STYLE_LABELS_HE);
+  const priorities = _interestValidIds(i.priorities, INTEREST_PRIORITY_LABELS_HE);
+  const careerGoals = typeof i.careerGoals === 'string' ? i.careerGoals.trim() : '';
+
+  if (!focusAreas.length && !avoidAreas.length && !courseStyles.length && !priorities.length && !careerGoals) {
+    return {};
+  }
+
+  const profile = {};
+  if (focusAreas.length) profile.focusAreas = focusAreas.map(area => ({ area }));
+  if (avoidAreas.length) profile.avoidAreas = avoidAreas.map(area => ({ area }));
+  if (courseStyles.length) profile.courseStylePreferences = courseStyles.map(style => ({ style }));
+  if (priorities.length) profile.optimizationPriorities = priorities.map(priority => ({ priority }));
+  if (careerGoals) profile.careerGoals = [careerGoals];
+
+  return { include_interest_evaluation: true, academic_interest_profile: profile };
+}
+
+function _interestCourseChip(item, labelFor) {
+  const cid = item && typeof item.courseId === 'string' ? item.courseId : '';
+  if (!cid) return '';
+  const name = typeof labelFor === 'function' ? labelFor(cid) : cid;
+  const showName = name && name !== cid;
+  return '<li class="interest-course">'
+    + (showName ? `<span class="interest-course-name">${esc(name)}</span> ` : '')
+    + `<span class="interest-course-id" dir="ltr">${esc(cid)}</span></li>`;
+}
+
+/**
+ * Render the backend's additive interestEvaluation as a Hebrew RTL scorecard,
+ * or '' when absent. Deterministic and total: every section guards its data,
+ * courseIds stay LTR, notes are escaped, and no high-confidence explanation is
+ * fabricated from empty data. labelFor(courseId) optionally supplies a course
+ * name; the courseId is always preserved.
+ */
+function interestScorecardHtml(evaluation, labelFor) {
+  if (!evaluation || typeof evaluation !== 'object') return '';
+  const sc = (evaluation.scorecard && typeof evaluation.scorecard === 'object') ? evaluation.scorecard : {};
+  const level = INTEREST_SUMMARY_LEVEL_LABELS_HE[sc.summaryLevel] || INTEREST_SUMMARY_LEVEL_LABELS_HE.none;
+  const focus = Array.isArray(sc.matchedFocusAreas) ? sc.matchedFocusAreas : [];
+  const styles = Array.isArray(sc.matchedStyles) ? sc.matchedStyles : [];
+  const top = Array.isArray(sc.topAlignedCourses) ? sc.topAlignedCourses : [];
+  const avoid = Array.isArray(sc.avoidRiskCourses) ? sc.avoidRiskCourses : [];
+  const unmatched = Array.isArray(sc.unmatchedCourseIds) ? sc.unmatchedCourseIds
+    : (Array.isArray(evaluation.unmatchedCourseIds) ? evaluation.unmatchedCourseIds : []);
+  const notes = [
+    ...(Array.isArray(evaluation.notes) ? evaluation.notes : []),
+    ...(Array.isArray(sc.notes) ? sc.notes : []),
+  ];
+  const hasSignal = focus.length || styles.length || top.length || avoid.length;
+
+  const parts = [];
+  parts.push('<div class="interest-scorecard" dir="rtl">');
+  parts.push('<div class="interest-scorecard-head">'
+    + '<h4 class="interest-scorecard-title">התאמה לתחומי העניין</h4>'
+    + `<span class="interest-scorecard-level interest-level-${esc(sc.summaryLevel || 'none')}">${esc(level)}</span>`
+    + '</div>');
+  parts.push('<p class="interest-scorecard-note">ההערכה בודקת התאמה בלבד ואינה משנה את דירוג התוכנית או את הקורסים שנבחרו.</p>');
+
+  if (!hasSignal) {
+    parts.push('<p class="interest-scorecard-lowconf">לא נמצא מספיק מידע נושאי כדי להעריך התאמה משמעותית לתוכנית שנבנתה.</p>');
+  }
+  if (focus.length) {
+    parts.push('<section class="interest-sec"><h5>תחומי עניין שקיבלו חיזוק בתוכנית</h5><ul class="interest-taglist">'
+      + focus.map(f => `<li>${esc(INTEREST_FOCUS_AREA_LABELS_HE[f.area] || f.area)}</li>`).join('')
+      + '</ul></section>');
+  }
+  if (styles.length) {
+    parts.push('<section class="interest-sec"><h5>סגנונות קורסים מתאימים</h5><ul class="interest-taglist">'
+      + styles.map(st => `<li>${esc(INTEREST_STYLE_LABELS_HE[st.style] || st.style)}</li>`).join('')
+      + '</ul></section>');
+  }
+  if (top.length) {
+    parts.push('<section class="interest-sec"><h5>קורסים עם התאמה גבוהה</h5><ul class="interest-courselist">'
+      + top.map(c => _interestCourseChip(c, labelFor)).join('')
+      + '</ul></section>');
+  }
+  if (avoid.length) {
+    parts.push('<section class="interest-sec"><h5>קורסים שעלולים להתנגש עם תחומים שביקשת להימנע מהם</h5><ul class="interest-courselist">'
+      + avoid.map(c => _interestCourseChip(c, labelFor)).join('')
+      + '</ul></section>');
+  }
+  if (unmatched.length) {
+    parts.push('<section class="interest-sec"><h5>קורסים ללא מידע נושאי מספק (טעונים בדיקה)</h5><ul class="interest-courselist">'
+      + unmatched.map(cid => _interestCourseChip({ courseId: cid }, labelFor)).join('')
+      + '</ul></section>');
+  }
+  if (notes.length) {
+    parts.push('<section class="interest-sec"><h5>הערות</h5><ul class="interest-notes">'
+      + notes.map(n => `<li>${esc(n)}</li>`).join('')
+      + '</ul></section>');
+  }
+  parts.push('</div>');
+  return parts.join('');
+}
+
+// Panel-side interest selection state (opt-in). Lives on _aiPickerState so it
+// clears with the rest of the temporary preferences; missing/garbage shapes are
+// normalized to empty so buildInterestRequestFields never sends stale data.
+let _aiPlanLastInterestEvaluation = null;
+
+function _ensureInterestState() {
+  const s = _aiPickerState.interests;
+  if (!s || typeof s !== 'object') {
+    _aiPickerState.interests = { focusAreas: [], avoidAreas: [], courseStyles: [], priorities: [], careerGoals: '' };
+  }
+  for (const k of ['focusAreas', 'avoidAreas', 'courseStyles', 'priorities']) {
+    if (!Array.isArray(_aiPickerState.interests[k])) _aiPickerState.interests[k] = [];
+  }
+  if (typeof _aiPickerState.interests.careerGoals !== 'string') _aiPickerState.interests.careerGoals = '';
+  return _aiPickerState.interests;
+}
+
+function _interestChipGroupHtml(groupKey, labels, selected) {
+  const sel = new Set(Array.isArray(selected) ? selected : []);
+  return Object.keys(labels).map(id => {
+    const on = sel.has(id);
+    return `<button type="button" class="interest-chip${on ? ' is-on' : ''}"`
+      + ` data-interest-group="${groupKey}" data-interest-id="${id}" aria-pressed="${on}">`
+      + `${esc(labels[id])}</button>`;
+  }).join('');
+}
+
+// Render the captured evaluation into the panel's scorecard container (if the
+// panel is mounted). Read-only; safe to call whether or not an evaluation exists.
+function renderInterestScorecard() {
+  const el = document.getElementById('ai-interest-scorecard');
+  if (!el) return;
+  const html = interestScorecardHtml(
+    _aiPlanLastInterestEvaluation,
+    cid => courseMap[cid]?.name_he || cid,
+  );
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+
 function sidebarQuickActionPrefs() {
   const instr = document.getElementById('sidebar-ai-instruction')?.value?.trim();
   const maxHoursEl = document.getElementById('sidebar-max-hours');
@@ -4382,6 +4610,30 @@ function renderAiTab() {
         </div>
       </details>
 
+      <details class="ai-plan-section ai-interest-collapsible">
+        <summary class="ai-plan-section-title">תחומי עניין אקדמיים — הערכת התאמה</summary>
+        <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+          <div class="ai-plan-hint">בחירת תחומי עניין אינה משנה את דירוג התוכנית ואינה מכריחה קורסים — היא רק מוסיפה הערכת התאמה לתוצאה שנבנתה.</div>
+          <div class="ai-plan-field">תחומי עניין
+            <div class="interest-chip-group" id="ai-interest-focus">${_interestChipGroupHtml('focusAreas', INTEREST_FOCUS_AREA_LABELS_HE, _aiPickerState.interests?.focusAreas)}</div>
+          </div>
+          <div class="ai-plan-field">תחומים להימנע מהם
+            <div class="interest-chip-group" id="ai-interest-avoid">${_interestChipGroupHtml('avoidAreas', INTEREST_FOCUS_AREA_LABELS_HE, _aiPickerState.interests?.avoidAreas)}</div>
+          </div>
+          <div class="ai-plan-field">סגנון קורסים מועדף
+            <div class="interest-chip-group" id="ai-interest-styles">${_interestChipGroupHtml('courseStyles', INTEREST_STYLE_LABELS_HE, _aiPickerState.interests?.courseStyles)}</div>
+          </div>
+          <div class="ai-plan-field">מה חשוב לתעדף
+            <div class="interest-chip-group" id="ai-interest-priorities">${_interestChipGroupHtml('priorities', INTEREST_PRIORITY_LABELS_HE, _aiPickerState.interests?.priorities)}</div>
+          </div>
+          <label class="ai-plan-field">מטרות קריירה (רשות)
+            <textarea id="ai-interest-career" class="ai-textarea-chat" rows="2" dir="rtl" placeholder="למשל: מהנדס תרמי בתעשיית האנרגיה">${esc(_aiPickerState.interests?.careerGoals || '')}</textarea>
+          </label>
+        </div>
+      </details>
+
+      <div id="ai-interest-scorecard" class="interest-scorecard-wrap" hidden></div>
+
       <div id="ai-chat-log" class="ai-chat-log ai-chat-thread"></div>
 
       <div class="ai-input-area">
@@ -4441,6 +4693,26 @@ function renderAiTab() {
     const v = _migrateShaarRuachAssessmentPref(e.target.value);
     _aiPickerState.shaarRuachAssessmentPref = v === 'none' ? null : v;
   });
+
+  // Academic-interest chips → toggle opt-in membership; textarea → career goals.
+  panel.querySelectorAll('.interest-chip[data-interest-group]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const interests = _ensureInterestState();
+      const arr = interests[btn.dataset.interestGroup];
+      if (!Array.isArray(arr)) return;
+      const id = btn.dataset.interestId;
+      const idx = arr.indexOf(id);
+      const on = idx < 0;
+      if (on) arr.push(id); else arr.splice(idx, 1);
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+  });
+  const careerEl = document.getElementById('ai-interest-career');
+  careerEl?.addEventListener('input', () => { _ensureInterestState().careerGoals = careerEl.value; });
+
+  // Re-render a previously captured evaluation when the panel re-mounts.
+  renderInterestScorecard();
 
   // PART C — mention missing requirements conversationally (once per board
   // state) instead of a static "דרישות חסרות" box.
@@ -17364,6 +17636,9 @@ async function requestPlanProposal(prefs, actionType) {
         plan_context:  planContext,
         preferences:   prefs,
         session_token: getOrCreateSessionToken(),
+        // Additive, opt-in: spreads {} when the user expressed no interests, so
+        // the default request payload is byte-for-byte unchanged.
+        ...buildInterestRequestFields(_aiPickerState.interests),
       }),
     });
 
@@ -17374,6 +17649,11 @@ async function requestPlanProposal(prefs, actionType) {
       if (genBtn) genBtn.disabled = false;
       throw new Error(errMsg);
     }
+    // Additive, opt-in academic-interest evaluation of the AI proposal. Captured
+    // read-only and rendered as a Hebrew scorecard; it never alters the plan,
+    // its ranking, or any of the repair/validation flow below.
+    _aiPlanLastInterestEvaluation = (data && data.interestEvaluation) || null;
+    renderInterestScorecard();
     // Step 9 — capture the additive planner trace (read-only, for the debug panel).
     setPlannerTrace(data.trace);
 
