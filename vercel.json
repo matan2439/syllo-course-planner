@@ -1,8 +1,20 @@
 {
   "version": 2,
   "framework": null,
+  "builds": [
+    { "src": "api/ai/generate-plan.ts", "use": "@vercel/node" },
+    { "src": "api/ai/course-planner.ts", "use": "@vercel/node" },
+    { "src": "api/ai/planner-run.ts", "use": "@vercel/node" },
+    { "src": "api/board.ts", "use": "@vercel/node" },
+    { "src": "app/web/semester_board_viewer.html", "use": "@vercel/static" },
+    { "src": "data/**", "use": "@vercel/static" }
+  ],
   "rewrites": [
-    { "source": "/api/board/:programId", "destination": "/api/board?programId=:programId" },
+    { "source": "/api/board/:programId", "destination": "/api/board.ts?programId=:programId" },
+    { "source": "/api/board",            "destination": "/api/board.ts" },
+    { "source": "/api/ai/generate-plan", "destination": "/api/ai/generate-plan.ts" },
+    { "source": "/api/ai/course-planner","destination": "/api/ai/course-planner.ts" },
+    { "source": "/api/ai/planner-run",   "destination": "/api/ai/planner-run.ts" },
     { "source": "/",                     "destination": "/app/web/semester_board_viewer.html" }
   ],
   "headers": [
