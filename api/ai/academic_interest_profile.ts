@@ -218,3 +218,94 @@ export function normalizeAcademicInterestProfile(
 
   return profile;
 }
+
+/**
+ * True when the profile carries actual academic direction a planning/clarification
+ * layer could act on: any structured preference (focus/avoid/style/priority) or an
+ * explicit career goal. Free-text `notes` are passthrough annotation, not intent,
+ * so a notes-only profile is NOT meaningful.
+ */
+export function hasMeaningfulAcademicInterests(profile: AcademicInterestProfile): boolean {
+  return (
+    profile.focusAreas.length > 0 ||
+    profile.avoidAreas.length > 0 ||
+    profile.courseStylePreferences.length > 0 ||
+    profile.optimizationPriorities.length > 0 ||
+    (profile.careerGoals?.length ?? 0) > 0
+  );
+}
+
+/**
+ * Merge a base preference list with an override list keyed by `key`. Entries only in
+ * base are kept; on a duplicate key the OVERRIDE entry wins outright (weight + source).
+ * This differs from normalize's within-list max-weight dedupe: across base/override there
+ * is a real precedence, so the caller's later profile wins. Weights are clamped
+ * defensively and the result is canonically ordered — deterministic and total.
+ */
+function mergePreferenceList<K extends string, T extends string>(
+  base: ReadonlyArray<{ weight: number; source?: PreferenceSource } & Record<K, T>>,
+  override: ReadonlyArray<{ weight: number; source?: PreferenceSource } & Record<K, T>>,
+  key: K,
+  canonical: readonly T[],
+): Array<{ weight: number; source?: PreferenceSource } & Record<K, T>> {
+  const byKey = new Map<T, { weight: number; source?: PreferenceSource }>();
+  for (const item of [...base, ...override]) {
+    byKey.set(item[key], { weight: normalizeWeight(item.weight), source: normalizeSource(item.source) });
+  }
+  return [...byKey.entries()]
+    .sort((a, b) => canonical.indexOf(a[0]) - canonical.indexOf(b[0]))
+    .map(([value, { weight, source }]) => ({
+      [key]: value,
+      weight,
+      ...(source ? { source } : {}),
+    })) as Array<{ weight: number; source?: PreferenceSource } & Record<K, T>>;
+}
+
+/** Union two string lists preserving order (base first, then override's new entries); undefined when empty. */
+function mergeStringList(base: string[] | undefined, override: string[] | undefined): string[] | undefined {
+  return normalizeStringList([...(base ?? []), ...(override ?? [])]);
+}
+
+/**
+ * Deterministically combine two profiles, with `override` taking precedence on any
+ * conflict. Focus and avoid areas merge independently and stay separate. Career goals
+ * and notes are unioned (base first). Pure and total: never mutates its inputs.
+ */
+export function mergeAcademicInterestProfiles(
+  base: AcademicInterestProfile,
+  override: AcademicInterestProfile,
+): AcademicInterestProfile {
+  const merged: AcademicInterestProfile = {
+    focusAreas: mergePreferenceList<'area', AcademicFocusArea>(
+      base.focusAreas,
+      override.focusAreas,
+      'area',
+      ACADEMIC_FOCUS_AREAS,
+    ),
+    avoidAreas: mergePreferenceList<'area', AcademicFocusArea>(
+      base.avoidAreas,
+      override.avoidAreas,
+      'area',
+      ACADEMIC_FOCUS_AREAS,
+    ),
+    courseStylePreferences: mergePreferenceList<'style', CourseStyle>(
+      base.courseStylePreferences,
+      override.courseStylePreferences,
+      'style',
+      COURSE_STYLES,
+    ),
+    optimizationPriorities: mergePreferenceList<'priority', OptimizationPriority>(
+      base.optimizationPriorities,
+      override.optimizationPriorities,
+      'priority',
+      OPTIMIZATION_PRIORITIES,
+    ),
+  };
+
+  const careerGoals = mergeStringList(base.careerGoals, override.careerGoals);
+  if (careerGoals) merged.careerGoals = careerGoals;
+  const notes = mergeStringList(base.notes, override.notes);
+  if (notes) merged.notes = notes;
+
+  return merged;
+}

@@ -22,6 +22,8 @@ import {
   isOptimizationPriority,
   emptyAcademicInterestProfile,
   normalizeAcademicInterestProfile,
+  hasMeaningfulAcademicInterests,
+  mergeAcademicInterestProfiles,
 } from '../../api/ai/academic_interest_profile';
 import type {
   AcademicInterestProfile,
@@ -291,5 +293,113 @@ describe('normalizeAcademicInterestProfile', () => {
     });
     const twice = normalizeAcademicInterestProfile(once as AcademicInterestProfile);
     expect(twice).toEqual(once);
+  });
+});
+
+describe('hasMeaningfulAcademicInterests', () => {
+  test('is false for the empty profile', () => {
+    expect(hasMeaningfulAcademicInterests(emptyAcademicInterestProfile())).toBe(false);
+  });
+
+  test('is true when any structured preference list is non-empty', () => {
+    expect(
+      hasMeaningfulAcademicInterests(
+        normalizeAcademicInterestProfile({ focusAreas: [{ area: 'fluids', weight: 0.5 }] }),
+      ),
+    ).toBe(true);
+    expect(
+      hasMeaningfulAcademicInterests(
+        normalizeAcademicInterestProfile({ avoidAreas: [{ area: 'materials', weight: 0.5 }] }),
+      ),
+    ).toBe(true);
+    expect(
+      hasMeaningfulAcademicInterests(
+        normalizeAcademicInterestProfile({ courseStylePreferences: [{ style: 'project_based', weight: 0.5 }] }),
+      ),
+    ).toBe(true);
+    expect(
+      hasMeaningfulAcademicInterests(
+        normalizeAcademicInterestProfile({ optimizationPriorities: [{ priority: 'low_peak_load', weight: 0.5 }] }),
+      ),
+    ).toBe(true);
+  });
+
+  test('is true when only career goals are present', () => {
+    expect(
+      hasMeaningfulAcademicInterests(normalizeAcademicInterestProfile({ careerGoals: ['automotive'] })),
+    ).toBe(true);
+  });
+
+  test('is false when only free-text notes are present (notes are passthrough, not intent)', () => {
+    expect(
+      hasMeaningfulAcademicInterests(normalizeAcademicInterestProfile({ notes: ['student was unsure'] })),
+    ).toBe(false);
+  });
+});
+
+describe('mergeAcademicInterestProfiles', () => {
+  test('merging two empty profiles yields the empty profile', () => {
+    expect(
+      mergeAcademicInterestProfiles(emptyAcademicInterestProfile(), emptyAcademicInterestProfile()),
+    ).toEqual(emptyAcademicInterestProfile());
+  });
+
+  test('keeps base entries the override does not touch', () => {
+    const base = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'fluids', weight: 0.4 }] });
+    const merged = mergeAcademicInterestProfiles(base, emptyAcademicInterestProfile());
+    expect(merged.focusAreas).toEqual([{ area: 'fluids', weight: 0.4 }]);
+  });
+
+  test('adds override entries when the base is empty', () => {
+    const override = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'robotics', weight: 0.7 }] });
+    const merged = mergeAcademicInterestProfiles(emptyAcademicInterestProfile(), override);
+    expect(merged.focusAreas).toEqual([{ area: 'robotics', weight: 0.7 }]);
+  });
+
+  test('override wins for a duplicate focus area (weight and source)', () => {
+    const base = normalizeAcademicInterestProfile({
+      focusAreas: [{ area: 'fluids', weight: 0.9, source: 'inferred' }],
+    });
+    const override = normalizeAcademicInterestProfile({
+      focusAreas: [{ area: 'fluids', weight: 0.2, source: 'user' }],
+    });
+    const merged = mergeAcademicInterestProfiles(base, override);
+    expect(merged.focusAreas).toEqual([{ area: 'fluids', weight: 0.2, source: 'user' }]);
+  });
+
+  test('unions distinct focus areas and sorts them canonically', () => {
+    const base = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'materials', weight: 0.5 }] });
+    const override = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'strength_analysis', weight: 0.5 }] });
+    const merged = mergeAcademicInterestProfiles(base, override);
+    expect(merged.focusAreas.map((f) => f.area)).toEqual(['strength_analysis', 'materials']);
+  });
+
+  test('merges focus and avoid areas independently (they stay separate)', () => {
+    const base = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'fluids', weight: 0.5 }] });
+    const override = normalizeAcademicInterestProfile({ avoidAreas: [{ area: 'fluids', weight: 0.5 }] });
+    const merged = mergeAcademicInterestProfiles(base, override);
+    expect(merged.focusAreas).toEqual([{ area: 'fluids', weight: 0.5 }]);
+    expect(merged.avoidAreas).toEqual([{ area: 'fluids', weight: 0.5 }]);
+  });
+
+  test('unions career goals and notes, base first then override, deduped', () => {
+    const base = normalizeAcademicInterestProfile({ careerGoals: ['automotive'], notes: ['keep'] });
+    const override = normalizeAcademicInterestProfile({ careerGoals: ['automotive', 'aerospace'] });
+    const merged = mergeAcademicInterestProfiles(base, override);
+    expect(merged.careerGoals).toEqual(['automotive', 'aerospace']);
+    expect(merged.notes).toEqual(['keep']);
+  });
+
+  test('does not mutate either input', () => {
+    const base = normalizeAcademicInterestProfile({
+      focusAreas: [{ area: 'fluids', weight: 0.5 }],
+      careerGoals: ['automotive'],
+    });
+    const override = normalizeAcademicInterestProfile({ focusAreas: [{ area: 'robotics', weight: 0.5 }] });
+    const baseSnapshot = JSON.parse(JSON.stringify(base));
+    const overrideSnapshot = JSON.parse(JSON.stringify(override));
+    mergeAcademicInterestProfiles(base, override);
+    expect(base).toEqual(baseSnapshot);
+    expect(override).toEqual(overrideSnapshot);
   });
 });
