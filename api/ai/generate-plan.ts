@@ -47,6 +47,7 @@ import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
+import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -79,6 +80,11 @@ const requestSchema = z.object({
   session_token: z.string().uuid('session_token must be a valid UUID'),
   // Additive, optional — only consumed when AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT is enabled.
   clarification_answers: z.array(clarificationAnswerSchema).optional(),
+  // Additive, optional, request-level opt-in — when true, an interestEvaluation
+  // is attached to the plan response (see buildGeneratePlanInterestEvaluation).
+  // Absent/false => byte-identical response to before this epic.
+  include_interest_evaluation: z.boolean().optional(),
+  academic_interest_profile: z.any().optional(),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;
@@ -244,7 +250,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     return;
   }
-  const { program_id, plan_context, preferences, session_token, clarification_answers } = parsed.data;
+  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
@@ -380,10 +386,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ]);
   }
 
-  res.status(200).json({
+  const responseBody: Record<string, unknown> = {
     ...proposal,
     errors: blockingErrors,
     blocked: blockingErrors.length > 0,
     trace: traceForResponse,
-  });
+  };
+  // Opt-in only, additive: attach an interest evaluation over the generated
+  // plan. Never influences plan generation, scorePlan, ranking, or the fields
+  // above — purely a read of proposal.semesters. Absent flag => key absent.
+  if (include_interest_evaluation === true) {
+    responseBody.interestEvaluation = buildGeneratePlanInterestEvaluation(proposal.semesters, academic_interest_profile);
+  }
+  res.status(200).json(responseBody);
 }

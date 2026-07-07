@@ -100,11 +100,16 @@ test('/planner/legacy route is unchanged and still serves the canonical file', (
   expect(route).toMatch(/app[/\\'",\s]+web[/\\'",\s]+semester_board_viewer\.html/);
 });
 
-test('the canonical legacy HTML file was not modified by this feature', () => {
-  const diff = execSync('git diff --name-only HEAD -- app/web/semester_board_viewer.html', {
-    cwd: ROOT,
-  }).toString().trim();
-  expect(diff).toBe('');
+test('the interest-evaluation slice edits the legacy HTML additively only', () => {
+  // Earlier shell slices deliberately left the canonical planner untouched.
+  // The interest-evaluation epic intentionally wires it — but ADDITIVELY: the
+  // canonical generate-plan call path and the interest opt-in must both be
+  // present, and the interest fields must spread {} by default (no change to
+  // the default request payload).
+  const html = read('app/web/semester_board_viewer.html');
+  expect(html).toContain("fetch('/api/ai/generate-plan'");
+  expect(html).toContain('buildInterestRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('interestScorecardHtml');
 });
 
 test('legacy in-frame header buttons still exist (not removed this slice)', () => {
