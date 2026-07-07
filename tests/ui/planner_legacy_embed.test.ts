@@ -55,10 +55,11 @@ test('embed injection only adds content — never rewrites the rest of the docum
   expect(embedded.length).toBeGreaterThan(plain.length);
   expect(embedded).toContain('<title>x</title>');
   expect(embedded).toContain('<body>legacy</body>');
-  // Everything after stripping the added style block must equal the plain output.
-  const styleMatch = embedded.match(/<style>:root\{--hdr-h:0px\}\.page-hdr\{display:none!important\}<\/style>/);
-  expect(styleMatch).not.toBeNull();
-  expect(embedded.replace(styleMatch![0], '')).toBe(plain);
+  // Everything after stripping every added <style> block must equal the
+  // plain output. Matches any <style> content generically (not a hardcoded
+  // literal) so this stays valid as the embed-only polish CSS grows.
+  const embeddedWithoutStyles = embedded.replace(/<style>[\s\S]*?<\/style>/g, '');
+  expect(embeddedWithoutStyles).toBe(plain);
 });
 
 test('the injection point is <head>, so it never runs twice even if called twice', () => {
@@ -78,4 +79,53 @@ test('the --hdr-h:0 override wins the CSS cascade over the base :root{--hdr-h:54
   expect(overrideIdx).toBeGreaterThan(-1);
   expect(baseIdx).toBeGreaterThan(-1);
   expect(overrideIdx).toBeGreaterThan(baseIdx);
+});
+
+/**
+ * Embed-scoped visual polish (workspace-density pass). All rules below reuse
+ * the exact selectors and CSS custom properties already declared in the
+ * canonical semester_board_viewer.html (confirmed by reading the file
+ * directly) — same specificity, so the cascade-order rule proven above lets
+ * them win without !important. Purely presentational: no new HTML, no JS,
+ * no change to the raw (embed=false) fallback.
+ */
+test('embed=true improves sidebar category-header and chip readability', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  expect(html).toMatch(/\.repo-group > summary\s*\{[^}]*font-size:\s*\.7[0-9]rem/);
+  expect(html).toMatch(/\.chip\s*\{[^}]*font-size:\s*\.7[0-9]rem/);
+});
+
+test('embed=true adds a course-card hover/focus lift reusing the shell shadow token', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  // Reuses --shadow-premium (the same token the Next-native repository card
+  // uses) rather than inventing a new shadow, so both surfaces feel unified.
+  expect(html).toMatch(/\.course-card:hover,\s*\.course-card:focus-within\s*\{[^}]*var\(--shadow-premium\)/s);
+});
+
+test('embed=true gives empty semesters an intentional placeholder, not blank space', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  expect(html).toMatch(/\.sem-zone:empty::before\s*\{[^}]*content:/s);
+});
+
+test('embed=true makes the overload/blocked weekly-load state more visually obvious', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  expect(html).toMatch(/\.wl-track\s*\{[^}]*height:/);
+  expect(html).toMatch(/\.wl-fill\.over,\s*\.wl-fill\.blocked\s*\{[^}]*box-shadow:/s);
+});
+
+test('embed=false (raw /planner/legacy) never receives the workspace-polish CSS', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: false });
+  expect(html).not.toContain('.repo-group > summary');
+  expect(html).not.toContain('.sem-zone:empty::before');
+});
+
+test('the polish rules use no !important — cascade order (last in <head>) already wins', () => {
+  // The pre-existing header-collapse rule (.page-hdr{display:none!important})
+  // legitimately needs !important and is untouched by this pass — scope the
+  // assertion to only the new polish selectors, not the whole injected output.
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  const polishStart = html.indexOf('.repo-group > summary');
+  expect(polishStart).toBeGreaterThan(-1);
+  const polishBlock = html.slice(polishStart);
+  expect(polishBlock).not.toContain('!important');
 });
