@@ -73,7 +73,7 @@ export default function LegacyPlannerFrame({
     setChips(parseChipStatus(raw))
   }, [])
 
-  const handleIframeLoad = useCallback(() => {
+  const setupChipObserver = useCallback(() => {
     readChips()
     observerRef.current?.disconnect()
     const container = iframeRef.current?.contentDocument?.getElementById('hdr-chips')
@@ -83,7 +83,36 @@ export default function LegacyPlannerFrame({
     observerRef.current = observer
   }, [readChips])
 
-  useEffect(() => () => observerRef.current?.disconnect(), [])
+  // A same-origin iframe's `load` event can fire before React finishes
+  // attaching a JSX `onLoad` listener — on a fast enough response (warm dev
+  // server, production) the load wins the race and the one-shot event is
+  // silently missed forever, so the observer never attaches. Checking for
+  // the real document synchronously on mount covers the case where it
+  // already fired; addEventListener('load', ...) covers the case where it
+  // hasn't. Exactly one path runs per mount, so no duplicate observers — and
+  // both are properly removed on cleanup, safe under StrictMode's
+  // synchronous dev-mode mount→cleanup→mount and Fast Refresh re-running.
+  //
+  // contentDocument.readyState alone is NOT a safe "already loaded" signal:
+  // an iframe's initial about:blank placeholder document also reports that
+  // state immediately, before the real navigation even starts — checking it
+  // would false-positive on the placeholder and skip attaching the load
+  // listener entirely, permanently missing the real load (verified via
+  // instrumented logging). #hdr-chips only exists in the real legacy
+  // document, so its presence is the robust "already loaded" check.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    if (iframe.contentDocument?.getElementById('hdr-chips')) {
+      setupChipObserver()
+      return () => observerRef.current?.disconnect()
+    }
+    iframe.addEventListener('load', setupChipObserver)
+    return () => {
+      iframe.removeEventListener('load', setupChipObserver)
+      observerRef.current?.disconnect()
+    }
+  }, [setupChipObserver])
 
   const callLegacy = (fn: 'openMyCoursesModal' | 'showModal' | 'resetBoard') => {
     const win = iframeRef.current?.contentWindow as
@@ -185,7 +214,6 @@ export default function LegacyPlannerFrame({
       <iframe
         ref={iframeRef}
         src={`/planner/legacy${embedSuffix}`}
-        onLoad={handleIframeLoad}
         title="מתכנן הלימודים המלא"
         className="h-full w-full min-h-0 flex-1 border-0"
       />
