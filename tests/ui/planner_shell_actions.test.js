@@ -154,7 +154,53 @@ test('the outer toolbar renders the four mirrored status labels', () => {
   expect(frame).toContain('חסרות שעות');
 });
 
-test('the mirrored status re-reads on iframe load (initial + every program change)', () => {
+/**
+ * iframe-load race: a same-origin iframe's `load` event can fire before React
+ * finishes attaching a JSX `onLoad` listener (verified via instrumented
+ * logging — a fast enough response wins the race and the one-shot event is
+ * silently missed forever, so the MutationObserver never attaches and the
+ * mirrored status permanently reads "no chips"). The fix must not rely on
+ * `onLoad` firing at all: check whether the target document has already
+ * loaded and only fall back to a real `load` listener if it genuinely
+ * hasn't, so whichever path wins, setup happens exactly once.
+ *
+ * `contentDocument.readyState` alone is NOT a safe "already loaded" check —
+ * an iframe's initial about:blank placeholder document also reports
+ * readyState 'complete' immediately, before the real navigation even starts,
+ * which would false-positive and skip attaching the load listener entirely
+ * (also verified via instrumented logging). Checking for the actual expected
+ * element (#hdr-chips, which only exists in the real legacy document) is the
+ * robust signal.
+ */
+test('the mirrored status setup checks for the real document, not just readyState', () => {
   const frame = read('web/app/components/LegacyPlannerFrame.tsx');
-  expect(frame).toMatch(/onLoad/);
+  // The "already loaded" branch condition itself must not trust readyState
+  // alone (false-positives on the blank placeholder document) — it must
+  // check for the real element instead. A comment may still explain why
+  // readyState was rejected; only the actual condition is asserted here.
+  const condition = frame.match(/if \(([^)]*getElementById\('hdr-chips'\)[^)]*)\)/);
+  expect(condition).not.toBeNull();
+  expect(condition[1]).not.toMatch(/readyState/);
+  expect(frame).toContain("addEventListener('load'");
+});
+
+test('the load listener is removed on cleanup (no leak across StrictMode/Fast Refresh)', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  expect(frame).toContain("removeEventListener('load'");
+});
+
+test('the iframe no longer relies solely on a JSX onLoad prop for chip setup', () => {
+  // A single ref-effect-based path (already-loaded check + addEventListener)
+  // replaces the racy JSX onLoad prop entirely — avoids two setup paths that
+  // could both fire and attach duplicate observers.
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  const iframeTag = frame.match(/<iframe[\s\S]*?\/>/)[0];
+  expect(iframeTag).not.toMatch(/onLoad=/);
+});
+
+test('setup disconnects any prior observer before attaching, and on cleanup', () => {
+  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
+  const disconnectCalls = frame.match(/observerRef\.current\?\.disconnect\(\)/g) || [];
+  // at least once before a fresh attach, and once in the effect's cleanup
+  expect(disconnectCalls.length).toBeGreaterThanOrEqual(2);
 });
