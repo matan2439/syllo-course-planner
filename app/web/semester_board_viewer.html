@@ -4332,6 +4332,19 @@ function buildInterestRequestFields(interests) {
   return { include_interest_evaluation: true, academic_interest_profile: profile };
 }
 
+/**
+ * Additive generate-plan body fragment for the AI planning flow. Wraps
+ * buildInterestRequestFields (unchanged): when the user expressed interests it
+ * opts into the Academic Decision Agent runtime alongside the interest
+ * evaluation. When nothing was expressed it returns {} — so the default,
+ * no-interest request stays byte-for-byte unchanged (no agent flag sent).
+ */
+function buildAgentPlanRequestFields(interests) {
+  const fields = buildInterestRequestFields(interests);
+  if (fields.include_interest_evaluation) fields.use_academic_decision_agent = true;
+  return fields;
+}
+
 function _interestCourseChip(item, labelFor) {
   const cid = item && typeof item.courseId === 'string' ? item.courseId : '';
   if (!cid) return '';
@@ -4410,10 +4423,67 @@ function interestScorecardHtml(evaluation, labelFor) {
   return parts.join('');
 }
 
+/**
+ * Render the backend's additive `academicDecision` (from the opt-in Academic
+ * Decision Agent runtime) as a Hebrew RTL advisor section, or '' when absent.
+ * Deterministic and total: renders ONLY returned fields (never fabricates an
+ * explanation), guards every section, and escapes all dynamic text. The
+ * interest scorecard is rendered separately (interestScorecardHtml) — this
+ * section never duplicates it.
+ */
+function academicDecisionHtml(academicDecision) {
+  const ad = academicDecision;
+  if (!ad || typeof ad !== 'object') return '';
+  const ex = (ad.explanation && typeof ad.explanation === 'object') ? ad.explanation : {};
+
+  const listSection = (title, items) => {
+    const arr = Array.isArray(items) ? items.filter(x => typeof x === 'string' && x.length) : [];
+    if (!arr.length) return '';
+    return `<section class="agent-decision-sec"><h5>${esc(title)}</h5><ul class="agent-decision-list">`
+      + arr.map(x => `<li>${esc(x)}</li>`).join('')
+      + '</ul></section>';
+  };
+
+  const parts = [];
+  parts.push('<div class="agent-decision" dir="rtl">');
+  parts.push('<h4 class="agent-decision-title">החלטת הסוכן האקדמי</h4>');
+
+  if (typeof ex.mainRecommendation === 'string' && ex.mainRecommendation.length) {
+    parts.push(`<p class="agent-decision-main">${esc(ex.mainRecommendation)}</p>`);
+  }
+
+  // Compact, non-scary validation status.
+  if (ad.validation && typeof ad.validation === 'object') {
+    const ok = ad.validation.valid === true;
+    parts.push(`<p class="agent-decision-validation agent-decision-validation-${ok ? 'ok' : 'warn'}">`
+      + (ok ? 'התוכנית עברה בדיקת חוקיות ✓' : 'התוכנית דורשת התאמות לפני החלה')
+      + '</p>');
+  }
+
+  // Clarification questions — shown when the agent needs more input instead of a plan.
+  const clar = ad.clarification;
+  const questions = clar && Array.isArray(clar.questions) ? clar.questions : [];
+  if (clar && clar.needsClarification === true && questions.length) {
+    parts.push('<section class="agent-decision-sec agent-decision-clarify"><h5>שאלות הבהרה</h5><ul class="agent-decision-list">'
+      + questions.map(q => `<li>${esc((q && typeof q.question === 'string') ? q.question : (q && q.id) || '')}</li>`).join('')
+      + '</ul></section>');
+  }
+
+  parts.push(listSection('למה התוכנית הזו', ex.whyThisPlan));
+  parts.push(listSection('סיכונים ופשרות', ex.risksAndTradeoffs));
+  parts.push(listSection('מידע חסר', ex.missingData));
+  parts.push(listSection('צעדים מומלצים להמשך', ex.suggestedNextActions));
+
+  parts.push('</div>');
+  return parts.join('');
+}
+
 // Panel-side interest selection state (opt-in). Lives on _aiPickerState so it
 // clears with the rest of the temporary preferences; missing/garbage shapes are
 // normalized to empty so buildInterestRequestFields never sends stale data.
 let _aiPlanLastInterestEvaluation = null;
+// Additive: the last academicDecision from the opt-in agent runtime (or null).
+let _aiPlanLastAcademicDecision = null;
 
 function _ensureInterestState() {
   const s = _aiPickerState.interests;
@@ -4446,6 +4516,16 @@ function renderInterestScorecard() {
     _aiPlanLastInterestEvaluation,
     cid => courseMap[cid]?.name_he || cid,
   );
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+
+// Render the captured academicDecision into the panel container (if mounted).
+// Read-only; safe to call whether or not a decision exists.
+function renderAcademicDecision() {
+  const el = document.getElementById('ai-academic-decision');
+  if (!el) return;
+  const html = academicDecisionHtml(_aiPlanLastAcademicDecision);
   el.innerHTML = html;
   el.hidden = !html;
 }
@@ -4633,6 +4713,7 @@ function renderAiTab() {
       </details>
 
       <div id="ai-interest-scorecard" class="interest-scorecard-wrap" hidden></div>
+      <div id="ai-academic-decision" class="agent-decision-wrap" hidden></div>
 
       <div id="ai-chat-log" class="ai-chat-log ai-chat-thread"></div>
 
@@ -4713,6 +4794,7 @@ function renderAiTab() {
 
   // Re-render a previously captured evaluation when the panel re-mounts.
   renderInterestScorecard();
+  renderAcademicDecision();
 
   // PART C — mention missing requirements conversationally (once per board
   // state) instead of a static "דרישות חסרות" box.
@@ -17637,8 +17719,10 @@ async function requestPlanProposal(prefs, actionType) {
         preferences:   prefs,
         session_token: getOrCreateSessionToken(),
         // Additive, opt-in: spreads {} when the user expressed no interests, so
-        // the default request payload is byte-for-byte unchanged.
-        ...buildInterestRequestFields(_aiPickerState.interests),
+        // the default request payload is byte-for-byte unchanged. When interests
+        // ARE expressed it also sends use_academic_decision_agent:true, routing
+        // through the Academic Decision Agent runtime.
+        ...buildAgentPlanRequestFields(_aiPickerState.interests),
       }),
     });
 
@@ -17654,6 +17738,18 @@ async function requestPlanProposal(prefs, actionType) {
     // its ranking, or any of the repair/validation flow below.
     _aiPlanLastInterestEvaluation = (data && data.interestEvaluation) || null;
     renderInterestScorecard();
+    // Additive, opt-in: capture + render the Academic Decision Agent runtime's
+    // structured Hebrew explanation. Absent unless the agent flow was active.
+    _aiPlanLastAcademicDecision = (data && data.academicDecision) || null;
+    renderAcademicDecision();
+    // Agent clarification: a critical input was missing, so the runtime returned
+    // clarification instead of a plan. Surface it and stop — never fabricate a
+    // plan from a clarification-only response.
+    if (data && data.needsClarification === true) {
+      if (statusEl) statusEl.textContent = 'צריך עוד פרטים כדי לבנות תוכנית — ראה/י את המלצות הסוכן האקדמי.';
+      if (genBtn) genBtn.disabled = false;
+      return;
+    }
     // Step 9 — capture the additive planner trace (read-only, for the debug panel).
     setPlannerTrace(data.trace);
 
