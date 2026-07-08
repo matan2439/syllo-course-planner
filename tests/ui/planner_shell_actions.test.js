@@ -106,9 +106,17 @@ test('the interest-evaluation slice edits the legacy HTML additively only', () =
   // canonical generate-plan call path and the interest opt-in must both be
   // present, and the interest fields must spread {} by default (no change to
   // the default request payload).
+  //
+  // The agent-runtime UI slice then routes the request spread through
+  // buildAgentPlanRequestFields, which WRAPS buildInterestRequestFields (still
+  // {} by default) and only adds use_academic_decision_agent when interests are
+  // expressed — so the additive-interest invariant is preserved, just behind
+  // the wrapper. Assert the wrapper is the request path and still composes the
+  // interest opt-in.
   const html = read('app/web/semester_board_viewer.html');
   expect(html).toContain("fetch('/api/ai/generate-plan'");
-  expect(html).toContain('buildInterestRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('buildAgentPlanRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('buildInterestRequestFields(interests)'); // wrapped, additive interest opt-in preserved
   expect(html).toContain('interestScorecardHtml');
 });
 

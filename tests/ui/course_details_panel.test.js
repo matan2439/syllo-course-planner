@@ -100,10 +100,13 @@ test('the course-details slice itself stays Next-native (legacy HTML edits are a
   // HTML additively, so on this branch the working-tree diff is expected. The
   // still-meaningful invariant: the course-details panel is a Next component,
   // and any legacy-HTML edit present is the additive interest opt-in — never a
-  // rewrite of the canonical generate-plan call path.
+  // rewrite of the canonical generate-plan call path. The agent-runtime UI
+  // slice routes the request spread through buildAgentPlanRequestFields, which
+  // wraps buildInterestRequestFields additively (still {} by default).
   const html = read('app/web/semester_board_viewer.html');
   expect(html).toContain("fetch('/api/ai/generate-plan'");
-  expect(html).toContain('buildInterestRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('buildAgentPlanRequestFields(_aiPickerState.interests)');
+  expect(html).toContain('buildInterestRequestFields(interests)'); // wrapped, additive interest opt-in preserved
 });
 
 test('no backend/api files were modified by this slice', () => {
