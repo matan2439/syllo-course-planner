@@ -1,0 +1,373 @@
+/**
+ * AcademicDecisionAgent runtime adapter — the named seam behind the opt-in
+ * `use_academic_decision_agent` flag in generate-plan.ts.
+ *
+ * It orchestrates the academic decision loop AROUND generate-plan's existing,
+ * unchanged plan generation:
+ *
+ *   Observe/Plan  — generate-plan's own planner path (untouched; this adapter
+ *                   only READS the already-produced PlanProposal + model).
+ *   Clarify       — DeterministicClarificationCapability over request inputs.
+ *   Validate      — reuses the proposal's own validation result (errors,
+ *                   warnings_he, requirements_status).
+ *   Simulate/Eval — requirement coverage, workload notes (getSemesterLoad),
+ *                   interestEvaluation via the full-catalog resolver (only when
+ *                   a meaningful AcademicInterestProfile is supplied), and
+ *                   honest missing/needs_review topic-data notes.
+ *   Decide        — deterministic single-plan selection + rationale.
+ *   Explain       — a Hebrew-ready structured explanation object.
+ *
+ * Why an adapter and not the AcademicDecisionAgent class: that class's Plan
+ * stage (runPlanningOrchestration) builds a DIFFERENT ConstraintModel and
+ * starts from emptyState, so routing generate-plan through it would change the
+ * generated plan and break completed/currently_taking/excluded/max-hours
+ * semantics. This adapter reuses the SAME capability MODULES the class uses
+ * (ClarificationCapability, evaluateAcademicInterestFit, InterestPlanScorecard)
+ * while leaving the planner and default response byte-identical.
+ *
+ * No LLM, no Supabase, no plan mutation, no fabrication.
+ */
+
+import {
+  normalizeAcademicInterestProfile,
+  hasMeaningfulAcademicInterests,
+  type RawAcademicInterestProfile,
+  type AcademicInterestProfile,
+} from './academic_interest_profile';
+import { DeterministicClarificationCapability } from './academic_clarification';
+import type {
+  ClarificationPlanningContext,
+  ClarificationResult,
+  MissingInputField,
+} from './academic_decision_types';
+import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
+import type { AcademicInterestEvaluationResult } from './academic_interest_evaluation';
+import {
+  createMechanicalEngineering2027Resolver,
+  summarizeCourseTopicProfileSources,
+} from './course_topic_profiles_static';
+import { getSemesterLoad } from './completion_analysis';
+import type { ConstraintModel } from './planner_types';
+
+// ── Public shapes ───────────────────────────────────────────────────────────
+
+export interface AcademicDecisionProposal {
+  semesters: Array<{ semester_id: string; course_ids: string[] }>;
+  moves: Array<{ course_id: string; from: string | null; to: string }>;
+  warnings_he: string[];
+  rationale_he: string;
+  requirements_status: Array<{ name: string; required: number; placed: number; satisfied: boolean }>;
+}
+
+export interface AcademicDecisionContext {
+  completedCourseIds?: string[];
+  currentCourseIds?: string[];
+  excludedCourseIds?: string[];
+  maxWeeklyHours?: number;
+  track?: string;
+}
+
+export interface AcademicDecisionExplanation {
+  mainRecommendation: string;
+  whyThisPlan: string[];
+  risksAndTradeoffs: string[];
+  missingData: string[];
+  suggestedNextActions: string[];
+}
+
+export interface AcademicDecisionValidation {
+  valid: boolean;
+  errors: string[];
+  warnings_he: string[];
+  requirementsSatisfied: boolean;
+}
+
+export interface AcademicDecisionEvaluation {
+  requirementCoverage: AcademicDecisionProposal['requirements_status'];
+  workloadNotes: string[];
+  missingDataNotes: string[];
+}
+
+export interface AcademicDecisionDecision {
+  selectedPlan: 'generated';
+  rationale: string;
+  tradeoffs: string[];
+}
+
+/** Full (planned) path — validation/evaluation/decision always present. */
+export interface AcademicDecisionView {
+  clarification: ClarificationResult;
+  validation: AcademicDecisionValidation;
+  evaluation: AcademicDecisionEvaluation;
+  interestEvaluation?: AcademicInterestEvaluationResult;
+  decision: AcademicDecisionDecision;
+  explanation: AcademicDecisionExplanation;
+}
+
+/** Blocked (critical-missing) path — no plan, so validation/evaluation/decision are absent. */
+export interface AcademicClarificationOnlyView {
+  clarification: ClarificationResult;
+  validation?: undefined;
+  evaluation?: undefined;
+  decision?: undefined;
+  explanation: AcademicDecisionExplanation;
+}
+
+export interface BuildAcademicDecisionInput {
+  proposal: AcademicDecisionProposal;
+  /** Only `profiles` (course hours) is read. */
+  model: Pick<ConstraintModel, 'profiles'>;
+  blocked: boolean;
+  errors: string[];
+  clarification: ClarificationResult;
+  context: AcademicDecisionContext;
+  /** Untrusted request-supplied profile; normalized here. */
+  academicInterestProfileRaw?: unknown;
+}
+
+// ── Clarify ──────────────────────────────────────────────────────────────────
+
+/** Map generate-plan's plan_context/preferences onto the clarification context. */
+export function extractClarificationContext(
+  planContext: any,
+  preferences: any,
+  rawProfile: unknown,
+): ClarificationPlanningContext {
+  const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
+  const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
+  const excluded = preferences?.disallowed_course_ids ?? preferences?.strongly_avoided_course_ids;
+
+  const context: ClarificationPlanningContext = {
+    completedCourseIds: completed,
+    currentCourseIds: current,
+    excludedCourseIds: excluded,
+    maxWeeklyHours: preferences?.max_weekly_hours ?? undefined,
+  };
+  // Only introduce the interest key when a profile is actually supplied — absence
+  // must leave clarification's interest questions dormant (see academic_clarification.ts).
+  if (rawProfile !== undefined && rawProfile !== null) {
+    context.academicInterestProfile = normalizeAcademicInterestProfile(rawProfile as RawAcademicInterestProfile);
+  }
+  return context;
+}
+
+export async function clarifyForAcademicDecision(
+  context: ClarificationPlanningContext,
+): Promise<ClarificationResult> {
+  return new DeterministicClarificationCapability().clarify({ gaps: [], context });
+}
+
+export function hasCriticalMissingInput(result: ClarificationResult): boolean {
+  return result.missingInputs.some((m) => m.critical);
+}
+
+// ── Hebrew labels for missing fields ──────────────────────────────────────────
+
+const FIELD_HE: Record<MissingInputField, string> = {
+  completedCourses: 'קורסים שהושלמו',
+  currentCourses: 'קורסים בלימוד כעת',
+  excludedCourses: 'קורסים להחרגה',
+  maxWeeklyHours: 'מגבלת שעות שבועית',
+  track: 'מסלול / תחום התמחות',
+  academicFocusAreas: 'תחומי עניין אקדמיים',
+  academicAvoidAreas: 'תחומים להימנעות',
+  courseStylePreferences: 'העדפות סגנון קורס',
+  optimizationPriorities: 'סדרי עדיפויות לתכנון',
+  careerGoals: 'יעדים תעסוקתיים',
+};
+
+// ── Full (planned) path ────────────────────────────────────────────────────
+
+function computeWorkloadNotes(input: BuildAcademicDecisionInput): string[] {
+  const courseHours: Record<string, { hours?: number | null }> = {};
+  for (const [id, p] of input.model.profiles) courseHours[id] = { hours: (p as any).hours };
+
+  const notes: string[] = [];
+  let peak = 0;
+  for (const sem of input.proposal.semesters) {
+    const hrs = getSemesterLoad(sem, courseHours);
+    peak = Math.max(peak, hrs);
+    if (input.context.maxWeeklyHours && hrs > input.context.maxWeeklyHours) {
+      notes.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — מעל המגבלה שביקשת (${input.context.maxWeeklyHours}).`);
+    }
+  }
+  if (input.proposal.semesters.length > 0) notes.push(`עומס שיא בתוכנית: ${peak} ש"ש בסמסטר.`);
+  return notes;
+}
+
+/** interestEvaluation (only for a meaningful profile) + honest missing/needs_review notes. */
+function computeInterest(input: BuildAcademicDecisionInput): {
+  interestEvaluation?: AcademicInterestEvaluationResult;
+  missingDataNotes: string[];
+} {
+  const missingDataNotes: string[] = [];
+  const normalized = normalizeAcademicInterestProfile(
+    (input.academicInterestProfileRaw ?? {}) as RawAcademicInterestProfile,
+  );
+  if (!hasMeaningfulAcademicInterests(normalized)) {
+    return { missingDataNotes };
+  }
+
+  const interestEvaluation = buildGeneratePlanInterestEvaluation(
+    input.proposal.semesters,
+    input.academicInterestProfileRaw,
+  );
+
+  const unmatched = interestEvaluation.unmatchedCourseIds.length;
+  if (unmatched > 0) {
+    missingDataNotes.push(`${unmatched} מקורסי התוכנית ללא פרופיל תחומי — לא נכללו בהערכת ההתאמה.`);
+  }
+  // needs_review: matched courses whose topic profile is a 'default' placeholder.
+  const resolver = createMechanicalEngineering2027Resolver();
+  const resolution = resolver.resolveCourseTopicProfiles(interestEvaluation.evaluatedCourseIds);
+  const sources = summarizeCourseTopicProfileSources(resolution.profilesByCourseId);
+  if (sources.default > 0) {
+    missingDataNotes.push(`${sources.default} מקורסי התוכנית עם פרופיל תחומי בברירת מחדל — טעונים בדיקה (needs_review).`);
+  }
+  return { interestEvaluation, missingDataNotes };
+}
+
+/** Build the full academicDecision view for a generated plan. Pure. */
+export function buildAcademicDecision(input: BuildAcademicDecisionInput): AcademicDecisionView {
+  const requirementsSatisfied = input.proposal.requirements_status.every((r) => r.satisfied);
+
+  const validation: AcademicDecisionValidation = {
+    valid: !input.blocked,
+    errors: input.errors,
+    warnings_he: input.proposal.warnings_he,
+    requirementsSatisfied,
+  };
+
+  const workloadNotes = computeWorkloadNotes(input);
+  const { interestEvaluation, missingDataNotes } = computeInterest(input);
+
+  const evaluation: AcademicDecisionEvaluation = {
+    requirementCoverage: input.proposal.requirements_status,
+    workloadNotes,
+    missingDataNotes,
+  };
+
+  // ── Explanation (Hebrew-ready, structured) ──
+  const placedCount = input.proposal.semesters.reduce((n, s) => n + s.course_ids.length, 0);
+  const semCount = input.proposal.semesters.filter((s) => s.course_ids.length > 0).length;
+
+  const mainRecommendation = input.blocked
+    ? 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — יש לצמצם עומס או לאשר חריגה לפני שימוש.'
+    : `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`;
+
+  const whyThisPlan: string[] = [];
+  if (input.proposal.rationale_he) whyThisPlan.push(input.proposal.rationale_he);
+  whyThisPlan.push(
+    requirementsSatisfied
+      ? 'התוכנית מכסה את כל דרישות החובה והקטגוריות שנבדקו.'
+      : 'התוכנית מקדמת את דרישות התואר, אך חלק מהדרישות עדיין אינן מולאות.',
+  );
+  if (!input.blocked) whyThisPlan.push('התוכנית עברה את בדיקות החוקיות והעומס.');
+  if (interestEvaluation && interestEvaluation.scorecard.summaryLevel !== 'none') {
+    whyThisPlan.push(`רמת ההתאמה לתחומי העניין שציינת: ${interestEvaluation.scorecard.summaryLevel}.`);
+  }
+
+  const risksAndTradeoffs: string[] = [
+    ...input.proposal.warnings_he,
+    ...workloadNotes,
+  ];
+  if (interestEvaluation && interestEvaluation.scorecard.avoidRiskCourses.length > 0) {
+    risksAndTradeoffs.push(
+      `${interestEvaluation.scorecard.avoidRiskCourses.length} קורסים בתוכנית נוגעים בתחומים שביקשת להימנע מהם.`,
+    );
+  }
+
+  const missingData: string[] = [
+    ...input.clarification.missingInputs.map((m) => `חסר מידע: ${FIELD_HE[m.field] ?? m.field}.`),
+    ...missingDataNotes,
+  ];
+  if (!interestEvaluation) missingData.push('לא סופק פרופיל תחומי עניין — לא בוצעה הערכת התאמה.');
+
+  const suggestedNextActions = buildSuggestedNextActions({
+    blocked: input.blocked,
+    overloaded: workloadNotes.some((n) => n.includes('מעל המגבלה')),
+    clarification: input.clarification,
+    context: input.context,
+    interestEvaluation,
+    hasUnmatchedOrNeedsReview: missingDataNotes.length > 0,
+  });
+
+  const tradeoffs = risksAndTradeoffs.length > 0 ? risksAndTradeoffs : ['אין פשרות מהותיות שזוהו בתוכנית זו.'];
+
+  const decision: AcademicDecisionDecision = {
+    selectedPlan: 'generated',
+    rationale: input.blocked
+      ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה עד לתיקון חריגת העומס.'
+      : 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה לאחר שעברה את בדיקות החוקיות והעומס.',
+    tradeoffs,
+  };
+
+  return {
+    clarification: input.clarification,
+    validation,
+    evaluation,
+    interestEvaluation,
+    decision,
+    explanation: { mainRecommendation, whyThisPlan, risksAndTradeoffs, missingData, suggestedNextActions },
+  };
+}
+
+function buildSuggestedNextActions(args: {
+  blocked: boolean;
+  overloaded: boolean;
+  clarification: ClarificationResult;
+  context: AcademicDecisionContext;
+  interestEvaluation?: AcademicInterestEvaluationResult;
+  hasUnmatchedOrNeedsReview: boolean;
+}): string[] {
+  const actions: string[] = [];
+  const missingFields = new Set(args.clarification.missingInputs.map((m) => m.field));
+
+  if (args.blocked || args.overloaded) {
+    actions.push('צמצם/י את העומס השבועי או אשר/י חריגה מפורשת כדי לאפשר את החלת התוכנית.');
+  }
+  if (missingFields.has('completedCourses') || (args.context.completedCourseIds?.length ?? 0) === 0) {
+    actions.push('ספק/י את רשימת הקורסים שכבר השלמת כדי לחדד את בדיקת הקדם-דרישות.');
+  }
+  if (missingFields.has('currentCourses') || (args.context.currentCourseIds?.length ?? 0) === 0) {
+    actions.push('ציין/י אילו קורסים את/ה לומד/ת כעת כדי למנוע שיבוץ כפול.');
+  }
+  if (missingFields.has('excludedCourses')) {
+    actions.push('ציין/י אם יש קורסים שברצונך להחריג מהתוכנית.');
+  }
+  if (!args.interestEvaluation) {
+    actions.push('הוסף/י פרופיל תחומי עניין כדי לקבל הערכת התאמה אקדמית.');
+  } else if (args.interestEvaluation.scorecard.summaryLevel === 'low' || args.interestEvaluation.scorecard.summaryLevel === 'none') {
+    actions.push('ניתן להגדיל את ההתאמה לתחומי העניין על ידי עידכון תחומי הפוקוס או בקשת חלופות.');
+  }
+  if (args.hasUnmatchedOrNeedsReview) {
+    actions.push('כדאי לבדוק/לעדכן קורסים ללא פרופיל תחומי או בברירת מחדל (needs_review).');
+  }
+  if (actions.length === 0) {
+    actions.push('ניתן לבקש תוכנית חלופית עם דגשים אחרים (עומס, עניין, או הימנעות מקורס מסוים).');
+  }
+  return actions;
+}
+
+// ── Clarification-only (critical missing) block ──────────────────────────────
+
+/**
+ * Build the academicDecision view for the blocked path — no plan exists yet, so
+ * validation/evaluation/decision are absent and the explanation directs the
+ * user to answer the critical questions instead of pretending a plan exists.
+ */
+export function buildClarificationDecision(clarification: ClarificationResult): AcademicClarificationOnlyView {
+  const criticalFields = clarification.missingInputs.filter((m) => m.critical).map((m) => FIELD_HE[m.field] ?? m.field);
+  const missingData = clarification.missingInputs.map((m) => `חסר מידע: ${FIELD_HE[m.field] ?? m.field}.`);
+
+  return {
+    clarification,
+    explanation: {
+      mainRecommendation: 'דרוש מידע נוסף לפני בניית תוכנית — נא להשלים את הפרטים הקריטיים.',
+      whyThisPlan: ['לא נבנתה תוכנית: חסרים נתונים קריטיים שעלולים להוביל לתוכנית שגויה.'],
+      risksAndTradeoffs: ['בניית תוכנית ללא הנתונים הקריטיים עלולה להפר קדם-דרישות או לשבץ קורסים שהוחרגו.'],
+      missingData,
+      suggestedNextActions: criticalFields.map((f) => `נא לספק: ${f}.`),
+    },
+  };
+}
