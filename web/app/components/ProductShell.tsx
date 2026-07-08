@@ -24,6 +24,7 @@ export default function ProductShell({
   width = 'wide',
   programId,
   fullBleed = false,
+  preferLightweightBackground,
   children,
 }: {
   active?: ShellSection
@@ -35,12 +36,17 @@ export default function ProductShell({
   /** Edge-to-edge, viewport-height frame (embedded legacy planner). No title
    *  block or max-width container; the child fills the remaining height. */
   fullBleed?: boolean
+  /** Force the cheap CSS-only background (no WebGL shader). Defaults to
+   *  fullBleed: the embedded /planner iframe covers the background, so running
+   *  three.js behind it just wastes GPU. Explicit + per-route overridable. */
+  preferLightweightBackground?: boolean
   children: ReactNode
 }) {
   const query = programQuery(programId)
+  const lightweightBg = preferLightweightBackground ?? fullBleed
   return (
     <>
-      <ShaderGradientBackground />
+      <ShaderGradientBackground lightweight={lightweightBg} />
 
       <div
         className={
