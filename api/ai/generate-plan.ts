@@ -48,6 +48,14 @@ import type { ConstraintModel, PlanState, PlannerMutation } from './planner_type
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
+import {
+  extractClarificationContext,
+  clarifyForAcademicDecision,
+  hasCriticalMissingInput,
+  buildAcademicDecision,
+  buildClarificationDecision,
+} from './academic_decision_runtime';
+import type { ClarificationResult } from './academic_decision_types';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -85,6 +93,11 @@ const requestSchema = z.object({
   // Absent/false => byte-identical response to before this epic.
   include_interest_evaluation: z.boolean().optional(),
   academic_interest_profile: z.any().optional(),
+  // Additive, optional, request-level opt-in — when true, the response gains an
+  // additive `academicDecision` object orchestrating clarification, validation,
+  // evaluation, decision, and a Hebrew-ready explanation around the (unchanged)
+  // generated plan. Absent/false => byte-identical response to before.
+  use_academic_decision_agent: z.boolean().optional(),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;
@@ -250,7 +263,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     return;
   }
-  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile } = parsed.data;
+  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
@@ -295,6 +308,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     effectivePlanContext = merged.planContext;
     effectivePreferences = merged.preferences;
   }
+  // AcademicDecisionAgent runtime — opt-in, request-level. Clarify BEFORE
+  // planning: if a critical input is missing, return clarification instead of
+  // pretending a complete plan exists (no board/model load, no planner run).
+  // Otherwise the clarification result is reused to enrich the response below.
+  let academicDecisionClarification: ClarificationResult | undefined;
+  if (use_academic_decision_agent === true) {
+    academicDecisionClarification = await clarifyForAcademicDecision(
+      extractClarificationContext(effectivePlanContext, effectivePreferences, academic_interest_profile),
+    );
+    if (hasCriticalMissingInput(academicDecisionClarification)) {
+      res.status(200).json({
+        needsClarification: true,
+        academicDecision: buildClarificationDecision(academicDecisionClarification),
+      });
+      return;
+    }
+  }
+
   // Unconditional (explicitly approved default-behavior change): the live
   // frontend already sends personal_status.currently_taking on every request,
   // and ignoring it let a currently-taken course be re-proposed by the planner.
@@ -397,6 +428,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // above — purely a read of proposal.semesters. Absent flag => key absent.
   if (include_interest_evaluation === true) {
     responseBody.interestEvaluation = buildGeneratePlanInterestEvaluation(proposal.semesters, academic_interest_profile);
+  }
+  // Opt-in AcademicDecisionAgent runtime — additive. Orchestrates the decision
+  // loop around the plan generated above (never regenerates it). Reuses the
+  // clarification result computed pre-planning. Absent flag => key absent.
+  if (use_academic_decision_agent === true) {
+    responseBody.academicDecision = buildAcademicDecision({
+      proposal,
+      model,
+      blocked: blockingErrors.length > 0,
+      errors: blockingErrors,
+      clarification: academicDecisionClarification!,
+      context: {
+        completedCourseIds: (effectivePlanContext?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+        currentCourseIds: currentlyPlannedCourseIds,
+        excludedCourseIds: effectivePreferences.disallowed_course_ids ?? effectivePreferences.strongly_avoided_course_ids,
+        maxWeeklyHours: effectivePreferences.max_weekly_hours ?? undefined,
+      },
+      academicInterestProfileRaw: academic_interest_profile,
+    });
   }
   res.status(200).json(responseBody);
 }
