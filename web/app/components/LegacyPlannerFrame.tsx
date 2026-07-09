@@ -10,8 +10,11 @@ import { parseChipStatus, type ChipStatusVM } from '../../lib/chip-status'
  * while the shell provides the gradient frame, brand and cross-navigation.
  * Same-origin, so tau_theme and the saved program persist across the frame.
  *
- * The wrapper carries the themed background so there is no white flash before
- * the legacy HTML paints (it seeds its own theme in <head> synchronously).
+ * The wrapper is transparent and the embedded document is made transparent in
+ * ?embed=1 mode (see lib/embed-html.ts), so the shell's single background
+ * (ShaderGradientBackground / .syllo-bg) shows through the iframe as one
+ * continuous surface instead of the legacy document painting its own. The
+ * legacy <head> still seeds its theme synchronously, so there is no flash.
  *
  * Cross-cutting legacy actions (my courses / change degree / reset), the
  * current-program label, the live hdr-chips status and the theme toggle are
@@ -160,8 +163,8 @@ export default function LegacyPlannerFrame({
     : '?embed=1'
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-t-2xl border-t border-[var(--border)] bg-[var(--bg)]">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 backdrop-blur-sm">
         <span className="min-w-0 truncate ps-1 text-xs font-medium text-[var(--text-muted)]">
           {programLabel || 'הממשק המלא'}
         </span>

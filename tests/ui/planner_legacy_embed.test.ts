@@ -49,6 +49,22 @@ test('embed=true keeps the theme-seed bridge too (both injections coexist)', () 
   expect(html).toContain('tau_theme');
 });
 
+test('embed=true makes the legacy document transparent so the app background shows through', () => {
+  // Background integration: the embedded planner drops its own opaque body
+  // background + its own body::before syllo gradient so the single shell
+  // background (ShaderGradientBackground / .syllo-bg) shows through the iframe
+  // as one continuous surface.
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: true });
+  expect(html).toMatch(/html,\s*body\s*\{[^}]*background:\s*transparent\s*!important/s);
+  expect(html).toMatch(/body::before\s*\{[^}]*display:\s*none\s*!important/s);
+});
+
+test('embed=false (raw /planner/legacy) keeps its own opaque background', () => {
+  const html = injectPlannerHtml(FIXTURE_HTML, { embed: false });
+  expect(html).not.toMatch(/background:\s*transparent/);
+  expect(html).not.toContain('body::before');
+});
+
 test('embed injection only adds content — never rewrites the rest of the document', () => {
   const plain = injectPlannerHtml(FIXTURE_HTML, { embed: false });
   const embedded = injectPlannerHtml(FIXTURE_HTML, { embed: true });
