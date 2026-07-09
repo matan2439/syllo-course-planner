@@ -50,7 +50,22 @@ const EMBED_POLISH_STYLE = `<style>
 .wl-fill.over, .wl-fill.blocked { box-shadow: 0 0 6px rgba(239,68,68,.5); }
 </style>`
 
-const EMBED_STYLE = `<style>:root{--hdr-h:0px}.page-hdr{display:none!important}</style>${EMBED_POLISH_STYLE}`
+// Embed-only background integration. The legacy document otherwise paints its
+// own opaque surface — a solid `body { background: var(--app-bg-gradient) }`
+// plus its own animated `body::before` syllo gradient — which hides the outer
+// app background and makes /planner read as a separate boxed system. In embed
+// mode we drop both so the single app background (ShaderGradientBackground /
+// .syllo-bg, behind ProductShell) shows through the iframe as one continuous
+// surface. Board cards/sidebar keep their own --surface backgrounds, so text
+// contrast is unaffected; body::before is already pointer-events:none, and this
+// touches only backgrounds, so drag/drop and iframe clicks are untouched. Raw
+// /planner/legacy (embed=false) keeps its own background.
+const EMBED_INTEGRATION_STYLE = `<style>
+html, body { background: transparent !important; }
+body::before { display: none !important; }
+</style>`
+
+const EMBED_STYLE = `<style>:root{--hdr-h:0px}.page-hdr{display:none!important}</style>${EMBED_INTEGRATION_STYLE}${EMBED_POLISH_STYLE}`
 
 export function injectPlannerHtml(html: string, opts: { embed: boolean }): string {
   let out = html.replace('<head>', `<head>${THEME_SEED}`)
