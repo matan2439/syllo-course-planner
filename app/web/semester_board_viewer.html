@@ -4345,6 +4345,124 @@ function buildAgentPlanRequestFields(interests) {
   return fields;
 }
 
+// Hebrew labels for the stable clarification question ids the backend's
+// DeterministicClarificationCapability emits (academic_clarification.ts). Keyed
+// by question.id so the Hebrew RTL form never shows the backend's English
+// prompt as visible text; the English prompt is preserved in a title= for
+// accessibility. Unknown ids fall back to the (escaped) English prompt.
+const CLARIFICATION_QUESTION_LABELS_HE = {
+  completed_courses:        'אילו קורסים כבר השלמת?',
+  current_courses:          'אילו קורסים את/ה לומד/ת כעת?',
+  excluded_courses:         'האם יש קורסים שברצונך להחריג מהתוכנית?',
+  max_weekly_hours:         'מה מגבלת שעות הלימוד השבועית שלך?',
+  track_or_focus:           'איזה מסלול או תחום התמחות את/ה לומד/ת?',
+  academic_focus_areas:     'באילו תחומים אקדמיים היית רוצה להתמקד?',
+  academic_avoid_areas:     'האם יש תחומים אקדמיים שברצונך להימנע מהם?',
+  course_style_preferences: 'אילו סגנונות קורס את/ה מעדיף/ה?',
+  optimization_priorities:  'מה נעדיף כשנבנה את התוכנית שלך?',
+  career_goals:             'מהם היעדים התעסוקתיים שלך לאחר הסיום?',
+};
+
+/**
+ * Render the agent's clarification questions as a Hebrew RTL answer FORM (or ''
+ * when there is nothing to ask). One control per question by its answerType:
+ * course_id_list → LTR text input, number → number input, text → text input,
+ * multi_choice → a checkbox per option. Every dynamic string is escaped; course
+ * IDs stay LTR. Reuses the backend's stable question ids and answerTypes — no
+ * new answer format is invented.
+ */
+function clarificationFormHtml(clarification) {
+  const clar = clarification;
+  const questions = clar && Array.isArray(clar.questions) ? clar.questions : [];
+  if (!clar || clar.needsClarification !== true || !questions.length) return '';
+
+  const parts = ['<form class="agent-clarify-form" dir="rtl">'];
+  for (const q of questions) {
+    if (!q || typeof q.id !== 'string') continue;
+    const id = q.id;
+    const type = typeof q.answerType === 'string' ? q.answerType : 'text';
+    const labelHe = CLARIFICATION_QUESTION_LABELS_HE[id] || (typeof q.question === 'string' ? q.question : id);
+    const titleEn = typeof q.question === 'string' ? q.question : '';
+
+    parts.push('<div class="agent-clarify-q">');
+    parts.push(`<label class="agent-clarify-label" title="${esc(titleEn)}">${esc(labelHe)}</label>`);
+    if (type === 'course_id_list') {
+      parts.push(`<input type="text" dir="ltr" class="agent-clarify-input" data-question-id="${esc(id)}" data-answer-type="course_id_list" placeholder="לדוגמה: 0510.1234, 0512.5678">`);
+    } else if (type === 'number') {
+      parts.push(`<input type="number" min="0" class="agent-clarify-input" data-question-id="${esc(id)}" data-answer-type="number">`);
+    } else if (type === 'multi_choice') {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      parts.push('<div class="agent-clarify-choices">');
+      for (const o of opts) {
+        if (!o || typeof o.value !== 'string') continue;
+        parts.push(`<label class="agent-clarify-choice"><input type="checkbox" data-question-id="${esc(id)}" data-answer-type="multi_choice" value="${esc(o.value)}"> ${esc(o.label || o.value)}</label>`);
+      }
+      parts.push('</div>');
+    } else {
+      parts.push(`<input type="text" class="agent-clarify-input" data-question-id="${esc(id)}" data-answer-type="text">`);
+    }
+    parts.push('</div>');
+  }
+  parts.push('<button type="submit" class="agent-clarify-submit btn btn-primary">שלח תשובות</button>');
+  parts.push('</form>');
+  return parts.join('');
+}
+
+/**
+ * Read a rendered clarification form back into the shared {questionId, value}
+ * clarification_answers shape (academic_clarification_loop.ts). course_id_list
+ * always yields an array (empty = explicit "none", a valid answer for the
+ * excluded-courses question); blank optional number/text/multi answers are
+ * omitted so they never overwrite planning inputs with empty data. Total and
+ * safe: returns [] for a missing root.
+ */
+function collectClarificationAnswers(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return [];
+  const groups = new Map(); // id -> { type, els: [] }
+  root.querySelectorAll('[data-question-id]').forEach(el => {
+    const id = el.getAttribute('data-question-id');
+    if (!id) return;
+    const type = el.getAttribute('data-answer-type') || 'text';
+    if (!groups.has(id)) groups.set(id, { type, els: [] });
+    groups.get(id).els.push(el);
+  });
+
+  const answers = [];
+  groups.forEach((g, id) => {
+    if (g.type === 'course_id_list') {
+      const raw = g.els[0] ? (g.els[0].value || '') : '';
+      const value = raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+      answers.push({ questionId: id, value });
+    } else if (g.type === 'number') {
+      const raw = (g.els[0] ? (g.els[0].value || '') : '').trim();
+      if (raw === '') return;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return;
+      answers.push({ questionId: id, value: n });
+    } else if (g.type === 'multi_choice') {
+      const value = g.els.filter(e => e.checked).map(e => e.value);
+      if (!value.length) return;
+      answers.push({ questionId: id, value });
+    } else {
+      const raw = (g.els[0] ? (g.els[0].value || '') : '').trim();
+      if (!raw) return;
+      answers.push({ questionId: id, value: raw });
+    }
+  });
+  return answers;
+}
+
+/**
+ * Additive generate-plan body fragment carrying clarification answers — {} when
+ * there are none, so non-resume requests stay byte-for-byte unchanged. Kept as
+ * a tiny standalone spread (rather than folded into buildAgentPlanRequestFields)
+ * so the agent flag + academic_interest_profile continue to flow through the
+ * existing helper untouched on a resume.
+ */
+function clarificationAnswersRequestField(answers) {
+  return (Array.isArray(answers) && answers.length) ? { clarification_answers: answers } : {};
+}
+
 function _interestCourseChip(item, labelFor) {
   const cid = item && typeof item.courseId === 'string' ? item.courseId : '';
   if (!cid) return '';
@@ -4460,13 +4578,14 @@ function academicDecisionHtml(academicDecision) {
       + '</p>');
   }
 
-  // Clarification questions — shown when the agent needs more input instead of a plan.
-  const clar = ad.clarification;
-  const questions = clar && Array.isArray(clar.questions) ? clar.questions : [];
-  if (clar && clar.needsClarification === true && questions.length) {
-    parts.push('<section class="agent-decision-sec agent-decision-clarify"><h5>שאלות הבהרה</h5><ul class="agent-decision-list">'
-      + questions.map(q => `<li>${esc((q && typeof q.question === 'string') ? q.question : (q && q.id) || '')}</li>`).join('')
-      + '</ul></section>');
+  // Clarification questions — shown when the agent needs more input instead of a
+  // plan. Rendered as an interactive Hebrew RTL answer form (clarificationFormHtml);
+  // renderAcademicDecision wires its submit to resume planning with the answers.
+  const clarForm = clarificationFormHtml(ad.clarification);
+  if (clarForm) {
+    parts.push('<section class="agent-decision-sec agent-decision-clarify"><h5>שאלות הבהרה</h5>'
+      + clarForm
+      + '</section>');
   }
 
   parts.push(listSection('למה התוכנית הזו', ex.whyThisPlan));
@@ -4528,6 +4647,20 @@ function renderAcademicDecision() {
   const html = academicDecisionHtml(_aiPlanLastAcademicDecision);
   el.innerHTML = html;
   el.hidden = !html;
+  // Answer-loop wiring: when the agent asked for clarification, submitting the
+  // form resumes planning through the SAME agent path (buildAgentPlanRequestFields
+  // re-sends use_academic_decision_agent + the profile) with the collected
+  // answers attached. Guarded so the container-absent / no-form cases no-op.
+  const form = el.querySelector('.agent-clarify-form');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const answers = collectClarificationAnswers(form);
+      const prefs = _aiPlanLastPreferences || {};
+      const actionType = (prefs && prefs.action_type) || 'full_plan';
+      requestPlanProposal(prefs, actionType, answers);
+    });
+  }
 }
 
 function sidebarQuickActionPrefs() {
@@ -17681,7 +17814,7 @@ function computeExplicitlyAvoidedIdsLocal(prefs) {
   return ids;
 }
 
-async function requestPlanProposal(prefs, actionType) {
+async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
   // Issue C — resolve explicitly-named avoided courses (free text + the
@@ -17723,6 +17856,10 @@ async function requestPlanProposal(prefs, actionType) {
         // ARE expressed it also sends use_academic_decision_agent:true, routing
         // through the Academic Decision Agent runtime.
         ...buildAgentPlanRequestFields(_aiPickerState.interests),
+        // Additive: on a clarification resume, attach the collected answers
+        // ({questionId, value}[]). {} on a normal request, so the default
+        // payload is byte-for-byte unchanged.
+        ...clarificationAnswersRequestField(clarificationAnswers),
       }),
     });
 

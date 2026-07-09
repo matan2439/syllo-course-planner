@@ -314,6 +314,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // Otherwise the clarification result is reused to enrich the response below.
   let academicDecisionClarification: ClarificationResult | undefined;
   if (use_academic_decision_agent === true) {
+    // Answer-loop resume: merge any supplied clarification_answers into the
+    // planning inputs here too — independent of the preflight env flag above —
+    // so answers submitted through the agent path both unblock the critical-
+    // input gate AND reach the planner (buildModel / currentlyPlannedCourseIds
+    // below read effectivePlanContext/effectivePreferences). Reuses the shared
+    // validation/shape-checking in mergeClarificationAnswersIntoGeneratePlanInputs
+    // (invalid/unknown answers no-op), and is idempotent when the preflight
+    // block already merged the same answers.
+    const mergedForAgent = mergeClarificationAnswersIntoGeneratePlanInputs(
+      effectivePlanContext,
+      effectivePreferences,
+      clarification_answers ?? [],
+    );
+    effectivePlanContext = mergedForAgent.planContext;
+    effectivePreferences = mergedForAgent.preferences;
+
     academicDecisionClarification = await clarifyForAcademicDecision(
       extractClarificationContext(effectivePlanContext, effectivePreferences, academic_interest_profile),
     );
