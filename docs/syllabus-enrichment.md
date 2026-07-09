@@ -97,6 +97,33 @@ The answer should cite the actual syllabus content (prerequisites, topics,
 labs/reports) and must **not** say "הסילבוס זמין רק כקישור ללא תוכן מנותח"
 or similar "no syllabus content" messages.
 
+## Course topic-profile inference (deterministic, TS — the interest-eval supply side)
+
+Separate from the offline syllabus pipeline above, `api/ai/course_topic_profile_inference.ts`
+turns each catalog course (`courseId` + `nameHe` + `categoryId`) into a
+`CourseTopicProfile` using **only explicit Hebrew/English keyword and category
+rules** — no LLM, no syllabus-text mining. This is the supply side that
+academic-interest evaluation matches a user's interests against
+(`interest_course_match.ts` reads only the `topics`/`styles` weights).
+
+Data-quality invariants worth keeping honest:
+
+- **Hebrew substring false friends.** Rules match with `String.includes`, so a
+  short keyword can hide inside an unrelated word. Prefer the **fuller phrase**
+  when a bare token collides — e.g. maritime uses `'הנדסה ימית'`, not `'ימית'`
+  (a substring of `'פנימית'`=internal and `'כימית'`=chemical), and manufacturing
+  uses `'תהליכי עיבוד'`, not `'עיבוד'` (which would catch `'עיבוד אותות'`=signal
+  processing). Note `'תכן'` (final nun ן) intentionally does **not** match
+  `'תכנון'` (planning) — that's a feature, not a miss.
+- **Honest `default`/`needs_review`.** A course with no confident topic area is
+  `source: 'default'` with a `needs_review:` note — never a fabricated topic.
+  In the ME-2027 catalog this is **21 of 68** courses; they are genuinely
+  non-ME electives (EE / CS / operations research / ethics / space-systems) or
+  unnamed board entries. That count only drops when real evidence supports it.
+- **Current honest distribution:** 47 inferred / 21 default / 0 manual / 0
+  syllabus. `tests/api/course_topic_profiles_static.test.ts` pins these so the
+  numbers cannot silently drift.
+
 ## Run tests
 
 ```bash

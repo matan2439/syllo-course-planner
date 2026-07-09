@@ -57,7 +57,11 @@ interface KeywordRule<T extends string> {
 const TOPIC_NAME_RULES: ReadonlyArray<KeywordRule<AcademicFocusArea>> = [
   { keywords: ['אלמנטים סופיים', 'finite element', 'finite-element', 'fem', 'fea'], value: 'finite_elements', weight: STRONG },
   { keywords: ['מוצקים', 'אלסטיות', 'תנודות', 'חוזק', 'mechanics of solids', 'elasticity', 'vibration', 'strength'], value: 'strength_analysis', weight: STRONG },
-  { keywords: ['זורמים', 'זרימה', 'הידראוליק', 'אווירודינמיק', 'גזים', 'ימית', 'fluid', 'aerodynamic', 'cfd', 'hydraulic'], value: 'fluids', weight: STRONG },
+  // 'הנדסה ימית' (marine engineering) is spelled out in full on purpose: the bare
+  // token 'ימית' is a substring of 'פנימית' (internal) and 'כימית' (chemical),
+  // which would fabricate a fluids topic for e.g. 'מנועי שריפה פנימית'. Same
+  // fuller-phrase defense the manufacturing rule uses against 'עיבוד אותות'.
+  { keywords: ['זורמים', 'זרימה', 'הידראוליק', 'אווירודינמיק', 'גזים', 'הנדסה ימית', 'fluid', 'aerodynamic', 'cfd', 'hydraulic'], value: 'fluids', weight: STRONG },
   { keywords: ['מעבר חום', 'מעבר חם', 'תרמי', 'heat transfer', 'thermal'], value: 'heat_transfer', weight: STRONG },
   { keywords: ['תרמודינמיק', 'שריפה', 'thermodynamic', 'combustion'], value: 'thermal_systems', weight: STRONG },
   { keywords: ['בקרה', 'משוב', 'control', 'feedback'], value: 'control_systems', weight: STRONG },

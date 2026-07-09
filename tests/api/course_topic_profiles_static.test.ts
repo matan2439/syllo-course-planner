@@ -77,6 +77,23 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     expect(summary.inferred + summary.default).toBe(CATALOG_IDS.length);
   });
 
+  test('honest distribution is pinned: 47 inferred, 21 default over the 68-course catalog', () => {
+    // Data-quality regression pin. The 21 defaults are genuinely non-ME electives
+    // (EE/CS/OR/ethics/space) or unnamed courses — no topic can be added without
+    // fabrication, so the count must NOT silently drift.
+    const summary = summarizeCourseTopicProfileSources(getMechanicalEngineering2027TopicProfiles());
+    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 47, default: 21 });
+    expect(summary.inferred + summary.default).toBe(68);
+  });
+
+  test('0542-4131 (internal combustion engines) carries no fabricated fluids topic', () => {
+    const profile = getMechanicalEngineering2027TopicProfiles()['0542-4131'];
+    expect(profile.topics.map((t) => t.area)).not.toContain('fluids');
+    // still an honest, evidenced inferred profile (combustion/energy)
+    expect(profile.source).toBe('inferred');
+    expect(profile.topics.map((t) => t.area)).toEqual(expect.arrayContaining(['thermal_systems', 'energy']));
+  });
+
   test('needs_review count equals the number of default-source profiles', () => {
     const map = getMechanicalEngineering2027TopicProfiles();
     const summary = summarizeCourseTopicProfileSources(map);

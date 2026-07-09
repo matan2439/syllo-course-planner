@@ -81,6 +81,27 @@ describe('inferCourseTopicProfile — Hebrew topic keyword rules', () => {
   });
 });
 
+describe('inferCourseTopicProfile — Hebrew substring false friends (no fabricated topics)', () => {
+  test('שריפה פנימית (internal combustion) does NOT get fluids from ימית inside פנימית', () => {
+    // 'ימית' (maritime) is a substring of 'פנימית' (internal). A fluids topic here
+    // would be fabricated — the name asserts combustion/energy, not fluid mechanics.
+    const areas = topicAreas('C', 'מנועי שריפה פנימית');
+    expect(areas).not.toContain('fluids');
+    // The real, evidenced topics stay: combustion -> thermal_systems, engine -> energy.
+    expect(areas).toContain('thermal_systems');
+    expect(areas).toContain('energy');
+  });
+
+  test('כימית (chemical) does NOT get fluids from ימית inside כימית', () => {
+    // Guards the same false friend against a chemistry-named course.
+    expect(topicAreas('C', 'הנדסה כימית')).not.toContain('fluids');
+  });
+
+  test('הנדסה ימית (marine engineering) still infers fluids (true positive preserved)', () => {
+    expect(topicAreas('C', 'הנדסה ימית')).toContain('fluids');
+  });
+});
+
 describe('inferCourseTopicProfile — English topic keyword rules', () => {
   test('fluid / aerodynamics / CFD -> fluids', () => {
     expect(topicAreas('C', 'Fluid Mechanics')).toContain('fluids');
