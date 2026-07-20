@@ -161,3 +161,53 @@ describe('runPlanningOrchestration — optional deps threaded through unchanged'
     expect(result.rationale_he).toBe('הסבר');
   });
 });
+
+describe('runPlanningOrchestration — optional PlanSimulationCapability (additive, drift-free)', () => {
+  it('is byte-identical to before this dep existed when simulation is omitted', async () => {
+    const provider = new FakeProgramProvider();
+    const withoutDep = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch() },
+    );
+    const provider2 = new FakeProgramProvider();
+    const explicitlyUndefined = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider2, search: noopSearch(), simulation: undefined },
+    );
+    expect(explicitlyUndefined).toEqual(withoutDep);
+  });
+
+  it('calls simulation.simulate with the SAME model instance Plan built, and returns its result', async () => {
+    let capturedModel: unknown;
+    const simulatedResult = { finalState: emptyState(['y1s1', 'y1s2']), trace: [], gaps: [] };
+    const simulation = {
+      simulate: jest.fn(async (req: { result: unknown; model: unknown }) => {
+        capturedModel = req.model;
+        return simulatedResult;
+      }),
+    };
+    const provider = new FakeProgramProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch(), simulation },
+    );
+
+    expect(simulation.simulate).toHaveBeenCalledTimes(1);
+    const call = simulation.simulate.mock.calls[0][0] as { result: { finalState: unknown } };
+    expect(call.result.finalState).toBeDefined();
+    // Same model instance provider.buildModel returned for this run — not a second, independently-built model.
+    expect(capturedModel).toBe(provider.buildModel.mock.results[0].value);
+    expect(result).toBe(simulatedResult);
+  });
+
+  it('composes end-to-end with the real LocalSearchSimulationCapability, still returning a valid AgentResult', async () => {
+    const { LocalSearchSimulationCapability } = require('../../api/ai/plan_simulation');
+    const provider = new FakeProgramProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch(), simulation: new LocalSearchSimulationCapability() },
+    );
+    expect(result.finalState).toBeDefined();
+    expect(Array.isArray(result.trace)).toBe(true);
+  });
+});
