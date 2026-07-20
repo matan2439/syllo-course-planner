@@ -352,6 +352,18 @@ def test_syllabus_ai_status_check_matches_pipeline_contract(html):
     assert "aiStatus === 'done'" in block
 
 
+def test_normalize_course_preserves_syllabus_ai_analysis_status(html):
+    """normalizeCourse() must carry syllabus_ai_analysis_status through for
+    PLACED courses (board.semesters), not just repository courses. Regression:
+    the field was missing from normalizeCourse()'s explicit copy list, so
+    placed mandatory courses lost their 'done'/'failed' status the moment
+    init() normalized them — leaving aiStatus undefined and the (now-fixed)
+    'done' check falling through to the missing-analysis branch regardless."""
+    m = re.search(r"function normalizeCourse\(c, status\) \{(.*?)\n\}", html, re.DOTALL)
+    assert m, "normalizeCourse not found"
+    assert "syllabus_ai_analysis_status:" in m.group(1)
+
+
 def test_no_vague_course_description_missing(html):
     """Must not show vague 'תיאור מפורט של נושאי הקורס' — replaced by AI analysis wording."""
     assert "תיאור מפורט של נושאי הקורס" not in html
