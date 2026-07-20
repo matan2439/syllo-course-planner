@@ -1,5 +1,21 @@
 # Current — read this first
 
+## 🔎 Issue #20 (386/811 `tests/ui` failures) fully classified — 100% one root cause, not diverse regressions (2026-07-20)
+
+Session start: PR #17/#19 already merged (CI now runs on `ui/frontend-modernization`, issue #16 closed). Merged docs-only PR #22 after resolving its two now-addressed Codex threads and getting a clean re-review on the final commit (`dd5b6db`, squash-merged as `deb154f`). Did **not** touch PRs #12/#13/#14 (D-milestone-stacking conflict) or issue #21 (dead-code decision) or the Vercel production-architecture question — all three remain exactly as issue #18 left them, genuinely blocked on a human product call, already flagged twice; re-flagging a third time would add nothing.
+
+**Issue #20 investigated (the "386/811 jest failures, likely a substantial population of genuine regressions" concern):** ran `npx jest --config jest.ui.config.js --json` fresh on `ui/frontend-modernization` HEAD and parsed every one of the 386 failing assertions' first failure message programmatically (not sampled). Result: **all 386, with zero exceptions**, fail with the identical root cause —
+
+```
+ENOENT: no such file or directory, open '.../supabase_board_backup_2027_pre_sync.json'
+```
+
+thrown inside each suite's `loadPage()`/`beforeEach` before any assertion logic runs; the "Cannot read properties of undefined (reading 'window')" seen in `afterEach` on the same suites is a pure cascade of the same `beforeEach` throw, not an independent failure. This is **exactly** the fixture-gap `.remember/roadmap.md` (§ known-red) and issue #16 already documented — a real, deliberately `.gitignore`d Supabase board export, absent from every fresh checkout including CI's. Issue #20 speculated this 386 was "much larger" than the ~38-suite fixture-gap figure and therefore probably hid new regressions; **that speculation does not hold** — the count grew (38→39 failed suites, presumably new suites added since that estimate) but the *cause* did not diversify. There is no evidence of a separate class of stale-assertion or regression failures inside `tests/ui` right now.
+
+**What this means for issue #20's acceptance criteria:** the "classify every failure" criterion is now met (100%, programmatically, not by sampling) — there is nothing further to triage here; there is one blocker, and it's the same one already sitting in roadmap.md and issue #16: **a product decision on whether to commit a sanitized/synthetic replacement for `supabase_board_backup_2027_pre_sync.json`** (roadmap.md is explicit: "Do not commit real student/board data to close this without explicit sign-off"). Once that fixture exists, expect the large majority (likely all) of these 386 to go green immediately — this is a single-fixture problem, not 386 independent bugs. Posted this finding to issue #20; did not create or commit any fixture myself (that is the exact decision this routine's own governance rules say not to guess at).
+
+**Not done, deliberately:** did not remove `continue-on-error: true` from the `tests/ui` CI step (PR #17's stated intent) — that should only happen once the fixture decision is made and the suite can actually run clean, otherwise it just turns 386 pre-existing red tests into a blocking gate for unrelated future PRs.
+
 ## 🔧 CI was silently non-functional on every real dev branch — partially fixed (2026-07-20)
 Branch `claude/compassionate-ptolemy-tccl5l`, based on `origin/ui/frontend-modernization` @ `26500d4` (PR #11 tip). Two-file fix (`requirements.txt`, `.github/workflows/ci.yml`) + this docs commit. **No deploy. No merge (awaiting approval).**
 
