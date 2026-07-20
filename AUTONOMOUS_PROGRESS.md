@@ -1,5 +1,33 @@
 # Autonomous Progress — read this first
 
+## Session 2026-07-20 (part 4) — BOTH gates closed; Codex review milestone complete
+
+**Active milestone:** the Codex review gate for PR #12 and PR #13 is
+**complete**. Fresh Codex review on PR #13's current head (`405ec36`)
+reported "Didn't find any major issues" — matching PR #12's earlier clean
+result. Resolved both of PR #13's now-outdated review threads
+(`PRRT_kwDOTJkCBM6SN1F4` P1 snapshot, `PRRT_kwDOTJkCBM6SN1F7` P2 duplicate
+id — both fixed in `1abdb06`). Posted a closing comment on PR #13.
+
+**Final state:**
+- **PR #12** (`claude/intelligent-pascal-omgye4`, head `b5aca25`): Codex
+  gate closed, no blocking findings, **unmerged, ready for review**.
+- **PR #13** (`claude/intelligent-pascal-q83xjt`, head `405ec36`): Codex
+  gate closed, no blocking findings, both review threads resolved,
+  **unmerged, ready for review**.
+- Neither PR was merged or deployed by this routine, per the gate's
+  standing rule.
+
+**Next milestone is now unblocked** to be *planned* (not started — still
+requires the human/Codex merge of #12/#13 first, which this routine never
+performs): the "extend Simulation to return N candidates" work from part
+1's `.remember/current.md`-sourced recommendation. A fresh session should
+re-check whether #12/#13 have actually merged before branching new work —
+if not yet merged, fall back to part 1's "self-review only, no new
+implementation" mode rather than building on unmerged foundations.
+
+---
+
 ## Session 2026-07-20 (part 3) — PR #12 gate closed; PR #13 round 1 fixed (by a concurrent session) + independently verified
 
 **Active milestone:** same Codex review gate as part 2. Status update:
