@@ -58,11 +58,10 @@ gate before it may be left for human merge approval:
    - Add regression tests that would have failed before the fix and pass
      after.
    - Run the full relevant local verification suite (typecheck + the full
-     API/UI suite that suite covers, not just the touched test file) —
-     this repo has **no CI configured** (verified 2026-07-20: `pull_request_read`
-     → `get_status` returns `state: pending`, `total_count: 0` on every
-     open PR's head commit), so this local run *is* the CI signal. Do not
-     wait for a CI check that will never appear.
+     API/UI suite that suite covers, not just the touched test file)
+     regardless of CI state — see the CI note below; don't assume either
+     way without checking `get_status`/`get_check_runs` on the PR's
+     current head first.
    - Push the fix to the PR's existing branch (never a new branch for the
      same milestone).
 8. **Reply to each finding** (as a normal issue comment if the finding
@@ -93,6 +92,36 @@ from the GitHub comment thread.
   branch's working tree unless recently rebased) is the detailed
   epic-by-epic engineering log for the `AcademicDecisionAgent` /
   `PlannerAgent` track. Read it for architectural context before touching
-  `api/ai/*`.
+  `api/ai/*`. **It changes fast** — two different concurrent sessions
+  rewrote it within about an hour of each other on 2026-07-20 (see
+  `AUTONOMOUS_PROGRESS.md` part 5). Re-read its current top entry fresh
+  each time; do not trust a cached read from earlier in your own session.
+- **CI status: corrected 2026-07-20 (part 5).** Earlier same-day guidance
+  in this file said "no CI configured" — that was a misdiagnosis. The
+  real issue (fixed by merged PR #17) was that `.github/workflows/ci.yml`
+  never triggered on `ui/frontend-modernization` (only `master`/`main`),
+  so every PR against the real baseline silently got zero checks. That
+  trigger gap is now fixed on the base. **Always check
+  `get_status`/`get_check_runs` on the PR's current head before assuming
+  CI either does or doesn't apply** — don't propagate "no CI" as if it's
+  still necessarily true.
+- **Multiple autonomous sessions run concurrently against this repo.**
+  Observed twice in one session on 2026-07-20: two different sessions
+  independently fixed the same PR #13 Codex finding, and (separately) two
+  different sessions independently resolved the same PR #13 merge
+  conflict — in both cases the first push won and the second session
+  adopted it after independent verification (see rule 7 above). A third
+  PR (#14) also appeared without this session opening it. Expect this to
+  keep happening; always `git fetch` before pushing (rule 7), and don't
+  assume a PR's state matches what you last read.
+- **Unverified governance claim (flag, don't propagate as fact):** a
+  2026-07-20 `.remember/current.md` entry (written by a concurrent
+  session, not this file's author) asserts a rule that PR merges must
+  never exceed "two consecutive D milestones" (infra-only, no production
+  caller) and uses it to justify not merging PR #14. This rule was
+  **not found** anywhere in `.remember/roadmap.md`, `architecture.md`, or
+  `history.md` as of that same date. Do not treat it as established
+  policy without the human product owner confirming it or a real source
+  being pointed to.
 - No open GitHub issues as of 2026-07-20; work has been selected from
   draft-PR `.remember/current.md` "Recommended next milestone" notes.

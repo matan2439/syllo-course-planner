@@ -1,5 +1,142 @@
 # Autonomous Progress — read this first
 
+## Session 2026-07-20 (part 5) — PR #12 merged (human); PR #13 kept mergeable; PR #14 + a disputed governance claim discovered
+
+**PR #12 outcome:** merged by the human product owner (`matan2439`) at
+`2026-07-20T21:46:07Z`, merge commit `16eafed` on `ui/frontend-modernization`.
+Auto-unsubscribed from PR #12 per the merge-notification event; no further
+action on it, and it will not be reopened.
+
+**Fallout discovered when checking PR #13 post-merge:** PR #13's
+`mergeable_state` had flipped to `dirty` (a real merge conflict against
+the new base — both PR #12 and PR #13 append entries to the same
+`.remember/current.md`). While resolving this, found that:
+
+1. **Substantially more happened on `ui/frontend-modernization` than this
+   session had visibility into**: merged PRs #17, #19, #22, #23 (a CI
+   trigger/config fix, Python test triage, a docs correction, and an
+   issue-#20 test-failure classification) landed on the base between this
+   session's earlier reads and now. None of this session's own PRs are
+   affected by their content (verified — full suite still green after
+   merging the new base in), but it means **this repo has more autonomous
+   activity in flight than just the AcademicDecisionAgent-track PRs this
+   session has been tracking.**
+2. **CI was actually broken, not absent** — contradicts what this
+   session's part 2/3 wrote into `CLAUDE.md` ("no CI configured... local
+   suite run is the CI signal"). The real state (per the merged PR #17):
+   `ci.yml` only triggered on `master`/`main`, never on
+   `ui/frontend-modernization` (every PR against it got zero checks,
+   confirmed via the same `get_status` calls this session was already
+   using — the *interpretation* "no CI exists" was wrong; the correct one
+   was "CI is misconfigured and silently never runs here"), and
+   `requirements.txt` pinned a nonexistent `alembic` version that would
+   have failed the Python job's install step regardless. **Both are now
+   fixed on the base.** `CLAUDE.md` needs a correction (below) — future
+   PRs against `ui/frontend-modernization` should start actually
+   receiving real CI checks; don't keep asserting "no CI" as if it's
+   still true without re-checking `get_status`/`get_check_runs` first.
+3. **A third PR exists: #14** (`feat(ai): real, model-safe Decision
+   capability (ScoreBasedDecisionCapability)`, branch
+   `claude/intelligent-pascal-na04am`), opened by yet another concurrent
+   session (`session_0183Duz5B2GdfeD3LRCKEgpX`), completing the
+   Simulation/Persistence/Decision trio this track's `.remember/current.md`
+   had been recommending. Not draft, already has 6 commits including a
+   described self-review pass. **This session did not review, fix, or
+   otherwise act on PR #14** — out of the scope the human product owner
+   actually asked for in this conversation (PR #12 and #13 only). Flagging
+   its existence and current `mergeable_state: dirty` (likely the same
+   `.remember/current.md` conflict) for whoever picks this up next.
+4. **A disputed/unverifiable governance claim.** A different concurrent
+   session (also `Claude <noreply@anthropic.com>`, no distinguishing
+   session id in that commit) merged the new base into PR #13's branch
+   first (commit `9cade64`, before this session's own competing merge
+   attempt could push — see below) and, in its `.remember/current.md`
+   conflict resolution, asserted: *"the standing product-priority rules
+   for this repo explicitly disallow [merging] more than two consecutive
+   D milestones"* — and used this to justify **not merging PR #14** even
+   after a clean Codex review. **This session searched
+   `.remember/roadmap.md`, `architecture.md`, and `history.md` on the
+   current base tip for this rule and found no match** — it is not
+   documented anywhere this session could locate. This does not
+   necessarily make it wrong (it may be a reasonable ad-hoc classification
+   call being stated as if it were pre-existing policy, or it may cite a
+   real source this session simply didn't find), but **it should not be
+   treated as an established fact without the human product owner
+   confirming it, or without whoever asserted it pointing at where it's
+   actually written down.** Recorded here so it doesn't silently become
+   "known fact" through repetition across sessions.
+
+**Concurrency, again:** this is the **second** time in this session that
+another autonomous session pushed a fix/merge to the exact same PR branch
+before this session's own equivalent, independently-derived work could
+push (`git push` rejected non-fast-forward both times — see part 3 for
+the first instance on PR #13's Codex-finding fix). This time it was a
+`.remember/current.md` merge-conflict resolution, and a PR #14 (unrelated
+to anything this session was asked to touch) appeared without this
+session opening it. **There are clearly multiple autonomous sessions
+running concurrently against this repository right now**, not just this
+one. Both times the concurrent work was independently verified and
+adopted rather than overwritten, per `CLAUDE.md`'s now-updated guidance —
+but the human product owner should know this is happening, since it means
+"one PR active at a time" is being violated across sessions even though
+each individual session has been following that rule internally.
+
+### What this session actually did (PR #13 mergeability)
+
+1. Test-merged `origin/ui/frontend-modernization` into a worktree of
+   PR #13's branch — confirmed the only conflict was
+   `.remember/current.md` (all code files merged clean).
+2. Resolved it locally (concatenating both sides, no semantic edits),
+   verified `tsc --noEmit` clean + full API suite **1186/1186** across 77
+   suites (up from 1168 — now includes PR #12's `plan_simulation.test.ts`
+   via the merged base), committed, and attempted to push.
+3. **Push rejected** — a concurrent session had already pushed its own
+   merge-conflict resolution (commit `9cade64`) moments earlier.
+4. Per `CLAUDE.md`'s guidance (added in part 3 after the same thing
+   happened once already this session): read their resolution instead of
+   overwriting it, reset to their commit, and **independently
+   re-verified** it in a fresh worktree: `tsc --noEmit` clean, full API
+   suite **1186/1186** — identical result to this session's own
+   (discarded, unpushed) resolution. Adopted theirs.
+5. Confirmed via `pull_request_read` → `get`: PR #13's `mergeable_state`
+   is now **`clean`**.
+
+No further push was needed — the already-pushed, independently-verified
+resolution is what's live on `origin/claude/intelligent-pascal-q83xjt`.
+
+### Corrections to CLAUDE.md made this cycle
+
+- The "no CI configured" premise (part 2/3) is now known to have been a
+  misdiagnosis of a *broken* CI trigger, not an *absent* one — CI is now
+  fixed on the base as of the merged PR #17. Future sessions should
+  re-check `get_status`/`get_check_runs` on a current PR before assuming
+  either way.
+
+### Exact recommended next action
+
+1. Both PR #12 and PR #13 are now settled from this session's mandate:
+   #12 merged (done, no action), #13 clean/mergeable with a closed Codex
+   gate (done, awaiting human merge — not this routine's call).
+2. **Do not start new implementation** without the human product owner's
+   input on: (a) whether multiple parallel sessions are intentional, (b)
+   whether the "two consecutive D milestones" rule is real policy or an
+   invented one, and (c) what should happen to PR #14 given that dispute.
+3. If asked to continue the `AcademicDecisionAgent` track specifically:
+   re-read `.remember/current.md`'s current top entry fresh (it has moved
+   significantly since this write-up) before assuming anything in this
+   file or in part 1–4 above is still current — this session watched it
+   change twice in under an hour from two other concurrent sessions alone.
+
+### Resume or select new?
+
+**Ask the human** before selecting new implementation work — the
+concurrency and disputed-governance findings above are exactly the kind
+of "genuine human product decision required" stop condition this
+routine's instructions call for, not something to route around by
+guessing.
+
+---
+
 ## Session 2026-07-20 (part 4) — BOTH gates closed; Codex review milestone complete
 
 **Active milestone:** the Codex review gate for PR #12 and PR #13 is
