@@ -17,6 +17,7 @@ import type {
 import type { PolicyProvider } from './planner_policy';
 import { ProgramProvider, TauProgramProvider } from './program_provider';
 import { emptyState, type PlanState, type PlannerMutation } from './planner_types';
+import type { PlanSimulationCapability } from './plan_simulation';
 
 export interface OrchestrationRequest {
   programId: string;
@@ -44,6 +45,13 @@ export interface OrchestrationDeps {
   explanation?: ExplanationCapability;
   maxSteps?: number;
   beamWidth?: number;
+  /**
+   * Optional post-Plan refinement pass. Omitted by default — every existing
+   * caller sees byte-identical behavior. Wired here (not in
+   * AcademicDecisionAgent) because `model` below is the SAME instance Plan
+   * searched over; see plan_simulation.ts's header for why that matters.
+   */
+  simulation?: PlanSimulationCapability;
 }
 
 export async function runPlanningOrchestration(
@@ -83,5 +91,7 @@ export async function runPlanningOrchestration(
     beamWidth: deps.beamWidth,
   });
 
-  return agent.run();
+  const result = await agent.run();
+  if (!deps.simulation) return result;
+  return deps.simulation.simulate({ result, model, policy: deps.policy, validation: deps.validation });
 }
