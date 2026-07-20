@@ -54,12 +54,19 @@ export interface PlanDecisionRequest {
   /** Defaults to a fresh TauPolicyProvider — pass the same policy the candidates were produced/scored with for consistent comparison. */
   policy?: PolicyProvider;
   /**
-   * The same ValidationCapability (if any) Plan's PlannerAgent was given for
-   * these candidates. When present, each candidate is validated through it
-   * instead of the default gate below — matching PlannerAgent's/
-   * plan_simulation.ts's own precedence, so a candidate the real injected
-   * validator would reject can never be chosen here just because it would
-   * otherwise pass.
+   * An additional, caller-supplied validator — e.g. the same ValidationCapability
+   * Plan's PlannerAgent search used. When present, a candidate must pass BOTH
+   * this validator AND the default validateCandidate gate below; it is an
+   * extra reject condition, never a replacement for the full gate. (Unlike
+   * PlannerAgent's/plan_simulation.ts's own precedence, where an injected
+   * validator fully REPLACES the default check: those consult it mid-search,
+   * where a "search-time" validator commonly only enforces hard legality
+   * because it must still accept incomplete intermediate states, and
+   * completeness is guaranteed separately by the search only terminating once
+   * its own isGoal check passes. decide() has no such external completeness
+   * guarantee — it trusts whatever finished AgentResults it's handed — so
+   * reusing that same search-time validator here as a full replacement could
+   * let an incomplete or disallowed-course candidate through.)
    */
   validation?: ValidationCapability;
 }
@@ -70,7 +77,7 @@ export interface PlanDecisionCapability {
 
 /**
  * Picks the candidate with the best policy.score, among those that pass
- * validateCandidate (planner_validate.ts) — or the injected
+ * validateCandidate (planner_validate.ts) — AND the injected
  * ValidationCapability, when supplied — using policy.compareScore for
  * comparison. No reimplemented scoring/validation logic.
  *
@@ -84,7 +91,10 @@ export interface PlanDecisionCapability {
  * short of the degree-hours target, be scored and potentially selected over
  * a fully valid lower-scoring alternative — decide() is choosing a FINAL
  * result, so it must apply the same final gate a candidate would need to
- * pass to be shown to a user at all.
+ * pass to be shown to a user at all. This full gate always applies, even when
+ * a caller supplies its own ValidationCapability — see that field's doc
+ * comment for why decide() can't safely treat an injected validator as a
+ * full replacement the way PlannerAgent/plan_simulation.ts do.
  *
  * Ties keep the earliest still-valid candidate (compareScore must return
  * strictly > 0 to replace the current best). When NO candidate is valid,
@@ -100,10 +110,11 @@ export class ScoreBasedDecisionCapability implements PlanDecisionCapability {
     }
 
     const policy = request.policy ?? new TauPolicyProvider();
-    const isValid = (candidate: AgentResult) =>
-      validation
-        ? validation.validateState(candidate.finalState).valid
-        : validateCandidate(candidate.finalState, model, pinnedHome, policy).valid;
+    const isValid = (candidate: AgentResult) => {
+      if (!validateCandidate(candidate.finalState, model, pinnedHome, policy).valid) return false;
+      if (validation && !validation.validateState(candidate.finalState).valid) return false;
+      return true;
+    };
 
     let best: AgentResult | null = null;
     let bestScore: number[] | null = null;

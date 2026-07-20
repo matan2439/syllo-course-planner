@@ -225,19 +225,20 @@ describe('ScoreBasedDecisionCapability — validity gate', () => {
   });
 });
 
-describe('ScoreBasedDecisionCapability — custom ValidationCapability precedence', () => {
-  it('consults the injected ValidationCapability instead of policy.validate, matching PlannerAgent\'s/plan_simulation.ts\'s own precedence', async () => {
+describe('ScoreBasedDecisionCapability — custom ValidationCapability is an ADDITIONAL reject condition', () => {
+  it('consults the injected ValidationCapability on top of the full candidate gate, rejecting a candidate it disapproves even though both pass validateCandidate', async () => {
     const profiles = new Map<string, CourseProfile>();
     profiles.set('w1', profile('w1', { hours: 4 }));
-    const m = model({ profiles, degreeRequiredHours: 4 });
+    // degreeRequiredHours: 0 so BOTH candidates pass the full validateCandidate
+    // gate on their own — isolating the injected validator as the only thing
+    // that distinguishes them.
+    const m = model({ profiles, degreeRequiredHours: 0 });
 
     const emptyPlan = agentResult(emptyState(SEMS));
     const better = emptyState(SEMS);
     better.semesters['year_3_semester_a'] = ['w1'];
     const betterResult = agentResult(better);
 
-    // policy.validate (the TauPolicyProvider default) would accept both — a
-    // custom ValidationCapability that rejects the better one must still block it.
     const rejectBetter: ValidationCapability = {
       validateState: jest.fn((state: any) => ({
         valid: !(Object.values(state.semesters).flat() as string[]).includes('w1'),
@@ -249,6 +250,78 @@ describe('ScoreBasedDecisionCapability — custom ValidationCapability precedenc
 
     expect(rejectBetter.validateState).toHaveBeenCalled();
     expect(out).toBe(emptyPlan);
+  });
+
+  it('regression: a permissive injected validator can never override the full candidate gate — rejects an incomplete candidate even when the validator approves it', async () => {
+    // Codex review finding: reusing a "search-time" ValidationCapability
+    // (commonly legality-only, since it must accept incomplete intermediate
+    // states mid-search) as decide()'s SOLE validity check would let an
+    // incomplete or disallowed-course candidate through here, since decide()
+    // has no separate isGoal-style completeness guarantee the way
+    // PlannerAgent's own search loop does.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('w1', profile('w1', { hours: 4 }));
+    const m = model({ profiles, degreeRequiredHours: 100 }); // unreachable by either candidate
+
+    const incomplete = emptyState(SEMS);
+    incomplete.semesters['year_3_semester_a'] = ['w1']; // 4/100 hours — far from degreeMet
+    const incompleteResult = agentResult(incomplete);
+
+    const alwaysValid: ValidationCapability = { validateState: () => ({ valid: true }) };
+
+    const decision = new ScoreBasedDecisionCapability();
+    // Single candidate, permissive validator: must NOT be treated as a valid
+    // decision — falls back to it only because it's the sole candidate, not
+    // because it was accepted as valid.
+    const out = await decision.decide({ candidates: [incompleteResult], model: m, validation: alwaysValid });
+    expect(out).toBe(incompleteResult); // fallback (only candidate), not an endorsement
+
+    // With a genuinely complete alternative present, the incomplete one must
+    // lose even though the permissive validator approves both and the
+    // incomplete one places more hours (would out-score on a narrower gate).
+    const complete = emptyState(SEMS);
+    complete.semesters['year_3_semester_a'] = ['w1'];
+    const mComplete = model({ profiles, degreeRequiredHours: 4 }); // reachable — w1 alone completes it
+    const completeResult = agentResult(complete);
+    const incompleteUnderComplete = agentResult(emptyState(SEMS)); // 0/4 — also incomplete here, for contrast
+
+    const out2 = await decision.decide({
+      candidates: [incompleteUnderComplete, completeResult],
+      model: mComplete,
+      validation: alwaysValid,
+    });
+    expect(out2).toBe(completeResult);
+  });
+
+  it('regression: a permissive injected validator can never let a disallowed-course candidate beat a valid, lower-scoring alternative', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('bad', profile('bad', { hours: 4 }));
+    profiles.set('w1', profile('w1', { hours: 4 }));
+    const m = model({
+      profiles,
+      degreeRequiredHours: 4,
+      disallowedCourseIds: new Set(['bad']),
+      wantedCourseIds: new Set(['bad']),
+    });
+
+    const disallowed = emptyState(SEMS);
+    disallowed.semesters['year_3_semester_a'] = ['bad'];
+    const disallowedResult = agentResult(disallowed);
+
+    const valid = emptyState(SEMS);
+    valid.semesters['year_3_semester_a'] = ['w1'];
+    const validResult = agentResult(valid);
+
+    const alwaysValid: ValidationCapability = { validateState: () => ({ valid: true }) };
+
+    const decision = new ScoreBasedDecisionCapability();
+    const out = await decision.decide({
+      candidates: [disallowedResult, validResult],
+      model: m,
+      validation: alwaysValid,
+    });
+
+    expect(out).toBe(validResult);
   });
 });
 
