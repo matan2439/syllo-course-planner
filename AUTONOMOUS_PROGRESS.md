@@ -54,6 +54,16 @@ Once PR #12/#13 (now effectively #12/#13/#14/#17, the whole open queue) are reso
 - **Open issues:** #16 (Python CI triage — mostly resolved via PR #19, 4 tests need a human call, see comment), #20 (JS/UI suite has 386/811 failing, new, untriaged, separate from #16).
 - **My designated branch** `claude/determined-thompson-wqgcsb`: no PR ever opened against it previously — recreated fresh from `origin/ui/frontend-modernization` this session; carries only this progress doc.
 
+## Update: #17 and #19 merged by the human (2026-07-20, later same day)
+
+The human merged **PR #17** (CI fix, with an added follow-up commit `b95868a` making the Python pytest step `continue-on-error` too — same treatment as `tests/ui`, addressing a Codex finding on #17 that I didn't see land) and then **PR #19** (this session's issue-16 triage) directly, without waiting for my recommended ordering discussion — which is exactly the order I'd suggested, so no conflict. `ui/frontend-modernization` HEAD is now `020f5ca`. **CI is genuinely green on the dev branch for the first time** (verified via `actions_list`: run `29752121804`, conclusion `success`). Issue #16 auto-closed on #19's merge.
+
+Filed **issue #21** to carry forward the one item from #16 that's still a real open decision (closing #16 would otherwise have silently dropped it): the 4 tests referencing dead code `requestPlanProposalFromDraft`/`runPrimaryAiAction` — delete vs. rewire, human call needed.
+
+**Updated PR #12's branch** against the new base (`update_pull_request_branch` — safe, non-destructive, just lets CI actually run against current code). **PR #13 and #14 both have real merge conflicts** against the new base (likely `.remember/current.md` collisions across the three parallel infra PRs) — did NOT attempt to resolve these, since resolving `.remember/current.md` conflicts involves judgment calls that aren't worth making before the human decides the bigger §2 question (merge as pure infra / hold / rescope). Leave for whoever picks this up once that decision lands.
+
+**Still unresolved, still the main open question:** the §2 conflict (three consecutive unwired infra PRs vs. this routine's own anti-pattern rule). Not resolved by the #17/#19 merges — those were CI/test-hygiene fixes, unrelated to the #12/#13/#14 question.
+
 ## Exact next action for whoever picks this up
 
 1. Wait for/check Codex review on PR #19 (issue #16 triage). Resolve any findings the same way #12/#13/#14 did. Get human approval before merging.
