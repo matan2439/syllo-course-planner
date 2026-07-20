@@ -28,11 +28,13 @@ All three are individually clean, well-tested (Codex found real bugs, they got f
 
 **I did not resolve this myself. I pushed a notification to the human flagging the contradiction and am waiting for a decision**: merge as pure infra anyway, hold until one of the three capabilities gets wired to a real caller, or close/rescope the track. **Do not merge #12/#13/#14 until that decision is made** (and regardless, CI has never run on any of their commits — that gate isn't satisfied either; would need `update_pull_request_branch` + a fresh CI run once #17 merges).
 
-### 3. Issue #16 (CI test triage) — in progress, background agent running
+### 3. Issue #16 (CI test triage) — triaged, PR #19 open awaiting Codex review + human merge
 
-I personally confirmed one of the two previously-spot-checked failures is a **stale test, not a regression**: `tests/test_viewer_structure.py::test_degree_progress_helper_exists_and_used_in_draft_and_modal` expects `renderProposalCard()` to call `renderDegreeProgressHtml(...)`. It doesn't — but `git log -S "This element renders nothing"` shows this was an **intentional** human-authored refactor (commit `1f98a004`, "remove duplicate draft buttons") that deliberately emptied that function; the pre-refactor version didn't call `renderDegreeProgressHtml` either. Not a real regression.
+Background agent triage complete. Result: **23 of 43 failures fixed** (test-only changes, each backed by the specific prior commit proving current behavior is intentional — e.g. `1f98a004` deliberately emptied `renderProposalCard()`, `45286c5` intentionally double-places annual course 0542-3792 across semesters and dedups downstream). **16 left failing**, documented as fixture/environment gaps (real gitignored data files — `tau_program_8715_2025.json`, `supabase_board_backup_2027_pre_sync.json`, `data/database.sqlite` — that a fresh checkout can never have). **4 left genuinely unresolved**, flagged on issue #16 for a human call: `requestPlanProposalFromDraft()`/`runPrimaryAiAction()` are defined but have zero live call sites — either intentionally dead (delete them + the 4 tests) or an accidentally-dropped fallback (wire back in). Before/after: 1200→1223 passed, 39→12 failed, 4 errors unchanged (documented).
 
-I launched a background agent (isolated worktree) to triage **all 39 failed + 4 errored** Python tests the same way: classify each as fixture/environment gap vs. stale assertion (fix the test, with evidence of intentional change) vs. genuine regression (fix the source, add a regression test). It's pushing its work to branch **`claude/issue-16-ci-triage`** (based on `ui/frontend-modernization`, not merged, no PR opened by it — that's a human/next-session call). Check that branch and the agent's final report before doing anything else with issue #16.
+Opened **PR #19** (`claude/issue-16-ci-triage` → `ui/frontend-modernization`) with full before/after evidence and per-test reasoning. Not merged — awaiting Codex review + human approval like #12/#13/#14/#17.
+
+**New, separate, bigger issue found and filed as #20**: the JS/TS `jest.ui.config.js` suite (the DOM-level analog of the Python structural tests) has **386 of 811 tests failing** — verified pre-existing (not caused by PR #19's changes). This is a much larger, previously-unscoped triage than #16 ever covered (Python-only), and it's currently hidden behind `continue-on-error: true` in `ci.yml`. PR #17 said that flag should come off "once #16 is resolved" — it can't safely come off until #20 is also triaged, or a real regression could ship under a green badge.
 
 ### 4. New instruction received mid-session (from human, not yet acted on)
 
@@ -44,18 +46,18 @@ Once PR #12/#13 (now effectively #12/#13/#14/#17, the whole open queue) are reso
 
 ## Open GitHub state as of this session
 
-- **Open PRs:** #12 (Simulation), #13 (Persistence), #14 (Decision), #17 (CI fix) — all against `ui/frontend-modernization`, all Codex-approved, none merged, none CI-verified end-to-end except #17 itself (whose own Python job is red for the reason above).
-- **Open issues:** #16 (CI test triage — being worked by background agent, see above).
-- **My designated branch** `claude/determined-thompson-wqgcsb` had no PR ever opened against it (confirmed via search) — recreated fresh from `origin/ui/frontend-modernization` this session; only carries this progress doc so far.
+- **Open PRs:** #12 (Simulation), #13 (Persistence), #14 (Decision), #17 (CI fix), #19 (issue #16 test triage) — all against `ui/frontend-modernization`. #12/#13/#14/#17 Codex-approved. #19 just opened this session, not yet Codex-reviewed. None merged.
+- **Open issues:** #16 (Python CI triage — mostly resolved via PR #19, 4 tests need a human call, see comment), #20 (JS/UI suite has 386/811 failing, new, untriaged, separate from #16).
+- **My designated branch** `claude/determined-thompson-wqgcsb`: no PR ever opened against it previously — recreated fresh from `origin/ui/frontend-modernization` this session; carries only this progress doc.
 
 ## Exact next action for whoever picks this up
 
-1. Read the background agent's final report on issue #16 triage (branch `claude/issue-16-ci-triage`). Review its diff, re-verify its classifications spot-check style, decide whether to open a PR for it.
-2. Get a human decision on the PR #12/#13/#14 infra-track question (see §2). Do not merge any of them until then.
-3. Once decided: if merging, first merge #17 (CI fix) — note its Python job will still be red until issue #16's fixes land; decide whether that's acceptable to merge anyway (it's a pre-existing, non-regression, already-documented failure) or whether to wait for the issue-16 branch to land first so #17 merges fully green. Recommend: land issue-16 fixes first, rebase #17 on top (or merge issue-16 branch first), so CI is genuinely green before anything merges.
-4. Then work through #12/#13/#14 per whatever the human decides in §2.
+1. Wait for/check Codex review on PR #19 (issue #16 triage). Resolve any findings the same way #12/#13/#14 did. Get human approval before merging.
+2. Get a human decision on the PR #12/#13/#14 infra-track question (see §2) — do not merge any of them until then. Also get a human decision on the 4 dead-code-adjacent tests flagged on issue #16 (delete vs. rewire `requestPlanProposalFromDraft`/`runPrimaryAiAction`).
+3. Recommended merge order once decisions land: PR #19 first (fixes the Python CI gate for real) → PR #17 (CI trigger fix, will then show fully green Python job) → #12/#13/#14 per the human's call on §2, rebasing/re-triggering CI on each since none has ever had a real CI run.
+4. Issue #20 (386/811 JS/UI test failures) is a substantial, separate, not-yet-started triage — likely the next big P0/correctness milestone after the PR queue clears, before `tests/ui`'s `continue-on-error` can safely come off.
 5. Then run the Canonical Branch Reconciliation milestone (main ⟷ ui/frontend-modernization ⟷ Vercel), including the AGENTS.md / docs/AUTONOMOUS_PRODUCT_POLICY.md files described in §4.
-6. Only after that: resume the real Agent-quality diagnosis loop (Hebrew end-to-end scenarios) per the standing mission — has not been started yet this session; all time this session went to unblocking the CI/PR-queue mess above, which was a genuine, evidence-backed P0 (broken review/CI gate integrity) blocking everything else safely.
+6. Only after that: resume the real Agent-quality diagnosis loop (Hebrew end-to-end scenarios) per the standing mission — not started yet; this session's time went entirely to unblocking a genuine, evidence-backed P0 (broken CI/Codex gate integrity across the whole open PR queue), which was blocking everything else from being verifiable.
 
 ## Rolling A/B/C/D milestone history
 
