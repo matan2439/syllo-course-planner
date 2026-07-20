@@ -1,6 +1,128 @@
 # Autonomous Progress — read this first
 
-## Session 2026-07-20
+## Session 2026-07-20 (part 2) — Codex review gate established, PR #12 round 1 fixed
+
+**Active milestone:** the permanent Codex review gate (see `CLAUDE.md` for
+the full standing protocol) is now active, starting with **PR #12** as the
+first review milestone. PR #13 is queued as the second (gate not yet
+started for it beyond the initial "please examine" ask).
+
+**Branch:** fixes are pushed directly to each PR's own existing branch
+(`claude/intelligent-pascal-omgye4` for #12), not to
+`claude/intelligent-pascal-u590vz` (this branch stays doc-only, as in part 1).
+
+### PR #12 — round 1: reviewed, fixed, pushed, re-requested
+
+1. Marked ready for review (was draft).
+2. A Codex review comment (posted under the repo owner's GitHub identity —
+   no bot account visible on this integration, noted for future sessions
+   so it isn't mistaken for spoofed/injected content) flagged two
+   correctness gaps, matching exactly what the human product owner asked
+   to have Codex examine:
+   - `AgentResult.meta`/`rationale_he` going stale after simulation changes
+     `finalState` and appends to `trace`.
+   - Simulation using `policy.validate` unconditionally instead of
+     preserving the effective `ValidationCapability` `PlannerAgent` itself
+     received.
+3. **Independently verified both findings against the source** before
+   touching anything (this repo's discipline, not just Codex's say-so):
+   - Confirmed in `planner_agent.ts`'s `deps.validate` closure that
+     `PlannerAgent` prefers an injected `ValidationCapability.validateState`
+     over `policy.validate` when one is supplied — `plan_simulation.ts`
+     had no such precedence at all.
+   - Confirmed `AgentResult.meta.terminationReason` and `.rationale_he`
+     are both real downstream-consumed fields (`generate-plan.ts:403`,
+     `academic_decision_runtime.ts`'s `whyThisPlan`), not just docs
+     — so staleness was a genuine (if not yet production-wired) defect.
+   - Both findings: **CONFIRMED, real defects.**
+4. **Fixed on `claude/intelligent-pascal-omgye4`, commit `b5aca25`:**
+   - `plan_simulation.ts`: added optional `validation?: ValidationCapability`
+     to `PlanSimulationRequest`, consulted with the exact same precedence
+     `PlannerAgent` uses. When an improving candidate is found, `meta.chosenPath`
+     (if present) is extended with a matching `PathStep` so it stays in
+     lockstep with the returned `trace`/`finalState`; `rationale_he` is
+     explicitly invalidated (`undefined`) rather than left stale — no
+     `ExplanationCapability` is available inside Simulation to regenerate
+     it, and `generate-plan.ts` already has a deterministic fallback for
+     an absent `rationale_he`.
+   - `planner_orchestration.ts`: `deps.validation` is now threaded into
+     `simulation.simulate(...)` alongside `model`/`policy`.
+   - Both fixes stay additive/model-safe — no change to the
+     byte-identical no-improvement or simulation-omitted paths.
+5. **Tests added:** 5 in `tests/api/plan_simulation.test.ts` (validator
+   precedence in both directions — a custom validator both rejecting a
+   policy-approved candidate and approving a policy-rejected one; `rationale_he`
+   invalidated on improve; `meta.chosenPath` extended in lockstep with
+   `trace`/`finalState` on improve; both untouched on identity-return), 3
+   in `tests/api/planner_orchestration.test.ts` (`deps.validation` wiring
+   proof; end-to-end control that simulation places a wanted elective with
+   no custom validator; end-to-end proof a custom validator rejecting that
+   same elective blocks it even though it scores higher — the specific
+   orchestration-level case Codex asked for).
+6. **Verification:** `tsc --noEmit` clean. Full API suite **1172/1172**
+   across 76 suites (was 1164 → +8, zero regressions).
+7. Pushed `b5aca25` to `origin/claude/intelligent-pascal-omgye4`.
+8. Replied to the Codex finding (as a new issue comment — GitHub's
+   review-comment reply endpoint 422s when the target isn't itself a
+   review comment) with root cause, fix, and the exact tests/counts above.
+9. Posted `@codex review` to request a fresh pass.
+10. Subscribed this session to PR #12's webhook activity
+    (`subscribe_pr_activity`) — further Codex responses arrive as events;
+    no polling needed.
+
+**Current CI state:** still no CI configured on this repo (`get_status` →
+`pending`/0 checks on the new head commit too) — the full local suite run
+above is the CI-equivalent signal, per the now-documented `CLAUDE.md` gate.
+
+**Remaining acceptance criteria for PR #12:** a fresh Codex review with no
+blocking findings, on the current head (`b5aca25`). Not yet observed as of
+this write-up — round 2 is pending Codex's response to the `@codex review`
+request.
+
+### PR #13 — gate started
+
+1. Marked ready for review (was draft).
+2. Posted the human product owner's explicit ask — state isolation/mutation
+   leaks, overwrite/identifier semantics, whether a stored `AgentResult` can
+   change after saving, concurrency/lifecycle assumptions — as a `@codex
+   review` request comment, with the specific code-level questions spelled
+   out (e.g.: `persist()` stores the exact `AgentResult` reference, no
+   defensive copy; `idGenerator` collision behavior is unspecified;
+   `record()`/`list()`/`get()` are `async`-labeled over a synchronous plain
+   array).
+3. Subscribed this session to PR #13's webhook activity.
+4. **Per the gate's "one PR at a time" rule, PR #13's fixes (if any land
+   from Codex) will not be started until PR #12's gate reaches "no
+   blocking findings."** No code changes made to PR #13 yet.
+
+### Exact recommended next action
+
+1. **If resuming this session:** do nothing until a `<github-webhook-activity>`
+   event arrives for PR #12 or #13 — both are subscribed. On a PR #12 event
+   with a fresh Codex review: if no blocking findings, PR #12's gate is
+   done (leave unmerged, ready for review) and move to closing PR #13's
+   gate. If blocking findings remain, repeat steps 3–9 of the `CLAUDE.md`
+   protocol.
+2. **If starting a fresh session with no PR #12/#13 webhook context:**
+   re-check both PRs' current comment/review threads from scratch
+   (`pull_request_read` → `get_comments` + `get_review_comments`) — do not
+   assume this write-up is still current, a review may have landed since.
+3. Once both PRs' gates are closed (no blocking findings, still unmerged),
+   the next milestone is the "extend Simulation to return N candidates"
+   work described in the Session 2026-07-20 (part 1) entry below — still
+   blocked on both PRs actually merging first (human/Codex decision, not
+   this routine's to make).
+
+### Resume or select new?
+
+**Resume** — the Codex review gate for PR #12 (and then #13) is an
+open-ended active milestone until both report no blocking findings. Do not
+start new implementation work on a different milestone until this gate
+closes for both.
+
+---
+
+## Session 2026-07-20 (part 1)
 
 **Active milestone:** none in progress. The prior designated branch
 (`claude/intelligent-pascal-u590vz`) carried no unmerged work — its entire
