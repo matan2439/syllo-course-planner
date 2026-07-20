@@ -34,6 +34,8 @@ Background agent triage complete. Result: **23 of 43 failures fixed** (test-only
 
 Opened **PR #19** (`claude/issue-16-ci-triage` → `ui/frontend-modernization`) with full before/after evidence and per-test reasoning. Not merged — awaiting Codex review + human approval like #12/#13/#14/#17.
 
+**Codex review round 1 on PR #19 found a real, live product bug** (not just a test-staleness issue): my broadened test let a genuine defect through — `semester_board_viewer.html`'s difficulty-signals block checked `syllabus_ai_analysis_status === 'complete'`, a value no pipeline step has ever written (real pipeline writes `'done'`/`'failed'`). Confirmed against real board data: 61 courses have `status:'done'`, 0 have `'complete'` — meaning all 61 were shown to users as "AI syllabus analysis missing" despite analysis having completed. Fixed in `3f248f5` (check `'done'` instead), new regression test added, full suite re-verified (1224 passed, same pre-existing/documented failures unchanged), replied to Codex with root cause + evidence, thread resolved, requested re-review.
+
 **New, separate, bigger issue found and filed as #20**: the JS/TS `jest.ui.config.js` suite (the DOM-level analog of the Python structural tests) has **386 of 811 tests failing** — verified pre-existing (not caused by PR #19's changes). This is a much larger, previously-unscoped triage than #16 ever covered (Python-only), and it's currently hidden behind `continue-on-error: true` in `ci.yml`. PR #17 said that flag should come off "once #16 is resolved" — it can't safely come off until #20 is also triaged, or a real regression could ship under a green badge.
 
 ### 4. New instruction received mid-session (from human, not yet acted on)
