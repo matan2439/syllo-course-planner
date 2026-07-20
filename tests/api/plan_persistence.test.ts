@@ -47,7 +47,7 @@ describe('InMemoryPlanRunStore', () => {
     expect(await store.get('missing')).toBeUndefined();
   });
 
-  test('list() returns a defensive copy — mutating the result does not affect the store', async () => {
+  test('list() returns a defensive copy of the array — popping from it does not affect the store', async () => {
     const store = new InMemoryPlanRunStore();
     await store.record({ id: 'a', persistedAt: 1, result: agentResult() });
 
@@ -55,6 +55,33 @@ describe('InMemoryPlanRunStore', () => {
     first.pop();
 
     expect(await store.list()).toHaveLength(1);
+  });
+
+  test('list() and get() return independent deep copies — mutating a returned record does not corrupt the store or other reads', async () => {
+    const store = new InMemoryPlanRunStore();
+    await store.record({ id: 'a', persistedAt: 1, result: agentResult() });
+
+    const viaList = await store.list();
+    viaList[0].result.finalState.semesters['year_3_semester_a'] = ['leaked'];
+    const viaGet = await store.get('a');
+    viaGet!.result.trace.push({ type: 'STOP' });
+
+    const fresh = await store.get('a');
+    expect(fresh?.result.finalState.semesters['year_3_semester_a']).toEqual([]);
+    expect(fresh?.result.trace).toEqual([]);
+  });
+
+  test('record() never overwrites — a duplicate id produces two entries; get() returns the first-added match', async () => {
+    const store = new InMemoryPlanRunStore();
+    const first = agentResult({ rationale_he: 'first' });
+    const second = agentResult({ rationale_he: 'second' });
+    await store.record({ id: 'dup', persistedAt: 1, result: first });
+    await store.record({ id: 'dup', persistedAt: 2, result: second });
+
+    const entries = await store.list();
+    expect(entries).toHaveLength(2);
+    expect(entries.map((e: PersistedPlanRecord) => e.result.rationale_he)).toEqual(['first', 'second']);
+    expect((await store.get('dup'))?.result.rationale_he).toBe('first');
   });
 
   test('evicts the oldest entry once maxEntries is exceeded (bounded ring buffer)', async () => {
@@ -109,15 +136,20 @@ describe('InMemoryPersistenceCapability', () => {
     expect(await store.list()).toEqual([{ id: 'fixed-id', persistedAt: 12345, result }]);
   });
 
-  test('persist() stores the exact same AgentResult reference (no cloning/mutation)', async () => {
+  test('persist() stores a deep, independent copy — mutating the original AgentResult afterward does not corrupt the stored record', async () => {
     const store = new InMemoryPlanRunStore();
     const cap = new InMemoryPersistenceCapability({ store, idGenerator: () => 'x' });
     const result = agentResult();
+    result.finalState.semesters['year_3_semester_a'] = ['before'];
 
     await cap.persist(result);
+    result.finalState.semesters['year_3_semester_a'].push('mutated-after-persist');
+    result.trace.push({ type: 'STOP' });
 
     const record = await store.get('x');
-    expect(record?.result).toBe(result);
+    expect(record?.result).not.toBe(result);
+    expect(record?.result.finalState.semesters['year_3_semester_a']).toEqual(['before']);
+    expect(record?.result.trace).toEqual([]);
   });
 
   test('defaults to its own InMemoryPlanRunStore when none is injected — getStore() exposes it', async () => {

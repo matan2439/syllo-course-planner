@@ -33,6 +33,13 @@ export interface PersistedPlanRecord {
 /**
  * Storage abstraction for persisted plan runs. Async throughout so a future
  * DB-backed implementation is a drop-in replacement for InMemoryPlanRunStore.
+ *
+ * Id semantics: `record()` is append-only and never overwrites — a caller
+ * that supplies (or whose idGenerator produces) a duplicate id gets two
+ * distinct entries in `list()`; `get(id)` returns the first-added match.
+ * Id uniqueness is the caller's responsibility (the default
+ * InMemoryPersistenceCapability idGenerator, crypto.randomUUID, satisfies
+ * this in practice).
  */
 export interface PlanRunStore {
   record(entry: PersistedPlanRecord): Promise<void>;
@@ -46,6 +53,22 @@ export interface InMemoryPlanRunStoreOptions {
   maxEntries?: number;
 }
 
+/**
+ * Deep-clones every entry in and out (structuredClone — AgentResult and its
+ * nested fields are plain JSON-safe data, no functions/class instances) so
+ * the store owns an independent copy: mutating the AgentResult a caller
+ * passed to `record()` after the call, or mutating a record obtained from
+ * `list()`/`get()`, can never corrupt the store's history or leak between
+ * reads.
+ *
+ * Backed by a plain in-process array with no internal `await` in any method
+ * body, so each call runs to completion synchronously within Node's
+ * single-threaded event loop before yielding — concurrent in-flight
+ * `persist()` calls from multiple requests sharing one store instance cannot
+ * interleave or tear a write. `clear()` is test/dev-only (deliberately not
+ * on the PlanRunStore interface) and is not meant to be called concurrently
+ * with in-flight reads/writes on a shared instance.
+ */
 export class InMemoryPlanRunStore implements PlanRunStore {
   private entries: PersistedPlanRecord[] = [];
   private readonly maxEntries: number;
@@ -55,18 +78,19 @@ export class InMemoryPlanRunStore implements PlanRunStore {
   }
 
   async record(entry: PersistedPlanRecord): Promise<void> {
-    this.entries.push(entry);
+    this.entries.push(structuredClone(entry));
     if (this.entries.length > this.maxEntries) {
       this.entries.splice(0, this.entries.length - this.maxEntries);
     }
   }
 
   async list(): Promise<PersistedPlanRecord[]> {
-    return this.entries.slice();
+    return this.entries.map((e) => structuredClone(e));
   }
 
   async get(id: string): Promise<PersistedPlanRecord | undefined> {
-    return this.entries.find((e) => e.id === id);
+    const found = this.entries.find((e) => e.id === id);
+    return found ? structuredClone(found) : undefined;
   }
 
   /** Test/dev convenience — not part of the PlanRunStore interface. */
@@ -83,7 +107,7 @@ export interface InMemoryPersistenceCapabilityOptions {
   idGenerator?: () => string;
 }
 
-/** ponytail: real in-memory persistence — swap `store` for a DB-backed PlanRunStore when that epic ships */
+/** Real in-memory persistence — swap `store` for a DB-backed PlanRunStore when that epic ships. */
 export class InMemoryPersistenceCapability implements PersistenceCapability {
   private readonly store: PlanRunStore;
   private readonly clock: () => number;
