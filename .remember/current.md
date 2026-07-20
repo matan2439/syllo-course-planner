@@ -1,7 +1,9 @@
 # Current — read this first
 
 ## ✅ Real, in-memory PersistenceCapability shipped (2026-07-20)
-Branch `claude/intelligent-pascal-q83xjt-persist`, based on `origin/ui/frontend-modernization` @ `26500d4`. Feature commit adds `api/ai/plan_persistence.ts` + `tests/api/plan_persistence.test.ts` only. **No deploy. No merge (awaiting approval). No production wiring. No DB/Supabase.**
+Branch `claude/intelligent-pascal-q83xjt` (PR #13), based on `origin/ui/frontend-modernization` @ `26500d4`. Feature commit adds `api/ai/plan_persistence.ts` + `tests/api/plan_persistence.test.ts` only. **No deploy. No merge (awaiting approval). No production wiring. No DB/Supabase.**
+
+**Post-review hardening (`1abdb06`):** an autonomous self-review + a `@codex review` request on PR #13 raised state-isolation/id/concurrency questions. Fixed: `record()`/`list()`/`get()` now `structuredClone()` on both write and read, so the store owns an independent copy of every `AgentResult` — mutating the caller's object after `persist()`, or mutating a record obtained via `list()`/`get()`, can no longer corrupt stored history. Documented + tested as intentional: `record()` never overwrites (duplicate ids yield two entries; `get()` returns the first-added match) and concurrent calls on a shared store instance are safe because no method body contains an internal `await` (each call completes synchronously). Also dropped a stray `ponytail:` doc-comment prefix (that marker is used elsewhere in this codebase only on no-op/placeholder implementations). Full API suite 1168/1168 after the fix.
 
 **What shipped:** the first real (non-no-op) implementation of `academic_decision_types.ts`'s `PersistenceCapability` — same "narrowest safe increment" pattern this track has used for every capability slot (see the Simulation entry once PR #12 lands): `PersistenceCapability.persist(result: AgentResult): Promise<void>` is unchanged, so `academic_decision_agent.ts`/`academic_decision_factory.ts` needed zero edits.
 
