@@ -9346,16 +9346,20 @@ function openCourseDetails(cid) {
       if (aStatus === 'complete' && c.assessment_type && c.assessment_type !== 'unknown')
                                            available.push('סוג הערכה סופי');
       if (c.grade_signal)                  available.push('נתוני טאו פקטור');
+      // 'done' is the real terminal-success value written by
+      // app/pipeline/fetch_syllabus_summaries.py ('complete' is never
+      // produced by any pipeline step — checking for it here silently
+      // treated every successfully-analyzed course as still-missing).
       const aiStatus = c.syllabus_ai_analysis_status;
-      if (aiStatus === 'complete')         available.push('ניתוח AI של סילבוס');
+      if (aiStatus === 'done')             available.push('ניתוח AI של סילבוס');
 
       // Missing signals
       if (c.weekly_hours == null)          missing.push('שעות שבועיות');
 
       // Syllabus / AI analysis — precise wording by status
-      if (aiStatus === 'complete') {
+      if (aiStatus === 'done') {
         /* nothing — already in available */
-      } else if (aiStatus === 'pending' || (c.syllabus_url && aiStatus !== 'complete')) {
+      } else if (aiStatus === 'pending' || aiStatus === 'failed' || (c.syllabus_url && aiStatus !== 'done')) {
         missing.push('ניתוח AI של הסילבוס לחילוץ נושאים וסוג הערכה');
       } else {
         missing.push('לא נמצא קישור סילבוס פעיל');

@@ -337,6 +337,21 @@ def test_syllabus_not_available_shows_no_link(html):
     assert "לא נמצא קישור סילבוס פעיל" in html
 
 
+def test_syllabus_ai_status_check_matches_pipeline_contract(html):
+    """The viewer's difficulty-signals block must recognize the ACTUAL terminal
+    status app/pipeline/fetch_syllabus_summaries.py writes on success ('done'),
+    not a 'complete' value no pipeline step ever produces. Regression: with the
+    stale 'complete' check, every one of the real board's 61 successfully
+    AI-analyzed courses (syllabus_ai_analysis_status == 'done') was silently
+    shown to users as if analysis were still missing."""
+    m = re.search(r"const aiStatus = c\.syllabus_ai_analysis_status;(.*?)// Assessment type", html, re.DOTALL)
+    assert m, "syllabus_ai_analysis_status signals block not found"
+    block = m.group(1)
+    assert "aiStatus === 'complete'" not in block, \
+        "'complete' is never written by any pipeline step — must check 'done'"
+    assert "aiStatus === 'done'" in block
+
+
 def test_no_vague_course_description_missing(html):
     """Must not show vague 'תיאור מפורט של נושאי הקורס' — replaced by AI analysis wording."""
     assert "תיאור מפורט של נושאי הקורס" not in html
