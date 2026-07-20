@@ -3467,6 +3467,7 @@ function normalizeCourse(c, status) {
     data_quality:                c.data_quality           || {},
     syllabus_url:                c.syllabus_url           || null,
     syllabus_links:              c.syllabus_links         || [],
+    syllabus_ai_analysis_status: c.syllabus_ai_analysis_status || null,
     syllabus_text_available:     c.syllabus_text_available     ?? false,
     syllabus_summary_he:         c.syllabus_summary_he         || null,
     syllabus_topics_he:          c.syllabus_topics_he          || [],
@@ -7306,9 +7307,11 @@ function promptAcceptOverloadConfirmation({ anchorEl, refreshPreview } = {}) {
 }
 
 /* ── PART D #5 — compact proposal card embedded in עוזר AI ─────────────────
- * Status + added/moved/removed/הוחלף counts + apply/reject/ask-again +
- * "פתח תצוגה מלאה" link to the full preview modal. Renders nothing when no
- * draft is active. */
+ * Historically rendered status + added/moved/removed/הוחלף counts +
+ * apply/reject/ask-again + a "פתח תצוגה מלאה" link to the full preview modal.
+ * Per commit 1f98a004 ("Issue 2"), this now unconditionally renders nothing —
+ * the single canonical draft action cluster is the board-draft banner in
+ * renderBoard() (board-draft-apply / board-draft-reject / board-draft-back-ai). */
 function renderProposalCard() {
   // Issue 2 — NO draft action cluster below the AI chat. The single canonical draft
   // action row is the upper blue board-draft banner (renderBoard: board-draft-apply /
@@ -9344,16 +9347,20 @@ function openCourseDetails(cid) {
       if (aStatus === 'complete' && c.assessment_type && c.assessment_type !== 'unknown')
                                            available.push('סוג הערכה סופי');
       if (c.grade_signal)                  available.push('נתוני טאו פקטור');
+      // 'done' is the real terminal-success value written by
+      // app/pipeline/fetch_syllabus_summaries.py ('complete' is never
+      // produced by any pipeline step — checking for it here silently
+      // treated every successfully-analyzed course as still-missing).
       const aiStatus = c.syllabus_ai_analysis_status;
-      if (aiStatus === 'complete')         available.push('ניתוח AI של סילבוס');
+      if (aiStatus === 'done')             available.push('ניתוח AI של סילבוס');
 
       // Missing signals
       if (c.weekly_hours == null)          missing.push('שעות שבועיות');
 
       // Syllabus / AI analysis — precise wording by status
-      if (aiStatus === 'complete') {
+      if (aiStatus === 'done') {
         /* nothing — already in available */
-      } else if (aiStatus === 'pending' || (c.syllabus_url && aiStatus !== 'complete')) {
+      } else if (aiStatus === 'pending' || aiStatus === 'failed' || (c.syllabus_url && aiStatus !== 'done')) {
         missing.push('ניתוח AI של הסילבוס לחילוץ נושאים וסוג הערכה');
       } else {
         missing.push('לא נמצא קישור סילבוס פעיל');

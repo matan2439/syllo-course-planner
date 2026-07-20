@@ -2,6 +2,25 @@
 
 _Live planning items only. Completed work lives in history.md. Design invariants live in architecture.md._
 
+## CI/test reliability gaps (found 2026-07-20, partially fixed — see current.md)
+
+CI was non-functional against `ui/frontend-modernization` (trigger branch fix + `requirements.txt`'s
+impossible `alembic>=2.0.0` pin fixed 2026-07-20). Two items surfaced by that fix remain open, both
+needing a decision/triage before `tests/ui` and the Python suite can be honest CI gates rather than
+`continue-on-error`/known-red:
+
+- **`tests/ui` fixture gap** — ~38 of 60 suites hard-depend on `supabase_board_backup_2027_pre_sync.json`,
+  a real Supabase board export that's deliberately `.gitignore`d and so is absent from every fresh
+  checkout/CI runner. Needs a product decision: commit a sanitized/synthetic replacement fixture (and
+  update however many test files reference `PROD_BOARD`), or restructure these suites to not need a
+  real board export at all. Do not commit real student/board data to close this without explicit sign-off.
+- **39 failed + 4 errored pre-existing Python tests** (`pytest`, first real run 2026-07-20) — untriaged.
+  At least one class is another missing-fixture gap (`test_seed_postgres.py`'s sqlite `courses` table);
+  at least one (`test_viewer_structure.py::test_degree_progress_helper_exists_and_used_in_draft_and_modal`)
+  looks like a genuine regression — `renderProposalCard()` no longer calls `renderDegreeProgressHtml(...)`.
+  Needs a full triage pass (which failures are stale/fixture-dependent vs. real bugs) before deciding
+  what to fix vs. update vs. formally accept as a known gap.
+
 ## AcademicDecisionAgent readiness roadmap (2026-07-01 audit)
 
 _Production planner (`generate-plan`/`planner-run` default paths, UI, DB) is frozen. All items below are infrastructure-only — no production wiring — building toward `AcademicDecisionAgent → DecisionCapability → SimulationCapability → PlanningCapability (PlannerAgent) → SearchCapability`. Phase 0 (institution/program identity in `ConstraintModel`) shipped `232271a`/`0b45b98`/`e16ba9c`; Phase 1a (`enumerateActions` behind `PolicyProvider.generateActions`) shipped `959a4f5`; Phase 1b (load-cap thresholds behind `ConstraintModel`/model context) shipped `5b1dad9` — see history.md. `institutionId` remains intentionally `undefined` (no real source yet). Production website path unchanged throughout (verified each phase against the full API suite, including the frozen `PlannerWorker`'s own tests)._

@@ -248,9 +248,15 @@ def test_board_has_syllabus_ai_analysis_status(board_repo):
 
 
 def test_syllabus_ai_status_pending_when_syllabus_url(board_repo):
+    """syllabus_ai_analysis_status must be a real, recognized state whenever a
+    syllabus_url is present. app/pipeline/fetch_syllabus_summaries.py has
+    since run against the real TAU syllabus pages for the courses in the
+    checked-in board data and set 'done' (or 'failed') on completion; only
+    unprocessed courses remain 'pending'. See test_repo_syllabus_url_implies_
+    pending_ai_status in test_enrich_mechanical_2027.py for the same fix."""
     for r in board_repo:
         if r.get("syllabus_url"):
-            assert r.get("syllabus_ai_analysis_status") == "pending", \
+            assert r.get("syllabus_ai_analysis_status") in ("pending", "done", "failed"), \
                 f"{r['course_id']}: has syllabus_url but status={r.get('syllabus_ai_analysis_status')}"
 
 
