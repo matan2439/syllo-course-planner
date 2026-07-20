@@ -23,8 +23,13 @@ gate before it may be left for human merge approval:
    comments and CI events arrive as they happen, instead of polling.
 4. **Wait for Codex's review**, then read every comment and review thread
    on the PR (`pull_request_read` with `get_comments` *and*
-   `get_review_comments` — Codex may post either a plain issue comment or
-   a formal review with inline threads).
+   `get_review_comments` — **always check both**: the real Codex bot,
+   `chatgpt-codex-connector[bot]` (`pull_request_read` → `get_reviews`
+   shows it as `AuthorType: Bot`, `AuthorAssociation: NONE`), posts a
+   top-level summary via `get_comments`/`get_reviews` *and* separate
+   per-line findings with P1/P2 severity badges that only show up in
+   `get_review_comments` — checking only one endpoint will miss real
+   findings, as observed 2026-07-20 on PR #13).
 5. **Treat unresolved Codex correctness or safety findings as blocking.**
    A PR with an open blocking finding is not ready for human approval,
    regardless of how the PR's own description characterizes it.
@@ -34,6 +39,20 @@ gate before it may be left for human merge approval:
    (file/line, existing test, or reasoning) rather than making a
    no-op/cosmetic change just to look responsive.
 7. **Fix valid findings on the same PR branch:**
+   - **Immediately before pushing, `git fetch` and check whether the PR's
+     remote branch has moved since you last read it.** More than one
+     autonomous session can end up working the same PR concurrently
+     despite rule 1 (observed 2026-07-20 on PR #13 — two sessions
+     independently fixed the same Codex findings; the second session's
+     `git push` was rejected as non-fast-forward). If the branch moved:
+     read the other session's diff and comments first. If it already
+     validly resolves the same finding (even via a different, equally
+     valid design choice — e.g. "document the semantics" vs. "change the
+     behavior," both of which Codex may explicitly offer as options),
+     independently verify it (typecheck + full suite) and adopt it rather
+     than pushing a competing fix — reset your local branch to the
+     pushed commit. Only push your own version if theirs is actually
+     wrong or incomplete, and say why in your reply.
    - Root-cause the actual defect (not just the symptom the finding
      described).
    - Add regression tests that would have failed before the fix and pass

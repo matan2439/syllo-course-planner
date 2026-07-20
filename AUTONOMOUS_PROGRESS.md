@@ -1,5 +1,123 @@
 # Autonomous Progress — read this first
 
+## Session 2026-07-20 (part 3) — PR #12 gate closed; PR #13 round 1 fixed (by a concurrent session) + independently verified
+
+**Active milestone:** same Codex review gate as part 2. Status update:
+
+- **PR #12: gate CLOSED.** The real Codex bot (`chatgpt-codex-connector[bot]`,
+  not the owner-account comments described in part 2 — see note below)
+  reviewed the round-1 fix (`b5aca25`) and reported **"Didn't find any
+  major issues."** No blocking findings on the current head. Per the gate,
+  PR #12 now stays **unmerged, ready for review, for human approval** —
+  no further action needed from this routine unless a human/Codex leaves
+  a new comment.
+- **PR #13: round 1 fixed and pushed — by a different, concurrent Claude
+  session** (`Claude-Session: session_012ufT4We74bjNyxx6cH7Pvk`, distinct
+  from this session's `session_01ADSsTSEEFWMEchxUG5yq8P`), not this one.
+  **Operational note for future sessions:** this session had already
+  independently diagnosed and fixed the same two findings (commit
+  `170728b`, never pushed) when a `git push` was rejected — the other
+  session's fix (`1abdb06` + docs commit `405ec36`) had landed on
+  `origin/claude/intelligent-pascal-q83xjt` first. Two autonomous sessions
+  ended up working the identical PR concurrently despite the "one PR
+  active at a time" rule — worth having the human product owner confirm
+  whether multiple sessions are intentionally run in parallel; if so,
+  `CLAUDE.md`'s gate should gain an explicit "check for a fresh push on
+  the PR branch immediately before pushing your own fix" step to avoid
+  wasted duplicate work in future cycles. This time it resolved cleanly
+  (their fix was independently verified and adopted; mine was discarded
+  unpushed), but it will not always be a trivial reconciliation.
+
+### Real Codex identity, corrected
+
+Part 2 noted the first "Codex review" comment on PR #12 was posted under
+the *repo owner's* GitHub identity (`matan2439`), not a bot account, and
+flagged this as worth tracking. This session observed the **genuine**
+integration: `chatgpt-codex-connector[bot]` (bot account, `AuthorType:
+Bot`, `AuthorAssociation: NONE`), which posts a top-level review summary
+plus separate inline review-thread comments with P1/P2 severity badges
+(`pull_request_read` → `get_review_comments`, not just `get_comments`).
+**Future sessions: always check both `get_comments` (plain issue comments)
+and `get_review_comments` (inline review threads)** — the real findings on
+PR #13 were only visible via the latter. The earlier owner-account
+"Codex review" comment on PR #12 remains unexplained (possibly a
+different/earlier integration path, or content from another concurrent
+session posted under the shared owner token) but its content was
+technically valid on independent verification regardless of its source,
+so no correction was needed there.
+
+### PR #13 — what the real Codex review found and how it was resolved
+
+Real review (`chatgpt-codex-connector[bot]`, reviewing commit `d36ed6949e`,
+2 inline threads on `api/ai/plan_persistence.ts`):
+
+1. **P1 — Snapshot AgentResult records before storing them** (line 58):
+   `persist()`/`record()` stored the caller-owned `AgentResult` reference
+   directly; `get()`/`list()` returned that same live reference. Mutating
+   the object after `persist()`, or mutating a `get()`/`list()` result,
+   silently corrupted the "persisted" record.
+2. **P2 — Reject duplicate persisted ids** (line 69): a duplicate id
+   (colliding custom `idGenerator`, or a direct `record()` caller) left
+   two entries in the store, but `get(id)` only finds the first match —
+   the newer record becomes unreachable via the store's own advertised
+   lookup path.
+
+**Resolution actually shipped** (commit `1abdb06` on
+`claude/intelligent-pascal-q83xjt`, independently verified by this
+session — `tsc --noEmit` clean, full API suite **1168/1168** across 76
+suites, matches the pushing session's claimed numbers exactly):
+
+- (1) fixed by `structuredClone()` on both write (`record()`) and read
+  (`list()`/`get()`) — the store now owns an independent copy of every
+  `AgentResult`, so mutation in either direction can't reach stored data.
+- (2) resolved via the review's other explicitly-offered option
+  ("document and test the chosen collision semantics") rather than this
+  session's own initial choice of upsert/overwrite: `record()` stays
+  **append-only** — a duplicate id produces two distinct `list()` entries,
+  and `get(id)` returns the first-added match, now stated explicitly in
+  the `PlanRunStore` doc comment and locked in by a dedicated test. Both
+  are valid, Codex-sanctioned resolutions to the same finding; this
+  session deferred to the already-pushed one rather than overwrite it
+  with a competing design decision.
+- Also fixed the stray "ponytail" doc-comment nit flagged in part 1's
+  read-only review.
+
+This session posted an independent-verification comment and requested a
+fresh Codex pass (`@codex review`) on PR #13's current head, since the
+pushing session's own comment had not yet done so.
+
+**Remaining acceptance criteria:** a fresh Codex review on PR #13's
+current head (`405ec36`) with no blocking findings. Not yet observed as
+of this write-up.
+
+### Exact recommended next action
+
+1. **If resuming with webhook context:** both PRs are subscribed. Wait for
+   the next `<github-webhook-activity>` event.
+   - PR #12: any new comment/review is unexpected follow-up (gate already
+     closed clean) — investigate before acting, don't assume it's routine.
+   - PR #13: a fresh Codex review is pending. If no blocking findings,
+     PR #13's gate is done too — **both PRs' gates are then closed**, and
+     the routine should move to the next roadmap milestone (see part 1's
+     "extend Simulation to return N candidates", still blocked on both
+     PRs actually merging — a human/Codex decision).
+2. **If starting fresh with no webhook context:** re-check both PRs'
+   `get_comments` + `get_review_comments` from scratch — do not trust this
+   write-up's "remaining acceptance criteria" without reconfirming, and
+   **check for any other concurrent session's push to either PR branch
+   before pushing your own fix** (see the operational note above).
+3. Do not open a third competing branch/PR for the same
+   `AcademicDecisionAgent` capability track while #12/#13 are unmerged.
+
+### Resume or select new?
+
+**Resume** — waiting on PR #13's fresh Codex review to close its gate; PR
+#12's gate is already closed. Do not start a new milestone until both are
+resolved (see part 2 for why: the natural next step depends on both
+merging).
+
+---
+
 ## Session 2026-07-20 (part 2) — Codex review gate established, PR #12 round 1 fixed
 
 **Active milestone:** the permanent Codex review gate (see `CLAUDE.md` for
