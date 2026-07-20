@@ -283,9 +283,26 @@ describe('ScoreBasedDecisionCapability — result consistency', () => {
     const worse = agentResult(emptyState(SEMS));
     const snapshotBetter = JSON.parse(JSON.stringify(betterResult));
     const snapshotWorse = JSON.parse(JSON.stringify(worse));
+    const modelProfilesBefore = [...m.profiles.entries()];
+    const modelScalarsBefore = {
+      degreeRequiredHours: m.degreeRequiredHours,
+      priorHours: m.priorHours,
+      maxHoursPerSemester: m.maxHoursPerSemester,
+      hardCap: m.hardCap,
+      knownSemesterIds: [...m.knownSemesterIds],
+    };
 
     const decision = new ScoreBasedDecisionCapability();
     await decision.decide({ candidates: [worse, betterResult], model: m });
+
+    expect([...m.profiles.entries()]).toEqual(modelProfilesBefore);
+    expect({
+      degreeRequiredHours: m.degreeRequiredHours,
+      priorHours: m.priorHours,
+      maxHoursPerSemester: m.maxHoursPerSemester,
+      hardCap: m.hardCap,
+      knownSemesterIds: [...m.knownSemesterIds],
+    }).toEqual(modelScalarsBefore);
 
     expect(betterResult).toEqual(snapshotBetter);
     expect(worse).toEqual(snapshotWorse);
