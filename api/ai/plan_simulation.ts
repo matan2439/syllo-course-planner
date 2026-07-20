@@ -31,11 +31,30 @@
  * steps) with its own validation, so this is a bounded sanity/refinement pass
  * over a bounded candidate slice, not a second full search. A multi-step
  * variant is a natural, separately-scoped future epic if this proves useful.
+ *
+ * Validation semantics: PlannerAgent prefers an injected ValidationCapability
+ * over policy.validate whenever the caller supplied one (see its `deps.validate`
+ * closure in planner_agent.ts). A candidate a custom validator would reject
+ * must never be accepted here just because raw policy.validate allows it — so
+ * `request.validation`, when present, is consulted instead of policy.validate,
+ * mirroring PlannerAgent's own precedence exactly.
+ *
+ * Result-consistency: an improving candidate changes finalState/trace, which
+ * makes `meta.chosenPath` (if present) and `rationale_he` — both produced by
+ * the Plan stage, before this candidate existed — potentially stale.
+ * `meta.chosenPath` is extended with the simulation's own step, keeping it in
+ * lockstep with the returned `trace`/`finalState`. `rationale_he` has no cheap
+ * way to be regenerated here (that requires an ExplanationCapability, out of
+ * scope for this capability) and is explicitly invalidated (`undefined`)
+ * rather than left describing a plan that no longer matches — callers already
+ * handle an absent rationale_he (e.g. generate-plan.ts's deterministic
+ * fallback).
  */
 
 import { applyMutation } from './planner_goals';
 import { TauPolicyProvider, type PolicyProvider } from './planner_policy';
 import { buildValidationContext } from './planner_validate';
+import type { ValidationCapability } from './planner_capabilities';
 import type { AgentResult } from './planner_agent';
 import type { ConstraintModel, PlannerMutation } from './planner_types';
 
@@ -47,6 +66,13 @@ export interface PlanSimulationRequest {
   pinnedHome?: Record<string, string>;
   /** Defaults to a fresh TauPolicyProvider — pass the same policy Plan used for consistent scoring/validation. */
   policy?: PolicyProvider;
+  /**
+   * The same ValidationCapability (if any) Plan's PlannerAgent was given.
+   * When present, candidates are validated through it instead of
+   * policy.validate — matching PlannerAgent's own precedence, so a candidate
+   * the real injected validator would reject can never be accepted here.
+   */
+  validation?: ValidationCapability;
 }
 
 export interface PlanSimulationCapability {
@@ -62,13 +88,19 @@ export class LocalSearchSimulationCapability implements PlanSimulationCapability
   constructor(private opts: LocalSearchSimulationOptions = {}) {}
 
   async simulate(request: PlanSimulationRequest): Promise<AgentResult> {
-    const { result, model, pinnedHome = {} } = request;
+    const { result, model, pinnedHome = {}, validation } = request;
     const policy = request.policy ?? new TauPolicyProvider();
     const maxCandidates = this.opts.maxCandidates ?? 40;
 
     const baseState = result.finalState;
     const baseScore = policy.score(baseState, model);
     const validationCtx = buildValidationContext(model, pinnedHome);
+    // Mirrors PlannerAgent's own `deps.validate` precedence exactly: prefer
+    // an injected ValidationCapability over raw policy.validate.
+    const isValid = (state: typeof baseState) =>
+      validation
+        ? validation.validateState(state).valid
+        : policy.validate(state, model, pinnedHome, validationCtx).valid;
 
     let bestState = baseState;
     let bestScore = baseScore;
@@ -78,7 +110,7 @@ export class LocalSearchSimulationCapability implements PlanSimulationCapability
     for (const action of candidates) {
       const nextState = applyMutation(baseState, action);
       if (!nextState) continue;
-      if (!policy.validate(nextState, model, pinnedHome, validationCtx).valid) continue;
+      if (!isValid(nextState)) continue;
       const nextScore = policy.score(nextState, model);
       if (policy.compareScore(nextScore, bestScore) > 0) {
         bestState = nextState;
@@ -88,6 +120,20 @@ export class LocalSearchSimulationCapability implements PlanSimulationCapability
     }
 
     if (!bestAction) return result;
-    return { ...result, finalState: bestState, trace: [...result.trace, bestAction] };
+
+    const meta = result.meta
+      ? { ...result.meta, chosenPath: [...result.meta.chosenPath, { action: bestAction, resultState: bestState }] }
+      : result.meta;
+
+    return {
+      ...result,
+      finalState: bestState,
+      trace: [...result.trace, bestAction],
+      meta,
+      // Stale: describes a plan produced before this candidate was applied.
+      // No ExplanationCapability is available here to regenerate it, so it's
+      // explicitly invalidated rather than left misleading.
+      rationale_he: undefined,
+    };
   }
 }

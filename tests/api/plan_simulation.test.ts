@@ -14,6 +14,8 @@ import type { AgentResult } from '../../api/ai/planner_agent';
 import { type ConstraintModel, type PlanState, emptyState } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 import type { PolicyProvider } from '../../api/ai/planner_policy';
+import type { ValidationCapability } from '../../api/ai/planner_capabilities';
+import type { BeamSearchMeta } from '../../api/ai/planner_search_types';
 
 function profile(id: string, over: Partial<CourseProfile> = {}): CourseProfile {
   return {
@@ -216,6 +218,127 @@ describe('LocalSearchSimulationCapability — custom policy override', () => {
 
     expect(fakePolicy.generateActions).toHaveBeenCalledWith(base, m);
     expect(out).toBe(result); // rejected by the fake's validate() → no change
+  });
+});
+
+describe('LocalSearchSimulationCapability — custom ValidationCapability precedence', () => {
+  it('consults the injected ValidationCapability instead of policy.validate, matching PlannerAgent\'s own precedence', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('w1', profile('w1', { hours: 4, is_wanted: true }));
+    const m = model({ profiles, wantedCourseIds: new Set(['w1']) });
+    const base = emptyState(SEMS);
+    const result = agentResult(base);
+
+    // policy.validate (the TauPolicyProvider default) would accept placing w1 —
+    // proven by the earlier "finds a strictly-improving candidate" test. A
+    // custom ValidationCapability that rejects everything must still block it.
+    const rejectAll: ValidationCapability = {
+      validateState: jest.fn(() => ({ valid: false, reason: 'custom validator rejects everything' })),
+    };
+
+    const sim = new LocalSearchSimulationCapability();
+    const out = await sim.simulate({ result, model: m, validation: rejectAll });
+
+    expect(rejectAll.validateState).toHaveBeenCalled();
+    expect(out).toBe(result); // rejected by the injected validator → no change, even though policy.validate would allow it
+  });
+
+  it('accepts a candidate the injected ValidationCapability allows, even though it differs from policy.validate', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('x1', profile('x1', { hours: 6, placement_policy: 'fixed' }));
+    profiles.set('w1', profile('w1', {
+      hours: 4,
+      is_wanted: true,
+      effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    const m = model({
+      profiles,
+      wantedCourseIds: new Set(['w1']),
+      degreeRequiredHours: 100,
+      hardCap: 8,
+      maxHoursPerSemester: 8,
+    });
+    const base = emptyState(SEMS);
+    base.semesters['year_3_semester_a'] = ['x1']; // policy.validate would reject w1 here (10h > hardCap 8)
+    const result = agentResult(base);
+
+    // A permissive custom validator overrides the hard-cap rejection policy.validate would apply.
+    const allowAll: ValidationCapability = { validateState: () => ({ valid: true }) };
+
+    const sim = new LocalSearchSimulationCapability();
+    const out = await sim.simulate({ result, model: m, validation: allowAll });
+
+    expect(out).not.toBe(result);
+    expect(Object.values(out.finalState.semesters).flat()).toContain('w1');
+  });
+});
+
+describe('LocalSearchSimulationCapability — result consistency after an improving candidate', () => {
+  it('invalidates rationale_he (no ExplanationCapability to regenerate it) instead of returning stale Hebrew text', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('w1', profile('w1', { hours: 4, is_wanted: true }));
+    const m = model({ profiles, wantedCourseIds: new Set(['w1']) });
+    const base = emptyState(SEMS);
+    const result = agentResult(base, { rationale_he: 'הסבר על התוכנית לפני הסימולציה' });
+
+    const sim = new LocalSearchSimulationCapability();
+    const out = await sim.simulate({ result, model: m });
+
+    expect(out).not.toBe(result);
+    expect(out.rationale_he).toBeUndefined();
+    // Original result's rationale_he is untouched.
+    expect(result.rationale_he).toBe('הסבר על התוכנית לפני הסימולציה');
+  });
+
+  it('extends meta.chosenPath with the simulation step, keeping it consistent with the returned trace/finalState', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('w1', profile('w1', { hours: 4, is_wanted: true }));
+    const m = model({ profiles, wantedCourseIds: new Set(['w1']) });
+    const base = emptyState(SEMS);
+    const priorAction = { type: 'ADD_COURSE' as const, courseId: 'prior', semesterId: 'year_3_semester_a' };
+    const meta: BeamSearchMeta = {
+      beamWidth: 6,
+      depthRecords: [],
+      chosenPath: [{ action: priorAction, resultState: base }],
+      terminationReason: 'goal_reached',
+      alternativePaths: [],
+    };
+    const result = agentResult(base, { meta, trace: [priorAction] });
+
+    const sim = new LocalSearchSimulationCapability();
+    const out = await sim.simulate({ result, model: m });
+
+    expect(out).not.toBe(result);
+    expect(out.meta).toBeDefined();
+    expect(out.meta!.chosenPath).toHaveLength(2);
+    // The appended step's action must be the trace's newly-appended action, and
+    // its resultState must be the same object as the returned finalState —
+    // chosenPath stays in lockstep with trace/finalState.
+    expect(out.trace).toHaveLength(2);
+    expect(out.meta!.chosenPath[1].action).toBe(out.trace[1]);
+    expect(out.meta!.chosenPath[1].resultState).toBe(out.finalState);
+    // The original result's meta is untouched (no mutation of the input).
+    expect(result.meta!.chosenPath).toHaveLength(1);
+  });
+
+  it('leaves meta/rationale_he untouched when nothing improves (identity return)', async () => {
+    const m = model();
+    const base = emptyState(SEMS);
+    const meta: BeamSearchMeta = {
+      beamWidth: 6,
+      depthRecords: [],
+      chosenPath: [],
+      terminationReason: 'no_legal_expansion',
+      alternativePaths: [],
+    };
+    const result = agentResult(base, { meta, rationale_he: 'הסבר קיים' });
+
+    const sim = new LocalSearchSimulationCapability();
+    const out = await sim.simulate({ result, model: m });
+
+    expect(out).toBe(result);
+    expect(out.rationale_he).toBe('הסבר קיים');
+    expect(out.meta!.chosenPath).toHaveLength(0);
   });
 });
 

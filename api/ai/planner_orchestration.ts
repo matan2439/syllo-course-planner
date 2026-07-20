@@ -93,5 +93,5 @@ export async function runPlanningOrchestration(
 
   const result = await agent.run();
   if (!deps.simulation) return result;
-  return deps.simulation.simulate({ result, model, policy: deps.policy });
+  return deps.simulation.simulate({ result, model, policy: deps.policy, validation: deps.validation });
 }
