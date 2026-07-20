@@ -27,7 +27,8 @@ import type { ProgramProvider } from '../../api/ai/program_provider';
 import { buildConstraintModel } from '../../api/ai/planner_model';
 import { emptyState, type PlanState, type PlannerMutation } from '../../api/ai/planner_types';
 import { PlannerAgent } from '../../api/ai/planner_agent';
-import type { SearchCapability } from '../../api/ai/planner_capabilities';
+import type { SearchCapability, ValidationCapability } from '../../api/ai/planner_capabilities';
+import { LocalSearchSimulationCapability } from '../../api/ai/plan_simulation';
 import { queryBoardJson } from '../../api/board';
 import { loadLocalBoardJson } from '../../api/ai/board_loader';
 
@@ -159,5 +160,122 @@ describe('runPlanningOrchestration — optional deps threaded through unchanged'
     );
     expect(explanation.explain).toHaveBeenCalled();
     expect(result.rationale_he).toBe('הסבר');
+  });
+});
+
+describe('runPlanningOrchestration — optional PlanSimulationCapability (additive, drift-free)', () => {
+  it('is byte-identical to before this dep existed when simulation is omitted', async () => {
+    const provider = new FakeProgramProvider();
+    const withoutDep = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch() },
+    );
+    const provider2 = new FakeProgramProvider();
+    const explicitlyUndefined = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider2, search: noopSearch(), simulation: undefined },
+    );
+    expect(explicitlyUndefined).toEqual(withoutDep);
+  });
+
+  it('calls simulation.simulate with the SAME model instance Plan built, and returns its result', async () => {
+    let capturedModel: unknown;
+    const simulatedResult = { finalState: emptyState(['y1s1', 'y1s2']), trace: [], gaps: [] };
+    const simulation = {
+      simulate: jest.fn(async (req: { result: unknown; model: unknown }) => {
+        capturedModel = req.model;
+        return simulatedResult;
+      }),
+    };
+    const provider = new FakeProgramProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch(), simulation },
+    );
+
+    expect(simulation.simulate).toHaveBeenCalledTimes(1);
+    const call = simulation.simulate.mock.calls[0][0] as { result: { finalState: unknown } };
+    expect(call.result.finalState).toBeDefined();
+    // Same model instance provider.buildModel returned for this run — not a second, independently-built model.
+    expect(capturedModel).toBe(provider.buildModel.mock.results[0].value);
+    expect(result).toBe(simulatedResult);
+  });
+
+  it('composes end-to-end with the real LocalSearchSimulationCapability, still returning a valid AgentResult', async () => {
+    const provider = new FakeProgramProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch(), simulation: new LocalSearchSimulationCapability() },
+    );
+    expect(result.finalState).toBeDefined();
+    expect(Array.isArray(result.trace)).toBe(true);
+  });
+
+  it('threads deps.validation into simulation.simulate — the same ValidationCapability PlannerAgent itself received', async () => {
+    const validation: ValidationCapability = { validateState: jest.fn(() => ({ valid: true })) };
+    const simulation = { simulate: jest.fn(async (req: { result: import('../../api/ai/planner_agent').AgentResult }) => req.result) };
+    const provider = new FakeProgramProvider();
+    await runPlanningOrchestration(
+      { programId: 'whatever_2027' },
+      { programProvider: provider, search: noopSearch(), simulation, validation },
+    );
+
+    expect(simulation.simulate).toHaveBeenCalledTimes(1);
+    const call = simulation.simulate.mock.calls[0][0] as { validation?: unknown };
+    expect(call.validation).toBe(validation);
+  });
+});
+
+describe('runPlanningOrchestration — simulation honors the same ValidationCapability PlannerAgent used', () => {
+  // A board with one wanted, unconstrained elective — deliberately NOT placed
+  // by noopSearch, so LocalSearchSimulationCapability has an improving
+  // candidate available (mirrors plan_simulation.test.ts's own "finds a
+  // strictly-improving candidate" fixture).
+  const ELECTIVE_BOARD = {
+    semesters: [
+      { semester_id: 'y1s1', courses: [
+        { course_id: 'ELEC', name_he: 'בחירה', weekly_hours: 4, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['y1s1', 'y1s2'], prerequisites: [] },
+      ] },
+      { semester_id: 'y1s2', courses: [] },
+    ],
+    metadata: {
+      completed_course_ids: [],
+      program_requirements_categories: { total_required_hours: 0, categories: [] },
+    },
+  };
+
+  class FakeElectiveProvider implements ProgramProvider {
+    parseProgramId = jest.fn((id: string) => ({ base: id, year: 2027 }));
+    loadBoard = jest.fn(async (): Promise<Record<string, unknown> | null> => ELECTIVE_BOARD);
+    buildModel = jest.fn((boardJson: any, opts: any = {}) => buildConstraintModel(boardJson, opts));
+  }
+
+  it('(control) with no custom validator, simulation places the higher-scoring wanted elective', async () => {
+    const provider = new FakeElectiveProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027', wantedCourseIds: ['ELEC'] },
+      { programProvider: provider, search: noopSearch(), simulation: new LocalSearchSimulationCapability() },
+    );
+    expect(Object.values(result.finalState.semesters).flat()).toContain('ELEC');
+  });
+
+  it('never lets simulation apply a candidate the injected ValidationCapability rejects, even though it scores higher', async () => {
+    const rejectElective: ValidationCapability = {
+      validateState: (state: unknown) => {
+        const placed = Object.values((state as PlanState).semesters).flat();
+        return placed.includes('ELEC') ? { valid: false, reason: 'blocked in test' } : { valid: true };
+      },
+    };
+    const provider = new FakeElectiveProvider();
+    const result = await runPlanningOrchestration(
+      { programId: 'whatever_2027', wantedCourseIds: ['ELEC'] },
+      {
+        programProvider: provider,
+        search: noopSearch(),
+        simulation: new LocalSearchSimulationCapability(),
+        validation: rejectElective,
+      },
+    );
+    expect(Object.values(result.finalState.semesters).flat()).not.toContain('ELEC');
   });
 });

@@ -70,7 +70,10 @@ def test_build_plan_context_reads_from_current_state_semesters(html):
 
 
 def test_request_plan_proposal_uses_build_plan_context(html):
-    m = re.search(r"async function requestPlanProposal\(prefs, actionType\)(.*?)\n\}", html, re.DOTALL)
+    # requestPlanProposal grew an optional third `clarificationAnswers` param
+    # (commit 234d751, "close the Academic Decision Agent clarification answer
+    # loop") — match either the 2-param or 3-param signature.
+    m = re.search(r"async function requestPlanProposal\(prefs, actionType(?:, \w+)?\)(.*?)\n\}", html, re.DOTALL)
     assert m, "requestPlanProposal not found"
     body = m.group(1)
     assert "buildPlanContext()" in body
@@ -185,12 +188,16 @@ def test_full_plan_action_type_distinct_from_minimal_changes(html):
 def test_full_plan_rebuild_does_not_reuse_existing_draft(html):
     """The full-plan ('בנה תוכנית מלאה') path calls requestPlanProposal directly,
     not requestPlanProposalFromDraft, i.e. it rebuilds from scratch rather than
-    iterating on the current draft — the property a confirmation guard protects."""
-    m = re.search(
-        r"document\.getElementById\('sidebar-quick-full'\)\.addEventListener\('click', \(\) => \{",
-        html,
-    )
-    assert m
+    iterating on the current draft — the property a confirmation guard protects.
+
+    The standalone 'sidebar-quick-full' quick-action button was consolidated
+    into the single 'sidebar-build-from-scratch' button (PARTS D/E/F/H), whose
+    click handler calls runBuildFromScratch(), which calls run('full_plan').
+    The underlying `run` helper and its full_plan-bypasses-the-draft contract
+    are unchanged."""
+    assert "function runBuildFromScratch()" in html
+    assert "run('full_plan')" in html
+    assert "getElementById('sidebar-build-from-scratch')" in html
     # `run` is a local arrow fn; locate its definition explicitly.
     run_def = re.search(r"const run = actionType => \{(.*?)\n  \};", html, re.DOTALL)
     assert run_def, "sidebar `run` helper not found"
