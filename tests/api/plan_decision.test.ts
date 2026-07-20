@@ -79,7 +79,9 @@ function agentResult(finalState: PlanState, over: Partial<AgentResult> = {}): Ag
 
 describe('ScoreBasedDecisionCapability — single candidate', () => {
   it('returns the only candidate when it is valid', async () => {
-    const m = model();
+    // degreeRequiredHours: 0 so the empty state is genuinely complete (not
+    // just returned via the empty-candidates-array fallback path).
+    const m = model({ degreeRequiredHours: 0 });
     const base = emptyState(SEMS);
     const result = agentResult(base);
 
@@ -89,23 +91,15 @@ describe('ScoreBasedDecisionCapability — single candidate', () => {
     expect(out).toBe(result);
   });
 
-  it('falls back to the only candidate even when policy.validate rejects it (never drops every candidate)', async () => {
+  it('falls back to the only candidate even when it fails the full candidate gate (never drops every candidate)', async () => {
+    // Default degreeRequiredHours (40) is unreachable by an empty plan, so
+    // this candidate is genuinely incomplete/invalid under validateCandidate.
     const m = model();
     const base = emptyState(SEMS);
     const result = agentResult(base);
-    const rejectAll: PolicyProvider = {
-      isGoal: () => true,
-      score: () => [0],
-      compareScore: (a, b) => a[0] - b[0],
-      assessCompleteness: () => ({
-        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
-      }),
-      validate: () => ({ valid: false, reason: 'rejects everything' }),
-      generateActions: () => [],
-    };
 
     const decision = new ScoreBasedDecisionCapability();
-    const out = await decision.decide({ candidates: [result], model: m, policy: rejectAll });
+    const out = await decision.decide({ candidates: [result], model: m });
 
     expect(out).toBe(result);
   });
@@ -159,16 +153,16 @@ describe('ScoreBasedDecisionCapability — picks the strictly best-scoring valid
 });
 
 describe('ScoreBasedDecisionCapability — validity gate', () => {
-  it('never picks a candidate policy.validate rejects, even when its raw score looks better', async () => {
+  it('never picks a candidate the full candidate gate rejects for hard-cap overload, even when its raw score looks better', async () => {
     const profiles = new Map<string, CourseProfile>();
     profiles.set('over', profile('over', { hours: 10 }));
-    const m = model({ profiles, degreeRequiredHours: 10, hardCap: 8, maxHoursPerSemester: 8 });
+    const m = model({ profiles, degreeRequiredHours: 0, hardCap: 8, maxHoursPerSemester: 8 });
 
     const invalidButHighScoring = emptyState(SEMS);
     invalidButHighScoring.semesters['year_3_semester_a'] = ['over']; // 10h > hardCap 8 — invalid
     const invalidResult = agentResult(invalidButHighScoring);
 
-    const validLowerScoring = agentResult(emptyState(SEMS)); // 0/10 hours, but valid
+    const validLowerScoring = agentResult(emptyState(SEMS)); // 0h, degreeRequiredHours 0 -> complete, legal, not disallowed
 
     const decision = new ScoreBasedDecisionCapability();
     const out = await decision.decide({ candidates: [invalidResult, validLowerScoring], model: m });
@@ -176,23 +170,56 @@ describe('ScoreBasedDecisionCapability — validity gate', () => {
     expect(out).toBe(validLowerScoring);
   });
 
+  it('never picks a candidate with a user-disallowed course placed, even when it strictly outscores a valid alternative', async () => {
+    // Regression test for a gap Codex's review caught: the validity gate must
+    // be validateCandidate (the full final-candidate gate, including the
+    // disallowed-course rule), not the narrower policy.validate (hard legality
+    // only) — otherwise a disallowed-course plan can out-score and beat a
+    // fully valid alternative.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('bad', profile('bad', { hours: 4 }));
+    profiles.set('w1', profile('w1', { hours: 4 }));
+    const m = model({
+      profiles,
+      degreeRequiredHours: 4,
+      disallowedCourseIds: new Set(['bad']),
+      wantedCourseIds: new Set(['bad']), // gives the disallowed plan a strictly higher preferences-goal score
+    });
+
+    const disallowedButHigherScoring = emptyState(SEMS);
+    disallowedButHigherScoring.semesters['year_3_semester_a'] = ['bad']; // 4/4 hours + wanted-course bonus, but disallowed
+    const disallowedResult = agentResult(disallowedButHigherScoring);
+
+    const validLowerScoring = emptyState(SEMS);
+    validLowerScoring.semesters['year_3_semester_a'] = ['w1']; // 4/4 hours, not wanted, not disallowed
+    const validResult = agentResult(validLowerScoring);
+
+    const policy = new (require('../../api/ai/planner_policy').TauPolicyProvider)();
+    // Confirm the premise: without the fix, the disallowed candidate would
+    // actually win on raw score (proves this is a real regression test, not
+    // a vacuous one).
+    expect(
+      policy.compareScore(
+        policy.score(disallowedButHigherScoring, m),
+        policy.score(validLowerScoring, m),
+      ),
+    ).toBeGreaterThan(0);
+
+    const decision = new ScoreBasedDecisionCapability();
+    const out = await decision.decide({ candidates: [disallowedResult, validResult], model: m });
+
+    expect(out).toBe(validResult);
+  });
+
   it('falls back to candidates[0] when no candidate is valid', async () => {
+    // Default degreeRequiredHours (40) is unreachable by either empty
+    // candidate, so both are genuinely incomplete under validateCandidate.
     const m = model();
     const c1 = agentResult(emptyState(SEMS));
     const c2 = agentResult(emptyState(SEMS));
-    const rejectAll: PolicyProvider = {
-      isGoal: () => true,
-      score: () => [0],
-      compareScore: (a, b) => a[0] - b[0],
-      assessCompleteness: () => ({
-        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
-      }),
-      validate: () => ({ valid: false }),
-      generateActions: () => [],
-    };
 
     const decision = new ScoreBasedDecisionCapability();
-    const out = await decision.decide({ candidates: [c1, c2], model: m, policy: rejectAll });
+    const out = await decision.decide({ candidates: [c1, c2], model: m });
 
     expect(out).toBe(c1);
   });

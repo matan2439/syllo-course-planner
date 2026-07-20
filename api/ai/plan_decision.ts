@@ -40,7 +40,7 @@
 
 import type { AgentResult } from './planner_agent';
 import { TauPolicyProvider, type PolicyProvider } from './planner_policy';
-import { buildValidationContext } from './planner_validate';
+import { validateCandidate } from './planner_validate';
 import type { ValidationCapability } from './planner_capabilities';
 import type { ConstraintModel } from './planner_types';
 
@@ -56,9 +56,10 @@ export interface PlanDecisionRequest {
   /**
    * The same ValidationCapability (if any) Plan's PlannerAgent was given for
    * these candidates. When present, each candidate is validated through it
-   * instead of policy.validate — matching PlannerAgent's/plan_simulation.ts's
-   * own precedence, so a candidate the real injected validator would reject
-   * can never be chosen here just because raw policy.validate allows it.
+   * instead of the default gate below — matching PlannerAgent's/
+   * plan_simulation.ts's own precedence, so a candidate the real injected
+   * validator would reject can never be chosen here just because it would
+   * otherwise pass.
    */
   validation?: ValidationCapability;
 }
@@ -68,15 +69,28 @@ export interface PlanDecisionCapability {
 }
 
 /**
- * Picks the candidate with the best policy.score, among those policy.validate
- * (or the injected ValidationCapability) accepts, using policy.compareScore
- * for comparison — the exact same scoring/validation stack Plan and
- * plan_simulation.ts already use, no reimplemented logic. Ties keep the
- * earliest still-valid candidate (compareScore must return strictly > 0 to
- * replace the current best). When NO candidate is valid, falls back to
- * candidates[0] — matching PassThroughDecisionCapability's unconditional
- * behavior, so a decision is always returned rather than silently dropping
- * every candidate.
+ * Picks the candidate with the best policy.score, among those that pass
+ * validateCandidate (planner_validate.ts) — or the injected
+ * ValidationCapability, when supplied — using policy.compareScore for
+ * comparison. No reimplemented scoring/validation logic.
+ *
+ * Deliberately validateCandidate, NOT policy.validate: policy.validate only
+ * wraps validatePlanState — hard legality (offering/prereqs/overload/
+ * duplicates/pinned). It does NOT check degree-requirement completeness or
+ * the disallowed-course rule; that's validateCandidate's job (documented in
+ * planner_validate.ts as "the full candidate gate every plan must pass
+ * before it can be shown as final"). Using the narrower policy.validate here
+ * would let a candidate containing a user-disallowed/excluded course, or one
+ * short of the degree-hours target, be scored and potentially selected over
+ * a fully valid lower-scoring alternative — decide() is choosing a FINAL
+ * result, so it must apply the same final gate a candidate would need to
+ * pass to be shown to a user at all.
+ *
+ * Ties keep the earliest still-valid candidate (compareScore must return
+ * strictly > 0 to replace the current best). When NO candidate is valid,
+ * falls back to candidates[0] — matching PassThroughDecisionCapability's
+ * unconditional behavior, so a decision is always returned rather than
+ * silently dropping every candidate.
  */
 export class ScoreBasedDecisionCapability implements PlanDecisionCapability {
   async decide(request: PlanDecisionRequest): Promise<AgentResult> {
@@ -86,11 +100,10 @@ export class ScoreBasedDecisionCapability implements PlanDecisionCapability {
     }
 
     const policy = request.policy ?? new TauPolicyProvider();
-    const validationCtx = buildValidationContext(model, pinnedHome);
     const isValid = (candidate: AgentResult) =>
       validation
         ? validation.validateState(candidate.finalState).valid
-        : policy.validate(candidate.finalState, model, pinnedHome, validationCtx).valid;
+        : validateCandidate(candidate.finalState, model, pinnedHome, policy).valid;
 
     let best: AgentResult | null = null;
     let bestScore: number[] | null = null;
