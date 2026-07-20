@@ -16,6 +16,7 @@ import { type ConstraintModel, type PlanState, emptyState } from '../../api/ai/p
 import type { CourseProfile } from '../../api/ai/course_profile';
 import type { PolicyProvider } from '../../api/ai/planner_policy';
 import type { ValidationCapability } from '../../api/ai/planner_capabilities';
+import { validateCandidate } from '../../api/ai/planner_validate';
 
 function profile(id: string, over: Partial<CourseProfile> = {}): CourseProfile {
   return {
@@ -347,6 +348,62 @@ describe('ScoreBasedDecisionCapability — custom policy override', () => {
 
     expect(fakePolicy.score).toHaveBeenCalled();
     expect(out).toBe(c2);
+  });
+});
+
+describe('ScoreBasedDecisionCapability — honors the resolved policy\'s own validate()', () => {
+  it('regression: rejects a candidate a custom PolicyProvider.validate disapproves, even though validateCandidate\'s built-in legality would accept it and it outscores a valid alternative', async () => {
+    // Codex review finding: validateCandidate always runs the BUILT-IN
+    // validatePlanState for legality regardless of which PolicyProvider is
+    // supplied — it never calls the supplied policy's own validate(). A
+    // custom policy's institution-specific extra legality rule would
+    // otherwise be silently ignored by decide()'s validity gate.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('extra-illegal', profile('extra-illegal', { hours: 4 }));
+    profiles.set('w1', profile('w1', { hours: 4 }));
+    const m = model({
+      profiles,
+      degreeRequiredHours: 4,
+      wantedCourseIds: new Set(['extra-illegal']), // gives it a strictly higher preferences-goal score
+    });
+
+    const real = new (require('../../api/ai/planner_policy').TauPolicyProvider)();
+    const customPolicy: PolicyProvider = {
+      isGoal: (s, mm) => real.isGoal(s, mm),
+      score: (s, mm) => real.score(s, mm),
+      compareScore: (a, b) => real.compareScore(a, b),
+      assessCompleteness: (s, mm) => real.assessCompleteness(s, mm),
+      // Extra, institution-specific legality rule validatePlanState knows nothing about.
+      validate: (s, mm, ph, ctx) => {
+        const placed = Object.values(s.semesters).flat() as string[];
+        if (placed.includes('extra-illegal')) {
+          return { valid: false, reason: 'custom policy: extra-illegal is never allowed' };
+        }
+        return real.validate(s, mm, ph, ctx);
+      },
+      generateActions: (s, mm) => real.generateActions(s, mm),
+    };
+
+    const illegal = emptyState(SEMS);
+    illegal.semesters['year_3_semester_a'] = ['extra-illegal'];
+    const illegalResult = agentResult(illegal);
+
+    const valid = emptyState(SEMS);
+    valid.semesters['year_3_semester_a'] = ['w1'];
+    const validResult = agentResult(valid);
+
+    // Confirm the premise: validateCandidate's built-in legality alone would
+    // accept the "illegal" candidate (proves this is a real regression test).
+    expect(validateCandidate(illegal, m, {}, customPolicy).valid).toBe(true);
+    // And it provably outscores the valid alternative on raw score.
+    expect(
+      customPolicy.compareScore(customPolicy.score(illegal, m), customPolicy.score(valid, m)),
+    ).toBeGreaterThan(0);
+
+    const decision = new ScoreBasedDecisionCapability();
+    const out = await decision.decide({ candidates: [illegalResult, validResult], model: m, policy: customPolicy });
+
+    expect(out).toBe(validResult);
   });
 });
 

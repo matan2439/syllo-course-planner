@@ -51,7 +51,14 @@ export interface PlanDecisionRequest {
   model: ConstraintModel;
   /** Defaults to {} — matches PlannerAgent's/plan_simulation.ts's own default when a caller has no pinned-home info at this layer. */
   pinnedHome?: Record<string, string>;
-  /** Defaults to a fresh TauPolicyProvider — pass the same policy the candidates were produced/scored with for consistent comparison. */
+  /**
+   * Defaults to a fresh TauPolicyProvider — pass the same policy the
+   * candidates were produced/scored with for consistent comparison. Its own
+   * validate() is consulted directly (in addition to validateCandidate below)
+   * so a custom policy's institution-specific legality rules are honored, not
+   * silently ignored — validateCandidate always runs the built-in
+   * validatePlanState for legality regardless of which policy is supplied.
+   */
   policy?: PolicyProvider;
   /**
    * An additional, caller-supplied validator — e.g. the same ValidationCapability
@@ -76,25 +83,30 @@ export interface PlanDecisionCapability {
 }
 
 /**
- * Picks the candidate with the best policy.score, among those that pass
- * validateCandidate (planner_validate.ts) — AND the injected
- * ValidationCapability, when supplied — using policy.compareScore for
- * comparison. No reimplemented scoring/validation logic.
+ * Picks the candidate with the best policy.score, among those that pass ALL
+ * of: policy.validate, validateCandidate (planner_validate.ts), and the
+ * injected ValidationCapability when supplied — using policy.compareScore
+ * for comparison. No reimplemented scoring/validation logic; every check is
+ * additive (can only reject, never accept a candidate another check rejects).
  *
- * Deliberately validateCandidate, NOT policy.validate: policy.validate only
- * wraps validatePlanState — hard legality (offering/prereqs/overload/
- * duplicates/pinned). It does NOT check degree-requirement completeness or
- * the disallowed-course rule; that's validateCandidate's job (documented in
- * planner_validate.ts as "the full candidate gate every plan must pass
- * before it can be shown as final"). Using the narrower policy.validate here
- * would let a candidate containing a user-disallowed/excluded course, or one
- * short of the degree-hours target, be scored and potentially selected over
- * a fully valid lower-scoring alternative — decide() is choosing a FINAL
- * result, so it must apply the same final gate a candidate would need to
- * pass to be shown to a user at all. This full gate always applies, even when
- * a caller supplies its own ValidationCapability — see that field's doc
- * comment for why decide() can't safely treat an injected validator as a
- * full replacement the way PlannerAgent/plan_simulation.ts do.
+ * Three checks, three distinct gaps each one alone would miss:
+ * - policy.validate: the resolved PolicyProvider's OWN legality judgment.
+ *   Consulted directly because validateCandidate always runs the BUILT-IN
+ *   validatePlanState for legality, regardless of which policy is supplied —
+ *   so a caller-supplied PolicyProvider with extra institution-specific
+ *   legality rules in its own validate() would otherwise be silently ignored
+ *   (a candidate policy.validate would reject could still win purely on
+ *   validateCandidate's generic checks).
+ * - validateCandidate: adds degree-requirement completeness and the
+ *   disallowed-course rule, which policy.validate (wrapping only
+ *   validatePlanState) does NOT check — documented in planner_validate.ts as
+ *   "the full candidate gate every plan must pass before it can be shown as
+ *   final". decide() is choosing a FINAL result, so it must apply the same
+ *   gate a candidate would need to pass to be shown to a user at all.
+ * - the injected ValidationCapability (optional): an ADDITIONAL reject
+ *   condition on top of the other two, never a replacement for them — see
+ *   that field's doc comment for why decide() can't safely treat it as a
+ *   full replacement the way PlannerAgent/plan_simulation.ts do.
  *
  * Ties keep the earliest still-valid candidate (compareScore must return
  * strictly > 0 to replace the current best). When NO candidate is valid,
@@ -111,6 +123,7 @@ export class ScoreBasedDecisionCapability implements PlanDecisionCapability {
 
     const policy = request.policy ?? new TauPolicyProvider();
     const isValid = (candidate: AgentResult) => {
+      if (!policy.validate(candidate.finalState, model, pinnedHome).valid) return false;
       if (!validateCandidate(candidate.finalState, model, pinnedHome, policy).valid) return false;
       if (validation && !validation.validateState(candidate.finalState).valid) return false;
       return true;
