@@ -562,15 +562,15 @@ def test_build_course_details_url_formats_id():
 # repository, and summary chips (PART A-G)
 # ---------------------------------------------------------------------------
 
-def test_degree_progress_helper_exists_and_used_in_draft_and_modal(html):
-    """renderDegreeProgressHtml must exist and be called from both the draft
-    sidebar panel and the full preview modal."""
+def test_degree_progress_helper_exists_and_used_in_modal(html):
+    """renderDegreeProgressHtml must exist and be called from the full preview
+    modal. Per commit 1f98a004 ("Issue 2"), renderProposalCard() was
+    intentionally emptied (`card.innerHTML = ''`) to remove a duplicate
+    draft-action-button cluster — it never rendered the degree-progress
+    summary either before or after that change, so it is no longer asserted
+    here. The degree-progress summary itself is surfaced via chat messages
+    (Issue 1 of the same commit) and the full preview modal below."""
     assert "function renderDegreeProgressHtml" in html
-
-    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderProposalCard not found"
-    assert "renderDegreeProgressHtml(" in m.group(1), \
-        "renderProposalCard must render the degree-progress summary"
 
     m2 = re.search(r"function openPlanPreviewModal\(.*?\)\s*\{(.*)", html, re.DOTALL)
     assert m2, "openPlanPreviewModal not found"
@@ -778,15 +778,23 @@ def test_shaar_ruach_courses_draggable_like_other_cards(html):
 # Summary chips row (PART E)
 # ---------------------------------------------------------------------------
 
-def test_summary_chips_row_present_in_draft_tab(html):
-    """renderProposalCard must build a chips row with total/remaining/שער רוח/
-    categories/added/moved/peak-load."""
-    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderProposalCard not found"
-    body = m.group(1)
-    assert "draft-chips-row" in body
-    for label in ['סה״כ', 'נותרו', 'שער רוח', 'קטגוריות', 'נוספו', 'הועברו', 'עומס שיא']:
-        assert label in body, f"Summary chips row missing: {label}"
+def test_full185_summary_reports_total_and_remaining(html):
+    """The chips-row breakdown (total/remaining/שער רוח/categories/added/moved/
+    peak-load) that renderProposalCard used to build in the draft tab was
+    retired by commit 1f98a004 ("Issue 1"): renderProposalCard() now renders
+    nothing (see test_degree_progress_helper_exists_and_used_in_modal), and the
+    status + gap explanation are written as plain-language chat messages
+    instead of a visual chips row. The `.draft-chips-row` CSS class is now
+    dead (no code references it). The substantive content (total/required and
+    missing hours) is still surfaced, via formatFull185SummaryLocal's chat
+    summary."""
+    # The CSS class may still be declared in the stylesheet, but no JS should
+    # build an element with this class anymore (renderProposalCard is empty).
+    assert "className = 'draft-chips-row'" not in html
+    assert "draft-chips-row\"" not in html and "draft-chips-row`" not in html
+    body = _extract_fn(html, "formatFull185SummaryLocal")
+    assert "ds.total" in body and "required" in body, \
+        "formatFull185SummaryLocal must still report total/required hours in the chat summary"
 
 
 # ---------------------------------------------------------------------------
@@ -1028,12 +1036,17 @@ def test_missing_requirements_no_attached_buttons(html):
 
 def test_clarification_question_mechanism_exists(html):
     """A clarification-question heuristic must exist that can render
-    quick-reply chips before full plan generation."""
+    quick-reply chips before full plan generation.
+
+    handleSidebarChatSend is now a thin wrapper (error-handling only) around
+    _handleSidebarChatSendInner, which is where detectClarificationNeeds is
+    actually called — so the check must look at the inner function, not the
+    outer one."""
     assert "function detectClarificationNeeds" in html
     assert "quickReplies" in html
-    m = re.search(r"async function handleSidebarChatSend\(.*?\n}\n", html, re.DOTALL)
-    assert m, "handleSidebarChatSend not found"
-    assert "detectClarificationNeeds(" in m.group(0)
+    assert "async function handleSidebarChatSend" in html
+    body = _extract_fn(html, "_handleSidebarChatSendInner")
+    assert "detectClarificationNeeds(" in body
 
 
 def test_quick_reply_click_updates_preferences(html):
@@ -1061,20 +1074,24 @@ def test_proposal_card_renders_inside_unified_ai_tab(html):
 
 
 def test_proposal_card_has_apply_reject_controls(html):
-    """The proposal card offers only apply/reject. The detached editing controls
-    (the 'בקש שינויים בטיוטה' textarea, 'בקש שינויים' button, and 'פתח תצוגה מלאה'
-    full-preview button) were removed — all draft changes happen through the chat."""
-    m = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m, "renderProposalCard not found"
-    body = m.group(1)
-    assert "sb-draft-apply" in body
-    assert "sb-draft-reject" in body
+    """The single active-draft action cluster offers only apply/reject. The
+    detached editing controls (the 'בקש שינויים בטיוטה' textarea, 'בקש שינויים'
+    button, and 'פתח תצוגה מלאה' full-preview button) were removed — all draft
+    changes happen through the chat.
+
+    Per commit 1f98a004 ("Issue 2"), this cluster moved from the sidebar
+    renderProposalCard() (now empty — see
+    test_degree_progress_helper_exists_and_used_in_modal) to the single
+    canonical board-draft banner built in renderBoard()."""
+    body = _extract_fn(html, "renderBoard")
+    assert "board-draft-apply" in body
+    assert "board-draft-reject" in body
     assert "applyProposalDraft" in body
     assert "rejectProposalDraft" in body
-    # The detached editing panel must be gone.
-    assert "sb-draft-ask" not in body
-    assert "sb-draft-full" not in body
-    assert "sidebar-draft-instruction" not in body
+    # The detached editing panel must be gone anywhere in the file.
+    assert "sb-draft-ask" not in html
+    assert "sb-draft-full" not in html
+    assert "sidebar-draft-instruction" not in html
 
 
 def test_planning_request_includes_current_semesters(html):
@@ -1084,7 +1101,10 @@ def test_planning_request_includes_current_semesters(html):
     assert m, "buildPlanContext not found"
     assert "state.semesters" in m.group(1)
 
-    m2 = re.search(r"async function requestPlanProposal\(prefs, actionType\)(.*?)\n\}\n", html, re.DOTALL)
+    # requestPlanProposal grew an optional third `clarificationAnswers` param
+    # (commit 234d751, "close the Academic Decision Agent clarification answer
+    # loop") — match either the 2-param or 3-param signature.
+    m2 = re.search(r"async function requestPlanProposal\(prefs, actionType(?:, \w+)?\)(.*?)\n\}\n", html, re.DOTALL)
     assert m2, "requestPlanProposal not found"
     assert "buildPlanContext()" in m2.group(1)
 
@@ -1332,21 +1352,25 @@ def test_no_separate_chat_tab_remains_regression(html):
 
 
 def test_render_proposal_card_present_in_ai_tab(html):
-    """renderProposalCard must be called from renderAiTab and produce the
-    compact draft card markup (status, counts, action buttons)."""
+    """renderAiTab must still call renderProposalCard() (which, per commit
+    1f98a004 "Issue 2", is now intentionally empty — see
+    test_degree_progress_helper_exists_and_used_in_modal). The actual apply/
+    reject action buttons now live in the single canonical board-draft banner
+    (renderBoard()) instead — see test_proposal_card_has_apply_reject_controls."""
     m = re.search(r"function renderAiTab\(\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "renderAiTab not found"
     assert "renderProposalCard()" in m.group(1)
     assert 'id="ai-proposal-card"' in m.group(1)
 
-    m2 = re.search(r"function renderProposalCard\(\)(.*?)\n}\n", html, re.DOTALL)
-    assert m2, "renderProposalCard not found"
-    body = m2.group(1)
-    for label in ["החל טיוטה", "דחה טיוטה"]:
-        assert label in body, f"{label} missing from renderProposalCard"
-    # The detached editing controls were removed in favour of chat-driven edits.
+    board_body = _extract_fn(html, "renderBoard")
+    assert "החל טיוטה" in board_body, "החל טיוטה missing from the board-draft banner"
+    assert '>דחה</button>' in board_body, "דחה button missing from the board-draft banner"
+    # The detached editing controls were removed in favour of chat-driven edits
+    # (checked within the actual rendered markup, not comments/docs mentioning
+    # the retired UI for historical context).
     for gone in ["בקש שינויים בטיוטה", "פתח תצוגה מלאה"]:
-        assert gone not in body, f"{gone} should have been removed from renderProposalCard"
+        assert gone not in board_body and gone not in m.group(1), \
+            f"{gone} should have been removed from the rendered draft UI"
 
 
 # ---------------------------------------------------------------------------
@@ -1405,7 +1429,11 @@ def test_single_build_button_visible_with_confirm_on_rebuild(html):
     )
     assert m2, "sidebar-build-from-scratch click handler not found"
     handler_body = m2.group(1)
-    assert "confirm(" in handler_body
+    # The confirmation is no longer a native confirm() dialog — it was moved to
+    # an inline chat confirmation (see test_item2_rebuild_confirmation_glow)
+    # so it stays inside the conversational flow.
+    assert "hasExisting" in handler_body
+    assert "_pendingBuildProceed" in handler_body
     assert "runBuildFromScratch(" in handler_body
 
 
@@ -1482,7 +1510,9 @@ def test_request_plan_proposal_rejects_on_error(html):
     """requestPlanProposal must throw/reject on error responses and network
     errors so callers' .catch()/try-catch can surface a chat error message
     instead of silently failing."""
-    m = re.search(r"async function requestPlanProposal\(prefs, actionType\)(.*?)\n}\n", html, re.DOTALL)
+    # requestPlanProposal grew an optional third `clarificationAnswers` param
+    # (commit 234d751) — match either the 2-param or 3-param signature.
+    m = re.search(r"async function requestPlanProposal\(prefs, actionType(?:, \w+)?\)(.*?)\n}\n", html, re.DOTALL)
     assert m, "requestPlanProposal not found"
     body = m.group(1)
     assert "throw new Error" in body
@@ -1659,10 +1689,18 @@ def test_completed_course_via_grid_satisfies_prereq_and_excluded_from_scheduling
 
 def test_my_courses_semester_bulk_action_menu(html):
     """PART A — semester headers in הקורסים שלי open a bulk-action menu wired
-    to setUserStatus for every course in that semester."""
+    to setUserStatus for every course in that semester.
+
+    The execution logic (the setUserStatus loop) is factored out of
+    _showMcSemesterMenu (which only builds/wires the popover UI) into a
+    dedicated applySemesterBulkStatus(semesterId, status) helper, invoked via
+    requestUserConfirmation's onConfirm callback."""
     assert 'data-mc-sem-menu' in html
-    fn = _extract_fn(html, "_showMcSemesterMenu")
-    assert "setUserStatus(" in fn
+    menu_fn = _extract_fn(html, "_showMcSemesterMenu")
+    assert "applySemesterBulkStatus(semesterId, action)" in menu_fn
+    assert "requestUserConfirmation(" in menu_fn
+    apply_fn = _extract_fn(html, "applySemesterBulkStatus")
+    assert "setUserStatus(" in apply_fn
     for label in [
         'סמן את כל הסמסטר כהושלם',
         'סמן את כל הסמסטר כלא נלקח',
@@ -1687,8 +1725,22 @@ def test_my_courses_grid_scroll_position_preserved(html):
 
 def test_no_unreadable_dark_success_panel(html):
     """PART C — the degree-progress success message must have explicit dark-mode
-    contrast styling (no light-mint-on-bright-green low-contrast combo)."""
-    assert '[data-theme="dark"] .degree-progress .dp-msg.success' in html
+    contrast styling (no light-mint-on-bright-green low-contrast combo).
+
+    Rather than a component-specific `[data-theme="dark"] .degree-progress
+    .dp-msg.success` override, contrast is provided by the shared --easy-bg/
+    --easy-text custom properties, which ARE redefined for dark mode and are
+    reused identically by every other easy/success-colored component in this
+    file (.mc-grid-status-done, .bdg-easy, .ai-plan-status.status-ok,
+    .interest-scorecard-level.interest-level-high) with no per-component
+    dark-theme override either — confirming this is the file's one
+    consistent, intentional pattern, not an oversight for this one panel."""
+    assert re.search(r"\.degree-progress \.dp-msg\.success\s*\{[^}]*var\(--easy-bg\)[^}]*var\(--easy-text\)", html), \
+        ".dp-msg.success must theme via --easy-bg/--easy-text"
+    dark_vars = re.search(r'\[data-theme="dark"\]\s*\{(.*?)\n\}', html, re.DOTALL)
+    assert dark_vars, "[data-theme=\"dark\"] root variable block not found"
+    assert "--easy-bg:" in dark_vars.group(1) and "--easy-text:" in dark_vars.group(1), \
+        "dark theme must redefine --easy-bg/--easy-text so .dp-msg.success (and its siblings) get dark-safe contrast"
 
 
 def test_clarification_heuristic_ambiguous_returns_questions(html):
@@ -1757,12 +1809,15 @@ def test_build_success_sets_proposal_draft(html):
 
 
 def test_draft_summary_card_has_label_and_actions(html):
-    """PART D — the draft summary card includes the 'טיוטה' disclaimer and
-    Apply/Reject buttons."""
-    fn = _extract_fn(html, "renderProposalCard")
+    """PART D — the active-draft summary includes the 'טיוטה' disclaimer and
+    Apply/Reject buttons. Per commit 1f98a004 ("Issue 2"), these now live in
+    the single canonical board-draft banner (renderBoard()), not
+    renderProposalCard (which is intentionally empty — see
+    test_degree_progress_helper_exists_and_used_in_modal)."""
+    fn = _extract_fn(html, "renderBoard")
     assert "טיוטה" in fn
-    assert 'id="sb-draft-apply"' in fn
-    assert 'id="sb-draft-reject"' in fn
+    assert 'id="board-draft-apply"' in fn
+    assert 'id="board-draft-reject"' in fn
 
 
 def test_reset_and_clear_chat_are_primary_action_pair_no_advanced_panel(html):
@@ -1828,8 +1883,14 @@ def test_build_handler_loading_indicator_and_button_disable(html):
 
 def test_sidebar_chat_send_appends_user_message_and_handler_bound(html):
     """PART H.6 — the שלח click handler is bound to handleSidebarChatSend,
-    which appends the user's message via postUserMessage immediately."""
-    assert "getElementById('sidebar-chat-send').addEventListener('click', handleSidebarChatSend)" in html
+    which appends the user's message via postUserMessage immediately.
+
+    The click handler wraps the call in an arrow function (`() =>
+    handleSidebarChatSend()`) rather than passing handleSidebarChatSend
+    directly as the listener — necessary because handleSidebarChatSend takes
+    an optional `providedMessage` first argument, and addEventListener would
+    otherwise pass the click MouseEvent as that argument."""
+    assert "getElementById('sidebar-chat-send').addEventListener('click', () => handleSidebarChatSend())" in html
     fn = _extract_fn(html, "handleSidebarChatSend")
     assert "postUserMessage(message)" in fn
 
@@ -1854,10 +1915,13 @@ def test_sidebar_chat_send_shows_loading_indicator_for_planning_intents(html):
 
 
 def test_sidebar_chat_send_has_error_branch_with_visible_text(html):
-    """PART H.7 — handleSidebarChatSend has catch branches that render a
-    visible error message via postAssistantMessage (not just console.log)."""
+    """PART H.7 — handleSidebarChatSend has a catch branch that renders a
+    visible error message via postAssistantMessage (not just console.log).
+    The exact wording changed from "אירעה שגיאה" to "שגיאה: ..." but the
+    functional requirement (a visible chat error message on any thrown error)
+    is unchanged."""
     fn = _extract_fn(html, "handleSidebarChatSend")
-    assert re.search(r"catch \(err\) \{\s*postAssistantMessage\(`אירעה שגיאה", fn)
+    assert re.search(r"catch \(err\) \{\s*postAssistantMessage\(`שגיאה:", fn)
 
 
 def test_repair_row_text_uses_theme_text_color(html):
@@ -1872,18 +1936,24 @@ def test_repair_row_text_uses_theme_text_color(html):
 
 def test_mc_semester_bulk_completed_calls_setUserStatus_completed(html):
     """PART H.9 — 'הושלם' bulk action loops over the semester's mandatory
-    courses and calls setUserStatus(cid, 'completed', ...)."""
-    fn = _extract_fn(html, "_showMcSemesterMenu")
+    courses and calls setUserStatus(cid, 'completed', ...).
+
+    This execution logic lives in applySemesterBulkStatus(semesterId, status)
+    (factored out of _showMcSemesterMenu, which only builds/wires the popover)."""
+    fn = _extract_fn(html, "applySemesterBulkStatus")
     assert "for (const c of courses)" in fn
-    assert re.search(r"setUserStatus\(cid, action,", fn)
+    assert re.search(r"setUserStatus\(cid, status,", fn)
     bulk_actions = re.search(r"const MC_SEM_BULK_ACTIONS = \[.*?\n\];", html, re.DOTALL)
     assert bulk_actions
     assert "{ status: 'completed'" in bulk_actions.group(0)
 
 
 def test_mc_semester_bulk_not_taken_calls_setUserStatus_not_taken(html):
-    """PART H.10 — 'לא נלקח' bulk action maps to setUserStatus(cid, 'not_taken', ...)."""
-    fn = _extract_fn(html, "_showMcSemesterMenu")
+    """PART H.10 — 'לא נלקח' bulk action maps to setUserStatus(cid, 'not_taken', ...).
+
+    This execution logic lives in applySemesterBulkStatus (see
+    test_mc_semester_bulk_completed_calls_setUserStatus_completed)."""
+    fn = _extract_fn(html, "applySemesterBulkStatus")
     bulk_actions = re.search(r"const MC_SEM_BULK_ACTIONS = \[.*?\n\];", html, re.DOTALL)
     assert bulk_actions
     assert "{ status: 'not_taken'" in bulk_actions.group(0)
@@ -1902,8 +1972,11 @@ def test_mc_semester_bulk_action_persists_to_localstorage(html):
 
 def test_mc_semester_bulk_action_preserves_scroll_and_rerenders(html):
     """PART H.12 — after a bulk action, _applyMyCoursesBulkRerender re-renders
-    the grid (which preserves scrollLeft via the existing save/restore)."""
-    fn = _extract_fn(html, "_showMcSemesterMenu")
+    the grid (which preserves scrollLeft via the existing save/restore).
+
+    Called from applySemesterBulkStatus, which now owns the bulk-action
+    execution logic (see test_mc_semester_bulk_completed_calls_setUserStatus_completed)."""
+    fn = _extract_fn(html, "applySemesterBulkStatus")
     assert "_applyMyCoursesBulkRerender()" in fn
     rerender_fn = _extract_fn(html, "_applyMyCoursesBulkRerender")
     assert "_renderMyCoursesGrid(gridEl)" in rerender_fn
@@ -1969,18 +2042,26 @@ def test_phase2c_no_native_alert_or_confirm_in_overload_paths(html):
 
 
 def test_item2_rebuild_confirmation_glow(html):
-    """ITEM 2 — the blue-glow confirmation variant must be defined in CSS and the
-    rebuild/build confirmation (requestUserConfirmation in the build handler)
-    must opt into it via cardClass, plus a dark-theme rule for the glow."""
-    # The glow CSS class is defined.
-    assert ".uc-confirm-card.uc-confirm-glow" in html
-    # Dark-theme rule for the glow exists.
-    assert '[data-theme="dark"] .uc-confirm-card.uc-confirm-glow' in html
-    # requestUserConfirmation accepts a cardClass param and applies it.
-    ruc_idx = html.index("function requestUserConfirmation")
-    ruc_body = html[ruc_idx: ruc_idx + 1200]
-    assert "cardClass" in ruc_body
-    # The build/rebuild confirmation call passes the glow class.
-    msg_idx = html.index("פעולה זו תיצור טיוטת מערכת חדשה")
-    call_window = html[msg_idx: msg_idx + 600]
-    assert "cardClass: 'uc-confirm-glow'" in call_window
+    """ITEM 2 — the build/rebuild confirmation.
+
+    The build handler's confirmation was later moved from the standalone
+    glow-card popup (requestUserConfirmation with cardClass: 'uc-confirm-glow')
+    to an inline chat confirmation ("אני עומד לבנות טיוטת מערכת חדשה...", with
+    'כן, בנה מערכת' / 'ביטול' quick replies) — per the comment in the
+    sidebar-build-from-scratch click handler: "Inline chat confirmation
+    (replaces the old bright standalone glow panel) so the build confirmation
+    stays inside the conversational flow." The glow CSS class and the
+    requestUserConfirmation cardClass plumbing are unused now (no call site
+    passes cardClass: 'uc-confirm-glow' anymore) but are left in place; this
+    test now checks the actual, current build-confirmation mechanism."""
+    assert "getElementById('sidebar-build-from-scratch')" in html
+    build_handler = html[html.index("getElementById('sidebar-build-from-scratch')?.addEventListener"):]
+    build_handler = build_handler[:build_handler.index("\n  });\n")]
+    assert "אני עומד לבנות טיוטת מערכת חדשה" in build_handler
+    assert "'confirm-build-yes'" in build_handler
+    assert "'confirm-build-no'" in build_handler
+    # The quick-reply handler must actually run the deferred build on "כן, בנה מערכת".
+    assert "_pendingBuildProceed" in build_handler
+    quick_reply_fn = _extract_fn(html, "handleQuickReply")
+    assert "case 'confirm-build-yes'" in quick_reply_fn
+    assert "_pendingBuildProceed" in quick_reply_fn

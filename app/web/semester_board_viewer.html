@@ -7306,9 +7306,11 @@ function promptAcceptOverloadConfirmation({ anchorEl, refreshPreview } = {}) {
 }
 
 /* ── PART D #5 — compact proposal card embedded in עוזר AI ─────────────────
- * Status + added/moved/removed/הוחלף counts + apply/reject/ask-again +
- * "פתח תצוגה מלאה" link to the full preview modal. Renders nothing when no
- * draft is active. */
+ * Historically rendered status + added/moved/removed/הוחלף counts +
+ * apply/reject/ask-again + a "פתח תצוגה מלאה" link to the full preview modal.
+ * Per commit 1f98a004 ("Issue 2"), this now unconditionally renders nothing —
+ * the single canonical draft action cluster is the board-draft banner in
+ * renderBoard() (board-draft-apply / board-draft-reject / board-draft-back-ai). */
 function renderProposalCard() {
   // Issue 2 — NO draft action cluster below the AI chat. The single canonical draft
   // action row is the upper blue board-draft banner (renderBoard: board-draft-apply /
