@@ -101,6 +101,18 @@ export interface CandidateReport {
   overCapSemesters: string[];
 }
 
+/**
+ * Which of the given placed course ids are hard-excluded by the model (either
+ * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
+ * Shared by validateCandidate below and by generate-plan.ts's post-planning
+ * hard-avoid gate, so both agree on exactly what counts as "disallowed".
+ */
+export function disallowedPlacedCourseIds(placedIds: Iterable<string>, model: ConstraintModel): string[] {
+  return [...placedIds].filter(
+    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
+  );
+}
+
 export function validateCandidate(
   state: PlanState,
   model: ConstraintModel,
@@ -122,9 +134,7 @@ export function validateCandidate(
   const { degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters } =
     policy.assessCompleteness(state, model);
 
-  const disallowedPlaced = [...placed].filter(
-    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
-  );
+  const disallowedPlaced = disallowedPlacedCourseIds(placed, model);
 
   const errors = [...legality.errors];
   if (!degreeMet) {

@@ -38,7 +38,7 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate } from './planner_validate';
+import { validateCandidate, disallowedPlacedCourseIds } from './planner_validate';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -170,6 +170,27 @@ function overloadGate(
     }
   }
   return errors;
+}
+
+/**
+ * A course the user has hard-excluded (disallowed_course_ids /
+ * strongly_avoided_course_ids, or a catalog-level exclusion) must never
+ * survive in the final plan silently — e.g. it was already on the board
+ * before the exclusion was added, and the planner only ever adds/moves
+ * courses, never removes a previously-placed one on its own. validateCandidate
+ * (planner_validate.ts) already detects this (disallowedPlaced), but that
+ * report is internal to toProposal — this mirrors the same check against the
+ * final placed set so the handler can turn it into a real blocking error
+ * instead of a plan that silently reports blocked:false, errors:[].
+ */
+function disallowedGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const placed = new Set(semesters.flatMap(s => s.course_ids));
+  return disallowedPlacedCourseIds(placed, model).map(
+    id => `קורס לא-זמין שובץ בתוכנית: ${model.profiles.get(id)?.name_he ?? id}.`,
+  );
 }
 
 /**
@@ -419,7 +440,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
 
-  const blockingErrors = overloadGate(proposal.semesters, model, effectivePreferences);
+  const blockingErrors = [
+    ...overloadGate(proposal.semesters, model, effectivePreferences),
+    ...disallowedGate(proposal.semesters, model),
+  ];
 
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
