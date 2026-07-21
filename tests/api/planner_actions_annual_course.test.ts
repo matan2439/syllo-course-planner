@@ -553,3 +553,26 @@ describe('enumerateActions — partial annual elective repair independent of deg
     expect([action.semesterId, ...(action.alsoSemesterIds ?? [])].sort()).toEqual([...spans].sort());
   });
 });
+
+describe('PlannerWorker.run — completes a partially-placed annual elective already present in the initial state (Codex round 8)', () => {
+  it('does not stop immediately when an annual elective is only half-placed, even though degree/mandatory/category goals are otherwise already satisfied', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfile('ANNUAL', spans, { is_mandatory: false, course_type: 'elective', is_wanted: false }));
+    // No mandatory courses, no categories, and degree hours already far over
+    // target — every OTHER isGoalReached() condition is trivially satisfied
+    // from the very first step(), which is exactly what let the worker call
+    // recordStop() before enumerateActions/addCourse ever got a chance to
+    // repair the split annual course.
+    const model = baseModel({ profiles, degreeRequiredHours: 1, priorHours: 100 });
+    const initial = emptyState(SEMS);
+    initial.semesters['year_3_semester_a'] = ['ANNUAL']; // half-placed from the start, not via a search step
+
+    const worker = new PlannerWorker(model, initial);
+    worker.run();
+
+    expect(worker.getPlan().semesters['year_3_semester_a']).toContain('ANNUAL');
+    expect(worker.getPlan().semesters['year_3_semester_b']).toContain('ANNUAL');
+    expect(worker.validate().valid).toBe(true);
+  });
+});

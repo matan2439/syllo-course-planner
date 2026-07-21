@@ -23,6 +23,7 @@ import {
   degreeHours as computeDegreeHours,
   mandatoryPlaced as computeMandatoryPlaced,
   categoriesSatisfied as computeCategoriesSatisfied,
+  isFullyPlaced,
   GOAL_STACK,
 } from './planner_goals';
 import {
@@ -143,12 +144,35 @@ export class PlannerWorker {
   }
 
   /**
+   * The id of a placed `is_annual` course that doesn't yet occupy every one
+   * of its effective spans, if any — used both by goalStatus (so
+   * isGoalReached/phase know the plan isn't actually done) and by step (to
+   * force the repair). A course that's mandatory/category/wanted AND
+   * incomplete is already covered by group 1-3's own `consider()` gate in
+   * enumerateActions; this exists specifically because a plain-elective
+   * annual course has no other mechanism that revisits it once degree hours
+   * are already met (see enumerateActions' group 0).
+   */
+  private findIncompleteAnnualCourse(state: PlanState = this.state): string | undefined {
+    const placed = new Set(placedCourseIds(state));
+    for (const id of placed) {
+      const p = this.model.profiles.get(id);
+      if (p?.is_annual && !isFullyPlaced(state, this.model, placed, id)) return id;
+    }
+    return undefined;
+  }
+
+  /**
    * Raw goal status — no phase/validation, safe to call from isGoalReached.
    * Reuses planner_goals.ts's mandatoryPlaced/categoriesSatisfied (rather than
    * a locally-duplicated presence check) so an is_annual course only counts
    * as placed once it occupies EVERY one of its spans_semesters — otherwise
    * isGoalReached() would stop the loop as "done" on a partially-placed
    * annual course before enumerateActions ever gets a chance to repair it.
+   * hasIncompleteAnnual covers the same partial-placement case for a course
+   * that ISN'T mandatory/category (mandatoryPlaced/categoriesSatisfied
+   * already reflect it for those) — a plain elective, otherwise invisible to
+   * both this status and to isGoalReached.
    */
   private goalStatus(state: PlanState = this.state) {
     const semesterLoads: Record<string, number> = {};
@@ -166,6 +190,7 @@ export class PlannerWorker {
       mandatoryPlaced,
       categoriesSatisfied,
       allCategoriesSatisfied: categoriesSatisfied === this.model.categories.length,
+      hasIncompleteAnnual: this.findIncompleteAnnualCourse(state) !== undefined,
     };
   }
 
@@ -189,15 +214,17 @@ export class PlannerWorker {
       g.degreeHours >= this.model.degreeRequiredHours &&
       g.mandatoryPlaced === this.model.requiredMandatoryCourseIds.length &&
       g.allCategoriesSatisfied &&
-      !overHard
+      !overHard &&
+      !g.hasIncompleteAnnual
     );
   }
 
   private phase(): PlannerPhase {
     if (this.isGoalReached()) return 'DONE';
     const g = this.goalStatus();
-    // An over-cap semester is a legality breach — the loop is repairing it.
-    if (Object.values(g.semesterLoads).some(h => h > this.model.hardCap)) return 'REPAIR';
+    // An over-cap semester or a partially-placed annual course is a
+    // legality/completeness breach — the loop is repairing it.
+    if (Object.values(g.semesterLoads).some(h => h > this.model.hardCap) || g.hasIncompleteAnnual) return 'REPAIR';
     return 'CONSTRUCT_PLAN';
   }
 
@@ -295,6 +322,24 @@ export class PlannerWorker {
   step(by: 'greedy' | 'llm' = 'greedy'): PlannerAction | null {
     if (this.isGoalReached()) {
       return this.recordStop('המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.');
+    }
+
+    // Completing a partially-placed is_annual course is a structural
+    // correctness repair (the plan is invalid until every span is filled),
+    // not a scored preference — nothing in GOAL_STACK rewards it, so the
+    // "does this action score better than staying" gate below could reject
+    // it even though leaving it split makes the plan invalid (e.g. a plain
+    // elective annual course, once degree hours are already met, might not
+    // improve balance/difficulty by getting completed). Repair it first,
+    // unconditionally, reusing addCourse()'s existing atomic-bundle/
+    // best-semester selection logic instead of duplicating it here. Falls
+    // through to the normal scored search if no legal repair exists (e.g.
+    // every remaining span would breach the hard cap) so the loop doesn't
+    // get stuck retrying an impossible repair.
+    const incompleteAnnualId = this.findIncompleteAnnualCourse();
+    if (incompleteAnnualId) {
+      const res = this.addCourse(incompleteAnnualId, undefined, by);
+      if (res.accepted) return res.action;
     }
 
     const current = scorePlan(this.state, this.model);
