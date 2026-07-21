@@ -46,8 +46,9 @@ function grabConst(html, name) {
 function load() {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   const prefixConst = grabConst(html, 'DISALLOWED_PLACED_ERROR_PREFIX_LOCAL');
+  const parseSrc = grab(html, 'parseDisallowedPlacedNameLocal');
   const src = grab(html, 'resolveStaleDisallowedBlockLocal');
-  const factory = new Function(`${prefixConst}\n${src}\nreturn resolveStaleDisallowedBlockLocal;`);
+  const factory = new Function(`${prefixConst}\n${parseSrc}\n${src}\nreturn resolveStaleDisallowedBlockLocal;`);
   return factory();
 }
 
@@ -123,5 +124,42 @@ describe('issue #28 — resolveStaleDisallowedBlockLocal', () => {
     );
     expect(result.blocked).toBe(false);
     expect(result.errors).toEqual([]);
+  });
+
+  test('regression (Codex, PR #34 review): a removed course name that is a PREFIX of another disallowed course\'s name must NOT resolve that other course\'s block', () => {
+    // Real catalog prefix pair: a course and its "- מעבדה" (lab) companion.
+    // Removing the shorter-named course must not clear the longer-named
+    // course's still-outstanding disallowed-placement error via substring match.
+    const prefixCourseMap = {
+      SHORT: { name_he: 'מבוא למדע והנדסה של חומרים' },
+      LONG: { name_he: 'מבוא למדע והנדסה של חומרים - מעבדה' },
+    };
+    const result = resolveStaleDisallowedBlockLocal(
+      true,
+      ['קורס לא-זמין שובץ בתוכנית: מבוא למדע והנדסה של חומרים - מעבדה.'],
+      ['SHORT'], // only the shorter-named course was removed by the avoid filter
+      prefixCourseMap,
+    );
+    // LONG's course is still disallowed-placed in the final plan — must stay blocked.
+    expect(result.blocked).toBe(true);
+    expect(result.errors).toEqual(['קורס לא-זמין שובץ בתוכנית: מבוא למדע והנדסה של חומרים - מעבדה.']);
+  });
+
+  test('regression (Codex, PR #34 review): removing the LONGER-named course correctly resolves its own error, not the shorter one\'s', () => {
+    const prefixCourseMap = {
+      SHORT: { name_he: 'מבוא למדע והנדסה של חומרים' },
+      LONG: { name_he: 'מבוא למדע והנדסה של חומרים - מעבדה' },
+    };
+    const result = resolveStaleDisallowedBlockLocal(
+      true,
+      [
+        'קורס לא-זמין שובץ בתוכנית: מבוא למדע והנדסה של חומרים.',
+        'קורס לא-זמין שובץ בתוכנית: מבוא למדע והנדסה של חומרים - מעבדה.',
+      ],
+      ['LONG'],
+      prefixCourseMap,
+    );
+    expect(result.blocked).toBe(true);
+    expect(result.errors).toEqual(['קורס לא-זמין שובץ בתוכנית: מבוא למדע והנדסה של חומרים.']);
   });
 });

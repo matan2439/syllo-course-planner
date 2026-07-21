@@ -17830,6 +17830,18 @@ function computeExplicitlyAvoidedIdsLocal(prefs) {
 const DISALLOWED_PLACED_ERROR_PREFIX_LOCAL = 'קורס לא-זמין שובץ בתוכנית:';
 
 /**
+ * Extracts the exact course name from a DISALLOWED_PLACED_ERROR_PREFIX_LOCAL
+ * error string (format: `${PREFIX} ${name}.`, mirroring generate-plan.ts's
+ * disallowedGate exactly), or null if the string doesn't match that shape.
+ */
+function parseDisallowedPlacedNameLocal(e) {
+  if (!e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX_LOCAL)) return null;
+  let rest = e.slice(DISALLOWED_PLACED_ERROR_PREFIX_LOCAL.length).trim();
+  if (rest.endsWith('.')) rest = rest.slice(0, -1);
+  return rest;
+}
+
+/**
  * Issue #28 — a course whose ONLY blocking reason was the server's
  * disallowed-placement gate (generate-plan.ts's DISALLOWED_PLACED_ERROR_PREFIX,
  * fed into `blocked`/`errors` by PR #27) may have just been stripped by
@@ -17839,14 +17851,19 @@ const DISALLOWED_PLACED_ERROR_PREFIX_LOCAL = 'קורס לא-זמין שובץ ב
  * blocked/overload banner for a course that no longer appears in the
  * displayed plan. Mirrors the existing hardOverloadRemains pattern of
  * re-checking a block cause after local repairs, extended to this cause.
+ * Matches by the EXACT parsed course name (not substring/includes) — the
+ * catalog has real prefix-pair names (e.g. a course and its "- מעבדה" lab
+ * companion), where a substring match would wrongly resolve one course's
+ * block because another, still-disallowed course's name contains it.
  * Pure: returns a new { blocked, errors } pair, never mutates its inputs.
  */
 function resolveStaleDisallowedBlockLocal(blocked, errors, avoidRemoved, courseMap) {
   if (!avoidRemoved.length || !errors.length) return { blocked, errors };
-  const avoidRemovedNames = avoidRemoved.map(cid => courseMap[cid]?.name_he || cid).filter(Boolean);
-  const isResolvedDisallowedError = e =>
-    e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX_LOCAL) &&
-    avoidRemovedNames.some(name => e.includes(name));
+  const avoidRemovedNames = new Set(avoidRemoved.map(cid => courseMap[cid]?.name_he || cid).filter(Boolean));
+  const isResolvedDisallowedError = e => {
+    const name = parseDisallowedPlacedNameLocal(e);
+    return name !== null && avoidRemovedNames.has(name);
+  };
   const stillOutstanding = errors.filter(e => !isResolvedDisallowedError(e));
   if (stillOutstanding.length === errors.length) return { blocked, errors };
   return { blocked: stillOutstanding.length > 0, errors: stillOutstanding };
