@@ -101,6 +101,27 @@ export interface CandidateReport {
   overCapSemesters: string[];
 }
 
+/**
+ * Stable prefix of the disallowed-placed error message, shared by every
+ * producer (below, and generate-plan.ts's disallowedGate) and consumer
+ * (academic_decision_runtime.ts's buildAcademicDecision, which needs to tell
+ * this cause apart from an overload block to explain/suggest the right fix)
+ * so detection never drifts from the message text that's actually emitted.
+ */
+export const DISALLOWED_PLACED_ERROR_PREFIX = 'קורס לא-זמין שובץ בתוכנית:';
+
+/**
+ * Which of the given placed course ids are hard-excluded by the model (either
+ * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
+ * Shared by validateCandidate below and by generate-plan.ts's post-planning
+ * hard-avoid gate, so both agree on exactly what counts as "disallowed".
+ */
+export function disallowedPlacedCourseIds(placedIds: Iterable<string>, model: ConstraintModel): string[] {
+  return [...placedIds].filter(
+    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
+  );
+}
+
 export function validateCandidate(
   state: PlanState,
   model: ConstraintModel,
@@ -122,9 +143,7 @@ export function validateCandidate(
   const { degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters } =
     policy.assessCompleteness(state, model);
 
-  const disallowedPlaced = [...placed].filter(
-    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
-  );
+  const disallowedPlaced = disallowedPlacedCourseIds(placed, model);
 
   const errors = [...legality.errors];
   if (!degreeMet) {
@@ -135,7 +154,7 @@ export function validateCandidate(
     const cat = model.categories.find(c => c.id === cid);
     errors.push(`דרישת קטגוריה לא מולאה: ${cat?.name ?? cid}.`);
   }
-  for (const id of disallowedPlaced) errors.push(`קורס לא-זמין שובץ בתוכנית: ${model.profiles.get(id)?.name_he ?? id}.`);
+  for (const id of disallowedPlaced) errors.push(`${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`);
 
   const legal = legality.valid;
   const complete = degreeMet && missingMandatory.length === 0 && unsatisfiedCategories.length === 0;

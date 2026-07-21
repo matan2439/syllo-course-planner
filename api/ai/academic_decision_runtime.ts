@@ -48,6 +48,7 @@ import {
 } from './course_topic_profiles_static';
 import { getSemesterLoad } from './completion_analysis';
 import type { ConstraintModel } from './planner_types';
+import { DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 
 // ── Public shapes ───────────────────────────────────────────────────────────
 
@@ -125,6 +126,28 @@ export interface BuildAcademicDecisionInput {
   academicInterestProfileRaw?: unknown;
 }
 
+/**
+ * disallowed_course_ids and strongly_avoided_course_ids are two request-level
+ * names for the same hard-exclusion concept (see generate-plan.ts's
+ * preferencesSchema). A client may legitimately send either, both, or neither
+ * — e.g. the clarification-answer merge path (academic_clarification_plan_inputs.ts)
+ * writes disallowed_course_ids from an answer while leaving whatever
+ * strongly_avoided_course_ids the original request already had. Every caller
+ * that resolves the user's actual hard-avoid list must union both fields
+ * rather than pick one nullish-first, or a course excluded only through the
+ * other field name is silently treated as allowed. undefined+undefined stays
+ * undefined (no restriction at all), matching BuildModelOptions' existing
+ * "unset means unrestricted" contract.
+ */
+export function resolveHardExcludedCourseIds(
+  prefs?: { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] } | null,
+): string[] | undefined {
+  const a = prefs?.disallowed_course_ids;
+  const b = prefs?.strongly_avoided_course_ids;
+  if (a === undefined && b === undefined) return undefined;
+  return [...new Set([...(a ?? []), ...(b ?? [])])];
+}
+
 // ── Clarify ──────────────────────────────────────────────────────────────────
 
 /** Map generate-plan's plan_context/preferences onto the clarification context. */
@@ -135,7 +158,7 @@ export function extractClarificationContext(
 ): ClarificationPlanningContext {
   const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
-  const excluded = preferences?.disallowed_course_ids ?? preferences?.strongly_avoided_course_ids;
+  const excluded = resolveHardExcludedCourseIds(preferences);
 
   const context: ClarificationPlanningContext = {
     completedCourseIds: completed,
@@ -251,9 +274,24 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const placedCount = input.proposal.semesters.reduce((n, s) => n + s.course_ids.length, 0);
   const semCount = input.proposal.semesters.filter((s) => s.course_ids.length > 0).length;
 
-  const mainRecommendation = input.blocked
-    ? 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — יש לצמצם עומס או לאשר חריגה לפני שימוש.'
-    : `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`;
+  // blocked can now also be caused by a hard-excluded course still sitting in
+  // the plan (generate-plan.ts's disallowedGate), not only by overload — the
+  // explanation/suggested actions must name the actual cause instead of
+  // always pointing at overload guidance. hasOtherBlockingError is computed
+  // from input.errors itself (not workloadNotes' `overloaded`, which only
+  // reflects the user's soft max_weekly_hours preference) so a hard-cap
+  // overload that blocks without the user ever setting a preference is still
+  // recognized — e.g. a plan blocked by BOTH a disallowed placement and a
+  // genuine overload must keep suggesting the load fix, not only the
+  // exclusion fix.
+  const hasDisallowedPlacedError = input.errors.some((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
+  const hasOtherBlockingError = input.errors.some((e) => !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
+
+  const mainRecommendation = !input.blocked
+    ? `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`
+    : hasDisallowedPlacedError
+      ? 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — היא עדיין כוללת קורס שסימנת להחרגה; יש להסירו (וגם לצמצם עומס/לאשר חריגה, אם רלוונטי) לפני שימוש.'
+      : 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — יש לצמצם עומס או לאשר חריגה לפני שימוש.';
 
   const whyThisPlan: string[] = [];
   if (input.proposal.rationale_he) whyThisPlan.push(input.proposal.rationale_he);
@@ -284,8 +322,9 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   if (!interestEvaluation) missingData.push('לא סופק פרופיל תחומי עניין — לא בוצעה הערכת התאמה.');
 
   const suggestedNextActions = buildSuggestedNextActions({
-    blocked: input.blocked,
     overloaded: workloadNotes.some((n) => n.includes('מעל המגבלה')),
+    hasOtherBlockingError,
+    disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
     interestEvaluation,
@@ -296,9 +335,11 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 
   const decision: AcademicDecisionDecision = {
     selectedPlan: 'generated',
-    rationale: input.blocked
-      ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה עד לתיקון חריגת העומס.'
-      : 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה לאחר שעברה את בדיקות החוקיות והעומס.',
+    rationale: !input.blocked
+      ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה לאחר שעברה את בדיקות החוקיות והעומס.'
+      : hasDisallowedPlacedError
+        ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה — היא כוללת קורס שסימנת להחרגה שטרם הוסר.'
+        : 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה עד לתיקון חריגת העומס.',
     tradeoffs,
   };
 
@@ -313,8 +354,10 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 }
 
 function buildSuggestedNextActions(args: {
-  blocked: boolean;
   overloaded: boolean;
+  /** True when input.errors contains a blocking cause other than a disallowed-placed course (overload, step-limit, ...). */
+  hasOtherBlockingError: boolean;
+  disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
   interestEvaluation?: AcademicInterestEvaluationResult;
@@ -323,8 +366,11 @@ function buildSuggestedNextActions(args: {
   const actions: string[] = [];
   const missingFields = new Set(args.clarification.missingInputs.map((m) => m.field));
 
-  if (args.blocked || args.overloaded) {
+  if (args.overloaded || args.hasOtherBlockingError) {
     actions.push('צמצם/י את העומס השבועי או אשר/י חריגה מפורשת כדי לאפשר את החלת התוכנית.');
+  }
+  if (args.disallowedPlaced) {
+    actions.push('הקורס שסימנת להחרגה עדיין מופיע בתוכנית — הסר/י אותו ידנית מהלוח, או בקש/י בנייה מחדש שמסירה אותו.');
   }
   if (missingFields.has('completedCourses') || (args.context.completedCourseIds?.length ?? 0) === 0) {
     actions.push('ספק/י את רשימת הקורסים שכבר השלמת כדי לחדד את בדיקת הקדם-דרישות.');

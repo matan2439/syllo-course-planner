@@ -38,7 +38,7 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate } from './planner_validate';
+import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -54,6 +54,7 @@ import {
   hasCriticalMissingInput,
   buildAcademicDecision,
   buildClarificationDecision,
+  resolveHardExcludedCourseIds,
 } from './academic_decision_runtime';
 import type { ClarificationResult } from './academic_decision_types';
 
@@ -140,7 +141,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     currentlyPlannedCourseIds,
     wantedCourseIds: prefs.wanted_course_ids,
     unwantedCourseIds: prefs.unwanted_course_ids,
-    disallowedCourseIds: prefs.disallowed_course_ids ?? prefs.strongly_avoided_course_ids,
+    disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
     pinnedCourseIds: ctx?.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
     priorHours: priorHoursFromContext(ctx),
@@ -170,6 +171,27 @@ function overloadGate(
     }
   }
   return errors;
+}
+
+/**
+ * A course the user has hard-excluded (disallowed_course_ids /
+ * strongly_avoided_course_ids, or a catalog-level exclusion) must never
+ * survive in the final plan silently — e.g. it was already on the board
+ * before the exclusion was added, and the planner only ever adds/moves
+ * courses, never removes a previously-placed one on its own. validateCandidate
+ * (planner_validate.ts) already detects this (disallowedPlaced), but that
+ * report is internal to toProposal — this mirrors the same check against the
+ * final placed set so the handler can turn it into a real blocking error
+ * instead of a plan that silently reports blocked:false, errors:[].
+ */
+function disallowedGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const placed = new Set(semesters.flatMap(s => s.course_ids));
+  return disallowedPlacedCourseIds(placed, model).map(
+    id => `${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
+  );
 }
 
 /**
@@ -290,7 +312,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         dbUrl,
         buildModelOptions: {
           completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
-          disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
+          disallowedCourseIds: resolveHardExcludedCourseIds(preferences),
           maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
         },
       },
@@ -419,7 +441,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
 
-  const blockingErrors = overloadGate(proposal.semesters, model, effectivePreferences);
+  const blockingErrors = [
+    ...overloadGate(proposal.semesters, model, effectivePreferences),
+    ...disallowedGate(proposal.semesters, model),
+  ];
 
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
@@ -458,7 +483,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       context: {
         completedCourseIds: (effectivePlanContext?.personal_status?.completed ?? []).map((c: any) => c.course_id),
         currentCourseIds: currentlyPlannedCourseIds,
-        excludedCourseIds: effectivePreferences.disallowed_course_ids ?? effectivePreferences.strongly_avoided_course_ids,
+        excludedCourseIds: resolveHardExcludedCourseIds(effectivePreferences),
         maxWeeklyHours: effectivePreferences.max_weekly_hours ?? undefined,
       },
       academicInterestProfileRaw: academic_interest_profile,
