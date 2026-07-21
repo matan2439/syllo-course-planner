@@ -4,10 +4,56 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-21, session on branch `claude/determined-thompson-8ideqq`
-(same session that finished PR #37, then found and fixed PR #39)._
+_Last updated: 2026-07-21, session on branch `claude/determined-thompson-jkdpvy`
+(PR #41 merged, 25 rounds of Codex review — see below; supersedes the PR #39
+entry as the latest completed milestone)._
 
-## Latest session continued — PR #39: silent empty-plan bug found via the Agent Diagnosis Loop, fixed, merged
+## Latest session — PR #41: structural degree-hours gap disclosure, merged after 25 Codex rounds
+
+This is exactly the A-class milestone the prior session's own "Exact next
+action" #1 (below) called for: "does the frontend surface ANY signal when a
+plan is far from the degree target because the board window itself is too
+narrow?" It didn't — the Agent Diagnosis Loop (mandated before selecting a
+milestone, run against the real `handler` export with real Hebrew scenarios
+and the real `mechanical_engineering_2027` fixture) found that a fully
+mandatory/category-satisfied plan that legitimately can't reach
+`degreeRequiredHours` (catalog exhausted within the visible window) got the
+exact same generic "X/Y ש״ש" line as an ordinary, still-fixable shortfall —
+and the live frontend then suggested actions (approve a risky elective, wait
+for missing data) that don't exist in this scenario. Fixed additively in
+`toProposal()` (`api/ai/generate-plan.ts`) and `postPlanChangeSummary`
+(`semester_board_viewer.html`): a new, distinct Hebrew warning fires only
+when mandatory/category requirements are fully satisfied AND no legal action
+can still close the hours gap.
+
+**25 rounds of real Codex review**, each a genuine, narrow, independently
+reproduced-and-fixed gap — not rubber-stamped. Full history is in
+`.remember/current.md` (top two entries); the short version: rounds 1–20
+each caught one more actionable-recovery combination the exhaustion check
+missed (soft-avoided electives, currently-taking hours, off-catalog
+YEAR_1_2 mandatory courses, replace, move-then-add, annual bundling, ...).
+By round 21 the guard had grown into four separate hand-rolled combinatorial
+scans — round 22 was a genuine redesign, not another patch: replaced all
+four with one `canRecoverMoreHours`, a bounded best-first branching rollout
+(budget 200, matching this codebase's existing `rolloutSteps`/`maxSteps`
+convention) reusing the same primitives `PlannerWorker.step()` itself uses
+(`enumerateActions`/`applyMutation`/`validatePlanState`/`scorePlan`/
+`compareScore`). Rounds 23–24 found two more real gaps in the redesign
+itself (a budget-accounting bug counting illegal candidates; `REPLACE_COURSE`
+having no atomic multi-semester form for `is_annual` courses) — both fixed,
+the second by a follow-up session implementing a previously-paused analysis.
+Round 25: clean, no new findings.
+
+**Merged** (`d355e7a`, normal merge into `ui/frontend-modernization`). Full
+API suite 82/82 suites, 1264/1264 tests; `tsc --noEmit` clean; CI green
+(3/3). **Classification: A** (user-visible — honest vs. misleading guidance
+for a real, reachable board-window scenario).
+
+**Production check**: still pinned at `26500d4` (PR #11), unchanged — same
+standing Vercel deploy-mechanism blocker every session since PR #27 has
+confirmed. PR #41 is not live for real users yet.
+
+## Prior session — PR #39: silent empty-plan bug found via the Agent Diagnosis Loop, fixed, merged
 
 After PR #37 merged (see below), the rolling-three window (32,34,37)=C/C/C
 was non-compliant per this routine's own governance rules (0 A/B in the
@@ -288,6 +334,12 @@ found is already a fully-diagnosed, open human decision from a prior session
     (correctness: the default/highest-traffic planner path could silently
     return a totally empty, `blocked:false` plan; found via the mandated
     Agent Diagnosis Loop, not forced to satisfy the rolling-window rule).
+11. PR #41 — structural degree-hours gap disclosure, **merged** (`d355e7a`),
+    after 25 real rounds of Codex findings fixed (including a mid-stream
+    redesign at round 22) — **A** (user-visible: honest vs. misleading
+    guidance for a real, reachable board-window-exhaustion scenario; found
+    via the mandated Agent Diagnosis Loop, specifically satisfying the prior
+    session's own "must-be-A-or-B" rolling-window requirement).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -311,22 +363,26 @@ Rolling-three checks:
   check if a fourth C-in-a-row pattern continues, since that starts to look
   less like "correctness keeps winning" and more like "A/B work is being
   systematically avoided").
+- (37,39,41) = C/C/A — **compliant** (3 of 3 are A/B/C; 1 is A/B). PR #41
+  is the A milestone the prior window's own note required — resolves the
+  two-consecutive-non-compliant-window flag; no rolling-window pressure on
+  the immediate next milestone.
 
 Every merged window from PR #27 through PR #32/#34 is compliant. (32,34,37)
-and (34,37,39) are two consecutive non-compliant windows — both curable,
-unlike the very first (12,13,27) shortfall which predates the rule's
-enforcement and can't be fixed retroactively. Recommend the next session
-treat finding a real A or B milestone as the primary selection constraint,
-not just a tiebreaker, unless a new P0 surfaces.
+and (34,37,39) were two consecutive non-compliant windows, both now cured by
+PR #41's A classification — unlike the very first (12,13,27) shortfall which
+predates the rule's enforcement and can't be fixed retroactively. The rolling
+window is compliant again as of PR #41; the next milestone has no forced
+A/B requirement unless a future window drifts non-compliant again.
 
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, #34, #37, #39) is inert for real users until someone
-   deploys `ui/frontend-modernization` HEAD. This is the single highest-value
-   unblock available right now — real, tested, Codex-reviewed correctness
-   fixes (including a silent-empty-plan P0-severity bug, PR #39) are sitting
-   unshipped.
+   #13, #27, #31, #32, #34, #37, #39, #41) is inert for real users until
+   someone deploys `ui/frontend-modernization` HEAD. This is the single
+   highest-value unblock available right now — real, tested, Codex-reviewed
+   correctness fixes (including a silent-empty-plan P0-severity bug, PR #39,
+   and the structural-gap disclosure fix, PR #41) are sitting unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -364,34 +420,22 @@ not just a tiebreaker, unless a new P0 surfaces.
 
 ## Exact next action
 
-1. **Two consecutive rolling-three windows, (32,34,37) and (34,37,39), are
-   both non-compliant (0 A/B each) — the next milestone should be treated as
-   MUST-be-A-or-B**, unless a new, genuinely higher-priority P0/correctness
-   issue is found first (which still preempts, per this routine's own
-   priority order — but see the rolling-history section's note: a THIRD
-   C-in-a-row would be worth flagging to a human rather than just
-   preempting again on autopilot). Before picking one:
-   - Consider running the **Agent Diagnosis Loop** again (real Hebrew
-     scenarios against the now feasibility-fixed `generate-plan` handler,
-     both paths) — but this time specifically LOOK FOR an A or B candidate,
-     not just any correctness bug: e.g. a UI-visible gap in how the Agent
-     explains itself, or a real scenario that would justify wiring
-     Simulation/Decision/Persistence into an actual caller.
+1. **Rolling window is compliant again (PR #41 = A) — no forced A/B
+   constraint on the immediate next milestone.** Still run the mandated
+   **Agent Diagnosis Loop** first (real Hebrew scenarios against the real
+   `generate-plan` handler, both default and `use_academic_decision_agent`
+   paths, using a real board fixture like `mechanical_engineering_2027`) to
+   find the next highest-impact real Agent failure before picking anything —
+   that's the standing instruction regardless of rolling-window pressure.
    - PR #14's Decision capability is the standing D candidate that could
      become a B if a genuine multi-candidate producer scenario exists — do
      not force this without a real scenario, per Blockers item 6's caveat.
-   - Also worth checking: does the now-fixed feasibility ranking (PR #39)
-     change what's user-visible in the UI? E.g. does the frontend surface
-     ANY signal when a plan is far from the degree target because the board
-     window itself is too narrow (as opposed to a normal "still building"
-     state)? If not, that disclosure gap itself could be a real A-class
-     milestone — the backend no longer freezes, but does the user know WHY
-     their plan might still look incomplete relative to 185h when their
-     prior-hours data is low/missing?
+     **PR #14 must stay unmerged** — D-classified infra with no production
+     consumer, per established precedent (multiple sessions now).
 2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** Still the single most valuable pending action — 8 real,
-   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39)
-   are merged and waiting, unchanged since the last several sessions all
+   production.** Still the single most valuable pending action — 9 real,
+   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39,
+   #41) are merged and waiting, unchanged since the last several sessions all
    flagged this identically. Do not re-investigate this further without new
    evidence (e.g. Vercel CLI credentials becoming available) — the blocker
    and the reasoning against using `deploy_to_vercel` are both already fully
