@@ -1,5 +1,16 @@
 # Current — read this first
 
+## ✅ PR #34 merged: issue #28 (client-side stale block-state) fixed, closed, after 2 real Codex rounds (2026-07-21)
+
+Follow-up to the entry immediately below (same session). PR #34 went through 2 rounds of Codex review that each caught a real, non-cosmetic gap in the fix — not rubber-stamped:
+
+1. **Substring-match false positive.** The first implementation matched a removed course's name against error strings via `.includes()`. Codex caught that this could wrongly resolve a *different*, still-disallowed course's block when one course's name is a substring of another's — the catalog has real prefix pairs (a course and its "- מעבדה" lab companion). Fixed with `parseDisallowedPlacedNameLocal()`, which parses the exact name out of the `${PREFIX} ${name}.` format and compares with exact `Set` membership instead of substring search.
+2. **Resolved too early.** The resolution originally ran right after `applyExplicitAvoidPostFilterLocal`, before the later eligibility/degree-hours refill passes (`repairAddMissingElectivesLocal`, `repairAddHoursToDegreeLocal`) — both of which only exclude `unwantedCourseIds`, not hard-excludes. Codex caught that those refills could silently re-add the exact flagged course from `analysis.elective_pool` after its error was already cleared, letting a plan with the disallowed course back in it be presented as unblocked. Fixed by moving the resolution to check the ACTUAL final placed course set (ground truth), computed only after every post-filter repair/refill finishes — not a snapshot from one intermediate step.
+
+Both findings were reproduced/confirmed before fixing (not just patched blindly), each got a dedicated regression test (8 total, up from the initial 6), and both review threads were resolved with evidence. Final state: CI 3/3 green, Codex clean on the final commit (`b06f3bc`), merged as `19cb1e3`. Full suites unaffected throughout (API 1202/1202; UI suite steady at the pre-existing fixture-gap baseline, 819 total/433 passing, zero regressions). Issue #28 closed.
+
+**Takeaway for future sessions**: this is a good example of the "narrow, well-scoped bug fix" category working as intended even without live browser verification — two rounds of independent adversarial review (Codex) caught real edge cases that unit tests alone, written by the same session that wrote the fix, likely wouldn't have surfaced. Worth continuing to lean on Codex review rounds rather than treating the first green CI as sufficient for UI-risk changes.
+
 ## 🔧 PR #34 opened for issue #28 (client-side stale block-state); PR #30 closed superseded, PR #33 merged (2026-07-21)
 
 New session, base reset from stale `main` to `ui/frontend-modernization` HEAD (recurring provisioning issue, again).
