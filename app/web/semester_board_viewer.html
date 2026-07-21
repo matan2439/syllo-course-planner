@@ -5491,8 +5491,7 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   // waiting on data. Check that signal first so the advice actually matches
   // what's true; only fall back to the generic elective/data suggestion when
   // the server hasn't flagged the gap as structural.
-  const _STRUCTURAL_GAP_RE = /מיצית את כל הקורסים הזמינים בחלון התכנון/;
-  if (_finalWarnings.some(w => _STRUCTURAL_GAP_RE.test(w))) {
+  if (_finalWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
     decisions.push('הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.');
   } else if (!_hoursSatisfied) {
     decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
@@ -15151,6 +15150,15 @@ const SOFT_LOAD_MIN = 18;
 const SOFT_LOAD_MAX = 22;
 const HARD_LOAD_CAP = 26;
 const ABSOLUTE_MAX_REASONABLE = 30;
+/**
+ * Matches generate-plan.ts's structural degree-hours-gap warning (mandatory/
+ * category requirements all satisfied, but the visible planning window's
+ * catalog is exhausted short of the degree target — no elective left to
+ * approve, no course waiting on missing data). Shared so both the diff-based
+ * summary (postPlanChangeSummary) and the no-diff outcome path read the same
+ * marker and can never drift apart.
+ */
+const STRUCTURAL_GAP_WARNING_RE = /מיצית את כל הקורסים הזמינים בחלון התכנון/;
 
 /**
  * Issue 1 — data-driven course eligibility / exclusion config (client mirror of
@@ -18422,7 +18430,25 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       const _aProp = { semesters: Object.entries(_afterBoard).map(([id, cs]) => ({ semester_id: id, course_ids: cs })) };
       try { postPlanChangeSummary(_bProp, _aProp, prefs); } catch (_) {}
     } else if (_planOutcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
-      postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+      // Codex review (PR #41, round 5): this branch only ran the generic "no
+      // changes" text, even when the server's own warnings_he already flagged
+      // (via generate-plan.ts's structural degree-hours-gap warning) that
+      // every mandatory/category requirement is satisfied and the visible
+      // planning window's catalog is genuinely exhausted — a board that
+      // already contains every in-window course hits exactly this no-diff
+      // outcome. Check the same marker postPlanChangeSummary already checks
+      // (SUCCESS_WITH_CHANGES path) so a real user gets the honest
+      // outside-the-visible-window explanation here too, not just when a
+      // diff happens to exist.
+      const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+      if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+        postStatusMessage(
+          'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
+          'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
+        );
+      } else {
+        postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+      }
     } else {
       // FAILURE_VALIDATION — try the conversational fallback before falling back
       // to the standard diagnoseBuildBlock message.

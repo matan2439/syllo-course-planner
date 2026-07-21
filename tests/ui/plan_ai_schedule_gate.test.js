@@ -514,4 +514,82 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
     expect(canonical).toBe("שנה ג׳ — סמסטר א׳");
     expect(canonical4).toBe("שנה ד׳ — סמסטר ב׳");
   });
+
+  // ── Test K-9 ────────────────────────────────────────────────────────────────
+  // Codex review (PR #41, round 5): a no-diff outcome (FAILURE_NO_ELIGIBLE_COURSES —
+  // the proposal applies cleanly but the board already contains every in-window
+  // course) used to always show the generic "couldn't add courses" text, even
+  // when the server's own warnings_he already flagged (via generate-plan.ts's
+  // structural degree-hours-gap warning) that the visible planning window's
+  // catalog is genuinely exhausted. Mirrors K-2's simulation of requestPlanProposal's
+  // outcome branch, using the real STRUCTURAL_GAP_WARNING_RE global so this test
+  // catches any drift between the two structural-gap call sites (this one and
+  // postPlanChangeSummary's).
+  test('empty diff + server structural-gap warning → honest "outside the visible window" message, not the generic no-changes text', () => {
+    window.eval(`
+      window.__lastStatus = null;
+      const _origPost = postStatusMessage;
+      postStatusMessage = (m) => { window.__lastStatus = m; _origPost(m); };
+
+      const eligibleProposal = { warnings_he: [
+        'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
+      ] };
+      const before = { 'year_3_semester_a': ['course-X'] };
+      const after  = { 'year_3_semester_a': ['course-X'] };
+      const diff = _computeBoardDiff(before, after);
+      const outcome = (diff.added.length > 0 || diff.removed.length > 0 || diff.moved.length > 0)
+        ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
+      if (outcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
+        const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+        if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          postStatusMessage(
+            'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
+            'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
+          );
+        } else {
+          postStatusMessage('לא בוצעו שינויים בלוח.\\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+        }
+      }
+
+      postStatusMessage = _origPost;
+    `);
+    const msg = window.eval('window.__lastStatus || ""');
+    expect(msg).toContain('חלון הסמסטרים');
+    expect(msg).not.toContain('לא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים');
+  });
+
+  // ── Test K-10 ───────────────────────────────────────────────────────────────
+  // Regression: an ordinary no-diff outcome (no structural-gap warning) still
+  // gets the original generic message — the new branch must not fire for every
+  // no-diff case, only the structural one.
+  test('empty diff without a structural-gap warning still gets the original generic no-changes text', () => {
+    window.eval(`
+      window.__lastStatus = null;
+      const _origPost = postStatusMessage;
+      postStatusMessage = (m) => { window.__lastStatus = m; _origPost(m); };
+
+      const eligibleProposal = { warnings_he: [] };
+      const before = { 'year_3_semester_a': ['course-X'] };
+      const after  = { 'year_3_semester_a': ['course-X'] };
+      const diff = _computeBoardDiff(before, after);
+      const outcome = (diff.added.length > 0 || diff.removed.length > 0 || diff.moved.length > 0)
+        ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
+      if (outcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
+        const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+        if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          postStatusMessage(
+            'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
+            'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
+          );
+        } else {
+          postStatusMessage('לא בוצעו שינויים בלוח.\\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+        }
+      }
+
+      postStatusMessage = _origPost;
+    `);
+    const msg = window.eval('window.__lastStatus || ""');
+    expect(msg).toContain('לא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים');
+    expect(msg).not.toContain('חלון הסמסטרים');
+  });
 });

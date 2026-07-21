@@ -39,14 +39,15 @@ import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
-import { incompleteAnnualCourseIds, applyMutation } from './planner_goals';
-import { enumerateActions } from './planner_actions';
+import { incompleteAnnualCourseIds, applyMutation, isFullyPlaced } from './planner_goals';
+import { enumerateActions, isExcluded, bestLegalSemester } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
+import { placedCourseIds } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
@@ -379,6 +380,17 @@ function toProposal(
   // below). Without also requiring disallowedPlaced to be empty, this branch
   // could fire alongside a real, actionable hard-exclusion blocker and
   // mislabel it as catalog exhaustion instead.
+  //
+  // Codex review (round 5) caught that enumerateActions' own degree-hour-fill
+  // group (group 4) deliberately skips `p.is_unwanted` courses — a SOFT
+  // avoid (preferences.unwanted_course_ids), unlike the hard exclusion
+  // already ruled out above via report.disallowedPlaced/isExcluded. A course
+  // the user merely marked "prefer to avoid" (not hard-excluded) is still a
+  // real, recoverable option if the user approves it as a risky elective —
+  // exactly the advice the generic fallback message already gives. Checking
+  // only enumerateActions' output made that recoverable case look identical
+  // to genuine catalog exhaustion. Checked separately here, mirroring group
+  // 4's own filters minus the is_unwanted exclusion.
   if (
     !report.degreeMet &&
     report.missingMandatory.length === 0 &&
@@ -392,7 +404,17 @@ function toProposal(
         const next = applyMutation(finalState, a);
         return next != null && validatePlanState(next, model, pinnedHome).valid;
       });
-    if (!canStillAddHours) {
+    const placedNow = new Set(placedCourseIds(finalState));
+    const canRecoverViaUnwantedElective = !canStillAddHours && [...model.profiles].some(([id, p]) => {
+      if (p.is_mandatory || p.hours == null || p.hours === 0 || !p.is_unwanted) return false;
+      if (isFullyPlaced(finalState, model, placedNow, id)) return false;
+      if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
+      const sem = bestLegalSemester(finalState, model, id);
+      if (!sem) return false;
+      const next = applyMutation(finalState, { type: 'ADD_COURSE', courseId: id, semesterId: sem });
+      return next != null && validatePlanState(next, model, pinnedHome).valid;
+    });
+    if (!canStillAddHours && !canRecoverViaUnwantedElective) {
       warnings_he.push(
         `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,

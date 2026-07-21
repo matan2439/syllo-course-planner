@@ -252,4 +252,31 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     // The new structural-gap warning must NOT fire.
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('7. Codex-caught regression (round 5): a course only SOFT-avoided (unwanted_course_ids, not hard-excluded) still leaves a real, recoverable option — must NOT be reported as catalog exhaustion', async () => {
+    // data/boards/test_program_gap_unwanted_2027.json: same MAND+FLU+SOL shape
+    // as test 1's fixture, plus SPARE — a legal, positive-hour, non-mandatory
+    // elective with nothing else placed on it. enumerateActions' own
+    // degree-hour-fill group (group 4, planner_actions.ts) deliberately skips
+    // `p.is_unwanted` courses so the SEARCH never proposes placing something
+    // the user asked to avoid — but the course is still genuinely addable if
+    // the user approves it as a risky elective (the exact advice the generic
+    // fallback message already gives). Checking only enumerateActions' output
+    // would read this as "nothing left to add" and wrongly claim the visible
+    // planning window's catalog is exhausted, when in fact one real option
+    // (SPARE) remains, just gated behind a soft preference, not scarcity.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_2027',
+      plan_context: planContext(0),
+      preferences: { unwanted_course_ids: ['SPARE'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('SPARE');
+    // The generic hours-shortfall line still appears (still short of 185h) —
+    // but not the misleading "exhausted" claim, since SPARE is recoverable.
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });
