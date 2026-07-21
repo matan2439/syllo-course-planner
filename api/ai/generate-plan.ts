@@ -273,7 +273,7 @@ function toProposal(
   initialState: PlanState,
   pinnedHome: Record<string, string>,
   rationale_he: string,
-  currentlyPlannedHoursFromContext?: number,
+  currentlyTakingHoursFromContext?: Map<string, number>,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -415,19 +415,31 @@ function toProposal(
   // though they are never part of board_json/model.profiles (they predate
   // the program's board window). For those ids, model.profiles.get(id) is
   // undefined and the round-6 sum silently credits 0 hours, even though the
-  // frontend itself already resolved and sent the correct total via
-  // total_hours_progress.currently_planned_hours (hoursForCourseId there
-  // covers both courseMap and the YEAR_1_2 fallback, and already excludes
-  // board-placed courses — see semester_board_viewer.html's own comment
-  // above that field). Take the larger of the two sums: the profile-based
-  // one stays as a floor for callers/tests that don't send
-  // total_hours_progress at all, and the context-provided total covers the
-  // ids model.profiles can never know about.
-  const currentlyPlannedHours = Math.max(
-    [...(model.currentlyPlannedCourseIds ?? [])]
-      .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? 0), 0),
-    currentlyPlannedHoursFromContext ?? 0,
-  );
+  // frontend itself already resolved and sent each entry's real hours (see
+  // personal_status.currently_taking's own entry.hours, set via
+  // hoursForCourseId, which covers both courseMap and the YEAR_1_2
+  // fallback).
+  //
+  // Codex review (round 11) then caught that the round-10 fix used the
+  // WRONG context field for this: total_hours_progress.currently_planned_hours
+  // is an aggregate that includes BOTH personal_status.currently_taking AND
+  // personal_status.planned (see semester_board_viewer.html's own
+  // currently_planned_hours computation) — but only currently_taking ids are
+  // ever excluded from re-proposal here (model.currentlyPlannedCourseIds,
+  // buildConstraintModel, enumerateActions' degree-hour-fill group). A
+  // "planned" (not yet started) course is a perfectly ordinary, addable
+  // candidate — if the planner legitimately places it, its hours are already
+  // in report.degreeHours (placedHours(finalState)), and adding the
+  // aggregate on top double-counted it, capable of making a genuinely
+  // exhausted 181/185 plan read as 185/185 and wrongly suppressing the
+  // warning. Fixed by reading each entry's OWN hours directly from
+  // personal_status.currently_taking (the exact same array
+  // model.currentlyPlannedCourseIds is itself derived from, two lines below
+  // in this file) instead of the mixed aggregate — scoped by construction to
+  // ids that can never end up placed in finalState, so there is no
+  // overlap with report.degreeHours to double-count.
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
   if (
     !report.degreeMet &&
     report.degreeHours + currentlyPlannedHours < model.degreeRequiredHours &&
@@ -607,6 +619,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // and ignoring it let a currently-taken course be re-proposed by the planner.
   const currentlyPlannedCourseIds: string[] =
     (effectivePlanContext?.personal_status?.currently_taking ?? []).map((c: any) => c.course_id);
+  // Per-course hours for the same currently_taking array, straight from the
+  // client (covers ids model.profiles can't, e.g. YEAR_1_2 fallback courses
+  // — see toProposal's structural-gap-warning comment for the full history).
+  const currentlyTakingHoursFromContext = new Map<string, number>(
+    (effectivePlanContext?.personal_status?.currently_taking ?? [])
+      .filter((c: any) => typeof c?.hours === 'number')
+      .map((c: any) => [c.course_id, c.hours]),
+  );
 
   // Board — always plan over the full course universe.
   let board: any = null;
@@ -660,7 +680,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
     proposal = toProposal(
       agentResult.finalState, model, initialState, pinnedHome, rationale_he,
-      effectivePlanContext?.total_hours_progress?.currently_planned_hours,
+      currentlyTakingHoursFromContext,
     );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
@@ -679,7 +699,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     proposal = toProposal(
       worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
-      effectivePlanContext?.total_hours_progress?.currently_planned_hours,
+      currentlyTakingHoursFromContext,
     );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));

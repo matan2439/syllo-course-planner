@@ -411,7 +411,7 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
 
-  function offCatalogCurrentlyTakingPlanContext(knownCompletedHours: number, currentlyPlannedHours: number) {
+  function offCatalogCurrentlyTakingPlanContext(knownCompletedHours: number, offcatHours: number) {
     return {
       program_name: 'בדיקה',
       semesters: [
@@ -422,25 +422,26 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
         { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 0, courses: [] },
         { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
       ],
-      total_hours_progress: { known_completed_hours: knownCompletedHours, currently_planned_hours: currentlyPlannedHours },
+      total_hours_progress: { known_completed_hours: knownCompletedHours },
       // OFFCAT is NOT in test_program_gap_currently_taking_offcatalog_2027.json's
       // program_repository_courses at all (unlike test 8/8b's CUR) — model.profiles
-      // can never resolve its hours. Only total_hours_progress.currently_planned_hours
-      // (computed client-side, the way the real frontend resolves YEAR_1_2 fallback
-      // courses via hoursForCourseId) carries the real number.
-      personal_status: { completed: [], currently_taking: [{ course_id: 'OFFCAT' }] },
+      // can never resolve its hours. Only the currently_taking entry's OWN .hours
+      // field (computed client-side via hoursForCourseId, the way the real
+      // frontend resolves YEAR_1_2 fallback courses) carries the real number —
+      // round 11 replaced the round-10 aggregate total_hours_progress.
+      // currently_planned_hours source with this per-course one (see test 12).
+      personal_status: { completed: [], currently_taking: [{ course_id: 'OFFCAT', hours: offcatHours }] },
       mandatory_unplaced: [],
     };
   }
 
-  test('11. Codex-caught regression (round 10): a currently-taking course entirely absent from the board catalog (e.g. a first/second-year mandatory course the frontend tracks via a static fallback, not board_json) still credits its hours via total_hours_progress.currently_planned_hours — must NOT be reported as catalog exhaustion', async () => {
+  test('11. Codex-caught regression (round 10): a currently-taking course entirely absent from the board catalog (e.g. a first/second-year mandatory course the frontend tracks via a static fallback, not board_json) still credits its hours via its own personal_status.currently_taking entry — must NOT be reported as catalog exhaustion', async () => {
     // model.profiles has no entry for OFFCAT at all (unlike test 8's CUR,
     // which IS in program_repository_courses) — the round-6 fix
     // ([...model.currentlyPlannedCourseIds].reduce(... model.profiles.get(id)?.hours ...))
     // would silently credit 0h for it and wrongly fire the exhaustion warning
-    // even though the frontend already told the server the true total via
-    // total_hours_progress.currently_planned_hours (4h here, closing the gap
-    // exactly like test 8's CUR does).
+    // even though the frontend already told the server the true per-course
+    // hours (4h here, closing the gap exactly like test 8's CUR does).
     const res = await run({
       program_id: 'test_program_gap_currently_taking_offcatalog_2027',
       plan_context: offCatalogCurrentlyTakingPlanContext(169, 4),
@@ -455,9 +456,8 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
 
   test('11b. regression: an off-catalog currently-taking course whose context-reported hours only PARTIALLY close the gap still leaves the structural warning firing', async () => {
     // Same fixture/shape as test 11, but only 160 known-completed hours:
-    // 12 placed + 160 known + 4 (OFFCAT, via total_hours_progress) = 176,
-    // still 9h short of 185 — the catalog genuinely is exhausted relative to
-    // the real (credited) total.
+    // 12 placed + 160 known + 4 (OFFCAT) = 176, still 9h short of 185 — the
+    // catalog genuinely is exhausted relative to the real (credited) total.
     const res = await run({
       program_id: 'test_program_gap_currently_taking_offcatalog_2027',
       plan_context: offCatalogCurrentlyTakingPlanContext(160, 4),
@@ -466,6 +466,50 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     });
     expect(res.statusCode).toBe(200);
     expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
+
+  test('12. Codex-caught regression (round 11): a personal_status.planned (not currently_taking) course must NOT be credited by this guard, since the planner can legitimately place it itself — crediting it a second time via an aggregate would double-count and wrongly suppress a genuine exhaustion warning', async () => {
+    // data/boards/test_program_gap_planned_double_count_2027.json: MAND+FLU+SOL
+    // (as in test 1) plus PLANNED — a plain, legal, addable elective the
+    // worker's own degree-hour-fill group WILL place (it is not mandatory,
+    // not unwanted, not a category candidate — just genuine remaining hours
+    // to fill). 165 known + 12 (MAND+FLU+SOL) + 4 (PLANNED, once placed) =
+    // 181, 4h short of 185 — the catalog is genuinely exhausted (PLANNED was
+    // the only remaining option and the worker already placed it).
+    //
+    // The round-10 fix (Math.max against total_hours_progress.
+    // currently_planned_hours, which mixes personal_status.currently_taking
+    // AND personal_status.planned) would ALSO add PLANNED's 4h from the
+    // aggregate on top of report.degreeHours (which already counts it once,
+    // since it's genuinely placed on the board) — 181 + 4 = 185, wrongly
+    // reading as fully satisfied and suppressing the warning. The round-11
+    // fix only ever reads personal_status.currently_taking's own per-course
+    // .hours (PLANNED is in personal_status.planned, never currently_taking,
+    // so it contributes 0 here) — no double count, warning correctly fires.
+    const res = await run({
+      program_id: 'test_program_gap_planned_double_count_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        total_hours_progress: { known_completed_hours: 165, currently_planned_hours: 4 },
+        personal_status: { completed: [], currently_taking: [], planned: [{ course_id: 'PLANNED', hours: 4 }] },
+        mandatory_unplaced: [],
+      },
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).toContain('PLANNED');
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
   });
 });
