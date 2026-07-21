@@ -305,10 +305,13 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     whyThisPlan.push(`רמת ההתאמה לתחומי העניין שציינת: ${interestEvaluation.scorecard.summaryLevel}.`);
   }
 
-  const risksAndTradeoffs: string[] = [
-    ...input.proposal.warnings_he,
-    ...workloadNotes,
-  ];
+  // Deduped: generate-plan.ts's maxWeeklyHoursWarnings (issue #25 Finding #3)
+  // now pushes the identical per-semester "מעל המגבלה שביקשת" message into
+  // proposal.warnings_he directly, so it can also reach the default (no-flag)
+  // path — computeWorkloadNotes above still computes the same message
+  // (needed for the `overloaded` signal below), which would otherwise show
+  // up twice in this list.
+  const risksAndTradeoffs: string[] = [...new Set([...input.proposal.warnings_he, ...workloadNotes])];
   if (interestEvaluation && interestEvaluation.scorecard.avoidRiskCourses.length > 0) {
     risksAndTradeoffs.push(
       `${interestEvaluation.scorecard.avoidRiskCourses.length} קורסים בתוכנית נוגעים בתחומים שביקשת להימנע מהם.`,

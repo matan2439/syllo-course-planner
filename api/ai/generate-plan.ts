@@ -172,6 +172,39 @@ function overloadGate(
 }
 
 /**
+ * issue #25 Finding #3: preferences.max_weekly_hours is a real user-stated
+ * soft cap (used only as a search tiebreaker in planner_goals.ts), but
+ * exceeding it was never disclosed anywhere in the default (no-flag) path's
+ * warnings_he — only inside the opt-in use_academic_decision_agent path's
+ * academicDecision.evaluation.workloadNotes (academic_decision_runtime.ts's
+ * computeWorkloadNotes), which was unreachable for anyone still gated by
+ * Finding #2. This is the single source of truth now: it feeds warnings_he
+ * below, which both paths share (the agent path's explanation.risksAndTradeoffs
+ * reads proposal.warnings_he directly) — computeWorkloadNotes' equivalent
+ * per-semester check was removed to avoid showing the same message twice.
+ * Only warns when the user actually set the preference (undefined/null is
+ * "no preference stated," not "cap of 0") — never invents a cap.
+ */
+function maxWeeklyHoursWarnings(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+  prefs: Preferences,
+): string[] {
+  const maxWeeklyHours = prefs.max_weekly_hours;
+  if (maxWeeklyHours === undefined || maxWeeklyHours === null) return [];
+  const courseHours: Record<string, { hours?: number | null }> = {};
+  for (const [id, p] of model.profiles) courseHours[id] = { hours: p.hours };
+  const warnings: string[] = [];
+  for (const sem of semesters) {
+    const hrs = getSemesterLoad(sem, courseHours);
+    if (hrs > maxWeeklyHours) {
+      warnings.push(`סמסטר ${sem.semester_id}: ${hrs} ש"ש — מעל המגבלה שביקשת (${maxWeeklyHours}).`);
+    }
+  }
+  return warnings;
+}
+
+/**
  * A course the user has hard-excluded (disallowed_course_ids /
  * strongly_avoided_course_ids, or a catalog-level exclusion) must never
  * survive in the final plan silently — e.g. it was already on the board
@@ -454,6 +487,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...overloadGate(proposal.semesters, model, effectivePreferences),
     ...disallowedGate(proposal.semesters, model),
   ];
+  // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
+  // Finding #3). Not a blockingError: the hard cap already gates via
+  // overloadGate above; this is disclosure only.
+  proposal.warnings_he.push(...maxWeeklyHoursWarnings(proposal.semesters, model, effectivePreferences));
 
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
