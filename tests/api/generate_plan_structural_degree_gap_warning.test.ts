@@ -170,4 +170,43 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res.statusCode).toBe(200);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
   });
+
+  test('5. Codex-caught regression (round 3): a PRE-EXISTING, unrelated legality violation (two fixed mandatory courses together breaching the hard cap) must surface as ITSELF, not be mislabeled as a structural catalog-exhaustion gap', async () => {
+    // data/boards/test_program_gap_overload_2027.json: MAND(4h) + MAND_OVERLOAD(27h),
+    // both fixed/immovable in the same semester — 31h always breaches the 26h
+    // hard cap (and the 30h absolute max), with no way for the search to ever
+    // resolve it (neither course can move). Every ADD_COURSE candidate's
+    // resulting state still carries this same pre-existing error, so an
+    // ungated canStillAddHours check would read "false" for the wrong reason
+    // and mislabel a real, different, already-disclosed overload blocker as
+    // "catalog exhausted."
+    const res = await run({
+      program_id: 'test_program_gap_overload_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 31, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+            { course_id: 'MAND_OVERLOAD', name_he: 'חובה עמוסה', hours: 27, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        total_hours_progress: { known_completed_hours: 0 },
+        personal_status: { completed: [], currently_taking: [] },
+        mandatory_unplaced: [],
+      },
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    // The real blocker (overload) is disclosed as a genuine blocking error —
+    // this proves the scenario actually reproduces a pre-existing illegal state.
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => /חריגה|עומס/.test(e))).toBe(true);
+    // The new structural-gap warning must NOT fire — it would misattribute
+    // the shortfall to catalog exhaustion instead of the real overload cause.
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

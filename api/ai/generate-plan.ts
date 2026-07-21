@@ -357,10 +357,24 @@ function toProposal(
   // here: apply each candidate ADD_COURSE mutation and require
   // validatePlanState to accept the result before counting it as a real,
   // available option.
+  //
+  // Codex review (round 3) caught that when finalState ALREADY carries an
+  // unrelated legality error (e.g. an unaccepted overload, or a pinned
+  // course left in an illegal semester), applyMutation only adds on top of
+  // that state — the pre-existing error never clears, so EVERY candidate's
+  // resulting state still fails validatePlanState regardless of whether the
+  // candidate itself is legal, making canStillAddHours false for the wrong
+  // reason. That would mislabel a real, different, already-surfaced
+  // blocker (report.errors already discloses it) as "catalog exhausted."
+  // Gated on report.legal (the plan's OWN current legality, independent of
+  // hours/mandatory/category completeness) so this only fires when the
+  // current state is itself clean and the only remaining question is
+  // whether any legal addition could still close the hours gap.
   if (
     !report.degreeMet &&
     report.missingMandatory.length === 0 &&
-    report.unsatisfiedCategories.length === 0
+    report.unsatisfiedCategories.length === 0 &&
+    report.legal
   ) {
     const canStillAddHours = enumerateActions(finalState, model)
       .filter(a => a.type === 'ADD_COURSE')
