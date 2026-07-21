@@ -282,4 +282,50 @@ describe('validatePlanProposal — annual course completeness (Codex P2)', () =>
     );
     expect(result.errors).toEqual([]);
   });
+
+  it('Codex round 3: does not flag a pinned annual course placed in both its spans_semesters as an illegal move', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+          { semester_id: 'year_3_semester_b', course_ids: ['ANNUAL'] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      {
+        ...ctxFor(spans),
+        pinnedCourseIds: new Set(['ANNUAL']),
+        // buildPinnedHome (generate-plan.ts) only records the FIRST semester
+        // it finds a pinned course already placed in — reproduce that here.
+        currentSemesterByCourseId: { ANNUAL: 'year_3_semester_a' },
+      },
+    );
+    expect(result.errors).toEqual([]);
+  });
+
+  it('Codex round 3: still flags a pinned NON-annual course actually moved to a different semester', () => {
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: [] },
+          { semester_id: 'year_3_semester_b', course_ids: ['PINNED'] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      {
+        completedCourseIds: new Set(),
+        courses: { PINNED: { hours: 4, is_mandatory: false } },
+        pinnedCourseIds: new Set(['PINNED']),
+        currentSemesterByCourseId: { PINNED: 'year_3_semester_a' },
+      },
+    );
+    expect(result.errors.some(e => e.includes('PINNED'))).toBe(true);
+  });
 });

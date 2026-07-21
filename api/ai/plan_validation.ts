@@ -316,10 +316,17 @@ export function validatePlanProposal(
         errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
-      // 2b. pinned course must remain in its current semester
+      // 2b. pinned course must remain in its current semester. An is_annual
+      // course pinned across its full spans_semesters is never "moved" by
+      // appearing in each of them — currentSemesterByCourseId only records
+      // one representative home semester per pinned id (buildPinnedHome
+      // stops at the first match), so for an annual course any of its own
+      // spans is equally "home," not a move away from it.
       if (ctx.pinnedCourseIds?.has(courseId)) {
         const currentSem = ctx.currentSemesterByCourseId?.[courseId];
-        if (currentSem && currentSem !== sem.semester_id) {
+        const spans = info?.is_annual ? (info.spans_semesters ?? []) : [];
+        const isAnnualHome = spans.length > 0 && spans.includes(sem.semester_id) && (!currentSem || spans.includes(currentSem));
+        if (currentSem && currentSem !== sem.semester_id && !isAnnualHome) {
           errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
         }
       }
