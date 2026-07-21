@@ -273,6 +273,7 @@ function toProposal(
   initialState: PlanState,
   pinnedHome: Record<string, string>,
   rationale_he: string,
+  currentlyPlannedHoursFromContext?: number,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -406,8 +407,27 @@ function toProposal(
   // derives from personal_status.currently_taking, model.profiles is the
   // single source of truth for each course's hours) before deciding the
   // structural-gap warning is honest.
-  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
-    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? 0), 0);
+  //
+  // Codex review (round 10) caught that model.profiles is NOT actually a
+  // complete source of hours for every currently-taking course: the live
+  // frontend accrues first/second-year mandatory courses (semester_board_
+  // viewer.html's YEAR_1_2_MANDATORY_COURSES) into personal_status even
+  // though they are never part of board_json/model.profiles (they predate
+  // the program's board window). For those ids, model.profiles.get(id) is
+  // undefined and the round-6 sum silently credits 0 hours, even though the
+  // frontend itself already resolved and sent the correct total via
+  // total_hours_progress.currently_planned_hours (hoursForCourseId there
+  // covers both courseMap and the YEAR_1_2 fallback, and already excludes
+  // board-placed courses — see semester_board_viewer.html's own comment
+  // above that field). Take the larger of the two sums: the profile-based
+  // one stays as a floor for callers/tests that don't send
+  // total_hours_progress at all, and the context-provided total covers the
+  // ids model.profiles can never know about.
+  const currentlyPlannedHours = Math.max(
+    [...(model.currentlyPlannedCourseIds ?? [])]
+      .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? 0), 0),
+    currentlyPlannedHoursFromContext ?? 0,
+  );
   if (
     !report.degreeMet &&
     report.degreeHours + currentlyPlannedHours < model.degreeRequiredHours &&
@@ -638,7 +658,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
-    proposal = toProposal(agentResult.finalState, model, initialState, pinnedHome, rationale_he);
+    proposal = toProposal(
+      agentResult.finalState, model, initialState, pinnedHome, rationale_he,
+      effectivePlanContext?.total_hours_progress?.currently_planned_hours,
+    );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
 
@@ -654,7 +677,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       worker.run(500, 'greedy');
     }
 
-    proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
+    proposal = toProposal(
+      worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
+      effectivePlanContext?.total_hours_progress?.currently_planned_hours,
+    );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }
