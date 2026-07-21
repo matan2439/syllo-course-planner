@@ -97,6 +97,26 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
   });
 
+  test('1b. Codex-caught regression (round 2): a raw ADD_COURSE candidate that is actually illegal (HUGE, 27h — always breaches the 26h hard cap alone) must not be counted as a real available add', async () => {
+    // Same fixture/scenario as test 1 — this fixture's catalog also contains
+    // HUGE (data/boards/test_program_gap_2027.json), a plain elective with no
+    // legal semester that fits it under the hard cap. enumerateActions still
+    // emits an ADD_COURSE for it (its own docstring: "illegality is judged
+    // later by validation"), so an unvalidated raw-action check would have
+    // wrongly treated this as "still something to add" and suppressed the
+    // warning. Asserting it here (distinct from test 1) documents exactly
+    // which candidate this guards against.
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: planContext(0),
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('HUGE');
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
+
   test('2. default path: prior hours bring the same tiny catalog up to the real 185h target → no structural warning', async () => {
     // MAND(4) + FLU(4) + SOL(4) = 12 placed; 173 prior hours closes exactly to 185.
     const res = await run({

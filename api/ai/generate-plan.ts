@@ -38,8 +38,8 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
-import { incompleteAnnualCourseIds } from './planner_goals';
+import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
+import { incompleteAnnualCourseIds, applyMutation } from './planner_goals';
 import { enumerateActions } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
@@ -335,25 +335,39 @@ function toProposal(
   // mandatory/category requirements are ALL satisfied — a genuinely
   // unsatisfied category already gets its own, more specific warning above.
   //
-  // Codex review (PR #41) caught that projectFeasibility's 'degree_hours'
-  // blocker is a HEADROOM approximation (total unused hard-cap capacity
-  // across all known semesters vs. the hours gap) — not an availability
-  // check. A small shortfall (e.g. 5h) with plenty of empty semester
-  // capacity but zero remaining eligible courses would read as "feasible"
-  // there, silently missing the exact misleading-advice case this warning
-  // exists to catch. The real question is simpler and more direct: does
-  // enumerateActions (the same function the search itself uses) still
-  // produce ANY ADD_COURSE action from this final state? With mandatory/
-  // category requirements already confirmed satisfied above, a remaining
-  // ADD_COURSE action can only come from a still-unplaced wanted course or
-  // planner_actions.ts's degree-hour-fill group — i.e. a genuine option to
-  // add more hours. None remaining means truly exhausted.
+  // Codex review (PR #41, round 1) caught that projectFeasibility's
+  // 'degree_hours' blocker is a HEADROOM approximation (total unused
+  // hard-cap capacity across all known semesters vs. the hours gap) — not an
+  // availability check. A small shortfall (e.g. 5h) with plenty of empty
+  // semester capacity but zero remaining eligible courses would read as
+  // "feasible" there, silently missing the exact misleading-advice case this
+  // warning exists to catch. Replaced with: does enumerateActions (the same
+  // function the search itself uses) still produce any ADD_COURSE action?
+  //
+  // Codex review (round 2) then caught that enumerateActions' own docstring
+  // is explicit: "Illegality is judged later by validation — this only
+  // filters out already-placed/completed/excluded courses." E.g.
+  // bestLegalSemester falls back to `ranked[0]` even when NO legal semester
+  // actually fits under the hard cap, and prerequisites/currently-taking
+  // conflicts aren't checked at all here — so a raw ADD_COURSE action can
+  // still be genuinely illegal. planner_worker.ts's own step() never trusts
+  // raw enumerateActions output either; it always applies + validates first
+  // (`this.enumerateActions(...).map(mut => ({mut, next: applyMutation(...)}))
+  // .filter(x => x.next != null && this.validate(x.next).valid)`). Mirrored
+  // here: apply each candidate ADD_COURSE mutation and require
+  // validatePlanState to accept the result before counting it as a real,
+  // available option.
   if (
     !report.degreeMet &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0
   ) {
-    const canStillAddHours = enumerateActions(finalState, model).some(a => a.type === 'ADD_COURSE');
+    const canStillAddHours = enumerateActions(finalState, model)
+      .filter(a => a.type === 'ADD_COURSE')
+      .some(a => {
+        const next = applyMutation(finalState, a);
+        return next != null && validatePlanState(next, model, pinnedHome).valid;
+      });
     if (!canStillAddHours) {
       warnings_he.push(
         `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
