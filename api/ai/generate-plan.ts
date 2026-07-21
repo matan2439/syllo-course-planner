@@ -39,6 +39,7 @@ import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
+import { incompleteAnnualCourseIds } from './planner_goals';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -222,6 +223,29 @@ function disallowedGate(
   const placed = new Set(semesters.flatMap(s => s.course_ids));
   return disallowedPlacedCourseIds(placed, model).map(
     id => `${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
+  );
+}
+
+/**
+ * An `is_annual` (year-long) course must occupy EVERY one of its effective
+ * spans in the FINAL plan. planner_worker.ts's step()/run() repairs this
+ * whenever a legal repair exists, but when every remaining span would breach
+ * the hard cap (or any other legal obstruction blocks the repair), the loop
+ * falls through to the normal scored search and can stop with the course
+ * still split across only some of its semesters — validateCandidate
+ * (via plan_validation.ts's own annual-completeness check) already detects
+ * this, but that report is internal to toProposal and never reaches
+ * blockingErrors. Mirrors disallowedGate's pattern: re-derive the same
+ * signal against the FINAL placed set so an unrepaired split is reported as
+ * a real blocking error instead of a plan silently reporting blocked:false.
+ */
+function annualCompletenessGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  return incompleteAnnualCourseIds(state, model).map(
+    id => `קורס שנתי (${model.profiles.get(id)?.name_he ?? id}) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.`,
   );
 }
 
@@ -493,6 +517,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const blockingErrors = [
     ...overloadGate(proposal.semesters, model, effectivePreferences),
     ...disallowedGate(proposal.semesters, model),
+    ...annualCompletenessGate(proposal.semesters, model),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via

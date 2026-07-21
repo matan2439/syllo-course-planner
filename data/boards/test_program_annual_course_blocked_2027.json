@@ -1,0 +1,41 @@
+{
+  "semesters": [
+    { "semester_id": "year_3_semester_a", "courses": [] },
+    { "semester_id": "year_3_semester_b", "courses": [] }
+  ],
+  "metadata": {
+    "completed_course_ids": [],
+    "program_requirements_categories": {
+      "total_required_hours": 27,
+      "categories": []
+    },
+    "program_repository_courses": [
+      {
+        "course_id": "ANNUAL",
+        "name_he": "מעבדה שנתית",
+        "weekly_hours": 4,
+        "is_mandatory": true,
+        "course_type": "mandatory",
+        "placement_policy": "annual",
+        "effective_allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+        "recommended_semester": "year_3_semester_a",
+        "is_annual": true,
+        "spans_semesters": ["year_3_semester_a", "year_3_semester_b"],
+        "count_hours_once": true,
+        "root_course_id": "ANNUAL",
+        "prerequisites": []
+      },
+      {
+        "course_id": "FILLER_B",
+        "name_he": "קורס חובה קבוע בסמסטר ב",
+        "weekly_hours": 23,
+        "is_mandatory": true,
+        "course_type": "mandatory",
+        "placement_policy": "fixed",
+        "effective_allowed_semesters": ["year_3_semester_b"],
+        "recommended_semester": "year_3_semester_b",
+        "prerequisites": []
+      }
+    ]
+  }
+}

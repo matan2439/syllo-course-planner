@@ -133,3 +133,67 @@ describe('generate-plan — annual (year-long) course is placed in every spanned
     expect(courseIdsOf(res._body, 'year_3_semester_b')).toContain('ANNUAL');
   });
 });
+
+/**
+ * Codex round-10 finding on PR #37: when the missing span of a partially-
+ * placed annual course cannot legally accept it (here: year_3_semester_b is
+ * pinned to a fixed 23h mandatory course, so adding ANNUAL's 4h would exceed
+ * HARD_LOAD_CAP=26), step()'s repair branch rejects and falls through to the
+ * normal search/STOP path with the annual course still split. Before this
+ * fix, the response only turned overload/disallowed/maxSteps into `blocked`,
+ * so this returned blocked:false, errors:[] even though validateCandidate
+ * rejects the final state for the unrepaired annual split.
+ */
+describe('generate-plan — an unrepairable annual split is a blocking error, not a silent blocked:false', () => {
+  beforeEach(() => {
+    process.env.AI_DEV_MODE = 'true';
+    process.env.AI_DEV_BYPASS_QUOTA = 'true';
+  });
+  afterEach(() => {
+    delete process.env.AI_DEV_MODE;
+    delete process.env.AI_DEV_BYPASS_QUOTA;
+    delete process.env.AI_USE_AGENTIC_PLANNER;
+  });
+
+  const BLOCKED_PLAN_CONTEXT = {
+    program_name: 'בדיקה',
+    semesters: [
+      { id: 'year_3_semester_a', label: "שנה ג׳ א׳", total_hours: 4, courses: [{ course_id: 'ANNUAL' }] },
+      { id: 'year_3_semester_b', label: "שנה ג׳ ב׳", total_hours: 23, courses: [{ course_id: 'FILLER_B' }] },
+    ],
+    total_hours_progress: { known_completed_hours: 0, degree_required_hours: 27 },
+    personal_status: { completed: [] },
+    mandatory_unplaced: [],
+  };
+
+  function blockedReqBody(overrides: any = {}) {
+    return {
+      program_id: 'test_program_annual_course_blocked_2027',
+      plan_context: BLOCKED_PLAN_CONTEXT,
+      preferences: { disallowed_course_ids: [] },
+      session_token: randomUUID(),
+      ...overrides,
+    };
+  }
+
+  test('default path: reports blocked:true with an annual-completeness error instead of silently leaving ANNUAL split', async () => {
+    const res = makeRes();
+    await handler(makeReq(blockedReqBody()), res);
+    expect(res.statusCode).toBe(200);
+    // The unrepairable split must still be visible in the response...
+    expect(courseIdsOf(res._body, 'year_3_semester_a')).toContain('ANNUAL');
+    expect(courseIdsOf(res._body, 'year_3_semester_b')).not.toContain('ANNUAL');
+    // ...but must never be reported as a clean, successful plan.
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.length).toBeGreaterThan(0);
+  });
+
+  test('agentic path: same blocking behavior', async () => {
+    process.env.AI_USE_AGENTIC_PLANNER = 'true';
+    const res = makeRes();
+    await handler(makeReq(blockedReqBody()), res);
+    expect(res.statusCode).toBe(200);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.length).toBeGreaterThan(0);
+  });
+});

@@ -46,11 +46,21 @@ export const GOAL_STACK = [
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
 
-/** Total weekly hours placed, deduplicating annual course pairs by root_course_id. */
+/**
+ * Total weekly hours placed, deduplicating:
+ *  - a single is_annual course id occupying more than one semester slot (the
+ *    atomic multi-semester placement this file's is_annual handling produces
+ *    — same course id, multiple `state.semesters` entries; must count once)
+ *  - the older annual-pair scheme of two distinct course ids sharing a
+ *    `root_course_id` with `count_hours_once` set.
+ */
 export function placedHours(state: PlanState, model: ConstraintModel): number {
+  const seenIds = new Set<string>();
   const seenRoots = new Set<string>();
   let sum = 0;
   for (const cid of placedCourseIds(state)) {
+    if (seenIds.has(cid)) continue;
+    seenIds.add(cid);
     const p = model.profiles.get(cid);
     if (!p) continue;
     if (p.count_hours_once && p.root_course_id) {

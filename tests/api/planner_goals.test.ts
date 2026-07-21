@@ -207,6 +207,25 @@ describe('placedHours — annual course deduplication', () => {
     const score = scorePlan(state, m);
     expect(score[0]).toBe(6); // 3 + 3, no dedup
   });
+
+  // Codex round-10 finding on PR #37: the atomic is_annual bundling mechanism
+  // (planner_actions.ts's addCourseActionsFor) places the SAME course id into
+  // multiple state.semesters entries — a different shape than the
+  // root_course_id-paired scheme above (two DIFFERENT ids). Without
+  // deduplicating by id itself, a 4h annual course spanning two semesters
+  // contributed 8h to degreeHours, letting the planner believe the hour
+  // target was met too early.
+  it('a single is_annual course id placed in two semesters counts its hours once, even without count_hours_once/root_course_id', () => {
+    const m = model({ degreeRequiredHours: 40, categories: [], priorHours: 0 });
+    m.profiles.set('ANNUAL', profile('ANNUAL', { hours: 4, is_annual: true, spans_semesters: ['year_3_semester_a', 'year_3_semester_b'] }));
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANNUAL'];
+    state.semesters['year_3_semester_b'] = ['ANNUAL'];
+
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(4); // not 8
+  });
 });
 
 describe('assessCompleteness', () => {
