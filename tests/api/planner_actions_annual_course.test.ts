@@ -530,3 +530,26 @@ describe('PlannerWorker.addCourse — unbundled annual fallback honors requested
     expect(worker.getPlan().semesters['year_3_semester_a']).not.toContain('ANNUAL');
   });
 });
+
+describe('enumerateActions — partial annual elective repair independent of degree-hour fill (Codex round 7)', () => {
+  it('proposes completing a partially-placed annual ELECTIVE even when degree hours already meet the target', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const profiles = new Map<string, CourseProfile>();
+    // Not mandatory, not in a category, not wanted — the only classification
+    // that would otherwise reach this course is group 4 (degree-hour fill),
+    // which is gated off here by an already-met hour target. placedHours
+    // already counts this course's placed half at full weight, so that gate
+    // can never re-open once crossed — without a repair path independent of
+    // it, this course would be stuck half-placed forever.
+    profiles.set('ANNUAL', annualProfile('ANNUAL', spans, { is_mandatory: false, course_type: 'elective', is_wanted: false }));
+    const model = baseModel({ profiles, degreeRequiredHours: 1, priorHours: 100 });
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANNUAL']; // placed in only one of its two spans
+
+    const actions = enumerateActions(state, model).filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'ANNUAL');
+
+    expect(actions).toHaveLength(1);
+    const action = actions[0] as any;
+    expect([action.semesterId, ...(action.alsoSemesterIds ?? [])].sort()).toEqual([...spans].sort());
+  });
+});

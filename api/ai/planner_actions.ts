@@ -121,6 +121,27 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   const consider = (id: string) =>
     !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
 
+  // 0. annual-elective-completeness repair — unconditional, independent of
+  // degree-hour fill (group 4). A partially-placed is_annual course that is
+  // NOT mandatory, NOT a category candidate, and NOT wanted (a plain
+  // elective) is only otherwise reachable through group 4, which only runs
+  // while degree hours are short; but placedHours already counts the
+  // partial placement's full hours once it's in `placed` at all, so once
+  // the hour target is met that gate never re-opens, leaving the course
+  // permanently stuck half-placed and flagged invalid by validation with no
+  // way to ever repair it. Mandatory/category/wanted annual courses already
+  // get this for free below via `consider` — skipping them here avoids
+  // proposing the same atomic action twice.
+  const classifiedElsewhere = (id: string) =>
+    model.requiredMandatoryCourseIds.includes(id) ||
+    model.wantedCourseIds.has(id) ||
+    model.categories.some(cat => cat.candidateIds.includes(id));
+  for (const [id, p] of model.profiles) {
+    if (!p.is_annual || !placed.has(id) || isFullyPlaced(state, model, placed, id)) continue;
+    if (classifiedElsewhere(id)) continue;
+    actions.push(...addCourseActionsFor(model, id));
+  }
+
   // 1. required mandatory still unplaced — every legal semester.
   for (const id of model.requiredMandatoryCourseIds) {
     if (!consider(id)) continue;
