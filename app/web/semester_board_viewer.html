@@ -18586,7 +18586,17 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
           // actually addable. Check the same marker here, before falling
           // through to diagnoseBuildBlock.
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          // Codex review (PR #41, round 14): degreeHoursStatusFinal (above)
+          // was computed BEFORE two later eligibleProposal reassignments in
+          // this function (the annual-move repair and the re-enforced-legal
+          // repair), so it can be stale by the time we reach here — the same
+          // staleness class round 11 fixed in postPlanChangeSummary via
+          // _hoursSatisfied. Recompute fresh against the TRUE final
+          // eligibleProposal instead of trusting the earlier snapshot, so a
+          // later repair that closes the gap can't leave this branch still
+          // reading an outdated "still short" marker.
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
+          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             const msg =
               'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
               'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';

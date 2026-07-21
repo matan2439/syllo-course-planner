@@ -610,6 +610,12 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       const _origDiag = diagnoseBuildBlock;
       postAssistantMessage = (m, chips) => { window.__lastMsg = m; window.__lastChips = chips; _origPost(m, chips); };
       diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+      // Round 14: the real branch now recomputes degree-hours status fresh
+      // against the FINAL eligibleProposal before trusting the marker — stub
+      // it "not satisfied" here so this still-genuinely-exhausted scenario
+      // takes the honest-message path.
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
 
       const eligibleProposal = { warnings_he: [
         'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
@@ -619,7 +625,8 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       try {
         if (!_rescued) {
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             const msg =
               'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
               'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
@@ -635,6 +642,7 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       } finally {
         postAssistantMessage = _origPost;
         diagnoseBuildBlock = _origDiag;
+        getDegreeHoursStatusLocal = _origGetStatus;
       }
     `);
     const msg = window.eval('window.__lastMsg || ""');
@@ -650,13 +658,16 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       window.__diagCalled = false;
       const _origDiag = diagnoseBuildBlock;
       diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
 
       const eligibleProposal = { warnings_he: [] };
       const _rescued = false;
       try {
         if (!_rescued) {
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             // not reached in this test
           } else {
             diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
@@ -664,20 +675,62 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         }
       } finally {
         diagnoseBuildBlock = _origDiag;
+        getDegreeHoursStatusLocal = _origGetStatus;
       }
     `);
     expect(window.eval('window.__diagCalled')).toBe(true);
   });
 
-  // ── Test K-13 ───────────────────────────────────────────────────────────────
-  // Source-presence check: K-11/K-12 simulate the branch logic (this file's
-  // established pattern for code embedded inside requestPlanProposal — see
-  // K-2/K-9/K-10) rather than executing it in place, so they can't by
-  // themselves prove the real HTML actually contains this branch. Confirms the
-  // literal source does.
-  test('semester_board_viewer.html actually contains the FAILURE_VALIDATION structural-gap check', () => {
+  // ── Test K-14 ───────────────────────────────────────────────────────────────
+  // Codex-caught regression (round 14): degreeHoursStatusFinal (computed
+  // earlier in requestPlanProposal) can be stale by the time this branch
+  // runs — eligibleProposal is reassigned twice more after it (the annual-
+  // move repair and the re-enforced-legal repair), just like the staleness
+  // class round 11 fixed in postPlanChangeSummary via _hoursSatisfied. A
+  // stale structural-gap marker preserved in warnings_he through repairs
+  // must NOT suppress diagnoseBuildBlock once the FINAL degree-hours status
+  // is actually satisfied — the real (different) blocker must still surface.
+  test('a stale structural-gap marker does not suppress diagnoseBuildBlock once the final degree-hours status is actually satisfied', () => {
+    window.eval(`
+      window.__diagCalled = false;
+      const _origDiag = diagnoseBuildBlock;
+      diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: true, missing_hours: 0 });
+
+      // Stale marker, as if preserved from an earlier point in the repair
+      // chain before the final refill closed the gap.
+      const eligibleProposal = { warnings_he: [
+        'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
+      ] };
+      const _rescued = false;
+      try {
+        if (!_rescued) {
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            // must NOT be reached — the stale marker is no longer honest
+          } else {
+            diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
+          }
+        }
+      } finally {
+        diagnoseBuildBlock = _origDiag;
+        getDegreeHoursStatusLocal = _origGetStatus;
+      }
+    `);
+    expect(window.eval('window.__diagCalled')).toBe(true);
+  });
+
+  // ── Test K-15 ───────────────────────────────────────────────────────────────
+  // Source-presence check: K-11/K-12/K-14 simulate the branch logic (this
+  // file's established pattern for code embedded inside requestPlanProposal —
+  // see K-2/K-9/K-10) rather than executing it in place, so they can't by
+  // themselves prove the real HTML actually contains this branch. Confirms
+  // the literal source does, including the round-14 fresh-status guard.
+  test('semester_board_viewer.html actually contains the FAILURE_VALIDATION structural-gap check with the fresh degree-hours guard', () => {
     const html = fs.readFileSync(HTML_PATH, 'utf8');
-    expect(html).toMatch(/_validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
+    expect(html).toMatch(/!_validationPathHoursStatus\.satisfied && _validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
     expect(html).toContain('לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים');
   });
 });
