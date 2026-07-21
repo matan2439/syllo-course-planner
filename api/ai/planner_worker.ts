@@ -351,6 +351,18 @@ export class PlannerWorker {
       .sort((a, b) => compareScore(b.imm, a.imm));
 
     // Downstream impact — forward-check + rollout the top immediate candidates.
+    // projectFeasibility is a RANKING signal, not a hard gate (see its own
+    // docstring in planner_lookahead.ts: an action that blocks a still-required
+    // item "must be ranked down"). A board can legitimately span fewer
+    // semesters than the full degree needs (e.g. prior-hours data is
+    // missing/low, or the board only covers the student's remaining years) —
+    // projectFeasibility then correctly reports that the full target can
+    // never be reached from ANY state, making every single candidate look
+    // "infeasible." Hard-filtering on that would make the worker take zero
+    // actions and silently return an empty, clean-looking plan instead of
+    // placing whatever it legally and usefully still can. Feasible actions
+    // are still always preferred over infeasible ones (unchanged from
+    // before); only the elimination of infeasible actions is removed.
     const top = this.opts.lookahead ? legal.slice(0, this.opts.topN) : legal;
     const evaluated = top
       .map(x => ({
@@ -358,8 +370,10 @@ export class PlannerWorker {
         feasible: this.opts.lookahead ? projectFeasibility(x.next, this.model).feasible : true,
         fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
       }))
-      .filter(x => x.feasible)
-      .sort((a, b) => compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm));
+      .sort((a, b) => {
+        if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
+        return compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm);
+      });
 
     // Act + Validate — accept the best action that advances the reachable outcome
     // (better final than staying) or makes immediate progress; try next on reject.

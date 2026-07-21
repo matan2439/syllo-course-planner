@@ -255,6 +255,42 @@ describe('PlannerWorker — downstream-impact reasoning (a legal action is not a
   });
 });
 
+describe('PlannerWorker — feasibility ranks actions, it must never eliminate every action', () => {
+  // A real board can legitimately span fewer semesters than the full degree
+  // needs (e.g. a "years 3-4 only" board for a student whose prior-hours
+  // record is missing/low): the aggregate degree-hours headroom check in
+  // projectFeasibility then correctly reports that the FULL target can never
+  // be reached from here — but that must never mean the worker takes ZERO
+  // actions and returns a silently empty plan. It must still place whatever
+  // it legally and usefully can (e.g. a needed mandatory course), the same
+  // way a human advisor would build out as much of the plan as fits rather
+  // than refusing to touch it at all.
+  function unreachableTargetModel(): ConstraintModel {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    return {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      // 4 semesters * hardCap 26 = 104h max headroom, far below a 185h target
+      // with 0 prior hours — the full degree literally cannot fit in this
+      // board's visible window, by design of the scenario.
+      degreeRequiredHours: 185, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+  }
+
+  it('still places a trivially legal, needed mandatory course instead of stopping with an empty plan', () => {
+    const w = new PlannerWorker(unreachableTargetModel(), undefined, { lookahead: true });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+    expect(placedCourseIds(w.getPlan()).length).toBeGreaterThan(0);
+  });
+});
+
 describe('PlannerWorker — STOP trace on maxSteps limit', () => {
   it('records a STOP action with maxSteps reason when the step limit is hit before goal', () => {
     // Model needs enough required work that 1 step cannot reach the goal
