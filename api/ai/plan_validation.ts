@@ -221,6 +221,23 @@ function semesterLabel(semesterId: string, labels?: Record<string, string>): str
 }
 
 /**
+ * The semester set an `is_annual` course is expected to occupy, for the
+ * duplicate/pinned-home/completeness checks below: its declared
+ * `spans_semesters` when present, otherwise `effective_allowed_semesters` —
+ * the same confident legal-semester data `addCourseActionsFor`
+ * (planner_actions.ts) falls back to when generating the atomic add action
+ * for a board that omits `spans_semesters`. When neither is known (legality
+ * itself wasn't confident), returns `[]` so these checks stay silent rather
+ * than guess a wrong required set and hard-block a plan — mirrors check 3's
+ * own "only restrict when effective_allowed_semesters is present" rule.
+ */
+function annualSpansFor(info?: PlanValidationCourseInfo): string[] {
+  if (!info?.is_annual) return [];
+  if (info.spans_semesters?.length) return info.spans_semesters;
+  return info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : [];
+}
+
+/**
  * Turn the `dropped` list from `normalizePlanProposal` into readable Hebrew
  * warnings — used when the AI returned a semester_id that couldn't be mapped
  * to a real semester, so the affected courses were left unplaced.
@@ -288,7 +305,7 @@ export function validatePlanProposal(
       // still a genuine duplicate error.
       const priorSems = seenSemesters.get(courseId) ?? [];
       if (priorSems.length > 0) {
-        const spans = info?.is_annual ? (info.spans_semesters ?? []) : [];
+        const spans = annualSpansFor(info);
         const isExpectedAnnualSpan =
           spans.length > 0 &&
           spans.includes(sem.semester_id) &&
@@ -324,7 +341,7 @@ export function validatePlanProposal(
       // spans is equally "home," not a move away from it.
       if (ctx.pinnedCourseIds?.has(courseId)) {
         const currentSem = ctx.currentSemesterByCourseId?.[courseId];
-        const spans = info?.is_annual ? (info.spans_semesters ?? []) : [];
+        const spans = annualSpansFor(info);
         const isAnnualHome = spans.length > 0 && spans.includes(sem.semester_id) && (!currentSem || spans.includes(currentSem));
         if (currentSem && currentSem !== sem.semester_id && !isAnnualHome) {
           errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
@@ -415,7 +432,7 @@ export function validatePlanProposal(
   for (const [courseId, sems] of seenSemesters) {
     const info = ctx.courses[courseId];
     if (!info?.is_annual) continue;
-    const spans = info.spans_semesters ?? [];
+    const spans = annualSpansFor(info);
     if (!spans.length) continue;
     const missing = spans.filter(s => !sems.includes(s));
     if (missing.length > 0) {

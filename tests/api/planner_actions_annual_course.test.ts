@@ -36,7 +36,7 @@
  */
 
 import { enumerateActions, isMovable, addCourseActionsFor } from '../../api/ai/planner_actions';
-import { applyMutation } from '../../api/ai/planner_goals';
+import { applyMutation, isFullyPlaced } from '../../api/ai/planner_goals';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import { validatePlanProposal, type PlanValidationContext } from '../../api/ai/plan_validation';
 import { type ConstraintModel, emptyState } from '../../api/ai/planner_types';
@@ -327,5 +327,119 @@ describe('validatePlanProposal — annual course completeness (Codex P2)', () =>
       },
     );
     expect(result.errors.some(e => e.includes('PINNED'))).toBe(true);
+  });
+});
+
+describe('isFullyPlaced / validatePlanProposal — annual course fallback when spans_semesters is missing (Codex round 4)', () => {
+  const spans = ['year_3_semester_a', 'year_3_semester_b'];
+
+  // An older/partial board record: is_annual is true but spans_semesters was
+  // never populated — only effective_allowed_semesters (this year's actual
+  // offering) is known, exactly the confident-legality case
+  // addCourseActionsFor already falls back to via legalSemestersFor.
+  function annualProfileNoSpans(id: string): CourseProfile {
+    return profile(id, {
+      is_mandatory: true,
+      course_type: 'mandatory',
+      placement_policy: 'flexible',
+      effective_allowed_semesters: spans,
+      hours: 4,
+      is_annual: true,
+      spans_semesters: undefined,
+      count_hours_once: true,
+      root_course_id: id,
+    } as Partial<CourseProfile>);
+  }
+
+  it('isFullyPlaced falls back to the legal-semester set instead of treating a single placement as complete', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileNoSpans('ANNUAL'));
+    const model = baseModel({ profiles });
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANNUAL'];
+    const placed = new Set(['ANNUAL']);
+
+    expect(isFullyPlaced(state, model, placed, 'ANNUAL')).toBe(false);
+
+    state.semesters['year_3_semester_b'] = ['ANNUAL'];
+    expect(isFullyPlaced(state, model, placed, 'ANNUAL')).toBe(true);
+  });
+
+  it('enumerateActions keeps proposing to complete a partially-placed annual course even when spans_semesters is missing', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileNoSpans('ANNUAL'));
+    const model = baseModel({ profiles, requiredMandatoryCourseIds: ['ANNUAL'] });
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANNUAL'];
+
+    const actions = enumerateActions(state, model).filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'ANNUAL');
+    expect(actions).toHaveLength(1);
+    const action = actions[0] as any;
+    expect([action.semesterId, ...(action.alsoSemesterIds ?? [])].sort()).toEqual([...spans].sort());
+  });
+
+  it('validatePlanProposal does not flag a duplicate for an atomic fallback placement across both effective_allowed_semesters', () => {
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+          { semester_id: 'year_3_semester_b', course_ids: ['ANNUAL'] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      {
+        completedCourseIds: new Set(),
+        courses: {
+          ANNUAL: { hours: 4, is_mandatory: true, is_annual: true, spans_semesters: undefined, effective_allowed_semesters: spans },
+        },
+      },
+    );
+    expect(result.errors).toEqual([]);
+  });
+
+  it('validatePlanProposal still flags an incomplete fallback placement as missing the other effective semester', () => {
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+          { semester_id: 'year_3_semester_b', course_ids: [] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      {
+        completedCourseIds: new Set(),
+        courses: {
+          ANNUAL: { hours: 4, is_mandatory: true, is_annual: true, spans_semesters: undefined, effective_allowed_semesters: spans },
+        },
+      },
+    );
+    expect(result.errors.some(e => e.includes('ANNUAL') || e.includes('שנתי'))).toBe(true);
+  });
+
+  it('validatePlanProposal does not hard-block an is_annual course when even effective_allowed_semesters is unknown (stays silent rather than guessing)', () => {
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      {
+        completedCourseIds: new Set(),
+        courses: {
+          ANNUAL: { hours: 4, is_mandatory: true, is_annual: true, spans_semesters: null },
+        },
+      },
+    );
+    expect(result.errors).toEqual([]);
   });
 });

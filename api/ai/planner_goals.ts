@@ -31,6 +31,7 @@ import {
   placedCourseIds,
 } from './planner_types';
 import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
+import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 
 export const GOAL_STACK = [
   'degree_completion',
@@ -73,20 +74,38 @@ function semesterLoads(state: PlanState, model: ConstraintModel): number[] {
 }
 
 /**
+ * The semester set an `is_annual` course must occupy to count as fully
+ * placed: its own `spans_semesters` when the board declares them, otherwise
+ * the same legal-semester fallback `addCourseActionsFor` (planner_actions.ts)
+ * already uses when generating the atomic add action for a board that omits
+ * `spans_semesters` (an older/partial course record with only
+ * effective/program/offered semester data). Duplicated here rather than
+ * imported from planner_actions.ts, which itself imports `isFullyPlaced` from
+ * this module — importing back would be a circular dependency.
+ */
+function effectiveAnnualSpans(model: ConstraintModel, p: NonNullable<ReturnType<ConstraintModel['profiles']['get']>>): string[] {
+  if (p.spans_semesters?.length) return p.spans_semesters;
+  const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+  return semesters.length ? semesters : model.knownSemesterIds;
+}
+
+/**
  * Whether a course counts as "placed" for completion/requirement purposes.
  * An `is_annual` course only counts once it occupies EVERY one of its
- * `spans_semesters` — being present in just one (e.g. a legacy/stale plan
- * saved before annual courses were handled atomically, or any other partial
- * placement) is not complete, even though `placedCourseIds` already contains
- * its id. Every other course counts as placed by presence anywhere, as
- * before. `placed` is the caller's precomputed `Set(placedCourseIds(state))`
- * for efficiency across repeated calls.
+ * effective spans (see `effectiveAnnualSpans`) — being present in just one
+ * (e.g. a legacy/stale plan saved before annual courses were handled
+ * atomically, or any other partial placement) is not complete, even though
+ * `placedCourseIds` already contains its id. Every other course counts as
+ * placed by presence anywhere, as before. `placed` is the caller's
+ * precomputed `Set(placedCourseIds(state))` for efficiency across repeated
+ * calls.
  */
 export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: Set<string>, id: string): boolean {
   if (!placed.has(id)) return false;
   const p = model.profiles.get(id);
-  if (p?.is_annual && p.spans_semesters?.length) {
-    return p.spans_semesters.every(sem => (state.semesters[sem] ?? []).includes(id));
+  if (p?.is_annual) {
+    const spans = effectiveAnnualSpans(model, p);
+    if (spans.length) return spans.every(sem => (state.semesters[sem] ?? []).includes(id));
   }
   return true;
 }
