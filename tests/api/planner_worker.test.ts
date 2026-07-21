@@ -318,6 +318,36 @@ describe('PlannerWorker — feasibility ranks actions, it must never eliminate e
     w.run();
     expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
   });
+
+  // Codex round-2 finding: the blocker-aware sort ran only on the top-N (by
+  // raw immediate score) candidates — topN exists to bound the expensive
+  // estimateFinalScore rollout, not to gate blocker-awareness itself. If
+  // MORE than topN high-immediate-score actions all block the same specific
+  // mandatory course, the non-blocking mandatory-placement action never even
+  // enters the truncated set, so the blocker-aware sort never sees it.
+  it('still finds the non-blocking mandatory action even when more than topN candidates block it', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    // 3 distinct large electives, each legal ONLY in the same single semester
+    // as MAND, each individually blocking it (22 + 5 = 27 > hardCap 26) —
+    // more than topN (2) below.
+    for (const id of ['E1', 'E2', 'E3']) {
+      profiles.set(id, profile(id, { effective_allowed_semesters: ['year_3_semester_a'], hours: 22 }));
+    }
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      degreeRequiredHours: 999, priorHours: 0, // intentionally unreachable
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m, undefined, { lookahead: true, topN: 2, rolloutSteps: 20 });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+  });
 });
 
 describe('PlannerWorker — STOP trace on maxSteps limit', () => {

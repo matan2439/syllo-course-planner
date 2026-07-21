@@ -368,19 +368,34 @@ export class PlannerWorker {
     // course just because the aggregate target was already unreachable
     // anyway. So only non-'degree_hours' blocked reasons count against
     // ranking; hitting only the aggregate check ranks the same as feasible.
-    const top = this.opts.lookahead ? legal.slice(0, this.opts.topN) : legal;
+    //
+    // Codex round-2: feasibility/blocker status must be computed for the
+    // FULL `legal` set and sorted BEFORE truncating to topN — topN exists to
+    // bound the expensive estimateFinalScore rollout below, not to gate
+    // which candidates are even considered for blocker-awareness (that check
+    // is cheap by comparison). Truncating on raw immediate score first can
+    // otherwise let more than topN high-immediate-score blocking actions
+    // (e.g. several large electives that all crowd out the same single
+    // legal semester of a still-needed mandatory course) fill the entire
+    // truncated set, silently excluding the one non-blocking action that
+    // would have avoided sabotaging that mandatory course.
+    const withBlockerStatus = this.opts.lookahead
+      ? legal
+          .map(x => {
+            const report = projectFeasibility(x.next, this.model);
+            return { ...x, feasible: report.feasible, hasRealBlocker: report.blocked.some(b => b !== 'degree_hours') };
+          })
+          .sort((a, b) => {
+            if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
+            return compareScore(b.imm, a.imm);
+          })
+      : legal.map(x => ({ ...x, feasible: true, hasRealBlocker: false }));
+    const top = this.opts.lookahead ? withBlockerStatus.slice(0, this.opts.topN) : withBlockerStatus;
     const evaluated = top
-      .map(x => {
-        const report = this.opts.lookahead
-          ? projectFeasibility(x.next, this.model)
-          : { feasible: true, blocked: [] as string[] };
-        return {
-          ...x,
-          feasible: report.feasible,
-          hasRealBlocker: report.blocked.some(b => b !== 'degree_hours'),
-          fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
-        };
-      })
+      .map(x => ({
+        ...x,
+        fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
+      }))
       .sort((a, b) => {
         if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
         return compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm);
