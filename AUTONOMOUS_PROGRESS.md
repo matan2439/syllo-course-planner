@@ -70,8 +70,20 @@ zero blocking findings, full API suite green throughout (ended the session at
 4. PR #31 — agent-path over-blocking fix (Finding #2) — **B**
 5. PR #32 — max_weekly_hours disclosure fix (Finding #3) — **C**
 
-Rolling-three checks: (12,13,27)=D/D/C, (13,27,31)=D/C/B, (27,31,32)=C/B/C —
-all compliant (≥2 of 3 are A/B/C; ≥1 is A/B).
+Rolling-three checks:
+- (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
+  Pre-existing shortfall from before this session (PR #12/#13 both merged the
+  same day, before #27 existed) — this is the exact gap issue #18 already
+  flagged as the reason PR #14 could not be merged as a 3rd D milestone.
+  Not retroactively fixable; recorded here as an acknowledged historical
+  exception, not a compliant window.
+- (13,27,31) = D/C/B — compliant (2 of 3 are A/B/C; 1 is A/B).
+- (27,31,32) = C/B/C — compliant (3 of 3 are A/B/C; 1 is A/B).
+
+Every window from PR #27 onward is compliant; the one non-compliant window
+predates this session's first action and could not be cured after the fact —
+it's the reason #14 stayed held rather than evidence the rule is being ignored
+going forward.
 
 ## Blockers
 
