@@ -336,11 +336,21 @@ function canRecoverMoreHours(
       const key = recoveryStateKey(candidate, model);
       if (seen.has(key)) continue;
       seen.add(key);
-      visited++;
 
+      // Codex review (round 22) caught that visited was incremented for
+      // EVERY candidate, legal or not — a semester already at/over the hard
+      // cap can have far more than RECOVERY_ROLLOUT_BUDGET individually
+      // illegal ADD candidates (e.g. hundreds of unplaced electives all
+      // illegal in that one over-cap semester), so the whole budget could be
+      // spent discarding those before a legal MOVE (freeing capacity, tried
+      // later in recoveryCandidateActions' own ordering) is ever reached.
       // Mirrors PlannerWorker.step() itself: only a LEGAL resulting state is
-      // ever a real candidate to build further plan on top of.
+      // ever a real candidate to build further plan on top of — an illegal
+      // one is a cheap, immediate dead end, not a genuine search state, so
+      // it shouldn't count against a budget defined (see this function's own
+      // docstring) as "the number of NEW states the search may generate."
       if (!validatePlanState(candidate, model, pinnedHome).valid) continue;
+      visited++;
 
       if (computeDegreeHours(candidate, model) > baselineHours) {
         const rep = validateCandidate(candidate, model, pinnedHome);
