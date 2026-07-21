@@ -391,8 +391,26 @@ function toProposal(
   // only enumerateActions' output made that recoverable case look identical
   // to genuine catalog exhaustion. Checked separately here, mirroring group
   // 4's own filters minus the is_unwanted exclusion.
+  //
+  // Codex review (round 6) caught that report.degreeHours (model.priorHours +
+  // placedHours(finalState)) never includes hours from off-board
+  // personal_status.currently_taking courses — priorHoursFromContext
+  // deliberately excludes total_hours_progress.currently_planned_hours (see
+  // its own comment above), and a currently-taking course is never placed on
+  // the board either, so its hours are invisible to both terms. A student
+  // whose known-completed + board-placed hours fall short only because a
+  // real, already-in-progress course isn't counted yet would see "catalog
+  // exhausted" even though the gap closes once that course finishes — a
+  // false claim that nothing else can help. Credit
+  // model.currentlyPlannedCourseIds' hours (the same set buildModel already
+  // derives from personal_status.currently_taking, model.profiles is the
+  // single source of truth for each course's hours) before deciding the
+  // structural-gap warning is honest.
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? 0), 0);
   if (
     !report.degreeMet &&
+    report.degreeHours + currentlyPlannedHours < model.degreeRequiredHours &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
     report.legal &&

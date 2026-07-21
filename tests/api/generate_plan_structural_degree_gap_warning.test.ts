@@ -279,4 +279,62 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  function currentlyTakingPlanContext(knownCompletedHours: number) {
+    return {
+      program_name: 'בדיקה',
+      semesters: [
+        { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+          { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+        ] },
+        { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+        { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 0, courses: [] },
+        { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+      ],
+      total_hours_progress: { known_completed_hours: knownCompletedHours },
+      personal_status: { completed: [], currently_taking: [{ course_id: 'CUR' }] },
+      mandatory_unplaced: [],
+    };
+  }
+
+  test('8. Codex-caught regression (round 6): an off-board currently-taking MANDATORY course whose hours fully close the gap — must NOT be reported as catalog exhaustion', async () => {
+    // data/boards/test_program_gap_currently_taking_2027.json: same MAND+FLU+SOL
+    // shape as test 1's fixture, plus CUR — a SECOND 4h mandatory course the
+    // user is currently taking (personal_status.currently_taking), never placed
+    // on the board and never re-proposable (buildConstraintModel already
+    // excludes a currently-taking course from requiredMandatoryCourseIds, and
+    // enumerateActions' degree-hour-fill group skips every is_mandatory course
+    // regardless). report.degreeHours (= priorHours + placedHours) has no way
+    // to see CUR's hours at all — MAND(4)+FLU(4)+SOL(4)=12 placed, 169 prior =
+    // 181, exactly 4h short of the 185h target — the same 4h CUR is already
+    // covering in reality. Without crediting it, this would wrongly claim the
+    // catalog is exhausted and nothing else can help.
+    const res = await run({
+      program_id: 'test_program_gap_currently_taking_2027',
+      plan_context: currentlyTakingPlanContext(169),
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    // Still genuinely short in board/completed terms — the generic line stays.
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    // But NOT the stronger "nothing else can help" claim — CUR finishing closes it.
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
+
+  test('8b. regression: currently-taking hours that only PARTIALLY close the gap still leave the structural warning firing', async () => {
+    // Same fixture/shape as test 8, but only 160 prior hours: 12 placed + 160 =
+    // 172, a 13h gap — CUR's 4h isn't enough to close it (176 still < 185), so
+    // the catalog genuinely is exhausted relative to the real (credited) total.
+    const res = await run({
+      program_id: 'test_program_gap_currently_taking_2027',
+      plan_context: currentlyTakingPlanContext(160),
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
 });
