@@ -1,6 +1,18 @@
 # Current — read this first
 
-## 🔧 PR #41 round-5 Codex findings fixed, pushed, CI running (2026-07-21, autonomous scheduled run)
+## 🔧 PR #41: Codex review reached round 9 (2026-07-21, autonomous scheduled run, webhook-continued)
+
+Continuing the entry immediately below (same session, same PR, same day). After rounds 5–8 (all fixed, see below), round 9 came back with TWO more real findings — this Codex reviewer has now found a genuine, narrower gap in the SAME feature (the structural degree-hours-gap warning) on every single round, 9 rounds running. Worth flagging as a pattern: this feature's "one more edge case" tail has been unusually long, which is itself informative — a single warning-suppression condition that has to reason about mandatory/category/hard-exclude/soft-avoid/annual-bundling/currently-taking/multi-semester-legality/staleness simultaneously is inherently failure-prone. If a *tenth* round finds yet another gap, that's a signal to step back and ask whether the underlying approach (a growing AND-of-conditions guard) is the right shape, rather than keep patching — but every fix so far has been genuinely narrow, tested, and RED-verified, so continuing round-by-round remains correct for now.
+
+**Round 9 fixed, pushed as `7a42447`:**
+1. `api/ai/generate-plan.ts`: round 8's `addCourseActionsFor` fix only widened the is_unwanted-only check; the SAME single-best-semester limitation (`bestLegalSemester` picks lowest load only) also affects ordinary (not soft-avoided) electives whenever the cheapest legal semester happens to violate prerequisite timing but a costlier legal semester wouldn't. Broadened the check (renamed `canRecoverViaWiderSearch`) to cover every non-mandatory positive-hour elective, unwanted or not — one exhaustive pass now covers rounds 8 and 9 together. New fixture `test_program_gap_prereq_timing_2027.json`, test 10.
+2. `app/web/semester_board_viewer.html`: `postPlanChangeSummary`'s marker check ran before `_hoursSatisfied` — a stale marker surviving in `warnings_he` from an earlier repair-chain step (repairs append, never clear) could contradict a plan that a LATER repair step already brought to the full required hours. Gated on `!_hoursSatisfied`.
+
+Both RED-verified via `git stash`, replies posted, both threads resolved, fresh `@codex review` requested on `7a42447`. Full API suite 82/82, 1254/1254. `tsc --noEmit` clean. Full UI suite: exact failing-test-set diff (not just counts — this session's own earlier note flagged why that matters) shows zero new failures once committed.
+
+**Still not merged as of this entry** — waiting on round-10 Codex response + CI. Next session (or webhook continuation): once Codex comes back clean, merge (A-classified, no further product decision needed), then resume the mandatory sequence per the entry below.
+
+## 🔧 PR #41 rounds 5-8 Codex findings fixed (2026-07-21, autonomous scheduled run)
 
 Session start: read this file, issue #18, and open PR list. PRs #12/#13 already merged (confirmed via GitHub API, contradicting this file's own stale "held pending D-cap" framing further down — the D-cap question was already resolved by a later session; #14 remains open/held). Found **PR #41** (opened by an autonomous session earlier the same day, `claude/determined-thompson-jkdpvy`) already 4 rounds into Codex review, all 4 resolved with fixes, but round 5 (2 new findings posted at 11:43:52) had no response yet — picked this up as "resume unfinished work before selecting anything new."
 
