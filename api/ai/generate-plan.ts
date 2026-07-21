@@ -267,7 +267,11 @@ function deterministicRationale(finalState: PlanState, model: ConstraintModel): 
  * Option B toProposal — pure function of (finalState, model, initialState, pinnedHome, rationale_he).
  * No PlannerWorker dependency; shared by both the worker and agentic paths.
  */
-function toProposal(
+/** Exported for direct unit testing of the response-shaping/warning logic
+ * (mirrors buildModel/priorHoursFromContext's existing export convention) —
+ * lets a test construct an exact finalState/model combination without
+ * depending on whether the real search would ever converge to it. */
+export function toProposal(
   finalState: PlanState,
   model: ConstraintModel,
   initialState: PlanState,
@@ -486,7 +490,27 @@ function toProposal(
         return next != null && validatePlanState(next, model, pinnedHome).valid;
       });
     });
-    if (!canStillAddHours && !canRecoverViaWiderSearch) {
+    // Codex review (round 17) caught that both checks above only ever try
+    // ADD_COURSE actions, but enumerateActions' own group 6 (planner_actions.ts)
+    // also generates REPLACE_COURSE — swapping a low-preference placed course
+    // for a higher-preference unplaced one. A semester at/near the hard cap can
+    // legally reject a plain ADD (no room) while still legally accepting a
+    // REPLACE that nets more hours (e.g. swap a placed 1h elective for an
+    // unplaced 4h one) — a real, still-recoverable option this exhaustion
+    // check would otherwise miss. Only counts a replace that nets MORE hours
+    // (matching this guard's whole purpose: is there a legal action that could
+    // still help close the degree-hours gap), not every legal replace.
+    const canRecoverViaReplace = !canStillAddHours && !canRecoverViaWiderSearch &&
+      enumerateActions(finalState, model)
+        .filter((a): a is Extract<PlannerMutation, { type: 'REPLACE_COURSE' }> => a.type === 'REPLACE_COURSE')
+        .some(a => {
+          const outHours = model.profiles.get(a.outId)?.hours ?? 0;
+          const inHours = model.profiles.get(a.inId)?.hours ?? 0;
+          if (inHours <= outHours) return false;
+          const next = applyMutation(finalState, a);
+          return next != null && validatePlanState(next, model, pinnedHome).valid;
+        });
+    if (!canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace) {
       // Codex review (round 13) caught that this message's numerator used
       // report.degreeHours alone, even though the guard just above credited
       // currentlyPlannedHours (off-board currently-taking courses) before

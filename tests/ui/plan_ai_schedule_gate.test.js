@@ -671,6 +671,9 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       // takes the honest-message path.
       const _origGetStatus = getDegreeHoursStatusLocal;
       getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
+      // Round 17: no hard structural blocker present, matching a genuine
+      // catalog-exhaustion scenario.
+      const _blockerCauses = [];
 
       const eligibleProposal = { warnings_he: [
         'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
@@ -681,7 +684,9 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         if (!_rescued) {
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
           const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
-          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             const msg =
               'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
               'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
@@ -715,6 +720,7 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
       const _origGetStatus = getDegreeHoursStatusLocal;
       getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
+      const _blockerCauses = [];
 
       const eligibleProposal = { warnings_he: [] };
       const _rescued = false;
@@ -722,7 +728,9 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         if (!_rescued) {
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
           const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
-          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             // not reached in this test
           } else {
             diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
@@ -752,6 +760,7 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
       const _origGetStatus = getDegreeHoursStatusLocal;
       getDegreeHoursStatusLocal = () => ({ satisfied: true, missing_hours: 0 });
+      const _blockerCauses = [];
 
       // Stale marker, as if preserved from an earlier point in the repair
       // chain before the final refill closed the gap.
@@ -763,7 +772,9 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         if (!_rescued) {
           const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
           const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
-          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             // must NOT be reached — the stale marker is no longer honest
           } else {
             diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
@@ -777,16 +788,61 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
     expect(window.eval('window.__diagCalled')).toBe(true);
   });
 
+  // ── Test K-16 ───────────────────────────────────────────────────────────────
+  // Codex-caught regression (round 17): _blockerCauses (computed above, from
+  // the real final _gateResult) can carry a hard structural blocker
+  // (overload/illegal_semester/eligibility/duplicate/annual) alongside a
+  // still-unsatisfied hours status and a (possibly stale) structural-gap
+  // marker. buildPlanningFallback already returned null for exactly that
+  // hard-blocker reason — showing the structural-gap copy here would replace
+  // an actionable "here's the real blocker" explanation with a misleading
+  // "all courses are already assigned" one. diagnoseBuildBlock must still run.
+  test('a hard structural blocker (e.g. overload) takes precedence over the structural-gap message even when hours are unsatisfied and the marker is present', () => {
+    window.eval(`
+      window.__diagCalled = false;
+      const _origDiag = diagnoseBuildBlock;
+      diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
+      const _blockerCauses = ['overload'];
+
+      const eligibleProposal = { warnings_he: [
+        'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
+      ] };
+      const _rescued = false;
+      try {
+        if (!_rescued) {
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            // must NOT be reached — a real hard blocker exists
+          } else {
+            diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
+          }
+        }
+      } finally {
+        diagnoseBuildBlock = _origDiag;
+        getDegreeHoursStatusLocal = _origGetStatus;
+      }
+    `);
+    expect(window.eval('window.__diagCalled')).toBe(true);
+  });
+
   // ── Test K-15 ───────────────────────────────────────────────────────────────
-  // Source-presence check: K-9/K-10/K-10b/K-11/K-12/K-14 simulate the branch
-  // logic (this file's established pattern for code embedded inside
+  // Source-presence check: K-9/K-10/K-10b/K-11/K-12/K-14/K-16 simulate the
+  // branch logic (this file's established pattern for code embedded inside
   // requestPlanProposal — see K-2) rather than executing it in place, so they
   // can't by themselves prove the real HTML actually contains this branch.
-  // Confirms the literal source does, including both round-14/15
-  // fresh-status guards (FAILURE_VALIDATION and FAILURE_NO_ELIGIBLE_COURSES).
-  test('semester_board_viewer.html actually contains both structural-gap checks with the fresh degree-hours guard', () => {
+  // Confirms the literal source does, including the round-14/15 fresh-status
+  // guards (FAILURE_VALIDATION and FAILURE_NO_ELIGIBLE_COURSES) and the
+  // round-17 hard-blocker guard (FAILURE_VALIDATION only — Codex's finding
+  // was specific to that branch, since it's the only one reachable via
+  // _gateResult's non-applicable strict gate).
+  test('semester_board_viewer.html actually contains both structural-gap checks with the fresh degree-hours guard and the hard-blocker guard', () => {
     const html = fs.readFileSync(HTML_PATH, 'utf8');
-    expect(html).toMatch(/!_validationPathHoursStatus\.satisfied && _validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
+    expect(html).toMatch(/!_validationPathHoursStatus\.satisfied && !_validationPathHardBlocker && _validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
     expect(html).toContain('לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים');
     expect(html).toMatch(/!_noDiffHoursStatus\.satisfied && _noDiffWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
   });

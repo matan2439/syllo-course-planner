@@ -29,7 +29,8 @@
  * buildConstraintModel actually source category_requirements_categories.
  */
 
-import handler from '../../api/ai/generate-plan';
+import handler, { toProposal, buildModel } from '../../api/ai/generate-plan';
+import { loadLocalBoardJson } from '../../api/ai/board_loader';
 import { randomUUID } from 'crypto';
 
 const PROGRAM_ID = 'test_program_gap_2027';
@@ -517,5 +518,61 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.semesters.flatMap((s: any) => s.course_ids)).toContain('PLANNED');
     expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
+
+  test('13. Codex-caught regression (round 17): a legal REPLACE_COURSE action (swap a low-preference placed elective for a higher-hour unplaced one) must be recognized as a recoverable option, not reported as catalog exhaustion', () => {
+    // Direct unit test of toProposal (exported specifically for this) instead
+    // of the full handler: verified manually that the real greedy search
+    // ACTUALLY performs this exact replace itself once it converges (it's a
+    // legal, score-improving action, so the search naturally reaches for it
+    // before stopping) — so an end-to-end handler test can't reproduce a
+    // finalState where the replace is still available but untaken. Calling
+    // toProposal directly proves the exhaustion-check logic is correct
+    // regardless of how/whether a given search run happens to take it first
+    // (e.g. a different search strategy, or a run that stops at maxSteps one
+    // step earlier) — the response layer must never claim "nothing left" when
+    // a legal, hours-increasing replace genuinely still exists in finalState.
+    //
+    // data/boards/test_program_gap_replace_2027.json: MAND (4h, fixed) +
+    // FILLER (22h, fixed, year_4_semester_a) + SPARE_SMALL (1h, elective,
+    // legal only in year_4_semester_a, marked unwanted so its preferenceScore
+    // is lower than BIG's neutral score — required for planner_actions.ts's
+    // REPLACE_COURSE generator to propose it) + BIG (4h, elective, legal only
+    // in year_4_semester_a) + FLU/SOL (category candidates). A plain ADD of
+    // BIG would push year_4_semester_a to 23+4=27h, breaching HARD_LOAD_CAP
+    // (26h) — illegal. Replacing SPARE_SMALL(1h) with BIG(4h) nets
+    // 22+4=26h — exactly at the cap, legal.
+    const board = loadLocalBoardJson('test_program_gap_replace_2027');
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 145 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = { unwanted_course_ids: ['SPARE_SMALL'] } as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_replace_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER', 'SPARE_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
+    // The state right before the replace: FLU/SOL (categories) placed,
+    // SPARE_SMALL still placed, BIG still unplaced. 4+4+4+22+1=35 placed +
+    // 145 known = 180h, 5h short of 185 — genuinely incomplete, but the
+    // legal SPARE_SMALL→BIG replace (net +3h) is still a real, untaken
+    // option.
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: ['FLU', 'SOL'],
+        year_4_semester_a: ['FILLER', 'SPARE_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
 });

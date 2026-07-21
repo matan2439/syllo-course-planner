@@ -18604,7 +18604,22 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
           // later repair that closes the gap can't leave this branch still
           // reading an outdated "still short" marker.
           const _validationPathHoursStatus = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
-          if (!_validationPathHoursStatus.satisfied && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          // Codex review (PR #41, round 17) caught that this branch keyed
+          // only on the (now-fresh, round 14) hours status and the marker,
+          // not on WHY the gate actually failed. _gateResult (computed
+          // above, before this branch) can carry a hard structural blocker
+          // (overload/illegal_semester/eligibility/duplicate/annual) — e.g.
+          // client-side repairs that leave the plan still short AND
+          // introduce/preserve one of these — and buildPlanningFallback
+          // already returned null for exactly that reason. Showing the
+          // structural-gap copy in that case would replace an actionable
+          // "here's the real blocker" explanation with a misleading "all
+          // courses are already assigned" one. Reuses the same
+          // HARD/DEGREE-cause split _blockerCauses (computed above) already
+          // established this file's convention for (5833-5834, 18492).
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
             const msg =
               'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
               'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
