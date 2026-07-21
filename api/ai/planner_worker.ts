@@ -28,6 +28,7 @@ import {
   legalSemestersFor,
   bestLegalSemester,
   isExcluded,
+  addCourseActionsFor,
 } from './planner_actions';
 import { validatePlanState, validateCandidate, buildValidationContext } from './planner_validate';
 import type { PlanValidationContext } from './plan_validation';
@@ -223,6 +224,19 @@ export class PlannerWorker {
     }
     if (new Set(placedCourseIds(this.state)).has(courseId)) {
       return this.recordReject(courseId, 'הקורס כבר משובץ.', by);
+    }
+    // Annual (year-long) courses must be placed in every spanned semester
+    // atomically, never split into a single semester — the same rule
+    // enumerateActions applies for the search, reused here so a direct
+    // add_course tool call (the production LlmOrchestrator path) can't place
+    // one half of the pair only. Any explicit semesterId param is ignored
+    // for these courses since splitting them is never a legal choice.
+    if (this.model.profiles.get(courseId)?.is_annual) {
+      const [action] = addCourseActionsFor(this.model, courseId);
+      if (!action) {
+        return this.recordReject(courseId, 'לא נמצא סמסטר חוקי לשיבוץ הקורס.', by);
+      }
+      return this.tryApply(action, 'ADD_COURSE', this.addReason(courseId), by);
     }
     const sem = semesterId ?? bestLegalSemester(this.state, this.model, courseId);
     if (!sem) {

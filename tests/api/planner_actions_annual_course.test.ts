@@ -20,10 +20,25 @@
  * semester only would split the pair, exactly what `course_profile.ts`'s own
  * LLM-facing note ("שנתי — לא ניתן להזזה/פיצול") already documents as
  * intended but the code never enforced.
+ *
+ * Codex review on the first version of this fix (PR #37) correctly found two
+ * more gaps in the same theme, both locked in below:
+ *   P1 — `PlannerWorker.addCourse()` (the production `add_course` AI-SDK tool
+ *        the `LlmOrchestrator` path actually calls) built its own literal
+ *        single-semester ADD_COURSE mutation directly, bypassing
+ *        `enumerateActions`/`addCourseActionsFor` entirely — so even with the
+ *        search-path fix above, a real LLM-driven run could still place an
+ *        annual course in only one semester via that tool.
+ *   P2 — the duplicate-placement validator only fires on a *repeat*, so a
+ *        plan where an annual course is missing one of its spans_semesters
+ *        (e.g. because something split it, or added only one span) was never
+ *        flagged as invalid at all.
  */
 
-import { enumerateActions, isMovable } from '../../api/ai/planner_actions';
+import { enumerateActions, isMovable, addCourseActionsFor } from '../../api/ai/planner_actions';
 import { applyMutation } from '../../api/ai/planner_goals';
+import { PlannerWorker } from '../../api/ai/planner_worker';
+import { validatePlanProposal, type PlanValidationContext } from '../../api/ai/plan_validation';
 import { type ConstraintModel, emptyState } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 
@@ -167,5 +182,104 @@ describe('isMovable — annual courses are never movable or replaceable', () => 
     const actions = enumerateActions(state, model);
     expect(actions.some(a => (a.type === 'MOVE_COURSE' || a.type === 'REPLACE_COURSE') && (a as any).courseId === 'ANNUAL')).toBe(false);
     expect(actions.some(a => a.type === 'REPLACE_COURSE' && (a as any).outId === 'ANNUAL')).toBe(false);
+  });
+});
+
+describe('PlannerWorker.addCourse — annual course (Codex P1: the production add_course tool path)', () => {
+  it('places an annual course in every spanned semester atomically, even though the tool only takes one semesterId', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfile('ANNUAL', spans));
+    const model = baseModel({ profiles, requiredMandatoryCourseIds: ['ANNUAL'] });
+    const worker = new PlannerWorker(model);
+
+    // Simulates the LlmOrchestrator calling the add_course AI-SDK tool
+    // directly (planner_tools.ts), which only ever passes one semesterId.
+    const result = worker.addCourse('ANNUAL', 'year_3_semester_a', 'llm');
+
+    expect(result.accepted).toBe(true);
+    expect(worker.getPlan().semesters['year_3_semester_a']).toContain('ANNUAL');
+    expect(worker.getPlan().semesters['year_3_semester_b']).toContain('ANNUAL');
+  });
+
+  it('places an annual course in every spanned semester when no semesterId is given at all', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfile('ANNUAL', spans));
+    const model = baseModel({ profiles, requiredMandatoryCourseIds: ['ANNUAL'] });
+    const worker = new PlannerWorker(model);
+
+    const result = worker.addCourse('ANNUAL', undefined, 'llm');
+
+    expect(result.accepted).toBe(true);
+    expect(worker.getPlan().semesters['year_3_semester_a']).toContain('ANNUAL');
+    expect(worker.getPlan().semesters['year_3_semester_b']).toContain('ANNUAL');
+  });
+
+  it('rejects an attempt to move an already-placed annual course out of one of its spanned semesters (validation catches the split)', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfile('ANNUAL', spans));
+    const model = baseModel({ profiles, requiredMandatoryCourseIds: ['ANNUAL'] });
+    const initial = emptyState(SEMS);
+    initial.semesters['year_3_semester_a'] = ['ANNUAL'];
+    initial.semesters['year_3_semester_b'] = ['ANNUAL'];
+    const worker = new PlannerWorker(model, initial);
+
+    // A hypothetical direct move_course tool call is not blocked by isMovable
+    // (that only gates the search's own candidate generation) — validation
+    // itself must catch the resulting partial placement.
+    const result = worker.moveCourse('ANNUAL', 'year_4_semester_a', 'llm');
+
+    expect(result.accepted).toBe(false);
+    expect(worker.getPlan().semesters['year_3_semester_a']).toContain('ANNUAL');
+    expect(worker.getPlan().semesters['year_3_semester_b']).toContain('ANNUAL');
+  });
+});
+
+describe('validatePlanProposal — annual course completeness (Codex P2)', () => {
+  function ctxFor(spans: string[]): PlanValidationContext {
+    return {
+      completedCourseIds: new Set(),
+      courses: {
+        ANNUAL: { hours: 4, is_mandatory: true, is_annual: true, spans_semesters: spans },
+      },
+    };
+  }
+
+  it('flags an error when an annual course is placed in only one of its spans_semesters', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+          { semester_id: 'year_3_semester_b', course_ids: [] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      ctxFor(spans),
+    );
+    expect(result.errors.some(e => e.includes('ANNUAL') || e.includes('שנתי'))).toBe(true);
+  });
+
+  it('does not flag an error when an annual course is correctly placed in both spans_semesters', () => {
+    const spans = ['year_3_semester_a', 'year_3_semester_b'];
+    const result = validatePlanProposal(
+      {
+        semesters: [
+          { semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] },
+          { semester_id: 'year_3_semester_b', course_ids: ['ANNUAL'] },
+        ],
+        moves: [],
+        warnings_he: [],
+        rationale_he: 'test',
+        requirements_status: [],
+      },
+      ctxFor(spans),
+    );
+    expect(result.errors).toEqual([]);
   });
 });

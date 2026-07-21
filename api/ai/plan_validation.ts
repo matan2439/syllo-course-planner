@@ -397,6 +397,29 @@ export function validatePlanProposal(
     }
   }
 
+  // 5b. annual (year-long) course completeness — an is_annual course must
+  // appear in EVERY one of its spans_semesters, never just some of them. The
+  // duplicate-placement check above (1) only fires when a *repeat* is seen,
+  // so it cannot catch the opposite failure — a plan (e.g. one produced by a
+  // MOVE_COURSE/REPLACE_COURSE/REMOVE_COURSE call that isn't routed through
+  // the annual-aware ADD_COURSE path) where the course was split down to
+  // just one semester. Without this, such a plan would be reported valid
+  // and complete while silently under-reporting the missing semester's load.
+  for (const [courseId, sems] of seenSemesters) {
+    const info = ctx.courses[courseId];
+    if (!info?.is_annual) continue;
+    const spans = info.spans_semesters ?? [];
+    if (!spans.length) continue;
+    const missing = spans.filter(s => !sems.includes(s));
+    if (missing.length > 0) {
+      const cName = courseLabel(courseId, ctx.courseNames);
+      const missingNames = missing.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
+      errors.push(
+        `קורס ${cName} הוא קורס שנתי המשובץ בחלק מהסמסטרים בלבד — חסר גם ב${missingNames}.`,
+      );
+    }
+  }
+
   // 6. partial-plan check — every not-completed mandatory course must appear,
   // reported with the exact missing course IDs/names (PART C) — never a
   // generic "missing mandatory" message without a concrete list. A

@@ -57,7 +57,7 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
  * one, silently under-reporting the true weekly load of the other. Every
  * other course keeps the prior one-action-per-legal-semester behavior.
  */
-function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
+export function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
   const p = model.profiles.get(id);
   if (p?.is_annual) {
     const spans = (p.spans_semesters?.length ? p.spans_semesters : legalSemestersFor(model, id))
