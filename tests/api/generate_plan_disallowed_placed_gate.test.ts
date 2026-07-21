@@ -19,6 +19,7 @@
  */
 
 import handler from '../../api/ai/generate-plan';
+import { buildAcademicDecision, type BuildAcademicDecisionInput } from '../../api/ai/academic_decision_runtime';
 import { randomUUID } from 'crypto';
 
 const PLAN_CONTEXT_WITH_FLU_PLACED = {
@@ -195,5 +196,58 @@ describe('generate-plan — a hard-excluded, already-placed course is surfaced a
     expect(actions.some((a) => a.includes('להחרגה'))).toBe(true);
     expect(actions.some((a) => a.includes('עומס'))).toBe(false);
     expect(b.academicDecision.explanation.mainRecommendation).toContain('להחרגה');
+  });
+
+});
+
+describe('buildAcademicDecision — overload guidance must survive alongside disallowed-course guidance (Codex review, PR #27)', () => {
+  // Direct unit test of buildAcademicDecision rather than a full handler
+  // request: reproducing a genuine hard-cap overload through the real planner
+  // needs a board fixture with enough course-hours to exceed
+  // ABSOLUTE_MAX_REASONABLE (30h), which the shared MAND/FLU test fixture
+  // (data/boards/test_program_2027.json, 8h total universe) can't provide.
+  // buildAcademicDecision only reads input.errors/blocked, so constructing
+  // those directly exercises the exact branch Codex flagged: the soft
+  // `workloadNotes`-derived `overloaded` signal (based on a user-supplied
+  // max_weekly_hours preference) can't see a hard-cap overload that blocks
+  // without the user ever setting a preference — so the "reduce load" action
+  // must be derived from input.errors itself, not lost when a disallowed
+  // placement is *also* blocking the same plan.
+  function baseInput(errors: string[]): BuildAcademicDecisionInput {
+    return {
+      proposal: {
+        semesters: [{ semester_id: 'year_4_semester_a', course_ids: ['FLU'] }],
+        moves: [],
+        warnings_he: [],
+        rationale_he: '',
+        requirements_status: [],
+      },
+      model: { profiles: new Map([['FLU', { hours: 4, name_he: 'זורם' } as any]]) },
+      blocked: true,
+      errors,
+      clarification: { needsClarification: false, missingInputs: [], questions: [] },
+      context: { completedCourseIds: ['MAND'], currentCourseIds: [], excludedCourseIds: ['FLU'] },
+    };
+  }
+
+  test('disallowed-placement only: suggests removing the excluded course, not reducing load', () => {
+    const view = buildAcademicDecision(baseInput(['קורס לא-זמין שובץ בתוכנית: זורם.']));
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('להחרגה'))).toBe(true);
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('עומס'))).toBe(false);
+  });
+
+  test('overload only: suggests reducing load, not removing an excluded course', () => {
+    const view = buildAcademicDecision(baseInput(['סמסטר year_4_semester_a: 32 ש"ש — חריגה לא סבירה מעל 30. לא ניתן להחיל את התוכנית.']));
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('עומס'))).toBe(true);
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('להחרגה'))).toBe(false);
+  });
+
+  test('both disallowed-placement AND overload: both actions survive', () => {
+    const view = buildAcademicDecision(baseInput([
+      'קורס לא-זמין שובץ בתוכנית: זורם.',
+      'סמסטר year_4_semester_a: 32 ש"ש — חריגה לא סבירה מעל 30. לא ניתן להחיל את התוכנית.',
+    ]));
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('להחרגה'))).toBe(true);
+    expect(view.explanation.suggestedNextActions.some((a) => a.includes('עומס'))).toBe(true);
   });
 });

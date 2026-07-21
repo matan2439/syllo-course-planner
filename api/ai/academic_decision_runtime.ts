@@ -277,8 +277,15 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   // blocked can now also be caused by a hard-excluded course still sitting in
   // the plan (generate-plan.ts's disallowedGate), not only by overload — the
   // explanation/suggested actions must name the actual cause instead of
-  // always pointing at overload guidance.
+  // always pointing at overload guidance. hasOtherBlockingError is computed
+  // from input.errors itself (not workloadNotes' `overloaded`, which only
+  // reflects the user's soft max_weekly_hours preference) so a hard-cap
+  // overload that blocks without the user ever setting a preference is still
+  // recognized — e.g. a plan blocked by BOTH a disallowed placement and a
+  // genuine overload must keep suggesting the load fix, not only the
+  // exclusion fix.
   const hasDisallowedPlacedError = input.errors.some((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
+  const hasOtherBlockingError = input.errors.some((e) => !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
 
   const mainRecommendation = !input.blocked
     ? `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`
@@ -315,8 +322,8 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   if (!interestEvaluation) missingData.push('לא סופק פרופיל תחומי עניין — לא בוצעה הערכת התאמה.');
 
   const suggestedNextActions = buildSuggestedNextActions({
-    blocked: input.blocked,
     overloaded: workloadNotes.some((n) => n.includes('מעל המגבלה')),
+    hasOtherBlockingError,
     disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
@@ -347,8 +354,9 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 }
 
 function buildSuggestedNextActions(args: {
-  blocked: boolean;
   overloaded: boolean;
+  /** True when input.errors contains a blocking cause other than a disallowed-placed course (overload, step-limit, ...). */
+  hasOtherBlockingError: boolean;
   disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
@@ -358,7 +366,7 @@ function buildSuggestedNextActions(args: {
   const actions: string[] = [];
   const missingFields = new Set(args.clarification.missingInputs.map((m) => m.field));
 
-  if (args.overloaded || (args.blocked && !args.disallowedPlaced)) {
+  if (args.overloaded || args.hasOtherBlockingError) {
     actions.push('צמצם/י את העומס השבועי או אשר/י חריגה מפורשת כדי לאפשר את החלת התוכנית.');
   }
   if (args.disallowedPlaced) {
