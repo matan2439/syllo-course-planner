@@ -4,7 +4,49 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-21, session on branch `claude/determined-thompson-76nzgq`._
+_Last updated: 2026-07-21, session on branch `claude/determined-thompson-fewuif`._
+
+## Latest session (`claude/determined-thompson-fewuif`) — audit only, no new code
+
+Ran the standing start-of-session audit (production health, open PRs/branches,
+Codex/CI state, issues, this doc). Findings below; deliberately took no
+autonomous action beyond one safe docs merge, since every substantive item
+found is already a fully-diagnosed, open human decision from a prior session
+— re-investigating them found nothing new to add.
+
+- **Production confirmed healthy, no incident.** Vercel `tau-course-planner`
+  (`prj_8Wn5yOXOxvOSfB6pZ3XVAnf8Y21e`) latest deployment `READY`, zero runtime
+  errors in the last 24h. Still stale at `26500d4` ("Merge PR #11") — confirmed
+  again via the Vercel API — now missing PR #12/#13/#27/#31/#32/#34, i.e. **6**
+  merged, tested, Codex-reviewed fixes including the P0 hard-avoid gate
+  (issue #25 Finding #1, PR #27) are unshipped to real users. Also confirmed
+  via `get_project` on both Vercel projects: neither `tau-course-planner` nor
+  `web` has a linked git repo, so there genuinely is no push-to-deploy path —
+  this isn't a missing-secret problem, it's an unmade infra decision (also
+  ties into issue #18's canonical-project question).
+- **Issue #25 re-checked end to end**: Findings #1 (P0), #2 (High), #3
+  (Medium-High) are all confirmed fixed and merged (PR #27/#31/#32) per the
+  issue's own comment thread — the issue's top-level body is just stale (still
+  describes #1 as unfixed; the comments tell the real story). Only #4
+  (`GOAL_STACK` over-allocation, needs a design decision) and #5 (low severity,
+  not exploitable) remain open. **No live P0 in the Agent today.**
+- **PR #35 merged** (`2b74fd0`) — pure `.remember/current.md` +
+  `AUTONOMOUS_PROGRESS.md` correction recording PR #34's already-merged state
+  (independently verified accurate against the real merge and diff before
+  merging). CI was 3/3 green; no functional change, so merged without waiting
+  on a Codex round for this one docs-only PR.
+- **PR #14/#15 (Decision capability) left untouched** — correctly still held
+  per issue #18's D-milestone-stacking finding; nothing new to add.
+- Did **not** attempt a production deploy via the MCP `deploy_to_vercel` tool
+  (now available in this session's toolset, wasn't in prior sessions'). Not
+  using it because (a) it uploads a raw file tree with no git linkage,
+  permanently breaking `gitCommitSha` traceability for every future
+  deployment inspection, same risk prior sessions flagged, and (b) it
+  wouldn't even resolve the real open question — *which* of the two Vercel
+  projects should be canonical is still undecided (issue #18). Deploying to
+  the wrong/undecided target, or via a lossy mechanism, is a harder-to-reverse
+  mistake than staying stale one more session. Flagging this explicitly as a
+  human decision point rather than guessing.
 
 ## Branch / release state
 
