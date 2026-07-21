@@ -592,4 +592,92 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
     expect(msg).toContain('לא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים');
     expect(msg).not.toContain('חלון הסמסטרים');
   });
+
+  // ── Test K-11 ───────────────────────────────────────────────────────────────
+  // Codex review (PR #41, round 7): a genuinely exhausted-catalog plan is still
+  // below the degree target, so validateFinalPlan's degree_completion check
+  // makes the strict gate non-applicable (FAILURE_VALIDATION), not
+  // SUCCESS_WITH_CHANGES/FAILURE_NO_ELIGIBLE_COURSES — neither of the two
+  // already-fixed call sites (K-9, plan_structural_gap_decision_text) runs in
+  // this branch. Mirrors requestPlanProposal's "only remaining path to
+  // diagnoseBuildBlock" logic: when the server's warnings_he carries the
+  // structural marker, the honest message must be shown instead of falling
+  // through to diagnoseBuildBlock's generic "missing X ש״ש" advice.
+  test('FAILURE_VALIDATION with server structural-gap warning → honest message, diagnoseBuildBlock not reached', () => {
+    window.eval(`
+      window.__lastMsg = null; window.__lastChips = null; window.__diagCalled = false;
+      const _origPost = postAssistantMessage;
+      const _origDiag = diagnoseBuildBlock;
+      postAssistantMessage = (m, chips) => { window.__lastMsg = m; window.__lastChips = chips; _origPost(m, chips); };
+      diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+
+      const eligibleProposal = { warnings_he: [
+        'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
+      ] };
+      let _lastFinalPlanBlockedMsg = null;
+      const _rescued = false;
+      try {
+        if (!_rescued) {
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            const msg =
+              'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
+              'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
+            if (msg !== _lastFinalPlanBlockedMsg) {
+              _lastFinalPlanBlockedMsg = msg;
+              postAssistantMessage(msg, [{ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' }]);
+            }
+          } else {
+            const diag = diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
+            postAssistantMessage(diag.explanation_he, diag.chips);
+          }
+        }
+      } finally {
+        postAssistantMessage = _origPost;
+        diagnoseBuildBlock = _origDiag;
+      }
+    `);
+    const msg = window.eval('window.__lastMsg || ""');
+    expect(msg).toContain('חלון הסמסטרים');
+    expect(window.eval('window.__diagCalled')).toBe(false);
+  });
+
+  // ── Test K-12 ───────────────────────────────────────────────────────────────
+  // Regression: FAILURE_VALIDATION without a structural-gap warning still
+  // falls through to diagnoseBuildBlock as before.
+  test('FAILURE_VALIDATION without a structural-gap warning still falls through to diagnoseBuildBlock', () => {
+    window.eval(`
+      window.__diagCalled = false;
+      const _origDiag = diagnoseBuildBlock;
+      diagnoseBuildBlock = function() { window.__diagCalled = true; return _origDiag.apply(this, arguments); };
+
+      const eligibleProposal = { warnings_he: [] };
+      const _rescued = false;
+      try {
+        if (!_rescued) {
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            // not reached in this test
+          } else {
+            diagnoseBuildBlock({ errors: [], completeness: { reasons: [] } }, {});
+          }
+        }
+      } finally {
+        diagnoseBuildBlock = _origDiag;
+      }
+    `);
+    expect(window.eval('window.__diagCalled')).toBe(true);
+  });
+
+  // ── Test K-13 ───────────────────────────────────────────────────────────────
+  // Source-presence check: K-11/K-12 simulate the branch logic (this file's
+  // established pattern for code embedded inside requestPlanProposal — see
+  // K-2/K-9/K-10) rather than executing it in place, so they can't by
+  // themselves prove the real HTML actually contains this branch. Confirms the
+  // literal source does.
+  test('semester_board_viewer.html actually contains the FAILURE_VALIDATION structural-gap check', () => {
+    const html = fs.readFileSync(HTML_PATH, 'utf8');
+    expect(html).toMatch(/_validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
+    expect(html).toContain('לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים');
+  });
 });

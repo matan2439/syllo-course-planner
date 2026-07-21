@@ -18562,23 +18562,48 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
         }
 
         if (!_rescued) {
-          // Replacement could add nothing either — now describe the gap. This is
-          // the only remaining path to diagnoseBuildBlock.
-          console.log('[planner-e2e-trace]', {
-            messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
-            reason: 'replacement plan added no courses',
-            blockerCauses: _blockerCauses,
-            oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
-          });
-          try {
-            const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
-            const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-            const msg = lines.join('\n');
-            if (msg && msg !== _lastFinalPlanBlockedMsg) {
+          // Codex review (PR #41, round 7): a genuinely exhausted-catalog plan
+          // (every mandatory/category requirement satisfied, degree hours
+          // short, nothing left to add) is still below the degree target, so
+          // validateFinalPlan's degree_completion check makes _gateResult
+          // non-applicable — this branch, not postPlanChangeSummary or the
+          // no-diff branch, is what actually runs in the real
+          // requestPlanProposal flow for that scenario. Neither of those two
+          // (already-fixed) call sites is reachable here, so the server's
+          // structural-gap marker was silently dropped and diagnoseBuildBlock's
+          // generic "missing X ש״ש" message (with its own "add electives"
+          // chips) ran instead — advice that doesn't apply when nothing is
+          // actually addable. Check the same marker here, before falling
+          // through to diagnoseBuildBlock.
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          if (_validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            const msg =
+              'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
+              'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
+            console.log('[planner-e2e-trace]', { messagePath: 'FAILURE_VALIDATION/structural-gap', reason: 'catalog exhausted per server warnings_he' });
+            if (msg !== _lastFinalPlanBlockedMsg) {
               _lastFinalPlanBlockedMsg = msg;
-              postAssistantMessage(msg, diag.chips);
+              postAssistantMessage(msg, [{ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' }]);
             }
-          } catch (_) { /* diagnosis unavailable */ }
+          } else {
+            // Replacement could add nothing either — now describe the gap. This is
+            // the only remaining path to diagnoseBuildBlock.
+            console.log('[planner-e2e-trace]', {
+              messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
+              reason: 'replacement plan added no courses',
+              blockerCauses: _blockerCauses,
+              oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
+            });
+            try {
+              const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
+              const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+              const msg = lines.join('\n');
+              if (msg && msg !== _lastFinalPlanBlockedMsg) {
+                _lastFinalPlanBlockedMsg = msg;
+                postAssistantMessage(msg, diag.chips);
+              }
+            } catch (_) { /* diagnosis unavailable */ }
+          }
         }
       }
     }
