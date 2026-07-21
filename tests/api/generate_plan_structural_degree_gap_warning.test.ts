@@ -535,13 +535,12 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     //
     // data/boards/test_program_gap_replace_2027.json: MAND (4h, fixed) +
     // FILLER (22h, fixed, year_4_semester_a) + SPARE_SMALL (1h, elective,
-    // legal only in year_4_semester_a, marked unwanted so its preferenceScore
-    // is lower than BIG's neutral score — required for planner_actions.ts's
-    // REPLACE_COURSE generator to propose it) + BIG (4h, elective, legal only
-    // in year_4_semester_a) + FLU/SOL (category candidates). A plain ADD of
-    // BIG would push year_4_semester_a to 23+4=27h, breaching HARD_LOAD_CAP
-    // (26h) — illegal. Replacing SPARE_SMALL(1h) with BIG(4h) nets
-    // 22+4=26h — exactly at the cap, legal.
+    // legal only in year_4_semester_a, marked unwanted here — round 18 (see
+    // test 14) later proved the fix doesn't actually depend on this) + BIG
+    // (4h, elective, legal only in year_4_semester_a) + FLU/SOL (category
+    // candidates). A plain ADD of BIG would push year_4_semester_a to
+    // 23+4=27h, breaching HARD_LOAD_CAP (26h) — illegal. Replacing
+    // SPARE_SMALL(1h) with BIG(4h) nets 22+4=26h — exactly at the cap, legal.
     const board = loadLocalBoardJson('test_program_gap_replace_2027');
     const ctx = {
       total_hours_progress: { known_completed_hours: 145 },
@@ -562,6 +561,45 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     // 145 known = 180h, 5h short of 185 — genuinely incomplete, but the
     // legal SPARE_SMALL→BIG replace (net +3h) is still a real, untaken
     // option.
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: ['FLU', 'SOL'],
+        year_4_semester_a: ['FILLER', 'SPARE_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
+
+  test('14. Codex-caught regression (round 18): a SAME-preference (neither wanted nor unwanted) higher-hour replacement must still be recognized — enumerateActions\' own REPLACE_COURSE generator only proposes preference-IMPROVING swaps, invisible to a check built on top of it', () => {
+    // Identical fixture/shape to test 13, but SPARE_SMALL is NOT marked
+    // unwanted here — both SPARE_SMALL and BIG have the same (neutral, 0)
+    // preferenceScore. planner_actions.ts's own REPLACE_COURSE generator
+    // (group 6) requires preferenceScore(inId) > outPref (strictly
+    // preference-IMPROVING) to propose a swap at all, so the round-17 fix
+    // (built directly on enumerateActions' output) would never even see
+    // this candidate — it's invisible upstream, not just filtered out
+    // downstream. The round-18 fix replaced that with its own exhaustive
+    // scan gated ONLY on net hours and legality, independent of preference.
+    const board = loadLocalBoardJson('test_program_gap_replace_2027');
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 145 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = {} as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_replace_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER', 'SPARE_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
     const finalState = {
       semesters: {
         year_3_semester_a: ['MAND'],

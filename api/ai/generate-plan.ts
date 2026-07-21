@@ -40,14 +40,14 @@ import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { incompleteAnnualCourseIds, applyMutation, isFullyPlaced } from './planner_goals';
-import { enumerateActions, isExcluded, addCourseActionsFor } from './planner_actions';
+import { enumerateActions, isExcluded, addCourseActionsFor, isMovable, legalSemestersFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
-import { placedCourseIds } from './planner_types';
+import { placedCourseIds, semesterOf } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
@@ -491,25 +491,40 @@ export function toProposal(
       });
     });
     // Codex review (round 17) caught that both checks above only ever try
-    // ADD_COURSE actions, but enumerateActions' own group 6 (planner_actions.ts)
-    // also generates REPLACE_COURSE — swapping a low-preference placed course
-    // for a higher-preference unplaced one. A semester at/near the hard cap can
-    // legally reject a plain ADD (no room) while still legally accepting a
-    // REPLACE that nets more hours (e.g. swap a placed 1h elective for an
-    // unplaced 4h one) — a real, still-recoverable option this exhaustion
-    // check would otherwise miss. Only counts a replace that nets MORE hours
-    // (matching this guard's whole purpose: is there a legal action that could
-    // still help close the degree-hours gap), not every legal replace.
+    // ADD_COURSE actions, but a semester at/near the hard cap can legally
+    // reject a plain ADD (no room) while still legally accepting a REPLACE
+    // that nets more hours (e.g. swap a placed 1h elective for an unplaced
+    // 4h one) — a real, still-recoverable option this exhaustion check would
+    // otherwise miss.
+    //
+    // Codex review (round 18) then caught that sourcing candidates from
+    // enumerateActions' own group 6 (planner_actions.ts) was too narrow:
+    // that generator only proposes a replacement when
+    // preferenceScore(inId) > outPref (strictly preference-IMPROVING), so a
+    // same-preference (e.g. both neutral) swap that's purely hours-improving
+    // is never generated there at all — invisible to a check built on top of
+    // it. Rebuilt as its own exhaustive scan over every movable placed
+    // course × every unplaced positive-hour non-mandatory course, gated
+    // ONLY on net hours and legality (via the same
+    // applyMutation/validatePlanState pattern as the other two checks) —
+    // preference is irrelevant to this guard's actual question ("is there a
+    // legal action that could still help close the degree-hours gap").
     const canRecoverViaReplace = !canStillAddHours && !canRecoverViaWiderSearch &&
-      enumerateActions(finalState, model)
-        .filter((a): a is Extract<PlannerMutation, { type: 'REPLACE_COURSE' }> => a.type === 'REPLACE_COURSE')
-        .some(a => {
-          const outHours = model.profiles.get(a.outId)?.hours ?? 0;
-          const inHours = model.profiles.get(a.inId)?.hours ?? 0;
-          if (inHours <= outHours) return false;
-          const next = applyMutation(finalState, a);
+      [...placedNow].some(outId => {
+        if (!isMovable(model, outId)) return false;
+        const outHours = model.profiles.get(outId)?.hours ?? 0;
+        const sem = semesterOf(finalState, outId);
+        if (!sem) return false;
+        return [...model.profiles].some(([inId, p]) => {
+          if (p.is_mandatory || p.hours == null || p.hours === 0 || p.hours <= outHours) return false;
+          if (isFullyPlaced(finalState, model, placedNow, inId)) return false;
+          if (model.completedCourseIds.has(inId) || isExcluded(model, inId)) return false;
+          if (!legalSemestersFor(model, inId).includes(sem)) return false;
+          const mutation: PlannerMutation = { type: 'REPLACE_COURSE', outId, inId, semesterId: sem };
+          const next = applyMutation(finalState, mutation);
           return next != null && validatePlanState(next, model, pinnedHome).valid;
         });
+      });
     if (!canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace) {
       // Codex review (round 13) caught that this message's numerator used
       // report.degreeHours alone, even though the guard just above credited
