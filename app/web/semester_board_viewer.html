@@ -18451,7 +18451,15 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       // outside-the-visible-window explanation here too, not just when a
       // diff happens to exist.
       const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-      if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+      // Codex review (round 15) caught the same staleness class here that
+      // round 14 fixed in the FAILURE_VALIDATION branch below: warnings_he
+      // can still carry a structural-gap marker preserved through client
+      // repairs even once the final hour accounting is actually satisfied.
+      // Recompute fresh against the TRUE final eligibleProposal before
+      // trusting the marker, so this no-diff message can't contradict a plan
+      // the gate/hours check just accepted as complete.
+      const _noDiffHoursStatus = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
+      if (!_noDiffHoursStatus.satisfied && _noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
         postStatusMessage(
           'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
           'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',

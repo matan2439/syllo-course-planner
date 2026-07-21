@@ -530,6 +530,12 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       window.__lastStatus = null;
       const _origPost = postStatusMessage;
       postStatusMessage = (m) => { window.__lastStatus = m; _origPost(m); };
+      // Round 15: this branch now recomputes degree-hours status fresh
+      // against the FINAL eligibleProposal before trusting the marker — stub
+      // it "not satisfied" here so this still-genuinely-exhausted scenario
+      // takes the honest-message path.
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
 
       const eligibleProposal = { warnings_he: [
         'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
@@ -541,7 +547,8 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
       if (outcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
         const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-        if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+        const _noDiffHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+        if (!_noDiffHoursStatus.satisfied && _noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
           postStatusMessage(
             'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
             'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
@@ -552,6 +559,7 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       }
 
       postStatusMessage = _origPost;
+      getDegreeHoursStatusLocal = _origGetStatus;
     `);
     const msg = window.eval('window.__lastStatus || ""');
     expect(msg).toContain('חלון הסמסטרים');
@@ -567,6 +575,8 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       window.__lastStatus = null;
       const _origPost = postStatusMessage;
       postStatusMessage = (m) => { window.__lastStatus = m; _origPost(m); };
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: false, missing_hours: 171 });
 
       const eligibleProposal = { warnings_he: [] };
       const before = { 'year_3_semester_a': ['course-X'] };
@@ -576,7 +586,8 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
         ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
       if (outcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
         const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
-        if (_noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+        const _noDiffHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+        if (!_noDiffHoursStatus.satisfied && _noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
           postStatusMessage(
             'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
             'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
@@ -587,10 +598,54 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
       }
 
       postStatusMessage = _origPost;
+      getDegreeHoursStatusLocal = _origGetStatus;
     `);
     const msg = window.eval('window.__lastStatus || ""');
     expect(msg).toContain('לא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים');
     expect(msg).not.toContain('חלון הסמסטרים');
+  });
+
+  // ── Test K-10b ──────────────────────────────────────────────────────────────
+  // Codex-caught regression (round 15): the same staleness class round 14
+  // fixed in the FAILURE_VALIDATION branch also applies here — a stale
+  // structural-gap marker preserved in warnings_he through client repairs
+  // must NOT produce a "remaining gap" message once the final degree-hours
+  // status is actually satisfied.
+  test('a stale structural-gap marker in the no-diff branch does not override the generic message once final hours are satisfied', () => {
+    window.eval(`
+      window.__lastStatus = null;
+      const _origPost = postStatusMessage;
+      postStatusMessage = (m) => { window.__lastStatus = m; _origPost(m); };
+      const _origGetStatus = getDegreeHoursStatusLocal;
+      getDegreeHoursStatusLocal = () => ({ satisfied: true, missing_hours: 0 });
+
+      const eligibleProposal = { warnings_he: [
+        'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (14/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.',
+      ] };
+      const before = { 'year_3_semester_a': ['course-X'] };
+      const after  = { 'year_3_semester_a': ['course-X'] };
+      const diff = _computeBoardDiff(before, after);
+      const outcome = (diff.added.length > 0 || diff.removed.length > 0 || diff.moved.length > 0)
+        ? 'SUCCESS_WITH_CHANGES' : 'FAILURE_NO_ELIGIBLE_COURSES';
+      if (outcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
+        const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+        const _noDiffHoursStatus = getDegreeHoursStatusLocal(null, eligibleProposal.semesters || [], {});
+        if (!_noDiffHoursStatus.satisfied && _noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+          postStatusMessage(
+            'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\\n' +
+            'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
+          );
+        } else {
+          postStatusMessage('לא בוצעו שינויים בלוח.\\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+        }
+      }
+
+      postStatusMessage = _origPost;
+      getDegreeHoursStatusLocal = _origGetStatus;
+    `);
+    const msg = window.eval('window.__lastStatus || ""');
+    expect(msg).not.toContain('חלון הסמסטרים');
+    expect(msg).toContain('לא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים');
   });
 
   // ── Test K-11 ───────────────────────────────────────────────────────────────
@@ -723,14 +778,16 @@ describe('Semester ID normalization and _computeBoardDiff', () => {
   });
 
   // ── Test K-15 ───────────────────────────────────────────────────────────────
-  // Source-presence check: K-11/K-12/K-14 simulate the branch logic (this
-  // file's established pattern for code embedded inside requestPlanProposal —
-  // see K-2/K-9/K-10) rather than executing it in place, so they can't by
-  // themselves prove the real HTML actually contains this branch. Confirms
-  // the literal source does, including the round-14 fresh-status guard.
-  test('semester_board_viewer.html actually contains the FAILURE_VALIDATION structural-gap check with the fresh degree-hours guard', () => {
+  // Source-presence check: K-9/K-10/K-10b/K-11/K-12/K-14 simulate the branch
+  // logic (this file's established pattern for code embedded inside
+  // requestPlanProposal — see K-2) rather than executing it in place, so they
+  // can't by themselves prove the real HTML actually contains this branch.
+  // Confirms the literal source does, including both round-14/15
+  // fresh-status guards (FAILURE_VALIDATION and FAILURE_NO_ELIGIBLE_COURSES).
+  test('semester_board_viewer.html actually contains both structural-gap checks with the fresh degree-hours guard', () => {
     const html = fs.readFileSync(HTML_PATH, 'utf8');
     expect(html).toMatch(/!_validationPathHoursStatus\.satisfied && _validationPathWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
     expect(html).toContain('לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים');
+    expect(html).toMatch(/!_noDiffHoursStatus\.satisfied && _noDiffWarnings\.some\(w => STRUCTURAL_GAP_WARNING_RE\.test\(w\)\)/);
   });
 });
