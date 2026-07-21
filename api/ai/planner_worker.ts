@@ -232,8 +232,15 @@ export class PlannerWorker {
     // atomically, never split into a single semester — the same rule
     // enumerateActions applies for the search, reused here so a direct
     // add_course tool call (the production LlmOrchestrator path) can't place
-    // one half of the pair only. Any explicit semesterId param is ignored
-    // for these courses since splitting them is never a legal choice.
+    // one half of the pair only. When spans_semesters/legal data is
+    // confident, addCourseActionsFor returns exactly one atomic bundle and
+    // any explicit semesterId is intentionally ignored (splitting is never
+    // legal). When it isn't confident, addCourseActionsFor instead falls
+    // back to one alternative ADD_COURSE per legal semester — same shape as
+    // a non-annual course — so an explicitly requested semesterId (or, when
+    // none is given/legal, the same load-based choice bestLegalSemester
+    // makes below) must be honored among those alternatives, not just the
+    // first one blindly.
     //
     // Checked BEFORE the generic "already placed" rejection below: a course
     // already placed in ONE of its spanned semesters only (e.g. stale data
@@ -242,9 +249,16 @@ export class PlannerWorker {
     // case fills in only what's missing and rejects as a true no-op only
     // once every span is already present.
     if (this.model.profiles.get(courseId)?.is_annual) {
-      const [action] = addCourseActionsFor(this.model, courseId);
-      if (!action) {
+      const actions = addCourseActionsFor(this.model, courseId);
+      if (!actions.length) {
         return this.recordReject(courseId, 'לא נמצא סמסטר חוקי לשיבוץ הקורס.', by);
+      }
+      let action = actions[0];
+      if (actions.length > 1) {
+        const bySemester = new Map(actions.map(a => [(a as any).semesterId as string, a]));
+        const chosenSem: string | null =
+          semesterId && bySemester.has(semesterId) ? semesterId : bestLegalSemester(this.state, this.model, courseId);
+        action = (chosenSem ? bySemester.get(chosenSem) : undefined) ?? actions[0];
       }
       return this.tryApply(action, 'ADD_COURSE', this.addReason(courseId), by);
     }

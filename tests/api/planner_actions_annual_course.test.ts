@@ -487,3 +487,46 @@ describe('addCourseActionsFor / isFullyPlaced — annual course with no confiden
     expect(isFullyPlaced(state, model, placed, 'ANNUAL')).toBe(true);
   });
 });
+
+describe('PlannerWorker.addCourse — unbundled annual fallback honors requested/best semester (Codex round 6)', () => {
+  function annualProfileUnknownSpans(id: string): CourseProfile {
+    return profile(id, {
+      is_mandatory: true,
+      course_type: 'elective',
+      placement_policy: 'elective',
+      hours: 4,
+      is_annual: true,
+      spans_semesters: undefined,
+      count_hours_once: true,
+      root_course_id: id,
+    } as Partial<CourseProfile>);
+  }
+
+  it('honors an explicitly requested legal semester instead of always taking the first candidate', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileUnknownSpans('ANNUAL'));
+    const model = baseModel({ profiles });
+    const worker = new PlannerWorker(model);
+
+    const result = worker.addCourse('ANNUAL', 'year_4_semester_b', 'llm');
+
+    expect(result.accepted).toBe(true);
+    expect(worker.getPlan().semesters['year_4_semester_b']).toContain('ANNUAL');
+    expect(worker.getPlan().semesters['year_3_semester_a']).not.toContain('ANNUAL');
+  });
+
+  it('falls back to the lowest-load legal semester (like bestLegalSemester) when no semesterId is given', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileUnknownSpans('ANNUAL'));
+    profiles.set('FILLER', profile('FILLER', { hours: 8 }));
+    const model = baseModel({ profiles });
+    const initial = emptyState(SEMS);
+    initial.semesters['year_3_semester_a'] = ['FILLER']; // makes this semester heavier than the others
+    const worker = new PlannerWorker(model, initial);
+
+    const result = worker.addCourse('ANNUAL', undefined, 'llm');
+
+    expect(result.accepted).toBe(true);
+    expect(worker.getPlan().semesters['year_3_semester_a']).not.toContain('ANNUAL');
+  });
+});
