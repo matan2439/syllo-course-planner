@@ -1,5 +1,21 @@
 # Current — read this first
 
+## 🔧 PR #34 opened for issue #28 (client-side stale block-state); PR #30 closed superseded, PR #33 merged (2026-07-21)
+
+New session, base reset from stale `main` to `ui/frontend-modernization` HEAD (recurring provisioning issue, again).
+
+**Queue cleanup first:** PR #30 (docs, "Finding #2 needs a decision") had a real git conflict against current base and its content was superseded the same day by PR #31 actually shipping that fix — closed without merging, analysis preserved in issue #25's thread. PR #33 (docs, Finding #4 investigation + progress handoff) was Codex-clean on its final commit and merged cleanly (`8ad6eee`).
+
+**Re-checked Finding #4 before picking a milestone**: the entry below is still accurate — no new mitigation found that avoids a `GOAL_STACK` reordering/reweighting decision. Specifically checked whether "cap goal-1's marginal near the target" (this entry's own suggested starting point) would work in the general case and confirmed it wouldn't: it only helps once the running total is close to `degreeRequiredHours - remainingMandatoryHours`; a large elective can still outrank a small mandatory course early in the search, far from that boundary, since goal 1 ranks strictly above goal 2a regardless of proximity to any cap. Still a genuine product/design tradeoff, not attempted.
+
+**Picked issue #28 instead** (client-side stale `blocked`/`overloadBlocked` after `applyExplicitAvoidPostFilterLocal` locally resolves a disallowed-placement error) — a real, scoped bug with a suggested direction already in the issue, no product decision required. Implemented `resolveStaleDisallowedBlockLocal()` (pure function, mirrors the existing `hardOverloadRemains` pattern), moved `combinedErrors`/`overloadBlocked` computation to run after the avoid-filter resolution instead of before. 6 new unit tests via this suite's extracted-function pattern (no fixture dependency) — RED-verified, all GREEN. Full API suite 1202/1202 (untouched, no `.ts` changed). Full `jest.ui.config.js` suite: still 386 failing (identical count to the pre-existing issue #20 fixture-gap baseline; 817 total now, up from 811, with all 6 new tests passing) — zero regressions. `tsc --noEmit` clean.
+
+**Honest limitation**: could not do live dev-server/browser verification of this fix — the exact repro scenario needs the same gitignored `supabase_board_backup_2027_pre_sync.json` fixture that already blocks every full-page test in this suite (confirmed by running several directly: identical `ENOENT`, before and after this change). Not fabricating student board data to route around a decision (issue #20) that's explicitly still pending. Documented this gap in the PR rather than claiming full verification.
+
+**PR #34 opened**, Codex review requested, not yet merged as of this entry.
+
+**Re-confirmed the Vercel production-deploy gap is still open** (3rd+ session to confirm this): production is still pinned to `26500d4`, unchanged. No session yet has had Vercel CLI credentials to fix this. This is now the single highest-leverage blocker — real, merged, Codex-reviewed fixes are piling up unshipped.
+
 ## 🔎 Finding #4 investigated, deliberately NOT implemented this session (2026-07-21)
 
 Same session as the two entries below (Findings #1–#3 all fixed and merged: PR #27, #31, #32).
