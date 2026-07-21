@@ -151,6 +151,10 @@ export interface PlanValidationCourseInfo {
   prerequisites?: string[];
   /** True if this is a mandatory (חובה) course. */
   is_mandatory?: boolean;
+  /** True for a year-long course that occupies every one of spans_semesters together (never a duplicate). */
+  is_annual?: boolean;
+  /** The semester ids an is_annual course spans together. */
+  spans_semesters?: string[] | null;
 }
 
 export interface PlanValidationContext {
@@ -217,6 +221,23 @@ function semesterLabel(semesterId: string, labels?: Record<string, string>): str
 }
 
 /**
+ * The semester set an `is_annual` course is expected to occupy, for the
+ * duplicate/pinned-home/completeness checks below: its declared
+ * `spans_semesters` when present, otherwise `effective_allowed_semesters` —
+ * the same confident legal-semester data `addCourseActionsFor`
+ * (planner_actions.ts) falls back to when generating the atomic add action
+ * for a board that omits `spans_semesters`. When neither is known (legality
+ * itself wasn't confident), returns `[]` so these checks stay silent rather
+ * than guess a wrong required set and hard-block a plan — mirrors check 3's
+ * own "only restrict when effective_allowed_semesters is present" rule.
+ */
+function annualSpansFor(info?: PlanValidationCourseInfo): string[] {
+  if (!info?.is_annual) return [];
+  if (info.spans_semesters?.length) return info.spans_semesters;
+  return info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : [];
+}
+
+/**
  * Turn the `dropped` list from `normalizePlanProposal` into readable Hebrew
  * warnings — used when the AI returned a semester_id that couldn't be mapped
  * to a real semester, so the affected courses were left unplaced.
@@ -250,7 +271,7 @@ export function validatePlanProposal(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const seen = new Map<string, string>(); // course_id -> semester_id
+  const seenSemesters = new Map<string, string[]>(); // course_id -> semester_ids seen so far, in order
   const placedCourseIds = new Set<string>();
 
   // Issue 4 — chronological order of semesters in the proposal + each course's
@@ -271,16 +292,34 @@ export function validatePlanProposal(
 
     for (const courseId of sem.course_ids) {
       const cName = courseLabel(courseId, ctx.courseNames);
+      const info = ctx.courses[courseId];
 
-      // 1. duplicate placement across semesters
-      if (seen.has(courseId)) {
-        const firstSemName = semesterLabel(seen.get(courseId)!, ctx.semesterLabels);
-        errors.push(
-          `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
-        );
-      } else {
-        seen.set(courseId, sem.semester_id);
+      // 1. duplicate placement across semesters — except an is_annual course
+      // legitimately occupying every one of its spans_semesters together
+      // (e.g. a year-long lab meeting in both halves of the year). That is
+      // not a duplicate: it's counted once toward degree hours (see
+      // planner_goals.ts's placedHours) but must appear in each spanned
+      // semester's own weekly load. Anything beyond that exact expected
+      // set — a repeat within the same semester, a semester outside
+      // spans_semesters, or more occurrences than spans_semesters has — is
+      // still a genuine duplicate error.
+      const priorSems = seenSemesters.get(courseId) ?? [];
+      if (priorSems.length > 0) {
+        const spans = annualSpansFor(info);
+        const isExpectedAnnualSpan =
+          spans.length > 0 &&
+          spans.includes(sem.semester_id) &&
+          !priorSems.includes(sem.semester_id) &&
+          priorSems.every(s => spans.includes(s)) &&
+          priorSems.length < spans.length;
+        if (!isExpectedAnnualSpan) {
+          const firstSemName = semesterLabel(priorSems[0], ctx.semesterLabels);
+          errors.push(
+            `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
+          );
+        }
       }
+      seenSemesters.set(courseId, [...priorSems, sem.semester_id]);
       placedCourseIds.add(courseId);
 
       // 2. completed course must not be (re-)scheduled
@@ -294,15 +333,20 @@ export function validatePlanProposal(
         errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
-      // 2b. pinned course must remain in its current semester
+      // 2b. pinned course must remain in its current semester. An is_annual
+      // course pinned across its full spans_semesters is never "moved" by
+      // appearing in each of them — currentSemesterByCourseId only records
+      // one representative home semester per pinned id (buildPinnedHome
+      // stops at the first match), so for an annual course any of its own
+      // spans is equally "home," not a move away from it.
       if (ctx.pinnedCourseIds?.has(courseId)) {
         const currentSem = ctx.currentSemesterByCourseId?.[courseId];
-        if (currentSem && currentSem !== sem.semester_id) {
+        const spans = annualSpansFor(info);
+        const isAnnualHome = spans.length > 0 && spans.includes(sem.semester_id) && (!currentSem || spans.includes(currentSem));
+        if (currentSem && currentSem !== sem.semester_id && !isAnnualHome) {
           errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
         }
       }
-
-      const info = ctx.courses[courseId];
 
       // 3. placement must be within effective_allowed_semesters
       if (info?.effective_allowed_semesters && info.effective_allowed_semesters.length > 0) {
@@ -373,6 +417,29 @@ export function validatePlanProposal(
     } else if (semHours > softLoadMax) {
       warnings.push(
         `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
+      );
+    }
+  }
+
+  // 5b. annual (year-long) course completeness — an is_annual course must
+  // appear in EVERY one of its spans_semesters, never just some of them. The
+  // duplicate-placement check above (1) only fires when a *repeat* is seen,
+  // so it cannot catch the opposite failure — a plan (e.g. one produced by a
+  // MOVE_COURSE/REPLACE_COURSE/REMOVE_COURSE call that isn't routed through
+  // the annual-aware ADD_COURSE path) where the course was split down to
+  // just one semester. Without this, such a plan would be reported valid
+  // and complete while silently under-reporting the missing semester's load.
+  for (const [courseId, sems] of seenSemesters) {
+    const info = ctx.courses[courseId];
+    if (!info?.is_annual) continue;
+    const spans = annualSpansFor(info);
+    if (!spans.length) continue;
+    const missing = spans.filter(s => !sems.includes(s));
+    if (missing.length > 0) {
+      const cName = courseLabel(courseId, ctx.courseNames);
+      const missingNames = missing.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
+      errors.push(
+        `קורס ${cName} הוא קורס שנתי המשובץ בחלק מהסמסטרים בלבד — חסר גם ב${missingNames}.`,
       );
     }
   }

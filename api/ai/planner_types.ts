@@ -71,7 +71,18 @@ export interface PlanState {
 
 /** A candidate next action the worker may take. */
 export type PlannerMutation =
-  | { type: 'ADD_COURSE'; courseId: string; semesterId: string }
+  | {
+      type: 'ADD_COURSE';
+      courseId: string;
+      semesterId: string;
+      /**
+       * Other semesters this same course must land in atomically, alongside
+       * `semesterId` — used for `is_annual` (year-long) courses that span
+       * multiple semesters together and must never be split into a
+       * single-semester choice. Absent for every ordinary course.
+       */
+      alsoSemesterIds?: string[];
+    }
   | { type: 'REMOVE_COURSE'; courseId: string }
   | { type: 'MOVE_COURSE'; courseId: string; toSemester: string }
   | { type: 'REPLACE_COURSE'; outId: string; inId: string; semesterId: string }

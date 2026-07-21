@@ -39,6 +39,7 @@ import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
+import { incompleteAnnualCourseIds } from './planner_goals';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -226,6 +227,29 @@ function disallowedGate(
 }
 
 /**
+ * An `is_annual` (year-long) course must occupy EVERY one of its effective
+ * spans in the FINAL plan. planner_worker.ts's step()/run() repairs this
+ * whenever a legal repair exists, but when every remaining span would breach
+ * the hard cap (or any other legal obstruction blocks the repair), the loop
+ * falls through to the normal scored search and can stop with the course
+ * still split across only some of its semesters — validateCandidate
+ * (via plan_validation.ts's own annual-completeness check) already detects
+ * this, but that report is internal to toProposal and never reaches
+ * blockingErrors. Mirrors disallowedGate's pattern: re-derive the same
+ * signal against the FINAL placed set so an unrepaired split is reported as
+ * a real blocking error instead of a plan silently reporting blocked:false.
+ */
+function annualCompletenessGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  return incompleteAnnualCourseIds(state, model).map(
+    id => `קורס שנתי (${model.profiles.get(id)?.name_he ?? id}) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.`,
+  );
+}
+
+/**
  * Deterministic Hebrew rationale — used when ExplanationCapability is absent or
  * throws (dev mode / LLM failure fallback).
  */
@@ -252,14 +276,29 @@ function toProposal(
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
     .map(id => ({ semester_id: id, course_ids: finalState.semesters[id] }));
 
-  // moves: diff initial board against final plan
-  const initialSemOf: Record<string, string> = {};
-  for (const [sem, ids] of Object.entries(initialState.semesters)) for (const id of ids) initialSemOf[id] = sem;
+  // moves: diff initial board against final plan. An id can legitimately start
+  // in more than one semester at once (an is_annual course spans all of its
+  // semesters together) — track every initial semester per id, not just the
+  // last one seen, so an unchanged annual placement is never misreported as
+  // having "moved" out of whichever semester happened to be seen first.
+  const initialSemsOf: Record<string, string[]> = {};
+  for (const [sem, ids] of Object.entries(initialState.semesters)) {
+    for (const id of ids) (initialSemsOf[id] ??= []).push(sem);
+  }
   const moves: Array<{ course_id: string; from: string | null; to: string }> = [];
   for (const [sem, ids] of Object.entries(finalState.semesters)) {
     for (const id of ids) {
-      const from = initialSemOf[id] ?? null;
-      if (from !== sem) moves.push({ course_id: id, from, to: sem });
+      const fromSems = initialSemsOf[id];
+      if (fromSems?.includes(sem)) continue;
+      // A genuine move means the course no longer occupies ANY of its
+      // original semesters in the final plan. When it still does (e.g.
+      // repairing a partially-placed is_annual course by adding its missing
+      // span alongside the unchanged original one), this is an ADDITION, not
+      // a move away from a semester it never actually left — reporting a
+      // `from` there would let a consumer that applies `moves` literally
+      // remove the course from a semester it's still supposed to occupy.
+      const stillInOriginalSemester = fromSems?.some(s => (finalState.semesters[s] ?? []).includes(id));
+      moves.push({ course_id: id, from: stillInOriginalSemester ? null : (fromSems?.[0] ?? null), to: sem });
     }
   }
 
@@ -486,6 +525,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const blockingErrors = [
     ...overloadGate(proposal.semesters, model, effectivePreferences),
     ...disallowedGate(proposal.semesters, model),
+    ...annualCompletenessGate(proposal.semesters, model),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via

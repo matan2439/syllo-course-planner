@@ -119,6 +119,31 @@ describe('TauPolicyProvider.isGoal', () => {
     const state: PlanState = { semesters: { s1: ['c1', 'c2'], s2: [] } };
     expect(policy.isGoal(state, model)).toBe(true);
   });
+
+  // Codex round 9 (PR #37): a placed is_annual course that is NOT mandatory
+  // and NOT a category candidate (a plain elective) is invisible to
+  // degreeMet/missingMandatory/unsatisfiedCategories/overCapSemesters —
+  // without incompleteAnnual, isGoal would return true with the course only
+  // half-placed, so the agentic (beam search) path would stop at step 0 and
+  // never get a chance to complete it, exactly the gap the Worker path's own
+  // isGoalReached/hasIncompleteAnnual closes for the default path.
+  test('returns false when a placed is_annual elective occupies only one of its two known legal semesters', () => {
+    const model = makeModel(
+      [makeProfile('ANNUAL', { is_mandatory: false, is_annual: true, spans_semesters: ['s1', 's2'], effective_allowed_semesters: ['s1', 's2'], hours: 4 })],
+      { degreeRequiredHours: 1, priorHours: 100, hardCap: 20 },
+    );
+    const state: PlanState = { semesters: { s1: ['ANNUAL'], s2: [] } };
+    expect(policy.isGoal(state, model)).toBe(false);
+  });
+
+  test('returns true once that annual elective occupies both known legal semesters', () => {
+    const model = makeModel(
+      [makeProfile('ANNUAL', { is_mandatory: false, is_annual: true, spans_semesters: ['s1', 's2'], effective_allowed_semesters: ['s1', 's2'], hours: 4 })],
+      { degreeRequiredHours: 1, priorHours: 100, hardCap: 20 },
+    );
+    const state: PlanState = { semesters: { s1: ['ANNUAL'], s2: ['ANNUAL'] } };
+    expect(policy.isGoal(state, model)).toBe(true);
+  });
 });
 
 describe('TauPolicyProvider.score / compareScore — delegation', () => {

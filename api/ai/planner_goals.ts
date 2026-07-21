@@ -31,6 +31,7 @@ import {
   placedCourseIds,
 } from './planner_types';
 import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
+import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 
 export const GOAL_STACK = [
   'degree_completion',
@@ -45,11 +46,21 @@ export const GOAL_STACK = [
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
 
-/** Total weekly hours placed, deduplicating annual course pairs by root_course_id. */
+/**
+ * Total weekly hours placed, deduplicating:
+ *  - a single is_annual course id occupying more than one semester slot (the
+ *    atomic multi-semester placement this file's is_annual handling produces
+ *    — same course id, multiple `state.semesters` entries; must count once)
+ *  - the older annual-pair scheme of two distinct course ids sharing a
+ *    `root_course_id` with `count_hours_once` set.
+ */
 export function placedHours(state: PlanState, model: ConstraintModel): number {
+  const seenIds = new Set<string>();
   const seenRoots = new Set<string>();
   let sum = 0;
   for (const cid of placedCourseIds(state)) {
+    if (seenIds.has(cid)) continue;
+    seenIds.add(cid);
     const p = model.profiles.get(cid);
     if (!p) continue;
     if (p.count_hours_once && p.root_course_id) {
@@ -72,19 +83,61 @@ function semesterLoads(state: PlanState, model: ConstraintModel): number[] {
   );
 }
 
-function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
+/**
+ * The semester set an `is_annual` course must occupy to count as fully
+ * placed: its own `spans_semesters` when the board declares them, otherwise
+ * `getLegalSemesters`'s result when it is CONFIDENT (this year's actual
+ * effective/program offering) — the same confident-only fallback
+ * `addCourseActionsFor` (planner_actions.ts) uses when generating the atomic
+ * add action. Returns `null` when neither is known: with no confident
+ * legality data at all, we can't say how many semesters the course really
+ * spans, so completeness falls back to "placed anywhere," the same safe
+ * default this codebase used before atomic bundling existed (mirrors
+ * `plan_validation.ts`'s `annualSpansFor`, which stays silent for the same
+ * reason). Duplicated here rather than imported from planner_actions.ts,
+ * which itself imports `isFullyPlaced` from this module — importing back
+ * would be a circular dependency.
+ */
+function effectiveAnnualSpans(model: ConstraintModel, p: NonNullable<ReturnType<ConstraintModel['profiles']['get']>>): string[] | null {
+  if (p.spans_semesters?.length) return p.spans_semesters;
+  const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+  return legal.confident ? legal.semesters : null;
+}
+
+/**
+ * Whether a course counts as "placed" for completion/requirement purposes.
+ * An `is_annual` course only counts once it occupies EVERY one of its
+ * effective spans (see `effectiveAnnualSpans`) — being present in just one
+ * (e.g. a legacy/stale plan saved before annual courses were handled
+ * atomically, or any other partial placement) is not complete, even though
+ * `placedCourseIds` already contains its id. Every other course counts as
+ * placed by presence anywhere, as before. `placed` is the caller's
+ * precomputed `Set(placedCourseIds(state))` for efficiency across repeated
+ * calls.
+ */
+export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: Set<string>, id: string): boolean {
+  if (!placed.has(id)) return false;
+  const p = model.profiles.get(id);
+  if (p?.is_annual) {
+    const spans = effectiveAnnualSpans(model, p);
+    if (spans && spans.length) return spans.every(sem => (state.semesters[sem] ?? []).includes(id));
+  }
+  return true;
+}
+
+export function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
   let n = 0;
   for (const cat of model.categories) {
-    const got = cat.candidateIds.filter(id => placed.has(id)).length;
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) n++;
   }
   return n;
 }
 
-function mandatoryPlaced(state: PlanState, model: ConstraintModel): number {
+export function mandatoryPlaced(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
-  return model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length;
+  return model.requiredMandatoryCourseIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
 }
 
 /**
@@ -152,6 +205,34 @@ export interface CompletenessAssessment {
   unsatisfiedCategories: string[];
   /** semester ids whose total placed hours exceed model.hardCap. */
   overCapSemesters: string[];
+  /**
+   * Ids of placed `is_annual` courses not yet occupying every one of their
+   * effective spans. A mandatory or category-candidate annual course already
+   * surfaces here indirectly (via missingMandatory/unsatisfiedCategories,
+   * since isFullyPlaced backs both), but a plain-elective annual course has
+   * no other completeness signal — without this, a search/loop driven only
+   * by degreeMet/missingMandatory/unsatisfiedCategories/overCapSemesters
+   * would consider the goal reached with the course still split.
+   */
+  incompleteAnnual: string[];
+}
+
+/**
+ * Ids of every placed `is_annual` course that doesn't yet occupy every one of
+ * its effective spans (see isFullyPlaced) — a partial placement that still
+ * needs repairing, regardless of whether the course is mandatory, a category
+ * candidate, wanted, or a plain elective. Shared by assessCompleteness below
+ * and PlannerWorker's own goal/repair logic (planner_worker.ts), so both
+ * agree on exactly what counts as an unfinished annual placement.
+ */
+export function incompleteAnnualCourseIds(state: PlanState, model: ConstraintModel): string[] {
+  const placed = new Set(placedCourseIds(state));
+  const out: string[] = [];
+  for (const id of placed) {
+    const p = model.profiles.get(id);
+    if (p?.is_annual && !isFullyPlaced(state, model, placed, id)) out.push(id);
+  }
+  return out;
 }
 
 /**
@@ -167,11 +248,11 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
   const degreeMet = dh >= model.degreeRequiredHours;
 
   const missingMandatory = model.requiredMandatoryCourseIds.filter(
-    id => !placed.has(id) && !model.completedCourseIds.has(id),
+    id => !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id),
   );
 
   const unsatisfiedCategories = model.categories
-    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
+    .filter(cat => cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length < cat.required)
     .map(cat => cat.id);
 
   // Phase 2C overload override — must agree with plan_validation.ts's policy:
@@ -186,7 +267,9 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
     return false;
   });
 
-  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters };
+  const incompleteAnnual = incompleteAnnualCourseIds(state, model);
+
+  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters, incompleteAnnual };
 }
 
 /** Compare two score vectors lexicographically: >0 if a is better than b. */
@@ -213,11 +296,26 @@ export function applyMutation(state: PlanState, mut: PlannerMutation): PlanState
     }
   };
   switch (mut.type) {
-    case 'ADD_COURSE':
-      if (placedCourseIds(next).includes(mut.courseId)) return null;
-      if (!next.semesters[mut.semesterId]) return null;
-      next.semesters[mut.semesterId].push(mut.courseId);
+    case 'ADD_COURSE': {
+      const targets = [mut.semesterId, ...(mut.alsoSemesterIds ?? [])];
+      if (targets.some(sem => !next.semesters[sem])) return null;
+      // A course already placed OUTSIDE the target set can't legally be
+      // "added" here (that would require a move, not an add). A course
+      // already present in EVERY target is a true no-op. Otherwise — not
+      // placed at all, or (an is_annual course with alsoSemesterIds) placed
+      // in only SOME of its own targets already, e.g. stale data predating
+      // atomic annual placement — fill in whichever targets are still
+      // missing, without duplicating ones already there.
+      const currentSems = Object.entries(next.semesters)
+        .filter(([, ids]) => ids.includes(mut.courseId))
+        .map(([sem]) => sem);
+      if (currentSems.some(sem => !targets.includes(sem))) return null;
+      if (targets.every(sem => currentSems.includes(sem))) return null;
+      for (const sem of targets) {
+        if (!next.semesters[sem].includes(mut.courseId)) next.semesters[sem].push(mut.courseId);
+      }
       return next;
+    }
     case 'REMOVE_COURSE':
       if (!placedCourseIds(next).includes(mut.courseId)) return null;
       removeEverywhere(mut.courseId);

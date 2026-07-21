@@ -4,9 +4,55 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-21, session on branch `claude/determined-thompson-fewuif`._
+_Last updated: 2026-07-21, session on branch `claude/determined-thompson-32ricp`._
 
-## Latest session (`claude/determined-thompson-fewuif`) — audit only, no new code
+## Latest session (`claude/determined-thompson-32ricp`) — real Agent-quality fix, PR #37 open
+
+Start-of-session audit found nothing new beyond what prior sessions already
+flagged: production still stale at `26500d4`, no Vercel git integration on
+either project (confirmed again directly), issue #18's canonical-project
+question and issue #25 Findings #4/#5 still open pending human decisions.
+Merged the one safe item (**PR #36**, docs-only audit recap, CI green) and did
+not re-litigate the already-flagged decisions again.
+
+Investigated issue #25 Finding #5 (server-side chat-vs-rebuild distinction) as
+a candidate next step per the prior session's own recommendation, but
+concluded it does **not** clear the bar: `action_type`'s enum has no "chat"
+value at all, and the one real caller (`semester_board_viewer.html`) already
+never sends a rebuild request for a plain chat turn. A server-side gate here
+would have zero reachable trigger path in production — exactly the "capability
+with no real consumer" anti-pattern this routine's own rules warn against.
+Deprioritized without implementing.
+
+Instead re-ran issue #25's own "not fully verified" item — semester-balance /
+dual-offered-course placement quality — against the **real**
+`mechanical_engineering_2027` board (the original harness's hand-typed hours
+table was incomplete). The load-balance mechanism itself checked out clean
+(closed as no-finding, see issue #25 comment), but the rerun surfaced a
+distinct, real bug: the board's one genuinely-annual course (`0542-3792`,
+meets weekly in both semesters at once) was placed in only **one** of its two
+spanned semesters by the live planner path, silently under-reporting the true
+weekly load of the other. A related, more severe latent bug: the balance step
+didn't exclude annual courses from being "movable," so it could have split an
+already-correctly-placed annual course out of one of its required semesters
+during a routine rebuild.
+
+**Fixed in PR #37** (`ui/frontend-modernization` ← `claude/determined-thompson-32ricp`,
+commit `574f2b2`): `enumerateActions`/`applyMutation` now place `is_annual`
+courses into every `spans_semesters` entry atomically (one action, not one
+per semester); `isMovable` excludes `is_annual`; the duplicate-placement
+validator recognizes the expected multi-semester span instead of flagging it
+as an error; `toProposal`'s moves-diff tracks every initial semester per
+course id (was last-write-wins, so an unchanged annual placement could
+spuriously report a "move"). Verified against the real board before/after
+(0542-3792 now lands in both semesters, previously only one). New regression
+tests RED-verified first: `tests/api/planner_actions_annual_course.test.ts`,
+`tests/api/generate_plan_annual_course_placement.test.ts`. Full suite
+1211/1211 (81 suites), zero regressions. `tsc --noEmit` clean. **Codex review
+requested, not yet merged** — this session is subscribed to PR activity and
+will continue handling review rounds.
+
+## Prior session (`claude/determined-thompson-fewuif`) — audit only, no new code
 
 Ran the standing start-of-session audit (production health, open PRs/branches,
 Codex/CI state, issues, this doc). Findings below; deliberately took no
@@ -133,6 +179,11 @@ found is already a fully-diagnosed, open human decision from a prior session
 5. PR #32 — max_weekly_hours disclosure fix (Finding #3) — **C**
 6. PR #34 — client-side stale block-state fix, issue #28, merged (`19cb1e3`)
    after 2 rounds of real Codex findings fixed — **C**.
+7. PR #36 — docs-only audit recap, merged (`b460f42`) — not classified (no
+   product code).
+8. PR #37 — `is_annual` course atomic multi-semester placement fix, **open,
+   Codex review requested, not yet merged** — **C** (provisional; only counts
+   toward the rolling window once merged).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -143,10 +194,19 @@ Rolling-three checks:
 - (13,27,31) = D/C/B — compliant (2 of 3 are A/B/C; 1 is A/B).
 - (27,31,32) = C/B/C — compliant (3 of 3 are A/B/C; 1 is A/B).
 - (31,32,34) = B/C/C — compliant (3 of 3 are A/B/C; 1 is A/B).
+- (32,34,37) = C/C/C — **once #37 merges, this window will NOT be compliant**
+  (3 of 3 are A/B/C, but 0 are A/B — the rule requires at least one A/B per
+  window). Flagging honestly rather than rationalizing it away: three C's in
+  a row means the next milestone after #37 should be an A or B (a
+  user-visible or end-to-end-integration item) to restore compliance, not
+  another isolated correctness fix, unless a genuinely higher-priority
+  correctness issue is found first.
 
-Every window from PR #27 onward is compliant; the one non-compliant window
-predates PR #27 and could not be cured after the fact — it's the reason #14
-stayed held rather than evidence the rule is being ignored going forward.
+Every merged window from PR #27 onward is compliant; the one non-compliant
+merged window predates PR #27 and could not be cured after the fact — it's
+the reason #14 stayed held rather than evidence the rule is being ignored
+going forward. The (32,34,37) window above is the first *prospective*
+non-compliance flagged before it happens, not after.
 
 ## Blockers
 
@@ -170,21 +230,34 @@ stayed held rather than evidence the rule is being ignored going forward.
 4. Issue #25 Finding #4 — planner over-allocation (203h vs 185h target) — see
    milestone 4 above; needs a `GOAL_STACK` design decision before
    implementation, not just an approval to proceed.
-5. Issue #25 Finding #5 — no server-side chat-vs-rebuild distinction; low
-   severity, currently defense-in-depth only (the live frontend never calls
-   the endpoint for a plain conversational turn), not blocking.
+5. Issue #25 Finding #5 — no server-side chat-vs-rebuild distinction. Assessed
+   this session and **deprioritized, not just left pending**: `action_type`'s
+   schema enum has no "chat" value, and the one real caller already never
+   sends a rebuild request for a plain chat turn — a server-side gate would
+   have zero reachable trigger path in production, i.e. an unused capability.
+   Do not pick this up again without a concrete reason a real caller could
+   hit it (e.g. a new client, or the field gaining a "chat" meaning).
 6. PR #14 (Decision capability) remains open, deliberately unmerged — would be
    a 3rd consecutive D-classified milestone with no named production consumer.
    Recommend a human decide: close/park it as a reference implementation, or
    hold until a real multi-candidate producer exists to consume it.
+7. **PR #37** (`is_annual` course atomic multi-semester placement fix) —
+   open, Codex review requested, not yet merged. Not a blocker for anything
+   else, but the immediate next action for whichever session picks this back
+   up: check review status, address any findings, merge once every gate
+   passes (this session is subscribed to its PR activity and will continue
+   the loop if still running).
 
 ## Exact next action
 
-1. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** This is now the single most valuable pending action — 6 real,
-   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34) are merged
-   and waiting.
-2. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
+1. **If PR #37 is still open: finish its Codex review loop and merge once all
+   gates pass** (CI green, Codex clean, threads resolved) — this is now the
+   most concrete unblocked next step.
+2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
+   production.** This is the single most valuable pending action — 7 real,
+   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, and #37 once
+   merged) are merged and waiting.
+3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
    on the intended `GOAL_STACK` tradeoff before implementation — see Blockers.
    If a decision arrives, the recommended starting point is unchanged: a
    dedicated failing test reproducing the 203h/185h scenario (TDD RED), then
@@ -193,9 +266,13 @@ stayed held rather than evidence the rule is being ignored going forward.
    `generate_plan_load_distribution_policy.test.ts`,
    `generate_plan_dual_semester_load_balance.test.ts` at minimum) before
    considering it done.
-3. If Finding #4 stays blocked, issue #25 Finding #5 (no server-side
-   chat-vs-rebuild distinction) is the next real-Agent item that doesn't need
-   a product decision — low severity, defense-in-depth only.
-4. Issues #20/#21/#18(reconciliation)/#14 all still need a human product call
+4. Finding #5 is deprioritized (see Blockers item 5) — do not resume it as
+   "the next unblocked item" without a new reason it's reachable in production.
+5. Issues #20/#21/#18(reconciliation)/#14 all still need a human product call
    — already fully diagnosed by prior sessions, not re-investigated further
    this session since nothing new was learned.
+6. After PR #37 merges, the (32,34,37) = C/C/C rolling-three window has zero
+   A/B milestones — the next milestone after it should be an A or B
+   (something user-visible or that wires an existing capability into a real
+   caller) unless a genuinely higher-priority correctness issue surfaces
+   first.

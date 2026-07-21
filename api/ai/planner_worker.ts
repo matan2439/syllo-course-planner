@@ -21,6 +21,9 @@ import {
   compareScore,
   applyMutation,
   degreeHours as computeDegreeHours,
+  mandatoryPlaced as computeMandatoryPlaced,
+  categoriesSatisfied as computeCategoriesSatisfied,
+  incompleteAnnualCourseIds,
   GOAL_STACK,
 } from './planner_goals';
 import {
@@ -28,6 +31,7 @@ import {
   legalSemestersFor,
   bestLegalSemester,
   isExcluded,
+  addCourseActionsFor,
 } from './planner_actions';
 import { validatePlanState, validateCandidate, buildValidationContext } from './planner_validate';
 import type { PlanValidationContext } from './plan_validation';
@@ -139,9 +143,36 @@ export class PlannerWorker {
     return this.model;
   }
 
-  /** Raw goal status — no phase/validation, safe to call from isGoalReached. */
+  /**
+   * The id of a placed `is_annual` course that doesn't yet occupy every one
+   * of its effective spans, if any — used both by goalStatus (so
+   * isGoalReached/phase know the plan isn't actually done) and by step (to
+   * force the repair). Delegates to planner_goals.ts's incompleteAnnualCourseIds
+   * (the same shared signal TauPolicyProvider.isGoal uses for the agentic
+   * path) so both agree on exactly what counts as an unfinished placement. A
+   * course that's mandatory/category/wanted AND incomplete is already
+   * covered by group 1-3's own `consider()` gate in enumerateActions; this
+   * exists specifically because a plain-elective annual course has no other
+   * mechanism that revisits it once degree hours are already met (see
+   * enumerateActions' group 0).
+   */
+  private findIncompleteAnnualCourse(state: PlanState = this.state): string | undefined {
+    return incompleteAnnualCourseIds(state, this.model)[0];
+  }
+
+  /**
+   * Raw goal status — no phase/validation, safe to call from isGoalReached.
+   * Reuses planner_goals.ts's mandatoryPlaced/categoriesSatisfied (rather than
+   * a locally-duplicated presence check) so an is_annual course only counts
+   * as placed once it occupies EVERY one of its spans_semesters — otherwise
+   * isGoalReached() would stop the loop as "done" on a partially-placed
+   * annual course before enumerateActions ever gets a chance to repair it.
+   * hasIncompleteAnnual covers the same partial-placement case for a course
+   * that ISN'T mandatory/category (mandatoryPlaced/categoriesSatisfied
+   * already reflect it for those) — a plain elective, otherwise invisible to
+   * both this status and to isGoalReached.
+   */
   private goalStatus(state: PlanState = this.state) {
-    const placed = new Set(placedCourseIds(state));
     const semesterLoads: Record<string, number> = {};
     for (const id of this.model.knownSemesterIds) {
       semesterLoads[id] = (state.semesters[id] ?? []).reduce(
@@ -149,16 +180,15 @@ export class PlannerWorker {
         0,
       );
     }
-    const mandatoryPlaced = this.model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length;
-    const categoriesSatisfied = this.model.categories.filter(
-      cat => cat.candidateIds.filter(id => placed.has(id)).length >= cat.required,
-    ).length;
+    const mandatoryPlaced = computeMandatoryPlaced(state, this.model);
+    const categoriesSatisfied = computeCategoriesSatisfied(state, this.model);
     return {
       degreeHours: computeDegreeHours(state, this.model),
       semesterLoads,
       mandatoryPlaced,
       categoriesSatisfied,
       allCategoriesSatisfied: categoriesSatisfied === this.model.categories.length,
+      hasIncompleteAnnual: this.findIncompleteAnnualCourse(state) !== undefined,
     };
   }
 
@@ -182,15 +212,17 @@ export class PlannerWorker {
       g.degreeHours >= this.model.degreeRequiredHours &&
       g.mandatoryPlaced === this.model.requiredMandatoryCourseIds.length &&
       g.allCategoriesSatisfied &&
-      !overHard
+      !overHard &&
+      !g.hasIncompleteAnnual
     );
   }
 
   private phase(): PlannerPhase {
     if (this.isGoalReached()) return 'DONE';
     const g = this.goalStatus();
-    // An over-cap semester is a legality breach — the loop is repairing it.
-    if (Object.values(g.semesterLoads).some(h => h > this.model.hardCap)) return 'REPAIR';
+    // An over-cap semester or a partially-placed annual course is a
+    // legality/completeness breach — the loop is repairing it.
+    if (Object.values(g.semesterLoads).some(h => h > this.model.hardCap) || g.hasIncompleteAnnual) return 'REPAIR';
     return 'CONSTRUCT_PLAN';
   }
 
@@ -220,6 +252,40 @@ export class PlannerWorker {
   addCourse(courseId: string, semesterId?: string, by: Actor = 'worker'): MutationResult {
     if (this.isExcluded(courseId)) {
       return this.recordReject(courseId, 'הקורס סומן כלא-זמין (חריגה מפורשת) ולכן לא ישובץ.', by);
+    }
+    // Annual (year-long) courses must be placed in every spanned semester
+    // atomically, never split into a single semester — the same rule
+    // enumerateActions applies for the search, reused here so a direct
+    // add_course tool call (the production LlmOrchestrator path) can't place
+    // one half of the pair only. When spans_semesters/legal data is
+    // confident, addCourseActionsFor returns exactly one atomic bundle and
+    // any explicit semesterId is intentionally ignored (splitting is never
+    // legal). When it isn't confident, addCourseActionsFor instead falls
+    // back to one alternative ADD_COURSE per legal semester — same shape as
+    // a non-annual course — so an explicitly requested semesterId (or, when
+    // none is given/legal, the same load-based choice bestLegalSemester
+    // makes below) must be honored among those alternatives, not just the
+    // first one blindly.
+    //
+    // Checked BEFORE the generic "already placed" rejection below: a course
+    // already placed in ONE of its spanned semesters only (e.g. stale data
+    // from before this fix, or any other partial placement) must still be
+    // repairable by completing the missing span — applyMutation's ADD_COURSE
+    // case fills in only what's missing and rejects as a true no-op only
+    // once every span is already present.
+    if (this.model.profiles.get(courseId)?.is_annual) {
+      const actions = addCourseActionsFor(this.model, courseId);
+      if (!actions.length) {
+        return this.recordReject(courseId, 'לא נמצא סמסטר חוקי לשיבוץ הקורס.', by);
+      }
+      let action = actions[0];
+      if (actions.length > 1) {
+        const bySemester = new Map(actions.map(a => [(a as any).semesterId as string, a]));
+        const chosenSem: string | null =
+          semesterId && bySemester.has(semesterId) ? semesterId : bestLegalSemester(this.state, this.model, courseId);
+        action = (chosenSem ? bySemester.get(chosenSem) : undefined) ?? actions[0];
+      }
+      return this.tryApply(action, 'ADD_COURSE', this.addReason(courseId), by);
     }
     if (new Set(placedCourseIds(this.state)).has(courseId)) {
       return this.recordReject(courseId, 'הקורס כבר משובץ.', by);
@@ -254,6 +320,24 @@ export class PlannerWorker {
   step(by: 'greedy' | 'llm' = 'greedy'): PlannerAction | null {
     if (this.isGoalReached()) {
       return this.recordStop('המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.');
+    }
+
+    // Completing a partially-placed is_annual course is a structural
+    // correctness repair (the plan is invalid until every span is filled),
+    // not a scored preference — nothing in GOAL_STACK rewards it, so the
+    // "does this action score better than staying" gate below could reject
+    // it even though leaving it split makes the plan invalid (e.g. a plain
+    // elective annual course, once degree hours are already met, might not
+    // improve balance/difficulty by getting completed). Repair it first,
+    // unconditionally, reusing addCourse()'s existing atomic-bundle/
+    // best-semester selection logic instead of duplicating it here. Falls
+    // through to the normal scored search if no legal repair exists (e.g.
+    // every remaining span would breach the hard cap) so the loop doesn't
+    // get stuck retrying an impossible repair.
+    const incompleteAnnualId = this.findIncompleteAnnualCourse();
+    if (incompleteAnnualId) {
+      const res = this.addCourse(incompleteAnnualId, undefined, by);
+      if (res.accepted) return res.action;
     }
 
     const current = scorePlan(this.state, this.model);

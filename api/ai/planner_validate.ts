@@ -31,6 +31,8 @@ export function buildValidationContext(
       prerequisites: p.prerequisites,
       missing_prerequisites: [],
       is_mandatory: p.is_mandatory,
+      is_annual: p.is_annual,
+      spans_semesters: p.spans_semesters,
     };
   }
   return {

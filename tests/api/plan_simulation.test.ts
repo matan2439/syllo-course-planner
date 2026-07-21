@@ -207,7 +207,7 @@ describe('LocalSearchSimulationCapability — custom policy override', () => {
       score: () => [0],
       compareScore: (a, b) => a[0] - b[0],
       assessCompleteness: () => ({
-        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [],
+        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [], incompleteAnnual: [],
       }),
       validate: () => ({ valid: false }), // reject everything — proves the fake is actually consulted
       generateActions: jest.fn(() => [fakeAction]),

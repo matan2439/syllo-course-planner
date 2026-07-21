@@ -7,7 +7,7 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours, scorePlan, compareScore } from './planner_goals';
+import { degreeHours as computeDegreeHours, scorePlan, compareScore, isFullyPlaced } from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -32,6 +32,12 @@ export function isMovable(model: ConstraintModel, id: string): boolean {
   if (model.pinnedCourseIds.has(id)) return false;
   const p = model.profiles.get(id);
   if (!p) return false;
+  // Annual (year-long) courses occupy every spanned semester together and are
+  // never split — moving or replacing them out of one semester only would
+  // break that pairing, contradicting the placement this same course's
+  // profile already asserts elsewhere (course_profile.ts's "לא ניתן
+  // להזזה/פיצול" LLM-facing note).
+  if (p.is_annual) return false;
   return p.placement_policy !== 'fixed';
 }
 
@@ -40,6 +46,48 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
   if (!p) return model.knownSemesterIds;
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
   return semesters.length ? semesters : model.knownSemesterIds;
+}
+
+/**
+ * ADD_COURSE action(s) for a candidate course. An `is_annual` course spans
+ * multiple semesters together (e.g. a year-long lab meeting in both
+ * halves) and must be placed in all of them atomically as a single action —
+ * treating each spanned semester as a separate, mutually-exclusive
+ * alternative (the default below) would let the search place it in only
+ * one, silently under-reporting the true weekly load of the other. Every
+ * other course keeps the prior one-action-per-legal-semester behavior.
+ *
+ * The atomic bundle only ever targets a CONFIDENT span set — the course's
+ * own declared `spans_semesters`, or `getLegalSemesters`'s result when it
+ * says `confident: true` (this year's actual effective/program offering).
+ * When neither is known (an annual flag with no other legality data at
+ * all), we can't guess how many semesters the course really spans — bundling
+ * it into every known semester on the board would silently overload/
+ * misrepresent the plan. Falling through to the single-semester-per-legal-
+ * semester behavior below (same as any other course) is the same safe
+ * default this codebase used for `is_annual` courses before atomic bundling
+ * existed, and matches `isFullyPlaced`'s (planner_goals.ts) identical
+ * confident-or-fall-through rule and `plan_validation.ts`'s
+ * `annualSpansFor`'s "stay silent when not confident" rule.
+ */
+export function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
+  const p = model.profiles.get(id);
+  if (p?.is_annual) {
+    let spans: string[] | null = p.spans_semesters?.length ? p.spans_semesters : null;
+    if (!spans) {
+      const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+      if (legal.confident) spans = legal.semesters;
+    }
+    if (spans) {
+      const filtered = spans.filter(sem => model.knownSemesterIds.includes(sem));
+      if (!filtered.length) return [];
+      const [semesterId, ...alsoSemesterIds] = filtered;
+      return [{ type: 'ADD_COURSE', courseId: id, semesterId, ...(alsoSemesterIds.length ? { alsoSemesterIds } : {}) }];
+    }
+    // No confident span data — fall through to the per-legal-semester
+    // behavior below, same as a non-annual course.
+  }
+  return legalSemestersFor(model, id).map(sem => ({ type: 'ADD_COURSE', courseId: id, semesterId: sem }));
 }
 
 function loadOf(state: PlanState, model: ConstraintModel, sem: string): number {
@@ -66,35 +114,61 @@ export function bestLegalSemester(state: PlanState, model: ConstraintModel, id: 
 export function enumerateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
   const placed = new Set(placedCourseIds(state));
   const actions: PlannerMutation[] = [];
+  // An is_annual course only counts as "placed" (and so excluded from
+  // further consideration) once it occupies EVERY one of its
+  // spans_semesters — a partial placement (e.g. stale data predating atomic
+  // annual handling, or any other split) must still be repairable.
   const consider = (id: string) =>
-    !placed.has(id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
+    !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
+
+  // 0. annual-elective-completeness repair — unconditional, independent of
+  // degree-hour fill (group 4). A partially-placed is_annual course that is
+  // NOT mandatory, NOT a category candidate, and NOT wanted (a plain
+  // elective) is only otherwise reachable through group 4, which only runs
+  // while degree hours are short; but placedHours already counts the
+  // partial placement's full hours once it's in `placed` at all, so once
+  // the hour target is met that gate never re-opens, leaving the course
+  // permanently stuck half-placed and flagged invalid by validation with no
+  // way to ever repair it. Mandatory/category/wanted annual courses already
+  // get this for free below via `consider` — skipping them here avoids
+  // proposing the same atomic action twice.
+  const classifiedElsewhere = (id: string) =>
+    model.requiredMandatoryCourseIds.includes(id) ||
+    model.wantedCourseIds.has(id) ||
+    model.categories.some(cat => cat.candidateIds.includes(id));
+  for (const [id, p] of model.profiles) {
+    if (!p.is_annual || !placed.has(id) || isFullyPlaced(state, model, placed, id)) continue;
+    if (classifiedElsewhere(id)) continue;
+    actions.push(...addCourseActionsFor(model, id));
+  }
 
   // 1. required mandatory still unplaced — every legal semester.
   for (const id of model.requiredMandatoryCourseIds) {
     if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    actions.push(...addCourseActionsFor(model, id));
   }
 
   // 2. candidates for not-yet-satisfied categories — every legal semester.
   for (const cat of model.categories) {
-    const got = cat.candidateIds.filter(id => placed.has(id)).length;
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) continue;
     for (const id of cat.candidateIds) {
       if (!consider(id)) continue;
-      for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+      actions.push(...addCourseActionsFor(model, id));
     }
   }
 
   // 3. wanted courses — every legal semester.
   for (const id of model.wantedCourseIds) {
     if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    actions.push(...addCourseActionsFor(model, id));
   }
 
   // 4. degree-hour fill — only while short; each elective at its best semester.
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
       if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0 || p.is_unwanted) continue;
+      if (p.is_annual) { actions.push(...addCourseActionsFor(model, id)); continue; }
       const sem = bestLegalSemester(state, model, id);
       if (sem) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
     }
