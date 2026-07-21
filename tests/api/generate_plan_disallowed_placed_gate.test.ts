@@ -174,4 +174,26 @@ describe('generate-plan — a hard-excluded, already-placed course is surfaced a
     expect(b.blocked).toBe(true);
     expect(b.errors.some((e: string) => e.includes('FLU') || e.includes('זורם'))).toBe(true);
   });
+
+  // Codex review finding on this PR: buildAcademicDecision (use_academic_decision_agent
+  // path) rendered every `blocked:true` plan with overload-only guidance ("reduce
+  // load or approve an overload"), which is the wrong fix when the actual — and
+  // sole — cause is a hard-excluded course still sitting in the plan.
+  test('8. use_academic_decision_agent: suggested actions name the excluded-course cause, not overload-only guidance, when that is the sole block cause', async () => {
+    const res = makeRes();
+    await handler(
+      makeReq(baseReqBody({
+        use_academic_decision_agent: true,
+        preferences: { disallowed_course_ids: ['FLU'] },
+      })),
+      res,
+    );
+    const b = res._body;
+    expect(b.blocked).toBe(true);
+    expect(b.academicDecision).toBeDefined();
+    const actions: string[] = b.academicDecision.explanation.suggestedNextActions;
+    expect(actions.some((a) => a.includes('להחרגה'))).toBe(true);
+    expect(actions.some((a) => a.includes('עומס'))).toBe(false);
+    expect(b.academicDecision.explanation.mainRecommendation).toContain('להחרגה');
+  });
 });

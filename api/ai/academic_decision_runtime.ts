@@ -48,6 +48,7 @@ import {
 } from './course_topic_profiles_static';
 import { getSemesterLoad } from './completion_analysis';
 import type { ConstraintModel } from './planner_types';
+import { DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 
 // ── Public shapes ───────────────────────────────────────────────────────────
 
@@ -273,9 +274,17 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const placedCount = input.proposal.semesters.reduce((n, s) => n + s.course_ids.length, 0);
   const semCount = input.proposal.semesters.filter((s) => s.course_ids.length > 0).length;
 
-  const mainRecommendation = input.blocked
-    ? 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — יש לצמצם עומס או לאשר חריגה לפני שימוש.'
-    : `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`;
+  // blocked can now also be caused by a hard-excluded course still sitting in
+  // the plan (generate-plan.ts's disallowedGate), not only by overload — the
+  // explanation/suggested actions must name the actual cause instead of
+  // always pointing at overload guidance.
+  const hasDisallowedPlacedError = input.errors.some((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
+
+  const mainRecommendation = !input.blocked
+    ? `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`
+    : hasDisallowedPlacedError
+      ? 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — היא עדיין כוללת קורס שסימנת להחרגה; יש להסירו (וגם לצמצם עומס/לאשר חריגה, אם רלוונטי) לפני שימוש.'
+      : 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — יש לצמצם עומס או לאשר חריגה לפני שימוש.';
 
   const whyThisPlan: string[] = [];
   if (input.proposal.rationale_he) whyThisPlan.push(input.proposal.rationale_he);
@@ -308,6 +317,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const suggestedNextActions = buildSuggestedNextActions({
     blocked: input.blocked,
     overloaded: workloadNotes.some((n) => n.includes('מעל המגבלה')),
+    disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
     interestEvaluation,
@@ -318,9 +328,11 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 
   const decision: AcademicDecisionDecision = {
     selectedPlan: 'generated',
-    rationale: input.blocked
-      ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה עד לתיקון חריגת העומס.'
-      : 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה לאחר שעברה את בדיקות החוקיות והעומס.',
+    rationale: !input.blocked
+      ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה לאחר שעברה את בדיקות החוקיות והעומס.'
+      : hasDisallowedPlacedError
+        ? 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה — היא כוללת קורס שסימנת להחרגה שטרם הוסר.'
+        : 'זוהי התוכנית היחידה שנוצרה בסבב זה; היא נבחרה כברירת מחדל אך אינה ניתנת להחלה עד לתיקון חריגת העומס.',
     tradeoffs,
   };
 
@@ -337,6 +349,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 function buildSuggestedNextActions(args: {
   blocked: boolean;
   overloaded: boolean;
+  disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
   interestEvaluation?: AcademicInterestEvaluationResult;
@@ -345,8 +358,11 @@ function buildSuggestedNextActions(args: {
   const actions: string[] = [];
   const missingFields = new Set(args.clarification.missingInputs.map((m) => m.field));
 
-  if (args.blocked || args.overloaded) {
+  if (args.overloaded || (args.blocked && !args.disallowedPlaced)) {
     actions.push('צמצם/י את העומס השבועי או אשר/י חריגה מפורשת כדי לאפשר את החלת התוכנית.');
+  }
+  if (args.disallowedPlaced) {
+    actions.push('הקורס שסימנת להחרגה עדיין מופיע בתוכנית — הסר/י אותו ידנית מהלוח, או בקש/י בנייה מחדש שמסירה אותו.');
   }
   if (missingFields.has('completedCourses') || (args.context.completedCourseIds?.length ?? 0) === 0) {
     actions.push('ספק/י את רשימת הקורסים שכבר השלמת כדי לחדד את בדיקת הקדם-דרישות.');

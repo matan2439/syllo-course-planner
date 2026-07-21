@@ -38,7 +38,7 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate, disallowedPlacedCourseIds } from './planner_validate';
+import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -190,7 +190,7 @@ function disallowedGate(
 ): string[] {
   const placed = new Set(semesters.flatMap(s => s.course_ids));
   return disallowedPlacedCourseIds(placed, model).map(
-    id => `קורס לא-זמין שובץ בתוכנית: ${model.profiles.get(id)?.name_he ?? id}.`,
+    id => `${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
   );
 }
 
