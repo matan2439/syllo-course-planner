@@ -151,6 +151,10 @@ export interface PlanValidationCourseInfo {
   prerequisites?: string[];
   /** True if this is a mandatory (חובה) course. */
   is_mandatory?: boolean;
+  /** True for a year-long course that occupies every one of spans_semesters together (never a duplicate). */
+  is_annual?: boolean;
+  /** The semester ids an is_annual course spans together. */
+  spans_semesters?: string[] | null;
 }
 
 export interface PlanValidationContext {
@@ -250,7 +254,7 @@ export function validatePlanProposal(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const seen = new Map<string, string>(); // course_id -> semester_id
+  const seenSemesters = new Map<string, string[]>(); // course_id -> semester_ids seen so far, in order
   const placedCourseIds = new Set<string>();
 
   // Issue 4 — chronological order of semesters in the proposal + each course's
@@ -271,16 +275,34 @@ export function validatePlanProposal(
 
     for (const courseId of sem.course_ids) {
       const cName = courseLabel(courseId, ctx.courseNames);
+      const info = ctx.courses[courseId];
 
-      // 1. duplicate placement across semesters
-      if (seen.has(courseId)) {
-        const firstSemName = semesterLabel(seen.get(courseId)!, ctx.semesterLabels);
-        errors.push(
-          `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
-        );
-      } else {
-        seen.set(courseId, sem.semester_id);
+      // 1. duplicate placement across semesters — except an is_annual course
+      // legitimately occupying every one of its spans_semesters together
+      // (e.g. a year-long lab meeting in both halves of the year). That is
+      // not a duplicate: it's counted once toward degree hours (see
+      // planner_goals.ts's placedHours) but must appear in each spanned
+      // semester's own weekly load. Anything beyond that exact expected
+      // set — a repeat within the same semester, a semester outside
+      // spans_semesters, or more occurrences than spans_semesters has — is
+      // still a genuine duplicate error.
+      const priorSems = seenSemesters.get(courseId) ?? [];
+      if (priorSems.length > 0) {
+        const spans = info?.is_annual ? (info.spans_semesters ?? []) : [];
+        const isExpectedAnnualSpan =
+          spans.length > 0 &&
+          spans.includes(sem.semester_id) &&
+          !priorSems.includes(sem.semester_id) &&
+          priorSems.every(s => spans.includes(s)) &&
+          priorSems.length < spans.length;
+        if (!isExpectedAnnualSpan) {
+          const firstSemName = semesterLabel(priorSems[0], ctx.semesterLabels);
+          errors.push(
+            `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
+          );
+        }
       }
+      seenSemesters.set(courseId, [...priorSems, sem.semester_id]);
       placedCourseIds.add(courseId);
 
       // 2. completed course must not be (re-)scheduled
@@ -301,8 +323,6 @@ export function validatePlanProposal(
           errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
         }
       }
-
-      const info = ctx.courses[courseId];
 
       // 3. placement must be within effective_allowed_semesters
       if (info?.effective_allowed_semesters && info.effective_allowed_semesters.length > 0) {

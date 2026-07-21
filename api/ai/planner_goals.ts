@@ -213,11 +213,13 @@ export function applyMutation(state: PlanState, mut: PlannerMutation): PlanState
     }
   };
   switch (mut.type) {
-    case 'ADD_COURSE':
+    case 'ADD_COURSE': {
       if (placedCourseIds(next).includes(mut.courseId)) return null;
-      if (!next.semesters[mut.semesterId]) return null;
-      next.semesters[mut.semesterId].push(mut.courseId);
+      const targets = [mut.semesterId, ...(mut.alsoSemesterIds ?? [])];
+      if (targets.some(sem => !next.semesters[sem])) return null;
+      for (const sem of targets) next.semesters[sem].push(mut.courseId);
       return next;
+    }
     case 'REMOVE_COURSE':
       if (!placedCourseIds(next).includes(mut.courseId)) return null;
       removeEverywhere(mut.courseId);

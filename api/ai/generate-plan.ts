@@ -252,14 +252,21 @@ function toProposal(
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
     .map(id => ({ semester_id: id, course_ids: finalState.semesters[id] }));
 
-  // moves: diff initial board against final plan
-  const initialSemOf: Record<string, string> = {};
-  for (const [sem, ids] of Object.entries(initialState.semesters)) for (const id of ids) initialSemOf[id] = sem;
+  // moves: diff initial board against final plan. An id can legitimately start
+  // in more than one semester at once (an is_annual course spans all of its
+  // semesters together) — track every initial semester per id, not just the
+  // last one seen, so an unchanged annual placement is never misreported as
+  // having "moved" out of whichever semester happened to be seen first.
+  const initialSemsOf: Record<string, string[]> = {};
+  for (const [sem, ids] of Object.entries(initialState.semesters)) {
+    for (const id of ids) (initialSemsOf[id] ??= []).push(sem);
+  }
   const moves: Array<{ course_id: string; from: string | null; to: string }> = [];
   for (const [sem, ids] of Object.entries(finalState.semesters)) {
     for (const id of ids) {
-      const from = initialSemOf[id] ?? null;
-      if (from !== sem) moves.push({ course_id: id, from, to: sem });
+      const fromSems = initialSemsOf[id];
+      if (fromSems?.includes(sem)) continue;
+      moves.push({ course_id: id, from: fromSems?.[0] ?? null, to: sem });
     }
   }
 

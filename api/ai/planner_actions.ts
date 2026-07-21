@@ -32,6 +32,12 @@ export function isMovable(model: ConstraintModel, id: string): boolean {
   if (model.pinnedCourseIds.has(id)) return false;
   const p = model.profiles.get(id);
   if (!p) return false;
+  // Annual (year-long) courses occupy every spanned semester together and are
+  // never split — moving or replacing them out of one semester only would
+  // break that pairing, contradicting the placement this same course's
+  // profile already asserts elsewhere (course_profile.ts's "לא ניתן
+  // להזזה/פיצול" LLM-facing note).
+  if (p.is_annual) return false;
   return p.placement_policy !== 'fixed';
 }
 
@@ -40,6 +46,27 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
   if (!p) return model.knownSemesterIds;
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
   return semesters.length ? semesters : model.knownSemesterIds;
+}
+
+/**
+ * ADD_COURSE action(s) for a candidate course. An `is_annual` course spans
+ * multiple semesters together (e.g. a year-long lab meeting in both
+ * halves) and must be placed in all of them atomically as a single action —
+ * treating each spanned semester as a separate, mutually-exclusive
+ * alternative (the default below) would let the search place it in only
+ * one, silently under-reporting the true weekly load of the other. Every
+ * other course keeps the prior one-action-per-legal-semester behavior.
+ */
+function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
+  const p = model.profiles.get(id);
+  if (p?.is_annual) {
+    const spans = (p.spans_semesters?.length ? p.spans_semesters : legalSemestersFor(model, id))
+      .filter(sem => model.knownSemesterIds.includes(sem));
+    if (!spans.length) return [];
+    const [semesterId, ...alsoSemesterIds] = spans;
+    return [{ type: 'ADD_COURSE', courseId: id, semesterId, ...(alsoSemesterIds.length ? { alsoSemesterIds } : {}) }];
+  }
+  return legalSemestersFor(model, id).map(sem => ({ type: 'ADD_COURSE', courseId: id, semesterId: sem }));
 }
 
 function loadOf(state: PlanState, model: ConstraintModel, sem: string): number {
@@ -72,7 +99,7 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   // 1. required mandatory still unplaced — every legal semester.
   for (const id of model.requiredMandatoryCourseIds) {
     if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    actions.push(...addCourseActionsFor(model, id));
   }
 
   // 2. candidates for not-yet-satisfied categories — every legal semester.
@@ -81,20 +108,21 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
     if (got >= cat.required) continue;
     for (const id of cat.candidateIds) {
       if (!consider(id)) continue;
-      for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+      actions.push(...addCourseActionsFor(model, id));
     }
   }
 
   // 3. wanted courses — every legal semester.
   for (const id of model.wantedCourseIds) {
     if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    actions.push(...addCourseActionsFor(model, id));
   }
 
   // 4. degree-hour fill — only while short; each elective at its best semester.
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
       if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0 || p.is_unwanted) continue;
+      if (p.is_annual) { actions.push(...addCourseActionsFor(model, id)); continue; }
       const sem = bestLegalSemester(state, model, id);
       if (sem) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
     }
