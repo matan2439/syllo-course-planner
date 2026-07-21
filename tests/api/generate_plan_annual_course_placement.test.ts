@@ -66,6 +66,16 @@ const ALREADY_PLACED_PLAN_CONTEXT = {
   ],
 };
 
+// Codex round-4 repro: a plan saved before this fix (or any other partial
+// split) has ANNUAL in only ONE of its two spanned semesters already.
+const PARTIALLY_PLACED_PLAN_CONTEXT = {
+  ...EMPTY_PLAN_CONTEXT,
+  semesters: [
+    { id: 'year_3_semester_a', label: "שנה ג׳ א׳", total_hours: 4, courses: [{ course_id: 'ANNUAL' }] },
+    { id: 'year_3_semester_b', label: "שנה ג׳ ב׳", total_hours: 0, courses: [] },
+  ],
+};
+
 describe('generate-plan — annual (year-long) course is placed in every spanned semester', () => {
   beforeEach(() => {
     process.env.AI_DEV_MODE = 'true';
@@ -103,5 +113,23 @@ describe('generate-plan — annual (year-long) course is placed in every spanned
     expect(courseIdsOf(res._body, 'year_3_semester_b')).toContain('ANNUAL');
     const annualMoves = (res._body.moves ?? []).filter((m: any) => m.course_id === 'ANNUAL');
     expect(annualMoves).toEqual([]);
+  });
+
+  test('Codex round 4: a plan with ANNUAL already placed in only ONE of its two semesters gets repaired, not silently accepted', async () => {
+    const res = makeRes();
+    await handler(makeReq(baseReqBody(PARTIALLY_PLACED_PLAN_CONTEXT)), res);
+    expect(res.statusCode).toBe(200);
+    expect(courseIdsOf(res._body, 'year_3_semester_a')).toContain('ANNUAL');
+    expect(courseIdsOf(res._body, 'year_3_semester_b')).toContain('ANNUAL');
+    expect(res._body.blocked).toBe(false);
+  });
+
+  test('Codex round 4 (agentic path): same partial-placement repair', async () => {
+    process.env.AI_USE_AGENTIC_PLANNER = 'true';
+    const res = makeRes();
+    await handler(makeReq(baseReqBody(PARTIALLY_PLACED_PLAN_CONTEXT)), res);
+    expect(res.statusCode).toBe(200);
+    expect(courseIdsOf(res._body, 'year_3_semester_a')).toContain('ANNUAL');
+    expect(courseIdsOf(res._body, 'year_3_semester_b')).toContain('ANNUAL');
   });
 });

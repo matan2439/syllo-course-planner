@@ -21,6 +21,8 @@ import {
   compareScore,
   applyMutation,
   degreeHours as computeDegreeHours,
+  mandatoryPlaced as computeMandatoryPlaced,
+  categoriesSatisfied as computeCategoriesSatisfied,
   GOAL_STACK,
 } from './planner_goals';
 import {
@@ -140,9 +142,15 @@ export class PlannerWorker {
     return this.model;
   }
 
-  /** Raw goal status — no phase/validation, safe to call from isGoalReached. */
+  /**
+   * Raw goal status — no phase/validation, safe to call from isGoalReached.
+   * Reuses planner_goals.ts's mandatoryPlaced/categoriesSatisfied (rather than
+   * a locally-duplicated presence check) so an is_annual course only counts
+   * as placed once it occupies EVERY one of its spans_semesters — otherwise
+   * isGoalReached() would stop the loop as "done" on a partially-placed
+   * annual course before enumerateActions ever gets a chance to repair it.
+   */
   private goalStatus(state: PlanState = this.state) {
-    const placed = new Set(placedCourseIds(state));
     const semesterLoads: Record<string, number> = {};
     for (const id of this.model.knownSemesterIds) {
       semesterLoads[id] = (state.semesters[id] ?? []).reduce(
@@ -150,10 +158,8 @@ export class PlannerWorker {
         0,
       );
     }
-    const mandatoryPlaced = this.model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length;
-    const categoriesSatisfied = this.model.categories.filter(
-      cat => cat.candidateIds.filter(id => placed.has(id)).length >= cat.required,
-    ).length;
+    const mandatoryPlaced = computeMandatoryPlaced(state, this.model);
+    const categoriesSatisfied = computeCategoriesSatisfied(state, this.model);
     return {
       degreeHours: computeDegreeHours(state, this.model),
       semesterLoads,
@@ -222,21 +228,28 @@ export class PlannerWorker {
     if (this.isExcluded(courseId)) {
       return this.recordReject(courseId, 'הקורס סומן כלא-זמין (חריגה מפורשת) ולכן לא ישובץ.', by);
     }
-    if (new Set(placedCourseIds(this.state)).has(courseId)) {
-      return this.recordReject(courseId, 'הקורס כבר משובץ.', by);
-    }
     // Annual (year-long) courses must be placed in every spanned semester
     // atomically, never split into a single semester — the same rule
     // enumerateActions applies for the search, reused here so a direct
     // add_course tool call (the production LlmOrchestrator path) can't place
     // one half of the pair only. Any explicit semesterId param is ignored
     // for these courses since splitting them is never a legal choice.
+    //
+    // Checked BEFORE the generic "already placed" rejection below: a course
+    // already placed in ONE of its spanned semesters only (e.g. stale data
+    // from before this fix, or any other partial placement) must still be
+    // repairable by completing the missing span — applyMutation's ADD_COURSE
+    // case fills in only what's missing and rejects as a true no-op only
+    // once every span is already present.
     if (this.model.profiles.get(courseId)?.is_annual) {
       const [action] = addCourseActionsFor(this.model, courseId);
       if (!action) {
         return this.recordReject(courseId, 'לא נמצא סמסטר חוקי לשיבוץ הקורס.', by);
       }
       return this.tryApply(action, 'ADD_COURSE', this.addReason(courseId), by);
+    }
+    if (new Set(placedCourseIds(this.state)).has(courseId)) {
+      return this.recordReject(courseId, 'הקורס כבר משובץ.', by);
     }
     const sem = semesterId ?? bestLegalSemester(this.state, this.model, courseId);
     if (!sem) {

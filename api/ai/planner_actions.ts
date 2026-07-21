@@ -7,7 +7,7 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours, scorePlan, compareScore } from './planner_goals';
+import { degreeHours as computeDegreeHours, scorePlan, compareScore, isFullyPlaced } from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -93,8 +93,12 @@ export function bestLegalSemester(state: PlanState, model: ConstraintModel, id: 
 export function enumerateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
   const placed = new Set(placedCourseIds(state));
   const actions: PlannerMutation[] = [];
+  // An is_annual course only counts as "placed" (and so excluded from
+  // further consideration) once it occupies EVERY one of its
+  // spans_semesters — a partial placement (e.g. stale data predating atomic
+  // annual handling, or any other split) must still be repairable.
   const consider = (id: string) =>
-    !placed.has(id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
+    !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
 
   // 1. required mandatory still unplaced — every legal semester.
   for (const id of model.requiredMandatoryCourseIds) {
@@ -104,7 +108,7 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
 
   // 2. candidates for not-yet-satisfied categories — every legal semester.
   for (const cat of model.categories) {
-    const got = cat.candidateIds.filter(id => placed.has(id)).length;
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) continue;
     for (const id of cat.candidateIds) {
       if (!consider(id)) continue;

@@ -72,19 +72,38 @@ function semesterLoads(state: PlanState, model: ConstraintModel): number[] {
   );
 }
 
-function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
+/**
+ * Whether a course counts as "placed" for completion/requirement purposes.
+ * An `is_annual` course only counts once it occupies EVERY one of its
+ * `spans_semesters` — being present in just one (e.g. a legacy/stale plan
+ * saved before annual courses were handled atomically, or any other partial
+ * placement) is not complete, even though `placedCourseIds` already contains
+ * its id. Every other course counts as placed by presence anywhere, as
+ * before. `placed` is the caller's precomputed `Set(placedCourseIds(state))`
+ * for efficiency across repeated calls.
+ */
+export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: Set<string>, id: string): boolean {
+  if (!placed.has(id)) return false;
+  const p = model.profiles.get(id);
+  if (p?.is_annual && p.spans_semesters?.length) {
+    return p.spans_semesters.every(sem => (state.semesters[sem] ?? []).includes(id));
+  }
+  return true;
+}
+
+export function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
   let n = 0;
   for (const cat of model.categories) {
-    const got = cat.candidateIds.filter(id => placed.has(id)).length;
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) n++;
   }
   return n;
 }
 
-function mandatoryPlaced(state: PlanState, model: ConstraintModel): number {
+export function mandatoryPlaced(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
-  return model.requiredMandatoryCourseIds.filter(id => placed.has(id)).length;
+  return model.requiredMandatoryCourseIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
 }
 
 /**
@@ -167,11 +186,11 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
   const degreeMet = dh >= model.degreeRequiredHours;
 
   const missingMandatory = model.requiredMandatoryCourseIds.filter(
-    id => !placed.has(id) && !model.completedCourseIds.has(id),
+    id => !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id),
   );
 
   const unsatisfiedCategories = model.categories
-    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
+    .filter(cat => cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length < cat.required)
     .map(cat => cat.id);
 
   // Phase 2C overload override — must agree with plan_validation.ts's policy:
@@ -214,10 +233,23 @@ export function applyMutation(state: PlanState, mut: PlannerMutation): PlanState
   };
   switch (mut.type) {
     case 'ADD_COURSE': {
-      if (placedCourseIds(next).includes(mut.courseId)) return null;
       const targets = [mut.semesterId, ...(mut.alsoSemesterIds ?? [])];
       if (targets.some(sem => !next.semesters[sem])) return null;
-      for (const sem of targets) next.semesters[sem].push(mut.courseId);
+      // A course already placed OUTSIDE the target set can't legally be
+      // "added" here (that would require a move, not an add). A course
+      // already present in EVERY target is a true no-op. Otherwise — not
+      // placed at all, or (an is_annual course with alsoSemesterIds) placed
+      // in only SOME of its own targets already, e.g. stale data predating
+      // atomic annual placement — fill in whichever targets are still
+      // missing, without duplicating ones already there.
+      const currentSems = Object.entries(next.semesters)
+        .filter(([, ids]) => ids.includes(mut.courseId))
+        .map(([sem]) => sem);
+      if (currentSems.some(sem => !targets.includes(sem))) return null;
+      if (targets.every(sem => currentSems.includes(sem))) return null;
+      for (const sem of targets) {
+        if (!next.semesters[sem].includes(mut.courseId)) next.semesters[sem].push(mut.courseId);
+      }
       return next;
     }
     case 'REMOVE_COURSE':
