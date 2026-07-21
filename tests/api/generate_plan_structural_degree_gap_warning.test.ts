@@ -209,4 +209,47 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     // the shortfall to catalog exhaustion instead of the real overload cause.
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('6. Codex-caught regression (round 4): a hard-excluded course already placed on the board (issue #25 Finding #1) must surface as ITSELF, not be mislabeled as a structural catalog-exhaustion gap', async () => {
+    // FLU is already placed (as if the user added it before also hard-
+    // excluding it — the classic Finding #1 scenario: the planner only ever
+    // adds/moves courses, never removes a previously-placed one on its own).
+    // report.disallowedPlaced tracks this SEPARATELY from
+    // validatePlanState/report.legal (that's the whole reason disallowedGate
+    // exists as its own post-hoc check), so report.legal alone doesn't catch
+    // it — both categories still read as "satisfied" (FLU counts as placed
+    // regardless of being disallowed; SOL gets added for the solids
+    // category), degree hours are still short, and a report.legal-only gate
+    // would wrongly fire the structural-gap warning alongside the real,
+    // actionable hard-exclusion blocker.
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 4, courses: [
+            { course_id: 'FLU', name_he: 'זורם', hours: 4, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+          ] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        total_hours_progress: { known_completed_hours: 0 },
+        personal_status: { completed: [], currently_taking: [] },
+        mandatory_unplaced: [],
+      },
+      preferences: { strongly_avoided_course_ids: ['FLU'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    // The real blocker (hard-excluded course still placed) is disclosed as a
+    // genuine blocking error — proves the scenario actually reproduces it.
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('קורס לא-זמין שובץ בתוכנית'))).toBe(true);
+    // The new structural-gap warning must NOT fire.
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

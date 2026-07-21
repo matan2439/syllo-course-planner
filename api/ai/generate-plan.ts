@@ -370,11 +370,21 @@ function toProposal(
   // hours/mandatory/category completeness) so this only fires when the
   // current state is itself clean and the only remaining question is
   // whether any legal addition could still close the hours gap.
+  //
+  // Codex review (round 4) caught that report.legal alone isn't enough: a
+  // hard-excluded course already placed on the board (disallowedGate's own
+  // scenario — issue #25 Finding #1) is tracked separately in
+  // report.disallowedPlaced, NOT folded into validatePlanState/report.legal
+  // (that's the whole reason disallowedGate exists as its own post-hoc check
+  // below). Without also requiring disallowedPlaced to be empty, this branch
+  // could fire alongside a real, actionable hard-exclusion blocker and
+  // mislabel it as catalog exhaustion instead.
   if (
     !report.degreeMet &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
-    report.legal
+    report.legal &&
+    report.disallowedPlaced.length === 0
   ) {
     const canStillAddHours = enumerateActions(finalState, model)
       .filter(a => a.type === 'ADD_COURSE')
