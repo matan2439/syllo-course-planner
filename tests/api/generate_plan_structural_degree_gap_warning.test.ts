@@ -337,4 +337,27 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
   });
+
+  test('9. Codex-caught regression (round 8): a soft-avoided ANNUAL elective is the only recoverable option — must be tried as an atomic multi-semester bundle, not a single-semester trial', async () => {
+    // data/boards/test_program_gap_unwanted_annual_2027.json: same MAND+FLU+SOL
+    // shape as test 7's fixture, but the one recoverable soft-avoided course
+    // (SPARE_ANNUAL) is is_annual with a confident spans_semesters bundle
+    // (year_3_semester_b + year_4_semester_a). A single-semester ADD_COURSE
+    // trial (the round-5/7 implementation's bestLegalSemester + one mutation)
+    // always fails validatePlanState, since an annual course must occupy
+    // EVERY one of its spans at once — that would wrongly report "not
+    // recoverable" and fire the exhaustion warning even though approving
+    // SPARE_ANNUAL as a risky elective genuinely closes the gap.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_annual_2027',
+      plan_context: planContext(169),
+      preferences: { unwanted_course_ids: ['SPARE_ANNUAL'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('SPARE_ANNUAL');
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

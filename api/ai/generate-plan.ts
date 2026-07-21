@@ -40,7 +40,7 @@ import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { incompleteAnnualCourseIds, applyMutation, isFullyPlaced } from './planner_goals';
-import { enumerateActions, isExcluded, bestLegalSemester } from './planner_actions';
+import { enumerateActions, isExcluded, addCourseActionsFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -427,10 +427,21 @@ function toProposal(
       if (p.is_mandatory || p.hours == null || p.hours === 0 || !p.is_unwanted) return false;
       if (isFullyPlaced(finalState, model, placedNow, id)) return false;
       if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
-      const sem = bestLegalSemester(finalState, model, id);
-      if (!sem) return false;
-      const next = applyMutation(finalState, { type: 'ADD_COURSE', courseId: id, semesterId: sem });
-      return next != null && validatePlanState(next, model, pinnedHome).valid;
+      // Codex review (round 8) caught that a hand-rolled bestLegalSemester +
+      // single-semester ADD_COURSE trial rejects a genuinely recoverable
+      // is_annual elective: validatePlanState requires an annual course to
+      // occupy EVERY one of its spans at once, so a partial single-semester
+      // trial always fails, making this wrongly report "not recoverable" and
+      // fire the exhaustion warning. addCourseActionsFor (planner_actions.ts,
+      // the same helper enumerateActions' own group 4 uses for is_annual
+      // courses) already builds the correct atomic multi-semester bundle when
+      // confident span data exists, and falls back to the normal
+      // one-action-per-legal-semester shape otherwise — try every action it
+      // proposes, not just one hand-picked semester.
+      return addCourseActionsFor(model, id).some(a => {
+        const next = applyMutation(finalState, a);
+        return next != null && validatePlanState(next, model, pinnedHome).valid;
+      });
     });
     if (!canStillAddHours && !canRecoverViaUnwantedElective) {
       warnings_he.push(
