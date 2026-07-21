@@ -143,4 +143,35 @@ describe('generate-plan — a hard-excluded, already-placed course is surfaced a
     expect(b.blocked).toBe(true);
     expect(b.errors.length).toBeGreaterThan(0);
   });
+
+  // Codex review finding on this PR: a client sending BOTH hard-exclusion
+  // field names — an empty disallowed_course_ids (e.g. the common "explicit
+  // no clarification-answer exclusions" default seen elsewhere in this test
+  // suite) plus a populated strongly_avoided_course_ids — must not have the
+  // empty field silently win via nullish-coalescing and drop the exclusion
+  // entirely. This is a real path: academic_clarification_plan_inputs.ts's
+  // answer merge writes disallowed_course_ids from a clarification answer
+  // without touching whatever strongly_avoided_course_ids the request already
+  // carried.
+  test('6. both hard-exclusion fields present (disallowed_course_ids empty, strongly_avoided_course_ids populated): union, not nullish-fallback', async () => {
+    const res = makeRes();
+    await handler(
+      makeReq(baseReqBody({ preferences: { disallowed_course_ids: [], strongly_avoided_course_ids: ['FLU'] } })),
+      res,
+    );
+    const b = res._body;
+    expect(b.blocked).toBe(true);
+    expect(b.errors.some((e: string) => e.includes('FLU') || e.includes('זורם'))).toBe(true);
+  });
+
+  test('7. both hard-exclusion fields present, reversed (strongly_avoided_course_ids empty, disallowed_course_ids populated): still unioned', async () => {
+    const res = makeRes();
+    await handler(
+      makeReq(baseReqBody({ preferences: { disallowed_course_ids: ['FLU'], strongly_avoided_course_ids: [] } })),
+      res,
+    );
+    const b = res._body;
+    expect(b.blocked).toBe(true);
+    expect(b.errors.some((e: string) => e.includes('FLU') || e.includes('זורם'))).toBe(true);
+  });
 });

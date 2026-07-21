@@ -54,6 +54,7 @@ import {
   hasCriticalMissingInput,
   buildAcademicDecision,
   buildClarificationDecision,
+  resolveHardExcludedCourseIds,
 } from './academic_decision_runtime';
 import type { ClarificationResult } from './academic_decision_types';
 
@@ -140,7 +141,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     currentlyPlannedCourseIds,
     wantedCourseIds: prefs.wanted_course_ids,
     unwantedCourseIds: prefs.unwanted_course_ids,
-    disallowedCourseIds: prefs.disallowed_course_ids ?? prefs.strongly_avoided_course_ids,
+    disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
     pinnedCourseIds: ctx?.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
     priorHours: priorHoursFromContext(ctx),
@@ -311,7 +312,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         dbUrl,
         buildModelOptions: {
           completedCourseIds: (plan_context?.personal_status?.completed ?? []).map((c: any) => c.course_id),
-          disallowedCourseIds: preferences.disallowed_course_ids ?? preferences.strongly_avoided_course_ids,
+          disallowedCourseIds: resolveHardExcludedCourseIds(preferences),
           maxHoursPerSemester: preferences.max_weekly_hours ?? undefined,
         },
       },
@@ -482,7 +483,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       context: {
         completedCourseIds: (effectivePlanContext?.personal_status?.completed ?? []).map((c: any) => c.course_id),
         currentCourseIds: currentlyPlannedCourseIds,
-        excludedCourseIds: effectivePreferences.disallowed_course_ids ?? effectivePreferences.strongly_avoided_course_ids,
+        excludedCourseIds: resolveHardExcludedCourseIds(effectivePreferences),
         maxWeeklyHours: effectivePreferences.max_weekly_hours ?? undefined,
       },
       academicInterestProfileRaw: academic_interest_profile,

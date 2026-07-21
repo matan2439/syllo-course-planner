@@ -125,6 +125,28 @@ export interface BuildAcademicDecisionInput {
   academicInterestProfileRaw?: unknown;
 }
 
+/**
+ * disallowed_course_ids and strongly_avoided_course_ids are two request-level
+ * names for the same hard-exclusion concept (see generate-plan.ts's
+ * preferencesSchema). A client may legitimately send either, both, or neither
+ * — e.g. the clarification-answer merge path (academic_clarification_plan_inputs.ts)
+ * writes disallowed_course_ids from an answer while leaving whatever
+ * strongly_avoided_course_ids the original request already had. Every caller
+ * that resolves the user's actual hard-avoid list must union both fields
+ * rather than pick one nullish-first, or a course excluded only through the
+ * other field name is silently treated as allowed. undefined+undefined stays
+ * undefined (no restriction at all), matching BuildModelOptions' existing
+ * "unset means unrestricted" contract.
+ */
+export function resolveHardExcludedCourseIds(
+  prefs?: { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] } | null,
+): string[] | undefined {
+  const a = prefs?.disallowed_course_ids;
+  const b = prefs?.strongly_avoided_course_ids;
+  if (a === undefined && b === undefined) return undefined;
+  return [...new Set([...(a ?? []), ...(b ?? [])])];
+}
+
 // ── Clarify ──────────────────────────────────────────────────────────────────
 
 /** Map generate-plan's plan_context/preferences onto the clarification context. */
@@ -135,7 +157,7 @@ export function extractClarificationContext(
 ): ClarificationPlanningContext {
   const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
-  const excluded = preferences?.disallowed_course_ids ?? preferences?.strongly_avoided_course_ids;
+  const excluded = resolveHardExcludedCourseIds(preferences);
 
   const context: ClarificationPlanningContext = {
     completedCourseIds: completed,
