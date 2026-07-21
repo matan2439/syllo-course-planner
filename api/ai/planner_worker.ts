@@ -351,15 +351,72 @@ export class PlannerWorker {
       .sort((a, b) => compareScore(b.imm, a.imm));
 
     // Downstream impact — forward-check + rollout the top immediate candidates.
-    const top = this.opts.lookahead ? legal.slice(0, this.opts.topN) : legal;
+    // projectFeasibility is a RANKING signal, not a hard gate (see its own
+    // docstring in planner_lookahead.ts: an action that blocks a still-required
+    // item "must be ranked down"). A board can legitimately span fewer
+    // semesters than the full degree needs (e.g. prior-hours data is
+    // missing/low, or the board only covers the student's remaining years) —
+    // projectFeasibility's aggregate 'degree_hours' reason then correctly
+    // fires on EVERY state, since the full target can never be reached from
+    // ANY of them. That specific reason must never eliminate (or even rank
+    // down) every action, or the worker takes zero actions and silently
+    // returns an empty, clean-looking plan. A per-course/per-category block
+    // (an action that makes a SPECIFIC still-needed mandatory course or
+    // category candidate impossible to place later) is a different, genuine
+    // self-inflicted mistake and must still be ranked down — collapsing both
+    // reasons into one boolean would let a plan actively sabotage a mandatory
+    // course just because the aggregate target was already unreachable
+    // anyway. So only non-'degree_hours' blocked reasons count against
+    // ranking; hitting only the aggregate check ranks the same as feasible.
+    //
+    // Codex round-2: feasibility/blocker status must be computed for the
+    // FULL `legal` set and sorted BEFORE truncating to topN — topN exists to
+    // bound the expensive estimateFinalScore rollout below, not to gate
+    // which candidates are even considered for blocker-awareness (that check
+    // is cheap by comparison). Truncating on raw immediate score first can
+    // otherwise let more than topN high-immediate-score blocking actions
+    // (e.g. several large electives that all crowd out the same single
+    // legal semester of a still-needed mandatory course) fill the entire
+    // truncated set, silently excluding the one non-blocking action that
+    // would have avoided sabotaging that mandatory course.
+    // Codex round-3: the 'degree_hours' reason must only be excused when it
+    // was ALREADY present before this action — i.e. the degree target was
+    // already unreachable from the current state regardless of what gets
+    // chosen. An action that makes a PREVIOUSLY-reachable target newly
+    // unreachable (e.g. a "wanted" is_annual course that consumes headroom
+    // in multiple semesters while counting only once toward degree credit)
+    // is a genuine self-inflicted mistake, not the unavoidable structural
+    // case this whole ranking change exists to tolerate — it must still be
+    // ranked down, or a court that only wins on preference (g5) could get
+    // chosen over an ordinary elective that would have kept the plan
+    // completable.
+    const currentDegreeHoursAlreadyUnreachable = this.opts.lookahead
+      ? projectFeasibility(this.state, this.model).blocked.includes('degree_hours')
+      : false;
+    const withBlockerStatus = this.opts.lookahead
+      ? legal
+          .map(x => {
+            const report = projectFeasibility(x.next, this.model);
+            const hasRealBlocker =
+              report.blocked.some(b => b !== 'degree_hours') ||
+              (report.blocked.includes('degree_hours') && !currentDegreeHoursAlreadyUnreachable);
+            return { ...x, feasible: report.feasible, hasRealBlocker };
+          })
+          .sort((a, b) => {
+            if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
+            return compareScore(b.imm, a.imm);
+          })
+      : legal.map(x => ({ ...x, feasible: true, hasRealBlocker: false }));
+    const top = this.opts.lookahead ? withBlockerStatus.slice(0, this.opts.topN) : withBlockerStatus;
     const evaluated = top
       .map(x => ({
         ...x,
-        feasible: this.opts.lookahead ? projectFeasibility(x.next, this.model).feasible : true,
         fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
       }))
-      .filter(x => x.feasible)
-      .sort((a, b) => compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm));
+      .sort((a, b) => {
+        if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
+        return compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm);
+      });
 
     // Act + Validate — accept the best action that advances the reachable outcome
     // (better final than staying) or makes immediate progress; try next on reject.

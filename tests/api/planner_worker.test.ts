@@ -255,6 +255,145 @@ describe('PlannerWorker — downstream-impact reasoning (a legal action is not a
   });
 });
 
+describe('PlannerWorker — feasibility ranks actions, it must never eliminate every action', () => {
+  // A real board can legitimately span fewer semesters than the full degree
+  // needs (e.g. a "years 3-4 only" board for a student whose prior-hours
+  // record is missing/low): the aggregate degree-hours headroom check in
+  // projectFeasibility then correctly reports that the FULL target can never
+  // be reached from here — but that must never mean the worker takes ZERO
+  // actions and returns a silently empty plan. It must still place whatever
+  // it legally and usefully can (e.g. a needed mandatory course), the same
+  // way a human advisor would build out as much of the plan as fits rather
+  // than refusing to touch it at all.
+  function unreachableTargetModel(): ConstraintModel {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    return {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      // 4 semesters * hardCap 26 = 104h max headroom, far below a 185h target
+      // with 0 prior hours — the full degree literally cannot fit in this
+      // board's visible window, by design of the scenario.
+      degreeRequiredHours: 185, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+  }
+
+  it('still places a trivially legal, needed mandatory course instead of stopping with an empty plan', () => {
+    const w = new PlannerWorker(unreachableTargetModel(), undefined, { lookahead: true });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+    expect(placedCourseIds(w.getPlan()).length).toBeGreaterThan(0);
+  });
+
+  // Codex round-1 finding: the aggregate 'degree_hours' reason (tolerated
+  // above) must not be confused with a real, course-specific blocker. An
+  // elective and a mandatory course that both only fit in the SAME single
+  // semester (hardCap 26) genuinely conflict — placing the 22h elective
+  // first makes the 5h mandatory permanently unplaceable there. That must
+  // still be ranked down even while the target is intentionally unreachable
+  // overall, or the elective wins on immediate score and the worker
+  // self-sabotages a course it could otherwise have placed.
+  it('still avoids blocking a specific still-needed mandatory course, even while the aggregate target is unreachable', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('BIGELECTIVE', profile('BIGELECTIVE', {
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 22,
+    }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      degreeRequiredHours: 999, priorHours: 0, // intentionally unreachable
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m, undefined, { lookahead: true });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+  });
+
+  // Codex round-2 finding: the blocker-aware sort ran only on the top-N (by
+  // raw immediate score) candidates — topN exists to bound the expensive
+  // estimateFinalScore rollout, not to gate blocker-awareness itself. If
+  // MORE than topN high-immediate-score actions all block the same specific
+  // mandatory course, the non-blocking mandatory-placement action never even
+  // enters the truncated set, so the blocker-aware sort never sees it.
+  it('still finds the non-blocking mandatory action even when more than topN candidates block it', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    // 3 distinct large electives, each legal ONLY in the same single semester
+    // as MAND, each individually blocking it (22 + 5 = 27 > hardCap 26) —
+    // more than topN (2) below.
+    for (const id of ['E1', 'E2', 'E3']) {
+      profiles.set(id, profile(id, { effective_allowed_semesters: ['year_3_semester_a'], hours: 22 }));
+    }
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      degreeRequiredHours: 999, priorHours: 0, // intentionally unreachable
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m, undefined, { lookahead: true, topN: 2, rolloutSteps: 20 });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+  });
+
+  // Codex round-3 finding: the 'degree_hours' reason must only be excused
+  // when the target was ALREADY unreachable before the action — not for an
+  // action that newly makes a previously-reachable target unreachable. A
+  // "wanted" is_annual course consumes headroom in BOTH its spanned
+  // semesters while counting only ONCE toward degree credit — a genuinely
+  // worse choice than an ordinary elective when it tips the plan from
+  // reachable to unreachable, and must still be ranked down even though it
+  // scores higher on preference (g5).
+  it('still avoids a wanted action that newly makes the target unreachable, preferring an ordinary path that stays completable', () => {
+    const TWO_SEMS = ['s1', 's2'];
+    const profiles = new Map<string, CourseProfile>();
+    // Consumes 20h in EACH of its 2 spans (40h total headroom) but counts
+    // only 20h toward degree credit — attractive (is_wanted) but tips a
+    // reachable 40h target into unreachable (headroom drops from 52 to 12,
+    // gap stays at 20).
+    profiles.set('ANNUAL', profile('ANNUAL', {
+      is_annual: true, spans_semesters: TWO_SEMS, effective_allowed_semesters: TWO_SEMS,
+      hours: 20, is_wanted: true,
+    }));
+    // Two ordinary electives that together exactly complete the 40h target
+    // without over-consuming headroom.
+    profiles.set('ORD1', profile('ORD1', { effective_allowed_semesters: ['s1'], hours: 20 }));
+    profiles.set('ORD2', profile('ORD2', { effective_allowed_semesters: ['s2'], hours: 20 }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: TWO_SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: [], categories: [],
+      degreeRequiredHours: 40, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(['ANNUAL']),
+    };
+    // rolloutSteps: 0 isolates the hasRealBlocker classification itself —
+    // with a real rollout, estimateFinalScore's downstream-impact reasoning
+    // already happens to prefer the ORD1/ORD2 path (it reaches full degree
+    // completion within the rollout, unlike the ANNUAL-first path), which
+    // would mask this specific bug. Zeroing the rollout depth reduces `fin`
+    // to the immediate score, where g1-g4 tie and only g5 (preference)
+    // differs — exactly the scenario where an incorrect hasRealBlocker
+    // classification would let the "wanted" but plan-sabotaging action win.
+    const w = new PlannerWorker(m, undefined, { lookahead: true, rolloutSteps: 0 });
+    w.run();
+    expect(w.getState().degreeHours).toBe(40);
+    expect(semesterOf(w.getPlan(), 'ANNUAL')).toBeNull();
+  });
+});
+
 describe('PlannerWorker — STOP trace on maxSteps limit', () => {
   it('records a STOP action with maxSteps reason when the step limit is hit before goal', () => {
     // Model needs enough required work that 1 step cannot reach the goal
