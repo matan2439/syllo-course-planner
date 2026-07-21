@@ -423,27 +423,38 @@ function toProposal(
         return next != null && validatePlanState(next, model, pinnedHome).valid;
       });
     const placedNow = new Set(placedCourseIds(finalState));
-    const canRecoverViaUnwantedElective = !canStillAddHours && [...model.profiles].some(([id, p]) => {
-      if (p.is_mandatory || p.hours == null || p.hours === 0 || !p.is_unwanted) return false;
+    // Codex review (round 8) caught that a hand-rolled bestLegalSemester +
+    // single-semester ADD_COURSE trial rejects a genuinely recoverable
+    // is_annual elective: validatePlanState requires an annual course to
+    // occupy EVERY one of its spans at once, so a partial single-semester
+    // trial always fails. Fixed by trying addCourseActionsFor (the same
+    // helper enumerateActions' own group 4 uses for is_annual courses) —
+    // it builds the correct atomic multi-semester bundle when confident
+    // span data exists.
+    //
+    // Codex review (round 9) then caught that this same
+    // single-best-semester limitation isn't unique to is_unwanted courses:
+    // group 4's ORDINARY (not soft-avoided) degree-hour-fill branch
+    // (planner_actions.ts) also only ever proposes bestLegalSemester's
+    // single lowest-load pick, not every legal semester — so
+    // canStillAddHours (which is built from enumerateActions' output) can
+    // miss a course that's illegal in its lowest-load semester (e.g. a
+    // prerequisite-timing conflict, only checked later by
+    // validatePlanState) but legal in a later one. Broadened this check's
+    // scope from is_unwanted-only to every non-mandatory, positive-hour,
+    // not-yet-placed elective — addCourseActionsFor already tries every
+    // legal semester (or the annual bundle) for any such course, so one
+    // exhaustive second pass now covers both gaps at once.
+    const canRecoverViaWiderSearch = !canStillAddHours && [...model.profiles].some(([id, p]) => {
+      if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
       if (isFullyPlaced(finalState, model, placedNow, id)) return false;
       if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
-      // Codex review (round 8) caught that a hand-rolled bestLegalSemester +
-      // single-semester ADD_COURSE trial rejects a genuinely recoverable
-      // is_annual elective: validatePlanState requires an annual course to
-      // occupy EVERY one of its spans at once, so a partial single-semester
-      // trial always fails, making this wrongly report "not recoverable" and
-      // fire the exhaustion warning. addCourseActionsFor (planner_actions.ts,
-      // the same helper enumerateActions' own group 4 uses for is_annual
-      // courses) already builds the correct atomic multi-semester bundle when
-      // confident span data exists, and falls back to the normal
-      // one-action-per-legal-semester shape otherwise — try every action it
-      // proposes, not just one hand-picked semester.
       return addCourseActionsFor(model, id).some(a => {
         const next = applyMutation(finalState, a);
         return next != null && validatePlanState(next, model, pinnedHome).valid;
       });
     });
-    if (!canStillAddHours && !canRecoverViaUnwantedElective) {
+    if (!canStillAddHours && !canRecoverViaWiderSearch) {
       warnings_he.push(
         `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,

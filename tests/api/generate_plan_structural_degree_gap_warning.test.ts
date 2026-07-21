@@ -360,4 +360,54 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('10. Codex-caught regression (round 9): an ordinary elective whose LOWEST-load legal semester violates prerequisite timing, but a later legal semester satisfies it — must NOT be reported as catalog exhaustion', async () => {
+    // data/boards/test_program_gap_prereq_timing_2027.json: MAND (fixed,
+    // year_3_semester_a) + PREREQ (a SECOND mandatory course, fixed,
+    // year_4_semester_a) + ORD — a plain (not mandatory, not a category
+    // candidate, not unwanted) elective legal in year_3_semester_b OR
+    // year_4_semester_b, requiring PREREQ. bestLegalSemester (planner_actions.ts,
+    // used by enumerateActions' group 4 — the actual search's ONLY source of
+    // ADD_COURSE candidates for a plain filler elective) ranks candidate
+    // semesters by CURRENT LOAD only — year_3_semester_b and year_4_semester_b
+    // are both empty (tied at 0), so it picks the first — year_3_semester_b
+    // (index 1) — which is BEFORE PREREQ (index 2, year_4_semester_a),
+    // violating the strict prerequisite-timing rule. That single proposed
+    // action is illegal, so the WORKER itself never places ORD either (a
+    // narrower, separate gap in the core search — out of scope for this
+    // response-warnings-only fix). What round 9 fixes is specifically the
+    // MISLEADING claim: without this fix, the response would say the visible
+    // catalog is exhausted (canRecoverViaWiderSearch/canStillAddHours both
+    // false), when in fact ORD is still a real, recoverable option (a legal
+    // placement — year_4_semester_b, AFTER PREREQ — genuinely exists, just
+    // not one the worker's own bestLegalSemester heuristic tries). The
+    // generic hours-shortfall line must stay (ORD is still genuinely
+    // unplaced), but not the stronger "nothing else can help" claim.
+    const res = await run({
+      program_id: 'test_program_gap_prereq_timing_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 4, courses: [
+            { course_id: 'PREREQ', name_he: 'דרישת קדם', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_a'] },
+          ] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        total_hours_progress: { known_completed_hours: 173 },
+        personal_status: { completed: [], currently_taking: [] },
+        mandatory_unplaced: [],
+      },
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('ORD');
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

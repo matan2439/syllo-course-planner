@@ -5491,7 +5491,17 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   // waiting on data. Check that signal first so the advice actually matches
   // what's true; only fall back to the generic elective/data suggestion when
   // the server hasn't flagged the gap as structural.
-  if (_finalWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+  //
+  // Codex review (round 9) caught that this marker check ran unconditionally
+  // — newProposal.warnings_he can carry a structural-gap marker from an
+  // earlier point in requestPlanProposal's client-side repair/refill chain
+  // (e.g. repairAddHoursToDegreeLocal appends onto, never clears,
+  // proposal.warnings_he), so a draft that the LATER repair steps actually
+  // brought up to the full required hours could still render the "remaining
+  // gap" decision — directly contradicting the hours-satisfied plan shown
+  // right above it. Gated on !_hoursSatisfied (already computed above) so a
+  // stale marker can never override a genuinely complete plan.
+  if (!_hoursSatisfied && _finalWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
     decisions.push('הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.');
   } else if (!_hoursSatisfied) {
     decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');

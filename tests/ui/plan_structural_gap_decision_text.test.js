@@ -97,4 +97,34 @@ describe('postPlanChangeSummary — structural degree-gap decision text (Agent D
     expect(r.joined).toContain('לאשר קורס בחירה אחד בסיכון גבוה');
     expect(r.joined).not.toContain('חלון הסמסטרים המוצג כרגע');
   });
+
+  test('Codex-caught regression (round 9): a STALE structural-gap marker carried over from an earlier repair step must not override a plan that later repairs already brought up to the required hours', () => {
+    // requestPlanProposal's client-side repair/refill chain (e.g.
+    // repairAddHoursToDegreeLocal) appends onto, never clears,
+    // proposal.warnings_he — so newProposal can carry a structural-gap marker
+    // from BEFORE a later repair step closed the gap. Force _hoursSatisfied
+    // true (stubbing computeDegreeProgress, the same override-global
+    // technique this suite's other tests already use for
+    // gateProposalActivation/postStatusMessage) while still passing the
+    // marker in warnings_he, to isolate exactly the staleness bug from any
+    // real course-hours bookkeeping.
+    const r = JSON.parse(window.eval(`(function(){
+      _aiChatMessages = [];
+      const warn = 'מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (181/185 ש"ש) — הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.';
+      _aiPlanLastProposal = { semesters: [{ semester_id:'year_3_semester_a', course_ids:['0542-4220'] }], warnings_he: [warn] };
+      const prev = { semesters: [{ semester_id:'year_3_semester_a', course_ids:[] }] };
+      const next = { semesters: [{ semester_id:'year_3_semester_a', course_ids:['0542-4220'] }], warnings_he: [warn] };
+      const _origProgress = computeDegreeProgress;
+      computeDegreeProgress = () => ({ total_after: 185, required: 185 });
+      try {
+        postPlanChangeSummary(prev, next, {});
+      } finally {
+        computeDegreeProgress = _origProgress;
+      }
+      const msgs = (_aiChatMessages||[]).map(mm => mm.text || '');
+      return JSON.stringify({ joined: msgs.join('\\n') });
+    })()`));
+    expect(r.joined).not.toContain('חלון הסמסטרים המוצג כרגע');
+    expect(r.joined).not.toContain('לאשר קורס בחירה אחד בסיכון גבוה');
+  });
 });
