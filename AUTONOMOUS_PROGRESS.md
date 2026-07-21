@@ -5,9 +5,91 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-21, session on branch `claude/determined-thompson-8ideqq`
-(continuing PR #37 from `claude/determined-thompson-32ricp`)._
+(same session that finished PR #37, then found and fixed PR #39)._
 
-## Latest session (`claude/determined-thompson-8ideqq`) — PR #37 finished, reviewed, merged
+## Latest session continued — PR #39: silent empty-plan bug found via the Agent Diagnosis Loop, fixed, merged
+
+After PR #37 merged (see below), the rolling-three window (32,34,37)=C/C/C
+was non-compliant per this routine's own governance rules (0 A/B in the
+window). Per the standing instruction ("run the Agent Diagnosis Loop before
+selecting a new milestone"), ran a throwaway Jest harness against the real
+`generate-plan.ts` handler with realistic Hebrew/real-board scenarios
+(delegated to a subagent for the initial sweep, independently verified the
+top finding before acting on it — see below).
+
+**Found and fixed a severe, previously-unknown bug**: whenever a board's
+visible semester window can't mathematically fit the FULL remaining
+degree-hours target (e.g. a real student's recorded prior-hours is
+missing/low — the live frontend's `manual_completed_degree_hours` field,
+`app/web/semester_board_viewer.html`, is optional and defaults to `null`,
+falling back to `known_completed_hours`), the planner **silently returned a
+completely empty plan**: 0 courses, `blocked:false`, `errors:[]`, on the
+default (highest-traffic) path and the `use_academic_decision_agent` path
+alike. Independently reproduced on the real `mechanical_engineering_2027`
+fixture before trusting the subagent's report: `known_completed_hours: 80`
+→ 0 courses; `known_completed_hours: 81` → 20 courses. A 1-hour data
+difference flips a real user from a full plan to total silence.
+
+Root cause: `planner_lookahead.ts`'s `projectFeasibility` computes an
+aggregate "can the remaining degree-hours gap still close within total
+headroom" check — its own docstring says an infeasible action "must be
+ranked down" (a ranking signal). But `PlannerWorker.step()`
+(`planner_worker.ts`) hard-filtered on `.feasible`, so when the full target
+is structurally unreachable from the board's window, EVERY candidate
+(including a trivially legal, clearly-needed mandatory course) looks
+infeasible, and the filter removes 100% of candidates — the worker takes
+zero actions and stops on step 1.
+
+**Fixed in PR #39** (`ui/frontend-modernization` ← `claude/determined-
+thompson-8ideqq`, merged `5de999f`), after **4 real rounds of Codex
+findings**, each progressively subtler, all fixed with RED-verified
+regression tests — none dismissed:
+- Round 1 (initial fix, `b5fb243`): replaced the hard `.filter(x =>
+  x.feasible)` with a sort that ranks feasible actions first but never
+  eliminates infeasible ones. Verified end-to-end: the real-board repro
+  went from 0 courses to 27, `blocked:false`.
+- Round 2 (`fc8f902`): the initial fix collapsed `projectFeasibility`'s
+  report to one boolean, so an action blocked ONLY by the aggregate
+  `degree_hours` check ranked identically to one that blocks a SPECIFIC
+  still-needed mandatory/category course. Fixed by ranking on
+  `report.blocked.some(b => b !== 'degree_hours')` instead of the raw
+  boolean — the aggregate reason alone no longer counts against ranking,
+  but a genuine course-specific block still does.
+- Round 3 (`b01d5ec`): the blocker-aware sort ran only on
+  `legal.slice(0, topN)` — truncation-by-immediate-score happened BEFORE
+  blocker status was known, so >topN blocking high-score actions could
+  crowd the one non-blocking action out of consideration entirely. Fixed by
+  computing blocker status for the FULL legal set and sorting before
+  truncating (the expensive `estimateFinalScore` rollout still only runs
+  post-truncation, preserving the original performance intent).
+- Round 4 (`0c8be5f`): the `degree_hours` reason was excused
+  unconditionally, but that's only correct when it was ALREADY blocked
+  before the action (the structural case). An action that NEWLY makes a
+  previously-reachable target unreachable (e.g. a "wanted" `is_annual`
+  course consuming headroom in multiple semesters for single-count degree
+  credit) could still win via preference even though it sabotages
+  completion. Fixed by computing `projectFeasibility` once for the CURRENT
+  state per step and only excusing `degree_hours` when it was already
+  blocked pre-action. This test needed `rolloutSteps: 0` to isolate the bug
+  from `estimateFinalScore`'s own (separately correct) downstream-impact
+  reasoning, which already happened to mask it in a full-rollout scenario —
+  a reminder that this file's two impact-reasoning mechanisms
+  (`projectFeasibility` ranking + `estimateFinalScore` rollout) can each
+  independently mask bugs in the other; both need direct test coverage.
+- Round 5: Codex clean, no further findings — CI 3/3 green, all 3 review
+  threads resolved with evidence, merged.
+
+Final state: full API suite 81/81 suites, **1241/1241 tests** (was
+1238/1238 at merge time of PR #37), zero regressions. `tsc --noEmit` clean.
+
+**Classification: C** (correctness) — a core planner search-loop defect
+causing silent, total planning failure on the default production path. Per
+this routine's own priority order, a P0/C-severity correctness fix always
+preempts the rolling-window classification rule — this surfaced via the
+mandated Agent Diagnosis Loop rather than forcing an A/B milestone
+artificially. The rolling-window history below reflects this honestly.
+
+## Prior session work (PR #37) — real Agent-quality fix, finished and merged
 
 Picked up where the prior session left off: PR #37 (`is_annual` course atomic
 multi-semester placement fix) was open with a Codex review loop already 9
@@ -199,6 +281,13 @@ found is already a fully-diagnosed, open human decision from a prior session
    load from being silently under-reported, plus a latent state-corruption
    risk where an already-valid annual placement could be split during a
    routine rebuild).
+9. PR #38 — docs-only progress recap, merged (`b0d0771`) — not classified (no
+   product code).
+10. PR #39 — feasibility-ranking fix for the silent-empty-plan bug, **merged**
+    (`5de999f`), after 4 real rounds of Codex findings fixed — **C**
+    (correctness: the default/highest-traffic planner path could silently
+    return a totally empty, `blocked:false` plan; found via the mandated
+    Agent Diagnosis Loop, not forced to satisfy the rolling-window rule).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -209,29 +298,35 @@ Rolling-three checks:
 - (13,27,31) = D/C/B — compliant (2 of 3 are A/B/C; 1 is A/B).
 - (27,31,32) = C/B/C — compliant (3 of 3 are A/B/C; 1 is A/B).
 - (31,32,34) = B/C/C — compliant (3 of 3 are A/B/C; 1 is A/B).
-- (32,34,37) = C/C/C — **NOT compliant** (3 of 3 are A/B/C, but 0 are A/B —
-  the rule requires at least one A/B per window). This was flagged
-  prospectively by the prior session before #37 even merged, and now that
-  it has, the window is real. **The next milestone MUST be an A or B**
-  (user-visible, or wires an existing unconsumed capability — e.g. Decision,
-  Simulation, or Persistence — into a real caller) to restore compliance,
-  unless a genuinely higher-priority correctness issue is found first (P0/C
-  correctness always preempts the rolling-window rule per this routine's own
-  priority order).
+- (32,34,37) = C/C/C — **NOT compliant** (0 are A/B). Flagged prospectively
+  before #37 merged; the window is real once #37 landed.
+- (34,37,39) = C/C/C — **STILL NOT compliant** (0 are A/B). PR #39 was a
+  legitimate P0/C-severity correctness preemption (per this routine's own
+  priority order: correctness always outranks the rolling-window rule), not
+  a violation of the rule's intent — but it does NOT cure the window on its
+  own, since the rule counts classifications, not justifications. **The
+  next milestone genuinely must be A or B now** unless yet another
+  higher-priority correctness issue surfaces (which would be the third in a
+  row — still individually justified each time, but worth a human sanity
+  check if a fourth C-in-a-row pattern continues, since that starts to look
+  less like "correctness keeps winning" and more like "A/B work is being
+  systematically avoided").
 
-Every merged window from PR #27 through PR #32/#34 is compliant; the one
-non-compliant window before that predates PR #27 and could not be cured
-after the fact (the reason #14 stayed held). (32,34,37) is now a SECOND,
-current non-compliant window — unlike the first one, this one CAN still be
-cured: the very next milestone selected should be A or B.
+Every merged window from PR #27 through PR #32/#34 is compliant. (32,34,37)
+and (34,37,39) are two consecutive non-compliant windows — both curable,
+unlike the very first (12,13,27) shortfall which predates the rule's
+enforcement and can't be fixed retroactively. Recommend the next session
+treat finding a real A or B milestone as the primary selection constraint,
+not just a tiebreaker, unless a new P0 surfaces.
 
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, #34, #37) is inert for real users until someone deploys
-   `ui/frontend-modernization` HEAD. This is the single highest-value unblock
-   available right now — real, tested, Codex-reviewed correctness fixes are
-   sitting unshipped.
+   #13, #27, #31, #32, #34, #37, #39) is inert for real users until someone
+   deploys `ui/frontend-modernization` HEAD. This is the single highest-value
+   unblock available right now — real, tested, Codex-reviewed correctness
+   fixes (including a silent-empty-plan P0-severity bug, PR #39) are sitting
+   unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -269,26 +364,37 @@ cured: the very next milestone selected should be A or B.
 
 ## Exact next action
 
-1. **The rolling-three window (32,34,37) = C/C/C is non-compliant (0 A/B) —
-   the next milestone MUST be classified A or B**, unless a new, genuinely
-   higher-priority P0/correctness issue is found first (which always
-   preempts). Before picking one:
-   - Run the **Agent Diagnosis Loop** (real Hebrew scenarios against the now
-     `is_annual`-fixed production-shaped `generate-plan` handler, both paths)
-     to find the next highest-impact reproducible failure — a fresh B-class
-     "wire an existing capability into a real caller" or A-class "user-visible
-     fix" candidate may surface here that outranks anything listed below.
-   - If nothing new surfaces, PR #14's Decision capability is the standing D
-     candidate that could become a B if a genuine multi-candidate producer
-     scenario exists — do not force this without a real scenario, per
-     Blockers item 6's caveat.
+1. **Two consecutive rolling-three windows, (32,34,37) and (34,37,39), are
+   both non-compliant (0 A/B each) — the next milestone should be treated as
+   MUST-be-A-or-B**, unless a new, genuinely higher-priority P0/correctness
+   issue is found first (which still preempts, per this routine's own
+   priority order — but see the rolling-history section's note: a THIRD
+   C-in-a-row would be worth flagging to a human rather than just
+   preempting again on autopilot). Before picking one:
+   - Consider running the **Agent Diagnosis Loop** again (real Hebrew
+     scenarios against the now feasibility-fixed `generate-plan` handler,
+     both paths) — but this time specifically LOOK FOR an A or B candidate,
+     not just any correctness bug: e.g. a UI-visible gap in how the Agent
+     explains itself, or a real scenario that would justify wiring
+     Simulation/Decision/Persistence into an actual caller.
+   - PR #14's Decision capability is the standing D candidate that could
+     become a B if a genuine multi-candidate producer scenario exists — do
+     not force this without a real scenario, per Blockers item 6's caveat.
+   - Also worth checking: does the now-fixed feasibility ranking (PR #39)
+     change what's user-visible in the UI? E.g. does the frontend surface
+     ANY signal when a plan is far from the degree target because the board
+     window itself is too narrow (as opposed to a normal "still building"
+     state)? If not, that disclosure gap itself could be a real A-class
+     milestone — the backend no longer freezes, but does the user know WHY
+     their plan might still look incomplete relative to 185h when their
+     prior-hours data is low/missing?
 2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** Still the single most valuable pending action — 7 real,
-   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37) are
-   merged and waiting, unchanged since the last several sessions all flagged
-   this identically. Do not re-investigate this further without new evidence
-   (e.g. Vercel CLI credentials becoming available) — the blocker and the
-   reasoning against using `deploy_to_vercel` are both already fully
+   production.** Still the single most valuable pending action — 8 real,
+   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39)
+   are merged and waiting, unchanged since the last several sessions all
+   flagged this identically. Do not re-investigate this further without new
+   evidence (e.g. Vercel CLI credentials becoming available) — the blocker
+   and the reasoning against using `deploy_to_vercel` are both already fully
    documented above.
 3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
    on the intended `GOAL_STACK` tradeoff before implementation — see Blockers.
