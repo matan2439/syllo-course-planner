@@ -348,6 +348,50 @@ describe('PlannerWorker — feasibility ranks actions, it must never eliminate e
     w.run();
     expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
   });
+
+  // Codex round-3 finding: the 'degree_hours' reason must only be excused
+  // when the target was ALREADY unreachable before the action — not for an
+  // action that newly makes a previously-reachable target unreachable. A
+  // "wanted" is_annual course consumes headroom in BOTH its spanned
+  // semesters while counting only ONCE toward degree credit — a genuinely
+  // worse choice than an ordinary elective when it tips the plan from
+  // reachable to unreachable, and must still be ranked down even though it
+  // scores higher on preference (g5).
+  it('still avoids a wanted action that newly makes the target unreachable, preferring an ordinary path that stays completable', () => {
+    const TWO_SEMS = ['s1', 's2'];
+    const profiles = new Map<string, CourseProfile>();
+    // Consumes 20h in EACH of its 2 spans (40h total headroom) but counts
+    // only 20h toward degree credit — attractive (is_wanted) but tips a
+    // reachable 40h target into unreachable (headroom drops from 52 to 12,
+    // gap stays at 20).
+    profiles.set('ANNUAL', profile('ANNUAL', {
+      is_annual: true, spans_semesters: TWO_SEMS, effective_allowed_semesters: TWO_SEMS,
+      hours: 20, is_wanted: true,
+    }));
+    // Two ordinary electives that together exactly complete the 40h target
+    // without over-consuming headroom.
+    profiles.set('ORD1', profile('ORD1', { effective_allowed_semesters: ['s1'], hours: 20 }));
+    profiles.set('ORD2', profile('ORD2', { effective_allowed_semesters: ['s2'], hours: 20 }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: TWO_SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: [], categories: [],
+      degreeRequiredHours: 40, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(['ANNUAL']),
+    };
+    // rolloutSteps: 0 isolates the hasRealBlocker classification itself —
+    // with a real rollout, estimateFinalScore's downstream-impact reasoning
+    // already happens to prefer the ORD1/ORD2 path (it reaches full degree
+    // completion within the rollout, unlike the ANNUAL-first path), which
+    // would mask this specific bug. Zeroing the rollout depth reduces `fin`
+    // to the immediate score, where g1-g4 tie and only g5 (preference)
+    // differs — exactly the scenario where an incorrect hasRealBlocker
+    // classification would let the "wanted" but plan-sabotaging action win.
+    const w = new PlannerWorker(m, undefined, { lookahead: true, rolloutSteps: 0 });
+    w.run();
+    expect(w.getState().degreeHours).toBe(40);
+    expect(semesterOf(w.getPlan(), 'ANNUAL')).toBeNull();
+  });
 });
 
 describe('PlannerWorker — STOP trace on maxSteps limit', () => {

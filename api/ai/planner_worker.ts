@@ -379,11 +379,28 @@ export class PlannerWorker {
     // legal semester of a still-needed mandatory course) fill the entire
     // truncated set, silently excluding the one non-blocking action that
     // would have avoided sabotaging that mandatory course.
+    // Codex round-3: the 'degree_hours' reason must only be excused when it
+    // was ALREADY present before this action — i.e. the degree target was
+    // already unreachable from the current state regardless of what gets
+    // chosen. An action that makes a PREVIOUSLY-reachable target newly
+    // unreachable (e.g. a "wanted" is_annual course that consumes headroom
+    // in multiple semesters while counting only once toward degree credit)
+    // is a genuine self-inflicted mistake, not the unavoidable structural
+    // case this whole ranking change exists to tolerate — it must still be
+    // ranked down, or a court that only wins on preference (g5) could get
+    // chosen over an ordinary elective that would have kept the plan
+    // completable.
+    const currentDegreeHoursAlreadyUnreachable = this.opts.lookahead
+      ? projectFeasibility(this.state, this.model).blocked.includes('degree_hours')
+      : false;
     const withBlockerStatus = this.opts.lookahead
       ? legal
           .map(x => {
             const report = projectFeasibility(x.next, this.model);
-            return { ...x, feasible: report.feasible, hasRealBlocker: report.blocked.some(b => b !== 'degree_hours') };
+            const hasRealBlocker =
+              report.blocked.some(b => b !== 'degree_hours') ||
+              (report.blocked.includes('degree_hours') && !currentDegreeHoursAlreadyUnreachable);
+            return { ...x, feasible: report.feasible, hasRealBlocker };
           })
           .sort((a, b) => {
             if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
