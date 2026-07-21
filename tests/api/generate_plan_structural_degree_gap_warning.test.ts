@@ -703,4 +703,61 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('17. Codex-caught regression (round 21): a two-step MOVE-then-ADD recovery must also be recognized when the target is an is_annual course needing its atomic multi-semester bundle, not a single-semester ADD', () => {
+    // data/boards/test_program_gap_move_then_add_annual_2027.json: same shape
+    // as test 16's fixture (year_4_semester_a starts at FILLER_A(24h)+
+    // MOVABLE(2h)=26h — exactly at HARD_LOAD_CAP), but the recovery target is
+    // TARGET_ANNUAL — is_annual, spanning [year_4_semester_a,
+    // year_4_semester_b] together, 2h in EACH span semester. year_4_semester_b
+    // starts at FILLER_B(24h) alone, so it has exactly enough room (24+2=26h)
+    // for TARGET_ANNUAL's own share on its own — only year_4_semester_a needs
+    // capacity freed. A direct atomic ADD of TARGET_ANNUAL fails as a whole
+    // (validatePlanState rejects the WHOLE bundle because year_4_semester_a
+    // alone would hit 26+2=28h, even though year_4_semester_b alone would be
+    // fine). MOVABLE is legal in year_4_semester_a OR year_3_semester_b (NOT
+    // year_4_semester_b, so moving it can't accidentally crowd out
+    // TARGET_ANNUAL's other span) — relocating it to year_3_semester_b frees
+    // year_4_semester_a back to 24h, at which point the atomic bundle ADD
+    // (24+2=26h in year_4_semester_a, 24+2=26h in year_4_semester_b) becomes
+    // legal. round 20's move-then-add scan only ever tried a single-semester
+    // ADD_COURSE for the freed capacity, which validatePlanState always
+    // rejects for an is_annual course (must occupy EVERY span at once) — so
+    // it stayed blind to this exact combination. canRecoverMoreHours instead
+    // reuses enumerateActions at every rollout state (which already calls
+    // addCourseActionsFor for is_annual courses, planner_actions.ts's own
+    // group 4), so the atomic bundle is tried automatically once the move
+    // step is reached, with no bespoke annual-aware branch needed.
+    const board = loadLocalBoardJson('test_program_gap_move_then_add_annual_2027');
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 100 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = {} as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_move_then_add_annual_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'MOVABLE'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    // MAND(4)+FILLER_A(24)+FILLER_B(24)+MOVABLE(2)=54h placed + 100 known =
+    // 154h, 31h short of 185 — TARGET_ANNUAL(2h, counted once despite
+    // spanning two semesters) still unplaced, and no single-step action can
+    // place it (only the move-then-atomic-add combination can).
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'MOVABLE'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

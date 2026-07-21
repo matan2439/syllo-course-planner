@@ -1,0 +1,38 @@
+{
+  "semesters": [
+    {
+      "semester_id": "year_3_semester_a",
+      "courses": [
+        { "course_id": "MAND", "name_he": "חובה", "weekly_hours": 4, "is_mandatory": true, "course_type": "mandatory", "placement_policy": "fixed", "effective_allowed_semesters": ["year_3_semester_a"], "prerequisites": [] }
+      ]
+    },
+    { "semester_id": "year_3_semester_b", "courses": [] },
+    {
+      "semester_id": "year_4_semester_a",
+      "courses": [
+        { "course_id": "FILLER_A", "name_he": "ממלא א", "weekly_hours": 24, "is_mandatory": true, "course_type": "mandatory", "placement_policy": "fixed", "effective_allowed_semesters": ["year_4_semester_a"], "prerequisites": [] },
+        { "course_id": "MOVABLE",  "name_he": "נייד",   "weekly_hours": 2,  "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "effective_allowed_semesters": ["year_4_semester_a", "year_3_semester_b"], "prerequisites": [] }
+      ]
+    },
+    {
+      "semester_id": "year_4_semester_b",
+      "courses": [
+        { "course_id": "FILLER_B", "name_he": "ממלא ב", "weekly_hours": 24, "is_mandatory": true, "course_type": "mandatory", "placement_policy": "fixed", "effective_allowed_semesters": ["year_4_semester_b"], "prerequisites": [] }
+      ]
+    }
+  ],
+  "metadata": {
+    "completed_course_ids": [],
+    "program_requirements_categories": {
+      "total_required_hours": 185,
+      "categories": []
+    },
+    "program_repository_courses": [
+      { "course_id": "MAND",          "name_he": "חובה",     "weekly_hours": 4,  "is_mandatory": true,  "course_type": "mandatory", "placement_policy": "fixed",    "effective_allowed_semesters": ["year_3_semester_a"], "prerequisites": [] },
+      { "course_id": "FILLER_A",      "name_he": "ממלא א",   "weekly_hours": 24, "is_mandatory": true,  "course_type": "mandatory", "placement_policy": "fixed",    "effective_allowed_semesters": ["year_4_semester_a"], "prerequisites": [] },
+      { "course_id": "FILLER_B",      "name_he": "ממלא ב",   "weekly_hours": 24, "is_mandatory": true,  "course_type": "mandatory", "placement_policy": "fixed",    "effective_allowed_semesters": ["year_4_semester_b"], "prerequisites": [] },
+      { "course_id": "MOVABLE",       "name_he": "נייד",     "weekly_hours": 2,  "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "effective_allowed_semesters": ["year_4_semester_a", "year_3_semester_b"], "prerequisites": [] },
+      { "course_id": "TARGET_ANNUAL", "name_he": "יעד שנתי", "weekly_hours": 2,  "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "is_annual": true, "spans_semesters": ["year_4_semester_a", "year_4_semester_b"], "effective_allowed_semesters": ["year_4_semester_a", "year_4_semester_b"], "prerequisites": [] }
+    ]
+  }
+}
