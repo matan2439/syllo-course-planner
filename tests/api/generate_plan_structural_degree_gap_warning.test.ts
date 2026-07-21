@@ -336,6 +336,12 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res.statusCode).toBe(200);
     expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+    // Codex-caught regression (round 13): the message's own numerator must
+    // use the SAME credited total (report.degreeHours + currentlyPlannedHours
+    // = 12 placed + 160 known + 4 CUR = 176) the guard above just used to
+    // decide the gap is genuinely structural — not the uncredited
+    // report.degreeHours (172) alone, which would understate real progress.
+    expect(res._body.warnings_he.some((w: string) => w.includes('176/185'))).toBe(true);
   });
 
   test('9. Codex-caught regression (round 8): a soft-avoided ANNUAL elective is the only recoverable option — must be tried as an atomic multi-semester bundle, not a single-semester trial', async () => {

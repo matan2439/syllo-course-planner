@@ -487,8 +487,16 @@ function toProposal(
       });
     });
     if (!canStillAddHours && !canRecoverViaWiderSearch) {
+      // Codex review (round 13) caught that this message's numerator used
+      // report.degreeHours alone, even though the guard just above credited
+      // currentlyPlannedHours (off-board currently-taking courses) before
+      // deciding the gap is genuinely structural — a partial-credit case
+      // (test 8b/11b) would show e.g. "172/185" while the branch's own logic
+      // already accounted for 176/185, understating real progress in this
+      // user-visible message. Use the same credited total the guard itself
+      // used.
       warnings_he.push(
-        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
+        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours + currentlyPlannedHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,
       );
     }
