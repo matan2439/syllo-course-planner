@@ -289,6 +289,35 @@ describe('PlannerWorker — feasibility ranks actions, it must never eliminate e
     expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
     expect(placedCourseIds(w.getPlan()).length).toBeGreaterThan(0);
   });
+
+  // Codex round-1 finding: the aggregate 'degree_hours' reason (tolerated
+  // above) must not be confused with a real, course-specific blocker. An
+  // elective and a mandatory course that both only fit in the SAME single
+  // semester (hardCap 26) genuinely conflict — placing the 22h elective
+  // first makes the 5h mandatory permanently unplaceable there. That must
+  // still be ranked down even while the target is intentionally unreachable
+  // overall, or the elective wins on immediate score and the worker
+  // self-sabotages a course it could otherwise have placed.
+  it('still avoids blocking a specific still-needed mandatory course, even while the aggregate target is unreachable', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('BIGELECTIVE', profile('BIGELECTIVE', {
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 22,
+    }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'], categories: [],
+      degreeRequiredHours: 999, priorHours: 0, // intentionally unreachable
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m, undefined, { lookahead: true });
+    w.run();
+    expect(semesterOf(w.getPlan(), 'MAND')).toBe('year_3_semester_a');
+  });
 });
 
 describe('PlannerWorker — STOP trace on maxSteps limit', () => {

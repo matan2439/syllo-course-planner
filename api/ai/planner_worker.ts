@@ -356,22 +356,33 @@ export class PlannerWorker {
     // item "must be ranked down"). A board can legitimately span fewer
     // semesters than the full degree needs (e.g. prior-hours data is
     // missing/low, or the board only covers the student's remaining years) —
-    // projectFeasibility then correctly reports that the full target can
-    // never be reached from ANY state, making every single candidate look
-    // "infeasible." Hard-filtering on that would make the worker take zero
-    // actions and silently return an empty, clean-looking plan instead of
-    // placing whatever it legally and usefully still can. Feasible actions
-    // are still always preferred over infeasible ones (unchanged from
-    // before); only the elimination of infeasible actions is removed.
+    // projectFeasibility's aggregate 'degree_hours' reason then correctly
+    // fires on EVERY state, since the full target can never be reached from
+    // ANY of them. That specific reason must never eliminate (or even rank
+    // down) every action, or the worker takes zero actions and silently
+    // returns an empty, clean-looking plan. A per-course/per-category block
+    // (an action that makes a SPECIFIC still-needed mandatory course or
+    // category candidate impossible to place later) is a different, genuine
+    // self-inflicted mistake and must still be ranked down — collapsing both
+    // reasons into one boolean would let a plan actively sabotage a mandatory
+    // course just because the aggregate target was already unreachable
+    // anyway. So only non-'degree_hours' blocked reasons count against
+    // ranking; hitting only the aggregate check ranks the same as feasible.
     const top = this.opts.lookahead ? legal.slice(0, this.opts.topN) : legal;
     const evaluated = top
-      .map(x => ({
-        ...x,
-        feasible: this.opts.lookahead ? projectFeasibility(x.next, this.model).feasible : true,
-        fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
-      }))
+      .map(x => {
+        const report = this.opts.lookahead
+          ? projectFeasibility(x.next, this.model)
+          : { feasible: true, blocked: [] as string[] };
+        return {
+          ...x,
+          feasible: report.feasible,
+          hasRealBlocker: report.blocked.some(b => b !== 'degree_hours'),
+          fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
+        };
+      })
       .sort((a, b) => {
-        if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
+        if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
         return compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm);
       });
 
