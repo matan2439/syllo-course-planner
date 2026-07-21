@@ -40,6 +40,7 @@ import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { incompleteAnnualCourseIds } from './planner_goals';
+import { projectFeasibility } from './planner_lookahead';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -323,6 +324,30 @@ function toProposal(
   for (const cid of report.unsatisfiedCategories) {
     const c = model.categories.find(x => x.id === cid);
     warnings_he.push(`דרישת קטגוריה לא מולאה: ${c?.name ?? cid}.`);
+  }
+  // Agent Diagnosis Loop finding: a plan can have every mandatory course and
+  // every category already satisfied while still short of degreeRequiredHours,
+  // with genuinely no further legal action able to close the gap (the visible
+  // planning window's catalog is exhausted) — projectFeasibility's own
+  // 'degree_hours' blocker, already used internally by planner_worker.ts as a
+  // ranking signal, is the authoritative source for this. Without a distinct
+  // message, this looked identical to an ordinary, still-fixable shortfall,
+  // and the live frontend's decision text could suggest actions (approve a
+  // risky elective, wait for missing data) that don't actually exist. Only
+  // fires when mandatory/category requirements are ALL satisfied — a genuinely
+  // unsatisfied category already gets its own, more specific warning above.
+  if (
+    !report.degreeMet &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0
+  ) {
+    const feasibility = projectFeasibility(finalState, model);
+    if (feasibility.blocked.length === 1 && feasibility.blocked[0] === 'degree_hours') {
+      warnings_he.push(
+        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
+        `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,
+      );
+    }
   }
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);

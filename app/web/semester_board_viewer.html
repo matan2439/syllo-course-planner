@@ -5482,7 +5482,21 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   }
   // Actionable options driven by the actual gap.
   if (_overloadSeen && _userMax != null && _userMax < _hardCap) decisions.push(`להעלות את מקסימום העומס ל-${_hardCap} ש״ש (החריגה היא בקורסי חובה בלבד)`);
-  if (!_hoursSatisfied) decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+  // Agent Diagnosis Loop finding: "approve a risky elective from the list, or
+  // wait for missing semester data" used to be suggested whenever hours
+  // weren't satisfied — even when the server already reported (via
+  // generate-plan.ts's structural-gap warning) that every mandatory/category
+  // requirement is met and the visible planning window's catalog is fully
+  // exhausted, i.e. there is no elective left to approve and no course
+  // waiting on data. Check that signal first so the advice actually matches
+  // what's true; only fall back to the generic elective/data suggestion when
+  // the server hasn't flagged the gap as structural.
+  const _STRUCTURAL_GAP_RE = /מיצית את כל הקורסים הזמינים בחלון התכנון/;
+  if (_finalWarnings.some(w => _STRUCTURAL_GAP_RE.test(w))) {
+    decisions.push('הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.');
+  } else if (!_hoursSatisfied) {
+    decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+  }
 
   // Final status — ✅ requires hours satisfied AND no unresolved warning that needs
   // user approval or violates a stated preference (unknown שער-רוח exam type, an
