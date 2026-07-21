@@ -290,7 +290,15 @@ function toProposal(
     for (const id of ids) {
       const fromSems = initialSemsOf[id];
       if (fromSems?.includes(sem)) continue;
-      moves.push({ course_id: id, from: fromSems?.[0] ?? null, to: sem });
+      // A genuine move means the course no longer occupies ANY of its
+      // original semesters in the final plan. When it still does (e.g.
+      // repairing a partially-placed is_annual course by adding its missing
+      // span alongside the unchanged original one), this is an ADDITION, not
+      // a move away from a semester it never actually left — reporting a
+      // `from` there would let a consumer that applies `moves` literally
+      // remove the course from a semester it's still supposed to occupy.
+      const stillInOriginalSemester = fromSems?.some(s => (finalState.semesters[s] ?? []).includes(id));
+      moves.push({ course_id: id, from: stillInOriginalSemester ? null : (fromSems?.[0] ?? null), to: sem });
     }
   }
 

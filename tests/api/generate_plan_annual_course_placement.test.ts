@@ -124,6 +124,19 @@ describe('generate-plan — annual (year-long) course is placed in every spanned
     expect(res._body.blocked).toBe(false);
   });
 
+  // Codex round 11: the repaired missing span must be reported as an
+  // ADDITION (from: null), never as a "move" out of year_3_semester_a — the
+  // course still occupies year_3_semester_a in the final plan, so a
+  // consumer that applies `moves` literally must not be told to remove it
+  // from there.
+  test('Codex round 11: repairing a partial annual placement reports the added span with from:null, never a move out of the still-occupied semester', async () => {
+    const res = makeRes();
+    await handler(makeReq(baseReqBody(PARTIALLY_PLACED_PLAN_CONTEXT)), res);
+    expect(res.statusCode).toBe(200);
+    const annualMoves = (res._body.moves ?? []).filter((m: any) => m.course_id === 'ANNUAL');
+    expect(annualMoves).toEqual([{ course_id: 'ANNUAL', from: null, to: 'year_3_semester_b' }]);
+  });
+
   test('Codex round 4 (agentic path): same partial-placement repair', async () => {
     process.env.AI_USE_AGENTIC_PLANNER = 'true';
     const res = makeRes();
