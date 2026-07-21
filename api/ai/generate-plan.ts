@@ -509,6 +509,18 @@ export function toProposal(
     // applyMutation/validatePlanState pattern as the other two checks) —
     // preference is irrelevant to this guard's actual question ("is there a
     // legal action that could still help close the degree-hours gap").
+    // Codex review (round 19) caught that a replace can be hard-legal
+    // (validatePlanState.valid) while still breaking the very completeness
+    // this whole branch is predicated on: swapping OUT the sole course
+    // satisfying a category (or, in principle, a movable mandatory) passes
+    // validatePlanState fine (it never checks category/mandatory
+    // completeness — that's validateCandidate's job, computed once into
+    // `report` at the top of this function), so a "recovery" that actually
+    // un-satisfies a category was being counted as real. Re-run
+    // validateCandidate on the resulting state and require
+    // missingMandatory/unsatisfiedCategories to still both be empty —
+    // mirroring the exact completeness conditions the outer `if` above
+    // already required of finalState itself.
     const canRecoverViaReplace = !canStillAddHours && !canRecoverViaWiderSearch &&
       [...placedNow].some(outId => {
         if (!isMovable(model, outId)) return false;
@@ -522,7 +534,9 @@ export function toProposal(
           if (!legalSemestersFor(model, inId).includes(sem)) return false;
           const mutation: PlannerMutation = { type: 'REPLACE_COURSE', outId, inId, semesterId: sem };
           const next = applyMutation(finalState, mutation);
-          return next != null && validatePlanState(next, model, pinnedHome).valid;
+          if (next == null || !validatePlanState(next, model, pinnedHome).valid) return false;
+          const nextReport = validateCandidate(next, model, pinnedHome);
+          return nextReport.missingMandatory.length === 0 && nextReport.unsatisfiedCategories.length === 0;
         });
       });
     if (!canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace) {

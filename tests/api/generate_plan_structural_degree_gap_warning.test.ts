@@ -613,4 +613,50 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('15. Codex-caught regression (round 19): a hard-legal replace that would UN-SATISFY a category must NOT be counted as real recovery — the structural-gap warning must still fire', () => {
+    // data/boards/test_program_gap_replace_breaks_category_2027.json:
+    // FLU_SMALL (1h) is the SOLE fluids-category candidate, placed alongside
+    // FILLER (22h, fixed) in year_4_semester_a (23h total). BIG (4h, no
+    // category) is the only other elective, legal only in that same
+    // semester. A plain ADD of BIG breaches the 26h cap (23+4=27h) —
+    // illegal. Replacing FLU_SMALL with BIG is HARD-legal
+    // (validatePlanState: 22+4=26h, exactly at cap) — but it removes the
+    // only course satisfying the fluids category, so it isn't a real
+    // recovery: the plan would trade a genuine hours shortfall for a
+    // genuine category shortfall, not fix anything. canRecoverViaReplace
+    // must re-check completeness (missingMandatory/unsatisfiedCategories),
+    // not just hard legality, before counting this as a way out.
+    const board = loadLocalBoardJson('test_program_gap_replace_breaks_category_2027');
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 145 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = {} as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_replace_breaks_category_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER', 'FLU_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
+    // MAND+FILLER+FLU_SMALL+SOL placed (4+22+1+4=31h), both categories
+    // satisfied, BIG unplaced. 31+145=176h, 9h short of 185 — the ONLY
+    // conceivable recovery (replacing FLU_SMALL with BIG) breaks fluids, so
+    // this is genuinely exhausted.
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: ['SOL'],
+        year_4_semester_a: ['FILLER', 'FLU_SMALL'],
+        year_4_semester_b: [],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
 });
