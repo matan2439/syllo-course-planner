@@ -76,17 +76,22 @@ function semesterLoads(state: PlanState, model: ConstraintModel): number[] {
 /**
  * The semester set an `is_annual` course must occupy to count as fully
  * placed: its own `spans_semesters` when the board declares them, otherwise
- * the same legal-semester fallback `addCourseActionsFor` (planner_actions.ts)
- * already uses when generating the atomic add action for a board that omits
- * `spans_semesters` (an older/partial course record with only
- * effective/program/offered semester data). Duplicated here rather than
- * imported from planner_actions.ts, which itself imports `isFullyPlaced` from
- * this module — importing back would be a circular dependency.
+ * `getLegalSemesters`'s result when it is CONFIDENT (this year's actual
+ * effective/program offering) — the same confident-only fallback
+ * `addCourseActionsFor` (planner_actions.ts) uses when generating the atomic
+ * add action. Returns `null` when neither is known: with no confident
+ * legality data at all, we can't say how many semesters the course really
+ * spans, so completeness falls back to "placed anywhere," the same safe
+ * default this codebase used before atomic bundling existed (mirrors
+ * `plan_validation.ts`'s `annualSpansFor`, which stays silent for the same
+ * reason). Duplicated here rather than imported from planner_actions.ts,
+ * which itself imports `isFullyPlaced` from this module — importing back
+ * would be a circular dependency.
  */
-function effectiveAnnualSpans(model: ConstraintModel, p: NonNullable<ReturnType<ConstraintModel['profiles']['get']>>): string[] {
+function effectiveAnnualSpans(model: ConstraintModel, p: NonNullable<ReturnType<ConstraintModel['profiles']['get']>>): string[] | null {
   if (p.spans_semesters?.length) return p.spans_semesters;
-  const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  return semesters.length ? semesters : model.knownSemesterIds;
+  const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+  return legal.confident ? legal.semesters : null;
 }
 
 /**
@@ -105,7 +110,7 @@ export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: 
   const p = model.profiles.get(id);
   if (p?.is_annual) {
     const spans = effectiveAnnualSpans(model, p);
-    if (spans.length) return spans.every(sem => (state.semesters[sem] ?? []).includes(id));
+    if (spans && spans.length) return spans.every(sem => (state.semesters[sem] ?? []).includes(id));
   }
   return true;
 }

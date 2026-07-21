@@ -443,3 +443,47 @@ describe('isFullyPlaced / validatePlanProposal — annual course fallback when s
     expect(result.errors).toEqual([]);
   });
 });
+
+describe('addCourseActionsFor / isFullyPlaced — annual course with no confident legal-semester data at all (Codex round 5)', () => {
+  // A bare is_annual flag with nothing else — no spans_semesters, no
+  // effective/program/offered semester data, so getLegalSemesters can only
+  // return its unconfident knownSemesterIds fallback. Bundling this into one
+  // atomic action spanning EVERY known semester (4 in this fixture, could be
+  // 8+ on a real board) would silently overload/misrepresent the plan —
+  // there is no confident basis for how many semesters this course spans.
+  function annualProfileUnknownSpans(id: string): CourseProfile {
+    return profile(id, {
+      is_mandatory: true,
+      course_type: 'elective',
+      placement_policy: 'elective',
+      hours: 4,
+      is_annual: true,
+      spans_semesters: undefined,
+      count_hours_once: true,
+      root_course_id: id,
+    } as Partial<CourseProfile>);
+  }
+
+  it('addCourseActionsFor falls through to one action per known semester instead of bundling into every semester', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileUnknownSpans('ANNUAL'));
+    const model = baseModel({ profiles });
+
+    const actions = addCourseActionsFor(model, 'ANNUAL');
+
+    expect(actions).toHaveLength(SEMS.length);
+    expect(actions.every((a: any) => a.type === 'ADD_COURSE' && !a.alsoSemesterIds)).toBe(true);
+    expect(actions.map((a: any) => a.semesterId).sort()).toEqual([...SEMS].sort());
+  });
+
+  it('isFullyPlaced treats a single placement as complete when no confident legal data exists at all', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('ANNUAL', annualProfileUnknownSpans('ANNUAL'));
+    const model = baseModel({ profiles });
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['ANNUAL'];
+    const placed = new Set(['ANNUAL']);
+
+    expect(isFullyPlaced(state, model, placed, 'ANNUAL')).toBe(true);
+  });
+});

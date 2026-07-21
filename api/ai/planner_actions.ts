@@ -56,15 +56,36 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
  * alternative (the default below) would let the search place it in only
  * one, silently under-reporting the true weekly load of the other. Every
  * other course keeps the prior one-action-per-legal-semester behavior.
+ *
+ * The atomic bundle only ever targets a CONFIDENT span set — the course's
+ * own declared `spans_semesters`, or `getLegalSemesters`'s result when it
+ * says `confident: true` (this year's actual effective/program offering).
+ * When neither is known (an annual flag with no other legality data at
+ * all), we can't guess how many semesters the course really spans — bundling
+ * it into every known semester on the board would silently overload/
+ * misrepresent the plan. Falling through to the single-semester-per-legal-
+ * semester behavior below (same as any other course) is the same safe
+ * default this codebase used for `is_annual` courses before atomic bundling
+ * existed, and matches `isFullyPlaced`'s (planner_goals.ts) identical
+ * confident-or-fall-through rule and `plan_validation.ts`'s
+ * `annualSpansFor`'s "stay silent when not confident" rule.
  */
 export function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
   const p = model.profiles.get(id);
   if (p?.is_annual) {
-    const spans = (p.spans_semesters?.length ? p.spans_semesters : legalSemestersFor(model, id))
-      .filter(sem => model.knownSemesterIds.includes(sem));
-    if (!spans.length) return [];
-    const [semesterId, ...alsoSemesterIds] = spans;
-    return [{ type: 'ADD_COURSE', courseId: id, semesterId, ...(alsoSemesterIds.length ? { alsoSemesterIds } : {}) }];
+    let spans: string[] | null = p.spans_semesters?.length ? p.spans_semesters : null;
+    if (!spans) {
+      const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+      if (legal.confident) spans = legal.semesters;
+    }
+    if (spans) {
+      const filtered = spans.filter(sem => model.knownSemesterIds.includes(sem));
+      if (!filtered.length) return [];
+      const [semesterId, ...alsoSemesterIds] = filtered;
+      return [{ type: 'ADD_COURSE', courseId: id, semesterId, ...(alsoSemesterIds.length ? { alsoSemesterIds } : {}) }];
+    }
+    // No confident span data — fall through to the per-legal-semester
+    // behavior below, same as a non-annual course.
   }
   return legalSemestersFor(model, id).map(sem => ({ type: 'ADD_COURSE', courseId: id, semesterId: sem }));
 }
