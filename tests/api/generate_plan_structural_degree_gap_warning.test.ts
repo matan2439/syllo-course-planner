@@ -659,4 +659,48 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
   });
+
+  test('16. Codex-caught regression (round 20): a two-step MOVE-then-ADD recovery (relocate a movable course to free capacity, then add the target) must be recognized — a single ADD/REPLACE probe alone misses it', () => {
+    // data/boards/test_program_gap_move_then_add_2027.json: year_4_semester_a
+    // starts at FILLER_A(24h)+MOVABLE(2h)=26h — exactly at HARD_LOAD_CAP.
+    // TARGET(2h) is legal ONLY in year_4_semester_a; a direct ADD there would
+    // be 26+2=28h — illegal. year_4_semester_b starts at FILLER_B(24h)+
+    // MOVABLE's OTHER legal semester=year_4_semester_a itself — no, MOVABLE
+    // is legal in BOTH semesters; relocating it out of year_4_semester_a to
+    // year_4_semester_b (24+2=26h, legal) frees year_4_semester_a back down
+    // to 24h, at which point ADD TARGET (24+2=26h) becomes legal. Neither
+    // canStillAddHours (direct ADD, illegal) nor canRecoverViaReplace (no
+    // unplaced course has MORE hours than MOVABLE's 2h — TARGET is also
+    // exactly 2h, not strictly more) finds this; only the two-step scan does.
+    const board = loadLocalBoardJson('test_program_gap_move_then_add_2027');
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 100 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = {} as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_move_then_add_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'MOVABLE'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    // MAND(4)+FILLER_A(24)+FILLER_B(24)+MOVABLE(2)=54h placed +100 known =
+    // 154h, 31h short of 185 — TARGET(2h) still unplaced, and no single-step
+    // action can place it (only the move-then-add combination can).
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'MOVABLE'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });

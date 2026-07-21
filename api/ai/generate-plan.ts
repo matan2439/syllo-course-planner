@@ -539,7 +539,39 @@ export function toProposal(
           return nextReport.missingMandatory.length === 0 && nextReport.unsatisfiedCategories.length === 0;
         });
       });
-    if (!canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace) {
+    // Codex review (round 20) caught that none of the three checks above
+    // consider a two-step recovery: a course whose only legal semester is
+    // currently at/over the hard cap can still become addable if a movable
+    // course already placed THERE is relocated to a DIFFERENT one of its own
+    // legal semesters first, freeing capacity. Bounded exhaustive scan (every
+    // unplaced candidate x every one of its legal semesters x every movable
+    // occupant of that semester x every one of THAT occupant's other legal
+    // semesters) mirroring the same applyMutation/validatePlanState(+
+    // validateCandidate completeness re-check, per round 19) pattern as the
+    // other three checks — MOVE_COURSE never removes a course from the plan,
+    // so it can't itself break category/mandatory completeness, but the
+    // combined final state is still re-validated for both legality and
+    // completeness for the same reason round 19 required it for REPLACE.
+    const canRecoverViaMoveThenAdd = !canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace &&
+      [...model.profiles].some(([id, p]) => {
+        if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
+        if (isFullyPlaced(finalState, model, placedNow, id)) return false;
+        if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
+        return legalSemestersFor(model, id).some(sem => {
+          const occupants = (finalState.semesters[sem] ?? []).filter(cid => isMovable(model, cid));
+          return occupants.some(outId => {
+            return legalSemestersFor(model, outId).filter(s => s !== sem).some(toSem => {
+              const moved = applyMutation(finalState, { type: 'MOVE_COURSE', courseId: outId, toSemester: toSem });
+              if (moved == null) return false;
+              const added = applyMutation(moved, { type: 'ADD_COURSE', courseId: id, semesterId: sem });
+              if (added == null || !validatePlanState(added, model, pinnedHome).valid) return false;
+              const nextReport = validateCandidate(added, model, pinnedHome);
+              return nextReport.missingMandatory.length === 0 && nextReport.unsatisfiedCategories.length === 0;
+            });
+          });
+        });
+      });
+    if (!canStillAddHours && !canRecoverViaWiderSearch && !canRecoverViaReplace && !canRecoverViaMoveThenAdd) {
       // Codex review (round 13) caught that this message's numerator used
       // report.degreeHours alone, even though the guard just above credited
       // currentlyPlannedHours (off-board currently-taking courses) before
