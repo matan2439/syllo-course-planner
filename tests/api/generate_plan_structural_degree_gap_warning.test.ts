@@ -842,4 +842,72 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
     expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
+
+  test('19. Codex-caught regression (round 24): a recovery that requires REMOVING a placed course entirely (not moving it, since it has no other legal semester) must still be found — e.g. to free room for an is_annual course\'s atomic bundle', () => {
+    // SMALL (4h) is legal ONLY in year_4_semester_a — it has no other legal
+    // semester, so MOVE can never relocate it (round 20/21's move-then-add
+    // path structurally cannot reach this case). year_4_semester_a starts at
+    // FILLER_A(20h)+SMALL(4h)=24h; year_4_semester_b starts at FILLER_B(20h).
+    // TARGET_ANNUAL (6h, is_annual, spans both) needs 6h room in EACH span —
+    // with SMALL present, A would need 24+6=30h (illegal). A single-semester
+    // REPLACE_COURSE(SMALL, TARGET_ANNUAL) is ALSO always illegal (annual
+    // courses must occupy every span at once — the exact round-24 finding).
+    // The only real recovery: REMOVE SMALL entirely (A drops to 20h), then
+    // ADD TARGET_ANNUAL's atomic bundle (A: 20+6=26h at cap, B: 20+6=26h at
+    // cap — both legal). Net hours: -4 (SMALL) + 6 (TARGET_ANNUAL, credited
+    // once per computeDegreeHours' annual dedup) = +2, genuinely more hours
+    // and still complete (no mandatory/category depends on SMALL here).
+    const board = {
+      semesters: [
+        { semester_id: 'year_3_semester_a', courses: [
+          { course_id: 'MAND', name_he: 'חובה', weekly_hours: 4, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
+        ] },
+        { semester_id: 'year_3_semester_b', courses: [] },
+        { semester_id: 'year_4_semester_a', courses: [
+          { course_id: 'FILLER_A', name_he: 'ממלא א', weekly_hours: 20, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_a'], prerequisites: [] },
+          { course_id: 'SMALL', name_he: 'קטן', weekly_hours: 4, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a'], prerequisites: [] },
+        ] },
+        { semester_id: 'year_4_semester_b', courses: [
+          { course_id: 'FILLER_B', name_he: 'ממלא ב', weekly_hours: 20, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_b'], prerequisites: [] },
+        ] },
+      ],
+      metadata: {
+        completed_course_ids: [],
+        program_requirements_categories: { total_required_hours: 185, categories: [] },
+        program_repository_courses: [
+          { course_id: 'MAND', name_he: 'חובה', weekly_hours: 4, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'], prerequisites: [] },
+          { course_id: 'FILLER_A', name_he: 'ממלא א', weekly_hours: 20, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_a'], prerequisites: [] },
+          { course_id: 'FILLER_B', name_he: 'ממלא ב', weekly_hours: 20, is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_b'], prerequisites: [] },
+          { course_id: 'SMALL', name_he: 'קטן', weekly_hours: 4, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a'], prerequisites: [] },
+          { course_id: 'TARGET_ANNUAL', name_he: 'יעד שנתי', weekly_hours: 6, is_mandatory: false, course_type: 'elective', placement_policy: 'elective', is_annual: true, spans_semesters: ['year_4_semester_a', 'year_4_semester_b'], effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'], prerequisites: [] },
+        ],
+      },
+    };
+    const ctx = {
+      total_hours_progress: { known_completed_hours: 100 },
+      personal_status: { completed: [], currently_taking: [] },
+    };
+    const prefs = {} as any;
+    const model = buildModel(board, ctx, prefs, 'test_program_gap_annual_replace_2027');
+    const initialState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'SMALL'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    const finalState = {
+      semesters: {
+        year_3_semester_a: ['MAND'],
+        year_3_semester_b: [],
+        year_4_semester_a: ['FILLER_A', 'SMALL'],
+        year_4_semester_b: ['FILLER_B'],
+      },
+    };
+    const proposal = toProposal(finalState, model, initialState, {}, 'test');
+    expect(proposal.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(true);
+    expect(proposal.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
+  });
 });
