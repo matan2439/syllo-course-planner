@@ -1,16 +1,19 @@
 /**
  * generate-plan — Academic Decision Agent clarification ANSWER LOOP.
  *
- * The opt-in agent path (use_academic_decision_agent) already returns
- * needsClarification when a critical input is missing, but until now it ignored
- * any clarification_answers supplied on the follow-up request unless the
- * separate AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT env flag was on. These tests
- * pin the resume behavior: answers submitted through the agent path are merged
- * (via the existing mergeClarificationAnswersIntoGeneratePlanInputs /
- * applyClarificationLoopAnswers modules) into the actual planning inputs, so
- * they can both unblock the gate AND reach the planner — while invalid/partial
- * answers keep the request honestly blocked and the default (no-flag) response
- * stays byte-identical.
+ * The opt-in agent path (use_academic_decision_agent) surfaces clarification
+ * questions for missing inputs alongside a real plan (it no longer withholds
+ * the plan for a critical-missing input — see issue #25 Finding #2 / the
+ * generate-plan.ts comment above this block's call site). Until this file's
+ * tests were added it also ignored any clarification_answers supplied on the
+ * follow-up request unless the separate AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT
+ * env flag was on. These tests pin the resume behavior: answers submitted
+ * through the agent path are merged (via the existing
+ * mergeClarificationAnswersIntoGeneratePlanInputs / applyClarificationLoopAnswers
+ * modules) into the actual planning inputs, so they both remove the field from
+ * clarification.questions AND reach the planner — while invalid/partial
+ * answers keep the field honestly still-asked (plan generation itself is
+ * never gated on this) and the default (no-flag) response stays byte-identical.
  *
  * Same real-handler harness as generate_plan_academic_decision_agent.test.ts
  * (dev-bypass, no DB).
@@ -96,11 +99,16 @@ describe('generate-plan agent path — clarification answer loop', () => {
     delete process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT;
   });
 
-  test('1. missing critical context → needsClarification (no plan)', async () => {
+  test('1. missing critical context → still a real plan, clarification attached and asked', async () => {
+    // completedCourses/excludedCourses safely default to empty (issue #25
+    // Finding #2) — the agent path must not withhold a plan a first-time user
+    // would otherwise get from the default path for the same input. It must
+    // still surface the clarification questions so the user can answer them.
     const res = await run(agentBody());
-    expect(res._body.needsClarification).toBe(true);
+    expect(res._body.needsClarification).toBeFalsy();
+    expect(Array.isArray(res._body.semesters)).toBe(true);
+    expect(res._body.academicDecision.clarification.needsClarification).toBe(true);
     expect(questionIds(res._body)).toEqual(expect.arrayContaining(['completed_courses', 'excluded_courses']));
-    expect(res._body.semesters).toBeUndefined();
   });
 
   test('2. valid clarification_answers unblock the agent path → plan + academicDecision', async () => {
@@ -111,22 +119,27 @@ describe('generate-plan agent path — clarification answer loop', () => {
     expect(res._body.academicDecision.explanation).toBeDefined();
   });
 
-  test('3. partial answers keep the request blocked and return the remaining question', async () => {
-    // Only completed answered → excluded_courses (critical) still missing.
+  test('3. partial answers still return a plan, and still ask the remaining question', async () => {
+    // Only completed answered → excluded_courses (critical) still missing, but
+    // a critical-missing input no longer withholds the plan (Finding #2) — it
+    // only keeps the question in clarification.questions until answered.
     const res = await run(agentBody({ clarification_answers: [COMPLETED] }));
-    expect(res._body.needsClarification).toBe(true);
+    expect(res._body.needsClarification).toBeFalsy();
+    expect(Array.isArray(res._body.semesters)).toBe(true);
     const ids = questionIds(res._body);
     expect(ids).toContain('excluded_courses');
     expect(ids).not.toContain('completed_courses');
   });
 
-  test('4. invalid answers do not silently satisfy the gate (stay blocked, still asked)', async () => {
+  test('4. invalid answers do not silently satisfy the gate (still asked, still planned)', async () => {
     // completed_courses given a number (wrong shape) → dropped by validation.
-    // excluded_courses validly answered → applied. So completed stays missing.
+    // excluded_courses validly answered → applied. So completed stays missing
+    // from the clarification's perspective, but the plan is still generated.
     const res = await run(agentBody({
       clarification_answers: [{ questionId: 'completed_courses', value: 42 }, NO_EXCLUSIONS],
     }));
-    expect(res._body.needsClarification).toBe(true);
+    expect(res._body.needsClarification).toBeFalsy();
+    expect(Array.isArray(res._body.semesters)).toBe(true);
     const ids = questionIds(res._body);
     expect(ids).toContain('completed_courses');
     expect(ids).not.toContain('excluded_courses');

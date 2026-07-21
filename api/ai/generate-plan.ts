@@ -51,9 +51,7 @@ import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_ev
 import {
   extractClarificationContext,
   clarifyForAcademicDecision,
-  hasCriticalMissingInput,
   buildAcademicDecision,
-  buildClarificationDecision,
   resolveHardExcludedCourseIds,
 } from './academic_decision_runtime';
 import type { ClarificationResult } from './academic_decision_types';
@@ -331,19 +329,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     effectivePreferences = merged.preferences;
   }
   // AcademicDecisionAgent runtime — opt-in, request-level. Clarify BEFORE
-  // planning: if a critical input is missing, return clarification instead of
-  // pretending a complete plan exists (no board/model load, no planner run).
-  // Otherwise the clarification result is reused to enrich the response below.
+  // planning so the result can enrich the response below.
+  //
+  // Does NOT block planning on a critical-missing input (issue #25 Finding
+  // #2): completedCourses/excludedCourses are the only fields ever marked
+  // critical, and both have a safe, well-defined default (empty — "nothing
+  // known yet") that the planner already uses unconditionally on the default
+  // (no-flag) path below (personal_status.completed ?? [], etc.) — there is
+  // no board/model-load reason to withhold a plan here. Previously this
+  // returned needsClarification:true with no plan at all whenever a
+  // first-time user (zero recorded completed/excluded courses — the default
+  // state for any new account) hit this path, which the live frontend
+  // auto-enables the moment a user picks a single AI-interest chip,
+  // unrelated to whether they've entered any course history. That produced a
+  // materially worse first-use experience than the identical input gets on
+  // the default path (an honest partial plan). The clarification result is
+  // still attached to the response below (buildAcademicDecision reads
+  // academicDecisionClarification into explanation.missingData and
+  // clarification.questions), so the user is still asked and can still
+  // answer via the existing answer-loop — they just also get a real plan
+  // meanwhile, exactly like the default path.
   let academicDecisionClarification: ClarificationResult | undefined;
   if (use_academic_decision_agent === true) {
     // Answer-loop resume: merge any supplied clarification_answers into the
     // planning inputs here too — independent of the preflight env flag above —
-    // so answers submitted through the agent path both unblock the critical-
-    // input gate AND reach the planner (buildModel / currentlyPlannedCourseIds
-    // below read effectivePlanContext/effectivePreferences). Reuses the shared
-    // validation/shape-checking in mergeClarificationAnswersIntoGeneratePlanInputs
-    // (invalid/unknown answers no-op), and is idempotent when the preflight
-    // block already merged the same answers.
+    // so answers submitted through the agent path both remove the field from
+    // future clarification.questions AND reach the planner (buildModel /
+    // currentlyPlannedCourseIds below read effectivePlanContext/
+    // effectivePreferences). Reuses the shared validation/shape-checking in
+    // mergeClarificationAnswersIntoGeneratePlanInputs (invalid/unknown
+    // answers no-op), and is idempotent when the preflight block already
+    // merged the same answers.
     const mergedForAgent = mergeClarificationAnswersIntoGeneratePlanInputs(
       effectivePlanContext,
       effectivePreferences,
@@ -355,13 +371,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     academicDecisionClarification = await clarifyForAcademicDecision(
       extractClarificationContext(effectivePlanContext, effectivePreferences, academic_interest_profile),
     );
-    if (hasCriticalMissingInput(academicDecisionClarification)) {
-      res.status(200).json({
-        needsClarification: true,
-        academicDecision: buildClarificationDecision(academicDecisionClarification),
-      });
-      return;
-    }
   }
 
   // Unconditional (explicitly approved default-behavior change): the live

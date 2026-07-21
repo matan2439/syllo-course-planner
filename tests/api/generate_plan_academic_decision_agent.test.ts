@@ -129,8 +129,13 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
     expect(res._body.academicDecision.decision).toBeDefined();
   });
 
-  test('6. returns clarification instead of a plan when a critical input is missing', async () => {
-    // Bare body: no completed courses, no exclusion list → critical missing.
+  test('6. still returns a real plan (with clarification attached) when a critical input is missing', async () => {
+    // Bare body: no completed courses, no exclusion list — the default state for
+    // any first-time user, which the live frontend auto-routes through this path
+    // the moment a single AI-interest chip is picked (issue #25 Finding #2). The
+    // agent must not withhold a plan for this — completedCourses/excludedCourses
+    // safely default to empty, exactly like the default (no-flag) path — but it
+    // must still ask, via the (non-blocking) clarification result.
     const res = await run({
       program_id: 'test_program_2027',
       plan_context: PLAN_CONTEXT,
@@ -139,13 +144,12 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
       use_academic_decision_agent: true,
     });
     expect(res.statusCode).toBe(200);
-    expect(res._body.needsClarification).toBe(true);
+    expect(res._body.needsClarification).toBeFalsy();
+    expect(Array.isArray(res._body.semesters)).toBe(true);
     expect(res._body.academicDecision.clarification.needsClarification).toBe(true);
     expect(res._body.academicDecision.clarification.questions.map((q: any) => q.id)).toEqual(
       expect.arrayContaining(['completed_courses', 'excluded_courses']),
     );
-    // No pretend plan.
-    expect(res._body.semesters).toBeUndefined();
   });
 
   test('7. academicDecision includes a validation result', async () => {
