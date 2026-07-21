@@ -195,6 +195,34 @@ export interface CompletenessAssessment {
   unsatisfiedCategories: string[];
   /** semester ids whose total placed hours exceed model.hardCap. */
   overCapSemesters: string[];
+  /**
+   * Ids of placed `is_annual` courses not yet occupying every one of their
+   * effective spans. A mandatory or category-candidate annual course already
+   * surfaces here indirectly (via missingMandatory/unsatisfiedCategories,
+   * since isFullyPlaced backs both), but a plain-elective annual course has
+   * no other completeness signal — without this, a search/loop driven only
+   * by degreeMet/missingMandatory/unsatisfiedCategories/overCapSemesters
+   * would consider the goal reached with the course still split.
+   */
+  incompleteAnnual: string[];
+}
+
+/**
+ * Ids of every placed `is_annual` course that doesn't yet occupy every one of
+ * its effective spans (see isFullyPlaced) — a partial placement that still
+ * needs repairing, regardless of whether the course is mandatory, a category
+ * candidate, wanted, or a plain elective. Shared by assessCompleteness below
+ * and PlannerWorker's own goal/repair logic (planner_worker.ts), so both
+ * agree on exactly what counts as an unfinished annual placement.
+ */
+export function incompleteAnnualCourseIds(state: PlanState, model: ConstraintModel): string[] {
+  const placed = new Set(placedCourseIds(state));
+  const out: string[] = [];
+  for (const id of placed) {
+    const p = model.profiles.get(id);
+    if (p?.is_annual && !isFullyPlaced(state, model, placed, id)) out.push(id);
+  }
+  return out;
 }
 
 /**
@@ -229,7 +257,9 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
     return false;
   });
 
-  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters };
+  const incompleteAnnual = incompleteAnnualCourseIds(state, model);
+
+  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters, incompleteAnnual };
 }
 
 /** Compare two score vectors lexicographically: >0 if a is better than b. */

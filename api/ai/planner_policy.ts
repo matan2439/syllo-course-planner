@@ -43,7 +43,8 @@ export class TauPolicyProvider implements PolicyProvider {
       c.overCapSemesters.length === 0 &&
       c.degreeMet &&
       c.missingMandatory.length === 0 &&
-      c.unsatisfiedCategories.length === 0
+      c.unsatisfiedCategories.length === 0 &&
+      c.incompleteAnnual.length === 0
     );
   }
 

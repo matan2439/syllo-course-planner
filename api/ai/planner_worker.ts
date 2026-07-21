@@ -23,7 +23,7 @@ import {
   degreeHours as computeDegreeHours,
   mandatoryPlaced as computeMandatoryPlaced,
   categoriesSatisfied as computeCategoriesSatisfied,
-  isFullyPlaced,
+  incompleteAnnualCourseIds,
   GOAL_STACK,
 } from './planner_goals';
 import {
@@ -147,19 +147,17 @@ export class PlannerWorker {
    * The id of a placed `is_annual` course that doesn't yet occupy every one
    * of its effective spans, if any — used both by goalStatus (so
    * isGoalReached/phase know the plan isn't actually done) and by step (to
-   * force the repair). A course that's mandatory/category/wanted AND
-   * incomplete is already covered by group 1-3's own `consider()` gate in
-   * enumerateActions; this exists specifically because a plain-elective
-   * annual course has no other mechanism that revisits it once degree hours
-   * are already met (see enumerateActions' group 0).
+   * force the repair). Delegates to planner_goals.ts's incompleteAnnualCourseIds
+   * (the same shared signal TauPolicyProvider.isGoal uses for the agentic
+   * path) so both agree on exactly what counts as an unfinished placement. A
+   * course that's mandatory/category/wanted AND incomplete is already
+   * covered by group 1-3's own `consider()` gate in enumerateActions; this
+   * exists specifically because a plain-elective annual course has no other
+   * mechanism that revisits it once degree hours are already met (see
+   * enumerateActions' group 0).
    */
   private findIncompleteAnnualCourse(state: PlanState = this.state): string | undefined {
-    const placed = new Set(placedCourseIds(state));
-    for (const id of placed) {
-      const p = this.model.profiles.get(id);
-      if (p?.is_annual && !isFullyPlaced(state, this.model, placed, id)) return id;
-    }
-    return undefined;
+    return incompleteAnnualCourseIds(state, this.model)[0];
   }
 
   /**
