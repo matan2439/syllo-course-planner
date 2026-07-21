@@ -38,14 +38,23 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
-import { incompleteAnnualCourseIds } from './planner_goals';
+import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
+import {
+  incompleteAnnualCourseIds,
+  applyMutation,
+  isFullyPlaced,
+  degreeHours as computeDegreeHours,
+  scorePlan,
+  compareScore,
+} from './planner_goals';
+import { enumerateActions, isExcluded, addCourseActionsFor, isMovable, legalSemestersFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
+import { placedCourseIds, semesterOf } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
@@ -262,15 +271,253 @@ function deterministicRationale(finalState: PlanState, model: ConstraintModel): 
 }
 
 /**
+ * Structural-gap recoverability — whether ANY further legal action (or bounded
+ * sequence of them) from `finalState` could still add degree hours without
+ * un-satisfying mandatory/category completeness.
+ *
+ * History: PR #41's structural-gap warning (see toProposal below) went
+ * through 21 rounds of Codex review, each adding a new narrowly-scoped
+ * hand-rolled scan (a raw-ADD check, then a wider-search ADD scan, then a
+ * REPLACE scan, then a MOVE-then-ADD scan — see git history on this file for
+ * the full round-by-round account) — because each was its own bespoke
+ * approximation of "is there a reachable, legal, still-complete state with
+ * more hours," and each new combination (a replace that breaks a category, a
+ * move that frees capacity for an annual course's atomic bundle, ...) needed
+ * its own bespoke fix. That is exactly the reachability search
+ * planner_worker.ts's PlannerWorker already performs correctly — building
+ * every real plan by repeatedly calling enumerateActions/applyMutation/
+ * validatePlanState (its Observe→Reason→Act→Validate loop, see step()) — so
+ * round 22 replaces all four hand-rolled scans with a single bounded rollout
+ * over those exact same primitives instead of hand-approximating them again.
+ *
+ * Caveat this rollout must not paper over (issue #25 Finding #4, see
+ * .remember/current.md): GOAL_STACK ranks raw degree hours (scorePlan's g1)
+ * strictly ABOVE mandatory/category completeness (g2a/g2b) — so the single
+ * best-scoring legal action at any state can legitimately trade away
+ * completeness for hours. A rollout that only ever followed PlannerWorker's
+ * own single greedy path could walk straight past a real recovering state
+ * without recognizing it (if the greedy pick at some step sacrifices
+ * completeness). This function instead treats every legal action out of
+ * every visited state as its own branch (a bounded best-first search, using
+ * scorePlan/compareScore only to decide which branch to expand first within
+ * the budget — never to prune branches), and independently re-checks
+ * completeness (validateCandidate, exactly like rounds 19/20 already
+ * required by hand) at EVERY state visited, not just a single followed path's
+ * end.
+ */
+function canRecoverMoreHours(
+  finalState: PlanState,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+): boolean {
+  const baselineHours = computeDegreeHours(finalState, model);
+  const seen = new Set<string>([recoveryStateKey(finalState, model)]);
+  let frontier: Array<{ state: PlanState; score: number[] }> = [
+    { state: finalState, score: scorePlan(finalState, model) },
+  ];
+  let visited = 0;
+
+  while (frontier.length && visited < RECOVERY_ROLLOUT_BUDGET) {
+    // Best-first: expand the highest-scoring frontier state next (same
+    // ranking PlannerWorker.step() uses to choose an action) — a best-effort
+    // ordering so a bounded budget spends itself on the most promising
+    // branches first on a large real catalog. Every other frontier state
+    // stays queued and still gets its turn as long as budget remains, so
+    // this doesn't skip branches on the small, exhaustively-explorable cases
+    // this warning actually fires for.
+    frontier.sort((a, b) => compareScore(b.score, a.score));
+    const { state } = frontier.shift()!;
+    const spawned: typeof frontier = [];
+
+    for (const mut of recoveryCandidateActions(state, model)) {
+      if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
+      const candidate = applyMutation(state, mut);
+      if (!candidate) continue;
+      const key = recoveryStateKey(candidate, model);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // Codex review (round 22) caught that visited was incremented for
+      // EVERY candidate, legal or not — a semester already at/over the hard
+      // cap can have far more than RECOVERY_ROLLOUT_BUDGET individually
+      // illegal ADD candidates (e.g. hundreds of unplaced electives all
+      // illegal in that one over-cap semester), so the whole budget could be
+      // spent discarding those before a legal MOVE (freeing capacity, tried
+      // later in recoveryCandidateActions' own ordering) is ever reached.
+      // Mirrors PlannerWorker.step() itself: only a LEGAL resulting state is
+      // ever a real candidate to build further plan on top of — an illegal
+      // one is a cheap, immediate dead end, not a genuine search state, so
+      // it shouldn't count against a budget defined (see this function's own
+      // docstring) as "the number of NEW states the search may generate."
+      if (!validatePlanState(candidate, model, pinnedHome).valid) continue;
+      visited++;
+
+      if (computeDegreeHours(candidate, model) > baselineHours) {
+        const rep = validateCandidate(candidate, model, pinnedHome);
+        if (
+          rep.legal &&
+          rep.missingMandatory.length === 0 &&
+          rep.unsatisfiedCategories.length === 0 &&
+          rep.disallowedPlaced.length === 0
+        ) {
+          return true;
+        }
+      }
+      spawned.push({ state: candidate, score: scorePlan(candidate, model) });
+    }
+    frontier.push(...spawned);
+  }
+  return false;
+}
+
+/**
+ * Bounded rollout budget for canRecoverMoreHours — the total number of NEW
+ * states the search may generate across the whole branching rollout (not a
+ * single-path depth). Reuses the same magnitude as the rest of this codebase's
+ * bounded-rollout convention (WorkerOptions.rolloutSteps' default and
+ * greedyComplete/estimateFinalScore's default maxSteps, all 200 —
+ * planner_worker.ts / planner_lookahead.ts) rather than inventing a new bound.
+ */
+const RECOVERY_ROLLOUT_BUDGET = 200;
+
+/** Canonical key for a PlanState — dedupes the rollout's visited-state set. */
+function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
+  return model.knownSemesterIds.map(sem => [...(state.semesters[sem] ?? [])].sort().join(',')).join('|');
+}
+
+/**
+ * The action set canRecoverMoreHours branches on at each visited state.
+ * Starts from enumerateActions (planner_actions.ts) — the exact production
+ * action space PlannerWorker.step() itself explores — and supplements the two
+ * spots where that space is deliberately narrower than "every legal option"
+ * (a reasonable narrowing for the real search's own ranking/performance
+ * needs, but not for this exhaustion question):
+ *
+ *  - ADD: enumerateActions' degree-hour-fill group only ever proposes
+ *    bestLegalSemester's single lowest-load pick for an ordinary (non-annual)
+ *    elective — a course illegal there (e.g. a prerequisite-timing conflict)
+ *    but legal in a different semester is invisible to it (round 9).
+ *    addCourseActionsFor (also used by enumerateActions itself for is_annual
+ *    courses) tries every legal semester — reused here for every eligible
+ *    course, not just annual ones.
+ *  - REPLACE: enumerateActions' replace group only proposes a swap that is
+ *    strictly preference-IMPROVING — a same-preference (e.g. both neutral)
+ *    swap that is purely hours-improving is invisible to it (round 18). This
+ *    generates every movable-placed × unplaced-eligible pair gated only on
+ *    net hours and legal-semester membership.
+ *
+ * `is_unwanted` (soft-avoided) courses are excluded from both supplements —
+ * intentionally: the automatic search must never place a course the user
+ * asked to avoid on its own. Whether the user could still approve one as a
+ * risky elective is a distinct question, answered separately by
+ * canRecoverViaUnwantedElective below, not folded into this rollout.
+ */
+function recoveryCandidateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
+  const actions = enumerateActions(state, model);
+  const placedNow = new Set(placedCourseIds(state));
+  const eligible = (id: string, p: { is_mandatory?: boolean; hours?: number | null; is_unwanted?: boolean }) =>
+    !p.is_mandatory && p.hours != null && p.hours !== 0 && !p.is_unwanted &&
+    !isFullyPlaced(state, model, placedNow, id) &&
+    !model.completedCourseIds.has(id) && !isExcluded(model, id);
+
+  for (const [id, p] of model.profiles) {
+    if (!eligible(id, p)) continue;
+    actions.push(...addCourseActionsFor(model, id));
+  }
+
+  for (const outId of placedNow) {
+    if (!isMovable(model, outId)) continue;
+    const outHours = model.profiles.get(outId)?.hours ?? 0;
+    const sem = semesterOf(state, outId);
+    if (!sem) continue;
+    for (const [inId, p] of model.profiles) {
+      if (!eligible(inId, p) || (p.hours ?? 0) <= outHours) continue;
+      if (!legalSemestersFor(model, inId).includes(sem)) continue;
+      // Codex review (round 24) caught that REPLACE_COURSE is always illegal
+      // when inId is is_annual: applyMutation's REPLACE_COURSE case places
+      // inId into ONLY semesterId, but validatePlanState requires an annual
+      // course to occupy every one of its spans_semesters at once (the same
+      // class of bug rounds 8/9/21 already fixed for hand-rolled ADD
+      // mutations). Skip generating this always-illegal single-semester
+      // mutation for annual candidates — REMOVE_COURSE(outId) below, paired
+      // with the atomic annual ADD bundle already generated by the "MORE
+      // ADD" loop above (addCourseActionsFor doesn't exclude is_annual
+      // courses), lets the general multi-step rollout discover the real
+      // recovery (free the slot, then place the full bundle) without a
+      // bespoke annual-replace mutation type.
+      if (p.is_annual) continue;
+      actions.push({ type: 'REPLACE_COURSE', outId, inId, semesterId: sem });
+    }
+  }
+
+  // Codex review (round 24): recoveryCandidateActions had no REMOVE_COURSE
+  // candidate at all — MOVE only relocates a placed course to one of ITS
+  // OWN other legal semesters, which doesn't help when outId has no other
+  // legal semester (MOVE is never an option) and the real recovery needs
+  // the slot vacated entirely, e.g. so an is_annual course's atomic
+  // multi-semester bundle can fit. Adding it as a plain candidate lets the
+  // general best-first search discover "free this slot, then add
+  // something bigger/annual" (or anything else) on its own, the same way
+  // MOVE-then-ADD (round 20) already falls out of this rollout's own
+  // multi-step exploration rather than a bespoke check.
+  for (const outId of placedNow) {
+    if (!isMovable(model, outId)) continue;
+    actions.push({ type: 'REMOVE_COURSE', courseId: outId });
+  }
+
+  return actions;
+}
+
+/**
+ * The soft-avoided (`is_unwanted`) elective case (round 5's finding, widened
+ * to annual courses by round 8) — deliberately kept separate from
+ * canRecoverMoreHours above. This is NOT a gap in the real search: the
+ * automatic planner must never place a course the user asked to avoid on its
+ * own, so enumerateActions correctly excludes `is_unwanted` courses
+ * everywhere. But the course is still a real, recoverable option if the user
+ * explicitly approves it as a risky elective — exactly the advice the
+ * generic fallback message already gives — which is a genuinely different
+ * question from "would the automatic planner find this by itself." Reuses
+ * addCourseActionsFor so an is_annual soft-avoided elective still gets its
+ * correct atomic multi-semester bundle instead of a single-semester trial
+ * that always fails validatePlanState for an annual course. Pure ADD (never
+ * removes a placed course), so — unlike REPLACE/MOVE-then-ADD in the rollout
+ * above — it can't itself un-satisfy a category or mandatory requirement,
+ * and needs no completeness re-check.
+ */
+function canRecoverViaUnwantedElective(
+  finalState: PlanState,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+): boolean {
+  const placedNow = new Set(placedCourseIds(finalState));
+  return [...model.profiles].some(([id, p]) => {
+    if (!p.is_unwanted) return false;
+    if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
+    if (isFullyPlaced(finalState, model, placedNow, id)) return false;
+    if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
+    return addCourseActionsFor(model, id).some(a => {
+      const next = applyMutation(finalState, a);
+      return next != null && validatePlanState(next, model, pinnedHome).valid;
+    });
+  });
+}
+
+/**
  * Option B toProposal — pure function of (finalState, model, initialState, pinnedHome, rationale_he).
  * No PlannerWorker dependency; shared by both the worker and agentic paths.
  */
-function toProposal(
+/** Exported for direct unit testing of the response-shaping/warning logic
+ * (mirrors buildModel/priorHoursFromContext's existing export convention) —
+ * lets a test construct an exact finalState/model combination without
+ * depending on whether the real search would ever converge to it. */
+export function toProposal(
   finalState: PlanState,
   model: ConstraintModel,
   initialState: PlanState,
   pinnedHome: Record<string, string>,
   rationale_he: string,
+  currentlyTakingHoursFromContext?: Map<string, number>,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -323,6 +570,75 @@ function toProposal(
   for (const cid of report.unsatisfiedCategories) {
     const c = model.categories.find(x => x.id === cid);
     warnings_he.push(`דרישת קטגוריה לא מולאה: ${c?.name ?? cid}.`);
+  }
+  // Agent Diagnosis Loop finding: a plan can have every mandatory course and
+  // every category already satisfied while still short of degreeRequiredHours,
+  // with genuinely no further legal action able to close the gap (the visible
+  // planning window's catalog is exhausted). Without a distinct message, this
+  // looked identical to an ordinary, still-fixable shortfall, and the live
+  // frontend's decision text could suggest actions (approve a risky elective,
+  // wait for missing data) that don't actually exist. Only fires when
+  // mandatory/category requirements are ALL satisfied — a genuinely
+  // unsatisfied category already gets its own, more specific warning above.
+  // Gated on report.legal and report.disallowedPlaced (rounds 3-4) so this
+  // never fires alongside a real, different, already-disclosed blocker (an
+  // unrelated overload, a pinned course left illegal, a hard-excluded course
+  // still placed) — those must surface as themselves, not be mislabeled as
+  // catalog exhaustion.
+  //
+  // Recoverability itself (rounds 1-2, 5, 8-9, 17-21 — see git history and
+  // canRecoverMoreHours'/canRecoverViaUnwantedElective's own doc comments
+  // above) is delegated entirely to those two functions instead of the prior
+  // four hand-rolled combinatorial scans.
+  //
+  // Codex review (round 6, refined by rounds 10-11) caught that
+  // report.degreeHours (model.priorHours + placedHours(finalState)) never
+  // includes hours from off-board personal_status.currently_taking courses —
+  // priorHoursFromContext deliberately excludes total_hours_progress.
+  // currently_planned_hours (see its own comment above), and a
+  // currently-taking course is never placed on the board either, so its
+  // hours are invisible to both terms. A student whose known-completed +
+  // board-placed hours fall short only because a real, already-in-progress
+  // course isn't counted yet would see "catalog exhausted" even though the
+  // gap closes once that course finishes. Credited by reading each
+  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
+  // the course is in the board catalog, else the client-resolved hours in
+  // personal_status.currently_taking itself (round 10's fix: some
+  // currently-taking courses, e.g. first/second-year mandatory ones the
+  // frontend tracks via a static fallback, predate the program's board
+  // window and have no model.profiles entry at all). Deliberately reads
+  // ONLY personal_status.currently_taking (round 11's fix), never the mixed
+  // total_hours_progress.currently_planned_hours aggregate (which also
+  // includes personal_status.planned — a course the planner can legitimately
+  // place and credit itself via report.degreeHours; adding the aggregate on
+  // top would double-count it).
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  if (
+    !report.degreeMet &&
+    report.degreeHours + currentlyPlannedHours < model.degreeRequiredHours &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0 &&
+    report.legal &&
+    report.disallowedPlaced.length === 0
+  ) {
+    const recoverable =
+      canRecoverViaUnwantedElective(finalState, model, pinnedHome) ||
+      canRecoverMoreHours(finalState, model, pinnedHome);
+    if (!recoverable) {
+      // Codex review (round 13) caught that this message's numerator used
+      // report.degreeHours alone, even though the guard just above credited
+      // currentlyPlannedHours (off-board currently-taking courses) before
+      // deciding the gap is genuinely structural — a partial-credit case
+      // (test 8b/11b) would show e.g. "172/185" while the branch's own logic
+      // already accounted for 176/185, understating real progress in this
+      // user-visible message. Use the same credited total the guard itself
+      // used.
+      warnings_he.push(
+        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours + currentlyPlannedHours}/${model.degreeRequiredHours} ש"ש) — ` +
+        `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,
+      );
+    }
   }
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
@@ -450,6 +766,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // and ignoring it let a currently-taken course be re-proposed by the planner.
   const currentlyPlannedCourseIds: string[] =
     (effectivePlanContext?.personal_status?.currently_taking ?? []).map((c: any) => c.course_id);
+  // Per-course hours for the same currently_taking array, straight from the
+  // client (covers ids model.profiles can't, e.g. YEAR_1_2 fallback courses
+  // — see toProposal's structural-gap-warning comment for the full history).
+  const currentlyTakingHoursFromContext = new Map<string, number>(
+    (effectivePlanContext?.personal_status?.currently_taking ?? [])
+      .filter((c: any) => typeof c?.hours === 'number')
+      .map((c: any) => [c.course_id, c.hours]),
+  );
 
   // Board — always plan over the full course universe.
   let board: any = null;
@@ -501,7 +825,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
-    proposal = toProposal(agentResult.finalState, model, initialState, pinnedHome, rationale_he);
+    proposal = toProposal(
+      agentResult.finalState, model, initialState, pinnedHome, rationale_he,
+      currentlyTakingHoursFromContext,
+    );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
 
@@ -517,7 +844,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       worker.run(500, 'greedy');
     }
 
-    proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
+    proposal = toProposal(
+      worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
+      currentlyTakingHoursFromContext,
+    );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
   }

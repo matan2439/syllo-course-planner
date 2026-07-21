@@ -5482,7 +5482,30 @@ function postPlanChangeSummary(prevProposal, newProposal, prefs) {
   }
   // Actionable options driven by the actual gap.
   if (_overloadSeen && _userMax != null && _userMax < _hardCap) decisions.push(`להעלות את מקסימום העומס ל-${_hardCap} ש״ש (החריגה היא בקורסי חובה בלבד)`);
-  if (!_hoursSatisfied) decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+  // Agent Diagnosis Loop finding: "approve a risky elective from the list, or
+  // wait for missing semester data" used to be suggested whenever hours
+  // weren't satisfied — even when the server already reported (via
+  // generate-plan.ts's structural-gap warning) that every mandatory/category
+  // requirement is met and the visible planning window's catalog is fully
+  // exhausted, i.e. there is no elective left to approve and no course
+  // waiting on data. Check that signal first so the advice actually matches
+  // what's true; only fall back to the generic elective/data suggestion when
+  // the server hasn't flagged the gap as structural.
+  //
+  // Codex review (round 9) caught that this marker check ran unconditionally
+  // — newProposal.warnings_he can carry a structural-gap marker from an
+  // earlier point in requestPlanProposal's client-side repair/refill chain
+  // (e.g. repairAddHoursToDegreeLocal appends onto, never clears,
+  // proposal.warnings_he), so a draft that the LATER repair steps actually
+  // brought up to the full required hours could still render the "remaining
+  // gap" decision — directly contradicting the hours-satisfied plan shown
+  // right above it. Gated on !_hoursSatisfied (already computed above) so a
+  // stale marker can never override a genuinely complete plan.
+  if (!_hoursSatisfied && _finalWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+    decisions.push('הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.');
+  } else if (!_hoursSatisfied) {
+    decisions.push('לאשר קורס בחירה אחד בסיכון גבוה מהרשימה, או להמתין להשלמת נתוני סמסטר לקורסים החסומים');
+  }
 
   // Final status — ✅ requires hours satisfied AND no unresolved warning that needs
   // user approval or violates a stated preference (unknown שער-רוח exam type, an
@@ -15137,6 +15160,15 @@ const SOFT_LOAD_MIN = 18;
 const SOFT_LOAD_MAX = 22;
 const HARD_LOAD_CAP = 26;
 const ABSOLUTE_MAX_REASONABLE = 30;
+/**
+ * Matches generate-plan.ts's structural degree-hours-gap warning (mandatory/
+ * category requirements all satisfied, but the visible planning window's
+ * catalog is exhausted short of the degree target — no elective left to
+ * approve, no course waiting on missing data). Shared so both the diff-based
+ * summary (postPlanChangeSummary) and the no-diff outcome path read the same
+ * marker and can never drift apart.
+ */
+const STRUCTURAL_GAP_WARNING_RE = /מיצית את כל הקורסים הזמינים בחלון התכנון/;
 
 /**
  * Issue 1 — data-driven course eligibility / exclusion config (client mirror of
@@ -18408,7 +18440,33 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       const _aProp = { semesters: Object.entries(_afterBoard).map(([id, cs]) => ({ semester_id: id, course_ids: cs })) };
       try { postPlanChangeSummary(_bProp, _aProp, prefs); } catch (_) {}
     } else if (_planOutcome === 'FAILURE_NO_ELIGIBLE_COURSES') {
-      postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+      // Codex review (PR #41, round 5): this branch only ran the generic "no
+      // changes" text, even when the server's own warnings_he already flagged
+      // (via generate-plan.ts's structural degree-hours-gap warning) that
+      // every mandatory/category requirement is satisfied and the visible
+      // planning window's catalog is genuinely exhausted — a board that
+      // already contains every in-window course hits exactly this no-diff
+      // outcome. Check the same marker postPlanChangeSummary already checks
+      // (SUCCESS_WITH_CHANGES path) so a real user gets the honest
+      // outside-the-visible-window explanation here too, not just when a
+      // diff happens to exist.
+      const _noDiffWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+      // Codex review (round 15) caught the same staleness class here that
+      // round 14 fixed in the FAILURE_VALIDATION branch below: warnings_he
+      // can still carry a structural-gap marker preserved through client
+      // repairs even once the final hour accounting is actually satisfied.
+      // Recompute fresh against the TRUE final eligibleProposal before
+      // trusting the marker, so this no-diff message can't contradict a plan
+      // the gate/hours check just accepted as complete.
+      const _noDiffHoursStatus = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
+      if (!_noDiffHoursStatus.satisfied && _noDiffWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+        postStatusMessage(
+          'לא בוצעו שינויים בלוח — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
+          'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.',
+        );
+      } else {
+        postStatusMessage('לא בוצעו שינויים בלוח.\nלא הצלחתי להוסיף קורסים חדשים לפי הנתונים והאילוצים הקיימים.');
+      }
     } else {
       // FAILURE_VALIDATION — try the conversational fallback before falling back
       // to the standard diagnoseBuildBlock message.
@@ -18522,23 +18580,73 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
         }
 
         if (!_rescued) {
-          // Replacement could add nothing either — now describe the gap. This is
-          // the only remaining path to diagnoseBuildBlock.
-          console.log('[planner-e2e-trace]', {
-            messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
-            reason: 'replacement plan added no courses',
-            blockerCauses: _blockerCauses,
-            oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
-          });
-          try {
-            const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
-            const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
-            const msg = lines.join('\n');
-            if (msg && msg !== _lastFinalPlanBlockedMsg) {
+          // Codex review (PR #41, round 7): a genuinely exhausted-catalog plan
+          // (every mandatory/category requirement satisfied, degree hours
+          // short, nothing left to add) is still below the degree target, so
+          // validateFinalPlan's degree_completion check makes _gateResult
+          // non-applicable — this branch, not postPlanChangeSummary or the
+          // no-diff branch, is what actually runs in the real
+          // requestPlanProposal flow for that scenario. Neither of those two
+          // (already-fixed) call sites is reachable here, so the server's
+          // structural-gap marker was silently dropped and diagnoseBuildBlock's
+          // generic "missing X ש״ש" message (with its own "add electives"
+          // chips) ran instead — advice that doesn't apply when nothing is
+          // actually addable. Check the same marker here, before falling
+          // through to diagnoseBuildBlock.
+          const _validationPathWarnings = (eligibleProposal && eligibleProposal.warnings_he) || [];
+          // Codex review (PR #41, round 14): degreeHoursStatusFinal (above)
+          // was computed BEFORE two later eligibleProposal reassignments in
+          // this function (the annual-move repair and the re-enforced-legal
+          // repair), so it can be stale by the time we reach here — the same
+          // staleness class round 11 fixed in postPlanChangeSummary via
+          // _hoursSatisfied. Recompute fresh against the TRUE final
+          // eligibleProposal instead of trusting the earlier snapshot, so a
+          // later repair that closes the gap can't leave this branch still
+          // reading an outdated "still short" marker.
+          const _validationPathHoursStatus = getDegreeHoursStatusLocal(analysis, eligibleProposal.semesters || [], courseHours);
+          // Codex review (PR #41, round 17) caught that this branch keyed
+          // only on the (now-fresh, round 14) hours status and the marker,
+          // not on WHY the gate actually failed. _gateResult (computed
+          // above, before this branch) can carry a hard structural blocker
+          // (overload/illegal_semester/eligibility/duplicate/annual) — e.g.
+          // client-side repairs that leave the plan still short AND
+          // introduce/preserve one of these — and buildPlanningFallback
+          // already returned null for exactly that reason. Showing the
+          // structural-gap copy in that case would replace an actionable
+          // "here's the real blocker" explanation with a misleading "all
+          // courses are already assigned" one. Reuses the same
+          // HARD/DEGREE-cause split _blockerCauses (computed above) already
+          // established this file's convention for (5833-5834, 18492).
+          const _validationPathHardBlocker = _blockerCauses.some(c =>
+            ['overload', 'illegal_semester', 'eligibility', 'duplicate', 'annual'].includes(c));
+          if (!_validationPathHoursStatus.satisfied && !_validationPathHardBlocker && _validationPathWarnings.some(w => STRUCTURAL_GAP_WARNING_RE.test(w))) {
+            const msg =
+              'לא הצלחתי להשלים מערכת חוקית — כל הקורסים הזמינים בחלון התכנון הנוכחי כבר משובצים.\n' +
+              'הפער הנותר דורש שעות מעבר לחלון הסמסטרים המוצג כרגע — לא ניתן לסגור אותו מתוך רשימת קורסי הבחירה הקיימת.';
+            console.log('[planner-e2e-trace]', { messagePath: 'FAILURE_VALIDATION/structural-gap', reason: 'catalog exhausted per server warnings_he' });
+            if (msg !== _lastFinalPlanBlockedMsg) {
               _lastFinalPlanBlockedMsg = msg;
-              postAssistantMessage(msg, diag.chips);
+              postAssistantMessage(msg, [{ label: 'הצג אילוצים שמונעים פתרון', action: 'show-blocking-constraints' }]);
             }
-          } catch (_) { /* diagnosis unavailable */ }
+          } else {
+            // Replacement could add nothing either — now describe the gap. This is
+            // the only remaining path to diagnoseBuildBlock.
+            console.log('[planner-e2e-trace]', {
+              messagePath: 'FAILURE_VALIDATION/diagnoseBuildBlock',
+              reason: 'replacement plan added no courses',
+              blockerCauses: _blockerCauses,
+              oldMissingOfferingMessageRendered: _blockerCauses.includes('missing_offering_data'),
+            });
+            try {
+              const diag = diagnoseBuildBlock(blockersToValidationShape(_gateResult), { preferences: _aiPlanLastPreferences });
+              const lines = [diag.explanation_he, ...diag.questions].filter(Boolean);
+              const msg = lines.join('\n');
+              if (msg && msg !== _lastFinalPlanBlockedMsg) {
+                _lastFinalPlanBlockedMsg = msg;
+                postAssistantMessage(msg, diag.chips);
+              }
+            } catch (_) { /* diagnosis unavailable */ }
+          }
         }
       }
     }
