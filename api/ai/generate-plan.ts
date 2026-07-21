@@ -40,7 +40,7 @@ import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import { validateCandidate, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
 import { incompleteAnnualCourseIds } from './planner_goals';
-import { projectFeasibility } from './planner_lookahead';
+import { enumerateActions } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
 import { getSemesterLoad } from './completion_analysis';
@@ -328,21 +328,33 @@ function toProposal(
   // Agent Diagnosis Loop finding: a plan can have every mandatory course and
   // every category already satisfied while still short of degreeRequiredHours,
   // with genuinely no further legal action able to close the gap (the visible
-  // planning window's catalog is exhausted) — projectFeasibility's own
-  // 'degree_hours' blocker, already used internally by planner_worker.ts as a
-  // ranking signal, is the authoritative source for this. Without a distinct
-  // message, this looked identical to an ordinary, still-fixable shortfall,
-  // and the live frontend's decision text could suggest actions (approve a
-  // risky elective, wait for missing data) that don't actually exist. Only
-  // fires when mandatory/category requirements are ALL satisfied — a genuinely
+  // planning window's catalog is exhausted). Without a distinct message, this
+  // looked identical to an ordinary, still-fixable shortfall, and the live
+  // frontend's decision text could suggest actions (approve a risky elective,
+  // wait for missing data) that don't actually exist. Only fires when
+  // mandatory/category requirements are ALL satisfied — a genuinely
   // unsatisfied category already gets its own, more specific warning above.
+  //
+  // Codex review (PR #41) caught that projectFeasibility's 'degree_hours'
+  // blocker is a HEADROOM approximation (total unused hard-cap capacity
+  // across all known semesters vs. the hours gap) — not an availability
+  // check. A small shortfall (e.g. 5h) with plenty of empty semester
+  // capacity but zero remaining eligible courses would read as "feasible"
+  // there, silently missing the exact misleading-advice case this warning
+  // exists to catch. The real question is simpler and more direct: does
+  // enumerateActions (the same function the search itself uses) still
+  // produce ANY ADD_COURSE action from this final state? With mandatory/
+  // category requirements already confirmed satisfied above, a remaining
+  // ADD_COURSE action can only come from a still-unplaced wanted course or
+  // planner_actions.ts's degree-hour-fill group — i.e. a genuine option to
+  // add more hours. None remaining means truly exhausted.
   if (
     !report.degreeMet &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0
   ) {
-    const feasibility = projectFeasibility(finalState, model);
-    if (feasibility.blocked.length === 1 && feasibility.blocked[0] === 'degree_hours') {
+    const canStillAddHours = enumerateActions(finalState, model).some(a => a.type === 'ADD_COURSE');
+    if (!canStillAddHours) {
       warnings_he.push(
         `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,

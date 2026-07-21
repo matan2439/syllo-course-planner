@@ -110,6 +110,22 @@ describe('generate-plan — structural degree-hours gap warning (Agent Diagnosis
     expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(false);
   });
 
+  test('2b. Codex-caught regression: a SMALL shortfall with ample empty semester capacity but zero remaining eligible courses still fires the warning (projectFeasibility headroom would have masked this — it only compares hard-cap headroom to the gap, not real course availability)', async () => {
+    // MAND(4) + FLU(4) + SOL(4) = 12 placed; 170 prior hours (182 total) leaves
+    // only a 3h gap — trivially within the ~90h+ of unused hard-cap headroom
+    // across the 4 known semesters, but this fixture's catalog has nothing
+    // left to add.
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: planContext(170),
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes(STRUCTURAL_GAP_FRAGMENT))).toBe(true);
+  });
+
   test('3. default path: a category genuinely cannot be satisfied (its one candidate is hard-excluded) → unsatisfiedCategories warning fires, NOT the structural gap warning', async () => {
     const res = await run({
       program_id: PROGRAM_ID,
