@@ -17821,6 +17821,37 @@ function computeExplicitlyAvoidedIdsLocal(prefs) {
   return ids;
 }
 
+// Mirrors api/ai/planner_validate.ts's DISALLOWED_PLACED_ERROR_PREFIX exactly
+// (this static page has no shared import with the server, so the string is
+// duplicated deliberately rather than guessed at) — used by requestPlanProposal
+// to recognize which server `errors` entries came from the disallowed-placement
+// gate, so a course the avoid post-filter just removed can resolve its own
+// stale blocking error (issue #28).
+const DISALLOWED_PLACED_ERROR_PREFIX_LOCAL = 'קורס לא-זמין שובץ בתוכנית:';
+
+/**
+ * Issue #28 — a course whose ONLY blocking reason was the server's
+ * disallowed-placement gate (generate-plan.ts's DISALLOWED_PLACED_ERROR_PREFIX,
+ * fed into `blocked`/`errors` by PR #27) may have just been stripped by
+ * applyExplicitAvoidPostFilterLocal. If a disallowed-placement error names a
+ * course that's now in avoidRemoved, drop that error and recompute
+ * `blocked` from what's left — otherwise the client keeps showing a
+ * blocked/overload banner for a course that no longer appears in the
+ * displayed plan. Mirrors the existing hardOverloadRemains pattern of
+ * re-checking a block cause after local repairs, extended to this cause.
+ * Pure: returns a new { blocked, errors } pair, never mutates its inputs.
+ */
+function resolveStaleDisallowedBlockLocal(blocked, errors, avoidRemoved, courseMap) {
+  if (!avoidRemoved.length || !errors.length) return { blocked, errors };
+  const avoidRemovedNames = avoidRemoved.map(cid => courseMap[cid]?.name_he || cid).filter(Boolean);
+  const isResolvedDisallowedError = e =>
+    e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX_LOCAL) &&
+    avoidRemovedNames.some(name => e.includes(name));
+  const stillOutstanding = errors.filter(e => !isResolvedDisallowedError(e));
+  if (stillOutstanding.length === errors.length) return { blocked, errors };
+  return { blocked: stillOutstanding.length > 0, errors: stillOutstanding };
+}
+
 async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
@@ -17899,8 +17930,8 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
 
     // Issue 3 — capture server-side blocked flag + blocking error messages so
     // the chat/preview can present this as an invalid result rather than success.
-    const serverBlocked = data && data.blocked === true;
-    const serverBlockingErrors = Array.isArray(data && data.errors) ? data.errors.slice() : [];
+    let serverBlocked = data && data.blocked === true;
+    let serverBlockingErrors = Array.isArray(data && data.errors) ? data.errors.slice() : [];
     const { proposal: normalized, dropped, autofixes } = normalizePlanProposalLocal(data);
     if (dropped.length) {
       normalized.warnings_he = [
@@ -18093,13 +18124,6 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       }
     }
 
-    // Issue 3 — propagate server-side blocking errors (e.g. overload over the
-    // hard cap without explicit user confirmation) into the validation result
-    // so the preview/apply gating and chat messaging treat the proposal as
-    // invalid rather than a successful "optimal" plan.
-    const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
-    const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
-
     // Issue C — FINAL deterministic post-filter: strip any explicitly-named
     // avoided ELECTIVE that survived the LLM + repairs; keep mandatory ones
     // with a Hebrew rationale. Runs after all repairs, before the draft.
@@ -18117,6 +18141,22 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       avoidFilteredProposal.warnings_he = [...(avoidFilteredProposal.warnings_he || []), ..._requestedButExcludedHere.map(cid =>
         `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
     }
+
+    // Issue #28 — resolve any server disallowed-placement error the avoid
+    // post-filter above just fixed, before it's folded into combinedErrors/
+    // overloadBlocked below. See resolveStaleDisallowedBlockLocal's doc comment.
+    ({ blocked: serverBlocked, errors: serverBlockingErrors } =
+      resolveStaleDisallowedBlockLocal(serverBlocked, serverBlockingErrors, avoidRemoved, courseMap));
+
+    // Issue 3 — propagate server-side blocking errors (e.g. overload over the
+    // hard cap without explicit user confirmation) into the validation result
+    // so the preview/apply gating and chat messaging treat the proposal as
+    // invalid rather than a successful "optimal" plan. Computed AFTER the
+    // avoid-post-filter resolution above so a course excluded (and already
+    // removed from the displayed plan) by this very request never leaves a
+    // stale block/overload signal behind (issue #28).
+    const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
+    const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
 
     // Issue 1 — FINAL eligibility post-filter: strip any ineligible ELECTIVE
     // (honors-only / explicitly excluded) the LLM/repairs may have included.
