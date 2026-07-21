@@ -23,8 +23,8 @@ _Last updated: 2026-07-21, session on branch `claude/determined-thompson-76nzgq`
   writing — re-confirmed directly via the Vercel API this session (latest
   `tau-course-planner` deployment, `dpl_HJZTB8zqondbwuSnHx6TveggoPVg`, `target:
   production`, unchanged since last session's check). **Stale** — missing PR
-  #12/#13 (infra), #27/#31/#32 (issue #25 Findings #1–#3), and now this
-  session's PR #34 once merged. No deploy has happened since this was first
+  #12/#13 (infra), #27/#31/#32 (issue #25 Findings #1–#3), and now #34 (issue
+  #28, this session, merged). No deploy has happened since this was first
   flagged (3+ sessions ago).
 - **Deploy blocker:** no session so far (including this one) has had Vercel CLI
   credentials in its sandbox (`vercel login` has no reachable network path).
@@ -48,17 +48,29 @@ _Last updated: 2026-07-21, session on branch `claude/determined-thompson-76nzgq`
    - **PR #33 merged** (`8ad6eee`) — Codex-clean on its final commit
      (`13a8017`, which itself already fixed the one prior Codex finding about
      a rolling-three compliance-claim error).
-3. **PR #34 opened** — issue #28 (P2, deferred from PR #27's Codex review):
-   client-side stale `blocked`/`overloadBlocked` signal in
+3. **PR #34 merged** (`19cb1e3`) — issue #28 (P2, deferred from PR #27's Codex
+   review): client-side stale `blocked`/`overloadBlocked` signal in
    `semester_board_viewer.html` after `applyExplicitAvoidPostFilterLocal`
    locally resolves a disallowed-placement error the server flagged. Fix: new
    pure `resolveStaleDisallowedBlockLocal()`, mirrors the existing
-   `hardOverloadRemains` re-check pattern. 6 new unit tests (RED/GREEN,
-   extracted-function pattern, no fixture dependency). Full API suite
-   unaffected (1202/1202); full `jest.ui.config.js` suite unchanged at the
-   pre-existing fixture-gap failure count (386 failing, now out of 817 since 6
-   new tests were added, all passing) — zero regressions. `tsc --noEmit`
-   clean. **Awaiting Codex review + CI, not yet merged.** Classification: **C**
+   `hardOverloadRemains` re-check pattern. **2 rounds of real Codex findings
+   fixed**, not rubber-stamped:
+   - Round 1: the initial `.includes()` name match could wrongly resolve a
+     *different*, still-disallowed course's error when one course's name is a
+     substring of another's (real catalog prefix pairs exist, e.g. a course
+     and its "- מעבדה" lab companion). Fixed with exact-name parsing
+     (`parseDisallowedPlacedNameLocal`) instead of substring search.
+   - Round 2: the resolution ran too early — right after the avoid
+     post-filter, before later eligibility/degree-hours refills (which only
+     exclude `unwantedCourseIds`, not hard-excludes) could silently re-add the
+     exact flagged course from the elective pool. Fixed by checking the
+     ACTUAL final placed course set (ground truth) after every repair/refill
+     finishes, instead of a snapshot from one intermediate step.
+   Final state: CI 3/3 green, Codex clean on the final commit, both review
+   threads resolved with evidence, 8 regression tests (up from the initial 6),
+   full API suite unaffected (1202/1202), full `jest.ui.config.js` suite at
+   the same pre-existing fixture-gap baseline (386 failing out of 819, zero
+   regressions), `tsc --noEmit` clean. Issue #28 closed. Classification: **C**
    (correctness/disclosure fix to an already-shipped feature).
 4. Re-investigated issue #25 Finding #4 before picking a milestone: confirmed
    the previous session's conclusion still holds — a naive "cap goal-1's
@@ -77,9 +89,8 @@ _Last updated: 2026-07-21, session on branch `claude/determined-thompson-76nzgq`
 3. PR #27 — hard-avoid plan correctness fix (Finding #1) — **C**
 4. PR #31 — agent-path over-blocking fix (Finding #2) — **B**
 5. PR #32 — max_weekly_hours disclosure fix (Finding #3) — **C**
-6. PR #34 — client-side stale block-state fix (issue #28) — **C** (not yet
-   merged; counts provisionally, will need to be dropped from the rolling
-   count if it doesn't land).
+6. PR #34 — client-side stale block-state fix, issue #28, merged (`19cb1e3`)
+   after 2 rounds of real Codex findings fixed — **C**.
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -89,8 +100,7 @@ Rolling-three checks:
   exception, not a compliant window.
 - (13,27,31) = D/C/B — compliant (2 of 3 are A/B/C; 1 is A/B).
 - (27,31,32) = C/B/C — compliant (3 of 3 are A/B/C; 1 is A/B).
-- (31,32,34) = B/C/C — compliant (3 of 3 are A/B/C; 1 is A/B), pending #34's
-  merge.
+- (31,32,34) = B/C/C — compliant (3 of 3 are A/B/C; 1 is A/B).
 
 Every window from PR #27 onward is compliant; the one non-compliant window
 predates PR #27 and could not be cured after the fact — it's the reason #14
@@ -99,10 +109,10 @@ stayed held rather than evidence the rule is being ignored going forward.
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, and soon #34) is inert for real users until someone
-   deploys `ui/frontend-modernization` HEAD. This is the single highest-value
-   unblock available right now — real, tested, Codex-reviewed correctness
-   fixes are sitting unshipped.
+   #13, #27, #31, #32, #34) is inert for real users until someone deploys
+   `ui/frontend-modernization` HEAD. This is the single highest-value unblock
+   available right now — real, tested, Codex-reviewed correctness fixes are
+   sitting unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -129,10 +139,10 @@ stayed held rather than evidence the rule is being ignored going forward.
 ## Exact next action
 
 1. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** This is now the single most valuable pending action — 5+
-   real, tested fixes are merged and waiting, with a 6th (#34) close behind.
-2. Once PR #34 clears Codex review + CI, merge it (issue #28 fully closed).
-3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
+   production.** This is now the single most valuable pending action — 6 real,
+   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34) are merged
+   and waiting.
+2. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
    on the intended `GOAL_STACK` tradeoff before implementation — see Blockers.
    If a decision arrives, the recommended starting point is unchanged: a
    dedicated failing test reproducing the 203h/185h scenario (TDD RED), then
@@ -141,9 +151,9 @@ stayed held rather than evidence the rule is being ignored going forward.
    `generate_plan_load_distribution_policy.test.ts`,
    `generate_plan_dual_semester_load_balance.test.ts` at minimum) before
    considering it done.
-4. If Finding #4 stays blocked, issue #25 Finding #5 (no server-side
+3. If Finding #4 stays blocked, issue #25 Finding #5 (no server-side
    chat-vs-rebuild distinction) is the next real-Agent item that doesn't need
    a product decision — low severity, defense-in-depth only.
-5. Issues #20/#21/#18(reconciliation)/#14 all still need a human product call
+4. Issues #20/#21/#18(reconciliation)/#14 all still need a human product call
    — already fully diagnosed by prior sessions, not re-investigated further
    this session since nothing new was learned.
