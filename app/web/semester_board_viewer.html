@@ -17844,12 +17844,21 @@ function parseDisallowedPlacedNameLocal(e) {
 /**
  * Issue #28 — a course whose ONLY blocking reason was the server's
  * disallowed-placement gate (generate-plan.ts's DISALLOWED_PLACED_ERROR_PREFIX,
- * fed into `blocked`/`errors` by PR #27) may have just been stripped by
- * applyExplicitAvoidPostFilterLocal. If a disallowed-placement error names a
- * course that's now in avoidRemoved, drop that error and recompute
- * `blocked` from what's left — otherwise the client keeps showing a
- * blocked/overload banner for a course that no longer appears in the
- * displayed plan. Mirrors the existing hardOverloadRemains pattern of
+ * fed into `blocked`/`errors` by PR #27) may have been removed by a later
+ * local repair (applyExplicitAvoidPostFilterLocal's avoid post-filter, most
+ * commonly) without the server's `blocked`/`errors` signal ever being told.
+ * Checks GROUND TRUTH: if a disallowed-placement error's named course is not
+ * among finalPlacedIds (the course ids actually placed in the proposal at the
+ * point this is called), the error is stale and dropped, and `blocked` is
+ * recomputed from what's left. Must be called with the course ids from the
+ * FINAL proposal, i.e. after every post-filter repair/refill that could
+ * place or re-place a course has already run (not right after the avoid
+ * filter) — a Codex review on this PR caught that resolving it too early let
+ * a later eligibility/degree-hours refill (which only excludes
+ * unwantedCourseIds, not hard-excludes) silently re-add the exact course the
+ * server flagged, while its error had already been cleared. Ground-truth
+ * checking at the end closes that gap regardless of which step (re-)placed
+ * or removed the course. Mirrors the existing hardOverloadRemains pattern of
  * re-checking a block cause after local repairs, extended to this cause.
  * Matches by the EXACT parsed course name (not substring/includes) — the
  * catalog has real prefix-pair names (e.g. a course and its "- מעבדה" lab
@@ -17857,12 +17866,12 @@ function parseDisallowedPlacedNameLocal(e) {
  * block because another, still-disallowed course's name contains it.
  * Pure: returns a new { blocked, errors } pair, never mutates its inputs.
  */
-function resolveStaleDisallowedBlockLocal(blocked, errors, avoidRemoved, courseMap) {
-  if (!avoidRemoved.length || !errors.length) return { blocked, errors };
-  const avoidRemovedNames = new Set(avoidRemoved.map(cid => courseMap[cid]?.name_he || cid).filter(Boolean));
+function resolveStaleDisallowedBlockLocal(blocked, errors, finalPlacedIds, courseMap) {
+  if (!errors.length) return { blocked, errors };
+  const finalPlacedNames = new Set(finalPlacedIds.map(cid => courseMap[cid]?.name_he || cid).filter(Boolean));
   const isResolvedDisallowedError = e => {
     const name = parseDisallowedPlacedNameLocal(e);
-    return name !== null && avoidRemovedNames.has(name);
+    return name !== null && !finalPlacedNames.has(name);
   };
   const stillOutstanding = errors.filter(e => !isResolvedDisallowedError(e));
   if (stillOutstanding.length === errors.length) return { blocked, errors };
@@ -18159,22 +18168,6 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
         `${courseLabelLocal(cid)} נמצא ברשימת הקורסים להימנע מהם בהעדפות התכנון, ולכן לא שובץ למרות הבקשה. כדי לשבץ אותו יש להסיר אותו מרשימת ההימנעות.`)];
     }
 
-    // Issue #28 — resolve any server disallowed-placement error the avoid
-    // post-filter above just fixed, before it's folded into combinedErrors/
-    // overloadBlocked below. See resolveStaleDisallowedBlockLocal's doc comment.
-    ({ blocked: serverBlocked, errors: serverBlockingErrors } =
-      resolveStaleDisallowedBlockLocal(serverBlocked, serverBlockingErrors, avoidRemoved, courseMap));
-
-    // Issue 3 — propagate server-side blocking errors (e.g. overload over the
-    // hard cap without explicit user confirmation) into the validation result
-    // so the preview/apply gating and chat messaging treat the proposal as
-    // invalid rather than a successful "optimal" plan. Computed AFTER the
-    // avoid-post-filter resolution above so a course excluded (and already
-    // removed from the displayed plan) by this very request never leaves a
-    // stale block/overload signal behind (issue #28).
-    const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
-    const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
-
     // Issue 1 — FINAL eligibility post-filter: strip any ineligible ELECTIVE
     // (honors-only / explicitly excluded) the LLM/repairs may have included.
     // If removing makes the plan short on a category, re-run the deterministic
@@ -18292,6 +18285,30 @@ async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
       if (!completeness.reasons.includes(msg)) completeness.reasons.push(msg);
       completeness.incomplete = true;
     }
+
+    // Issue #28 — resolve any server disallowed-placement error against the
+    // TRUE final placed set, computed only now that EVERY post-filter repair/
+    // refill (avoid filter, eligibility filter, legal enforcement, the
+    // exhaustive degree-hours refill loop above) has finished — not right
+    // after the avoid filter ran. Codex review on this PR caught that
+    // resolving it earlier let a later refill (repairAddMissingElectivesLocal /
+    // repairAddHoursToDegreeLocal — both only exclude unwantedCourseIds, not
+    // hard-excludes) silently re-add the exact course the server flagged,
+    // while its error had already been cleared. Checking the actual final
+    // placed set here closes that gap regardless of which step (re-)placed it.
+    const finalPlacedIdsForBlockCheck = (eligibleProposal.semesters || []).flatMap(s => s.course_ids || []);
+    ({ blocked: serverBlocked, errors: serverBlockingErrors } =
+      resolveStaleDisallowedBlockLocal(serverBlocked, serverBlockingErrors, finalPlacedIdsForBlockCheck, courseMap));
+
+    // Issue 3 — propagate server-side blocking errors (e.g. overload over the
+    // hard cap without explicit user confirmation) into the validation result
+    // so the preview/apply gating and chat messaging treat the proposal as
+    // invalid rather than a successful "optimal" plan. Computed AFTER the
+    // ground-truth disallowed-placement resolution above so a course excluded
+    // (and confirmed absent from the FINAL displayed plan) never leaves a
+    // stale block/overload signal behind (issue #28).
+    const combinedErrors = [...errors, ...serverBlockingErrors.filter(e => !errors.includes(e))];
+    const overloadBlocked = serverBlocked || combinedErrors.some(e => /חריגה|עומס/.test(e));
 
     // Issue 2 — RE-VALIDATE the final (post-repair, post-filter) proposal's
     // per-semester load. If any semester still exceeds the hard cap (26 ש"ש) and
