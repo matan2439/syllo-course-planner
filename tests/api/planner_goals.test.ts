@@ -261,6 +261,48 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // withheld/negative because of MAND's unreachable 100h reservation.
     expect(score[0]).toBe(10);
   });
+
+  // Codex finding on this PR: a hard-excluded (user avoid, or profile-level
+  // excluded) mandatory course can never be placed either — enumerateActions
+  // already keeps it out of every candidate action via isExcluded. Reserving
+  // its hours anyway would repeat the exact same over-withholding bug as the
+  // "can never legally fit anywhere" case above, just via a different cause.
+  it('does not reserve budget for a hard-excluded mandatory course', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      disallowedCourseIds: new Set(['MAND']),
+    });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND excluded
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: getLegalSemesters can return a fixed/effective
+  // semester id that isn't one of the board's actual knownSemesterIds at
+  // all — state.semesters only ever has entries for knownSemesterIds, so
+  // applyMutation could never actually place the course there. Treating that
+  // off-board semester as "empty, so it fits" would wrongly call the course
+  // placeable and reserve budget for something that structurally can't be
+  // scheduled on this board.
+  it('does not reserve budget for a mandatory course fixed to a semester outside the known board', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_9_semester_a', // not in SEMS/knownSemesterIds
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND unplaceable on this board
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

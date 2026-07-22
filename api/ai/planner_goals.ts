@@ -126,23 +126,41 @@ export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: 
 }
 
 /**
+ * Whether `id` is hard-excluded — the same test `planner_actions.ts`'s
+ * `isExcluded` applies (a user avoid or a profile-level exclusion), which
+ * `enumerateActions` already uses to keep an excluded course out of every
+ * candidate action. Duplicated for the same circular-import reason as
+ * `hasFittingLegalSemester`, below.
+ */
+function isCourseExcluded(model: ConstraintModel, id: string): boolean {
+  return model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true;
+}
+
+/**
  * Whether `id` still has some legal semester with room for it under the hard
  * cap, in `state` as it stands right now. Mirrors `planner_actions.ts`'s
  * `legalSemestersFor` + `planner_lookahead.ts`'s `hasFittingLegalSemester`
- * exactly (offering-semester legality, hard-cap fit — NOT prerequisite
- * timing, which neither of those checks either; this is the same
- * "reachability" approximation `projectFeasibility` already uses elsewhere
- * in the search, not a new/different one). Duplicated here rather than
- * imported — `planner_actions.ts` already imports `scorePlan`/`isFullyPlaced`
- * from this module, so importing back would be a circular dependency (same
- * reasoning `effectiveAnnualSpans`, above, already documents for the same
- * constraint).
+ * (offering-semester legality, hard-cap fit — NOT prerequisite timing, which
+ * neither of those checks either; this is the same "reachability"
+ * approximation `projectFeasibility` already uses elsewhere in the search,
+ * not a new/different one), with one addition: `getLegalSemesters` can
+ * return a `fixed`/`effective`/`program` semester id that isn't one of
+ * `model.knownSemesterIds` at all (a course pinned to a semester outside the
+ * board's actual span) — `state.semesters` only ever has entries for
+ * `knownSemesterIds` (see `emptyState`), so `applyMutation`'s ADD_COURSE
+ * would reject that target outright. Treating an off-board semester as
+ * "empty, so it fits" would wrongly call the course placeable; filtered out
+ * here so only a semester that could actually receive the course counts.
+ * Duplicated here rather than imported — `planner_actions.ts` already
+ * imports `scorePlan`/`isFullyPlaced` from this module, so importing back
+ * would be a circular dependency (same reasoning `effectiveAnnualSpans`,
+ * above, already documents for the same constraint).
  */
 function hasFittingLegalSemester(state: PlanState, model: ConstraintModel, id: string): boolean {
   const p = model.profiles.get(id);
   if (!p) return true;
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  const legal = semesters.length ? semesters : model.knownSemesterIds;
+  const legal = (semesters.length ? semesters : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
   const hours = p.hours ?? 0;
   return legal.some(sem => {
     const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
@@ -159,15 +177,18 @@ function hasFittingLegalSemester(state: PlanState, model: ConstraintModel, id: s
  *
  * This is the reservation degree_completion's g1 (below) subtracts from
  * degreeRequiredHours to compute its credit ceiling (issue #25 Finding #4).
- * The `hasFittingLegalSemester` gate matters: a mandatory course that can
- * NEVER be placed (no legal offering semester fits it anywhere, or every one
- * is already crowded past the hard cap) must not permanently withhold g1
- * credit from electives that could otherwise fill the plan — that course's
- * absence already surfaces separately as a real, honest blocking error
- * (`assessCompleteness`'s `missingMandatory` / `validateCandidate`), and the
- * reservation existing anyway would just needlessly truncate an otherwise-
- * maximal, valid partial plan (Codex finding on this PR: "Keep filling
- * degree hours when mandatory placement is blocked").
+ * The `isCourseExcluded`/`hasFittingLegalSemester` gates matter: a mandatory
+ * course that can NEVER be placed (hard-excluded, no legal offering semester
+ * fits it anywhere, every legal semester is already crowded past the hard
+ * cap, or its only legal semester isn't even on this board) must not
+ * permanently withhold g1 credit from electives that could otherwise fill
+ * the plan — that course's absence already surfaces separately as a real,
+ * honest blocking error (`assessCompleteness`'s `missingMandatory` /
+ * `validateCandidate`), and the reservation existing anyway would just
+ * needlessly truncate an otherwise-maximal, valid partial plan (Codex
+ * findings on this PR: "Keep filling degree hours when mandatory placement
+ * is blocked", "Skip hard-excluded mandatory courses in the reservation",
+ * "Ignore legal semesters that are not on the board").
  */
 function remainingMandatoryHours(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
@@ -176,6 +197,7 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
   for (const id of model.requiredMandatoryCourseIds) {
     if (model.completedCourseIds.has(id)) continue;
     if (isFullyPlaced(state, model, placed, id)) continue;
+    if (isCourseExcluded(model, id)) continue;
     if (!hasFittingLegalSemester(state, model, id)) continue;
     const p = model.profiles.get(id);
     if (!p) continue;
