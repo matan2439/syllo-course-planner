@@ -184,17 +184,37 @@ function legalSemestersOnBoard(model: ConstraintModel, id: string): string[] {
  * is just as permanently stuck as a pinned one — an earlier version only
  * checked the policy flags and treated any non-fixed/pinned/annual occupant
  * as freely relocatable, which wrongly ignored this real, permanent
- * crowding. Used to decide which occupants of a legal semester represent
- * REAL, permanent crowding versus a course the search could relocate to make
- * room. Duplicated (not imported) for the same circular-import reason
- * documented on `isMandatoryCourseReachable`, below.
+ * crowding. A second earlier version added the "has another legal semester"
+ * check but didn't verify that alternate semester actually has room — this
+ * checks (one hop, using the alternate semester's TOTAL current load, not a
+ * recursively movable-aware figure) that there's a real destination right
+ * now, not just a legal one on paper. Chasing a full multi-hop "could a
+ * CHAIN of moves free up room" analysis is deliberately out of scope here —
+ * this codebase already has a heavier, purpose-built mechanism for that kind
+ * of question (`planner_worker.ts`'s Codex-round-22 redesign,
+ * `canRecoverMoreHours`, a bounded best-first rollout) and duplicating it
+ * inside a function `scorePlan` calls this often would be a real performance
+ * cost for a marginal precision gain; a false "might be movable" here only
+ * costs a little unused g1 headroom in a rare edge case, same bias every
+ * other check in this function already accepts. Used to decide which
+ * occupants of a legal semester represent REAL, permanent crowding versus a
+ * course the search could relocate to make room. Duplicated (not imported)
+ * for the same circular-import reason documented on
+ * `isMandatoryCourseReachable`, below.
  */
-function isImmovableOccupant(model: ConstraintModel, id: string, currentSem: string): boolean {
+function isImmovableOccupant(state: PlanState, model: ConstraintModel, id: string, currentSem: string): boolean {
   if (model.pinnedCourseIds.has(id)) return true;
   const p = model.profiles.get(id);
   if (!p) return true;
   if (p.is_annual === true || p.placement_policy === 'fixed') return true;
-  return !legalSemestersOnBoard(model, id).some(sem => sem !== currentSem);
+  const hours = p.hours ?? 0;
+  const cap = effectiveHardCap(model);
+  const hasRealDestination = legalSemestersOnBoard(model, id).some(sem => {
+    if (sem === currentSem) return false;
+    const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
+    return load + hours <= cap;
+  });
+  return !hasRealDestination;
 }
 
 /** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
@@ -246,7 +266,11 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  *    all-off-board result to `knownSemesterIds` — the right fallback for a
  *    course with NO legality data at all, but wrong for one that HAS
  *    declared semester(s) that just aren't on this board; `rawLegalSemesters`
- *    lets this distinguish the two).
+ *    lets this distinguish the two). A prerequisite that's ALREADY placed on
+ *    the board is treated as satisfied without recursing into it at all —
+ *    an earlier version recursed anyway, which re-ran the prerequisite's OWN
+ *    fitsSemester check as if it still needed to be added, double-counting
+ *    its already-placed hours against its own semester's cap.
  *
  * `visiting` guards recursion against a prerequisite cycle (a data problem
  * this function isn't responsible for diagnosing) — a course already on the
@@ -277,7 +301,7 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   const hours = p.hours ?? 0;
   const fitsSemester = (sem: string) => {
     const load = (state.semesters[sem] ?? [])
-      .filter(cid => isImmovableOccupant(model, cid, sem))
+      .filter(cid => isImmovableOccupant(state, model, cid, sem))
       .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
   };
@@ -294,9 +318,18 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   const idLatest = Math.max(...idIndices);
   const nextVisiting = new Set(visiting);
   nextVisiting.add(id);
+  const placedIds = new Set(placedCourseIds(state));
   return p.prerequisites.every(prereqId => {
     if (model.completedCourseIds.has(prereqId)) return true;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) return true;
+    // Already scheduled on the board — satisfied, full stop. Recursing into
+    // isMandatoryCourseReachable here (an earlier version did) re-runs its
+    // OWN fitsSemester check on prereqId as if it still needed to be ADDED,
+    // double-counting its already-placed hours against its own semester's
+    // cap (it's both the occupant being summed AND the course being
+    // checked for room) — a real course can look permanently unreachable
+    // simply because it's already legally sitting exactly where it is.
+    if (isFullyPlaced(state, model, placedIds, prereqId)) return true;
     const rawPrereq = rawLegalSemesters(model, prereqId);
     if (!rawPrereq.length) return true; // no legality data at all — ambiguous, bias reachable
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
