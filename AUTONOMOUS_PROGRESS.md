@@ -80,17 +80,19 @@ continuation of this same session.
 
 **Classification: C** (correctness/honesty — real, reproduced, in-product
 wrong advice on a production-reachable path). **Rolling-three check: (50,
-53, 56) = A/C/C — compliant.** (Codex review on the docs PR #57 that first
-recorded this, `discussion_r3631848828`, correctly caught that an earlier
-draft of this entry skipped PR #50 — classified A per its own
-`.remember/current.md` entry — and mis-derived (48, 53, 56) = C/C/C
-instead, wrongly forcing the next milestone to A/B when the rule is
-already satisfied. Corrected here.) No forced A/B requirement on the
-immediate next milestone, though continuing to prefer A/B when reasonably
-available (per this routine's own "do not optimize for D" guidance) is
-still good practice — candidates include wiring one of the unconsumed
-Simulation/Persistence/Decision capabilities (PRs #12/#13/#14) into a real
-production caller (B), or a UI improvement to how
+53, 56) = A/C/C — currently compliant, but constrained going forward.**
+(Two rounds of real Codex findings on the docs PR #57 that recorded this,
+`discussion_r3631848828` and `discussion_r3631880980`: round 1 caught that
+an earlier draft skipped merged-and-A-classified PR #50, mis-deriving (48,
+53, 56) = C/C/C; round 2 caught that the fix then over-corrected to "no
+forced requirement at all," ignoring that positions 53 and 56 are BOTH C —
+picking another C next would immediately produce (53, 56, next) = C/C/C,
+the exact non-compliance already seen once before at (32,34,37). Both
+corrected here.) **Net: the immediate next milestone should be A or B** —
+not because the current window is broken, but because two trailing C's
+leave zero room for a third before the window breaks. Candidates: wiring
+one of the unconsumed Simulation/Persistence/Decision capabilities (PRs
+#12/#13/#14) into a real production caller (B), or a UI improvement to how
 `academicDecision.explanation` is surfaced (A).
 
 **Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
@@ -110,19 +112,19 @@ call). All confirmed still open with zero human comments as of this
 session's check.
 
 **Exact next action for the next session**: PR #56 is merged and closed —
-do not reopen it or re-address it. The rolling-three window is compliant
-((50, 53, 56) = A/C/C — see correction above), so there is no forced A/B
-requirement blocking the next milestone. Continue the Agent Diagnosis Loop
-for the next highest-impact real Agent failure (candidates already
-surfaced: the wanted-vs-disallowed disclosure gap noted above, or a fresh
-sweep of multi-turn conversation honesty / simulate-then-apply areas per
-the P1 checklist) — while still preferring an A/B milestone when one is
-reasonably available, per this routine's general "don't stack D, don't
-optimize for C-only either" guidance. Two standing A/B candidates if one is
-picked up: naming a real production consumer for one of the unwired
-Simulation/Persistence/Decision capabilities (PRs #12/#13/#14) and wiring
-it in (B), or improving how `academicDecision.explanation` is actually
-surfaced in the UI (A).
+do not reopen it or re-address it. The current rolling-three window is
+compliant ((50, 53, 56) = A/C/C — see correction above), but positions 53
+and 56 are both C, so **the next milestone selected must be A or B** —
+picking another C now would immediately create a non-compliant (53, 56,
+next) = C/C/C window. Two standing candidates: naming a real production
+consumer for one of the unwired Simulation/Persistence/Decision
+capabilities (PRs #12/#13/#14) and wiring it in (B), or improving how
+`academicDecision.explanation` is actually surfaced in the UI (A). Only
+after that A/B milestone lands should the Agent Diagnosis Loop resume for
+the next C-classified correctness finding (candidates already surfaced:
+the wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
+multi-turn conversation honesty / simulate-then-apply areas per the P1
+checklist).
 
 ## Prior session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
 
