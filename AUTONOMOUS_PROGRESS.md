@@ -4,12 +4,112 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/determined-thompson-lrxcdq`
-(PR #53 merged — see below; supersedes the PR #48 entry as the latest
-completed milestone). Issue #25 (the 5-finding Agent diagnosis report) is now
-fully closed — all 5 findings resolved._
+_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-sgzgz9`
+(PR #56 opened — see below; supersedes the PR #53 entry as the latest
+milestone). Issue #25 remains fully closed; this is a fresh Agent Diagnosis
+Loop finding from a re-run after that closure, per this routine's own
+"repeat until all critical scenarios pass" instruction._
 
-## Latest session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
+## Latest session — PR #56 opened (awaiting Codex review): missing-mandatory cause misattributed to the user's own hard exclusion
+
+Start-of-session audit: no human comments landed on the standing decision
+issues (#15/#18/#20/#21) since the last session — all still open, all still
+correctly un-acted-on pending a human call (see "Standing blockers" below).
+Only one open implementation PR existed (#14, Decision capability) — left
+untouched per the D-stacking-cap precedent, unchanged. No Vercel MCP tools
+were reachable this session either (confirmed via ToolSearch) — the
+standing "no deploy path" blocker is unchanged, not re-investigated further
+since no new evidence exists. Session branch `claude/youthful-tesla-sgzgz9`
+was — again, the same recurring mistake several prior sessions have had to
+correct — provisioned from a stale `main`-derived commit (`92c19e0`); reset
+to the current `ui/frontend-modernization` tip (`4bda2ab`) before starting,
+confirmed zero unique commits lost.
+
+Per the exact next action the prior session (PR #53) left in this file, ran
+a fresh **Agent Diagnosis Loop** (delegated to a background agent driving
+the real `api/ai/generate-plan.ts` handler end-to-end via the same
+dev-bypass/on-disk-fixture pattern `tests/api/generate_plan_academic_decision_agent.test.ts`
+uses — read-only, no product code touched during diagnosis) with Hebrew
+scenarios in areas not yet covered by issue #25's closed findings:
+hard-avoid-vs-mandatory conflict wording, and contradictory
+wanted-vs-disallowed preferences on the same elective course.
+
+**The finding**: when a mandatory course is missing from the plan *solely*
+because the user hard-excluded it themselves (`disallowed_course_ids` /
+`strongly_avoided_course_ids`), `academic_decision_runtime.ts`'s
+`buildAcademicDecision` told them to "check what prerequisites it needs, or
+request a rebuild" — advice that can never help (a rebuild reproduces the
+identical result while the exclusion stands; the course may have zero
+prerequisites). Root cause: `hasMissingMandatoryError` was a single flat
+boolean, never cross-referenced against `input.context.excludedCourseIds`
+(already available at the call site, unused for this purpose). Same "wrong
+remedial advice" bug class PR #44/#48 fixed for the annual/step-limit/
+legality causes — a sub-case (missing-mandatory itself has two distinct
+root causes) those fixes never covered.
+
+**Fix** (`b84c1d9`, PR #56, against `ui/frontend-modernization`): splits the
+flag into `hasMissingMandatoryDueToExclusion` vs
+`hasMissingMandatoryOtherCause` (matched by course name extracted from the
+error text, exact-match after stripping the fixed prefix — not a substring
+check, which would false-positive on the prefix's own generic wording), each
+with its own correct `blockingCauseClauses` entry and
+`suggestedNextActions` line. Both fire together when a plan has one of each
+cause. `api/ai/generate-plan.ts` and every other caller untouched — the
+`excludedCourseIds` wiring this fix reads already existed at the real call
+site.
+
+Minor secondary finding from the same diagnosis pass, **not acted on** (low
+severity — a disclosure gap, not a blocking-correctness bug): when a course
+is both `wanted_course_ids` and `disallowed_course_ids` simultaneously, the
+exclusion correctly wins silently, and the category-unsatisfied warning
+already gives a truthful signal, but nothing states the two preferences
+directly conflicted. Left as a candidate for a future minor milestone, not
+worth a P1-priority fix on its own.
+
+**Tests**: 3 new cases in `tests/api/academic_decision_runtime.test.ts`
+(RED-verified against the unfixed code first), full API suite **1314/1314**
+across 84 suites (+3, zero regressions), `tsc --noEmit` clean. `git diff
+--stat`: only the runtime file + its test file.
+
+**PR #56 opened, marked ready, `@codex review` requested, subscribed to PR
+activity.** CI had not yet reported (0 check runs) as of this write-up —
+next session (or a resumed webhook-driven turn in this same session) must
+confirm CI green and Codex clean before merging, per the standard gate.
+
+**Classification: C** (correctness/honesty — real, reproduced, in-product
+wrong advice on a production-reachable path). Rolling-three check: most
+recent three merged milestones remain (48=C, 53=C, this one pending) — once
+#56 merges, the next milestone after it must be A or B per the governance
+rule (two C's in a row is fine; a third C would need to be checked against
+the "at least one of every three is A/B" rule depending on what's already
+counted — flagging for the merging session to verify against the fuller
+history in `.remember/current.md` before selecting the next milestone).
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
+standing Vercel deploy-mechanism blocker every session since PR #27 has
+confirmed; re-confirmed this session that no Vercel MCP tool is reachable
+either. PR #56 (once merged) will join the same growing backlog of merged-
+but-not-deployed fixes.
+
+**Standing blockers, unchanged, not re-investigated further this session
+(no new evidence since last check)**: issue #15/#18 (PR #14 D-stacking
+merge decision, Vercel production-architecture question — `tau-course-
+planner` fastapi project vs. `web` nextjs project), issue #20 (386/386
+`jest.ui.config.js` failures, 100% one root cause — the gitignored
+`supabase_board_backup_2027_pre_sync.json` fixture — needs a human call on
+committing a sanitized replacement), issue #21 (dead-code delete-vs-restore
+call). All confirmed still open with zero human comments as of this
+session's check.
+
+**Exact next action for the next session**: resume PR #56 — check CI/Codex
+status (subscribed via webhook this session; if the webhook already
+delivered events, act on them first), merge once every gate passes, then
+continue the Agent Diagnosis Loop for the next highest-impact real Agent
+failure (candidates already surfaced: the wanted-vs-disallowed disclosure
+gap noted above, or a fresh sweep of multi-turn conversation honesty /
+simulate-then-apply areas per the P1 checklist).
+
+## Prior session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
 
 Resumed PR #53 (issue #25 Finding #4), found already 20 commits deep across
 21 rounds of real Codex findings from prior sessions the same day. Picked up

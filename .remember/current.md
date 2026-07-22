@@ -1,5 +1,27 @@
 # Current — read this first
 
+## 🔧 PR #56 opened (awaiting Codex review + CI): missing-mandatory cause misattributed to the user's own exclusion (2026-07-22, autonomous scheduled run)
+
+Standing audit: no human comments on issues #15/#18/#20/#21 since last checked — all unchanged, correctly left un-acted-on. Only PR #14 open (Decision capability), left untouched per the D-stacking-cap precedent. No Vercel MCP tools reachable this session (checked via ToolSearch) — deploy blocker unchanged, not re-flagged again since nothing new. Session branch was provisioned from stale `main`-derived `92c19e0` (same recurring mistake as several prior sessions) — reset to `ui/frontend-modernization` tip `4bda2ab`, zero commits lost.
+
+Per the prior session's (PR #53) own "exact next action," ran a fresh Agent Diagnosis Loop: a background agent drove the real `api/ai/generate-plan.ts` handler end-to-end (dev-bypass mode, real on-disk board fixture, same pattern `generate_plan_academic_decision_agent.test.ts` uses) with Hebrew scenarios in areas issue #25's closed findings hadn't covered. Two scenarios run: (1) user hard-avoids a course that's also mandatory, (2) a course simultaneously wanted AND disallowed.
+
+**Finding #1 (acted on, this PR)**: scenario (1) reproduced correctly `blocked:true` with the right error, but `suggestedNextActions` told the user to "check prerequisites or request a rebuild" — wrong on both counts, since the real cause (their own `disallowed_course_ids` entry) makes neither action ever helpful. Root cause: `academic_decision_runtime.ts`'s `hasMissingMandatoryError` was one flat boolean, never cross-referenced against `input.context.excludedCourseIds` (already passed in at the real call site in `generate-plan.ts`, just never used for this). Same bug class as PR #44 (misattributed annual/step-limit cause) and PR #48/#53's broader "computed-but-discarded validation signal" pattern — this is the sub-case those never covered: missing-mandatory itself has two structurally different root causes.
+
+Fix (`b84c1d9`): split the flag into `hasMissingMandatoryDueToExclusion` (matched by extracting the course name from the error text — exact match after stripping the fixed `MISSING_MANDATORY_ERROR_PREFIX`, not a substring `.includes()`, which would false-positive on the prefix's own generic word "חובה") vs `hasMissingMandatoryOtherCause`. Each gets a distinct, correct `blockingCauseClauses` entry and `suggestedNextActions` line; both fire together when a plan has one course of each cause (new regression test covers this). `generate-plan.ts` untouched — the `excludedCourseIds` context field this fix reads was already wired at the real call site.
+
+**Finding #2 (not acted on, low severity)**: a course both wanted and disallowed simultaneously — exclusion correctly wins silently, category-unsatisfied warning already gives a truthful (if less specific) signal, but nothing states the two preferences directly conflicted. Left as a minor candidate for a future session, not worth a P1 fix on its own; not filed as a separate issue (small enough to just note here).
+
+Tests: 3 new in `tests/api/academic_decision_runtime.test.ts`, RED-verified against unfixed code first. Full API suite **1314/1314** across 84 suites (+3, zero regressions), `tsc --noEmit` clean.
+
+**PR #56 opened against `ui/frontend-modernization`, marked ready, `@codex review` posted, subscribed to PR webhook activity for CI/review events.** As of this write-up CI had 0 check runs yet (just opened) — whichever session/turn picks this up next must confirm CI green + Codex clean before merging.
+
+**Classification: C** (correctness/honesty).
+
+**Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session).
+
+**Exact next action**: check PR #56's CI/Codex status (webhook-subscribed — act on delivered events first if any arrived), merge once every gate passes, then continue the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
+
 ## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
 
 Continuation of the same-day "PR #53: 21st Codex round fixed" session below. After that entry, four more real Codex rounds followed:
