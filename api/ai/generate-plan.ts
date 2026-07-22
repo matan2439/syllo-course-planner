@@ -1012,6 +1012,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         completedCourseIds: (effectivePlanContext?.personal_status?.completed ?? []).map((c: any) => c.course_id),
         currentCourseIds: currentlyPlannedCourseIds,
         excludedCourseIds: resolveHardExcludedCourseIds(effectivePreferences),
+        wantedCourseIds: effectivePreferences.wanted_course_ids,
         maxWeeklyHours: effectivePreferences.max_weekly_hours ?? undefined,
       },
       academicInterestProfileRaw: academic_interest_profile,

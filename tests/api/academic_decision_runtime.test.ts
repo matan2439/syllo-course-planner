@@ -489,6 +489,102 @@ describe('buildAcademicDecision — decision & explanation', () => {
     expect(actions).toMatch(/להסיר.*מרשימת ההחרגה/);
     expect(actions).toMatch(/קורסי קדם/);
   });
+
+  // Agent Diagnosis Loop finding: a course can be in BOTH wanted_course_ids
+  // and the resolved hard-exclusion list at once (a self-contradictory
+  // request). The exclusion already correctly wins during planning and an
+  // unsatisfied elective category already gets a truthful warning — but
+  // nothing previously stated the two preferences directly conflicted,
+  // leaving the user unable to tell "no room in the category" apart from
+  // "I asked for contradictory things." Unlike the missing-mandatory case
+  // above, this must surface even when the plan is NOT blocked (an
+  // unsatisfied elective category alone doesn't block).
+  test('discloses a wanted-vs-excluded contradiction in risks and suggested actions, unblocked plan', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['MAND'] }],
+        requirements_status: [
+          { name: 'קורסי חובה', required: 1, placed: 1, satisfied: true },
+          { name: 'זורמים', required: 1, placed: 0, satisfied: false },
+        ],
+      }),
+      model: modelWith({ MAND: 4, FLU: 4 }, { FLU: 'זורמים' }),
+      blocked: false,
+      errors: [],
+      clarification: CLEAN_CLAR,
+      context: { wantedCourseIds: ['FLU'], excludedCourseIds: ['FLU'] },
+    });
+    expect(view.explanation.risksAndTradeoffs.join(' | ')).toMatch(/זורמים.*(סתירה|החרגה גוברת)|ביקשת זורמים.*החרגה/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/סותרת את עצמה.*זורמים/);
+    expect(actions).toMatch(/הסר.*מרשימת ההחרגה/);
+  });
+
+  test('reports the wanted-vs-excluded contradiction via strongly_avoided too (either exclusion field name)', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal(),
+      model: modelWith({ MAND: 4, FLU: 4 }, { FLU: 'זורמים' }),
+      blocked: false,
+      errors: [],
+      clarification: CLEAN_CLAR,
+      // resolveHardExcludedCourseIds already unions disallowed_course_ids
+      // and strongly_avoided_course_ids upstream in generate-plan.ts — this
+      // test only needs to confirm buildAcademicDecision reads whatever
+      // ends up in the already-resolved excludedCourseIds, regardless of
+      // which request field it originated from.
+      context: { wantedCourseIds: ['FLU'], excludedCourseIds: ['FLU'] },
+    });
+    expect(view.explanation.suggestedNextActions.join(' | ')).toMatch(/סותרת את עצמה/);
+  });
+
+  test('does not disclose a contradiction when wanted and excluded lists do not overlap', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal(),
+      model: modelWith({ MAND: 4, FLU: 4 }, { FLU: 'זורמים' }),
+      blocked: false,
+      errors: [],
+      clarification: CLEAN_CLAR,
+      context: { wantedCourseIds: ['FLU'], excludedCourseIds: ['OTHER'] },
+    });
+    expect(view.explanation.risksAndTradeoffs.join(' | ')).not.toMatch(/סותרת|גוברת/);
+    expect(view.explanation.suggestedNextActions.join(' | ')).not.toMatch(/סותרת את עצמה/);
+  });
+
+  test('does not disclose anything when wantedCourseIds is absent from context (undefined-safe)', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal(),
+      model: modelWith({ MAND: 4, FLU: 4 }),
+      blocked: false,
+      errors: [],
+      clarification: CLEAN_CLAR,
+      context: { excludedCourseIds: ['FLU'] },
+    });
+    expect(view.explanation.suggestedNextActions.join(' | ')).not.toMatch(/סותרת את עצמה/);
+  });
+
+  // Codex finding on PR #58 (discussion_r3632198441): when the wanted+excluded
+  // course was already on the INCOMING board, the planner never removes a
+  // pre-existing placement on its own — disallowedGate reports it as a
+  // blocking DISALLOWED_PLACED_ERROR_PREFIX error instead, and the course
+  // stays in proposal.semesters. Claiming "the exclusion won, the course was
+  // not placed" in that scenario contradicts the same response's own
+  // semesters/error content.
+  test('discloses a wanted-vs-excluded contradiction as still-placed (not "not placed") when the course is a stale pre-existing placement', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['MAND', 'FLU'] }],
+      }),
+      model: modelWith({ MAND: 4, FLU: 4 }, { FLU: 'זורמים' }),
+      blocked: true,
+      errors: ['קורס לא-זמין שובץ בתוכנית: זורמים.'],
+      clarification: CLEAN_CLAR,
+      context: { wantedCourseIds: ['FLU'], excludedCourseIds: ['FLU'] },
+    });
+    const risks = view.explanation.risksAndTradeoffs.join(' | ');
+    expect(risks).toMatch(/זורמים/);
+    expect(risks).toMatch(/כבר שובץ/);
+    expect(risks).not.toMatch(/לכן הקורס לא שובץ/);
+  });
 });
 
 describe('buildClarificationDecision — blocked (critical missing) path', () => {

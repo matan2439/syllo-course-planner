@@ -70,6 +70,8 @@ export interface AcademicDecisionContext {
   completedCourseIds?: string[];
   currentCourseIds?: string[];
   excludedCourseIds?: string[];
+  /** wanted_course_ids from preferences — only read here to disclose a self-contradiction against excludedCourseIds; never used for plan generation itself (that already happens in generate-plan.ts). */
+  wantedCourseIds?: string[];
   maxWeeklyHours?: number;
   track?: string;
 }
@@ -365,6 +367,40 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const hasMissingMandatoryOtherCause = missingMandatoryNames.some(
     (name) => !excludedNamesInMissingMandatory.includes(name),
   );
+  // Agent Diagnosis Loop finding: a course can appear in BOTH
+  // wanted_course_ids and disallowed_course_ids/strongly_avoided_course_ids
+  // at once (a self-contradictory request). resolveHardExcludedCourseIds'
+  // exclusion already correctly wins during planning (silently — that part
+  // is untouched here), and an unsatisfied elective category already gets a
+  // truthful warning via proposal.warnings_he — but neither ever states the
+  // two preferences directly conflicted, leaving the user unable to tell
+  // "the category legitimately has no room" apart from "I asked for
+  // contradictory things." This is independent of missingMandatoryNames
+  // above: it applies to any wanted+excluded course, mandatory or elective,
+  // and must surface regardless of whether the plan is blocked.
+  const contradictoryWantedNames = (input.context.wantedCourseIds ?? [])
+    .filter((id) => (input.context.excludedCourseIds ?? []).includes(id))
+    .map((id) => input.model.profiles.get(id)?.name_he ?? id);
+  // Codex finding on PR #58: when the wanted+excluded course was already on
+  // the INCOMING board, planContextToState seeds that pre-existing
+  // placement and the planner never removes a course on its own —
+  // disallowedGate (generate-plan.ts) then reports it as a blocking error
+  // instead. In that case the course IS still in proposal.semesters despite
+  // the exclusion, so claiming "the exclusion won, the course was not
+  // placed" is false and self-contradicts the same response's own
+  // disallowed-placed error/semesters content. Names extracted the same way
+  // missingMandatoryNames is above (exact match after stripping the fixed
+  // Hebrew prefix).
+  const disallowedPlacedNames = input.errors
+    .filter((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX))
+    .map((e) => e.slice(DISALLOWED_PLACED_ERROR_PREFIX.length).trim().replace(/\.$/, ''));
+  const contradictoryWantedStillPlacedNames = contradictoryWantedNames.filter((name) =>
+    disallowedPlacedNames.includes(name),
+  );
+  const contradictoryWantedNotPlacedNames = contradictoryWantedNames.filter(
+    (name) => !contradictoryWantedStillPlacedNames.includes(name),
+  );
+
   const hasOverloadError = input.errors.some(
     (e) =>
       !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX) &&
@@ -417,6 +453,16 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
       `${interestEvaluation.scorecard.avoidRiskCourses.length} קורסים בתוכנית נוגעים בתחומים שביקשת להימנע מהם.`,
     );
   }
+  if (contradictoryWantedNotPlacedNames.length > 0) {
+    risksAndTradeoffs.push(
+      `ביקשת ${contradictoryWantedNotPlacedNames.join(', ')} אך גם סימנת אותו/ם להחרגה — ההחרגה גוברת, ולכן הקורס לא שובץ.`,
+    );
+  }
+  if (contradictoryWantedStillPlacedNames.length > 0) {
+    risksAndTradeoffs.push(
+      `ביקשת ${contradictoryWantedStillPlacedNames.join(', ')} אך גם סימנת אותו/ם להחרגה — הקורס כבר שובץ בלוח הקיים ולא הוסר אוטומטית, לכן הוא עדיין מופיע בתוכנית חרף ההחרגה; יש להסירו ידנית אם ברצונך לכבד אותה.`,
+    );
+  }
 
   const missingData: string[] = [
     ...input.clarification.missingInputs.map((m) => `חסר מידע: ${FIELD_HE[m.field] ?? m.field}.`),
@@ -433,6 +479,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     hasMissingMandatoryOtherCause,
     hasMissingMandatoryDueToExclusion,
     excludedNamesInMissingMandatory,
+    contradictoryWantedNames,
     disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
@@ -474,6 +521,8 @@ function buildSuggestedNextActions(args: {
   /** True when at least one missing mandatory course is missing because the user hard-excluded it themselves — a rebuild can never fix this. */
   hasMissingMandatoryDueToExclusion: boolean;
   excludedNamesInMissingMandatory: string[];
+  /** Courses present in both wanted_course_ids and the resolved hard-exclusion list — a self-contradictory request. */
+  contradictoryWantedNames: string[];
   disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
@@ -503,6 +552,12 @@ function buildSuggestedNextActions(args: {
   }
   if (args.hasMissingMandatoryOtherCause) {
     actions.push('קורס חובה לא שובץ בתוכנית — בדוק/בדקי אילו קורסי קדם נדרשים לו, או בקש/י בנייה מחדש.');
+  }
+  if (args.contradictoryWantedNames.length > 0) {
+    actions.push(
+      `הבקשה שלך סותרת את עצמה לגבי ${args.contradictoryWantedNames.join(', ')} — גם רצוי וגם מוחרג. ` +
+        'אם ברצונך שהקורס כן ישובץ, הסר/י אותו מרשימת ההחרגה.',
+    );
   }
   if (args.disallowedPlaced) {
     actions.push('הקורס שסימנת להחרגה עדיין מופיע בתוכנית — הסר/י אותו ידנית מהלוח, או בקש/י בנייה מחדש שמסירה אותו.');

@@ -291,4 +291,15 @@ describe('generate-plan — agent path preserves planning semantics', () => {
       delete process.env.AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT;
     }
   });
+
+  test('19. wanted_course_ids + disallowed_course_ids naming the same course: FLU stays excluded, and the explanation honestly discloses the self-contradiction', async () => {
+    const res = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      preferences: { wanted_course_ids: ['FLU'], disallowed_course_ids: ['FLU'] },
+    }));
+    // The exclusion still wins during planning — unchanged, existing behavior.
+    expect(placedIds(res._body)).not.toContain('FLU');
+    const e = res._body.academicDecision.explanation;
+    expect([...e.risksAndTradeoffs, ...e.suggestedNextActions].join(' | ')).toMatch(/סותרת את עצמה|גוברת/);
+  });
 });
