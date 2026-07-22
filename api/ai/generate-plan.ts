@@ -61,7 +61,7 @@ import {
 import { enumerateActions, isExcluded, addCourseActionsFor, isMovable, legalSemestersFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
-import { getSemesterLoad } from './completion_analysis';
+import { getSemesterLoad, getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
@@ -614,6 +614,92 @@ function canRecoverViaUnwantedElective(
 }
 
 /**
+ * Agent Diagnosis Loop finding (2026-07-22): a course's placement can be
+ * pushed later than its own earliest nominally-legal semester purely because
+ * one of its prerequisites isn't satisfied until a later point — the only
+ * gate enforcing this is plan_validation.ts's strict-timing rule (a
+ * prerequisite must sit in a strictly EARLIER semester than its dependent).
+ * Nothing in the response ever said so: PlannerWorker's trace-reason buckets
+ * (mandatory / category / wanted / filler-hours) never reference sequencing,
+ * and academicDecision.explanation.whyThisPlan is plan-aggregate-only. A user
+ * who explicitly wanted a course "as soon as possible" (or just expected it
+ * in its earliest listed semester) got zero signal that prerequisite
+ * ordering — not preference, capacity, or any other visible constraint — is
+ * why it landed a year later. Reproduced on both the default and
+ * use_academic_decision_agent:true paths (both read this same warnings_he).
+ *
+ * Pure function of (finalState, model) — re-derives the same strict-timing
+ * fact plan_validation.ts's own gate enforces directly from where things
+ * actually ended up, so it can never be fooled by which candidate semester
+ * the search happened to try first.
+ *
+ * Only fires when the course's nominal legal-semester restriction is
+ * CONFIDENT (getLegalSemesters' own confident flag) — the same
+ * "confident-or-stay-silent" rule buildValidationContext/addCourseActionsFor/
+ * annualSpansFor already use. Without this guard, a course with no known
+ * offering restriction falls back to treating semester 0 as "earliest legal"
+ * (legalSemestersFor's unconfident fallback to every known semester), which
+ * would misattribute an ordinary later placement (search order, load
+ * balancing) to "the earliest semester was illegal" for almost any course
+ * with an unresolved prerequisite — a false claim this guard prevents.
+ */
+function prerequisiteSequencingNotes(finalState: PlanState, model: ConstraintModel): string[] {
+  const order = model.knownSemesterIds;
+  const indexOf = new Map(order.map((id, i) => [id, i]));
+
+  // Same convention plan_validation.ts's courseSemIdx uses: iterate semesters
+  // chronologically and let a later occurrence win, so a multi-semester
+  // (is_annual) course's index reflects its LATEST span, matching the
+  // validator's own "prerequisite must be strictly before" semantics.
+  const placedAt: Record<string, string> = {};
+  for (const sem of order) {
+    for (const id of finalState.semesters[sem] ?? []) placedAt[id] = sem;
+  }
+
+  const notes: string[] = [];
+  for (const [courseId, semesterId] of Object.entries(placedAt)) {
+    const targetIdx = indexOf.get(semesterId);
+    if (targetIdx === undefined) continue;
+
+    const profile = model.profiles.get(courseId);
+    if (!profile) continue;
+    const legal = getLegalSemesters(profile as CourseLegalityInfo, order);
+    if (!legal.confident || !legal.semesters.length) continue;
+    const legalIdxs = legal.semesters
+      .map(s => indexOf.get(s))
+      .filter((i): i is number => i !== undefined);
+    if (!legalIdxs.length) continue;
+    const earliestIdx = Math.min(...legalIdxs);
+    if (earliestIdx >= targetIdx) continue; // already at (or before) its earliest nominal semester — nothing to explain
+
+    const prereqs = model.profiles.get(courseId)?.prerequisites ?? [];
+    let bindingId: string | null = null;
+    let bindingIdx = -1;
+    for (const prereq of prereqs) {
+      if (model.completedCourseIds.has(prereq)) continue;
+      if (model.currentlyPlannedCourseIds?.has(prereq)) continue;
+      const prereqSem = placedAt[prereq];
+      if (!prereqSem) continue;
+      const idx = indexOf.get(prereqSem);
+      if (idx === undefined) continue;
+      // Only a prerequisite whose OWN placement lands at/after the course's
+      // earliest nominal semester could have made that semester illegal —
+      // one satisfied well before it never blocked anything.
+      if (idx >= earliestIdx && idx > bindingIdx) { bindingIdx = idx; bindingId = prereq; }
+    }
+    if (!bindingId) continue;
+
+    const courseName = model.profiles.get(courseId)?.name_he ?? courseId;
+    const prereqName = model.profiles.get(bindingId)?.name_he ?? bindingId;
+    notes.push(
+      `${courseName} שובץ ב${semesterId} ולא ב${order[earliestIdx]} (הסמסטר המוקדם ביותר המותר לו) ` +
+      `כי דרישת הקדם ${prereqName} משובצת רק ב${order[bindingIdx]}.`,
+    );
+  }
+  return notes;
+}
+
+/**
  * Option B toProposal — pure function of (finalState, model, initialState, pinnedHome, rationale_he).
  * No PlannerWorker dependency; shared by both the worker and agentic paths.
  */
@@ -750,6 +836,8 @@ export function toProposal(
       );
     }
   }
+  warnings_he.push(...prerequisiteSequencingNotes(finalState, model));
+
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
 
