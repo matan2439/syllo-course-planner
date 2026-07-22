@@ -735,6 +735,48 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // span): budget = 14-4=10, g1 = min(12,10) = 10.
     expect(score[0]).toBe(12);
   });
+
+  // Codex finding on this PR (round 15): confirming a prerequisite has SOME
+  // declared semester strictly before the dependent course's boundary isn't
+  // enough — the prerequisite must be REACHABLE specifically at a semester
+  // before that boundary. An earlier version recursed into the
+  // prerequisite's own reachability unconstrained, so a prerequisite whose
+  // only earlier legal semester is permanently full (but which also has a
+  // later legal semester with room) still passed as "reachable" — reachable
+  // in general, but only via a placement that would violate the strict-
+  // timing ordering the dependent mandatory course actually needs.
+  it('does not treat a prerequisite as reachable via a legal semester that is not strictly before the dependent course', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['MAND8'],
+      categories: [],
+      hardCap: 4,
+    });
+    m.profiles.set('MAND8', profile('MAND8', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ8'],
+    }));
+    // PREREQ8 has two legal semesters: year_3_semester_a (strictly before
+    // MAND8's own boundary) and year_3_semester_b (MAND8's own semester —
+    // not strictly before it). Its only actually-before-boundary option is
+    // permanently full (FIXED_BLOCKER8, immovable, fills the 4h hardCap).
+    m.profiles.set('PREREQ8', profile('PREREQ8', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    m.profiles.set('FIXED_BLOCKER8', profile('FIXED_BLOCKER8', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_a', ['FIXED_BLOCKER8']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (FIXED_BLOCKER8+e0+e1). If MAND8 is correctly NOT reserved
+    // (PREREQ8's only before-boundary option is full, so PREREQ8 — and thus
+    // MAND8 — is unreachable): budget = 14 (no reservation), g1 =
+    // min(12,14) = 12. If the bug were present (PREREQ8 wrongly deemed
+    // reachable via its later, same-semester-as-MAND8 option): budget =
+    // 14-2(MAND8)-4(PREREQ8)=8, g1 = min(12,8) = 8.
+    expect(score[0]).toBe(12);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

@@ -299,7 +299,24 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  * very often during a search). `hasFittingLegalSemester`/`projectFeasibility`
  * elsewhere in this codebase make the identical tradeoff.
  */
-function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id: string, visiting: Set<string> = new Set()): boolean {
+function isMandatoryCourseReachable(
+  state: PlanState,
+  model: ConstraintModel,
+  id: string,
+  visiting: Set<string> = new Set(),
+  /**
+   * When set, `id` itself must be placeable strictly BEFORE this semester
+   * index — the boundary a dependent course further up the recursion needs
+   * `id` (as ITS prerequisite) satisfied by. An earlier version had no such
+   * constraint: recursing into a not-yet-placed prerequisite only checked
+   * that prerequisite's own unconstrained reachability (any legal semester
+   * with room, anywhere), which could succeed via a LATER legal semester
+   * even when every semester before the dependent course's own boundary was
+   * permanently full — reachable in general, but not usably so for this
+   * particular ordering requirement.
+   */
+  beforeIndex?: number,
+): boolean {
   if (visiting.has(id)) return true;
   const p = model.profiles.get(id);
   if (!p) return true;
@@ -313,16 +330,22 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
       .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
   };
+  const beforeOk = (sem: string) => beforeIndex === undefined || model.knownSemesterIds.indexOf(sem) < beforeIndex;
 
   const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
   const fits = annualSpans && annualSpans.length
-    ? annualSpans.every(sem => model.knownSemesterIds.includes(sem) && fitsSemester(sem))
-    : legalSemestersOnBoard(model, id).some(fitsSemester);
+    ? annualSpans.every(sem => model.knownSemesterIds.includes(sem) && beforeOk(sem) && fitsSemester(sem))
+    : legalSemestersOnBoard(model, id).filter(beforeOk).some(fitsSemester);
   if (!fits) return false;
 
   if (!p.prerequisites?.length) return true;
-  const idIndices = legalSemesterIndices(model, id);
-  if (!idIndices.length) return true;
+  const idIndicesRaw = legalSemesterIndices(model, id);
+  if (!idIndicesRaw.length) return true;
+  // Restricted to the same beforeIndex constraint `fits` already applied, so
+  // idBoundary (below) never claims a placement option later than what the
+  // outer caller actually needs from `id`.
+  const idIndices = beforeIndex === undefined ? idIndicesRaw : idIndicesRaw.filter(i => i < beforeIndex);
+  if (!idIndices.length) return true; // fits already confirmed an eligible slot exists; bias reachable on any mismatch
   // For a normal course, id could be placed at ANY of its legal semesters, so
   // the latest one is the most permissive (bias-reachable) valid comparison
   // point — a prereq before it means SOME legal placement works. An
@@ -370,7 +393,14 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
     if (!prereqIndices.length) return false; // declared semester(s) exist, none are on this board
     if (Math.min(...prereqIndices) >= idBoundary) return false;
-    return isMandatoryCourseReachable(state, model, prereqId, nextVisiting);
+    // The prerequisite must be reachable specifically at a semester strictly
+    // before idBoundary — an earlier version recursed unconstrained here, so
+    // a prerequisite whose only real room was in a LATER legal semester
+    // (every earlier slot permanently full) still passed as "reachable,"
+    // even though that later placement can never satisfy THIS course's
+    // ordering requirement. Threading idBoundary through as the recursive
+    // call's own beforeIndex closes that gap.
+    return isMandatoryCourseReachable(state, model, prereqId, nextVisiting, idBoundary);
   });
 }
 
