@@ -150,3 +150,220 @@ describe('enumerateActions — REPLACE_COURSE', () => {
     ).toBe(true);
   });
 });
+
+describe('enumerateActions — required-prerequisite ADDs are restricted to useful semesters', () => {
+  // Codex finding on PR #53: group 1b (unplaced prerequisites of a
+  // reachable-but-unplaced mandatory course) proposed an ADD_COURSE action
+  // for EVERY legal semester of the prerequisite, including ones that could
+  // never satisfy the dependent mandatory course's strict-timing ordering.
+  // A prerequisite legal in an early semester AND a late one (after the
+  // mandatory course's own fixed semester) would still get an action
+  // proposed for the late one — a legal-looking ADD that can never actually
+  // unlock the mandatory course it exists to satisfy.
+  it('does not propose ADDing a required prerequisite to a semester that could never satisfy its dependent', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['PREREQ'],
+    }));
+    // PREREQ is legal in year_3_semester_a (strictly before MAND's own
+    // semester — useful) AND year_4_semester_a (strictly after — useless,
+    // an ADD there can never satisfy MAND's ordering requirement).
+    profiles.set('PREREQ', profile('PREREQ', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['MAND'],
+      degreeRequiredHours: 0, // already met — isolates group 1b from group 4's degree-fill noise
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'PREREQ')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
+  // Codex finding on PR #53 (round 18): filtering group 1b's proposals to
+  // useful semesters isn't enough on its own — while degree hours are still
+  // short, group 4 (degree-hour fill) ALSO proposes an ADD for the same
+  // required-but-unplaced prerequisite, via bestLegalSemester, which picks
+  // purely by lowest CURRENT LOAD with no awareness of the boundary
+  // requiredCourseSemesterBoundaries computed. If the useless (post-
+  // dependent) legal semester happens to have lower load than the useful
+  // one, group 4 proposes exactly the placement group 1b's filter exists to
+  // exclude — and once the search takes it, the prerequisite is placed
+  // (fully "consider()"-excluded from further consideration), permanently
+  // blocking the dependent mandatory course.
+  it('does not let degree-hour fill (group 4) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (useful — before M) and
+    // year_4_semester_a (useless — after M). FILLER pre-occupies
+    // year_3_semester_a so it has HIGHER load than the empty
+    // year_4_semester_a, making the useless semester bestLegalSemester's
+    // pick if group 4 isn't excluded for this course.
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+    profiles.set('FILLER', profile('FILLER', { hours: 6 }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      degreeRequiredHours: 100, // stays "short" — keeps group 4 active
+    });
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['FILLER'];
+
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
+  // Codex finding on PR #53 (round 22): the same "group 4 must not offer an
+  // unconstrained ADD for a course group 1b already covers" gap applies
+  // equally to group 2 (category candidates) and group 3 (wanted courses) —
+  // neither had the exclusion, so a required-but-unplaced prerequisite that
+  // ALSO happens to be a category candidate or explicitly wanted still got a
+  // second, unfiltered proposal at every legal semester, including ones
+  // group 1b's boundary filter deliberately excludes.
+  it('does not let a not-yet-satisfied category (group 2) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (useful — before M) and
+    // year_4_semester_a (useless — after M), and is ALSO a category
+    // candidate for an unsatisfied category — group 2's own loop has no
+    // boundary awareness and would otherwise offer BOTH semesters.
+    profiles.set('P', profile('P', {
+      hours: 4, category_id: 'cat', effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      categories: [{ id: 'cat', name: 'cat', required: 1, candidateIds: ['P'] }],
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
+  it('does not let a wanted course (group 3) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      wantedCourseIds: new Set(['P']),
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
+  // Codex finding on PR #53 (round 23): the boundary filter must apply to
+  // group 1 (top-level required mandatory courses) too, not just group 1b —
+  // a mandatory course that's ALSO another mandatory course's prerequisite
+  // still needs to respect that dependent's strict-timing ordering. An
+  // earlier version's group 1b explicitly skipped ids already in
+  // requiredMandatoryCourseIds, assuming group 1 "already covers them" —
+  // true for placement itself, but group 1 offered every legal semester
+  // completely unfiltered, so a shared mandatory prerequisite could still be
+  // placed at a semester that satisfies its own requirement while
+  // permanently blocking its dependent.
+  it('restricts a required mandatory course to a boundary-respecting semester when it is ALSO another required mandatory course\'s prerequisite', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['M1'],
+    }));
+    // M1 is legal in year_3_semester_a (useful — before M2) and
+    // year_3_semester_b (useless — same semester as M2, not strictly before).
+    profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+
+    const m = baseModel({ profiles, requiredMandatoryCourseIds: ['M2', 'M1'] });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const m1Adds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'M1')
+      .map(a => (a as any).semesterId);
+
+    expect(m1Adds).toEqual(['year_3_semester_a']);
+  });
+
+  // Codex finding on PR #53 (round 19): when the SAME prerequisite is
+  // needed by more than one reachable mandatory course, an earlier version
+  // recorded the LARGEST boundary seen across the shared dependents — so a
+  // placement after the stricter dependent's own boundary, but still before
+  // the looser one, was wrongly offered. The prerequisite only gets placed
+  // ONCE; landing it there would satisfy the looser dependent while
+  // permanently blocking the stricter one (worse than not offering it).
+  it('restricts a prerequisite shared by two dependents to a semester that satisfies BOTH, not just the looser one', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_4_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (before BOTH M1 and M2's own
+    // semesters — the only genuinely useful option) and year_4_semester_a
+    // (before M2's semester, but NOT before M1's — placing P there would
+    // satisfy M2 while permanently blocking M1).
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M1', 'M2'],
+      degreeRequiredHours: 0, // already met — isolates group 1b
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+});

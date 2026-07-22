@@ -6,11 +6,19 @@
  *   > 5 user preferences > 6 difficulty/comfort.
  */
 
-import { scorePlan, compareScore, GOAL_STACK, assessCompleteness } from '../../api/ai/planner_goals';
+import {
+  scorePlan,
+  compareScore,
+  GOAL_STACK,
+  assessCompleteness,
+  requiredCourseSemesterBoundaries,
+} from '../../api/ai/planner_goals';
+import { PlannerWorker } from '../../api/ai/planner_worker';
 import {
   type ConstraintModel,
   type PlanState,
   emptyState,
+  placedCourseIds,
 } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 
@@ -161,6 +169,798 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     withCategory.semesters['year_3_semester_a'] = ['CAT'];
 
     expect(compareScore(scorePlan(withMandatory, m), scorePlan(withCategory, m))).toBeGreaterThan(0);
+  });
+
+  // Issue #25 Finding #4: g1 (degree_completion) must reserve budget for
+  // mandatory courses still unplaced, so electives can't spend "credit" that
+  // belongs to them. This test locks the mechanism directly: with 8h of
+  // electives already placed and one 2h mandatory course still pending,
+  // piling on one more 4h elective (12h real) must NOT outscore placing the
+  // mandatory course instead (10h real) — even on g1 ALONE, not just via the
+  // lower-priority g2a (mandatory-fraction) tiebreak. Under the old
+  // unreserved formula both hit the same min(dh, degreeRequiredHours) cap
+  // and only tied (g2a still happened to save the right outcome here); the
+  // reservation makes mandatory win outright at the higher-priority g1 tier:
+  // budget after the elective add stays at 10-2=8 (MAND still unplaced) so
+  // its g1 clips to 8, while budget after the mandatory add rises to 10-0=10
+  // so its g1 reaches the full 10. This test alone doesn't prove a behavior
+  // change (old code already reached the right answer here via g2a) — the
+  // decisive before/after evidence is the PlannerWorker.run() scenario below,
+  // which IS RED before this fix and GREEN after it.
+  it('g1 alone (not just the g2a tiebreak) ranks a pending mandatory course above piling on more electives past its reserved budget', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+    });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 2 }));
+    m.profiles.set('ELECTIVE', profile('ELECTIVE', { hours: 4 }));
+
+    const withMoreElective = withCourses('year_3_semester_a', ['e0', 'e1', 'ELECTIVE']); // 8h existing (e0+e1, 4h each) + 4h = 12h real
+    const withMandatoryInstead = withCourses('year_3_semester_a', ['e0', 'e1', 'MAND']); // 8h existing + 2h = 10h real
+
+    const g1Index = 0;
+    expect(scorePlan(withMandatoryInstead, m)[g1Index]).toBeGreaterThan(scorePlan(withMoreElective, m)[g1Index]);
+    expect(compareScore(scorePlan(withMandatoryInstead, m), scorePlan(withMoreElective, m))).toBeGreaterThan(0);
+  });
+
+  // Real end-to-end confirmation of the fix via the actual search
+  // (PlannerWorker.run, lookahead disabled to isolate the greedy scoring
+  // mechanism this fix changes): 3 mandatory 2h courses + 6 elective 4h
+  // courses, degreeRequiredHours=20. Before this fix, the greedy-by-raw-
+  // hours search fills the entire 20h target from electives alone before
+  // ever placing a mandatory course, then adds all 3 deferred mandatory
+  // courses on top — final total 26h (6h avoidable overshoot, reproduced by
+  // temporarily reverting just the g1 formula and re-running this exact
+  // scenario). After the fix, the reserved budget forces mandatory courses
+  // to interleave once the elective share is used up — final total 22h
+  // (only 2h left, the unavoidable atomicity slack of not being able to
+  // stop exactly on a course boundary).
+  it('PlannerWorker.run does not defer all mandatory courses until after the degree target is already spent on electives', () => {
+    const profiles = new Map<string, CourseProfile>();
+    for (const id of ['M1', 'M2', 'M3']) profiles.set(id, profile(id, { is_mandatory: true, hours: 2 }));
+    for (let i = 0; i < 6; i++) profiles.set(`E${i}`, profile(`E${i}`, { hours: 4 }));
+    const m = model({
+      profiles,
+      degreeRequiredHours: 20,
+      requiredMandatoryCourseIds: ['M1', 'M2', 'M3'],
+      categories: [],
+      maxHoursPerSemester: 40,
+      hardCap: 40,
+    });
+
+    const w = new PlannerWorker(m, undefined, { lookahead: false });
+    w.run(50);
+    const state = w.getPlan();
+    const placed = new Set(placedCourseIds(state));
+    let totalHours = 0;
+    for (const id of placed) totalHours += m.profiles.get(id)?.hours ?? 0;
+
+    expect(['M1', 'M2', 'M3'].every(id => placed.has(id))).toBe(true);
+    // Old behavior overshot to 26h (6h of fully-avoidable deferred-mandatory
+    // pile-up); the fix bounds it to the unavoidable atomicity slack of a
+    // single 4h elective landing right at the boundary.
+    expect(totalHours).toBeLessThanOrEqual(22);
+  });
+
+  // Codex finding on this PR: a mandatory course that can NEVER legally fit
+  // anywhere (every semester is over the hard cap for it, or it has no
+  // legal offering semester at all) must not permanently withhold g1 credit
+  // from electives that could otherwise fill the plan — that course's
+  // absence already surfaces separately as an honest blocking error
+  // (missingMandatory), and reserving budget for something that will never
+  // be placed would just needlessly truncate an otherwise-maximal plan.
+  it('does not reserve budget for a mandatory course that can never legally fit anywhere', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 20, // enough room for the electives below, never enough for MAND
+    });
+    // 100h is larger than the hard cap in every semester — structurally
+    // unplaceable no matter what else is on the board.
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 100 }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND still unplaced
+    const score = scorePlan(state, m);
+    // Full target credit (capped only at the real degreeRequiredHours), not
+    // withheld/negative because of MAND's unreachable 100h reservation.
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: a hard-excluded (user avoid, or profile-level
+  // excluded) mandatory course can never be placed either — enumerateActions
+  // already keeps it out of every candidate action via isExcluded. Reserving
+  // its hours anyway would repeat the exact same over-withholding bug as the
+  // "can never legally fit anywhere" case above, just via a different cause.
+  it('does not reserve budget for a hard-excluded mandatory course', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      disallowedCourseIds: new Set(['MAND']),
+    });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 4 }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND excluded
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: getLegalSemesters can return a fixed/effective
+  // semester id that isn't one of the board's actual knownSemesterIds at
+  // all — state.semesters only ever has entries for knownSemesterIds, so
+  // applyMutation could never actually place the course there. Treating that
+  // off-board semester as "empty, so it fits" would wrongly call the course
+  // placeable and reserve budget for something that structurally can't be
+  // scheduled on this board.
+  it('does not reserve budget for a mandatory course fixed to a semester outside the known board', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_9_semester_a', // not in SEMS/knownSemesterIds
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND unplaceable on this board
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: a mandatory course can also be permanently
+  // unplaceable via a prerequisite-ordering deadlock, not just offering/cap
+  // fit or exclusion — this codebase already has a dedicated fixture for
+  // exactly this shape (tests/api/generate_plan_missing_mandatory_gate.test.ts,
+  // data/boards/test_program_missing_mandatory_2027.json): MAND2 is only
+  // ever legal in year 3, but its prerequisite PRE2 is only ever legal in
+  // year 4 — no ordering can ever satisfy both, so MAND2 can never be
+  // legally placed. Reproduced here with the same shape.
+  it('does not reserve budget for a mandatory course with a permanent prerequisite-ordering deadlock', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND2'],
+      categories: [],
+    });
+    m.profiles.set('MAND2', profile('MAND2', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['PRE2'],
+    }));
+    m.profiles.set('PRE2', profile('PRE2', {
+      hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'],
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND2 permanently deadlocked
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: the reachability check must honor a CONFIRMED
+  // overload the same way validatePlanState does — a mandatory course that
+  // only fits above the raw hardCap but under the user-confirmed
+  // absoluteMaxReasonable ceiling is legally placeable and must still be
+  // reserved, not treated as unreachable.
+  it('reserves budget for a mandatory course that only fits under a confirmed overload\'s higher effective cap', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+      absoluteMaxReasonable: 10,
+      overloadAccepted: true,
+      overloadConfirmedAt: 1,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // OTHER_FIXED (4h, placement_policy: 'fixed' — immovable, unlike a plain
+    // elective) already occupies MAND's only legal semester: 4+4=8, over the
+    // raw hardCap (6) but under the confirmed-overload effective cap (10) —
+    // MAND is still legally placeable there since a real crowding course is
+    // present (a movable one wouldn't count — see the sibling "temporarily
+    // crowded" test below). e1 (4h, movable) sits in a different semester so
+    // it contributes to dh without affecting MAND's own fit check.
+    m.profiles.set('OTHER_FIXED', profile('OTHER_FIXED', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_a', ['OTHER_FIXED']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (OTHER_FIXED+e1). If MAND is correctly reserved: budget = 10-4=6,
+    // g1 = min(8,6) = 6. If the bug were present (MAND wrongly excluded via
+    // the raw, unconfirmed hardCap): budget = 10, g1 = min(8,10) = 8.
+    expect(score[0]).toBe(6);
+  });
+
+  // Codex finding on this PR: reachability must be checked TRANSITIVELY — a
+  // mandatory course whose prerequisite has a legally-earlier offering
+  // semester on paper is still unreachable if that prerequisite can itself
+  // never be placed (e.g. hard-excluded). An ordering-only check would
+  // wrongly call the mandatory course reachable and keep reserving its hours.
+  it('does not reserve budget for a mandatory course whose prerequisite is itself unreachable', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND3'],
+      categories: [],
+      disallowedCourseIds: new Set(['PRE3']),
+    });
+    m.profiles.set('MAND3', profile('MAND3', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PRE3'],
+    }));
+    m.profiles.set('PRE3', profile('PRE3', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'], // legally earlier than MAND3, but hard-excluded
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND3 transitively unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: a mandatory course's legal semester being
+  // crowded by a MOVABLE course isn't permanent unreachability — the search
+  // could relocate that course to make room. Counting it toward the fit
+  // check anyway wrongly drops the reservation, which can discourage the
+  // very MOVE the search needs on score-only paths (no lookahead) that can't
+  // see past one step to recognize the move was worth it.
+  it('still reserves budget for a mandatory course only temporarily crowded by a movable course', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER (4h, plain elective — movable) occupies MAND's only legal
+    // semester: 4+4=8 > hardCap(6) if counted, but CROWDER could be moved
+    // elsewhere to free the room, so it must not count against MAND's fit.
+    m.profiles.set('CROWDER', profile('CROWDER', { hours: 4 }));
+    const state = withCourses('year_3_semester_a', ['CROWDER']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (CROWDER+e1). If MAND is correctly still reserved (CROWDER
+    // ignored as movable): budget = 10-4=6, g1 = min(8,6) = 6. If the bug
+    // were present (MAND wrongly excluded because CROWDER's hours were
+    // counted against the raw hardCap): budget = 10, g1 = min(8,10) = 8.
+    expect(score[0]).toBe(6);
+  });
+
+  // Codex finding on this PR: an is_annual mandatory course is placed
+  // ATOMICALLY across every one of its spans — if even one span is
+  // permanently crowded, the whole add is illegal, so reachability must
+  // require ALL spans to fit, not just one (an earlier version used the same
+  // "any one legal semester has room" check as an ordinary course).
+  it('requires every span of an is_annual mandatory course to fit before reserving its budget', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['ANNUAL'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('ANNUAL', profile('ANNUAL', {
+      is_mandatory: true, hours: 4, is_annual: true,
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    // FIXED_BLOCKER (6h, immovable) fully occupies span B under the hardCap
+    // (6): 6+4=10>6, that span can never fit ANNUAL — span A alone having
+    // room isn't enough, the atomic bundle needs both.
+    m.profiles.set('FIXED_BLOCKER', profile('FIXED_BLOCKER', { hours: 6, placement_policy: 'fixed' }));
+    m.profiles.set('e2', profile('e2', { hours: 4 }));
+    const state = withCourses('year_3_semester_b', ['FIXED_BLOCKER']);
+    state.semesters['year_3_semester_a'] = ['e2'];
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 6(FIXED_BLOCKER)+4(e2)+4(e0)+4(e1) = 18. If ANNUAL is correctly
+    // unreachable (span B can never fit): budget = 14 (no reservation), g1 =
+    // min(18,14) = 14. If the bug were present (ANNUAL wrongly reachable
+    // because span A alone has room): budget = 14-4=10, g1 = min(18,10) = 10.
+    expect(score[0]).toBe(14);
+  });
+
+  // Codex finding on this PR: a prerequisite whose only declared semester
+  // isn't on this board (off-board) is definitively unreachable, not
+  // ambiguous — an earlier version used legalSemesterIndices for the
+  // prerequisite check, which defaults an all-off-board result to
+  // knownSemesterIds (the right fallback for a course with NO legality data
+  // at all, but wrong here: PRE4 DOES have a declared semester, it's just
+  // not one of this board's).
+  it('does not reserve budget for a mandatory course whose prerequisite has no semester on this board', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND4'],
+      categories: [],
+    });
+    m.profiles.set('MAND4', profile('MAND4', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PRE4'],
+    }));
+    m.profiles.set('PRE4', profile('PRE4', {
+      hours: 4, effective_allowed_semesters: ['year_9_semester_a'], // declared, but off-board
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND4 unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR (round 24): a prerequisite id with NO PROFILE
+  // at all (references a course that doesn't exist in model.profiles) is
+  // definitively unreachable, not merely "no legality data" — an earlier
+  // version's rawLegalSemesters returned [] identically for both a missing
+  // profile and a real course with genuinely unknown offering semesters,
+  // so the ambiguous "bias reachable" fallback wrongly applied to a
+  // prerequisite that can never actually be added to any plan.
+  it('does not reserve budget for a mandatory course whose prerequisite has no profile at all', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND4B'],
+      categories: [],
+    });
+    m.profiles.set('MAND4B', profile('MAND4B', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['GHOST'], // never added to m.profiles
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND4B unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: the reservation must also cover an unplaced
+  // PREREQUISITE's hours, not just the mandatory course's own — a
+  // prerequisite that's just an ordinary elective on paper still has to
+  // occupy a real plan slot before its dependent mandatory course can
+  // legally be added, so its hours are just as unavoidable a cost.
+  it('reserves budget for an unplaced prerequisite required by a pending mandatory course, not just the mandatory course itself', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['MAND5'],
+      categories: [],
+    });
+    m.profiles.set('MAND5', profile('MAND5', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ5'],
+    }));
+    // PREREQ5 is an ordinary elective (not itself mandatory) — but MAND5
+    // can't be legally added until it's placed somewhere strictly earlier.
+    m.profiles.set('PREREQ5', profile('PREREQ5', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+
+    const state = withCourses('year_4_semester_a', ['e0', 'e1', 'e2']); // 12h of unrelated electives
+    const score = scorePlan(state, m);
+    // dh = 12. If the reservation correctly covers MAND5(2h)+PREREQ5(4h)=6h:
+    // budget = 14-6=8, g1 = min(12,8) = 8. If the bug were present
+    // (PREREQ5's hours not reserved): budget = 14-2=12, g1 = min(12,12) = 12.
+    expect(score[0]).toBe(8);
+  });
+
+  // Codex finding on this PR: a course that isn't pinned/fixed/annual is
+  // still permanently stuck where it is if it has NO OTHER legal semester to
+  // move to — enumerateActions only generates MOVE_COURSE targets among a
+  // course's own legal semesters. An earlier version treated any
+  // non-fixed/pinned/annual occupant as freely relocatable "movable"
+  // crowding to ignore, which wrongly ignored this real, permanent case.
+  it('treats a movable-by-policy occupant with no other legal semester as permanent crowding', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER2 (4h) is an ordinary, non-fixed/pinned/annual elective — but
+    // its ONLY legal semester is year_3_semester_a, the same one it already
+    // occupies. It has nowhere else to legally move to, so it's just as
+    // permanently stuck there as a pinned course.
+    m.profiles.set('CROWDER2', profile('CROWDER2', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    const state = withCourses('year_3_semester_a', ['CROWDER2']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (CROWDER2+e1). If MAND is correctly NOT reserved (CROWDER2 has
+    // no other legal semester, so it's real permanent crowding: 4+4=8>6,
+    // doesn't fit): budget = 10 (no reservation), g1 = min(8,10) = 8. If the
+    // bug were present (CROWDER2 wrongly ignored as "movable"): budget =
+    // 10-4=6, g1 = min(8,6) = 6.
+    expect(score[0]).toBe(8);
+  });
+
+  // Codex finding on this PR: enumerateActions' ordinary elective-fill group
+  // only runs while raw degree hours are still short of the target — a
+  // required-but-ordinary prerequisite of a reachable mandatory course was
+  // never enumerated as a candidate action at all once a client-supplied
+  // initial state already met the raw target, no matter how correctly
+  // scorePlan reserves its hours (scoring only ranks candidates
+  // enumerateActions actually produces). Real end-to-end reproduction via
+  // PlannerWorker.run(): an initial state with 16h of ordinary electives
+  // already placed (target 14h — already met) plus a missing mandatory
+  // course needing an unplaced prerequisite.
+  it('enumerates and places a required-but-ordinary prerequisite even when the initial state already meets the raw degree-hour target', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND5', profile('MAND5', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ5'],
+    }));
+    profiles.set('PREREQ5', profile('PREREQ5', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    for (let i = 0; i < 4; i++) profiles.set(`e${i}`, profile(`e${i}`, { hours: 4 }));
+
+    const m = model({
+      profiles,
+      requiredMandatoryCourseIds: ['MAND5'],
+      categories: [],
+      degreeRequiredHours: 14,
+      maxHoursPerSemester: 40,
+      hardCap: 40,
+    });
+
+    const initial = emptyState(SEMS);
+    initial.semesters['year_4_semester_a'] = ['e0', 'e1', 'e2'];
+    initial.semesters['year_4_semester_b'] = ['e3'];
+
+    const w = new PlannerWorker(m, initial, { lookahead: false });
+    w.run(50);
+    const placed = new Set(placedCourseIds(w.getPlan()));
+    expect(placed.has('MAND5')).toBe(true);
+    expect(placed.has('PREREQ5')).toBe(true);
+  });
+
+  // Codex finding on this PR: recursing into an ALREADY-PLACED prerequisite
+  // re-runs its own fitsSemester check as if it still needed to be added,
+  // double-counting its already-placed hours against its own semester's
+  // cap (it's both the occupant being summed AND the course being checked
+  // for room) — a real, legally-placed course could look permanently
+  // unreachable simply because it's already sitting exactly where it is.
+  it('treats an already-placed prerequisite as satisfied without re-checking its own room', () => {
+    const m = model({
+      degreeRequiredHours: 15,
+      requiredMandatoryCourseIds: ['MAND6'],
+      categories: [],
+      hardCap: 6,
+    });
+    // PRE6 is fixed and already placed, exactly filling its own semester's
+    // hard cap (6h in a 6h cap) — legally placed as-is, nothing wrong here.
+    m.profiles.set('PRE6', profile('PRE6', {
+      hours: 6, placement_policy: 'fixed', recommended_semester: 'year_3_semester_a',
+    }));
+    m.profiles.set('MAND6', profile('MAND6', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PRE6'],
+    }));
+    const state = withCourses('year_3_semester_a', ['PRE6']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    state.semesters['year_4_semester_a'] = ['e0'];
+    const score = scorePlan(state, m);
+    // dh = 14 (PRE6+e1+e0). If MAND6 is correctly reachable (PRE6 already
+    // satisfies the prerequisite): budget = 15-2=13, g1 = min(14,13) = 13.
+    // If the bug were present (PRE6 wrongly re-checked and found "doesn't
+    // fit" against its own already-placed hours): MAND6 deemed unreachable,
+    // budget = 15 (no reservation), g1 = min(14,15) = 14.
+    expect(score[0]).toBe(13);
+  });
+
+  // Codex finding on this PR: a movable-by-policy occupant with ANOTHER
+  // legal semester isn't necessarily relocatable if that alternate semester
+  // has no room either — "has some other legal semester" alone doesn't mean
+  // there's a real destination right now.
+  it('does not treat a movable occupant as relocatable when its only alternate semester has no room', () => {
+    const m = model({
+      degreeRequiredHours: 16,
+      requiredMandatoryCourseIds: ['MAND7'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('MAND7', profile('MAND7', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER3 (movable elective) has two legal semesters — but its only
+    // alternative (year_3_semester_b) is already completely full via an
+    // immovable (fixed) course, so it has nowhere to actually go.
+    m.profiles.set('CROWDER3', profile('CROWDER3', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    m.profiles.set('BLOCKER_B', profile('BLOCKER_B', { hours: 6, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_a', ['CROWDER3']);
+    state.semesters['year_3_semester_b'] = ['BLOCKER_B'];
+    state.semesters['year_4_semester_a'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 14 (CROWDER3+BLOCKER_B+e1). If MAND7 is correctly NOT reserved
+    // (CROWDER3 has nowhere to actually move, real crowding: 4+4=8>6):
+    // budget = 16 (no reservation), g1 = min(14,16) = 14. If the bug were
+    // present (CROWDER3 wrongly treated as movable just for having another
+    // legal semester on paper): budget = 16-4=12, g1 = min(14,12) = 12.
+    expect(score[0]).toBe(14);
+  });
+
+  // Codex finding on this PR (the exact residual honestly flagged, and left
+  // unfixed, in the reply to the prior round's "already-placed prerequisite"
+  // fix): an already-placed prerequisite only satisfies reachability if its
+  // placement is strictly EARLIER than the dependent course's own — a
+  // prerequisite placed in the SAME or a LATER semester still makes
+  // validatePlanState reject the add, so it must not be treated as
+  // "satisfied" just because it's on the board somewhere.
+  it('does not treat an already-placed prerequisite as satisfying reachability when it sits in the same or a later semester', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['M'],
+      categories: [],
+    });
+    // P is already placed in year_4_semester_a — LATER than M's own only
+    // legal semester (year_3_semester_b) — so M can never legally be added,
+    // no matter how correctly P itself is scheduled.
+    m.profiles.set('P', profile('P', { hours: 4, placement_policy: 'fixed', recommended_semester: 'year_4_semester_a' }));
+    m.profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b',
+      prerequisites: ['P'],
+    }));
+
+    const state = withCourses('year_4_semester_a', ['P']);
+    state.semesters['year_3_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (P+e0+e1). If M is correctly NOT reserved (P sits later, so M
+    // is unreachable): budget = 10 (no reservation), g1 = min(12,10) = 10.
+    // If the bug were present (P wrongly treated as "satisfied" just for
+    // being placed anywhere): budget = 10-2=8, g1 = min(12,8) = 8.
+    expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: an is_annual mandatory course occupies EVERY
+  // one of its spans simultaneously — including the EARLIEST one — but the
+  // prerequisite-ordering check compared against `id`'s single LATEST legal
+  // semester (the right comparison for an ordinary course, which can be
+  // placed at any one of several options) even when `id` is annual. A
+  // prerequisite placed in (or after) the annual course's own FIRST span was
+  // wrongly treated as "early enough," when validatePlanProposal's
+  // strict-timing rule checks the prerequisite against each occurrence
+  // independently and would reject the add for that first span (same
+  // semester as the prerequisite).
+  it('compares an is_annual mandatory course\'s prerequisite against its earliest required span, not its latest legal semester', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['ANNUAL2'],
+      categories: [],
+    });
+    m.profiles.set('ANNUAL2', profile('ANNUAL2', {
+      is_mandatory: true, hours: 4, is_annual: true,
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['PRE_ANNUAL'],
+    }));
+    // PRE_ANNUAL is already placed in year_3_semester_a — the SAME semester
+    // as ANNUAL2's own first span. year_3_semester_a comes before
+    // year_3_semester_b (ANNUAL2's latest legal semester), so the old
+    // (idLatest-based) comparison wrongly called this "early enough."
+    m.profiles.set('PRE_ANNUAL', profile('PRE_ANNUAL', {
+      hours: 4, placement_policy: 'fixed', recommended_semester: 'year_3_semester_a',
+    }));
+    const state = withCourses('year_3_semester_a', ['PRE_ANNUAL']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (PRE_ANNUAL+e0+e1). If ANNUAL2 is correctly NOT reserved
+    // (PRE_ANNUAL sits in ANNUAL2's own first span, not strictly before it):
+    // budget = 14 (no reservation), g1 = min(12,14) = 12. If the bug were
+    // present (PRE_ANNUAL wrongly treated as early enough vs the latest
+    // span): budget = 14-4=10, g1 = min(12,10) = 10.
+    expect(score[0]).toBe(12);
+  });
+
+  // Codex finding on this PR (round 15): confirming a prerequisite has SOME
+  // declared semester strictly before the dependent course's boundary isn't
+  // enough — the prerequisite must be REACHABLE specifically at a semester
+  // before that boundary. An earlier version recursed into the
+  // prerequisite's own reachability unconstrained, so a prerequisite whose
+  // only earlier legal semester is permanently full (but which also has a
+  // later legal semester with room) still passed as "reachable" — reachable
+  // in general, but only via a placement that would violate the strict-
+  // timing ordering the dependent mandatory course actually needs.
+  it('does not treat a prerequisite as reachable via a legal semester that is not strictly before the dependent course', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['MAND8'],
+      categories: [],
+      hardCap: 4,
+    });
+    m.profiles.set('MAND8', profile('MAND8', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ8'],
+    }));
+    // PREREQ8 has two legal semesters: year_3_semester_a (strictly before
+    // MAND8's own boundary) and year_3_semester_b (MAND8's own semester —
+    // not strictly before it). Its only actually-before-boundary option is
+    // permanently full (FIXED_BLOCKER8, immovable, fills the 4h hardCap).
+    m.profiles.set('PREREQ8', profile('PREREQ8', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    m.profiles.set('FIXED_BLOCKER8', profile('FIXED_BLOCKER8', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_a', ['FIXED_BLOCKER8']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (FIXED_BLOCKER8+e0+e1). If MAND8 is correctly NOT reserved
+    // (PREREQ8's only before-boundary option is full, so PREREQ8 — and thus
+    // MAND8 — is unreachable): budget = 14 (no reservation), g1 =
+    // min(12,14) = 12. If the bug were present (PREREQ8 wrongly deemed
+    // reachable via its later, same-semester-as-MAND8 option): budget =
+    // 14-2(MAND8)-4(PREREQ8)=8, g1 = min(12,8) = 8.
+    expect(score[0]).toBe(12);
+  });
+
+  // Codex finding on this PR (round 17): a course's OWN boundary (used to
+  // judge ITS prerequisite's ordering, one level deeper) must be derived
+  // from semesters that actually FIT, not merely from legal ones. In a
+  // chain M -> P -> Q, P legal in an early FITTING semester and a later
+  // legal-but-permanently-FULL one: boundaryFor previously took the latest
+  // LEGAL index regardless of fit, reporting P's boundary at the later
+  // (unusable) semester. Q — legal only at a semester that's before that
+  // wrong boundary but NOT before P's real (fitting) boundary — was then
+  // wrongly treated as satisfying the ordering, making the whole M->P->Q
+  // chain look reachable when P itself can only ever actually occupy its
+  // one early semester.
+  it("derives a course's own boundary from its FITTING semesters, not merely its legal ones, when judging a deeper prerequisite", () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['M9'],
+      categories: [],
+      hardCap: 4,
+    });
+    m.profiles.set('M9', profile('M9', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_4_semester_b',
+      prerequisites: ['P9'],
+    }));
+    // P9 is legal in year_3_semester_a (empty — fits) and year_3_semester_b
+    // (occupied by an immovable 4h blocker under the 4h hardCap — full).
+    // Both are strictly before M9's own boundary (year_4_semester_b).
+    m.profiles.set('P9', profile('P9', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['Q9'],
+    }));
+    // Q9 is legal ONLY at year_3_semester_a — before P9's WRONG
+    // (legal-but-unfit) boundary of year_3_semester_b, but NOT before P9's
+    // CORRECT (fitting) boundary of year_3_semester_a itself.
+    m.profiles.set('Q9', profile('Q9', {
+      hours: 2, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    m.profiles.set('BLOCKER9', profile('BLOCKER9', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_b', ['BLOCKER9']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (BLOCKER9+e0+e1). If M9 is correctly NOT reserved (Q9 can
+    // never be strictly before P9's only real, fitting placement): budget =
+    // 14 (no reservation), g1 = min(12,14) = 12. If the bug were present
+    // (P9's boundary wrongly computed from its later, unfit legal semester,
+    // making Q9 — and so the whole chain — look reachable): budget =
+    // 14-2(M9)-4(P9)-2(Q9)=6, g1 = min(12,6) = 6.
+    expect(score[0]).toBe(12);
+  });
+
+  // Codex finding on this PR (round 25): isImmovableOccupant's "does the
+  // occupant have a real destination" check only verified raw load headroom
+  // at the alternate semester — not whether relocating there would actually
+  // be LEGAL under prerequisite strict-timing. A course already on the board
+  // that depends on the occupant as ITS OWN prerequisite still blocks the
+  // occupant from moving to (or past) that dependent's semester, even when
+  // the alternate semester has plenty of raw capacity to spare.
+  it('does not treat an occupant as movable to a semester that would break strict-timing ordering for a dependent already on the board', () => {
+    const m = model({
+      degreeRequiredHours: 8,
+      requiredMandatoryCourseIds: ['MAND9'],
+      categories: [],
+      hardCap: 5,
+    });
+    m.profiles.set('MAND9', profile('MAND9', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER9 (movable elective) is legal in both year_3_semester_a (where
+    // it currently sits, crowding MAND9's only semester) and
+    // year_3_semester_b, which has raw room to spare (5h cap - 1h DEP9 = 4h
+    // free, exactly CROWDER9's 4h) — so a load-only check wrongly calls it
+    // relocatable there.
+    m.profiles.set('CROWDER9', profile('CROWDER9', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    // DEP9 is already placed in year_3_semester_b and lists CROWDER9 as its
+    // OWN prerequisite — validatePlanProposal's strict-timing rule requires
+    // CROWDER9 strictly BEFORE DEP9's semester, so moving CROWDER9 into (or
+    // past) year_3_semester_b would make DEP9's own placement illegal.
+    m.profiles.set('DEP9', profile('DEP9', { hours: 1, prerequisites: ['CROWDER9'] }));
+    m.profiles.set('FILLER9', profile('FILLER9', { hours: 2 }));
+    const state = withCourses('year_3_semester_a', ['CROWDER9']);
+    state.semesters['year_3_semester_b'] = ['DEP9'];
+    state.semesters['year_4_semester_a'] = ['FILLER9'];
+    const score = scorePlan(state, m);
+    // dh = 7 (CROWDER9=4 + DEP9=1 + FILLER9=2). If MAND9 is correctly NOT
+    // reserved (CROWDER9 has no destination that's both roomy AND legal, so
+    // it's real, permanent crowding: 4+2=6 > hardCap 5): budget = 8 (no
+    // reservation), g1 = min(7,8) = 7. If the bug were present (CROWDER9
+    // wrongly treated as movable purely on load headroom): budget = 8-2=6,
+    // g1 = min(7,6) = 6.
+    expect(score[0]).toBe(7);
+  });
+});
+
+// Codex finding on this PR (round 21): a shared intermediate prerequisite
+// visited first through a LOOSER dependent must still propagate a later,
+// STRICTER tightening down to its own prerequisites — an earlier version
+// recorded the tightened boundary on the shared course itself but, gated on
+// "already recursed into once," never recomputed what that tighter timing
+// means for a prerequisite one level deeper, leaving it stuck at the
+// stale, looser value.
+describe('requiredCourseSemesterBoundaries — shared prerequisite re-tightening', () => {
+  it("propagates a later dependent's stricter boundary down through an already-visited shared prerequisite to ITS OWN prerequisite", () => {
+    const SEMS3 = [
+      'year_0_semester_a', // idx0 — P's only legal semester
+      'year_1_semester_a', // idx1 ─┐
+      'year_1_semester_b', // idx2  ├─ Q's legal semesters
+      'year_2_semester_a', // idx3 ─┘ (also M1's own semester)
+      'year_2_semester_b', // idx4
+      'year_3_semester_a', // idx5
+      'year_3_semester_b', // idx6 — M2's own semester
+    ];
+    const m = model({
+      knownSemesterIds: SEMS3,
+      degreeRequiredHours: 40,
+      categories: [],
+      // M2 listed BEFORE M1 — requiredCourseSemesterBoundaries processes the
+      // array in order, so the shared prerequisite chain (via Q) is first
+      // reached through M2's looser boundary, then re-reached through M1's
+      // stricter one.
+      requiredMandatoryCourseIds: ['M2', 'M1'],
+    });
+    m.profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['Q'],
+    }));
+    m.profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, effective_allowed_semesters: ['year_2_semester_a'],
+      prerequisites: ['Q'],
+    }));
+    m.profiles.set('Q', profile('Q', {
+      hours: 2,
+      effective_allowed_semesters: ['year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a'],
+      prerequisites: ['P'],
+    }));
+    m.profiles.set('P', profile('P', { hours: 2, effective_allowed_semesters: ['year_0_semester_a'] }));
+    const state = emptyState(SEMS3);
+
+    const boundaries = requiredCourseSemesterBoundaries(state, m);
+
+    // M2 visits first: Q's boundary <- 6 (before M2's own semester, idx6),
+    // Q's own fitting boundary (max fitting < 6 among Q's [1,2,3]) = 3,
+    // so P is first recorded with boundary 3.
+    // M1 visits second: Q's boundary tightens 6 -> 3 (M1's own semester,
+    // idx3). Q's own fitting boundary under the NEW ceiling (max fitting
+    // < 3 among Q's [1,2,3]) is now 2 — one semester EARLIER than before —
+    // which must propagate down to tighten P's boundary from 3 to 2. A
+    // version that stops re-descending into an already-visited shared
+    // prerequisite would leave P stuck at the stale value of 3.
+    expect(boundaries.get('Q')).toBe(3);
+    expect(boundaries.get('P')).toBe(2);
   });
 });
 
