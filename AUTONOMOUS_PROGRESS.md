@@ -4,13 +4,106 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-sgzgz9`
-(PR #56 merged as `24d8877` — see below; supersedes the PR #53 entry as the
-latest completed milestone). Issue #25 remains fully closed; this is a
-fresh Agent Diagnosis Loop finding from a re-run after that closure, per
-this routine's own "repeat until all critical scenarios pass" instruction._
+_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-3jgomc`
+(PR #58 merged as `5ea5d2f` — see below; supersedes the PR #56 entry as the
+latest completed milestone)._
 
-## Latest session — PR #56 merged: missing-mandatory cause misattributed to the user's own hard exclusion
+## Latest session — PR #58 merged: wanted-vs-excluded contradiction disclosure, including a Codex-caught stale-placement wording bug
+
+Start-of-session audit: session branch `claude/youthful-tesla-t0vt3j` was —
+again, the same recurring mistake several prior sessions have had to
+correct — provisioned from a stale `main`-derived commit (`92c19e0`); reset
+to the current `ui/frontend-modernization` tip (`95321e4`), confirmed zero
+unique commits lost. Two open PRs found: #14 (Decision capability, still
+correctly deferred per the issue #18 D-stacking-cap decision — reconfirmed
+no new human comments on issues #15/#18/#20/#21 since the last check, so
+left untouched) and #58, already opened this same day with the exact minor
+finding the prior session's entry had flagged and deliberately deferred
+("low severity... a candidate for a future minor milestone").
+
+**Picked up PR #58** rather than starting new diagnosis work, since an
+open PR already addressed the selected finding (per this routine's
+own anti-duplication rule) and it already had one live Codex finding to
+resolve: Codex correctly caught (`discussion_r3632198441`) that the new
+wanted-vs-excluded disclosure text unconditionally claimed the exclusion
+"won" and the course "was not placed" — but when the overlapping course was
+already on the **incoming board**, `planContextToState` seeds that
+pre-existing placement and the planner never removes it on its own;
+`disallowedGate` then reports it as a blocking `DISALLOWED_PLACED_ERROR_PREFIX`
+error instead, so the course is actually still present in
+`proposal.semesters`. The old wording self-contradicted that same
+response's own semesters/error content in that scenario.
+
+**Fix** (`718945c`): split `contradictoryWantedNames` into two groups —
+names that also appear in a `DISALLOWED_PLACED_ERROR_PREFIX` error (still
+placed, stale) vs. names that don't (correctly excluded, genuinely not
+placed) — each with its own accurate, non-contradictory
+`risksAndTradeoffs` wording. Extraction mirrors the existing
+`missingMandatoryNames` pattern (strip fixed Hebrew prefix, exact match).
+New regression test RED-verified against the pre-fix code (reproduced the
+exact self-contradiction Codex flagged) before confirming green.
+
+**Tests**: full API suite **84/84 suites, 1320/1320 tests** (+6 from
+baseline 1314 across both PR #58 commits), zero regressions. `tsc --noEmit`
+clean.
+
+**Merged** PR #58 (`5ea5d2f`) after CI green (3/3: Python tests, Next.js
+build, TypeScript API tests) and a final clean Codex review on the fix
+commit ("Didn't find any major issues"), with the one review thread
+resolved with evidence. **Classification: A** (user-visible —
+`risksAndTradeoffs`/`suggestedNextActions` render verbatim in the real chat
+UI panel via `academicDecisionHtml()`).
+
+**Rolling-three check: (53, 56, 58) = C/C/A — compliant** (at least two of
+three are A/B/C — all three are; at least one is A/B — 58 is A). The
+prior session's own note correctly anticipated this: two trailing C's
+(53, 56) left no room for a third C, and this A-classified pickup
+satisfied that constraint rather than extending the streak.
+
+**Production check**: re-confirmed directly via Vercel MCP tools (now
+reachable this session) — `tau-course-planner` (the project actually
+serving production traffic) is still pinned at its newest `target:
+production` deployment, commit `26500d4` ("Merge pull request #11"),
+unchanged since every prior session's check going back to PR #27. No new
+deployment exists. Deploys remain one-off `vercel --prod` CLI invocations
+with no Git integration wired to any branch (confirmed again: `list_deployments`
+shows every production deploy's `creator`/`meta` matches this known
+mechanism, not a webhook-triggered one). This sandboxed session still has
+no safe path to perform the deploy itself — `deploy_to_vercel` would upload
+a raw file tree with no git linkage, breaking `gitCommitSha` traceability,
+so deliberately not used, matching every prior session's same call. PR #58
+(and every other merged fix since PR #11) joins the same growing
+merged-but-not-deployed backlog — still not recomputing a precise count
+this session (the counting methodology was never pinned down precisely
+enough per the correction chain on PR #57), but confirming the trend is
+unchanged: still growing, not shrinking.
+
+**Standing blockers, unchanged, not re-investigated further this session
+(no new evidence since last check)**: issue #15/#18 (PR #14 D-stacking
+merge decision, Vercel production-architecture question — `tau-course-
+planner` fastapi project vs. `web` nextjs project), issue #20 (386/386
+`jest.ui.config.js` failures, 100% one root cause — the gitignored
+`supabase_board_backup_2027_pre_sync.json` fixture — needs a human call on
+committing a sanitized replacement), issue #21 (dead-code delete-vs-restore
+call). All confirmed still open with zero human comments as of this
+session's check.
+
+**Exact next action for the next session**: PR #58 is merged and closed —
+do not reopen it or re-address it. The rolling-three window (53, 56, 58) =
+C/C/A is compliant with no forced constraint on the next pick beyond the
+standing rule (never two C's followed by a third C). Run a fresh **Agent
+Diagnosis Loop** against the real `generate-plan.ts` handler with Hebrew
+scenarios in areas not yet covered (multi-alternative comparison,
+simulate-then-apply flows, multi-turn conversation honesty, in-plan
+prerequisite sequencing remain the standing candidates several prior
+sessions have named but not yet exercised) to find the next highest-impact
+real Agent failure — per this routine's "repeat until all critical
+scenarios pass" instruction. This does not override the standing
+P0/correctness-preemption rule, nor the standing human-decision blockers
+above (issues #15/#18/#20/#21), which remain untouched pending a human
+call.
+
+## Prior session — PR #56 merged: missing-mandatory cause misattributed to the user's own hard exclusion
 
 Start-of-session audit: no human comments landed on the standing decision
 issues (#15/#18/#20/#21) since the last session — all still open, all still
