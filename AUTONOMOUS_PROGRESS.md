@@ -114,15 +114,20 @@ session's check.
 **Exact next action for the next session**: PR #56 is merged and closed —
 do not reopen it or re-address it. The current rolling-three window is
 compliant ((50, 53, 56) = A/C/C — see correction above), but positions 53
-and 56 are both C, so **the next milestone selected must be A or B** —
+and 56 are both C, so **the next milestone selected should be A or B** —
 picking another C now would immediately create a non-compliant (53, 56,
 next) = C/C/C window. Two standing candidates: naming a real production
 consumer for one of the unwired Simulation/Persistence/Decision
 capabilities (PRs #12/#13/#14) and wiring it in (B), or improving how
-`academicDecision.explanation` is actually surfaced in the UI (A). Only
-after that A/B milestone lands should the Agent Diagnosis Loop resume for
-the next C-classified correctness finding (candidates already surfaced:
-the wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
+`academicDecision.explanation` is actually surfaced in the UI (A). **This
+does not override the standing P0/correctness-preemption rule**: a newly
+discovered production incident, hard-constraint violation, or other P0/P1
+correctness break still takes priority over the rolling-window preference,
+exactly as this routine's own priority order already states ("Never select
+a lower-priority item while feasible higher-priority work remains"). Absent
+such an emergency, prefer A/B before returning to another C-classified
+Agent Diagnosis Loop finding (candidates already surfaced: the
+wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
 multi-turn conversation honesty / simulate-then-apply areas per the P1
 checklist).
 

@@ -22,7 +22,7 @@ Tests: 3 new in `tests/api/academic_decision_runtime.test.ts`, RED-verified agai
 
 **Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session). 14 merged fixes now sit behind production.
 
-**Exact next action**: PR #56 is done (merged/closed, do not reopen). Per the rolling-three correction above, the next milestone selected must be A or B, not another standalone C fix or D infra. Only after that lands should the Agent Diagnosis Loop resume (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
+**Exact next action**: PR #56 is done (merged/closed, do not reopen). Per the rolling-three correction above, the next milestone selected should be A or B, not another standalone C fix or D infra — **unless a new P0/P1 correctness break is found first, which always preempts the rolling-window preference** (this routine's own priority order already establishes that: hard-correctness/production-incident work outranks the rolling-window governance rule, not the other way around). Absent such an emergency, land an A/B milestone before returning to the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
 
 ## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
 
