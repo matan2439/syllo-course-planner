@@ -231,4 +231,44 @@ describe('enumerateActions — required-prerequisite ADDs are restricted to usef
 
     expect(prereqAdds).toEqual(['year_3_semester_a']);
   });
+
+  // Codex finding on PR #53 (round 19): when the SAME prerequisite is
+  // needed by more than one reachable mandatory course, an earlier version
+  // recorded the LARGEST boundary seen across the shared dependents — so a
+  // placement after the stricter dependent's own boundary, but still before
+  // the looser one, was wrongly offered. The prerequisite only gets placed
+  // ONCE; landing it there would satisfy the looser dependent while
+  // permanently blocking the stricter one (worse than not offering it).
+  it('restricts a prerequisite shared by two dependents to a semester that satisfies BOTH, not just the looser one', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_4_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (before BOTH M1 and M2's own
+    // semesters — the only genuinely useful option) and year_4_semester_a
+    // (before M2's semester, but NOT before M1's — placing P there would
+    // satisfy M2 while permanently blocking M1).
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M1', 'M2'],
+      degreeRequiredHours: 0, // already met — isolates group 1b
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
 });

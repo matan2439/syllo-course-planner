@@ -506,12 +506,23 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
  * the SAME ordering constraint reachability itself already enforces — a
  * course this function says is "useful before index N" is, by construction,
  * exactly one `isMandatoryCourseReachable` would accept as satisfying its
- * dependent at that point in the chain. Each id is recursed into at most
- * once (an id reached via multiple dependent paths keeps only the largest
- * boundary seen and does not re-descend into its own prerequisites a second
- * time) — a bounded, single-pass approximation, not an exhaustive multi-path
- * reconciliation; consistent with every other "cheap approximation, not
- * full validation" tradeoff this file already makes for search-hot code.
+ * dependent at that point in the chain. When the SAME course is needed by
+ * more than one reachable dependent (a shared prerequisite), the recorded
+ * boundary is the SMALLEST (strictest) one seen — Codex finding on this PR:
+ * an earlier version kept the LARGEST, which could offer a placement after
+ * an earlier dependent's own boundary but before a later one; the course
+ * only gets placed ONCE, so landing there would satisfy the later dependent
+ * while permanently blocking the earlier one (worse than not offering that
+ * placement at all). Taking the minimum guarantees any offered placement
+ * satisfies EVERY reachable dependent that needs this course, not just one
+ * of them. Each id is recursed into at most once (an id reached via
+ * multiple dependent paths tightens its own recorded boundary on every
+ * visit but does not re-descend into its own prerequisites a second time,
+ * so a tightened boundary doesn't retroactively propagate to that course's
+ * own already-recorded prerequisites) — a bounded, single-pass
+ * approximation, not an exhaustive multi-path reconciliation; consistent
+ * with every other "cheap approximation, not full validation" tradeoff this
+ * file already makes for search-hot code.
  * A course reached with no computable boundary (no legality data at all) is
  * left out of the map entirely — callers must treat a missing entry as
  * "unconstrained," the same bias-toward-reachable default used everywhere
@@ -529,7 +540,7 @@ export function requiredCourseSemesterBoundaries(state: PlanState, model: Constr
     if (!p) return;
     if (beforeIndex !== undefined) {
       const existing = boundaries.get(id);
-      if (existing === undefined || beforeIndex > existing) boundaries.set(id, beforeIndex);
+      if (existing === undefined || beforeIndex < existing) boundaries.set(id, beforeIndex);
     }
     if (processed.has(id)) return;
     processed.add(id);
