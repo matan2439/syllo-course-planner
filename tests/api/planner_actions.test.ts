@@ -293,6 +293,40 @@ describe('enumerateActions — required-prerequisite ADDs are restricted to usef
     expect(prereqAdds).toEqual(['year_3_semester_a']);
   });
 
+  // Codex finding on PR #53 (round 23): the boundary filter must apply to
+  // group 1 (top-level required mandatory courses) too, not just group 1b —
+  // a mandatory course that's ALSO another mandatory course's prerequisite
+  // still needs to respect that dependent's strict-timing ordering. An
+  // earlier version's group 1b explicitly skipped ids already in
+  // requiredMandatoryCourseIds, assuming group 1 "already covers them" —
+  // true for placement itself, but group 1 offered every legal semester
+  // completely unfiltered, so a shared mandatory prerequisite could still be
+  // placed at a semester that satisfies its own requirement while
+  // permanently blocking its dependent.
+  it('restricts a required mandatory course to a boundary-respecting semester when it is ALSO another required mandatory course\'s prerequisite', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['M1'],
+    }));
+    // M1 is legal in year_3_semester_a (useful — before M2) and
+    // year_3_semester_b (useless — same semester as M2, not strictly before).
+    profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+
+    const m = baseModel({ profiles, requiredMandatoryCourseIds: ['M2', 'M1'] });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const m1Adds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'M1')
+      .map(a => (a as any).semesterId);
+
+    expect(m1Adds).toEqual(['year_3_semester_a']);
+  });
+
   // Codex finding on PR #53 (round 19): when the SAME prerequisite is
   // needed by more than one reachable mandatory course, an earlier version
   // recorded the LARGEST boundary seen across the shared dependents — so a

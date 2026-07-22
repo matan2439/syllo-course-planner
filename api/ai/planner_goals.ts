@@ -647,6 +647,37 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   //    valid plan's score (and every test that only scores DONE states) is
   //    completely unaffected; only mid-search ranking among partial states
   //    with a pending mandatory course changes.
+  //
+  //    Known, investigated limitation (Codex finding on this PR, round 23):
+  //    a MOVE that repairs a misplaced prerequisite and makes a previously-
+  //    UNREACHABLE mandatory course newly reachable can make g1 drop —
+  //    remainingMandatoryHours only reserves for a REACHABLE course
+  //    (deliberately, to avoid over-reserving for a permanently-blocked one;
+  //    see remainingMandatoryHours's own docstring), so crossing that
+  //    reachability threshold flips its hours from unreserved to reserved in
+  //    one step, shrinking the budget with no offsetting g2a credit yet
+  //    (the course is reachable now, not placed yet). In a no-lookahead/
+  //    zero-rollout configuration (`PlannerWorker`'s `{ lookahead: false }`
+  //    or `rolloutSteps: 0` — used only by this file's own isolated-
+  //    mechanism unit tests, never by any production caller: confirmed via
+  //    grep, no `generate-plan.ts`/`planner-run.ts`/`PlannerAgent` call site
+  //    disables lookahead), `step()`'s immediate-score-only "does this
+  //    advance" gate can reject that repair outright, leaving the mandatory
+  //    course permanently missing even though the repair was available.
+  //    Empirically verified this is NOT reproducible under the actual
+  //    default production configuration (lookahead + 200-step rollout):
+  //    `PlannerWorker.run()` correctly recovers and places the mandatory
+  //    course in both a minimal repro and an adversarial one (15 competing
+  //    higher-immediate-score elective actions crowding the repair move out
+  //    of the top-N truncation) — the rollout's `estimateFinalScore` still
+  //    discovers that placing the mandatory course afterward yields a
+  //    strictly better g2a at an equal-or-better final g1, which decides via
+  //    `compareScore(x.fin, curFinal)` even though `x.imm` alone regressed.
+  //    Not fixed: a general fix needs the no-lookahead greedy step itself to
+  //    tolerate a strictly-necessary repair despite a local g1 dip, which is
+  //    a change to the search's core accept-if-strictly-improves invariant —
+  //    a materially different and riskier change than this reservation
+  //    mechanism, and moot for every real caller today.
   const dh = degreeHours(state, model);
   const budget = model.degreeRequiredHours - remainingMandatoryHours(state, model);
   const g1 = Math.min(dh, budget);
