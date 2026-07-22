@@ -295,37 +295,61 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
 }
 
 /**
- * Total weekly hours of required mandatory courses not yet fully placed (and
- * not already completed) that can STILL actually be placed somewhere legal
- * right now. Deduplicates the same way placedHours does (a count_hours_once
- * annual pair must not double-count), so this stays a fair "hours still
- * owed" figure regardless of how the course is modeled.
+ * Total weekly hours needed to eventually complete every required mandatory
+ * course still outstanding — the mandatory courses' OWN hours, plus the
+ * hours of every unplaced/uncompleted PREREQUISITE (transitively) standing
+ * between here and placing them. A prerequisite that's just an ordinary
+ * elective on paper still has to occupy a real plan slot before its
+ * dependent mandatory course can legally be added (`validatePlanState`'s
+ * strict-timing rule) — so its hours are just as much a real, unavoidable
+ * cost as the mandatory course's own (Codex finding on this PR: an earlier
+ * version only reserved the mandatory course's own hours, so once ordinary
+ * electives filled `degreeRequiredHours - mandatoryHours`, adding the
+ * REQUIRED prerequisite looked like zero-marginal-value on score-only
+ * (no-lookahead) paths — same class of myopia lookahead/rollout exists to
+ * solve elsewhere, but a no-lookahead path can't see that placing the
+ * prerequisite unlocks the mandatory course two steps later).
  *
- * This is the reservation degree_completion's g1 (below) subtracts from
- * degreeRequiredHours to compute its credit ceiling (issue #25 Finding #4).
- * `isMandatoryCourseReachable` matters: a mandatory course that can NEVER be
- * placed must not permanently withhold g1 credit from electives that could
- * otherwise fill the plan — that course's absence already surfaces
- * separately as a real, honest blocking error (`assessCompleteness`'s
- * `missingMandatory` / `validateCandidate`), and the reservation existing
- * anyway would just needlessly truncate an otherwise-maximal, valid partial
- * plan.
+ * `isMandatoryCourseReachable`'s own recursion already validates that EVERY
+ * course in a reachable mandatory course's prerequisite chain is itself
+ * reachable (not just its direct prerequisites) — so once a top-level id
+ * passes that gate, walking its chain here doesn't need to re-check
+ * reachability at each step. `seen` is shared across every mandatory
+ * course's chain (not reset per-course) so a prerequisite required by
+ * multiple mandatory courses — or a course that's itself one of
+ * `requiredMandatoryCourseIds` and also someone else's prerequisite — is
+ * only counted once; it doubles as this walk's cycle guard.
  */
 function remainingMandatoryHours(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
+  const seen = new Set<string>();
   const seenRoots = new Set<string>();
   let sum = 0;
+
+  const addRequired = (id: string): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    if (model.completedCourseIds.has(id)) return;
+    if (isFullyPlaced(state, model, placed, id)) return;
+    const p = model.profiles.get(id);
+    if (!p) return;
+    if (p.count_hours_once && p.root_course_id) {
+      if (seenRoots.has(p.root_course_id)) return;
+      seenRoots.add(p.root_course_id);
+    }
+    sum += p.hours ?? 0;
+    for (const prereqId of p.prerequisites ?? []) {
+      if (model.completedCourseIds.has(prereqId)) continue;
+      if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;
+      addRequired(prereqId);
+    }
+  };
+
   for (const id of model.requiredMandatoryCourseIds) {
     if (model.completedCourseIds.has(id)) continue;
     if (isFullyPlaced(state, model, placed, id)) continue;
     if (!isMandatoryCourseReachable(state, model, id)) continue;
-    const p = model.profiles.get(id);
-    if (!p) continue;
-    if (p.count_hours_once && p.root_course_id) {
-      if (seenRoots.has(p.root_course_id)) continue;
-      seenRoots.add(p.root_course_id);
-    }
-    sum += p.hours ?? 0;
+    addRequired(id);
   }
   return sum;
 }

@@ -484,6 +484,36 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     const score = scorePlan(state, m);
     expect(score[0]).toBe(10);
   });
+
+  // Codex finding on this PR: the reservation must also cover an unplaced
+  // PREREQUISITE's hours, not just the mandatory course's own — a
+  // prerequisite that's just an ordinary elective on paper still has to
+  // occupy a real plan slot before its dependent mandatory course can
+  // legally be added, so its hours are just as unavoidable a cost.
+  it('reserves budget for an unplaced prerequisite required by a pending mandatory course, not just the mandatory course itself', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['MAND5'],
+      categories: [],
+    });
+    m.profiles.set('MAND5', profile('MAND5', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ5'],
+    }));
+    // PREREQ5 is an ordinary elective (not itself mandatory) — but MAND5
+    // can't be legally added until it's placed somewhere strictly earlier.
+    m.profiles.set('PREREQ5', profile('PREREQ5', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+
+    const state = withCourses('year_4_semester_a', ['e0', 'e1', 'e2']); // 12h of unrelated electives
+    const score = scorePlan(state, m);
+    // dh = 12. If the reservation correctly covers MAND5(2h)+PREREQ5(4h)=6h:
+    // budget = 14-6=8, g1 = min(12,8) = 8. If the bug were present
+    // (PREREQ5's hours not reserved): budget = 14-2=12, g1 = min(12,12) = 12.
+    expect(score[0]).toBe(8);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
