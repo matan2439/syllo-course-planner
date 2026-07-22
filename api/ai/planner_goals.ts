@@ -157,9 +157,10 @@ function effectiveHardCap(model: ConstraintModel): number {
  * `knownSemesterIds` when empty. Callers that need to distinguish "no
  * legality data at all" (ambiguous — every semester is implicitly allowed)
  * from "has declared semester(s), but none of them are on this board"
- * (definitively unreachable) need this raw form; `legalSemesterIndices`,
- * below, collapses that distinction and is only safe to use once a caller
- * has already established `id` itself is reachable.
+ * (definitively unreachable) need this raw form; `legalSemestersOnBoard`,
+ * below, collapses that distinction (defaults + filters to known semesters)
+ * and is only safe to use once a caller has already established `id` itself
+ * is reachable.
  */
 function rawLegalSemesters(model: ConstraintModel, id: string): string[] {
   const p = model.profiles.get(id);
@@ -215,14 +216,6 @@ function isImmovableOccupant(state: PlanState, model: ConstraintModel, id: strin
     return load + hours <= cap;
   });
   return !hasRealDestination;
-}
-
-/** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
-function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
-  const raw = rawLegalSemesters(model, id);
-  return (raw.length ? raw : model.knownSemesterIds)
-    .map(sem => model.knownSemesterIds.indexOf(sem))
-    .filter(i => i >= 0);
 }
 
 /**
@@ -304,24 +297,42 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  * `beforeIndex` constraint inherited from a dependent course (or unbounded,
  * when `beforeIndex` is omitted) — the same computation `isMandatoryCourseReachable`
  * and `requiredCourseSemesterBoundaries` (below) both need: for a normal
- * course, the LATEST eligible legal semester (the most permissive
- * bias-reachable comparison point, since the course could be placed at any
- * ONE of several options); for an `is_annual` course, the EARLIEST of its
- * required spans (it occupies every span at once, so the first one is the
- * binding constraint). Returns `undefined` when there's no eligible legal
- * semester at all (no legality data, or every option falls outside
- * `beforeIndex`) — callers treat that as "no boundary data, bias reachable/
- * unconstrained," never as "definitely unreachable."
+ * course, the LATEST legal semester that also actually FITS under the
+ * effective cap (the most permissive bias-reachable comparison point among
+ * genuinely usable options, since the course could be placed at any ONE of
+ * several) — an earlier version used the latest LEGAL semester regardless of
+ * fit, so a course legal in an early-fitting semester and a later, legal-
+ * but-permanently-full one reported a boundary at the later (unusable) one;
+ * a dependent-of-a-dependent chain could then be offered "room" up to a
+ * placement `id` itself could never actually occupy. For an `is_annual`
+ * course, the EARLIEST of its required spans (it occupies every span at
+ * once, so the first one is the binding constraint) — `fits` already
+ * confirmed by the caller (`isMandatoryCourseReachable`'s own `fits` check,
+ * before this is ever called) that EVERY span has room, so no additional
+ * fit-filtering is needed here for the annual branch. Returns `undefined`
+ * when there's no eligible (legal AND fitting) semester at all — callers
+ * treat that as "no boundary data, bias reachable/unconstrained," never as
+ * "definitely unreachable."
  */
-function boundaryFor(model: ConstraintModel, id: string, annualSpans: string[] | null, beforeIndex?: number): number | undefined {
-  const idIndicesRaw = legalSemesterIndices(model, id);
-  if (!idIndicesRaw.length) return undefined;
-  const idIndices = beforeIndex === undefined ? idIndicesRaw : idIndicesRaw.filter(i => i < beforeIndex);
-  if (!idIndices.length) return undefined;
-  const annualSpanIndices = annualSpans && annualSpans.length
-    ? annualSpans.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0)
-    : [];
-  return annualSpanIndices.length ? Math.min(...annualSpanIndices) : Math.max(...idIndices);
+function boundaryFor(state: PlanState, model: ConstraintModel, id: string, annualSpans: string[] | null, beforeIndex?: number): number | undefined {
+  if (annualSpans && annualSpans.length) {
+    const annualSpanIndices = annualSpans.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
+    return annualSpanIndices.length ? Math.min(...annualSpanIndices) : undefined;
+  }
+  const p = model.profiles.get(id);
+  if (!p) return undefined;
+  const cap = effectiveHardCap(model);
+  const hours = p.hours ?? 0;
+  const fitsSemester = (sem: string) => {
+    const load = (state.semesters[sem] ?? [])
+      .filter(cid => isImmovableOccupant(state, model, cid, sem))
+      .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
+    return load + hours <= cap;
+  };
+  const fittingIndices = legalSemestersOnBoard(model, id)
+    .filter(sem => fitsSemester(sem) && (beforeIndex === undefined || model.knownSemesterIds.indexOf(sem) < beforeIndex))
+    .map(sem => model.knownSemesterIds.indexOf(sem));
+  return fittingIndices.length ? Math.max(...fittingIndices) : undefined;
 }
 
 function isMandatoryCourseReachable(
@@ -375,7 +386,7 @@ function isMandatoryCourseReachable(
   // after) the course's own first span as "earlier enough," when
   // validatePlanState would reject that add outright (same-or-later semester
   // as the first occurrence).
-  const idBoundary = boundaryFor(model, id, annualSpans, beforeIndex);
+  const idBoundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
   if (idBoundary === undefined) return true; // fits already confirmed an eligible slot exists; bias reachable on any mismatch
   const nextVisiting = new Set(visiting);
   nextVisiting.add(id);
@@ -524,7 +535,7 @@ export function requiredCourseSemesterBoundaries(state: PlanState, model: Constr
     processed.add(id);
     if (!p.prerequisites?.length) return;
     const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
-    const ownBoundary = boundaryFor(model, id, annualSpans, beforeIndex);
+    const ownBoundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
     if (ownBoundary === undefined) return;
     for (const prereqId of p.prerequisites) {
       if (model.completedCourseIds.has(prereqId)) continue;

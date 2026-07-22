@@ -777,6 +777,56 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // 14-2(MAND8)-4(PREREQ8)=8, g1 = min(12,8) = 8.
     expect(score[0]).toBe(12);
   });
+
+  // Codex finding on this PR (round 17): a course's OWN boundary (used to
+  // judge ITS prerequisite's ordering, one level deeper) must be derived
+  // from semesters that actually FIT, not merely from legal ones. In a
+  // chain M -> P -> Q, P legal in an early FITTING semester and a later
+  // legal-but-permanently-FULL one: boundaryFor previously took the latest
+  // LEGAL index regardless of fit, reporting P's boundary at the later
+  // (unusable) semester. Q — legal only at a semester that's before that
+  // wrong boundary but NOT before P's real (fitting) boundary — was then
+  // wrongly treated as satisfying the ordering, making the whole M->P->Q
+  // chain look reachable when P itself can only ever actually occupy its
+  // one early semester.
+  it("derives a course's own boundary from its FITTING semesters, not merely its legal ones, when judging a deeper prerequisite", () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['M9'],
+      categories: [],
+      hardCap: 4,
+    });
+    m.profiles.set('M9', profile('M9', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_4_semester_b',
+      prerequisites: ['P9'],
+    }));
+    // P9 is legal in year_3_semester_a (empty — fits) and year_3_semester_b
+    // (occupied by an immovable 4h blocker under the 4h hardCap — full).
+    // Both are strictly before M9's own boundary (year_4_semester_b).
+    m.profiles.set('P9', profile('P9', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['Q9'],
+    }));
+    // Q9 is legal ONLY at year_3_semester_a — before P9's WRONG
+    // (legal-but-unfit) boundary of year_3_semester_b, but NOT before P9's
+    // CORRECT (fitting) boundary of year_3_semester_a itself.
+    m.profiles.set('Q9', profile('Q9', {
+      hours: 2, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    m.profiles.set('BLOCKER9', profile('BLOCKER9', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_b', ['BLOCKER9']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (BLOCKER9+e0+e1). If M9 is correctly NOT reserved (Q9 can
+    // never be strictly before P9's only real, fitting placement): budget =
+    // 14 (no reservation), g1 = min(12,14) = 12. If the bug were present
+    // (P9's boundary wrongly computed from its later, unfit legal semester,
+    // making Q9 — and so the whole chain — look reachable): budget =
+    // 14-2(M9)-4(P9)-2(Q9)=6, g1 = min(12,6) = 6.
+    expect(score[0]).toBe(12);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
