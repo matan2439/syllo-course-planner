@@ -144,6 +144,11 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     // not complete degree hours.
     expect(b.academicDecision.validation.valid).toBe(false);
     expect(b.academicDecision.explanation.mainRecommendation).not.toMatch(/^נבחרה תוכנית/);
+    // Codex-caught regression (round 5): mainRecommendation itself must not
+    // suggest a rebuild either — same self-contradiction as suggestedNextActions
+    // would have had, since a rebuild is guaranteed to reproduce an identical
+    // shortfall while the catalog stays unchanged.
+    expect(b.academicDecision.explanation.mainRecommendation).not.toMatch(/בנייה מחדש/);
     const actions: string[] = b.academicDecision.explanation.suggestedNextActions;
     expect(actions.some((a) => a.includes('קטלוג') && a.includes('הרחב'))).toBe(true);
     expect(actions.some((a) => a.includes('עומס'))).toBe(false);
@@ -369,5 +374,56 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('SPARE');
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(false);
+  });
+
+  test('11. Codex-caught regression (round 5): a MOVE-then-ADD "recovery" that requires relocating a currently-taking course must NOT be counted — production planning itself can never perform that move', async () => {
+    // Reuses the exact test_program_gap_move_then_add_2027 fixture
+    // (generate_plan_structural_degree_gap_warning.test.ts's test 16):
+    // year_4_semester_a starts at FILLER_A(24h,fixed)+MOVABLE(2h,elective) =
+    // 26h, exactly HARD_LOAD_CAP. TARGET(2h) is legal ONLY in
+    // year_4_semester_a — a direct ADD there is illegal (28h, over cap).
+    // Relocating MOVABLE to year_4_semester_b (its other legal semester,
+    // 24h+2h=26h there, legal) frees year_4_semester_a back to 24h, at which
+    // point ADD TARGET becomes legal — the exact move-then-add recovery
+    // canRecoverMoreHours' rollout is designed to discover.
+    //
+    // Here MOVABLE is ALSO listed as currently_taking. The real production
+    // search (PlannerWorker.step()) can never actually perform this
+    // relocation — its own legality check rejects ANY state where a
+    // currently-taking course sits anywhere other than its original
+    // placement, the same way it rejects re-adding one that was never
+    // placed. Before this fix, the recovery rollout's own candidate
+    // generation had no such restriction, so it wrongly found this
+    // move-then-add path and reported the plan as "recoverable" (blocked:
+    // false) even though production could never actually execute it.
+    const res = await run({
+      program_id: 'test_program_gap_move_then_add_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 26, courses: [
+            { course_id: 'FILLER_A', name_he: 'ממלא א', hours: 24, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_a'] },
+            { course_id: 'MOVABLE', name_he: 'נייד', hours: 2, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+          ] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 24, courses: [
+            { course_id: 'FILLER_B', name_he: 'ממלא ב', hours: 24, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_4_semester_b'] },
+          ] },
+        ],
+        total_hours_progress: { known_completed_hours: 100 },
+        personal_status: { completed: [], currently_taking: [{ course_id: 'MOVABLE' }] },
+        mandatory_unplaced: [],
+      },
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('TARGET');
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
   });
 });

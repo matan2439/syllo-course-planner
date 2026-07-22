@@ -634,27 +634,36 @@ function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
  * canRecoverViaUnwantedElective below, not folded into this rollout.
  */
 function recoveryCandidateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
-  // Codex review finding (PR #62, round 3): without excluding
-  // currentlyPlannedCourseIds here, this rollout could propose (re-)ADDing a
-  // currently-taking course that isn't yet on the board (e.g. an off-board
-  // CUR) — genuinely re-proposing it, a real rule-2a violation
-  // (CURRENTLY_TAKING_REUSE_ERROR_MARKER), not the benign pre-existing kind
-  // isLegalIgnoringCurrentlyTakingReuse below is meant to exempt. This
-  // applies to enumerateActions' OWN raw output too, not just this
-  // function's supplementary generation below — enumerateActions
-  // (planner_actions.ts) has no currently-taking awareness of its own (the
-  // real search relies on validatePlanState to reject any such candidate it
-  // happens to try, so this gap was previously invisible there). Excluding
-  // these ids from every ADD/REPLACE-in candidate this rollout considers
-  // means every reuse-marker error any candidate can still carry is
-  // necessarily inherited unchanged from the caller's own baseline
-  // finalState (its pre-existing placement is never removed by any mutation
-  // this rollout generates), so unconditionally ignoring that marker in the
-  // legality check is safe and never masks a freshly-introduced violation.
-  const isReAddOfCurrentlyTaking = (m: PlannerMutation) =>
-    (m.type === 'ADD_COURSE' || m.type === 'REPLACE_COURSE') &&
-    model.currentlyPlannedCourseIds?.has(m.type === 'ADD_COURSE' ? m.courseId : m.inId);
-  const actions = enumerateActions(state, model).filter(m => !isReAddOfCurrentlyTaking(m));
+  // Codex review finding (PR #62, round 3, widened by round 5): a currently-
+  // taking course kept visible in its placed slot must never be touched by
+  // ANY candidate mutation this rollout generates — not just ADD/REPLACE-in
+  // (re-proposing it, e.g. an off-board id like CUR — a genuine, NEW rule-2a
+  // violation, not the benign pre-existing kind isLegalIgnoringCurrentlyTakingReuse
+  // below is meant to exempt), but also MOVE/REMOVE/REPLACE-out of an
+  // ALREADY-placed one (e.g. FLU). The real production search
+  // (PlannerWorker.step()) can never actually relocate or remove such a
+  // course either — its own validate() call rejects any resulting state
+  // that still contains it anywhere BUT its original placement, the same
+  // way it rejects re-adding one that was never placed (see this codebase's
+  // separate, tracked follow-up finding on PlannerWorker.step() itself) — so
+  // a recovery this rollout only finds by moving/removing a currently-taking
+  // course is not one production can ever actually perform, and must not be
+  // reported as "recoverable." Guaranteeing every candidate leaves every
+  // currently-taking course's placement byte-identical to the caller's own
+  // baseline state means the ONLY reuse-marker errors any candidate can ever
+  // carry are inherited unchanged from that baseline, so unconditionally
+  // ignoring that marker in the legality check (isLegalIgnoringCurrentlyTakingReuse)
+  // stays safe and never masks a freshly-introduced or altered violation.
+  const touchesCurrentlyTaking = (m: PlannerMutation): boolean => {
+    const ids =
+      m.type === 'ADD_COURSE' ? [m.courseId] :
+      m.type === 'REMOVE_COURSE' ? [m.courseId] :
+      m.type === 'MOVE_COURSE' ? [m.courseId] :
+      m.type === 'REPLACE_COURSE' ? [m.outId, m.inId] :
+      [];
+    return ids.some(id => model.currentlyPlannedCourseIds?.has(id));
+  };
+  const actions = enumerateActions(state, model).filter(m => !touchesCurrentlyTaking(m));
   const placedNow = new Set(placedCourseIds(state));
   const eligible = (id: string, p: { is_mandatory?: boolean; hours?: number | null; is_unwanted?: boolean }) =>
     !p.is_mandatory && p.hours != null && p.hours !== 0 && !p.is_unwanted &&
@@ -668,7 +677,7 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
   }
 
   for (const outId of placedNow) {
-    if (!isMovable(model, outId)) continue;
+    if (!isMovable(model, outId) || model.currentlyPlannedCourseIds?.has(outId)) continue;
     const outHours = model.profiles.get(outId)?.hours ?? 0;
     const sem = semesterOf(state, outId);
     if (!sem) continue;
@@ -703,7 +712,7 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
   // MOVE-then-ADD (round 20) already falls out of this rollout's own
   // multi-step exploration rather than a bespoke check.
   for (const outId of placedNow) {
-    if (!isMovable(model, outId)) continue;
+    if (!isMovable(model, outId) || model.currentlyPlannedCourseIds?.has(outId)) continue;
     actions.push({ type: 'REMOVE_COURSE', courseId: outId });
   }
 

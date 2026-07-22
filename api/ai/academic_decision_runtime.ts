@@ -434,10 +434,29 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   if (hasOverloadError) blockingCauseClauses.push('יש חריגת עומס שטרם טופלה');
   if (hasStepLimitError) blockingCauseClauses.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים והתוכנית עשויה להיות חלקית');
 
+  // Codex review finding (PR #62, round 5): mainRecommendation's blocked
+  // branch unconditionally suggested "(או לבקש בנייה מחדש)" ("or request a
+  // rebuild") regardless of cause — but a rebuild is guaranteed to reproduce
+  // an IDENTICAL result, never help, for hasDegreeHoursShortfallError (the
+  // catalog itself is the constraint, not the search) and
+  // hasMissingMandatoryDueToExclusion (the exclusion still stands) — the
+  // exact two causes whose own suggestedNextActions entries below already
+  // say so explicitly. Suggesting a rebuild anyway is a direct, in-response
+  // self-contradiction, the same "wrong remedial advice" bug class PR #44/
+  // #48/#56 each fixed for suggestedNextActions — closing it here for
+  // mainRecommendation too. Only omit the suggestion when EVERY present
+  // cause is one of these two; any other cause (annual-incomplete, legality,
+  // missing-mandatory for a different reason, overload, step-limit) can
+  // genuinely be affected by a different search run, so a rebuild remains
+  // valid advice for those.
+  const rebuildCouldHelp =
+    hasDisallowedPlacedError || hasAnnualIncompleteError || hasLegalityViolationError ||
+    hasMissingMandatoryOtherCause || hasOverloadError || hasStepLimitError;
+
   const mainRecommendation = !input.blocked
     ? `נבחרה תוכנית עם ${placedCount} קורסים על פני ${semCount} סמסטרים${requirementsSatisfied ? ', המכסה את כל הדרישות שנבדקו' : ''}.`
     : blockingCauseClauses.length > 0
-      ? `התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — ${blockingCauseClauses.join('; ')}. יש לטפל בכך לפני שימוש (או לבקש בנייה מחדש).`
+      ? `התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — ${blockingCauseClauses.join('; ')}. יש לטפל בכך לפני שימוש${rebuildCouldHelp ? ' (או לבקש בנייה מחדש)' : ''}.`
       : 'התוכנית שנוצרה אינה ניתנת להחלה כפי שהיא — נדרש בירור נוסף לפני שימוש.';
 
   const whyThisPlan: string[] = [];
