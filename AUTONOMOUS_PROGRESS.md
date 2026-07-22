@@ -4,11 +4,91 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/determined-thompson-l4jl42`
-(PR #46 merged — see below; supersedes the PR #44 entry as the latest
+_Last updated: 2026-07-22, session on branch `claude/determined-thompson-xj3yn4`
+(PR #48 merged — see below; supersedes the PR #46 entry as the latest
 completed milestone)._
 
-## Latest session — PR #46: issue #43 (track_or_focus clarification question) fixed, 3 rounds of real Codex findings
+## Latest session — PR #48: Agent Diagnosis Loop finding — prerequisite/duplicate/pinned legality violations were silently discarded, fixed, 1 real Codex finding
+
+Ran the standing start-of-session audit (production health, open `claude/*`
+branches, open PRs, Codex reviews, CI, issues, `.remember/current.md`,
+`AUTONOMOUS_PROGRESS.md`). Found the assigned session branch was — again, the
+same recurring mistake every prior session has had to correct — provisioned
+from a stale `main`-derived commit (`92c19e0`, 2026-06-30) instead of current
+`ui/frontend-modernization`; confirmed it had zero unique unmerged commits
+(fully contained in current history) and reset it. Merged the one
+already-ready item in the queue, **PR #47** (docs-only recap of PR #46's
+merge, CI green, no product code — same treatment as PR #36/#38).
+
+**New finding this session: real Vercel API access, but no safe deploy path.**
+For the first time, this session had genuine Vercel API credentials (not just
+CLI-login failure like every prior session) — confirmed via `list_teams`/
+`list_projects`/`get_project`/`list_deployments` against the real
+`tau-course-planner` project. Re-confirmed production is still pinned at
+`26500d4` (PR #11), now 13 merged fixes behind. However, the only deploy tool
+available (`deploy_to_vercel`) uploads a raw inline file tree with no git
+linkage — impractical and risky for this existing multi-language repo
+(hundreds of files across a FastAPI backend and a Next.js app), and would
+break the `gitCommitSha` traceability every real deployment has had so far.
+**Deliberately did not use it.** The blocker is unchanged in substance: still
+needs either a real `vercel` CLI login or Vercel Git integration configured —
+now confirmed as an actual tooling gap rather than a credentials gap.
+
+**Then ran the mandated Agent Diagnosis Loop** (delegated to a background
+agent driving the real `generate-plan` handler via a throwaway Jest harness,
+no product code touched), targeting the areas the last several sessions
+flagged as still untested: multi-alternative comparison, simulate-then-apply
+flows, multi-turn conversation honesty, and in-plan prerequisite sequencing.
+Areas A/B (Simulation/Persistence/Decision wiring) re-confirmed clean — still
+zero reachable production trigger path, matching every prior check.
+
+**The finding, fixed as PR #48**: `validatePlanState` (`planner_validate.ts`)
+already enforces prerequisite strict-timing, duplicate placement, completed/
+currently-taking course reuse, pinned-course "don't move," and illegal
+offering-semester placement against the FINAL state — but `generate-plan.ts`'s
+`toProposal()` only ever read that same `validateCandidate()` call's
+`report.warnings`, never `report.errors`/`report.legal`. Reproduced: a course
+already on the board whose prerequisite was never completed or scheduled
+anywhere reported `blocked:false, errors:[]`, and on the
+`use_academic_decision_agent:true` path rendered a **green "passed legality ✓"
+checkmark** right next to explanation text (`whyThisPlan`) admitting the plan
+can't legally place the course — a reproduced, rendered, in-product
+self-contradiction. Same "computed-but-discarded validation signal" bug class
+as issue #25 Finding #1 (PR #27) and the `is_annual` gap (PR #37).
+
+Fix: new `legalityGate()` in `generate-plan.ts`, mirroring the established
+`disallowedGate`/`annualCompletenessGate` pattern — re-derives against the
+final placed set via `validatePlanState`, prefixes each message with a new
+`LEGALITY_VIOLATION_ERROR_PREFIX` so `academic_decision_runtime.ts`'s
+cause-attribution (added in PR #44) names it correctly instead of defaulting
+to overload guidance — the exact "fifth cause" gap that file's own comment
+had anticipated.
+
+**1 real Codex finding, fixed**: the initial version excluded only overload
+and annual-incompleteness from the gate's output (to avoid duplicating
+`overloadGate`/`annualCompletenessGate`'s own messages), but Codex correctly
+caught that `validatePlanState`'s "currently_taking course must not be
+re-proposed" check would now false-positive-block **any actively-enrolled
+student** — the real board legitimately keeps a currently-taking course
+visible in its placed semester slot (`buildPlanContext` in
+`semester_board_viewer.html` filters only completed courses out of
+`plan_context`, deliberately keeping current ones so they still render).
+Verified against the real client code before fixing. Added a third exclusion
+marker (`CURRENTLY_TAKING_REUSE_ERROR_MARKER`) and a regression test proving
+a currently-taking course shown on the board is not blocked and still
+satisfies a dependent course's prerequisite. Round 2: Codex clean.
+
+**Merged** (`fe84c02`). Full API suite **1279/1279** (83 suites, +7 new tests
+across both commits), `tsc --noEmit` clean. `web/` (Next.js) build untouched
+— confirmed via grep that no file under `web/` references any changed
+module. **Classification: C** (correctness/honesty — closes a real, rendered,
+in-product self-contradiction; found via the mandated Agent Diagnosis Loop).
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged. PR #48
+(along with PR #12/13/27/31/32/34/37/39/41/44/46/47) is not live for real
+users yet.
+
+## Prior session — PR #46: issue #43 (track_or_focus clarification question) fixed, 3 rounds of real Codex findings
 
 Continuing the same session that merged PR #44. Picked up issue #43 (filed in that same session) as the next milestone — small, already fully diagnosed, ready to implement, and the rolling window was already compliant so there was no forced A/B pressure.
 
@@ -439,6 +519,16 @@ found is already a fully-diagnosed, open human decision from a prior session
     resolution → multi-step accumulation → cross-flow staleness → duplicate-
     answer ordering) — **C** (correctness: real "agent ignores my answer"
     defect in the clarification-answer round-trip).
+14. PR #47 — docs-only progress recap of PR #46's merge, merged (`d1235d8`)
+    — not classified (no product code).
+15. PR #48 — `legalityGate`: prerequisite-timing/duplicate-placement/pinned-
+    move/illegal-semester violations were computed by `validatePlanState` but
+    silently discarded from `blockingErrors`, **merged** (`fe84c02`), after 1
+    real Codex round (a false-positive block on any currently-taking-course-
+    on-board scenario, fixed) — **C** (correctness/honesty: closes a
+    reproduced, rendered, in-product self-contradiction — a green "passed
+    legality ✓" badge next to explanation text admitting the same violation;
+    found via a fresh Agent Diagnosis Loop pass).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -471,25 +561,38 @@ Rolling-three checks:
   No rolling-window pressure on the immediate next milestone.
 - (41,44,46) = A/C/C — **compliant** (3 of 3 are A/B/C; 1 is A/B, from PR #41).
   No rolling-window pressure on the immediate next milestone.
+- (44,46,48) = C/C/C — **NOT compliant** (0 are A/B). PR #47 (docs-only) is
+  skipped from the window, same convention as PR #36/#38. Like the
+  (32,34,37)/(34,37,39) precedent, PR #48 was a legitimate Agent Diagnosis
+  Loop correctness finding, not a rule violation in intent — but it does not
+  cure the window on its own. **The next milestone genuinely should be A or
+  B** unless another higher-priority correctness issue surfaces first.
 
-Every merged window from PR #27 through PR #32/#34 is compliant. (32,34,37)
-and (34,37,39) were two consecutive non-compliant windows, both now cured by
-PR #41's A classification — unlike the very first (12,13,27) shortfall which
-predates the rule's enforcement and can't be fixed retroactively. The rolling
-window is compliant again as of PR #41 and remains so through PR #46; the
-next milestone has no forced A/B requirement unless a future window drifts
-non-compliant again.
+Every merged window from PR #27 through PR #46 was compliant except the two
+historical/prospective exceptions above ((12,13,27), now permanently
+unfixable, and the now-cured (32,34,37)/(34,37,39) pair). (44,46,48) is a new
+non-compliant window — the next real milestone should target A or B unless a
+higher-priority correctness finding preempts it again.
 
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, #34, #37, #39, #41, #44, #46) is inert for real users
-   until someone deploys `ui/frontend-modernization` HEAD. This is the single
-   highest-value unblock available right now — real, tested, Codex-reviewed
-   correctness fixes (including a silent-empty-plan P0-severity bug, PR #39,
-   the structural-gap disclosure fix, PR #41, the block-cause explanation
-   fix, PR #44, and the clarification round-trip fix, PR #46) are sitting
-   unshipped.
+   #13, #27, #31, #32, #34, #37, #39, #41, #44, #46, #48) is inert for real
+   users until someone deploys `ui/frontend-modernization` HEAD. This session
+   confirmed real Vercel API access for the first time (`list_projects`/
+   `get_project`/`list_deployments` all work against the real
+   `tau-course-planner` project) — but the only deploy-capable tool
+   (`deploy_to_vercel`) uploads a raw inline file tree with no git linkage,
+   impractical/risky for this existing multi-language repo and would break
+   the `gitCommitSha` traceability every real deployment has had. **Still
+   need either a real `vercel` CLI login or Vercel Git integration
+   configured** — this is now a confirmed tooling gap, not a credentials gap.
+   Do not attempt `deploy_to_vercel` as a substitute without a human decision
+   to accept that tradeoff. Real, tested, Codex-reviewed correctness fixes
+   (including a silent-empty-plan P0-severity bug, PR #39, the structural-gap
+   disclosure fix, PR #41, the block-cause explanation fix, PR #44, the
+   clarification round-trip fix, PR #46, and the legality-gate fix, PR #48)
+   are sitting unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -529,33 +632,37 @@ non-compliant again.
 
 ## Exact next action
 
-1. **Rolling window is compliant (41,44,46 = A/C/C) — no forced A/B
-   constraint on the immediate next milestone.** Still run the mandated
-   **Agent Diagnosis Loop** first (real Hebrew scenarios against the real
-   `generate-plan` handler, both default and `use_academic_decision_agent`
-   paths, using a real board fixture like `mechanical_engineering_2027`) to
-   find the next highest-impact real Agent failure before picking anything —
-   that's the standing instruction regardless of rolling-window pressure. This
-   session's two diagnosis passes covered: draft/state isolation, explanation
-   faithfulness, multi-turn trace consistency, and the clarification
-   round-trip (now fixed, both the base gap and 3 rounds of Codex-found
-   escalations) — future sessions should probe areas still untested: dual-
-   semester/multi-alternative comparison quality, simulate-then-apply user
-   flows once/if a real one exists, and accessibility/error-state UI
-   behavior for blocked plans.
+1. **Rolling window is NOT compliant ((44,46,48) = C/C/C, 0 are A/B) — the
+   next real milestone genuinely should be A or B**, unless a higher-priority
+   correctness finding preempts it (a legitimate preemption, per this
+   routine's own priority order, but track it — a fourth C-in-a-row would be
+   worth a human sanity check). Still run the mandated **Agent Diagnosis
+   Loop** first (real Hebrew scenarios against the real `generate-plan`
+   handler, both default and `use_academic_decision_agent` paths, using a
+   real board fixture) to find the next highest-impact real Agent failure
+   before picking anything. This session's diagnosis pass covered: Simulation/
+   Persistence/Decision wiring (still clean, still unreachable), and
+   prerequisite/duplicate/pinned-move/illegal-semester legality (now fixed,
+   PR #48) — areas still flagged as untested by prior sessions and not yet
+   covered by this one either: dual-semester/multi-alternative comparison
+   quality, simulate-then-apply user flows once/if a real one exists, and
+   accessibility/error-state UI behavior for blocked plans.
    - PR #14's Decision capability is the standing D candidate that could
      become a B if a genuine multi-candidate producer scenario exists — do
      not force this without a real scenario, per Blockers item 6's caveat.
      **PR #14 must stay unmerged** — D-classified infra with no production
-     consumer, per established precedent (multiple sessions now).
-2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** Still the single most valuable pending action — 11 real,
-   tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39,
-   #41, #44, #46) are merged and waiting, unchanged since the last several
-   sessions all flagged this identically. Do not re-investigate this further
-   without new evidence (e.g. Vercel CLI credentials becoming available) — the
-   blocker and the reasoning against using `deploy_to_vercel` are both
-   already fully documented above.
+     consumer, per established precedent (multiple sessions now). Wiring it
+     into a real caller would satisfy BOTH the rolling-window B requirement
+     above AND resolve Blockers item 6, IF a genuine scenario justifies it.
+2. **Whoever has Vercel CLI access (or can configure Git integration): deploy
+   `ui/frontend-modernization` HEAD to production.** Still the single most
+   valuable pending action — 12 real, tested, Codex-reviewed fixes (PR #12,
+   #13, #27, #31, #32, #34, #37, #39, #41, #44, #46, #48) are merged and
+   waiting. This session confirmed real Vercel API access for the first time
+   but found the only available deploy tool unsuited for this repo (see
+   Blockers item 1) — do not re-investigate the `deploy_to_vercel` path
+   further without a human decision to accept its tradeoffs (no git linkage,
+   raw file-tree upload of a large multi-language repo).
 3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
    on the intended `GOAL_STACK` tradeoff before implementation — see Blockers.
    If a decision arrives, the recommended starting point is unchanged: a
