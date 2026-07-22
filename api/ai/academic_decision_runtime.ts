@@ -381,6 +381,25 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const contradictoryWantedNames = (input.context.wantedCourseIds ?? [])
     .filter((id) => (input.context.excludedCourseIds ?? []).includes(id))
     .map((id) => input.model.profiles.get(id)?.name_he ?? id);
+  // Codex finding on PR #58: when the wanted+excluded course was already on
+  // the INCOMING board, planContextToState seeds that pre-existing
+  // placement and the planner never removes a course on its own —
+  // disallowedGate (generate-plan.ts) then reports it as a blocking error
+  // instead. In that case the course IS still in proposal.semesters despite
+  // the exclusion, so claiming "the exclusion won, the course was not
+  // placed" is false and self-contradicts the same response's own
+  // disallowed-placed error/semesters content. Names extracted the same way
+  // missingMandatoryNames is above (exact match after stripping the fixed
+  // Hebrew prefix).
+  const disallowedPlacedNames = input.errors
+    .filter((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX))
+    .map((e) => e.slice(DISALLOWED_PLACED_ERROR_PREFIX.length).trim().replace(/\.$/, ''));
+  const contradictoryWantedStillPlacedNames = contradictoryWantedNames.filter((name) =>
+    disallowedPlacedNames.includes(name),
+  );
+  const contradictoryWantedNotPlacedNames = contradictoryWantedNames.filter(
+    (name) => !contradictoryWantedStillPlacedNames.includes(name),
+  );
 
   const hasOverloadError = input.errors.some(
     (e) =>
@@ -434,9 +453,14 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
       `${interestEvaluation.scorecard.avoidRiskCourses.length} קורסים בתוכנית נוגעים בתחומים שביקשת להימנע מהם.`,
     );
   }
-  if (contradictoryWantedNames.length > 0) {
+  if (contradictoryWantedNotPlacedNames.length > 0) {
     risksAndTradeoffs.push(
-      `ביקשת ${contradictoryWantedNames.join(', ')} אך גם סימנת אותו/ם להחרגה — ההחרגה גוברת, ולכן הקורס לא שובץ.`,
+      `ביקשת ${contradictoryWantedNotPlacedNames.join(', ')} אך גם סימנת אותו/ם להחרגה — ההחרגה גוברת, ולכן הקורס לא שובץ.`,
+    );
+  }
+  if (contradictoryWantedStillPlacedNames.length > 0) {
+    risksAndTradeoffs.push(
+      `ביקשת ${contradictoryWantedStillPlacedNames.join(', ')} אך גם סימנת אותו/ם להחרגה — הקורס כבר שובץ בלוח הקיים ולא הוסר אוטומטית, לכן הוא עדיין מופיע בתוכנית חרף ההחרגה; יש להסירו ידנית אם ברצונך לכבד אותה.`,
     );
   }
 

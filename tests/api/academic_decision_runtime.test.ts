@@ -561,6 +561,30 @@ describe('buildAcademicDecision — decision & explanation', () => {
     });
     expect(view.explanation.suggestedNextActions.join(' | ')).not.toMatch(/סותרת את עצמה/);
   });
+
+  // Codex finding on PR #58 (discussion_r3632198441): when the wanted+excluded
+  // course was already on the INCOMING board, the planner never removes a
+  // pre-existing placement on its own — disallowedGate reports it as a
+  // blocking DISALLOWED_PLACED_ERROR_PREFIX error instead, and the course
+  // stays in proposal.semesters. Claiming "the exclusion won, the course was
+  // not placed" in that scenario contradicts the same response's own
+  // semesters/error content.
+  test('discloses a wanted-vs-excluded contradiction as still-placed (not "not placed") when the course is a stale pre-existing placement', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['MAND', 'FLU'] }],
+      }),
+      model: modelWith({ MAND: 4, FLU: 4 }, { FLU: 'זורמים' }),
+      blocked: true,
+      errors: ['קורס לא-זמין שובץ בתוכנית: זורמים.'],
+      clarification: CLEAN_CLAR,
+      context: { wantedCourseIds: ['FLU'], excludedCourseIds: ['FLU'] },
+    });
+    const risks = view.explanation.risksAndTradeoffs.join(' | ');
+    expect(risks).toMatch(/זורמים/);
+    expect(risks).toMatch(/כבר שובץ/);
+    expect(risks).not.toMatch(/לכן הקורס לא שובץ/);
+  });
 });
 
 describe('buildClarificationDecision — blocked (critical missing) path', () => {
