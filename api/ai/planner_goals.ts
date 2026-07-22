@@ -299,6 +299,31 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  * very often during a search). `hasFittingLegalSemester`/`projectFeasibility`
  * elsewhere in this codebase make the identical tradeoff.
  */
+/**
+ * The latest semester index `id` could still be placed at while satisfying a
+ * `beforeIndex` constraint inherited from a dependent course (or unbounded,
+ * when `beforeIndex` is omitted) — the same computation `isMandatoryCourseReachable`
+ * and `requiredCourseSemesterBoundaries` (below) both need: for a normal
+ * course, the LATEST eligible legal semester (the most permissive
+ * bias-reachable comparison point, since the course could be placed at any
+ * ONE of several options); for an `is_annual` course, the EARLIEST of its
+ * required spans (it occupies every span at once, so the first one is the
+ * binding constraint). Returns `undefined` when there's no eligible legal
+ * semester at all (no legality data, or every option falls outside
+ * `beforeIndex`) — callers treat that as "no boundary data, bias reachable/
+ * unconstrained," never as "definitely unreachable."
+ */
+function boundaryFor(model: ConstraintModel, id: string, annualSpans: string[] | null, beforeIndex?: number): number | undefined {
+  const idIndicesRaw = legalSemesterIndices(model, id);
+  if (!idIndicesRaw.length) return undefined;
+  const idIndices = beforeIndex === undefined ? idIndicesRaw : idIndicesRaw.filter(i => i < beforeIndex);
+  if (!idIndices.length) return undefined;
+  const annualSpanIndices = annualSpans && annualSpans.length
+    ? annualSpans.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0)
+    : [];
+  return annualSpanIndices.length ? Math.min(...annualSpanIndices) : Math.max(...idIndices);
+}
+
 function isMandatoryCourseReachable(
   state: PlanState,
   model: ConstraintModel,
@@ -339,13 +364,6 @@ function isMandatoryCourseReachable(
   if (!fits) return false;
 
   if (!p.prerequisites?.length) return true;
-  const idIndicesRaw = legalSemesterIndices(model, id);
-  if (!idIndicesRaw.length) return true;
-  // Restricted to the same beforeIndex constraint `fits` already applied, so
-  // idBoundary (below) never claims a placement option later than what the
-  // outer caller actually needs from `id`.
-  const idIndices = beforeIndex === undefined ? idIndicesRaw : idIndicesRaw.filter(i => i < beforeIndex);
-  if (!idIndices.length) return true; // fits already confirmed an eligible slot exists; bias reachable on any mismatch
   // For a normal course, id could be placed at ANY of its legal semesters, so
   // the latest one is the most permissive (bias-reachable) valid comparison
   // point — a prereq before it means SOME legal placement works. An
@@ -357,10 +375,8 @@ function isMandatoryCourseReachable(
   // after) the course's own first span as "earlier enough," when
   // validatePlanState would reject that add outright (same-or-later semester
   // as the first occurrence).
-  const annualSpanIndices = annualSpans && annualSpans.length
-    ? annualSpans.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0)
-    : [];
-  const idBoundary = annualSpanIndices.length ? Math.min(...annualSpanIndices) : Math.max(...idIndices);
+  const idBoundary = boundaryFor(model, id, annualSpans, beforeIndex);
+  if (idBoundary === undefined) return true; // fits already confirmed an eligible slot exists; bias reachable on any mismatch
   const nextVisiting = new Set(visiting);
   nextVisiting.add(id);
   const placedIds = new Set(placedCourseIds(state));
@@ -457,6 +473,73 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
     visit(id);
   }
   return seen;
+}
+
+/**
+ * For every course in `requiredButUnplacedCourseIds`'s set that is a
+ * PREREQUISITE (not itself a top-level required-mandatory course), the
+ * latest semester index it can still occupy while remaining useful to at
+ * least one reachable dependent that needs it — Codex finding on this PR:
+ * `enumerateActions`' unconditional prerequisite-add group (planner_actions.ts)
+ * proposed an ADD action for a required prerequisite at EVERY one of its
+ * legal semesters, including ones that could never satisfy any dependent's
+ * strict-timing ordering (e.g. a prerequisite legal in both an early and a
+ * late semester, where only the early one precedes the mandatory course that
+ * needs it) — the search could then place it in a semester that "completes"
+ * the ADD action but leaves the dependent mandatory course just as
+ * permanently unreachable as before, having spent hours on a placement that
+ * could never have helped.
+ *
+ * Mirrors `isMandatoryCourseReachable`'s own `beforeIndex` threading (via
+ * the shared `boundaryFor` helper) so a course's boundary always reflects
+ * the SAME ordering constraint reachability itself already enforces — a
+ * course this function says is "useful before index N" is, by construction,
+ * exactly one `isMandatoryCourseReachable` would accept as satisfying its
+ * dependent at that point in the chain. Each id is recursed into at most
+ * once (an id reached via multiple dependent paths keeps only the largest
+ * boundary seen and does not re-descend into its own prerequisites a second
+ * time) — a bounded, single-pass approximation, not an exhaustive multi-path
+ * reconciliation; consistent with every other "cheap approximation, not
+ * full validation" tradeoff this file already makes for search-hot code.
+ * A course reached with no computable boundary (no legality data at all) is
+ * left out of the map entirely — callers must treat a missing entry as
+ * "unconstrained," the same bias-toward-reachable default used everywhere
+ * else here, never as "definitely unreachable."
+ */
+export function requiredCourseSemesterBoundaries(state: PlanState, model: ConstraintModel): Map<string, number> {
+  const placed = new Set(placedCourseIds(state));
+  const boundaries = new Map<string, number>();
+  const processed = new Set<string>();
+
+  const recordAndRecurse = (id: string, beforeIndex: number | undefined): void => {
+    if (model.completedCourseIds.has(id)) return;
+    if (isFullyPlaced(state, model, placed, id)) return;
+    const p = model.profiles.get(id);
+    if (!p) return;
+    if (beforeIndex !== undefined) {
+      const existing = boundaries.get(id);
+      if (existing === undefined || beforeIndex > existing) boundaries.set(id, beforeIndex);
+    }
+    if (processed.has(id)) return;
+    processed.add(id);
+    if (!p.prerequisites?.length) return;
+    const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
+    const ownBoundary = boundaryFor(model, id, annualSpans, beforeIndex);
+    if (ownBoundary === undefined) return;
+    for (const prereqId of p.prerequisites) {
+      if (model.completedCourseIds.has(prereqId)) continue;
+      if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;
+      recordAndRecurse(prereqId, ownBoundary);
+    }
+  };
+
+  for (const id of model.requiredMandatoryCourseIds) {
+    if (model.completedCourseIds.has(id)) continue;
+    if (isFullyPlaced(state, model, placed, id)) continue;
+    if (!isMandatoryCourseReachable(state, model, id)) continue;
+    recordAndRecurse(id, undefined); // the mandatory course itself is unconstrained; only ITS prerequisites get a boundary
+  }
+  return boundaries;
 }
 
 /**

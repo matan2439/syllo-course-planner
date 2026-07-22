@@ -150,3 +150,41 @@ describe('enumerateActions — REPLACE_COURSE', () => {
     ).toBe(true);
   });
 });
+
+describe('enumerateActions — required-prerequisite ADDs are restricted to useful semesters', () => {
+  // Codex finding on PR #53: group 1b (unplaced prerequisites of a
+  // reachable-but-unplaced mandatory course) proposed an ADD_COURSE action
+  // for EVERY legal semester of the prerequisite, including ones that could
+  // never satisfy the dependent mandatory course's strict-timing ordering.
+  // A prerequisite legal in an early semester AND a late one (after the
+  // mandatory course's own fixed semester) would still get an action
+  // proposed for the late one — a legal-looking ADD that can never actually
+  // unlock the mandatory course it exists to satisfy.
+  it('does not propose ADDing a required prerequisite to a semester that could never satisfy its dependent', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['PREREQ'],
+    }));
+    // PREREQ is legal in year_3_semester_a (strictly before MAND's own
+    // semester — useful) AND year_4_semester_a (strictly after — useless,
+    // an ADD there can never satisfy MAND's ordering requirement).
+    profiles.set('PREREQ', profile('PREREQ', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['MAND'],
+      degreeRequiredHours: 0, // already met — isolates group 1b from group 4's degree-fill noise
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'PREREQ')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+});

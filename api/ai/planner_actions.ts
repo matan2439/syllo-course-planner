@@ -7,7 +7,14 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours, scorePlan, compareScore, isFullyPlaced, requiredButUnplacedCourseIds } from './planner_goals';
+import {
+  degreeHours as computeDegreeHours,
+  scorePlan,
+  compareScore,
+  isFullyPlaced,
+  requiredButUnplacedCourseIds,
+  requiredCourseSemesterBoundaries,
+} from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -162,10 +169,29 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   // mandatory course ids themselves — skip those, group 1 already covers
   // them via every legal semester (this set only carries ONE legality
   // reading per course, whichever `isMandatoryCourseReachable` used).
+  //
+  // Codex finding on this PR: proposing EVERY legal semester for a required
+  // prerequisite (unfiltered) let the search place it at a semester that
+  // could never actually satisfy the strict-timing ordering its dependent
+  // mandatory course needs — e.g. a prerequisite legal in both an early and
+  // a late semester, where only the early one precedes the mandatory course.
+  // requiredCourseSemesterBoundaries (planner_goals.ts, mirrors
+  // isMandatoryCourseReachable's own beforeIndex logic) gives the latest
+  // USEFUL semester index per prerequisite; a missing entry means no
+  // boundary data was computable, so — same bias-toward-reachable default
+  // this whole mechanism already follows — every legal semester stays
+  // offered rather than being wrongly filtered to nothing.
+  const boundaries = requiredCourseSemesterBoundaries(state, model);
+  const withinBoundary = (a: PlannerMutation, boundary: number | undefined): boolean => {
+    if (boundary === undefined || a.type !== 'ADD_COURSE') return true;
+    return [a.semesterId, ...(a.alsoSemesterIds ?? [])]
+      .every(sem => model.knownSemesterIds.indexOf(sem) < boundary);
+  };
   for (const id of requiredButUnplacedCourseIds(state, model)) {
     if (model.requiredMandatoryCourseIds.includes(id)) continue;
     if (!consider(id)) continue;
-    actions.push(...addCourseActionsFor(model, id));
+    const boundary = boundaries.get(id);
+    actions.push(...addCourseActionsFor(model, id).filter(a => withinBoundary(a, boundary)));
   }
 
   // 2. candidates for not-yet-satisfied categories — every legal semester.
