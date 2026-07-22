@@ -23,6 +23,23 @@ import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE, SOFT_LOAD_MAX } from './load_co
 export const OVERLOAD_ERROR_MARKER = 'שעות שבועיות';
 export const ANNUAL_PARTIAL_PLACEMENT_MARKER = 'שנתי המשובץ בחלק';
 
+/**
+ * Stable substring of this file's "currently_taking/planned course must not
+ * be (re-)proposed" message (item 2a below) — shared with generate-plan.ts's
+ * legalityGate so it can exclude this category too. Unlike the other
+ * legality checks that gate re-derives, this one fires on entirely normal,
+ * expected client state: the real board legitimately keeps a currently-taking
+ * course visible in its placed semester slot (buildPlanContext in
+ * semester_board_viewer.html filters completed courses out of plan_context
+ * before sending, but deliberately keeps currently-taking ones so they still
+ * render on the board) while also reporting it in
+ * personal_status.currently_taking. That combination is not a planner
+ * mistake — it is how every actively-enrolled student's board looks — so
+ * treating it as a blocking legality violation would false-positive-block an
+ * applicable plan for essentially any current student (Codex review, PR #48).
+ */
+export const CURRENTLY_TAKING_REUSE_ERROR_MARKER = 'כבר מתוכנן/נלמד כעת על ידי המשתמש';
+
 export const planMoveSchema = z.object({
   course_id: z.string(),
   from: z.string().nullable().optional(),
@@ -341,7 +358,7 @@ export function validatePlanProposal(
       // 2a. currently_taking/planned course must not be (re-)proposed — it is
       // already accounted for as prior progress (Phase 1 proposal-dedup).
       else if (ctx.currentlyPlannedCourseIds?.has(courseId)) {
-        errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
+        errors.push(`קורס ${cName} ${CURRENTLY_TAKING_REUSE_ERROR_MARKER} ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
       // 2b. pinned course must remain in its current semester. An is_annual

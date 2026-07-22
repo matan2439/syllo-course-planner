@@ -114,6 +114,30 @@ describe('generate-plan — a pre-placed course whose prerequisite was never com
     expect(b.errors).toEqual([]);
   });
 
+  // Codex review finding on this PR: the real board legitimately keeps a
+  // currently-taking course visible in its own placed semester slot (only
+  // completed courses are filtered out of plan_context before sending — see
+  // buildPlanContext in semester_board_viewer.html) while ALSO reporting it
+  // in personal_status.currently_taking. legalityGate must not treat that
+  // normal, expected combination — true for essentially any actively-enrolled
+  // student — as a blocking legality violation.
+  test('1b. PRE currently-taking AND still shown placed on the board (normal client state): not blocked, and satisfies ADV\'s prerequisite', async () => {
+    const planContext = planContextWithAdvPlaced({ completed: [{ course_id: 'MAND' }], currently_taking: [{ course_id: 'PRE' }] });
+    planContext.semesters = planContext.semesters.map((s: any) =>
+      s.id === 'year_3_semester_b'
+        ? { ...s, total_hours: 4, courses: [{ course_id: 'PRE', name_he: 'קדם', hours: 4, course_type: 'elective', placement_policy: 'flexible', effective_allowed_semesters: ['year_3_semester_b'] }] }
+        : s,
+    );
+    const res = makeRes();
+    await handler(makeReq(baseReqBody({ plan_context: planContext })), res);
+    const b = res._body;
+    expect(res.statusCode).toBe(200);
+    expect(placedIdsOf(b)).toContain('PRE');
+    expect(placedIdsOf(b)).toContain('ADV');
+    expect(b.blocked).toBe(false);
+    expect(b.errors).toEqual([]);
+  });
+
   test('2. PRE neither completed nor scheduled anywhere: response is blocked with a Hebrew error naming the prerequisite violation', async () => {
     const res = makeRes();
     await handler(makeReq(baseReqBody()), res);

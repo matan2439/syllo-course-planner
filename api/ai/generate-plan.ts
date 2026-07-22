@@ -47,7 +47,7 @@ import {
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
 } from './planner_validate';
-import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER } from './plan_validation';
+import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER, CURRENTLY_TAKING_REUSE_ERROR_MARKER } from './plan_validation';
 import {
   incompleteAnnualCourseIds,
   applyMutation,
@@ -290,6 +290,17 @@ function annualCompletenessGate(
  * same real violation twice under two differently-worded blockingErrors
  * entries for the same underlying fact.
  *
+ * Also excludes the "currently_taking/planned course must not be
+ * (re-)proposed" check (item 2a): unlike every other check here, that one
+ * fires on entirely normal, expected client state — the real board
+ * legitimately keeps a currently-taking course visible in its placed
+ * semester slot while also reporting it in personal_status.currently_taking
+ * (buildPlanContext in semester_board_viewer.html filters completed courses
+ * out before sending, but deliberately keeps currently-taking ones so they
+ * still render). Treating that combination as a blocking legality violation
+ * would false-positive-block an applicable plan for essentially any
+ * actively-enrolled student (Codex review finding on this PR).
+ *
  * Each surfaced message is prefixed with LEGALITY_VIOLATION_ERROR_PREFIX so
  * academic_decision_runtime.ts's cause-attribution can tell this bucket apart
  * from a genuine overload block (see that file's own hasOverloadError
@@ -308,7 +319,11 @@ function legalityGate(
   const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
   const { errors } = validatePlanState(state, model, pinnedHome);
   return errors
-    .filter(e => !e.includes(OVERLOAD_ERROR_MARKER) && !e.includes(ANNUAL_PARTIAL_PLACEMENT_MARKER))
+    .filter(e =>
+      !e.includes(OVERLOAD_ERROR_MARKER) &&
+      !e.includes(ANNUAL_PARTIAL_PLACEMENT_MARKER) &&
+      !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER),
+    )
     .map(e => `${LEGALITY_VIOLATION_ERROR_PREFIX} ${e}`);
 }
 
