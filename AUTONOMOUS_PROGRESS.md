@@ -4,11 +4,88 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/determined-thompson-xj3yn4`
-(PR #48 merged — see below; supersedes the PR #46 entry as the latest
-completed milestone)._
+_Last updated: 2026-07-22, session on branch `claude/determined-thompson-lrxcdq`
+(PR #53 merged — see below; supersedes the PR #48 entry as the latest
+completed milestone). Issue #25 (the 5-finding Agent diagnosis report) is now
+fully closed — all 5 findings resolved._
 
-## Latest session — PR #48: Agent Diagnosis Loop finding — prerequisite/duplicate/pinned legality violations were silently discarded, fixed, 1 real Codex finding
+## Latest session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
+
+Resumed PR #53 (issue #25 Finding #4), found already 20 commits deep across
+21 rounds of real Codex findings from prior sessions the same day. Picked up
+the outstanding unresolved Codex finding (a shared-prerequisite boundary
+that was tightened but never re-propagated to that prerequisite's own
+prerequisites) and fixed it, then re-merged the base (`ui/frontend-
+modernization` had moved 2 docs-only commits ahead) to clear the branch's
+`dirty` mergeable state.
+
+Four more real Codex rounds followed, each a genuine narrower gap in the
+same reachability/reservation mechanism, all fixed with RED-verified
+regression tests:
+- Round 22: category-candidate (group 2) and wanted-course (group 3) action
+  proposals had no boundary awareness, letting a required-but-unplaced
+  prerequisite that was ALSO a category candidate/wanted course get offered
+  at a semester that could never satisfy its dependent mandatory course.
+- Round 23: two findings — (a) a required mandatory course that's ALSO
+  another mandatory course's prerequisite wasn't boundary-filtered by group
+  1 (fixed); (b) a repair MOVE that crosses a mandatory course's
+  reachability threshold can transiently lower g1 in a no-lookahead
+  configuration — empirically verified via two `PlannerWorker.run()` repros
+  (including an adversarial one with 15 competing elective actions) that
+  this does NOT reproduce under the actual default production configuration
+  (lookahead + 200-step rollout, confirmed via grep that no real caller
+  disables it) — documented as a known, investigated limitation rather than
+  fixed, since a general fix would mean loosening the search's core
+  accept-if-strictly-improves invariant.
+- Round 24: a prerequisite id with no profile at all in `model.profiles`
+  (data-integrity gap) was wrongly treated as "ambiguous, bias reachable"
+  instead of definitively unreachable — fixed.
+- Round 25: `isImmovableOccupant`'s "does this occupant have a real
+  destination" check only verified raw load headroom, never whether
+  relocating there would actually be legal under prerequisite strict-timing
+  ordering (for the occupant's own prerequisites, or for another
+  already-placed course depending on the occupant) — fixed by a different,
+  concurrently-active session on this same branch (`f7e74ca`); verified
+  correct (full suite green) and picked up from there rather than pushing a
+  duplicate fix, per this repo's established concurrent-session-collision
+  handling precedent.
+
+**Concurrent-session note**: confirmed a second session was actively working
+this same PR branch during this session (its fix for round 25 landed while
+this session was independently implementing an equivalent one). Discarded
+the redundant local commit rather than risk a force-push collision — same
+handling precedent as the earlier `5742ded`/`isImmovableOccupant` collision
+documented lower in this file.
+
+**Merged** PR #53 (`2ccac27`) after CI green (3/3) and a final clean Codex
+review ("Didn't find any major issues") with all 26 review threads resolved.
+Full API suite: 1311/1311 across 84 suites. `tsc --noEmit` clean.
+**Classification: C** (correctness).
+
+**Closed issue #25** — all 5 ranked findings from the original Agent
+diagnosis report are now resolved (Findings #1–#4 fixed and merged across
+PRs #27/#31/#32/#53; #5 correctly deprioritized as non-exploitable
+defense-in-depth debt).
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
+standing Vercel deploy-mechanism blocker every session since PR #27 has
+confirmed. PR #53 (along with every other merged fix this routine has
+produced) is not live for real users yet.
+
+**Standing blockers, unchanged, not re-investigated this session**: PR #14
+(Decision capability) correctly remains unmerged per the D-stacking-cap
+precedent (issue #18); issue #21 (dead code delete-vs-restore) still needs a
+human call; issue #18's Vercel-architecture/canonical-branch reconciliation
+question is unchanged.
+
+**Exact next action for the next session**: with issue #25 now fully closed,
+re-run the mandated Agent Diagnosis Loop against the real `generate-plan.ts`
+handler with fresh Hebrew scenarios (targeting areas not yet covered — see
+the "not fully verified" list issue #25 originally flagged, now stale) to
+find the next highest-impact real Agent failure, per this routine's own
+"repeat until all critical scenarios pass" instruction.
+
+## Prior session — PR #48: Agent Diagnosis Loop finding — prerequisite/duplicate/pinned legality violations were silently discarded, fixed, 1 real Codex finding
 
 Ran the standing start-of-session audit (production health, open `claude/*`
 branches, open PRs, Codex reviews, CI, issues, `.remember/current.md`,

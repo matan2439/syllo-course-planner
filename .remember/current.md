@@ -1,5 +1,29 @@
 # Current — read this first
 
+## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
+
+Continuation of the same-day "PR #53: 21st Codex round fixed" session below. After that entry, four more real Codex rounds followed:
+
+**Round 22** (`api/ai/planner_actions.ts`): groups 2 (unsatisfied categories) and 3 (wanted courses) had no awareness of `requiredCourseSemesterBoundaries` — a required-but-unplaced prerequisite that was ALSO a category candidate or wanted course got a second, unfiltered proposal at every legal semester, including ones group 1b's boundary filter deliberately excludes. Fixed by adding the same `requiredButUnplaced.has(id)` exclusion group 4 already had, to groups 2 and 3. Two new regression tests (RED-verified first).
+
+**Round 23** — two findings:
+1. A required mandatory course that's ALSO another mandatory course's prerequisite wasn't boundary-filtered by group 1 (only group 1b was) — `requiredCourseSemesterBoundaries` DOES compute a real boundary for such a shared course, but group 1 offered it at every legal semester unfiltered. Fixed by moving the boundary computation before group 1 and applying the same filter there.
+2. A repair MOVE that crosses a mandatory course's reachability threshold (making it newly reachable) can transiently lower g1 (`remainingMandatoryHours` only reserves for reachable courses, so crossing that threshold flips hours from unreserved to reserved with no offsetting g2a credit yet). In a no-lookahead/zero-rollout configuration, `PlannerWorker.step()`'s immediate-score-only gate could reject this repair outright. **Empirically verified via two `PlannerWorker.run()` repros with DEFAULT options** (lookahead + 200-step rollout — confirmed via grep that no production caller ever disables it) — including an adversarial case with 15 competing higher-immediate-score elective actions specifically to try to crowd the repair MOVE out of the top-N truncation — that this does NOT reproduce under the actual production configuration: the rollout's `estimateFinalScore` still discovers the eventual g2a benefit. Documented as a known, investigated, deliberately-not-fixed limitation directly in `scorePlan`'s g1 comment, rather than loosening the search's core accept-if-strictly-improves invariant (a materially larger, riskier change, moot for every real caller).
+
+**Round 24** (`api/ai/planner_goals.ts`): `rawLegalSemesters` returns `[]` identically whether a prerequisite has genuinely unknown legality data (ambiguous, bias-reachable — the intended case) or has NO PROFILE AT ALL (a data-integrity gap — the id doesn't correspond to any known course). `isMandatoryCourseReachable` couldn't distinguish the two, wrongly treating a nonexistent prerequisite as reachable and reserving its dependent's hours forever. Fixed with an explicit `model.profiles.has(prereqId)` check.
+
+**Round 25**: `isImmovableOccupant`'s "does this occupant have a real destination" check only verified raw load headroom at a candidate semester, never whether relocating there would actually be legal under prerequisite strict-timing ordering (for the occupant's own prerequisites, or for another already-placed course depending on the occupant staying where it is). **A concurrently-active second session on this same branch fixed this** (`f7e74ca`, `wouldRelocationBeOrderingLegal`) while this session was independently implementing an equivalent fix — caught via the webhook echo of the OTHER session's own reply landing before this session had committed. Discarded the redundant local uncommitted changes and verified the pushed fix directly (full suite green, `tsc --noEmit` clean) rather than risk a collision, same handling precedent as the earlier `5742ded` collision documented below.
+
+**Merged** PR #53 as `2ccac27` after CI green (3/3) and a final Codex review pass came back clean ("Didn't find any major issues") with all 26 review threads resolved (including manually resolving the round-23 "repair-move" thread, since it was investigated-and-documented rather than fixed, and Codex's final pass didn't re-raise it). Full API suite: **1311/1311** across 84 suites. `tsc --noEmit` clean. **Classification: C** (correctness).
+
+**Closed issue #25** — all 5 ranked findings from the original Agent Diagnosis Loop report are now resolved: #1 (PR #27), #2 (PR #31), #3 (PR #32), #4 (PR #53), #5 (correctly deprioritized, non-exploitable).
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same standing Vercel deploy-mechanism blocker every session since PR #27 has confirmed.
+
+**Standing blockers, unchanged, not re-investigated this session**: PR #14 (Decision capability) correctly remains unmerged per the D-stacking-cap precedent (issue #18); issue #21 (dead code delete-vs-restore) still needs a human call; issue #18's Vercel-architecture/canonical-branch reconciliation question is unchanged.
+
+**Exact next action**: with issue #25 fully closed, re-run the mandated Agent Diagnosis Loop against the real `generate-plan.ts` handler with fresh Hebrew scenarios to find the next highest-impact real Agent failure — the "not fully verified" areas the original issue #25 report flagged are now stale and worth re-checking fresh.
+
 ## 🔧 PR #53: 21st Codex round fixed (stale shared-prerequisite boundary), base re-merged, not yet merged as of this entry (2026-07-22, autonomous scheduled run)
 
 Session start: standing audit found two open PRs — **#53** (issue #25 Finding #4, by this point already 20 commits deep across 21 rounds of real Codex findings) and **#14** (Decision capability, correctly still parked per the D-stacking-cap precedent, no new information). Per "resume unfinished work before selecting anything new," picked up PR #53.
