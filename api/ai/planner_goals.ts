@@ -152,22 +152,6 @@ function effectiveHardCap(model: ConstraintModel): number {
 }
 
 /**
- * Whether `id`, as currently placed, could NOT be relocated by a MOVE action
- * — pinned, `is_annual` (never split/moved, same rule `planner_actions.ts`'s
- * `isMovable` enforces), or `placement_policy === 'fixed'`. Used to decide
- * which occupants of a legal semester represent REAL, permanent crowding
- * versus a course the search could relocate to make room. Duplicated (not
- * imported) for the same circular-import reason documented on
- * `isMandatoryCourseReachable`, below.
- */
-function isImmovableOccupant(model: ConstraintModel, id: string): boolean {
-  if (model.pinnedCourseIds.has(id)) return true;
-  const p = model.profiles.get(id);
-  if (!p) return true;
-  return p.is_annual === true || p.placement_policy === 'fixed';
-}
-
-/**
  * The RAW legal-semester list `getLegalSemesters` returns for `id` — NOT
  * filtered to `model.knownSemesterIds` and NOT defaulted to
  * `knownSemesterIds` when empty. Callers that need to distinguish "no
@@ -181,6 +165,36 @@ function rawLegalSemesters(model: ConstraintModel, id: string): string[] {
   const p = model.profiles.get(id);
   if (!p) return [];
   return getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds).semesters;
+}
+
+/** `id`'s legal semesters, defaulted (no data → every known semester) and filtered to `model.knownSemesterIds`. */
+function legalSemestersOnBoard(model: ConstraintModel, id: string): string[] {
+  const raw = rawLegalSemesters(model, id);
+  return (raw.length ? raw : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
+}
+
+/**
+ * Whether `id`, currently placed in `currentSem`, could NOT actually be
+ * relocated away by a MOVE action — pinned, `is_annual` (never split/moved,
+ * same rule `planner_actions.ts`'s `isMovable` enforces), `placement_policy
+ * === 'fixed'`, OR (not fixed/pinned/annual, but) it has NO legal semester
+ * other than `currentSem` to move to. `enumerateActions` only ever generates
+ * `MOVE_COURSE` targets among a course's own legal semesters, so a course
+ * that's technically "movable" by policy but has nowhere else legal to go
+ * is just as permanently stuck as a pinned one — an earlier version only
+ * checked the policy flags and treated any non-fixed/pinned/annual occupant
+ * as freely relocatable, which wrongly ignored this real, permanent
+ * crowding. Used to decide which occupants of a legal semester represent
+ * REAL, permanent crowding versus a course the search could relocate to make
+ * room. Duplicated (not imported) for the same circular-import reason
+ * documented on `isMandatoryCourseReachable`, below.
+ */
+function isImmovableOccupant(model: ConstraintModel, id: string, currentSem: string): boolean {
+  if (model.pinnedCourseIds.has(id)) return true;
+  const p = model.profiles.get(id);
+  if (!p) return true;
+  if (p.is_annual === true || p.placement_policy === 'fixed') return true;
+  return !legalSemestersOnBoard(model, id).some(sem => sem !== currentSem);
 }
 
 /** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
@@ -263,7 +277,7 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   const hours = p.hours ?? 0;
   const fitsSemester = (sem: string) => {
     const load = (state.semesters[sem] ?? [])
-      .filter(cid => isImmovableOccupant(model, cid))
+      .filter(cid => isImmovableOccupant(model, cid, sem))
       .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
   };
@@ -271,9 +285,7 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
   const fits = annualSpans && annualSpans.length
     ? annualSpans.every(sem => model.knownSemesterIds.includes(sem) && fitsSemester(sem))
-    : (rawLegalSemesters(model, id).length ? rawLegalSemesters(model, id) : model.knownSemesterIds)
-        .filter(sem => model.knownSemesterIds.includes(sem))
-        .some(fitsSemester);
+    : legalSemestersOnBoard(model, id).some(fitsSemester);
   if (!fits) return false;
 
   if (!p.prerequisites?.length) return true;

@@ -514,6 +514,41 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // (PREREQ5's hours not reserved): budget = 14-2=12, g1 = min(12,12) = 12.
     expect(score[0]).toBe(8);
   });
+
+  // Codex finding on this PR: a course that isn't pinned/fixed/annual is
+  // still permanently stuck where it is if it has NO OTHER legal semester to
+  // move to — enumerateActions only generates MOVE_COURSE targets among a
+  // course's own legal semesters. An earlier version treated any
+  // non-fixed/pinned/annual occupant as freely relocatable "movable"
+  // crowding to ignore, which wrongly ignored this real, permanent case.
+  it('treats a movable-by-policy occupant with no other legal semester as permanent crowding', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER2 (4h) is an ordinary, non-fixed/pinned/annual elective — but
+    // its ONLY legal semester is year_3_semester_a, the same one it already
+    // occupies. It has nowhere else to legally move to, so it's just as
+    // permanently stuck there as a pinned course.
+    m.profiles.set('CROWDER2', profile('CROWDER2', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    const state = withCourses('year_3_semester_a', ['CROWDER2']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (CROWDER2+e1). If MAND is correctly NOT reserved (CROWDER2 has
+    // no other legal semester, so it's real permanent crowding: 4+4=8>6,
+    // doesn't fit): budget = 10 (no reservation), g1 = min(8,10) = 8. If the
+    // bug were present (CROWDER2 wrongly ignored as "movable"): budget =
+    // 10-4=6, g1 = min(8,6) = 6.
+    expect(score[0]).toBe(8);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
