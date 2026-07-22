@@ -151,6 +151,22 @@ function effectiveHardCap(model: ConstraintModel): number {
   return model.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
 }
 
+/**
+ * Whether `id`, as currently placed, could NOT be relocated by a MOVE action
+ * — pinned, `is_annual` (never split/moved, same rule `planner_actions.ts`'s
+ * `isMovable` enforces), or `placement_policy === 'fixed'`. Used to decide
+ * which occupants of a legal semester represent REAL, permanent crowding
+ * versus a course the search could relocate to make room. Duplicated (not
+ * imported) for the same circular-import reason documented on
+ * `isMandatoryCourseReachable`, below.
+ */
+function isImmovableOccupant(model: ConstraintModel, id: string): boolean {
+  if (model.pinnedCourseIds.has(id)) return true;
+  const p = model.profiles.get(id);
+  if (!p) return true;
+  return p.is_annual === true || p.placement_policy === 'fixed';
+}
+
 /** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
 function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
   const p = model.profiles.get(id);
@@ -171,7 +187,15 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  *  - no legal semester has room under the EFFECTIVE cap (`effectiveHardCap`,
  *    which honors a confirmed overload the same way `validatePlanState` does
  *    — an earlier version of this check used the raw `hardCap` unconditionally
- *    and wrongly called a legally-overloadable course unreachable).
+ *    and wrongly called a legally-overloadable course unreachable), counting
+ *    only IMMOVABLE occupants (`isImmovableOccupant`) toward that room — a
+ *    semester crowded only by movable/replaceable courses isn't permanently
+ *    full, the search can relocate them; an earlier version counted every
+ *    occupant and wrongly called a course unreachable (and stopped reserving
+ *    its hours) whenever its semester was merely temporarily busy, which
+ *    could discourage the very MOVE the search needed on score-only paths
+ *    (no lookahead) that can't see past one step to recognize the move was
+ *    worth it.
  *  - its only legal semester isn't one of `model.knownSemesterIds` at all
  *    (`state.semesters` only has entries for known semesters — `emptyState`
  *    — so `applyMutation`'s ADD_COURSE would reject an off-board target).
@@ -214,7 +238,9 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   const legal = (semesters.length ? semesters : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
   const hours = p.hours ?? 0;
   const fits = legal.some(sem => {
-    const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
+    const load = (state.semesters[sem] ?? [])
+      .filter(cid => isImmovableOccupant(model, cid))
+      .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
   });
   if (!fits) return false;

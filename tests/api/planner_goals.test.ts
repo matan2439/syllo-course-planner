@@ -351,16 +351,20 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
       is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
       recommended_semester: 'year_3_semester_a',
     }));
-    // e0 (4h) already occupies MAND's only legal semester: 4+4=8, over the raw
-    // hardCap (6) but under the confirmed-overload effective cap (10) — MAND
-    // is still legally placeable there. e1 (4h) sits in a different semester
-    // so it doesn't crowd MAND's own semester.
-    const state = withCourses('year_3_semester_a', ['e0']);
+    // OTHER_FIXED (4h, placement_policy: 'fixed' — immovable, unlike a plain
+    // elective) already occupies MAND's only legal semester: 4+4=8, over the
+    // raw hardCap (6) but under the confirmed-overload effective cap (10) —
+    // MAND is still legally placeable there since a real crowding course is
+    // present (a movable one wouldn't count — see the sibling "temporarily
+    // crowded" test below). e1 (4h, movable) sits in a different semester so
+    // it contributes to dh without affecting MAND's own fit check.
+    m.profiles.set('OTHER_FIXED', profile('OTHER_FIXED', { hours: 4, placement_policy: 'fixed' }));
+    const state = withCourses('year_3_semester_a', ['OTHER_FIXED']);
     state.semesters['year_3_semester_b'] = ['e1'];
     const score = scorePlan(state, m);
-    // dh = 8 (e0+e1). If MAND is correctly reserved: budget = 10-4=6, g1 =
-    // min(8,6) = 6. If the bug were present (MAND wrongly excluded via the
-    // raw, unconfirmed hardCap): budget = 10, g1 = min(8,10) = 8.
+    // dh = 8 (OTHER_FIXED+e1). If MAND is correctly reserved: budget = 10-4=6,
+    // g1 = min(8,6) = 6. If the bug were present (MAND wrongly excluded via
+    // the raw, unconfirmed hardCap): budget = 10, g1 = min(8,10) = 8.
     expect(score[0]).toBe(6);
   });
 
@@ -388,6 +392,37 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND3 transitively unreachable
     const score = scorePlan(state, m);
     expect(score[0]).toBe(10);
+  });
+
+  // Codex finding on this PR: a mandatory course's legal semester being
+  // crowded by a MOVABLE course isn't permanent unreachability — the search
+  // could relocate that course to make room. Counting it toward the fit
+  // check anyway wrongly drops the reservation, which can discourage the
+  // very MOVE the search needs on score-only paths (no lookahead) that can't
+  // see past one step to recognize the move was worth it.
+  it('still reserves budget for a mandatory course only temporarily crowded by a movable course', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER (4h, plain elective — movable) occupies MAND's only legal
+    // semester: 4+4=8 > hardCap(6) if counted, but CROWDER could be moved
+    // elsewhere to free the room, so it must not count against MAND's fit.
+    m.profiles.set('CROWDER', profile('CROWDER', { hours: 4 }));
+    const state = withCourses('year_3_semester_a', ['CROWDER']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (CROWDER+e1). If MAND is correctly still reserved (CROWDER
+    // ignored as movable): budget = 10-4=6, g1 = min(8,6) = 6. If the bug
+    // were present (MAND wrongly excluded because CROWDER's hours were
+    // counted against the raw hardCap): budget = 10, g1 = min(8,10) = 8.
+    expect(score[0]).toBe(6);
   });
 });
 
