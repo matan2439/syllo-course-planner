@@ -383,6 +383,18 @@ function missingMandatoryGate(
  * annual course, prerequisite timing, ...) must still suppress this gate, to
  * avoid double-counting or misattributing an already-differently-gated
  * blocker.
+ *
+ * Codex review finding (PR #62, round 2): when that same benign
+ * currently-taking course is kept visible in its placed board slot (as the
+ * comment above says the real frontend deliberately does), report.degreeHours
+ * (model.priorHours + placedHours(state)) ALREADY counts its hours once, via
+ * placement — crediting it a second time from model.currentlyPlannedCourseIds
+ * below would double-count it and could push creditedHours to (falsely) meet
+ * or exceed model.degreeRequiredHours, silently suppressing this gate for a
+ * plan that is genuinely still short. Only credits a currently-taking id's
+ * hours here when it is NOT already placed in state — the off-board case
+ * (test 8/8b in generate_plan_structural_degree_gap_warning.test.ts) this
+ * credit exists for in the first place.
  */
 function degreeHoursGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
@@ -394,7 +406,9 @@ function degreeHoursGate(
   const report = validateCandidate(state, model, pinnedHome);
   const otherLegalityErrors = validatePlanState(state, model, pinnedHome).errors
     .filter(e => !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER));
+  const placedNow = new Set(placedCourseIds(state));
   const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .filter(id => !placedNow.has(id))
     .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
   const creditedHours = report.degreeHours + currentlyPlannedHours;
   const structurallyShort =

@@ -195,40 +195,42 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(false);
   });
 
+  // test_program_2027's entire catalog universe is MAND(4h)+FLU(4h) = 8h max
+  // reachable (data/boards/test_program_2027.json) against a 185h target —
+  // genuinely, permanently exhausted regardless of known_completed_hours.
+  // FLU is both pre-placed on the board (year_4_semester_a, as the real
+  // frontend deliberately keeps a currently-taking course visible — see
+  // legalityGate's own comment in generate-plan.ts) AND listed in
+  // personal_status.currently_taking, triggering plan_validation.ts's rule 2a
+  // CURRENTLY_TAKING_REUSE_ERROR_MARKER.
+  function fluCurrentlyTakingAndPlacedContext(knownCompletedHours: number) {
+    return {
+      program_name: 'בדיקה',
+      semesters: [
+        { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+          { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+        ] },
+        { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+        { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 4, courses: [
+          { course_id: 'FLU', name_he: 'זורם', hours: 4, course_type: 'elective', placement_policy: 'flexible', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+        ] },
+        { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+      ],
+      category_requirements: [
+        { name: 'זורמים', category_id: 'fluids', required: 1, placed: 1, candidates: [
+          { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+        ] },
+      ],
+      total_hours_progress: { known_completed_hours: knownCompletedHours },
+      personal_status: { completed: [], currently_taking: [{ course_id: 'FLU' }] },
+      mandatory_unplaced: [],
+    };
+  }
+
   test('7. Codex-caught regression: a currently-taking course still visible in its placed board slot (rule 2a, the normal/expected client state for an actively-enrolled student) must NOT suppress this gate — the benign reuse marker is not a real legality violation', async () => {
-    // test_program_2027's entire catalog universe is MAND(4h)+FLU(4h) = 8h max
-    // reachable (data/boards/test_program_2027.json) against a 185h target —
-    // genuinely, permanently exhausted regardless of known_completed_hours.
-    // FLU is both pre-placed on the board (year_4_semester_a, as the real
-    // frontend deliberately keeps a currently-taking course visible — see
-    // legalityGate's own comment in generate-plan.ts) AND listed in
-    // personal_status.currently_taking, triggering plan_validation.ts's rule
-    // 2a CURRENTLY_TAKING_REUSE_ERROR_MARKER — which validateCandidate's raw
-    // report.legal treats as illegal, but legalityGate (and, after this fix,
-    // degreeHoursGate) both correctly ignore as normal client state.
     const res = await run({
       program_id: 'test_program_2027',
-      plan_context: {
-        program_name: 'בדיקה',
-        semesters: [
-          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
-            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
-          ] },
-          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
-          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 4, courses: [
-            { course_id: 'FLU', name_he: 'זורם', hours: 4, course_type: 'elective', placement_policy: 'flexible', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
-          ] },
-          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
-        ],
-        category_requirements: [
-          { name: 'זורמים', category_id: 'fluids', required: 1, placed: 1, candidates: [
-            { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
-          ] },
-        ],
-        total_hours_progress: { known_completed_hours: 100 },
-        personal_status: { completed: [], currently_taking: [{ course_id: 'FLU' }] },
-        mandatory_unplaced: [],
-      },
+      plan_context: fluCurrentlyTakingAndPlacedContext(100),
       preferences: {},
       session_token: randomUUID(),
     });
@@ -239,5 +241,26 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     // The benign rule-2a marker itself must never surface as a blocking error
     // — same "normal client state" exclusion legalityGate already applies.
     expect(res._body.errors.some((e: string) => e.includes('כבר מתוכנן/נלמד כעת'))).toBe(false);
+  });
+
+  test('8. Codex-caught regression (round 2): a currently-taking course already PLACED on the board must not have its hours credited twice — double-counting could mask a genuine shortfall', async () => {
+    // known_completed_hours=174: report.degreeHours = 174 + (MAND 4 + FLU 4)
+    // = 182, genuinely 3h short of 185 (and permanently unrecoverable — this
+    // fixture's catalog has nothing else). Before the fix, FLU's 4h were
+    // credited a SECOND time (already counted once via placement), pushing
+    // creditedHours to 186 >= 185 — falsely reading as fully satisfied and
+    // suppressing the gate entirely (blocked:false, no shortfall error at
+    // all, not even the generic warning, since the outer guard in the
+    // pre-existing warnings_he branch uses the same doubled sum).
+    const res = await run({
+      program_id: 'test_program_2027',
+      plan_context: fluCurrentlyTakingAndPlacedContext(174),
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('182/185'))).toBe(true);
   });
 });
