@@ -187,4 +187,48 @@ describe('enumerateActions — required-prerequisite ADDs are restricted to usef
 
     expect(prereqAdds).toEqual(['year_3_semester_a']);
   });
+
+  // Codex finding on PR #53 (round 18): filtering group 1b's proposals to
+  // useful semesters isn't enough on its own — while degree hours are still
+  // short, group 4 (degree-hour fill) ALSO proposes an ADD for the same
+  // required-but-unplaced prerequisite, via bestLegalSemester, which picks
+  // purely by lowest CURRENT LOAD with no awareness of the boundary
+  // requiredCourseSemesterBoundaries computed. If the useless (post-
+  // dependent) legal semester happens to have lower load than the useful
+  // one, group 4 proposes exactly the placement group 1b's filter exists to
+  // exclude — and once the search takes it, the prerequisite is placed
+  // (fully "consider()"-excluded from further consideration), permanently
+  // blocking the dependent mandatory course.
+  it('does not let degree-hour fill (group 4) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (useful — before M) and
+    // year_4_semester_a (useless — after M). FILLER pre-occupies
+    // year_3_semester_a so it has HIGHER load than the empty
+    // year_4_semester_a, making the useless semester bestLegalSemester's
+    // pick if group 4 isn't excluded for this course.
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+    profiles.set('FILLER', profile('FILLER', { hours: 6 }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      degreeRequiredHours: 100, // stays "short" — keeps group 4 active
+    });
+
+    const state = emptyState(SEMS);
+    state.semesters['year_3_semester_a'] = ['FILLER'];
+
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
 });

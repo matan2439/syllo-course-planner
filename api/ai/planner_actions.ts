@@ -187,7 +187,8 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
     return [a.semesterId, ...(a.alsoSemesterIds ?? [])]
       .every(sem => model.knownSemesterIds.indexOf(sem) < boundary);
   };
-  for (const id of requiredButUnplacedCourseIds(state, model)) {
+  const requiredButUnplaced = requiredButUnplacedCourseIds(state, model);
+  for (const id of requiredButUnplaced) {
     if (model.requiredMandatoryCourseIds.includes(id)) continue;
     if (!consider(id)) continue;
     const boundary = boundaries.get(id);
@@ -211,9 +212,26 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   }
 
   // 4. degree-hour fill — only while short; each elective at its best semester.
+  //
+  // Codex finding on this PR: a course already covered by group 1b (a
+  // required-but-unplaced prerequisite) must NOT also get an unconstrained
+  // proposal here. `bestLegalSemester` picks the lowest-LOAD legal
+  // semester with no awareness of `requiredCourseSemesterBoundaries` — for
+  // a prerequisite legal in both a useful (before its dependent) and a
+  // useless (after it) semester, if the useless one happens to have lower
+  // load, this loop would propose exactly the ADD group 1b's boundary
+  // filter was built to exclude. Once that useless placement is taken,
+  // `consider()`'s `isFullyPlaced` check removes the course from
+  // consideration entirely, permanently blocking the dependent mandatory
+  // course even though the correctly-filtered, useful option was ALSO
+  // offered (by group 1b) in the very same step. Excluding these ids here
+  // is sufficient — group 1b already unconditionally proposes every
+  // boundary-respecting option for them, degree-fill has nothing
+  // additional and correct left to add.
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
       if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0 || p.is_unwanted) continue;
+      if (requiredButUnplaced.has(id)) continue;
       if (p.is_annual) { actions.push(...addCourseActionsFor(model, id)); continue; }
       const sem = bestLegalSemester(state, model, id);
       if (sem) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
