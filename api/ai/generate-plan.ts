@@ -38,7 +38,14 @@ import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
-import { validateCandidate, validatePlanState, disallowedPlacedCourseIds, DISALLOWED_PLACED_ERROR_PREFIX } from './planner_validate';
+import {
+  validateCandidate,
+  validatePlanState,
+  disallowedPlacedCourseIds,
+  DISALLOWED_PLACED_ERROR_PREFIX,
+  ANNUAL_INCOMPLETE_ERROR_PREFIX,
+  STEP_LIMIT_ERROR,
+} from './planner_validate';
 import {
   incompleteAnnualCourseIds,
   applyMutation,
@@ -254,7 +261,7 @@ function annualCompletenessGate(
 ): string[] {
   const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
   return incompleteAnnualCourseIds(state, model).map(
-    id => `קורס שנתי (${model.profiles.get(id)?.name_he ?? id}) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.`,
+    id => `${ANNUAL_INCOMPLETE_ERROR_PREFIX}${model.profiles.get(id)?.name_he ?? id}) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.`,
   );
 }
 
@@ -864,7 +871,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   if (hitMaxSteps) {
     proposal.warnings_he.push('המתכנן לא הסיים את החישוב בגלל מגבלת מספר הצעדים — התוכנית עשויה להיות חלקית.');
-    blockingErrors.push('PLANNER_STEP_LIMIT');
+    blockingErrors.push(STEP_LIMIT_ERROR);
   }
 
   if (!isBypassQuota() && dbUrl) {

@@ -113,6 +113,18 @@ export interface CandidateReport {
 export const DISALLOWED_PLACED_ERROR_PREFIX = 'קורס לא-זמין שובץ בתוכנית:';
 
 /**
+ * Stable prefix/sentinel for the other two blockingErrors producers in
+ * generate-plan.ts (annualCompletenessGate, and the PLANNER_STEP_LIMIT
+ * cutoff) — same sharing reason as DISALLOWED_PLACED_ERROR_PREFIX above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell these
+ * causes apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance (a real bug found via the Agent
+ * Diagnosis Loop — see academic_decision_runtime.ts for the fix).
+ */
+export const ANNUAL_INCOMPLETE_ERROR_PREFIX = 'קורס שנתי (';
+export const STEP_LIMIT_ERROR = 'PLANNER_STEP_LIMIT';
+
+/**
  * Which of the given placed course ids are hard-excluded by the model (either
  * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
  * Shared by validateCandidate below and by generate-plan.ts's post-planning
