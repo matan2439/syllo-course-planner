@@ -1,5 +1,23 @@
 # Current — read this first
 
+## ✅ PR #46 MERGED — issue #43 (track_or_focus clarification question) fixed, 3 rounds of real Codex findings (2026-07-22, autonomous scheduled run)
+
+**Merged** via `mcp__github__merge_pull_request` (normal merge) into `ui/frontend-modernization` as `b9823c8`. Issue #43 closed. CI green (3/3) throughout. **Classification: C** (correctness — real "the agent ignores my answer" defect in the clarification-answer round-trip, on the production-reachable `use_academic_decision_agent:true` path).
+
+The initial fix (below, `df548ac`) only resolved `track_or_focus` for the single request containing the answer — Codex found two real, escalating gaps in that shape, both fixed with regression tests, none dismissed:
+
+1. **Round 1** (`7271dac`): the clarification form only ever renders currently-unresolved questions, so a LATER, separate submission answering a DIFFERENT question would resend only that answer — silently forgetting an earlier one, since the server has no durable session state either. Fixed with a client-side accumulator, `_aiClarificationAnswersSoFar` (`app/web/semester_board_viewer.html`), merged by `questionId` (newest wins) and resent in full on every clarification-form submission.
+2. **Round 2** (`e9a97f9`): that accumulator then had no scope boundary — it lived until a full `resetAiConversation()`, so a stale answer from one clarification exchange (e.g. a previous `max_weekly_hours: 20`) could silently override fresh UI state (a newly-changed sidebar cap) on a LATER, unrelated build, since `mergeClarificationAnswersIntoGeneratePlanInputs` spreads `clarification_answers` after `preferences`. Fixed by clearing the accumulator on any fresh (non-resume) `requestPlanProposal` call — every caller except the clarification form's own submit handler passes no 3rd argument, so that's an unambiguous "fresh request" signal.
+3. **Round 3** (`fc42ca4`): `resolveTrackAnswer`'s `.find()` picked the FIRST matching entry regardless of validity, so a stale/blank duplicate before a later valid answer in the same batch kept `track` unresolved. Fixed by scanning from the end and skipping invalid entries — the most recent VALID answer wins.
+
+Round 4 (final, on `fc42ca4`): Codex clean, no further findings. All threads resolved with evidence.
+
+Final state: full API suite **1272/1272** (82 suites), `tsc --noEmit` clean. Full `jest.ui.config.js` suite: 386 failing (unchanged pre-existing baseline, issue #20) / 447 passing (+6 new tests across the PR), zero regressions.
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same standing Vercel deploy-mechanism blocker. Not live for real users yet.
+
+Full details of the original diagnosis and fix below (written pre-merge, still accurate for round 1's content).
+
 ## 🔧 Issue #43 fixed: track_or_focus clarification question now resolves once answered (2026-07-22, autonomous scheduled run)
 
 Same session that merged PR #44 (block-cause explanation fix) and filed issue #43. Picked up #43 as the next milestone since it was already fully diagnosed, small, and ready to implement — the rolling window (39,41,44 = C/A/C) was already compliant so there was no forced A/B pressure either way.
