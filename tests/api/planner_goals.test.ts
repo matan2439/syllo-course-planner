@@ -236,6 +236,31 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // single 4h elective landing right at the boundary.
     expect(totalHours).toBeLessThanOrEqual(22);
   });
+
+  // Codex finding on this PR: a mandatory course that can NEVER legally fit
+  // anywhere (every semester is over the hard cap for it, or it has no
+  // legal offering semester at all) must not permanently withhold g1 credit
+  // from electives that could otherwise fill the plan — that course's
+  // absence already surfaces separately as an honest blocking error
+  // (missingMandatory), and reserving budget for something that will never
+  // be placed would just needlessly truncate an otherwise-maximal plan.
+  it('does not reserve budget for a mandatory course that can never legally fit anywhere', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 20, // enough room for the electives below, never enough for MAND
+    });
+    // 100h is larger than the hard cap in every semester — structurally
+    // unplaceable no matter what else is on the board.
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 100 }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND still unplaced
+    const score = scorePlan(state, m);
+    // Full target credit (capped only at the real degreeRequiredHours), not
+    // withheld/negative because of MAND's unreachable 100h reservation.
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
