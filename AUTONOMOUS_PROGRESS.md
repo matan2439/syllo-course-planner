@@ -32,11 +32,15 @@ regression tests:
   reachability threshold can transiently lower g1 in a no-lookahead
   configuration — empirically verified via two `PlannerWorker.run()` repros
   (including an adversarial one with 15 competing elective actions) that
-  this does NOT reproduce under the actual default production configuration
-  (lookahead + 200-step rollout, confirmed via grep that no real caller
-  disables it) — documented as a known, investigated limitation rather than
-  fixed, since a general fix would mean loosening the search's core
-  accept-if-strictly-improves invariant.
+  this does NOT reproduce under the ACTUAL production configuration every
+  real caller constructs explicitly (`{ topN: 6, rolloutSteps: 80 }` —
+  `generate-plan.ts`'s primary worker and fallback, `planner-run.ts`'s
+  worker; a first verification pass only checked `PlannerWorker`'s bare
+  default (`{ topN: 8, rolloutSteps: 200 }`), a looser and non-representative
+  configuration, and was corrected by a Codex finding on the docs PR (#55)
+  recording this fix) — documented as a known, investigated limitation
+  rather than fixed, since a general fix would mean loosening the search's
+  core accept-if-strictly-improves invariant.
 - Round 24: a prerequisite id with no profile at all in `model.profiles`
   (data-integrity gap) was wrongly treated as "ambiguous, bias reachable"
   instead of definitively unreachable — fixed.

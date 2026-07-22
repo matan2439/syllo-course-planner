@@ -733,14 +733,23 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   //    disables lookahead), `step()`'s immediate-score-only "does this
   //    advance" gate can reject that repair outright, leaving the mandatory
   //    course permanently missing even though the repair was available.
-  //    Empirically verified this is NOT reproducible under the actual
-  //    default production configuration (lookahead + 200-step rollout):
+  //    Empirically verified this is NOT reproducible under either the bare
+  //    `PlannerWorker` default (`{ topN: 8, rolloutSteps: 200 }`) OR — this
+  //    matters more, since it's what real traffic actually runs — the
+  //    ACTUAL production configuration every caller constructs explicitly:
+  //    `{ topN: 6, rolloutSteps: 80 }` (`generate-plan.ts`'s primary worker
+  //    and its fallback, and `planner-run.ts`'s worker — a tighter topN and
+  //    a shorter rollout than the bare default, so the more adversarial
+  //    configuration to verify against, not a looser one; a first pass of
+  //    this investigation only checked the bare default and was corrected by
+  //    a Codex finding on PR #55, the docs PR recording this fix's merge).
   //    `PlannerWorker.run()` correctly recovers and places the mandatory
-  //    course in both a minimal repro and an adversarial one (15 competing
-  //    higher-immediate-score elective actions crowding the repair move out
-  //    of the top-N truncation) — the rollout's `estimateFinalScore` still
-  //    discovers that placing the mandatory course afterward yields a
-  //    strictly better g2a at an equal-or-better final g1, which decides via
+  //    course under `{ topN: 6, rolloutSteps: 80 }` in both a minimal repro
+  //    and an adversarial one (15 competing higher-immediate-score elective
+  //    actions crowding the repair move out of the top-N truncation) — the
+  //    rollout's `estimateFinalScore` still discovers that placing the
+  //    mandatory course afterward yields a strictly better g2a at an
+  //    equal-or-better final g1, which decides via
   //    `compareScore(x.fin, curFinal)` even though `x.imm` alone regressed.
   //    Not fixed: a general fix needs the no-lookahead greedy step itself to
   //    tolerate a strictly-necessary repair despite a local g1 dip, which is
