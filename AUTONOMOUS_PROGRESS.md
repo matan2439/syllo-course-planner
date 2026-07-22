@@ -710,6 +710,23 @@ found is already a fully-diagnosed, open human decision from a prior session
   mistake than staying stale one more session. Flagging this explicitly as a
   human decision point rather than guessing.
 
+> **⚠️ HISTORICAL SNAPSHOT — SUPERSEDED, DO NOT FOLLOW AS CURRENT STATUS.**
+> Everything from here (`## Branch / release state`) through the end of this
+> file (`## Exact next action`) is the unedited tail of the
+> `claude/determined-thompson-fewuif` session write-up above, current only as
+> of PR #48. It predates the "Latest session" / "Prior session" heading
+> convention used everywhere above it, so it was never trimmed as newer
+> sessions prepended their own summaries. Its rolling-window figures (e.g.
+> `(44,46,48)`), blockers list, and "exact next action" are all several
+> merged PRs stale (PR #53/#56/#58 and others happened after it) and must
+> NOT be treated as the current handoff — **the "Latest session" section at
+> the very top of this file is the only authoritative current status and
+> next action.** Kept below only for historical/archival continuity, per
+> this routine's own instruction to never delete durable progress history —
+> flagged as stale rather than silently trusted, per a real Codex finding on
+> PR #59 (`discussion_r3632582211`) that a reader could otherwise follow this
+> obsolete block and skip the fresh work the top of the file authorizes.
+
 ## Branch / release state
 
 - **Canonical development branch:** `ui/frontend-modernization` (transitional —
