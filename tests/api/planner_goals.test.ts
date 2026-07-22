@@ -549,6 +549,48 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // 10-4=6, g1 = min(8,6) = 6.
     expect(score[0]).toBe(8);
   });
+
+  // Codex finding on this PR: enumerateActions' ordinary elective-fill group
+  // only runs while raw degree hours are still short of the target — a
+  // required-but-ordinary prerequisite of a reachable mandatory course was
+  // never enumerated as a candidate action at all once a client-supplied
+  // initial state already met the raw target, no matter how correctly
+  // scorePlan reserves its hours (scoring only ranks candidates
+  // enumerateActions actually produces). Real end-to-end reproduction via
+  // PlannerWorker.run(): an initial state with 16h of ordinary electives
+  // already placed (target 14h — already met) plus a missing mandatory
+  // course needing an unplaced prerequisite.
+  it('enumerates and places a required-but-ordinary prerequisite even when the initial state already meets the raw degree-hour target', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND5', profile('MAND5', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PREREQ5'],
+    }));
+    profiles.set('PREREQ5', profile('PREREQ5', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'],
+    }));
+    for (let i = 0; i < 4; i++) profiles.set(`e${i}`, profile(`e${i}`, { hours: 4 }));
+
+    const m = model({
+      profiles,
+      requiredMandatoryCourseIds: ['MAND5'],
+      categories: [],
+      degreeRequiredHours: 14,
+      maxHoursPerSemester: 40,
+      hardCap: 40,
+    });
+
+    const initial = emptyState(SEMS);
+    initial.semesters['year_4_semester_a'] = ['e0', 'e1', 'e2'];
+    initial.semesters['year_4_semester_b'] = ['e3'];
+
+    const w = new PlannerWorker(m, initial, { lookahead: false });
+    w.run(50);
+    const placed = new Set(placedCourseIds(w.getPlan()));
+    expect(placed.has('MAND5')).toBe(true);
+    expect(placed.has('PREREQ5')).toBe(true);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

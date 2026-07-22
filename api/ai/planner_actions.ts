@@ -7,7 +7,7 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours, scorePlan, compareScore, isFullyPlaced } from './planner_goals';
+import { degreeHours as computeDegreeHours, scorePlan, compareScore, isFullyPlaced, requiredButUnplacedCourseIds } from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -144,6 +144,26 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
 
   // 1. required mandatory still unplaced — every legal semester.
   for (const id of model.requiredMandatoryCourseIds) {
+    if (!consider(id)) continue;
+    actions.push(...addCourseActionsFor(model, id));
+  }
+
+  // 1b. unplaced PREREQUISITES of a reachable-but-unplaced mandatory course
+  // — unconditional, like group 1, NOT gated on group 4's "degree-hour fill,
+  // only while short" condition. A prerequisite that's just an ordinary
+  // elective on paper is still a structurally required stepping stone (the
+  // mandatory course it unlocks can't be legally added until it's placed),
+  // not a discretionary filler — Codex finding on this PR: gating it behind
+  // group 4 meant a client-supplied initial state that already meets the
+  // raw degree-hour target (a real, reachable case — an existing board with
+  // enough elective hours but a missing mandatory course) would never even
+  // offer this prerequisite as a candidate ADD action, permanently stuck.
+  // requiredButUnplacedCourseIds (planner_goals.ts) already includes the
+  // mandatory course ids themselves — skip those, group 1 already covers
+  // them via every legal semester (this set only carries ONE legality
+  // reading per course, whichever `isMandatoryCourseReachable` used).
+  for (const id of requiredButUnplacedCourseIds(state, model)) {
+    if (model.requiredMandatoryCourseIds.includes(id)) continue;
     if (!consider(id)) continue;
     actions.push(...addCourseActionsFor(model, id));
   }
