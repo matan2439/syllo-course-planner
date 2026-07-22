@@ -79,15 +79,19 @@ unresolved review threads. **Merged as `24d8877`** via the webhook-driven
 continuation of this same session.
 
 **Classification: C** (correctness/honesty — real, reproduced, in-product
-wrong advice on a production-reachable path). **Rolling-three check: (48,
-53, 56) = C/C/C — non-compliant** with the "at least one of every three
-must be A or B" rule (two C's in a row is fine; three is not). **The next
-milestone selected must be classified A or B** — do not select another
-isolated C-only correctness nit or any D-classified infra work until an
-A/B milestone lands. A good candidate: wiring any of the already-built but
-unconsumed Simulation/Persistence/Decision capabilities (PRs #12/#13/#14)
-into an actual production caller would be a B; a user-visible UI
-improvement to how `academicDecision.explanation` is rendered would be an A.
+wrong advice on a production-reachable path). **Rolling-three check: (50,
+53, 56) = A/C/C — compliant.** (Codex review on the docs PR #57 that first
+recorded this, `discussion_r3631848828`, correctly caught that an earlier
+draft of this entry skipped PR #50 — classified A per its own
+`.remember/current.md` entry — and mis-derived (48, 53, 56) = C/C/C
+instead, wrongly forcing the next milestone to A/B when the rule is
+already satisfied. Corrected here.) No forced A/B requirement on the
+immediate next milestone, though continuing to prefer A/B when reasonably
+available (per this routine's own "do not optimize for D" guidance) is
+still good practice — candidates include wiring one of the unconsumed
+Simulation/Persistence/Decision capabilities (PRs #12/#13/#14) into a real
+production caller (B), or a UI improvement to how
+`academicDecision.explanation` is surfaced (A).
 
 **Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
 standing Vercel deploy-mechanism blocker every session since PR #27 has
@@ -106,20 +110,19 @@ call). All confirmed still open with zero human comments as of this
 session's check.
 
 **Exact next action for the next session**: PR #56 is merged and closed —
-do not reopen it or re-address it. Per the rolling-three non-compliance
-above, the next selected milestone **must be classified A or B**, not
-another standalone C fix or D infra. Two concrete starting points: (1)
-name a real production consumer for one of the unwired Simulation/
-Persistence/Decision capabilities (PRs #12/#13/#14) and wire it in (B), or
-(2) survey how `academicDecision.explanation` currently renders (or fails
-to render) in the actual UI and improve that surface directly (A) — this
-routine's own priority order places P2 UI work as valid whenever it
-exposes/explains/controls the real Agent, which this qualifies as. Only
-after landing an A/B milestone should the Agent Diagnosis Loop resume for
-the next C-classified correctness finding (candidates already surfaced:
-the wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
-multi-turn conversation honesty / simulate-then-apply areas per the P1
-checklist).
+do not reopen it or re-address it. The rolling-three window is compliant
+((50, 53, 56) = A/C/C — see correction above), so there is no forced A/B
+requirement blocking the next milestone. Continue the Agent Diagnosis Loop
+for the next highest-impact real Agent failure (candidates already
+surfaced: the wanted-vs-disallowed disclosure gap noted above, or a fresh
+sweep of multi-turn conversation honesty / simulate-then-apply areas per
+the P1 checklist) — while still preferring an A/B milestone when one is
+reasonably available, per this routine's general "don't stack D, don't
+optimize for C-only either" guidance. Two standing A/B candidates if one is
+picked up: naming a real production consumer for one of the unwired
+Simulation/Persistence/Decision capabilities (PRs #12/#13/#14) and wiring
+it in (B), or improving how `academicDecision.explanation` is actually
+surfaced in the UI (A).
 
 ## Prior session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
 

@@ -18,11 +18,11 @@ Tests: 3 new in `tests/api/academic_decision_runtime.test.ts`, RED-verified agai
 
 **Classification: C** (correctness/honesty).
 
-**Rolling-three check: (48, 53, 56) = C/C/C — non-compliant** with "at least one of every three merged milestones must be A or B." The next milestone selected, whichever session picks it up, **must be classified A or B** — not another standalone correctness-only fix, and not D-classified infra. See `AUTONOMOUS_PROGRESS.md`'s top entry for two concrete candidates (wiring an unused Simulation/Persistence/Decision capability into a real caller = B; a UI improvement to how `academicDecision.explanation` is actually surfaced to users = A).
+**Rolling-three check, corrected: (50, 53, 56) = A/C/C — compliant.** (Codex review on docs PR #57, `discussion_r3631848828`, correctly caught that the first draft of this entry skipped PR #50 — merged and classified A per its own entry below — and wrongly derived (48, 53, 56) = C/C/C instead, forcing an A/B requirement the rule doesn't actually impose. Corrected.) No forced A/B requirement on the immediate next milestone, though preferring one when reasonably available is still good practice. See `AUTONOMOUS_PROGRESS.md`'s top entry for two standing A/B candidates (wiring an unused Simulation/Persistence/Decision capability into a real caller = B; a UI improvement to how `academicDecision.explanation` is actually surfaced to users = A).
 
 **Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session). 14 merged fixes now sit behind production.
 
-**Exact next action**: PR #56 is done (merged/closed, do not reopen). Select an A- or B-classified milestone next per the rolling-three rule above before returning to more C-only Agent Diagnosis Loop findings (candidates once that's satisfied: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
+**Exact next action**: PR #56 is done (merged/closed, do not reopen). The rolling-three window is compliant (see correction above) — no forced A/B requirement. Continue the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas), while still preferring an A/B milestone when one is reasonably available.
 
 ## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
 
