@@ -129,87 +129,109 @@ export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: 
  * Whether `id` is hard-excluded — the same test `planner_actions.ts`'s
  * `isExcluded` applies (a user avoid or a profile-level exclusion), which
  * `enumerateActions` already uses to keep an excluded course out of every
- * candidate action. Duplicated for the same circular-import reason as
- * `hasFittingLegalSemester`, below.
+ * candidate action. Duplicated for the same circular-import reason
+ * documented on `isMandatoryCourseReachable`, below.
  */
 function isCourseExcluded(model: ConstraintModel, id: string): boolean {
   return model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true;
 }
 
 /**
- * Whether `id` still has some legal semester with room for it under the hard
- * cap, in `state` as it stands right now. Mirrors `planner_actions.ts`'s
- * `legalSemestersFor` + `planner_lookahead.ts`'s `hasFittingLegalSemester`
- * (offering-semester legality, hard-cap fit — NOT prerequisite timing, which
- * neither of those checks either; this is the same "reachability"
- * approximation `projectFeasibility` already uses elsewhere in the search,
- * not a new/different one), with one addition: `getLegalSemesters` can
- * return a `fixed`/`effective`/`program` semester id that isn't one of
- * `model.knownSemesterIds` at all (a course pinned to a semester outside the
- * board's actual span) — `state.semesters` only ever has entries for
- * `knownSemesterIds` (see `emptyState`), so `applyMutation`'s ADD_COURSE
- * would reject that target outright. Treating an off-board semester as
- * "empty, so it fits" would wrongly call the course placeable; filtered out
- * here so only a semester that could actually receive the course counts.
- * Duplicated here rather than imported — `planner_actions.ts` already
- * imports `scorePlan`/`isFullyPlaced` from this module, so importing back
- * would be a circular dependency (same reasoning `effectiveAnnualSpans`,
- * above, already documents for the same constraint).
+ * The effective per-semester hour cap: `hardCap`, unless the user has
+ * already confirmed an overload (`overloadAccepted` + `overloadConfirmedAt`),
+ * in which case `validatePlanState` (Phase 2C policy) legalizes loads up to
+ * `absoluteMaxReasonable` instead — the same policy `assessCompleteness`'s
+ * `overCapSemesters` already applies, duplicated here rather than shared
+ * because it's two lines and pulling in the rest of that function's
+ * signature would be more coupling than the logic is worth.
  */
-function hasFittingLegalSemester(state: PlanState, model: ConstraintModel, id: string): boolean {
+function effectiveHardCap(model: ConstraintModel): number {
+  const overloadConfirmed = model.overloadAccepted === true && !!model.overloadConfirmedAt;
+  if (!overloadConfirmed) return model.hardCap;
+  return model.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
+}
+
+/** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
+function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
   const p = model.profiles.get(id);
-  if (!p) return true;
+  if (!p) return [];
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  const legal = (semesters.length ? semesters : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
-  const hours = p.hours ?? 0;
-  return legal.some(sem => {
-    const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
-    return load + hours <= model.hardCap;
-  });
+  return (semesters.length ? semesters : model.knownSemesterIds)
+    .map(sem => model.knownSemesterIds.indexOf(sem))
+    .filter(i => i >= 0);
 }
 
 /**
- * Whether every prerequisite of `id` could, in principle, land in a
- * strictly earlier semester than `id` itself: already completed, already
- * currently-taking, or having some legal semester earlier than one of id's
- * own legal semesters. Only checks `id`'s DIRECT prerequisites (does not
- * recurse into a prerequisite's own prerequisites) — a shallow, cheap
- * "reachability approximation," the same spirit as `hasFittingLegalSemester`
- * and `projectFeasibility` elsewhere in this search (not a full
- * `validatePlanState`-grade analysis on every scorePlan call, which would be
- * both a real circular-import problem — `planner_validate.ts` already
- * imports `assessCompleteness` from this module — and a meaningful
- * performance cost given how often scorePlan runs during a search). It
- * catches exactly the permanent-ordering-deadlock shape this codebase
- * already has a dedicated fixture for
- * (`tests/api/generate_plan_missing_mandatory_gate.test.ts`'s MAND2/PRE2:
- * MAND2 only ever legal in year 3, its prerequisite PRE2 only ever legal in
- * year 4 — no ordering can ever satisfy both). Biased toward returning
- * `true` (reachable) whenever data is missing/ambiguous — a false "might be
- * reachable" only costs a little unused g1 headroom in a rare edge case; a
- * false "definitely unreachable" would reintroduce the exact regression
- * class Codex already caught twice on this PR.
+ * Whether `id` can, in principle, ever be legally placed — combining every
+ * way a mandatory course can be permanently unreachable, so
+ * `remainingMandatoryHours` (below) never reserves g1 budget for something
+ * that will never occupy it:
+ *
+ *  - hard-excluded (`isCourseExcluded`) — `enumerateActions` never proposes it.
+ *  - no legal semester has room under the EFFECTIVE cap (`effectiveHardCap`,
+ *    which honors a confirmed overload the same way `validatePlanState` does
+ *    — an earlier version of this check used the raw `hardCap` unconditionally
+ *    and wrongly called a legally-overloadable course unreachable).
+ *  - its only legal semester isn't one of `model.knownSemesterIds` at all
+ *    (`state.semesters` only has entries for known semesters — `emptyState`
+ *    — so `applyMutation`'s ADD_COURSE would reject an off-board target).
+ *  - a prerequisite-ordering deadlock: every direct prerequisite must have
+ *    some legal semester strictly before one of `id`'s own legal semesters
+ *    (or already be completed/currently-taking) — AND that prerequisite must
+ *    itself be reachable, recursively (an earlier version only checked
+ *    ordering, not the prerequisite's own placeability — e.g. a hard-excluded
+ *    prerequisite has a perfectly fine earlier offering semester on paper,
+ *    but can never actually be added, so the course depending on it can't
+ *    either).
+ *
+ * `visiting` guards recursion against a prerequisite cycle (a data problem
+ * this function isn't responsible for diagnosing) — a course already on the
+ * current recursion stack is treated as reachable rather than looping
+ * forever, the same "bias toward reachable when uncertain" the rest of this
+ * function follows: a false "might be reachable" only costs a little unused
+ * g1 headroom in a rare edge case; a false "definitely unreachable" would
+ * reintroduce the exact regression class Codex found repeatedly on this PR
+ * (a mandatory course's hours withheld from g1 forever, needlessly starving
+ * electives that could otherwise fill the plan, even though the course's
+ * absence is separately and honestly reported via `missingMandatory`).
+ *
+ * This is a reachability APPROXIMATION, not a full `validatePlanState`-grade
+ * analysis (still no duplicate-placement/co-requisite/annual-span reasoning)
+ * — reusing that validator directly isn't possible without a circular import
+ * (`planner_validate.ts` already imports `assessCompleteness` from this
+ * module) or a real performance cost (`scorePlan`, which calls this, runs
+ * very often during a search). `hasFittingLegalSemester`/`projectFeasibility`
+ * elsewhere in this codebase make the identical tradeoff.
  */
-function hasReachablePrerequisiteOrder(model: ConstraintModel, id: string): boolean {
+function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id: string, visiting: Set<string> = new Set()): boolean {
+  if (visiting.has(id)) return true;
   const p = model.profiles.get(id);
-  if (!p?.prerequisites?.length) return true;
-  const legalIndicesOf = (courseId: string): number[] => {
-    const cp = model.profiles.get(courseId);
-    if (!cp) return [];
-    const { semesters } = getLegalSemesters(cp as CourseLegalityInfo, model.knownSemesterIds);
-    return (semesters.length ? semesters : model.knownSemesterIds)
-      .map(sem => model.knownSemesterIds.indexOf(sem))
-      .filter(i => i >= 0);
-  };
-  const idIndices = legalIndicesOf(id);
+  if (!p) return true;
+  if (isCourseExcluded(model, id)) return false;
+
+  const cap = effectiveHardCap(model);
+  const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+  const legal = (semesters.length ? semesters : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
+  const hours = p.hours ?? 0;
+  const fits = legal.some(sem => {
+    const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
+    return load + hours <= cap;
+  });
+  if (!fits) return false;
+
+  if (!p.prerequisites?.length) return true;
+  const idIndices = legalSemesterIndices(model, id);
   if (!idIndices.length) return true;
   const idLatest = Math.max(...idIndices);
+  const nextVisiting = new Set(visiting);
+  nextVisiting.add(id);
   return p.prerequisites.every(prereqId => {
     if (model.completedCourseIds.has(prereqId)) return true;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) return true;
-    const prereqIndices = legalIndicesOf(prereqId);
+    const prereqIndices = legalSemesterIndices(model, prereqId);
     if (!prereqIndices.length) return true;
-    return Math.min(...prereqIndices) < idLatest;
+    if (Math.min(...prereqIndices) >= idLatest) return false;
+    return isMandatoryCourseReachable(state, model, prereqId, nextVisiting);
   });
 }
 
@@ -222,21 +244,13 @@ function hasReachablePrerequisiteOrder(model: ConstraintModel, id: string): bool
  *
  * This is the reservation degree_completion's g1 (below) subtracts from
  * degreeRequiredHours to compute its credit ceiling (issue #25 Finding #4).
- * The `isCourseExcluded`/`hasFittingLegalSemester`/
- * `hasReachablePrerequisiteOrder` gates matter: a mandatory course that can
- * NEVER be placed (hard-excluded, no legal offering semester fits it
- * anywhere, every legal semester is already crowded past the hard cap, its
- * only legal semester isn't even on this board, or its prerequisite ordering
- * is permanently deadlocked) must not permanently withhold g1 credit from
- * electives that could otherwise fill the plan — that course's absence
- * already surfaces separately as a real, honest blocking error
- * (`assessCompleteness`'s `missingMandatory` / `validateCandidate`), and the
- * reservation existing anyway would just needlessly truncate an otherwise-
- * maximal, valid partial plan (Codex findings on this PR: "Keep filling
- * degree hours when mandatory placement is blocked", "Skip hard-excluded
- * mandatory courses in the reservation", "Ignore legal semesters that are
- * not on the board", "Skip prerequisite-impossible mandatory courses in the
- * reservation").
+ * `isMandatoryCourseReachable` matters: a mandatory course that can NEVER be
+ * placed must not permanently withhold g1 credit from electives that could
+ * otherwise fill the plan — that course's absence already surfaces
+ * separately as a real, honest blocking error (`assessCompleteness`'s
+ * `missingMandatory` / `validateCandidate`), and the reservation existing
+ * anyway would just needlessly truncate an otherwise-maximal, valid partial
+ * plan.
  */
 function remainingMandatoryHours(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
@@ -245,9 +259,7 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
   for (const id of model.requiredMandatoryCourseIds) {
     if (model.completedCourseIds.has(id)) continue;
     if (isFullyPlaced(state, model, placed, id)) continue;
-    if (isCourseExcluded(model, id)) continue;
-    if (!hasFittingLegalSemester(state, model, id)) continue;
-    if (!hasReachablePrerequisiteOrder(model, id)) continue;
+    if (!isMandatoryCourseReachable(state, model, id)) continue;
     const p = model.profiles.get(id);
     if (!p) continue;
     if (p.count_hours_once && p.root_course_id) {

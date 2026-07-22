@@ -331,6 +331,64 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     const score = scorePlan(state, m);
     expect(score[0]).toBe(10);
   });
+
+  // Codex finding on this PR: the reachability check must honor a CONFIRMED
+  // overload the same way validatePlanState does — a mandatory course that
+  // only fits above the raw hardCap but under the user-confirmed
+  // absoluteMaxReasonable ceiling is legally placeable and must still be
+  // reserved, not treated as unreachable.
+  it('reserves budget for a mandatory course that only fits under a confirmed overload\'s higher effective cap', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+      hardCap: 6,
+      absoluteMaxReasonable: 10,
+      overloadAccepted: true,
+      overloadConfirmedAt: 1,
+    });
+    m.profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // e0 (4h) already occupies MAND's only legal semester: 4+4=8, over the raw
+    // hardCap (6) but under the confirmed-overload effective cap (10) — MAND
+    // is still legally placeable there. e1 (4h) sits in a different semester
+    // so it doesn't crowd MAND's own semester.
+    const state = withCourses('year_3_semester_a', ['e0']);
+    state.semesters['year_3_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 8 (e0+e1). If MAND is correctly reserved: budget = 10-4=6, g1 =
+    // min(8,6) = 6. If the bug were present (MAND wrongly excluded via the
+    // raw, unconfirmed hardCap): budget = 10, g1 = min(8,10) = 8.
+    expect(score[0]).toBe(6);
+  });
+
+  // Codex finding on this PR: reachability must be checked TRANSITIVELY — a
+  // mandatory course whose prerequisite has a legally-earlier offering
+  // semester on paper is still unreachable if that prerequisite can itself
+  // never be placed (e.g. hard-excluded). An ordering-only check would
+  // wrongly call the mandatory course reachable and keep reserving its hours.
+  it('does not reserve budget for a mandatory course whose prerequisite is itself unreachable', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND3'],
+      categories: [],
+      disallowedCourseIds: new Set(['PRE3']),
+    });
+    m.profiles.set('MAND3', profile('MAND3', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PRE3'],
+    }));
+    m.profiles.set('PRE3', profile('PRE3', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a'], // legally earlier than MAND3, but hard-excluded
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND3 transitively unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
