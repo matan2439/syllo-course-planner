@@ -6,7 +6,13 @@
  *   > 5 user preferences > 6 difficulty/comfort.
  */
 
-import { scorePlan, compareScore, GOAL_STACK, assessCompleteness } from '../../api/ai/planner_goals';
+import {
+  scorePlan,
+  compareScore,
+  GOAL_STACK,
+  assessCompleteness,
+  requiredCourseSemesterBoundaries,
+} from '../../api/ai/planner_goals';
 import { PlannerWorker } from '../../api/ai/planner_worker';
 import {
   type ConstraintModel,
@@ -826,6 +832,66 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // making Q9 — and so the whole chain — look reachable): budget =
     // 14-2(M9)-4(P9)-2(Q9)=6, g1 = min(12,6) = 6.
     expect(score[0]).toBe(12);
+  });
+});
+
+// Codex finding on this PR (round 21): a shared intermediate prerequisite
+// visited first through a LOOSER dependent must still propagate a later,
+// STRICTER tightening down to its own prerequisites — an earlier version
+// recorded the tightened boundary on the shared course itself but, gated on
+// "already recursed into once," never recomputed what that tighter timing
+// means for a prerequisite one level deeper, leaving it stuck at the
+// stale, looser value.
+describe('requiredCourseSemesterBoundaries — shared prerequisite re-tightening', () => {
+  it("propagates a later dependent's stricter boundary down through an already-visited shared prerequisite to ITS OWN prerequisite", () => {
+    const SEMS3 = [
+      'year_0_semester_a', // idx0 — P's only legal semester
+      'year_1_semester_a', // idx1 ─┐
+      'year_1_semester_b', // idx2  ├─ Q's legal semesters
+      'year_2_semester_a', // idx3 ─┘ (also M1's own semester)
+      'year_2_semester_b', // idx4
+      'year_3_semester_a', // idx5
+      'year_3_semester_b', // idx6 — M2's own semester
+    ];
+    const m = model({
+      knownSemesterIds: SEMS3,
+      degreeRequiredHours: 40,
+      categories: [],
+      // M2 listed BEFORE M1 — requiredCourseSemesterBoundaries processes the
+      // array in order, so the shared prerequisite chain (via Q) is first
+      // reached through M2's looser boundary, then re-reached through M1's
+      // stricter one.
+      requiredMandatoryCourseIds: ['M2', 'M1'],
+    });
+    m.profiles.set('M2', profile('M2', {
+      is_mandatory: true, hours: 2, effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['Q'],
+    }));
+    m.profiles.set('M1', profile('M1', {
+      is_mandatory: true, hours: 2, effective_allowed_semesters: ['year_2_semester_a'],
+      prerequisites: ['Q'],
+    }));
+    m.profiles.set('Q', profile('Q', {
+      hours: 2,
+      effective_allowed_semesters: ['year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a'],
+      prerequisites: ['P'],
+    }));
+    m.profiles.set('P', profile('P', { hours: 2, effective_allowed_semesters: ['year_0_semester_a'] }));
+    const state = emptyState(SEMS3);
+
+    const boundaries = requiredCourseSemesterBoundaries(state, m);
+
+    // M2 visits first: Q's boundary <- 6 (before M2's own semester, idx6),
+    // Q's own fitting boundary (max fitting < 6 among Q's [1,2,3]) = 3,
+    // so P is first recorded with boundary 3.
+    // M1 visits second: Q's boundary tightens 6 -> 3 (M1's own semester,
+    // idx3). Q's own fitting boundary under the NEW ceiling (max fitting
+    // < 3 among Q's [1,2,3]) is now 2 — one semester EARLIER than before —
+    // which must propagate down to tighten P's boundary from 3 to 2. A
+    // version that stops re-descending into an already-visited shared
+    // prerequisite would leave P stuck at the stale value of 3.
+    expect(boundaries.get('Q')).toBe(3);
+    expect(boundaries.get('P')).toBe(2);
   });
 });
 

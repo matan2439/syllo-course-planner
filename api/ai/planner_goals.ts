@@ -515,14 +515,22 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
  * while permanently blocking the earlier one (worse than not offering that
  * placement at all). Taking the minimum guarantees any offered placement
  * satisfies EVERY reachable dependent that needs this course, not just one
- * of them. Each id is recursed into at most once (an id reached via
- * multiple dependent paths tightens its own recorded boundary on every
- * visit but does not re-descend into its own prerequisites a second time,
- * so a tightened boundary doesn't retroactively propagate to that course's
- * own already-recorded prerequisites) — a bounded, single-pass
- * approximation, not an exhaustive multi-path reconciliation; consistent
- * with every other "cheap approximation, not full validation" tradeoff this
- * file already makes for search-hot code.
+ * of them. An id reached via multiple dependent paths RE-DESCENDS into its
+ * own prerequisites every time a visit actually tightens its recorded
+ * boundary (Codex finding on this PR: an earlier version recursed into a
+ * shared prerequisite's own prerequisites at most once — on the FIRST visit
+ * — and merely updated the recorded boundary on every later, tightening
+ * visit without re-propagating it deeper. A shared intermediate prerequisite
+ * `Q` first reached via a looser dependent recorded ITS OWN prerequisite
+ * `P`'s boundary from that loose context; a later, stricter dependent then
+ * tightened `Q`'s own boundary but — gated on "already processed" — never
+ * recomputed what that tighter timing means for `P`, leaving `P`'s boundary
+ * stuck at the earlier, looser (and now-wrong) value). Termination is still
+ * guaranteed without a re-visit cap: `beforeIndex` is a plan-board semester
+ * index, bounded below by 0, and a visit only proceeds past the "does this
+ * tighten anything" check when it strictly decreases the id's own recorded
+ * value — so any single id can trigger at most `knownSemesterIds.length`
+ * re-descents, regardless of how many dependent paths reach it.
  * A course reached with no computable boundary (no legality data at all) is
  * left out of the map entirely — callers must treat a missing entry as
  * "unconstrained," the same bias-toward-reachable default used everywhere
@@ -531,7 +539,6 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
 export function requiredCourseSemesterBoundaries(state: PlanState, model: ConstraintModel): Map<string, number> {
   const placed = new Set(placedCourseIds(state));
   const boundaries = new Map<string, number>();
-  const processed = new Set<string>();
 
   const recordAndRecurse = (id: string, beforeIndex: number | undefined): void => {
     if (model.completedCourseIds.has(id)) return;
@@ -540,10 +547,9 @@ export function requiredCourseSemesterBoundaries(state: PlanState, model: Constr
     if (!p) return;
     if (beforeIndex !== undefined) {
       const existing = boundaries.get(id);
-      if (existing === undefined || beforeIndex < existing) boundaries.set(id, beforeIndex);
+      if (existing !== undefined && beforeIndex >= existing) return; // no tighter than what's already recorded — nothing new to propagate
+      boundaries.set(id, beforeIndex);
     }
-    if (processed.has(id)) return;
-    processed.add(id);
     if (!p.prerequisites?.length) return;
     const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
     const ownBoundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
