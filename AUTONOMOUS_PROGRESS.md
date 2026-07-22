@@ -5,10 +5,30 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-22, session on branch `claude/determined-thompson-l4jl42`
-(PR #44 merged — see below; supersedes the PR #41 entry as the latest
+(PR #46 merged — see below; supersedes the PR #44 entry as the latest
 completed milestone)._
 
-## Latest session — PR #44: misattributed block-cause explanation, fixed via a fresh Agent Diagnosis Loop pass
+## Latest session — PR #46: issue #43 (track_or_focus clarification question) fixed, 3 rounds of real Codex findings
+
+Continuing the same session that merged PR #44. Picked up issue #43 (filed in that same session) as the next milestone — small, already fully diagnosed, ready to implement, and the rolling window was already compliant so there was no forced A/B pressure.
+
+**The bug**: `academic_clarification.ts`'s `track_or_focus` question gates on `!context.track`, but `academic_decision_runtime.ts`'s `extractClarificationContext` never set it — no field for track exists anywhere in `plan_context`/`preferences` (deliberate: `academic_clarification_plan_inputs.ts` documents no planner input consumes it). So the question re-asked identically forever, even after being validly answered — unlike every other clarification field.
+
+**The fix, and 3 real rounds of Codex escalation, each a genuine narrower gap in the same mechanism**:
+1. Base fix: `extractClarificationContext` reads a `track_or_focus` answer straight from the raw `clarification_answers` array (presentation-layer only, never reaches planning).
+2. Codex: that only resolved the question for the SAME request as the answer — a later, separate submission answering a different question would forget it (the form only renders currently-unresolved questions). Fixed with a client-side accumulator (`_aiClarificationAnswersSoFar`) merging and resending answers across a clarification exchange.
+3. Codex: the accumulator then had no scope boundary and could let a stale answer silently override fresh UI state on a later, UNRELATED build (since the server-side merge lets `clarification_answers` win over `preferences`). Fixed by clearing it on any fresh non-resume `requestPlanProposal` call.
+4. Codex: the track-answer lookup picked the first matching entry regardless of validity, not the latest valid one. Fixed to scan from the end.
+
+Round 5 (final): Codex clean, no further findings. All 3 threads resolved with evidence.
+
+**Merged** (`b9823c8`), issue #43 closed. Full API suite **1272/1272** (82 suites), `tsc --noEmit` clean. Full `jest.ui.config.js` suite: 386 failing (unchanged pre-existing baseline, issue #20) / 447 passing (+6 new tests), zero regressions. **Classification: C** (correctness — real "the agent ignores my answer" defect on the production-reachable `use_academic_decision_agent:true` path).
+
+Rolling-three check: (41,44,46) = A/C/C — compliant (3 of 3 are A/B/C; PR #41 is the A). No forced A/B requirement on the immediate next milestone.
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same standing Vercel deploy-mechanism blocker every session since PR #27 has confirmed. PR #46 (along with PR #12/13/27/31/32/34/37/39/41/44) is not live for real users yet.
+
+## Prior session — PR #44: misattributed block-cause explanation, fixed via a fresh Agent Diagnosis Loop pass
 
 Rolling window was compliant after PR #41 (no forced A/B pressure), so per the
 standing instruction, ran the mandated **Agent Diagnosis Loop** again before
@@ -413,6 +433,12 @@ found is already a fully-diagnosed, open human decision from a prior session
     workload for blocks that were actually an incomplete annual course or a
     step-limit cutoff; found via a fresh Agent Diagnosis Loop pass targeting
     previously-uncovered P1-checklist areas).
+13. PR #46 — issue #43, track_or_focus clarification question never
+    resolving once answered, **merged** (`b9823c8`), after 3 real rounds of
+    Codex findings fixed (each a narrower gap in the same fix — single-request
+    resolution → multi-step accumulation → cross-flow staleness → duplicate-
+    answer ordering) — **C** (correctness: real "agent ignores my answer"
+    defect in the clarification-answer round-trip).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -443,24 +469,27 @@ Rolling-three checks:
 
 - (39,41,44) = C/A/C — **compliant** (3 of 3 are A/B/C; 1 is A/B, from PR #41).
   No rolling-window pressure on the immediate next milestone.
+- (41,44,46) = A/C/C — **compliant** (3 of 3 are A/B/C; 1 is A/B, from PR #41).
+  No rolling-window pressure on the immediate next milestone.
 
 Every merged window from PR #27 through PR #32/#34 is compliant. (32,34,37)
 and (34,37,39) were two consecutive non-compliant windows, both now cured by
 PR #41's A classification — unlike the very first (12,13,27) shortfall which
 predates the rule's enforcement and can't be fixed retroactively. The rolling
-window is compliant again as of PR #41 and remains so through PR #44; the
+window is compliant again as of PR #41 and remains so through PR #46; the
 next milestone has no forced A/B requirement unless a future window drifts
 non-compliant again.
 
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, #34, #37, #39, #41, #44) is inert for real users until
-   someone deploys `ui/frontend-modernization` HEAD. This is the single
+   #13, #27, #31, #32, #34, #37, #39, #41, #44, #46) is inert for real users
+   until someone deploys `ui/frontend-modernization` HEAD. This is the single
    highest-value unblock available right now — real, tested, Codex-reviewed
    correctness fixes (including a silent-empty-plan P0-severity bug, PR #39,
-   the structural-gap disclosure fix, PR #41, and the block-cause explanation
-   fix, PR #44) are sitting unshipped.
+   the structural-gap disclosure fix, PR #41, the block-cause explanation
+   fix, PR #44, and the clarification round-trip fix, PR #46) are sitting
+   unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -495,42 +524,36 @@ non-compliant again.
    (not manufactured just to consume the capability — that would violate
    "Do not build unused capabilities merely to advance an architectural
    checklist" from the other direction).
-7. Issue #43 (new, this session) — the `track_or_focus` clarification question
-   never resolves once answered, re-asked every turn forever. P2, not blocking
-   or corrupting a plan, but a real user-visible "agent ignores my answer"
-   defect in the clarification loop. Fully diagnosed with repro + root cause;
-   not fixed this session to keep PR #44's diff narrow. A reasonable candidate
-   for the next small milestone if no higher-impact diagnosis finding
-   supersedes it.
+7. Issue #43 — **closed, fixed in PR #46** (see Latest session above). No
+   longer a blocker.
 
 ## Exact next action
 
-1. **Rolling window is compliant (39,41,44 = C/A/C) — no forced A/B
+1. **Rolling window is compliant (41,44,46 = A/C/C) — no forced A/B
    constraint on the immediate next milestone.** Still run the mandated
    **Agent Diagnosis Loop** first (real Hebrew scenarios against the real
    `generate-plan` handler, both default and `use_academic_decision_agent`
    paths, using a real board fixture like `mechanical_engineering_2027`) to
    find the next highest-impact real Agent failure before picking anything —
    that's the standing instruction regardless of rolling-window pressure. This
-   session's diagnosis pass covered draft/state isolation, explanation
+   session's two diagnosis passes covered: draft/state isolation, explanation
    faithfulness, multi-turn trace consistency, and the clarification
-   round-trip — future sessions should probe areas still untested: dual-
+   round-trip (now fixed, both the base gap and 3 rounds of Codex-found
+   escalations) — future sessions should probe areas still untested: dual-
    semester/multi-alternative comparison quality, simulate-then-apply user
    flows once/if a real one exists, and accessibility/error-state UI
    behavior for blocked plans.
-   - Issue #43 (track_or_focus never resolves) is a small, fully-scoped,
-     ready-to-implement candidate if nothing higher-impact turns up.
    - PR #14's Decision capability is the standing D candidate that could
      become a B if a genuine multi-candidate producer scenario exists — do
      not force this without a real scenario, per Blockers item 6's caveat.
      **PR #14 must stay unmerged** — D-classified infra with no production
      consumer, per established precedent (multiple sessions now).
 2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** Still the single most valuable pending action — 10 real,
+   production.** Still the single most valuable pending action — 11 real,
    tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39,
-   #41, #44) are merged and waiting, unchanged since the last several sessions
-   all flagged this identically. Do not re-investigate this further without
-   new evidence (e.g. Vercel CLI credentials becoming available) — the
+   #41, #44, #46) are merged and waiting, unchanged since the last several
+   sessions all flagged this identically. Do not re-investigate this further
+   without new evidence (e.g. Vercel CLI credentials becoming available) — the
    blocker and the reasoning against using `deploy_to_vercel` are both
    already fully documented above.
 3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
