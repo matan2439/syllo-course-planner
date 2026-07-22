@@ -764,7 +764,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     effectivePreferences = mergedForAgent.preferences;
 
     academicDecisionClarification = await clarifyForAcademicDecision(
-      extractClarificationContext(effectivePlanContext, effectivePreferences, academic_interest_profile),
+      extractClarificationContext(effectivePlanContext, effectivePreferences, academic_interest_profile, clarification_answers),
     );
   }
 

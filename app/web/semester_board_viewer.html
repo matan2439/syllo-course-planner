@@ -4604,6 +4604,18 @@ function academicDecisionHtml(academicDecision) {
 let _aiPlanLastInterestEvaluation = null;
 // Additive: the last academicDecision from the opt-in agent runtime (or null).
 let _aiPlanLastAcademicDecision = null;
+// Accumulates clarification answers across a multi-step resume (Codex review,
+// PR #46): the clarification form only ever renders the CURRENTLY-unresolved
+// questions (built from the latest academicDecision.clarification), so
+// collectClarificationAnswers(form) only returns whatever was just typed into
+// THAT submission. Without this, answering question A in one submission and
+// question B in a later one would resend only B, and the server (having no
+// durable session state) would ask A again — resolved server-side per-request
+// (academic_decision_runtime.ts's resolveTrackAnswer) is not enough on its
+// own when the client itself forgets earlier answers. Keyed by questionId so
+// a later answer to the same question overwrites, not duplicates. Reset in
+// resetAiConversation() alongside the rest of the cached planning state.
+let _aiClarificationAnswersSoFar = [];
 
 function _ensureInterestState() {
   const s = _aiPickerState.interests;
@@ -4656,10 +4668,18 @@ function renderAcademicDecision() {
   if (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      const answers = collectClarificationAnswers(form);
+      const newAnswers = collectClarificationAnswers(form);
+      // Merge into the running accumulator (by questionId, newest wins) rather
+      // than sending only this submission's answers — see
+      // _aiClarificationAnswersSoFar's own comment for why: the form only ever
+      // renders currently-unresolved questions, so a later submission that
+      // answers a DIFFERENT question would otherwise silently forget this one.
+      const merged = new Map(_aiClarificationAnswersSoFar.map(a => [a.questionId, a]));
+      for (const a of newAnswers) merged.set(a.questionId, a);
+      _aiClarificationAnswersSoFar = [...merged.values()];
       const prefs = _aiPlanLastPreferences || {};
       const actionType = (prefs && prefs.action_type) || 'full_plan';
-      requestPlanProposal(prefs, actionType, answers);
+      requestPlanProposal(prefs, actionType, _aiClarificationAnswersSoFar);
     });
   }
 }
@@ -5249,6 +5269,7 @@ function resetAiConversation() {
   _aiPlanLastCtx         = null;
   _aiPlanLastAnalysis    = null;
   _aiPlanLastPreviewArgs = null;
+  _aiClarificationAnswersSoFar = [];
 
   // 4. Temporary picker preferences back to initial.
   _aiPickerState = { wanted: [], unwanted: [], strongUnwanted: [], shaarRuachAssessmentPref: null, _initialized: true };
@@ -17911,6 +17932,16 @@ function resolveStaleDisallowedBlockLocal(blocked, errors, finalPlacedIds, cours
 }
 
 async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
+  // Codex review (PR #46, discussion_r3626588953): _aiClarificationAnswersSoFar
+  // must be scoped to ONE clarification exchange, not live forever — every
+  // caller except the clarification-form submit handler calls this with no
+  // 3rd argument, i.e. a fresh, non-resume request. Clearing it here (rather
+  // than only in resetAiConversation()) means a stale earlier answer (e.g. a
+  // previous max_weekly_hours reply) can never silently override fresh UI
+  // state — like a newly-changed sidebar cap — on a later, unrelated build.
+  if (clarificationAnswers === undefined) {
+    _aiClarificationAnswersSoFar = [];
+  }
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
   // Issue C — resolve explicitly-named avoided courses (free text + the

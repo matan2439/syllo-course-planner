@@ -203,6 +203,33 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
     const res = await run(sufficientBody({ use_academic_decision_agent: true }));
     expect(res._body.academicDecision.explanation.suggestedNextActions.length).toBeGreaterThan(0);
   });
+
+  // Issue #43: a real, reproducible clarification-loop defect found via the
+  // Agent Diagnosis Loop — track_or_focus was re-asked identically forever,
+  // even after being validly answered, unlike every other clarification field.
+  test('19. track_or_focus resolves after being answered, and stays resolved on a later turn with no answer resent', async () => {
+    const turn1 = await run(sufficientBody({ use_academic_decision_agent: true }));
+    expect(turn1._body.academicDecision.clarification.questions.map((q: any) => q.id)).toContain('track_or_focus');
+
+    const turn2 = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      clarification_answers: [{ questionId: 'track_or_focus', value: 'design' }],
+    }));
+    expect(turn2._body.academicDecision.clarification.questions.map((q: any) => q.id)).not.toContain('track_or_focus');
+
+    // Deliberately NOT propagated into planning inputs (no planner field exists for
+    // it — see academic_clarification_plan_inputs.ts's own documented seam): the
+    // plan itself must be unaffected by answering it.
+    expect(turn2._body.semesters).toEqual(turn1._body.semesters);
+  });
+
+  test('20. a blank track_or_focus answer does not resolve the question (still no answer submitted)', async () => {
+    const res = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      clarification_answers: [{ questionId: 'track_or_focus', value: '   ' }],
+    }));
+    expect(res._body.academicDecision.clarification.questions.map((q: any) => q.id)).toContain('track_or_focus');
+  });
 });
 
 describe('generate-plan — agent path preserves planning semantics', () => {

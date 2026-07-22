@@ -150,11 +150,44 @@ export function resolveHardExcludedCourseIds(
 
 // ── Clarify ──────────────────────────────────────────────────────────────────
 
+/**
+ * Issue #43: `track_or_focus` is a real clarification question
+ * (academic_clarification.ts's QUESTION_SPECS) but has no target field in
+ * plan_context/preferences — mergeClarificationAnswersIntoGeneratePlanInputs
+ * (academic_clarification_plan_inputs.ts) documents this as deliberate: no
+ * planner input consumes a track/specialization value, and inventing one
+ * would be out of scope. That must not mean the QUESTION itself can never be
+ * marked resolved, though — without this, it re-asks identically forever
+ * even after a valid answer, unlike every other clarification field. Reads
+ * the answer straight from the raw request array (never merged into
+ * plan_context/preferences, so it still never reaches planning) purely to
+ * let clarify() see it was answered. Mirrors academic_clarification_loop.ts's
+ * EXPECTED_ANSWER_KIND validation for the same question id (non-empty text).
+ */
+function resolveTrackAnswer(answers?: Array<{ questionId: string; value: unknown }>): string | undefined {
+  if (!answers) return undefined;
+  // Scan from the end so the most recent VALID answer wins — matches the
+  // "later answers win" convention the rest of the clarification-merge path
+  // already follows (academic_clarification_loop.ts's applyClarificationLoopAnswers).
+  // A later blank/invalid duplicate is skipped (not treated as "no answer at
+  // all"), so it can't shadow an earlier genuinely valid one — Codex review
+  // (PR #46, discussion_r3626609490): a naive .find() picking the FIRST
+  // matching entry regardless of validity could keep track unresolved even
+  // when a valid answer exists later in the same batch.
+  for (let i = answers.length - 1; i >= 0; i--) {
+    const a = answers[i];
+    if (a.questionId !== 'track_or_focus') continue;
+    if (typeof a.value === 'string' && a.value.trim().length > 0) return a.value;
+  }
+  return undefined;
+}
+
 /** Map generate-plan's plan_context/preferences onto the clarification context. */
 export function extractClarificationContext(
   planContext: any,
   preferences: any,
   rawProfile: unknown,
+  clarificationAnswers?: Array<{ questionId: string; value: unknown }>,
 ): ClarificationPlanningContext {
   const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
@@ -166,6 +199,8 @@ export function extractClarificationContext(
     excludedCourseIds: excluded,
     maxWeeklyHours: preferences?.max_weekly_hours ?? undefined,
   };
+  const trackAnswer = resolveTrackAnswer(clarificationAnswers);
+  if (trackAnswer !== undefined) context.track = trackAnswer;
   // Only introduce the interest key when a profile is actually supplied — absence
   // must leave clarification's interest questions dormant (see academic_clarification.ts).
   if (rawProfile !== undefined && rawProfile !== null) {

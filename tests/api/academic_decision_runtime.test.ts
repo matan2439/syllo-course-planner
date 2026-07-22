@@ -88,6 +88,67 @@ describe('extractClarificationContext', () => {
     const withoutProfile = extractClarificationContext({}, {}, undefined);
     expect('academicInterestProfile' in withoutProfile).toBe(false);
   });
+
+  // Issue #43: track_or_focus is never propagated into plan_context/preferences
+  // (mergeClarificationAnswersIntoGeneratePlanInputs deliberately has no target
+  // field for it — no planner consumer exists), but that must not mean the
+  // clarification QUESTION can never be marked resolved. extractClarificationContext
+  // reads it straight from the raw answers array, presentation-layer only.
+  test('sets track from a track_or_focus clarification answer, without touching plan_context/preferences', () => {
+    const withAnswer = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'design' },
+    ]);
+    expect(withAnswer.track).toBe('design');
+
+    const withoutAnswer = extractClarificationContext({}, {}, undefined, []);
+    expect(withoutAnswer.track).toBeUndefined();
+
+    const noAnswersArg = extractClarificationContext({}, {}, undefined);
+    expect(noAnswersArg.track).toBeUndefined();
+  });
+
+  test('ignores a blank/whitespace-only or wrong-type track_or_focus answer (never resolves on a non-answer)', () => {
+    const blank = extractClarificationContext({}, {}, undefined, [{ questionId: 'track_or_focus', value: '   ' }]);
+    expect(blank.track).toBeUndefined();
+
+    const wrongType = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 42 as unknown as string },
+    ]);
+    expect(wrongType.track).toBeUndefined();
+
+    const otherQuestion = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'excluded_courses', value: ['X'] as unknown as string },
+    ]);
+    expect(otherQuestion.track).toBeUndefined();
+  });
+
+  // Codex review, 3rd round (PR #46, discussion_r3626609490): a naive
+  // "first match" lookup would keep track unresolved when a stale/blank
+  // duplicate happens to come BEFORE a later, genuinely valid answer in the
+  // same batch — even though the later one should win, matching the
+  // "later answers win" convention the rest of the clarification-merge path
+  // already follows.
+  test('the most recent VALID track_or_focus answer wins when a batch has duplicates', () => {
+    const laterValidWins = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: '' },
+      { questionId: 'track_or_focus', value: 'design' },
+    ]);
+    expect(laterValidWins.track).toBe('design');
+
+    // A later blank/invalid duplicate must not shadow an earlier valid one —
+    // it's skipped, not treated as "the answer is now unset."
+    const laterBlankSkipped = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'design' },
+      { questionId: 'track_or_focus', value: '   ' },
+    ]);
+    expect(laterBlankSkipped.track).toBe('design');
+
+    const laterOfTwoValidWins = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'analysis' },
+      { questionId: 'track_or_focus', value: 'systems' },
+    ]);
+    expect(laterOfTwoValidWins.track).toBe('systems');
+  });
 });
 
 // ── clarify + critical gate ──────────────────────────────────────────────────

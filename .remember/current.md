@@ -1,5 +1,15 @@
 # Current — read this first
 
+## 🔧 Issue #43 fixed: track_or_focus clarification question now resolves once answered (2026-07-22, autonomous scheduled run)
+
+Same session that merged PR #44 (block-cause explanation fix) and filed issue #43. Picked up #43 as the next milestone since it was already fully diagnosed, small, and ready to implement — the rolling window (39,41,44 = C/A/C) was already compliant so there was no forced A/B pressure either way.
+
+**Root cause, precisely located**: `academic_clarification.ts`'s `track` question gates on `!context.track`, but `academic_decision_runtime.ts`'s `extractClarificationContext` never set `context.track` to anything — there's no field for it anywhere in `plan_context`/`preferences` (and `academic_clarification_plan_inputs.ts`'s `mergeClarificationAnswersIntoGeneratePlanInputs` deliberately never adds one — documented seam: no planner input consumes a track/specialization value). So `!context.track` was unconditionally true regardless of any answer, and the question re-asked identically forever.
+
+**Fix**: `extractClarificationContext` gains a 4th optional param, `clarificationAnswers` — the raw `clarification_answers` array from the request — and a small `resolveTrackAnswer()` helper that pulls a valid (non-empty-string) `track_or_focus` answer straight from it, setting `context.track` when present. This is presentation-layer only: the answer still never reaches `plan_context`/`preferences`/planning (preserving the existing deliberate non-propagation decision) — it only lets the clarification question itself resolve, matching how every other clarification field already behaves. `generate-plan.ts`'s one call site now passes `clarification_answers` through.
+
+**Tests**: 2 new unit tests in `tests/api/academic_decision_runtime.test.ts` (sets `track` from a valid answer; ignores blank/wrong-type/other-question answers) + 2 new end-to-end tests in `tests/api/generate_plan_academic_decision_agent.test.ts` via the real handler (turn 1 has `track_or_focus` in `clarification.questions`; turn 2 with a valid answer no longer does, AND the plan itself — `semesters` — is byte-identical across both turns, proving non-propagation is preserved; a blank answer does not resolve the question). Full API suite **1271/1271** across 82 suites (was 1267/1267 — +4 new tests, zero regressions). `tsc --noEmit` clean.
+
 ## ✅ PR #44 MERGED — Agent Diagnosis Loop finding: misleading block-cause explanation, fixed (2026-07-22, autonomous scheduled run)
 
 **Merged** via `mcp__github__merge_pull_request` (normal merge) into `ui/frontend-modernization` as `c11df8a`. CI green (3/3: Python tests, Next.js build, TypeScript API tests) on the sole commit (`af4d214`). Codex review: clean, no findings ("Didn't find any major issues"). No unresolved review threads. **Classification: C** (correctness/honesty — the `use_academic_decision_agent:true` path is production-reachable today; fixes the Agent giving actively wrong remedial guidance for a real, reproducible block).
