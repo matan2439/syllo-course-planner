@@ -694,6 +694,47 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // being placed anywhere): budget = 10-2=8, g1 = min(12,8) = 8.
     expect(score[0]).toBe(10);
   });
+
+  // Codex finding on this PR: an is_annual mandatory course occupies EVERY
+  // one of its spans simultaneously — including the EARLIEST one — but the
+  // prerequisite-ordering check compared against `id`'s single LATEST legal
+  // semester (the right comparison for an ordinary course, which can be
+  // placed at any one of several options) even when `id` is annual. A
+  // prerequisite placed in (or after) the annual course's own FIRST span was
+  // wrongly treated as "early enough," when validatePlanProposal's
+  // strict-timing rule checks the prerequisite against each occurrence
+  // independently and would reject the add for that first span (same
+  // semester as the prerequisite).
+  it('compares an is_annual mandatory course\'s prerequisite against its earliest required span, not its latest legal semester', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['ANNUAL2'],
+      categories: [],
+    });
+    m.profiles.set('ANNUAL2', profile('ANNUAL2', {
+      is_mandatory: true, hours: 4, is_annual: true,
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['PRE_ANNUAL'],
+    }));
+    // PRE_ANNUAL is already placed in year_3_semester_a — the SAME semester
+    // as ANNUAL2's own first span. year_3_semester_a comes before
+    // year_3_semester_b (ANNUAL2's latest legal semester), so the old
+    // (idLatest-based) comparison wrongly called this "early enough."
+    m.profiles.set('PRE_ANNUAL', profile('PRE_ANNUAL', {
+      hours: 4, placement_policy: 'fixed', recommended_semester: 'year_3_semester_a',
+    }));
+    const state = withCourses('year_3_semester_a', ['PRE_ANNUAL']);
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (PRE_ANNUAL+e0+e1). If ANNUAL2 is correctly NOT reserved
+    // (PRE_ANNUAL sits in ANNUAL2's own first span, not strictly before it):
+    // budget = 14 (no reservation), g1 = min(12,14) = 12. If the bug were
+    // present (PRE_ANNUAL wrongly treated as early enough vs the latest
+    // span): budget = 14-4=10, g1 = min(12,10) = 10.
+    expect(score[0]).toBe(12);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

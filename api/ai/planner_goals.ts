@@ -255,6 +255,14 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  *    even one span is permanently crowded, the whole add is illegal.
  *  - a prerequisite-ordering deadlock: every direct prerequisite must have
  *    some legal semester strictly before one of `id`'s own legal semesters
+ *    — or, when `id` is `is_annual`, strictly before its EARLIEST required
+ *    span, since an annual course occupies every span at once and
+ *    `validatePlanProposal`'s strict-timing rule checks the prerequisite
+ *    against each occurrence independently (an earlier version compared
+ *    against `id`'s single latest legal semester even for annual courses,
+ *    wrongly treating a prerequisite placed in — or after — the FIRST span
+ *    as early enough, when the add would actually be rejected for that
+ *    occurrence)
  *    (or already be completed/currently-taking) — AND that prerequisite must
  *    itself be reachable, recursively (an earlier version only checked
  *    ordering, not the prerequisite's own placeability — e.g. a hard-excluded
@@ -315,7 +323,21 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   if (!p.prerequisites?.length) return true;
   const idIndices = legalSemesterIndices(model, id);
   if (!idIndices.length) return true;
-  const idLatest = Math.max(...idIndices);
+  // For a normal course, id could be placed at ANY of its legal semesters, so
+  // the latest one is the most permissive (bias-reachable) valid comparison
+  // point — a prereq before it means SOME legal placement works. An
+  // is_annual course has no such choice: it occupies EVERY one of its
+  // annualSpans simultaneously (validatePlanProposal's strict-timing rule
+  // checks each occurrence independently), including the EARLIEST one — an
+  // earlier version compared against the latest legal semester even for
+  // annual courses, which wrongly treated a prerequisite placed in (or
+  // after) the course's own first span as "earlier enough," when
+  // validatePlanState would reject that add outright (same-or-later semester
+  // as the first occurrence).
+  const annualSpanIndices = annualSpans && annualSpans.length
+    ? annualSpans.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0)
+    : [];
+  const idBoundary = annualSpanIndices.length ? Math.min(...annualSpanIndices) : Math.max(...idIndices);
   const nextVisiting = new Set(visiting);
   nextVisiting.add(id);
   const placedIds = new Set(placedCourseIds(state));
@@ -341,13 +363,13 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
         .map(([sem]) => model.knownSemesterIds.indexOf(sem))
         .filter(i => i >= 0);
       if (!placedIndices.length) return true; // shouldn't happen; bias reachable
-      return Math.max(...placedIndices) < idLatest;
+      return Math.max(...placedIndices) < idBoundary;
     }
     const rawPrereq = rawLegalSemesters(model, prereqId);
     if (!rawPrereq.length) return true; // no legality data at all — ambiguous, bias reachable
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
     if (!prereqIndices.length) return false; // declared semester(s) exist, none are on this board
-    if (Math.min(...prereqIndices) >= idLatest) return false;
+    if (Math.min(...prereqIndices) >= idBoundary) return false;
     return isMandatoryCourseReachable(state, model, prereqId, nextVisiting);
   });
 }
