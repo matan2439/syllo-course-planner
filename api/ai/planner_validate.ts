@@ -159,6 +159,35 @@ export const LEGALITY_VIOLATION_ERROR_PREFIX = 'הפרת חוקיות בתוכנ
 export const MISSING_MANDATORY_ERROR_PREFIX = 'קורס חובה לא שובץ בתוכנית:';
 
 /**
+ * Stable prefix for generate-plan.ts's degreeHoursGate — a genuinely
+ * unrecoverable degree-hours shortfall: every mandatory course and category
+ * requirement is satisfied, the plan is otherwise legal, yet total credited
+ * hours still fall short of model.degreeRequiredHours and no further legal
+ * action (ADD, REPLACE, or MOVE-then-ADD — see canRecoverViaUnwantedElective/
+ * canRecoverMoreHours in generate-plan.ts) can close the gap, because the
+ * visible planning window's catalog is genuinely exhausted.
+ *
+ * Agent Diagnosis Loop finding (2026-07-22): toProposal already computed this
+ * exact condition (see its own "מיצית את כל הקורסים הזמינים" warnings_he
+ * message) but only ever pushed it as a soft warning, never a blockingErrors
+ * entry — so a plan could report blocked:false and (on the
+ * use_academic_decision_agent path) academicDecision.validation.valid:true
+ * while academicDecision.explanation.whyThisPlan admitted, in the same
+ * response, that the plan does not complete degree hours. Same
+ * "computed-but-discarded validation signal" bug class as
+ * disallowedGate/annualCompletenessGate/legalityGate/missingMandatoryGate
+ * above — this routine's own product policy is explicit that "no incomplete
+ * plan may be presented as complete," and a structural, unrecoverable hours
+ * shortfall is exactly that. Same sharing reason as the other
+ * *_ERROR_PREFIX constants above: academic_decision_runtime.ts's
+ * buildAcademicDecision needs to tell this cause apart from a genuine
+ * overload block (its hasOverloadError catch-all) so it can name the actual
+ * cause and suggest a fix a rebuild can't provide (the catalog itself is the
+ * constraint, not the search), instead of defaulting to overload guidance.
+ */
+export const DEGREE_HOURS_SHORTFALL_ERROR_PREFIX = 'פער שעות תואר שאינו ניתן להשלמה מתוך הקטלוג הזמין:';
+
+/**
  * Which of the given placed course ids are hard-excluded by the model (either
  * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
  * Shared by validateCandidate below and by generate-plan.ts's post-planning

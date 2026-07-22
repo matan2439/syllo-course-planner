@@ -47,6 +47,7 @@ import {
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
   MISSING_MANDATORY_ERROR_PREFIX,
+  DEGREE_HOURS_SHORTFALL_ERROR_PREFIX,
 } from './planner_validate';
 import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER, CURRENTLY_TAKING_REUSE_ERROR_MARKER } from './plan_validation';
 import {
@@ -350,6 +351,46 @@ function missingMandatoryGate(
   return missingMandatory.map(
     id => `${MISSING_MANDATORY_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
   );
+}
+
+/**
+ * See DEGREE_HOURS_SHORTFALL_ERROR_PREFIX's own doc comment (planner_validate.ts)
+ * for the Agent Diagnosis Loop finding this closes.
+ *
+ * Deliberately re-derives the exact same unrecoverability condition
+ * toProposal's own "מיצית את כל הקורסים הזמינים" warnings_he branch already
+ * computes (same guard clauses, same canRecoverViaUnwantedElective/
+ * canRecoverMoreHours calls) — mirrors every other gate in this file
+ * (independent re-derivation from the FINAL placed set so detection can
+ * never drift from the actual check), rather than threading a boolean out of
+ * toProposal's return value, which would either leak an internal-only field
+ * into the public PlanProposal response contract (toProposal's result is
+ * spread directly into responseBody below) or require a second, easily
+ *-forgotten call-site change every time toProposal's shape evolves.
+ */
+function degreeHoursGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+  currentlyTakingHoursFromContext?: Map<string, number>,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  const report = validateCandidate(state, model, pinnedHome);
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  const creditedHours = report.degreeHours + currentlyPlannedHours;
+  const structurallyShort =
+    !report.degreeMet &&
+    creditedHours < model.degreeRequiredHours &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0 &&
+    report.legal &&
+    report.disallowedPlaced.length === 0 &&
+    !canRecoverViaUnwantedElective(state, model, pinnedHome) &&
+    !canRecoverMoreHours(state, model, pinnedHome);
+  return structurallyShort
+    ? [`${DEGREE_HOURS_SHORTFALL_ERROR_PREFIX} ${creditedHours}/${model.degreeRequiredHours} ש"ש.`]
+    : [];
 }
 
 function legalityGate(
@@ -1056,6 +1097,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...annualCompletenessGate(proposal.semesters, model),
     ...legalityGate(proposal.semesters, model, pinnedHome),
     ...missingMandatoryGate(proposal.semesters, model),
+    ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via

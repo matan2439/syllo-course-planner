@@ -54,6 +54,7 @@ import {
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
   MISSING_MANDATORY_ERROR_PREFIX,
+  DEGREE_HOURS_SHORTFALL_ERROR_PREFIX,
 } from './planner_validate';
 
 // ── Public shapes ───────────────────────────────────────────────────────────
@@ -344,6 +345,14 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const hasAnnualIncompleteError = input.errors.some((e) => e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX));
   const hasStepLimitError = input.errors.includes(STEP_LIMIT_ERROR);
   const hasLegalityViolationError = input.errors.some((e) => e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX));
+  // Agent Diagnosis Loop finding (2026-07-22): a genuinely unrecoverable
+  // degree-hours shortfall (every mandatory/category requirement satisfied,
+  // plan otherwise legal, but the visible catalog is exhausted before
+  // reaching model.degreeRequiredHours) is its own distinct cause, needing its
+  // own flag for the same reason the annual/step-limit/legality causes above
+  // each got one: "reduce your weekly load" or "request a rebuild" cannot fix
+  // a shortfall the catalog itself can't close.
+  const hasDegreeHoursShortfallError = input.errors.some((e) => e.startsWith(DEGREE_HOURS_SHORTFALL_ERROR_PREFIX));
   // Agent Diagnosis Loop finding (2026-07-22): a missing mandatory course can
   // have two entirely different root causes — a search-budget/reachability
   // shortfall (fixable by checking prerequisite placement or requesting a
@@ -407,6 +416,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
       !e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX) &&
       !e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX) &&
       !e.startsWith(MISSING_MANDATORY_ERROR_PREFIX) &&
+      !e.startsWith(DEGREE_HOURS_SHORTFALL_ERROR_PREFIX) &&
       e !== STEP_LIMIT_ERROR,
   );
 
@@ -420,6 +430,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     );
   }
   if (hasMissingMandatoryOtherCause) blockingCauseClauses.push('קורס חובה לא שובץ בתוכנית');
+  if (hasDegreeHoursShortfallError) blockingCauseClauses.push('לא ניתן להשלים את שעות התואר הנדרשות מתוך הקטלוג הזמין בטווח התכנון הנוכחי');
   if (hasOverloadError) blockingCauseClauses.push('יש חריגת עומס שטרם טופלה');
   if (hasStepLimitError) blockingCauseClauses.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים והתוכנית עשויה להיות חלקית');
 
@@ -478,6 +489,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     hasLegalityViolationError,
     hasMissingMandatoryOtherCause,
     hasMissingMandatoryDueToExclusion,
+    hasDegreeHoursShortfallError,
     excludedNamesInMissingMandatory,
     contradictoryWantedNames,
     disallowedPlaced: hasDisallowedPlacedError,
@@ -520,6 +532,8 @@ function buildSuggestedNextActions(args: {
   hasMissingMandatoryOtherCause: boolean;
   /** True when at least one missing mandatory course is missing because the user hard-excluded it themselves — a rebuild can never fix this. */
   hasMissingMandatoryDueToExclusion: boolean;
+  /** True for a genuinely unrecoverable degree-hours shortfall — the visible catalog is exhausted, so neither "reduce load" nor "request a rebuild" can help. */
+  hasDegreeHoursShortfallError: boolean;
   excludedNamesInMissingMandatory: string[];
   /** Courses present in both wanted_course_ids and the resolved hard-exclusion list — a self-contradictory request. */
   contradictoryWantedNames: string[];
@@ -552,6 +566,12 @@ function buildSuggestedNextActions(args: {
   }
   if (args.hasMissingMandatoryOtherCause) {
     actions.push('קורס חובה לא שובץ בתוכנית — בדוק/בדקי אילו קורסי קדם נדרשים לו, או בקש/י בנייה מחדש.');
+  }
+  if (args.hasDegreeHoursShortfallError) {
+    actions.push(
+      'הקטלוג הזמין בטווח התכנון הנוכחי מוצה במלואו ואינו מספיק להשלמת שעות התואר — ' +
+        'פנה/י ליועץ/ת הלימודים או הרחב/י את טווח הסמסטרים המוצג; בקשת בנייה מחדש לא תשנה זאת כל עוד הקטלוג הזמין נותר זהה.',
+    );
   }
   if (args.contradictoryWantedNames.length > 0) {
     actions.push(
