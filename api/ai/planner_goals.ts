@@ -415,8 +415,23 @@ function isMandatoryCourseReachable(
       if (!placedIndices.length) return true; // shouldn't happen; bias reachable
       return Math.max(...placedIndices) < idBoundary;
     }
+    // Codex finding on this PR (round 24): a prerequisite id with NO PROFILE
+    // at all in model.profiles (a data-integrity gap — the prerequisite
+    // doesn't correspond to any known course) is definitively unreachable,
+    // not merely "no legality data." rawLegalSemesters returns [] for BOTH
+    // cases identically, so an earlier version's "no legality data at all —
+    // ambiguous, bias reachable" fallback wrongly treated a nonexistent
+    // course the same as a real course with unknown offering semesters. A
+    // course that doesn't exist in the model can never actually be added
+    // (every placement path needs `model.profiles.get(id)`), so biasing
+    // reachable here reserves a dependent mandatory course's hours forever
+    // for a prerequisite that can never be satisfied — the same
+    // over-reservation bug class already fixed for excluded/no-fitting-
+    // semester/prerequisite-deadlock/off-board-semester courses, just
+    // triggered by missing profile data instead.
+    if (!model.profiles.has(prereqId)) return false;
     const rawPrereq = rawLegalSemesters(model, prereqId);
-    if (!rawPrereq.length) return true; // no legality data at all — ambiguous, bias reachable
+    if (!rawPrereq.length) return true; // profile exists, but declares no legality data — ambiguous, bias reachable
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
     if (!prereqIndices.length) return false; // declared semester(s) exist, none are on this board
     if (Math.min(...prereqIndices) >= idBoundary) return false;

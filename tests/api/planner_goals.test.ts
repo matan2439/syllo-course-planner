@@ -491,6 +491,30 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     expect(score[0]).toBe(10);
   });
 
+  // Codex finding on this PR (round 24): a prerequisite id with NO PROFILE
+  // at all (references a course that doesn't exist in model.profiles) is
+  // definitively unreachable, not merely "no legality data" — an earlier
+  // version's rawLegalSemesters returned [] identically for both a missing
+  // profile and a real course with genuinely unknown offering semesters,
+  // so the ambiguous "bias reachable" fallback wrongly applied to a
+  // prerequisite that can never actually be added to any plan.
+  it('does not reserve budget for a mandatory course whose prerequisite has no profile at all', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND4B'],
+      categories: [],
+    });
+    m.profiles.set('MAND4B', profile('MAND4B', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['GHOST'], // never added to m.profiles
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND4B unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
+
   // Codex finding on this PR: the reservation must also cover an unplaced
   // PREREQUISITE's hours, not just the mandatory course's own — a
   // prerequisite that's just an ordinary elective on paper still has to
