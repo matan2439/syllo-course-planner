@@ -175,6 +175,53 @@ function legalSemestersOnBoard(model: ConstraintModel, id: string): string[] {
 }
 
 /**
+ * Whether relocating `id` (currently on the board, somewhere) to `sem` would
+ * satisfy `validatePlanProposal`'s strict-timing rule — in BOTH directions:
+ *
+ *  - `id`'s OWN prerequisites (unless completed/currently-taking) must stay
+ *    strictly before `sem` — mirrors `isMandatoryCourseReachable`'s own
+ *    already-placed-prerequisite check (line ~410 above), just evaluated
+ *    against a hypothetical destination instead of a fresh placement.
+ *  - every course ALREADY ON THE BOARD that lists `id` as ITS OWN
+ *    prerequisite must stay strictly AFTER `sem` — the direction the
+ *    reachability mechanism had never checked before this fix: moving a
+ *    blocker LATER can just as easily break a dependent already relying on
+ *    it being early, as moving it too-early can break `id`'s own upstream
+ *    ordering.
+ *
+ * A prerequisite/dependent with no resolvable placement on the board is
+ * treated as not-yet-constraining (bias toward "legal," same as every other
+ * ambiguous case in this file) — this function only rejects a destination it
+ * can affirmatively prove would violate strict timing against a placement
+ * that's actually on the board right now.
+ */
+function wouldRelocationBeOrderingLegal(state: PlanState, model: ConstraintModel, id: string, sem: string): boolean {
+  const semIdx = model.knownSemesterIds.indexOf(sem);
+  if (semIdx < 0) return false;
+
+  const p = model.profiles.get(id);
+  for (const prereqId of p?.prerequisites ?? []) {
+    if (model.completedCourseIds.has(prereqId)) continue;
+    if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;
+    const prereqIndices = Object.entries(state.semesters)
+      .filter(([, ids]) => ids.includes(prereqId))
+      .map(([s]) => model.knownSemesterIds.indexOf(s))
+      .filter(i => i >= 0);
+    if (prereqIndices.length && Math.max(...prereqIndices) >= semIdx) return false;
+  }
+
+  for (const [otherSem, ids] of Object.entries(state.semesters)) {
+    const otherIdx = model.knownSemesterIds.indexOf(otherSem);
+    if (otherIdx < 0 || semIdx < otherIdx) continue;
+    for (const otherId of ids) {
+      if (otherId === id) continue;
+      if (model.profiles.get(otherId)?.prerequisites?.includes(id)) return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Whether `id`, currently placed in `currentSem`, could NOT actually be
  * relocated away by a MOVE action — pinned, `is_annual` (never split/moved,
  * same rule `planner_actions.ts`'s `isMovable` enforces), `placement_policy
@@ -186,22 +233,28 @@ function legalSemestersOnBoard(model: ConstraintModel, id: string): string[] {
  * checked the policy flags and treated any non-fixed/pinned/annual occupant
  * as freely relocatable, which wrongly ignored this real, permanent
  * crowding. A second earlier version added the "has another legal semester"
- * check but didn't verify that alternate semester actually has room — this
- * checks (one hop, using the alternate semester's TOTAL current load, not a
- * recursively movable-aware figure) that there's a real destination right
- * now, not just a legal one on paper. Chasing a full multi-hop "could a
- * CHAIN of moves free up room" analysis is deliberately out of scope here —
- * this codebase already has a heavier, purpose-built mechanism for that kind
- * of question (`planner_worker.ts`'s Codex-round-22 redesign,
- * `canRecoverMoreHours`, a bounded best-first rollout) and duplicating it
- * inside a function `scorePlan` calls this often would be a real performance
- * cost for a marginal precision gain; a false "might be movable" here only
- * costs a little unused g1 headroom in a rare edge case, same bias every
- * other check in this function already accepts. Used to decide which
- * occupants of a legal semester represent REAL, permanent crowding versus a
- * course the search could relocate to make room. Duplicated (not imported)
- * for the same circular-import reason documented on
- * `isMandatoryCourseReachable`, below.
+ * check but didn't verify that alternate semester actually has room — a
+ * third earlier version (this PR's round 24 Codex finding) checked room but
+ * not prerequisite-ordering LEGALITY of that room: a semester with capacity
+ * to spare is still not a real destination if relocating there would break
+ * `id`'s own prerequisite ordering or a dependent course already on the
+ * board (`wouldRelocationBeOrderingLegal`, above) — enumerateActions would
+ * never actually generate that MOVE, since `planner_actions.ts` only
+ * proposes legal-semester targets and downstream validation would reject
+ * it, so treating it as a real destination wrongly excluded the occupant's
+ * hours from crowding. Still deliberately one-hop, not a recursive "could a
+ * CHAIN of moves free up room" analysis — this codebase already has a
+ * heavier, purpose-built mechanism for that kind of question
+ * (`planner_worker.ts`'s Codex-round-22 redesign, `canRecoverMoreHours`, a
+ * bounded best-first rollout) and duplicating it inside a function
+ * `scorePlan` calls this often would be a real performance cost for a
+ * marginal precision gain; a false "might be movable" here only costs a
+ * little unused g1 headroom in a rare edge case, same bias every other
+ * check in this function already accepts. Used to decide which occupants of
+ * a legal semester represent REAL, permanent crowding versus a course the
+ * search could relocate to make room. Duplicated (not imported) for the
+ * same circular-import reason documented on `isMandatoryCourseReachable`,
+ * below.
  */
 function isImmovableOccupant(state: PlanState, model: ConstraintModel, id: string, currentSem: string): boolean {
   if (model.pinnedCourseIds.has(id)) return true;
@@ -213,7 +266,8 @@ function isImmovableOccupant(state: PlanState, model: ConstraintModel, id: strin
   const hasRealDestination = legalSemestersOnBoard(model, id).some(sem => {
     if (sem === currentSem) return false;
     const load = (state.semesters[sem] ?? []).reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
-    return load + hours <= cap;
+    if (load + hours > cap) return false;
+    return wouldRelocationBeOrderingLegal(state, model, id, sem);
   });
   return !hasRealDestination;
 }

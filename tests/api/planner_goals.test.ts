@@ -857,6 +857,51 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // 14-2(M9)-4(P9)-2(Q9)=6, g1 = min(12,6) = 6.
     expect(score[0]).toBe(12);
   });
+
+  // Codex finding on this PR (round 25): isImmovableOccupant's "does the
+  // occupant have a real destination" check only verified raw load headroom
+  // at the alternate semester — not whether relocating there would actually
+  // be LEGAL under prerequisite strict-timing. A course already on the board
+  // that depends on the occupant as ITS OWN prerequisite still blocks the
+  // occupant from moving to (or past) that dependent's semester, even when
+  // the alternate semester has plenty of raw capacity to spare.
+  it('does not treat an occupant as movable to a semester that would break strict-timing ordering for a dependent already on the board', () => {
+    const m = model({
+      degreeRequiredHours: 8,
+      requiredMandatoryCourseIds: ['MAND9'],
+      categories: [],
+      hardCap: 5,
+    });
+    m.profiles.set('MAND9', profile('MAND9', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+    }));
+    // CROWDER9 (movable elective) is legal in both year_3_semester_a (where
+    // it currently sits, crowding MAND9's only semester) and
+    // year_3_semester_b, which has raw room to spare (5h cap - 1h DEP9 = 4h
+    // free, exactly CROWDER9's 4h) — so a load-only check wrongly calls it
+    // relocatable there.
+    m.profiles.set('CROWDER9', profile('CROWDER9', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    // DEP9 is already placed in year_3_semester_b and lists CROWDER9 as its
+    // OWN prerequisite — validatePlanProposal's strict-timing rule requires
+    // CROWDER9 strictly BEFORE DEP9's semester, so moving CROWDER9 into (or
+    // past) year_3_semester_b would make DEP9's own placement illegal.
+    m.profiles.set('DEP9', profile('DEP9', { hours: 1, prerequisites: ['CROWDER9'] }));
+    m.profiles.set('FILLER9', profile('FILLER9', { hours: 2 }));
+    const state = withCourses('year_3_semester_a', ['CROWDER9']);
+    state.semesters['year_3_semester_b'] = ['DEP9'];
+    state.semesters['year_4_semester_a'] = ['FILLER9'];
+    const score = scorePlan(state, m);
+    // dh = 7 (CROWDER9=4 + DEP9=1 + FILLER9=2). If MAND9 is correctly NOT
+    // reserved (CROWDER9 has no destination that's both roomy AND legal, so
+    // it's real, permanent crowding: 4+2=6 > hardCap 5): budget = 8 (no
+    // reservation), g1 = min(7,8) = 7. If the bug were present (CROWDER9
+    // wrongly treated as movable purely on load headroom): budget = 8-2=6,
+    // g1 = min(7,6) = 6.
+    expect(score[0]).toBe(7);
+  });
 });
 
 // Codex finding on this PR (round 21): a shared intermediate prerequisite
