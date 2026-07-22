@@ -303,6 +303,34 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     const score = scorePlan(state, m);
     expect(score[0]).toBe(10);
   });
+
+  // Codex finding on this PR: a mandatory course can also be permanently
+  // unplaceable via a prerequisite-ordering deadlock, not just offering/cap
+  // fit or exclusion — this codebase already has a dedicated fixture for
+  // exactly this shape (tests/api/generate_plan_missing_mandatory_gate.test.ts,
+  // data/boards/test_program_missing_mandatory_2027.json): MAND2 is only
+  // ever legal in year 3, but its prerequisite PRE2 is only ever legal in
+  // year 4 — no ordering can ever satisfy both, so MAND2 can never be
+  // legally placed. Reproduced here with the same shape.
+  it('does not reserve budget for a mandatory course with a permanent prerequisite-ordering deadlock', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND2'],
+      categories: [],
+    });
+    m.profiles.set('MAND2', profile('MAND2', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+      prerequisites: ['PRE2'],
+    }));
+    m.profiles.set('PRE2', profile('PRE2', {
+      hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'],
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND2 permanently deadlocked
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

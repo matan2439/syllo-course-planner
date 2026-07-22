@@ -169,6 +169,51 @@ function hasFittingLegalSemester(state: PlanState, model: ConstraintModel, id: s
 }
 
 /**
+ * Whether every prerequisite of `id` could, in principle, land in a
+ * strictly earlier semester than `id` itself: already completed, already
+ * currently-taking, or having some legal semester earlier than one of id's
+ * own legal semesters. Only checks `id`'s DIRECT prerequisites (does not
+ * recurse into a prerequisite's own prerequisites) — a shallow, cheap
+ * "reachability approximation," the same spirit as `hasFittingLegalSemester`
+ * and `projectFeasibility` elsewhere in this search (not a full
+ * `validatePlanState`-grade analysis on every scorePlan call, which would be
+ * both a real circular-import problem — `planner_validate.ts` already
+ * imports `assessCompleteness` from this module — and a meaningful
+ * performance cost given how often scorePlan runs during a search). It
+ * catches exactly the permanent-ordering-deadlock shape this codebase
+ * already has a dedicated fixture for
+ * (`tests/api/generate_plan_missing_mandatory_gate.test.ts`'s MAND2/PRE2:
+ * MAND2 only ever legal in year 3, its prerequisite PRE2 only ever legal in
+ * year 4 — no ordering can ever satisfy both). Biased toward returning
+ * `true` (reachable) whenever data is missing/ambiguous — a false "might be
+ * reachable" only costs a little unused g1 headroom in a rare edge case; a
+ * false "definitely unreachable" would reintroduce the exact regression
+ * class Codex already caught twice on this PR.
+ */
+function hasReachablePrerequisiteOrder(model: ConstraintModel, id: string): boolean {
+  const p = model.profiles.get(id);
+  if (!p?.prerequisites?.length) return true;
+  const legalIndicesOf = (courseId: string): number[] => {
+    const cp = model.profiles.get(courseId);
+    if (!cp) return [];
+    const { semesters } = getLegalSemesters(cp as CourseLegalityInfo, model.knownSemesterIds);
+    return (semesters.length ? semesters : model.knownSemesterIds)
+      .map(sem => model.knownSemesterIds.indexOf(sem))
+      .filter(i => i >= 0);
+  };
+  const idIndices = legalIndicesOf(id);
+  if (!idIndices.length) return true;
+  const idLatest = Math.max(...idIndices);
+  return p.prerequisites.every(prereqId => {
+    if (model.completedCourseIds.has(prereqId)) return true;
+    if (model.currentlyPlannedCourseIds?.has(prereqId)) return true;
+    const prereqIndices = legalIndicesOf(prereqId);
+    if (!prereqIndices.length) return true;
+    return Math.min(...prereqIndices) < idLatest;
+  });
+}
+
+/**
  * Total weekly hours of required mandatory courses not yet fully placed (and
  * not already completed) that can STILL actually be placed somewhere legal
  * right now. Deduplicates the same way placedHours does (a count_hours_once
@@ -177,18 +222,21 @@ function hasFittingLegalSemester(state: PlanState, model: ConstraintModel, id: s
  *
  * This is the reservation degree_completion's g1 (below) subtracts from
  * degreeRequiredHours to compute its credit ceiling (issue #25 Finding #4).
- * The `isCourseExcluded`/`hasFittingLegalSemester` gates matter: a mandatory
- * course that can NEVER be placed (hard-excluded, no legal offering semester
- * fits it anywhere, every legal semester is already crowded past the hard
- * cap, or its only legal semester isn't even on this board) must not
- * permanently withhold g1 credit from electives that could otherwise fill
- * the plan — that course's absence already surfaces separately as a real,
- * honest blocking error (`assessCompleteness`'s `missingMandatory` /
- * `validateCandidate`), and the reservation existing anyway would just
- * needlessly truncate an otherwise-maximal, valid partial plan (Codex
- * findings on this PR: "Keep filling degree hours when mandatory placement
- * is blocked", "Skip hard-excluded mandatory courses in the reservation",
- * "Ignore legal semesters that are not on the board").
+ * The `isCourseExcluded`/`hasFittingLegalSemester`/
+ * `hasReachablePrerequisiteOrder` gates matter: a mandatory course that can
+ * NEVER be placed (hard-excluded, no legal offering semester fits it
+ * anywhere, every legal semester is already crowded past the hard cap, its
+ * only legal semester isn't even on this board, or its prerequisite ordering
+ * is permanently deadlocked) must not permanently withhold g1 credit from
+ * electives that could otherwise fill the plan — that course's absence
+ * already surfaces separately as a real, honest blocking error
+ * (`assessCompleteness`'s `missingMandatory` / `validateCandidate`), and the
+ * reservation existing anyway would just needlessly truncate an otherwise-
+ * maximal, valid partial plan (Codex findings on this PR: "Keep filling
+ * degree hours when mandatory placement is blocked", "Skip hard-excluded
+ * mandatory courses in the reservation", "Ignore legal semesters that are
+ * not on the board", "Skip prerequisite-impossible mandatory courses in the
+ * reservation").
  */
 function remainingMandatoryHours(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
@@ -199,6 +247,7 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
     if (isFullyPlaced(state, model, placed, id)) continue;
     if (isCourseExcluded(model, id)) continue;
     if (!hasFittingLegalSemester(state, model, id)) continue;
+    if (!hasReachablePrerequisiteOrder(model, id)) continue;
     const p = model.profiles.get(id);
     if (!p) continue;
     if (p.count_hours_once && p.root_course_id) {
