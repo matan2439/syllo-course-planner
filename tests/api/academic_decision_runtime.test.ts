@@ -88,6 +88,39 @@ describe('extractClarificationContext', () => {
     const withoutProfile = extractClarificationContext({}, {}, undefined);
     expect('academicInterestProfile' in withoutProfile).toBe(false);
   });
+
+  // Issue #43: track_or_focus is never propagated into plan_context/preferences
+  // (mergeClarificationAnswersIntoGeneratePlanInputs deliberately has no target
+  // field for it — no planner consumer exists), but that must not mean the
+  // clarification QUESTION can never be marked resolved. extractClarificationContext
+  // reads it straight from the raw answers array, presentation-layer only.
+  test('sets track from a track_or_focus clarification answer, without touching plan_context/preferences', () => {
+    const withAnswer = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'design' },
+    ]);
+    expect(withAnswer.track).toBe('design');
+
+    const withoutAnswer = extractClarificationContext({}, {}, undefined, []);
+    expect(withoutAnswer.track).toBeUndefined();
+
+    const noAnswersArg = extractClarificationContext({}, {}, undefined);
+    expect(noAnswersArg.track).toBeUndefined();
+  });
+
+  test('ignores a blank/whitespace-only or wrong-type track_or_focus answer (never resolves on a non-answer)', () => {
+    const blank = extractClarificationContext({}, {}, undefined, [{ questionId: 'track_or_focus', value: '   ' }]);
+    expect(blank.track).toBeUndefined();
+
+    const wrongType = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 42 as unknown as string },
+    ]);
+    expect(wrongType.track).toBeUndefined();
+
+    const otherQuestion = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'excluded_courses', value: ['X'] as unknown as string },
+    ]);
+    expect(otherQuestion.track).toBeUndefined();
+  });
 });
 
 // ── clarify + critical gate ──────────────────────────────────────────────────

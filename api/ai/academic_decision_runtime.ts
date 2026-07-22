@@ -150,11 +150,31 @@ export function resolveHardExcludedCourseIds(
 
 // ── Clarify ──────────────────────────────────────────────────────────────────
 
+/**
+ * Issue #43: `track_or_focus` is a real clarification question
+ * (academic_clarification.ts's QUESTION_SPECS) but has no target field in
+ * plan_context/preferences — mergeClarificationAnswersIntoGeneratePlanInputs
+ * (academic_clarification_plan_inputs.ts) documents this as deliberate: no
+ * planner input consumes a track/specialization value, and inventing one
+ * would be out of scope. That must not mean the QUESTION itself can never be
+ * marked resolved, though — without this, it re-asks identically forever
+ * even after a valid answer, unlike every other clarification field. Reads
+ * the answer straight from the raw request array (never merged into
+ * plan_context/preferences, so it still never reaches planning) purely to
+ * let clarify() see it was answered. Mirrors academic_clarification_loop.ts's
+ * EXPECTED_ANSWER_KIND validation for the same question id (non-empty text).
+ */
+function resolveTrackAnswer(answers?: Array<{ questionId: string; value: unknown }>): string | undefined {
+  const answer = answers?.find((a) => a.questionId === 'track_or_focus');
+  return typeof answer?.value === 'string' && answer.value.trim().length > 0 ? answer.value : undefined;
+}
+
 /** Map generate-plan's plan_context/preferences onto the clarification context. */
 export function extractClarificationContext(
   planContext: any,
   preferences: any,
   rawProfile: unknown,
+  clarificationAnswers?: Array<{ questionId: string; value: unknown }>,
 ): ClarificationPlanningContext {
   const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
@@ -166,6 +186,8 @@ export function extractClarificationContext(
     excludedCourseIds: excluded,
     maxWeeklyHours: preferences?.max_weekly_hours ?? undefined,
   };
+  const trackAnswer = resolveTrackAnswer(clarificationAnswers);
+  if (trackAnswer !== undefined) context.track = trackAnswer;
   // Only introduce the interest key when a profile is actually supplied — absence
   // must leave clarification's interest questions dormant (see academic_clarification.ts).
   if (rawProfile !== undefined && rawProfile !== null) {
