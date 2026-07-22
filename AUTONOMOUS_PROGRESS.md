@@ -99,7 +99,19 @@ one of the unconsumed Simulation/Persistence/Decision capabilities (PRs
 standing Vercel deploy-mechanism blocker every session since PR #27 has
 confirmed; re-confirmed this session that no Vercel MCP tool is reachable
 either. PR #56 (now merged) joins the same growing backlog of merged-but-
-not-deployed fixes (14 merged fixes behind production as of this count).
+not-deployed work. (Codex review on docs PR #57,
+`discussion_r3631939655`, correctly caught that an earlier draft here
+regressed this count to 14 — below the 17 already recorded as of PR #51's
+merge — with no recount to justify a decrease. `git log
+26500d4..origin/ui/frontend-modernization` shows at least 25 distinct
+merged PR numbers since production's pin, several with many Codex-round
+commits each; the backlog has only grown since the 17 count, not shrunk.
+Not asserting a new precise "fixes only" number here — the 17-count's own
+methodology (which PRs count vs. pure docs) was never pinned down
+precisely enough to extend reliably — but the trend is unambiguously
+upward, and the next session should either recompute a real count with a
+stated methodology or simply state "unchanged, still growing" rather than
+inventing a smaller figure.)
 
 **Standing blockers, unchanged, not re-investigated further this session
 (no new evidence since last check)**: issue #15/#18 (PR #14 D-stacking
