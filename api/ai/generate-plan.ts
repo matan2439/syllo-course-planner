@@ -366,7 +366,23 @@ function missingMandatoryGate(
  * toProposal's return value, which would either leak an internal-only field
  * into the public PlanProposal response contract (toProposal's result is
  * spread directly into responseBody below) or require a second, easily
- *-forgotten call-site change every time toProposal's shape evolves.
+ * forgotten call-site change every time toProposal's shape evolves.
+ *
+ * Codex review finding (PR #62): report.legal (validateCandidate's raw
+ * legality check) also flags the benign, expected "currently-taking course
+ * still present on the client-supplied board" marker (item 2a,
+ * CURRENTLY_TAKING_REUSE_ERROR_MARKER, plan_validation.ts) as illegal —
+ * legalityGate above already excludes this exact marker as normal client
+ * state, not a real violation (the real frontend deliberately keeps a
+ * currently-taking course visible in its placed slot; see legalityGate's own
+ * comment). Using report.legal unfiltered here silently suppressed this gate
+ * for any actively-enrolled student whose currently-taking course is visible
+ * on the board — the single most common real client state, not an edge case.
+ * Re-derives legality the same way legalityGate does, filtering only that one
+ * benign marker: every OTHER real legality violation (overload, incomplete
+ * annual course, prerequisite timing, ...) must still suppress this gate, to
+ * avoid double-counting or misattributing an already-differently-gated
+ * blocker.
  */
 function degreeHoursGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
@@ -376,6 +392,8 @@ function degreeHoursGate(
 ): string[] {
   const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
   const report = validateCandidate(state, model, pinnedHome);
+  const otherLegalityErrors = validatePlanState(state, model, pinnedHome).errors
+    .filter(e => !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER));
   const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
     .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
   const creditedHours = report.degreeHours + currentlyPlannedHours;
@@ -384,7 +402,7 @@ function degreeHoursGate(
     creditedHours < model.degreeRequiredHours &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
-    report.legal &&
+    otherLegalityErrors.length === 0 &&
     report.disallowedPlaced.length === 0 &&
     !canRecoverViaUnwantedElective(state, model, pinnedHome) &&
     !canRecoverMoreHours(state, model, pinnedHome);
