@@ -1,6 +1,6 @@
 # Current — read this first
 
-## 🔧 PR #56 opened (awaiting Codex review + CI): missing-mandatory cause misattributed to the user's own exclusion (2026-07-22, autonomous scheduled run)
+## ✅ PR #56 merged: missing-mandatory cause misattributed to the user's own exclusion (2026-07-22, autonomous scheduled run)
 
 Standing audit: no human comments on issues #15/#18/#20/#21 since last checked — all unchanged, correctly left un-acted-on. Only PR #14 open (Decision capability), left untouched per the D-stacking-cap precedent. No Vercel MCP tools reachable this session (checked via ToolSearch) — deploy blocker unchanged, not re-flagged again since nothing new. Session branch was provisioned from stale `main`-derived `92c19e0` (same recurring mistake as several prior sessions) — reset to `ui/frontend-modernization` tip `4bda2ab`, zero commits lost.
 
@@ -14,13 +14,15 @@ Fix (`b84c1d9`): split the flag into `hasMissingMandatoryDueToExclusion` (matche
 
 Tests: 3 new in `tests/api/academic_decision_runtime.test.ts`, RED-verified against unfixed code first. Full API suite **1314/1314** across 84 suites (+3, zero regressions), `tsc --noEmit` clean.
 
-**PR #56 opened against `ui/frontend-modernization`, marked ready, `@codex review` posted, subscribed to PR webhook activity for CI/review events.** As of this write-up CI had 0 check runs yet (just opened) — whichever session/turn picks this up next must confirm CI green + Codex clean before merging.
+**PR #56 opened against `ui/frontend-modernization`, marked ready, `@codex review` posted, subscribed to PR webhook activity.** Codex reviewed the final commit (`edd69c1`) clean ("Didn't find any major issues"), CI completed `success` on that commit, `mergeable_state: clean`. **Merged as `24d8877`** in the same session via the webhook-driven continuation; auto-unsubscribed on merge per the tooling's own notice.
 
 **Classification: C** (correctness/honesty).
 
-**Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session).
+**Rolling-three check, twice-corrected via two real Codex review rounds on docs PR #57**: round 1 (`discussion_r3631848828`) caught that the first draft skipped PR #50 (merged, classified A per its own entry below), mis-deriving (48, 53, 56) = C/C/C. Round 2 (`discussion_r3631880980`) then caught that the fix over-corrected to "no forced requirement at all" — but positions 53 and 56 are BOTH C, so picking another C next would immediately produce (53, 56, next) = C/C/C, the same non-compliance already seen once at (32,34,37). **Net: (50, 53, 56) = A/C/C is currently compliant, but the immediate next milestone must be A or B** to avoid recreating the violation. See `AUTONOMOUS_PROGRESS.md`'s top entry for two standing A/B candidates (wiring an unused Simulation/Persistence/Decision capability into a real caller = B; a UI improvement to how `academicDecision.explanation` is actually surfaced to users = A).
 
-**Exact next action**: check PR #56's CI/Codex status (webhook-subscribed — act on delivered events first if any arrived), merge once every gate passes, then continue the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
+**Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session). Codex review on docs PR #57 (`discussion_r3631939655`) correctly caught that an earlier draft here stated "14 merged fixes behind," a regression from the 17 already recorded as of PR #51 with no recount to justify a decrease — `git log 26500d4..origin/ui/frontend-modernization` shows at least 25 distinct merged PR numbers since the production pin, so the true count has only grown. Not asserting a new precise number without a stated, reproducible methodology; the honest statement is "unchanged and still growing," not a smaller figure.
+
+**Exact next action**: PR #56 is done (merged/closed, do not reopen). Per the rolling-three correction above, the next milestone selected should be A or B, not another standalone C fix or D infra — **unless a new P0/P1 correctness break is found first, which always preempts the rolling-window preference** (this routine's own priority order already establishes that: hard-correctness/production-incident work outranks the rolling-window governance rule, not the other way around). Absent such an emergency, land an A/B milestone before returning to the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
 
 ## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
 

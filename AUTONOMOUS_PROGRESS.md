@@ -5,12 +5,12 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-22, session on branch `claude/youthful-tesla-sgzgz9`
-(PR #56 opened — see below; supersedes the PR #53 entry as the latest
-milestone). Issue #25 remains fully closed; this is a fresh Agent Diagnosis
-Loop finding from a re-run after that closure, per this routine's own
-"repeat until all critical scenarios pass" instruction._
+(PR #56 merged as `24d8877` — see below; supersedes the PR #53 entry as the
+latest completed milestone). Issue #25 remains fully closed; this is a
+fresh Agent Diagnosis Loop finding from a re-run after that closure, per
+this routine's own "repeat until all critical scenarios pass" instruction._
 
-## Latest session — PR #56 opened (awaiting Codex review): missing-mandatory cause misattributed to the user's own hard exclusion
+## Latest session — PR #56 merged: missing-mandatory cause misattributed to the user's own hard exclusion
 
 Start-of-session audit: no human comments landed on the standing decision
 issues (#15/#18/#20/#21) since the last session — all still open, all still
@@ -72,24 +72,46 @@ across 84 suites (+3, zero regressions), `tsc --noEmit` clean. `git diff
 --stat`: only the runtime file + its test file.
 
 **PR #56 opened, marked ready, `@codex review` requested, subscribed to PR
-activity.** CI had not yet reported (0 check runs) as of this write-up —
-next session (or a resumed webhook-driven turn in this same session) must
-confirm CI green and Codex clean before merging, per the standard gate.
+activity.** Codex reviewed the final commit (`edd69c1`) clean ("Didn't find
+any major issues"), CI (`.github/workflows/ci.yml`) completed with
+`conclusion: success` on that same commit, `mergeable_state: clean`, no
+unresolved review threads. **Merged as `24d8877`** via the webhook-driven
+continuation of this same session.
 
 **Classification: C** (correctness/honesty — real, reproduced, in-product
-wrong advice on a production-reachable path). Rolling-three check: most
-recent three merged milestones remain (48=C, 53=C, this one pending) — once
-#56 merges, the next milestone after it must be A or B per the governance
-rule (two C's in a row is fine; a third C would need to be checked against
-the "at least one of every three is A/B" rule depending on what's already
-counted — flagging for the merging session to verify against the fuller
-history in `.remember/current.md` before selecting the next milestone).
+wrong advice on a production-reachable path). **Rolling-three check: (50,
+53, 56) = A/C/C — currently compliant, but constrained going forward.**
+(Two rounds of real Codex findings on the docs PR #57 that recorded this,
+`discussion_r3631848828` and `discussion_r3631880980`: round 1 caught that
+an earlier draft skipped merged-and-A-classified PR #50, mis-deriving (48,
+53, 56) = C/C/C; round 2 caught that the fix then over-corrected to "no
+forced requirement at all," ignoring that positions 53 and 56 are BOTH C —
+picking another C next would immediately produce (53, 56, next) = C/C/C,
+the exact non-compliance already seen once before at (32,34,37). Both
+corrected here.) **Net: the immediate next milestone should be A or B** —
+not because the current window is broken, but because two trailing C's
+leave zero room for a third before the window breaks. Candidates: wiring
+one of the unconsumed Simulation/Persistence/Decision capabilities (PRs
+#12/#13/#14) into a real production caller (B), or a UI improvement to how
+`academicDecision.explanation` is surfaced (A).
 
 **Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
 standing Vercel deploy-mechanism blocker every session since PR #27 has
 confirmed; re-confirmed this session that no Vercel MCP tool is reachable
-either. PR #56 (once merged) will join the same growing backlog of merged-
-but-not-deployed fixes.
+either. PR #56 (now merged) joins the same growing backlog of merged-but-
+not-deployed work. (Codex review on docs PR #57,
+`discussion_r3631939655`, correctly caught that an earlier draft here
+regressed this count to 14 — below the 17 already recorded as of PR #51's
+merge — with no recount to justify a decrease. `git log
+26500d4..origin/ui/frontend-modernization` shows at least 25 distinct
+merged PR numbers since production's pin, several with many Codex-round
+commits each; the backlog has only grown since the 17 count, not shrunk.
+Not asserting a new precise "fixes only" number here — the 17-count's own
+methodology (which PRs count vs. pure docs) was never pinned down
+precisely enough to extend reliably — but the trend is unambiguously
+upward, and the next session should either recompute a real count with a
+stated methodology or simply state "unchanged, still growing" rather than
+inventing a smaller figure.)
 
 **Standing blockers, unchanged, not re-investigated further this session
 (no new evidence since last check)**: issue #15/#18 (PR #14 D-stacking
@@ -101,13 +123,25 @@ committing a sanitized replacement), issue #21 (dead-code delete-vs-restore
 call). All confirmed still open with zero human comments as of this
 session's check.
 
-**Exact next action for the next session**: resume PR #56 — check CI/Codex
-status (subscribed via webhook this session; if the webhook already
-delivered events, act on them first), merge once every gate passes, then
-continue the Agent Diagnosis Loop for the next highest-impact real Agent
-failure (candidates already surfaced: the wanted-vs-disallowed disclosure
-gap noted above, or a fresh sweep of multi-turn conversation honesty /
-simulate-then-apply areas per the P1 checklist).
+**Exact next action for the next session**: PR #56 is merged and closed —
+do not reopen it or re-address it. The current rolling-three window is
+compliant ((50, 53, 56) = A/C/C — see correction above), but positions 53
+and 56 are both C, so **the next milestone selected should be A or B** —
+picking another C now would immediately create a non-compliant (53, 56,
+next) = C/C/C window. Two standing candidates: naming a real production
+consumer for one of the unwired Simulation/Persistence/Decision
+capabilities (PRs #12/#13/#14) and wiring it in (B), or improving how
+`academicDecision.explanation` is actually surfaced in the UI (A). **This
+does not override the standing P0/correctness-preemption rule**: a newly
+discovered production incident, hard-constraint violation, or other P0/P1
+correctness break still takes priority over the rolling-window preference,
+exactly as this routine's own priority order already states ("Never select
+a lower-priority item while feasible higher-priority work remains"). Absent
+such an emergency, prefer A/B before returning to another C-classified
+Agent Diagnosis Loop finding (candidates already surfaced: the
+wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
+multi-turn conversation honesty / simulate-then-apply areas per the P1
+checklist).
 
 ## Prior session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
 
