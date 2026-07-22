@@ -66,7 +66,7 @@ import { getSemesterLoad, getLegalSemesters, type CourseLegalityInfo } from './c
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
-import { placedCourseIds, semesterOf } from './planner_types';
+import { placedCourseIds, semesterOf, emptyState } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
@@ -403,7 +403,23 @@ function degreeHoursGate(
   pinnedHome: Record<string, string>,
   currentlyTakingHoursFromContext?: Map<string, number>,
 ): string[] {
-  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  // Codex review finding (PR #62, round 4): unlike every other gate above
+  // (which only ever READ the reconstructed state — assessCompleteness,
+  // validatePlanState), canRecoverViaUnwantedElective/canRecoverMoreHours
+  // below call applyMutation, whose ADD_COURSE case (planner_goals.ts)
+  // returns null when the target semester key is missing from
+  // state.semesters entirely. toProposal() (the caller of this whole file)
+  // drops empty semesters from its own `semesters` output, so naively
+  // reconstructing state the same sparse way missingMandatoryGate/
+  // legalityGate do above would make every recovery candidate targeting a
+  // currently-empty (but legal) semester silently fail — falsely reporting
+  // "not recoverable" and blocking a plan whose catalog genuinely isn't
+  // exhausted. Seeds every model.knownSemesterIds key first (via emptyState,
+  // the same convention planner_worker.ts's own initial state construction
+  // uses) so every legal semester — placed or still empty — is a real
+  // ADD_COURSE target.
+  const state: PlanState = emptyState(model.knownSemesterIds);
+  for (const s of semesters) state.semesters[s.semester_id] = s.course_ids;
   const report = validateCandidate(state, model, pinnedHome);
   const placedNow = new Set(placedCourseIds(state));
   const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]

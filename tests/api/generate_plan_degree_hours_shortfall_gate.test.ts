@@ -320,4 +320,54 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(false);
   });
+
+  test('10. Codex-caught regression (round 4): a still-recoverable soft-avoided elective legal ONLY in a currently-EMPTY semester must be found — the recovery probes must not reconstruct a sparse state missing empty-semester keys', async () => {
+    // data/boards/test_program_gap_empty_semester_2027.json: MAND(4h,fixed,
+    // year_3_semester_a) + FLU(4h,fluids,legal ONLY year_4_semester_a) +
+    // SOL(4h,solids,legal ONLY year_4_semester_a) + SPARE(4h,legal ONLY
+    // year_3_semester_b — a semester left completely EMPTY in this scenario).
+    // toProposal() drops empty semesters from its own `semesters` output, so
+    // degreeHoursGate's naive `Object.fromEntries(semesters.map(...))`
+    // reconstruction previously had no key at all for year_3_semester_b —
+    // applyMutation's ADD_COURSE case (planner_goals.ts) returns null when a
+    // target semester key is entirely missing (not just empty), so
+    // canRecoverViaUnwantedElective's ADD-SPARE-to-year_3_semester_b
+    // candidate always failed, wrongly reporting "not recoverable" even
+    // though SPARE is a real, legal, addable option.
+    const res = await run({
+      program_id: 'test_program_gap_empty_semester_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 8, courses: [
+            { course_id: 'FLU', name_he: 'זורם', hours: 4, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a'] },
+            { course_id: 'SOL', name_he: 'מוצק', hours: 4, course_type: 'elective', placement_policy: 'elective', effective_allowed_semesters: ['year_4_semester_a'] },
+          ] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        category_requirements: [
+          { name: 'זורמים', category_id: 'fluids', required: 1, placed: 1, candidates: [
+            { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a'] },
+          ] },
+          { name: 'מוצקים', category_id: 'solids', required: 1, placed: 1, candidates: [
+            { course_id: 'SOL', name_he: 'מוצק', hours: 4, effective_allowed_semesters: ['year_4_semester_a'] },
+          ] },
+        ],
+        total_hours_progress: { known_completed_hours: 0 },
+        personal_status: { completed: [], currently_taking: [] },
+        mandatory_unplaced: [],
+      },
+      preferences: { unwanted_course_ids: ['SPARE'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('SPARE');
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(false);
+  });
 });
