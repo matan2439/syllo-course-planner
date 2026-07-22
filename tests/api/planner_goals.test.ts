@@ -424,6 +424,66 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // counted against the raw hardCap): budget = 10, g1 = min(8,10) = 8.
     expect(score[0]).toBe(6);
   });
+
+  // Codex finding on this PR: an is_annual mandatory course is placed
+  // ATOMICALLY across every one of its spans — if even one span is
+  // permanently crowded, the whole add is illegal, so reachability must
+  // require ALL spans to fit, not just one (an earlier version used the same
+  // "any one legal semester has room" check as an ordinary course).
+  it('requires every span of an is_annual mandatory course to fit before reserving its budget', () => {
+    const m = model({
+      degreeRequiredHours: 14,
+      requiredMandatoryCourseIds: ['ANNUAL'],
+      categories: [],
+      hardCap: 6,
+    });
+    m.profiles.set('ANNUAL', profile('ANNUAL', {
+      is_mandatory: true, hours: 4, is_annual: true,
+      spans_semesters: ['year_3_semester_a', 'year_3_semester_b'],
+    }));
+    // FIXED_BLOCKER (6h, immovable) fully occupies span B under the hardCap
+    // (6): 6+4=10>6, that span can never fit ANNUAL — span A alone having
+    // room isn't enough, the atomic bundle needs both.
+    m.profiles.set('FIXED_BLOCKER', profile('FIXED_BLOCKER', { hours: 6, placement_policy: 'fixed' }));
+    m.profiles.set('e2', profile('e2', { hours: 4 }));
+    const state = withCourses('year_3_semester_b', ['FIXED_BLOCKER']);
+    state.semesters['year_3_semester_a'] = ['e2'];
+    state.semesters['year_4_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 6(FIXED_BLOCKER)+4(e2)+4(e0)+4(e1) = 18. If ANNUAL is correctly
+    // unreachable (span B can never fit): budget = 14 (no reservation), g1 =
+    // min(18,14) = 14. If the bug were present (ANNUAL wrongly reachable
+    // because span A alone has room): budget = 14-4=10, g1 = min(18,10) = 10.
+    expect(score[0]).toBe(14);
+  });
+
+  // Codex finding on this PR: a prerequisite whose only declared semester
+  // isn't on this board (off-board) is definitively unreachable, not
+  // ambiguous — an earlier version used legalSemesterIndices for the
+  // prerequisite check, which defaults an all-off-board result to
+  // knownSemesterIds (the right fallback for a course with NO legality data
+  // at all, but wrong here: PRE4 DOES have a declared semester, it's just
+  // not one of this board's).
+  it('does not reserve budget for a mandatory course whose prerequisite has no semester on this board', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND4'],
+      categories: [],
+    });
+    m.profiles.set('MAND4', profile('MAND4', {
+      is_mandatory: true, hours: 4, course_type: 'mandatory', placement_policy: 'flexible',
+      effective_allowed_semesters: ['year_3_semester_b'],
+      prerequisites: ['PRE4'],
+    }));
+    m.profiles.set('PRE4', profile('PRE4', {
+      hours: 4, effective_allowed_semesters: ['year_9_semester_a'], // declared, but off-board
+    }));
+
+    const state = withCourses('year_3_semester_a', ['e0', 'e1', 'e2']); // 12h of electives, MAND4 unreachable
+    const score = scorePlan(state, m);
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {

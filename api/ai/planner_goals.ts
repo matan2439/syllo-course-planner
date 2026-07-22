@@ -167,12 +167,26 @@ function isImmovableOccupant(model: ConstraintModel, id: string): boolean {
   return p.is_annual === true || p.placement_policy === 'fixed';
 }
 
-/** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
-function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
+/**
+ * The RAW legal-semester list `getLegalSemesters` returns for `id` — NOT
+ * filtered to `model.knownSemesterIds` and NOT defaulted to
+ * `knownSemesterIds` when empty. Callers that need to distinguish "no
+ * legality data at all" (ambiguous — every semester is implicitly allowed)
+ * from "has declared semester(s), but none of them are on this board"
+ * (definitively unreachable) need this raw form; `legalSemesterIndices`,
+ * below, collapses that distinction and is only safe to use once a caller
+ * has already established `id` itself is reachable.
+ */
+function rawLegalSemesters(model: ConstraintModel, id: string): string[] {
   const p = model.profiles.get(id);
   if (!p) return [];
-  const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  return (semesters.length ? semesters : model.knownSemesterIds)
+  return getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds).semesters;
+}
+
+/** Every known-semester index (in `model.knownSemesterIds` order) `id` is legal in. */
+function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
+  const raw = rawLegalSemesters(model, id);
+  return (raw.length ? raw : model.knownSemesterIds)
     .map(sem => model.knownSemesterIds.indexOf(sem))
     .filter(i => i >= 0);
 }
@@ -199,6 +213,12 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  *  - its only legal semester isn't one of `model.knownSemesterIds` at all
  *    (`state.semesters` only has entries for known semesters — `emptyState`
  *    — so `applyMutation`'s ADD_COURSE would reject an off-board target).
+ *  - `is_annual`: EVERY one of its effective spans (`effectiveAnnualSpans`,
+ *    the same span set `isFullyPlaced`/`addCourseActionsFor` use) must fit
+ *    simultaneously, not just one — an earlier version used the same
+ *    "any one legal semester has room" check as a normal course, but an
+ *    annual course is placed atomically across all its spans at once; if
+ *    even one span is permanently crowded, the whole add is illegal.
  *  - a prerequisite-ordering deadlock: every direct prerequisite must have
  *    some legal semester strictly before one of `id`'s own legal semesters
  *    (or already be completed/currently-taking) — AND that prerequisite must
@@ -206,7 +226,13 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  *    ordering, not the prerequisite's own placeability — e.g. a hard-excluded
  *    prerequisite has a perfectly fine earlier offering semester on paper,
  *    but can never actually be added, so the course depending on it can't
- *    either).
+ *    either). A prerequisite whose only declared semester is off-board is
+ *    treated as definitively unreachable here too, not as "no data" (an
+ *    earlier version used `legalSemesterIndices`, which defaults an
+ *    all-off-board result to `knownSemesterIds` — the right fallback for a
+ *    course with NO legality data at all, but wrong for one that HAS
+ *    declared semester(s) that just aren't on this board; `rawLegalSemesters`
+ *    lets this distinguish the two).
  *
  * `visiting` guards recursion against a prerequisite cycle (a data problem
  * this function isn't responsible for diagnosing) — a course already on the
@@ -220,8 +246,8 @@ function legalSemesterIndices(model: ConstraintModel, id: string): number[] {
  * absence is separately and honestly reported via `missingMandatory`).
  *
  * This is a reachability APPROXIMATION, not a full `validatePlanState`-grade
- * analysis (still no duplicate-placement/co-requisite/annual-span reasoning)
- * — reusing that validator directly isn't possible without a circular import
+ * analysis (still no duplicate-placement/co-requisite reasoning) — reusing
+ * that validator directly isn't possible without a circular import
  * (`planner_validate.ts` already imports `assessCompleteness` from this
  * module) or a real performance cost (`scorePlan`, which calls this, runs
  * very often during a search). `hasFittingLegalSemester`/`projectFeasibility`
@@ -234,15 +260,20 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   if (isCourseExcluded(model, id)) return false;
 
   const cap = effectiveHardCap(model);
-  const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  const legal = (semesters.length ? semesters : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
   const hours = p.hours ?? 0;
-  const fits = legal.some(sem => {
+  const fitsSemester = (sem: string) => {
     const load = (state.semesters[sem] ?? [])
       .filter(cid => isImmovableOccupant(model, cid))
       .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
-  });
+  };
+
+  const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
+  const fits = annualSpans && annualSpans.length
+    ? annualSpans.every(sem => model.knownSemesterIds.includes(sem) && fitsSemester(sem))
+    : (rawLegalSemesters(model, id).length ? rawLegalSemesters(model, id) : model.knownSemesterIds)
+        .filter(sem => model.knownSemesterIds.includes(sem))
+        .some(fitsSemester);
   if (!fits) return false;
 
   if (!p.prerequisites?.length) return true;
@@ -254,8 +285,10 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   return p.prerequisites.every(prereqId => {
     if (model.completedCourseIds.has(prereqId)) return true;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) return true;
-    const prereqIndices = legalSemesterIndices(model, prereqId);
-    if (!prereqIndices.length) return true;
+    const rawPrereq = rawLegalSemesters(model, prereqId);
+    if (!rawPrereq.length) return true; // no legality data at all — ambiguous, bias reachable
+    const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
+    if (!prereqIndices.length) return false; // declared semester(s) exist, none are on this board
     if (Math.min(...prereqIndices) >= idLatest) return false;
     return isMandatoryCourseReachable(state, model, prereqId, nextVisiting);
   });
