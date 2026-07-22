@@ -125,6 +125,34 @@ export function isFullyPlaced(state: PlanState, model: ConstraintModel, placed: 
   return true;
 }
 
+/**
+ * Total weekly hours of required mandatory courses not yet fully placed (and
+ * not already completed). Deduplicates the same way placedHours does (a
+ * count_hours_once annual pair must not double-count), so this stays a fair
+ * "hours still owed" figure regardless of how the course is modeled.
+ *
+ * This is the reservation degree_completion's g1 (below) subtracts from
+ * degreeRequiredHours to compute its credit ceiling — see that comment for
+ * why the reservation exists (issue #25 Finding #4).
+ */
+function remainingMandatoryHours(state: PlanState, model: ConstraintModel): number {
+  const placed = new Set(placedCourseIds(state));
+  const seenRoots = new Set<string>();
+  let sum = 0;
+  for (const id of model.requiredMandatoryCourseIds) {
+    if (model.completedCourseIds.has(id)) continue;
+    if (isFullyPlaced(state, model, placed, id)) continue;
+    const p = model.profiles.get(id);
+    if (!p) continue;
+    if (p.count_hours_once && p.root_course_id) {
+      if (seenRoots.has(p.root_course_id)) continue;
+      seenRoots.add(p.root_course_id);
+    }
+    sum += p.hours ?? 0;
+  }
+  return sum;
+}
+
 export function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
   const placed = new Set(placedCourseIds(state));
   let n = 0;
@@ -147,10 +175,34 @@ export function mandatoryPlaced(state: PlanState, model: ConstraintModel): numbe
 export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const loads = semesterLoads(state, model);
 
-  // 1. degree completion — credit toward the requirement, capped (no reward for
-  //    overshooting past the target).
+  // 1. degree completion — credit toward the requirement, capped at a budget
+  //    that RESERVES hours for mandatory courses not yet placed:
+  //    budget = degreeRequiredHours - remainingMandatoryHours(state).
+  //
+  //    Without this reservation, g1 is just min(dh, degreeRequiredHours) —
+  //    every legal action's marginal credit is its raw added hours, so a
+  //    step comparing "add a 4h elective" vs. "add a 2h mandatory course"
+  //    always prefers the elective (bigger g1 delta), regardless of goal 2a
+  //    (requirements_mandatory), because g1 outranks it lexicographically.
+  //    The search can then spend the whole degree-hours budget on electives
+  //    before a single pending mandatory course is placed, and once it does
+  //    need to place the deferred mandatory courses, their hours land on TOP
+  //    of the already-filled target — inflating the final plan beyond
+  //    degreeRequiredHours (issue #25 Finding #4: 203h against a 185h
+  //    target, every semester pinned near the hard cap).
+  //
+  //    Reserving remainingMandatoryHours fixes this at the source: an
+  //    elective's marginal g1 credit is clipped to whatever budget room is
+  //    left once every still-unplaced mandatory course's hours are set
+  //    aside, so it can never outrank placing the mandatory course itself.
+  //    Once every mandatory course is placed, remainingMandatoryHours is 0
+  //    and this is byte-identical to the original formula — so a fully-built
+  //    valid plan's score (and every test that only scores DONE states) is
+  //    completely unaffected; only mid-search ranking among partial states
+  //    with a pending mandatory course changes.
   const dh = degreeHours(state, model);
-  const g1 = Math.min(dh, model.degreeRequiredHours);
+  const budget = model.degreeRequiredHours - remainingMandatoryHours(state, model);
+  const g1 = Math.min(dh, budget);
 
   // 2a. requirements (mandatory) — fraction of mandatory courses placed.
   const mandTotal = model.requiredMandatoryCourseIds.length;

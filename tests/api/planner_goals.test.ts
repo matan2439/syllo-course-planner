@@ -7,10 +7,12 @@
  */
 
 import { scorePlan, compareScore, GOAL_STACK, assessCompleteness } from '../../api/ai/planner_goals';
+import { PlannerWorker } from '../../api/ai/planner_worker';
 import {
   type ConstraintModel,
   type PlanState,
   emptyState,
+  placedCourseIds,
 } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
 
@@ -161,6 +163,78 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     withCategory.semesters['year_3_semester_a'] = ['CAT'];
 
     expect(compareScore(scorePlan(withMandatory, m), scorePlan(withCategory, m))).toBeGreaterThan(0);
+  });
+
+  // Issue #25 Finding #4: g1 (degree_completion) must reserve budget for
+  // mandatory courses still unplaced, so electives can't spend "credit" that
+  // belongs to them. This test locks the mechanism directly: with 8h of
+  // electives already placed and one 2h mandatory course still pending,
+  // piling on one more 4h elective (12h real) must NOT outscore placing the
+  // mandatory course instead (10h real) — even on g1 ALONE, not just via the
+  // lower-priority g2a (mandatory-fraction) tiebreak. Under the old
+  // unreserved formula both hit the same min(dh, degreeRequiredHours) cap
+  // and only tied (g2a still happened to save the right outcome here); the
+  // reservation makes mandatory win outright at the higher-priority g1 tier:
+  // budget after the elective add stays at 10-2=8 (MAND still unplaced) so
+  // its g1 clips to 8, while budget after the mandatory add rises to 10-0=10
+  // so its g1 reaches the full 10. This test alone doesn't prove a behavior
+  // change (old code already reached the right answer here via g2a) — the
+  // decisive before/after evidence is the PlannerWorker.run() scenario below,
+  // which IS RED before this fix and GREEN after it.
+  it('g1 alone (not just the g2a tiebreak) ranks a pending mandatory course above piling on more electives past its reserved budget', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [],
+    });
+    m.profiles.set('MAND', profile('MAND', { is_mandatory: true, hours: 2 }));
+    m.profiles.set('ELECTIVE', profile('ELECTIVE', { hours: 4 }));
+
+    const withMoreElective = withCourses('year_3_semester_a', ['e0', 'e1', 'ELECTIVE']); // 8h existing (e0+e1, 4h each) + 4h = 12h real
+    const withMandatoryInstead = withCourses('year_3_semester_a', ['e0', 'e1', 'MAND']); // 8h existing + 2h = 10h real
+
+    const g1Index = 0;
+    expect(scorePlan(withMandatoryInstead, m)[g1Index]).toBeGreaterThan(scorePlan(withMoreElective, m)[g1Index]);
+    expect(compareScore(scorePlan(withMandatoryInstead, m), scorePlan(withMoreElective, m))).toBeGreaterThan(0);
+  });
+
+  // Real end-to-end confirmation of the fix via the actual search
+  // (PlannerWorker.run, lookahead disabled to isolate the greedy scoring
+  // mechanism this fix changes): 3 mandatory 2h courses + 6 elective 4h
+  // courses, degreeRequiredHours=20. Before this fix, the greedy-by-raw-
+  // hours search fills the entire 20h target from electives alone before
+  // ever placing a mandatory course, then adds all 3 deferred mandatory
+  // courses on top — final total 26h (6h avoidable overshoot, reproduced by
+  // temporarily reverting just the g1 formula and re-running this exact
+  // scenario). After the fix, the reserved budget forces mandatory courses
+  // to interleave once the elective share is used up — final total 22h
+  // (only 2h left, the unavoidable atomicity slack of not being able to
+  // stop exactly on a course boundary).
+  it('PlannerWorker.run does not defer all mandatory courses until after the degree target is already spent on electives', () => {
+    const profiles = new Map<string, CourseProfile>();
+    for (const id of ['M1', 'M2', 'M3']) profiles.set(id, profile(id, { is_mandatory: true, hours: 2 }));
+    for (let i = 0; i < 6; i++) profiles.set(`E${i}`, profile(`E${i}`, { hours: 4 }));
+    const m = model({
+      profiles,
+      degreeRequiredHours: 20,
+      requiredMandatoryCourseIds: ['M1', 'M2', 'M3'],
+      categories: [],
+      maxHoursPerSemester: 40,
+      hardCap: 40,
+    });
+
+    const w = new PlannerWorker(m, undefined, { lookahead: false });
+    w.run(50);
+    const state = w.getPlan();
+    const placed = new Set(placedCourseIds(state));
+    let totalHours = 0;
+    for (const id of placed) totalHours += m.profiles.get(id)?.hours ?? 0;
+
+    expect(['M1', 'M2', 'M3'].every(id => placed.has(id))).toBe(true);
+    // Old behavior overshot to 26h (6h of fully-avoidable deferred-mandatory
+    // pile-up); the fix bounds it to the unavoidable atomicity slack of a
+    // single 4h elective landing right at the boundary.
+    expect(totalHours).toBeLessThanOrEqual(22);
   });
 });
 
