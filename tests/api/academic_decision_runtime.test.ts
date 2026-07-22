@@ -365,6 +365,51 @@ describe('buildAcademicDecision — decision & explanation', () => {
     expect(actions).toMatch(/צעדים|בנייה מחדש/);
   });
 
+  // Agent Diagnosis Loop finding (2026-07-22): validatePlanState already
+  // enforces prerequisite strict-timing, duplicate placement, pinned "don't
+  // move," and illegal offering-semester placement against the final state,
+  // but generate-plan.ts never turned that signal into a blocking error —
+  // toProposal() only read report.warnings. generate-plan.ts's new
+  // legalityGate closes that gap and prefixes each message with
+  // LEGALITY_VIOLATION_ERROR_PREFIX ('הפרת חוקיות בתוכנית:') specifically so
+  // this cause-attribution layer (previously fixed once already, for the
+  // annual/step-limit causes above) doesn't fall back into the overload
+  // catch-all for this new "fifth" cause too.
+  test('names a legality violation (e.g. prerequisite timing) as the cause, not overload, when that is the only blocking error', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_4_semester_a', course_ids: ['ADV'] }] }),
+      model: modelWith({ ADV: 4 }, { ADV: 'מתקדם' }),
+      blocked: true,
+      errors: ['הפרת חוקיות בתוכנית: לא ניתן לשבץ את מתקדם (בשנה ד׳ א׳) — דרישת הקדם קדם אינה משובצת בתוכנית ולא הושלמה.'],
+      clarification: CLEAN_CLAR,
+      context: {},
+    });
+    expect(view.explanation.mainRecommendation).not.toMatch(/עומס|חריגה מפורשת/);
+    expect(view.explanation.mainRecommendation).toMatch(/הפרת חוקיות/);
+    expect(view.decision.rationale).not.toMatch(/עומס/);
+    expect(view.decision.rationale).toMatch(/הפרת חוקיות/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).not.toMatch(/עומס השבועי/);
+    expect(actions).toMatch(/הפרת חוקיות|תנאי הקדם/);
+  });
+
+  test('a legality violation and a genuine overload block are both named when both occur together', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_4_semester_a', course_ids: ['ADV', 'BIG'] }] }),
+      model: modelWith({ ADV: 4, BIG: 30 }, { ADV: 'מתקדם' }),
+      blocked: true,
+      errors: [
+        'הפרת חוקיות בתוכנית: לא ניתן לשבץ את מתקדם (בשנה ד׳ א׳) — דרישת הקדם קדם אינה משובצת בתוכנית ולא הושלמה.',
+        'סמסטר year_4_semester_a: 34 ש"ש — חריגה לא סבירה מעל 30. לא ניתן להחיל את התוכנית.',
+      ],
+      clarification: CLEAN_CLAR,
+      context: {},
+    });
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/הפרת חוקיות|תנאי הקדם/);
+    expect(actions).toMatch(/עומס/);
+  });
+
   test('names both a disallowed-placed course AND an incomplete annual course when both block the plan', () => {
     const view = buildAcademicDecision({
       proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['ANNUAL', 'BAD'] }] }),

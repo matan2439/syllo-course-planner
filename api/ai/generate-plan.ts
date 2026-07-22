@@ -45,7 +45,9 @@ import {
   DISALLOWED_PLACED_ERROR_PREFIX,
   ANNUAL_INCOMPLETE_ERROR_PREFIX,
   STEP_LIMIT_ERROR,
+  LEGALITY_VIOLATION_ERROR_PREFIX,
 } from './planner_validate';
+import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER } from './plan_validation';
 import {
   incompleteAnnualCourseIds,
   applyMutation,
@@ -263,6 +265,51 @@ function annualCompletenessGate(
   return incompleteAnnualCourseIds(state, model).map(
     id => `${ANNUAL_INCOMPLETE_ERROR_PREFIX}${model.profiles.get(id)?.name_he ?? id}) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.`,
   );
+}
+
+/**
+ * validatePlanState (planner_validate.ts's "single source of truth for hard
+ * legality") already enforces prerequisite strict-timing, duplicate
+ * placement, completed/currently-taking course reuse, pinned-course "don't
+ * move," and illegal offering-semester placement against the FINAL state —
+ * toProposal() above calls it (via validateCandidate's `report`) but only
+ * ever reads report.warnings from that result, never report.errors/
+ * report.legal, so a violation of any of these could report blocked:false,
+ * errors:[] while academicDecision.validation.valid renders a green "passed
+ * legality" checkmark next to explanation text (whyThisPlan) admitting the
+ * very same violation — a reproduced, rendered, in-product self-contradiction
+ * (Agent Diagnosis Loop finding). Mirrors disallowedGate's/
+ * annualCompletenessGate's established pattern: re-derive against the FINAL
+ * placed set via the same validator so detection can never drift from the
+ * actual check.
+ *
+ * Excludes overload and annual-incompleteness: validatePlanState happens to
+ * check both of those too (its own items 5 and 5b), but they already have
+ * their own independently-worded, longer-standing gates above (overloadGate,
+ * annualCompletenessGate) — including them here too would report the exact
+ * same real violation twice under two differently-worded blockingErrors
+ * entries for the same underlying fact.
+ *
+ * Each surfaced message is prefixed with LEGALITY_VIOLATION_ERROR_PREFIX so
+ * academic_decision_runtime.ts's cause-attribution can tell this bucket apart
+ * from a genuine overload block (see that file's own hasOverloadError
+ * comment, which already anticipated a "fifth" cause needing this).
+ *
+ * Like every other gate here, this only ever fires for pre-existing/fixed
+ * placements carried over from client-supplied plan_context: the search
+ * itself validates every mutation before accepting it (planner_worker.ts's
+ * step()), so it can never introduce any of these violations on its own.
+ */
+function legalityGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  const { errors } = validatePlanState(state, model, pinnedHome);
+  return errors
+    .filter(e => !e.includes(OVERLOAD_ERROR_MARKER) && !e.includes(ANNUAL_PARTIAL_PLACEMENT_MARKER))
+    .map(e => `${LEGALITY_VIOLATION_ERROR_PREFIX} ${e}`);
 }
 
 /**
@@ -863,6 +910,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...overloadGate(proposal.semesters, model, effectivePreferences),
     ...disallowedGate(proposal.semesters, model),
     ...annualCompletenessGate(proposal.semesters, model),
+    ...legalityGate(proposal.semesters, model, pinnedHome),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via

@@ -12,6 +12,17 @@ import { z } from 'zod';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE, SOFT_LOAD_MAX } from './load_constants';
 
+/**
+ * Stable substrings of this file's own overload/annual-partial-placement
+ * error messages (items 5 and 5b below), shared with generate-plan.ts's
+ * legalityGate so it can exclude these two categories from the errors it
+ * re-surfaces (they already have their own independently-worded,
+ * longer-standing gates — overloadGate/annualCompletenessGate) without
+ * hand-duplicating the message text and risking drift.
+ */
+export const OVERLOAD_ERROR_MARKER = 'שעות שבועיות';
+export const ANNUAL_PARTIAL_PLACEMENT_MARKER = 'שנתי המשובץ בחלק';
+
 export const planMoveSchema = z.object({
   course_id: z.string(),
   from: z.string().nullable().optional(),
@@ -401,22 +412,22 @@ export function validatePlanProposal(
     const absoluteMaxReasonable = ctx.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
     if (semHours > absoluteMaxReasonable) {
       errors.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${absoluteMaxReasonable} ש"ש. לא ניתן להחיל את התוכנית.`,
+        `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — חריגה לא סבירה מעל ${absoluteMaxReasonable} ש"ש. לא ניתן להחיל את התוכנית.`,
       );
     } else if (semHours > hardCap) {
       const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
       if (userConfirmed) {
         warnings.push(
-          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${hardCap}) — חריגה בעומס שאושרה ידנית.`,
+          `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} (מעל המגבלה הקשיחה ${hardCap}) — חריגה בעומס שאושרה ידנית.`,
         );
       } else {
         errors.push(
-          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${hardCap} ש"ש). נדרש אישור חריגה מפורש.`,
+          `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — חריגה מהמגבלה הקשיחה (${hardCap} ש"ש). נדרש אישור חריגה מפורש.`,
         );
       }
     } else if (semHours > softLoadMax) {
       warnings.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
+        `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
       );
     }
   }
@@ -439,7 +450,7 @@ export function validatePlanProposal(
       const cName = courseLabel(courseId, ctx.courseNames);
       const missingNames = missing.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
       errors.push(
-        `קורס ${cName} הוא קורס שנתי המשובץ בחלק מהסמסטרים בלבד — חסר גם ב${missingNames}.`,
+        `קורס ${cName} הוא קורס ${ANNUAL_PARTIAL_PLACEMENT_MARKER} מהסמסטרים בלבד — חסר גם ב${missingNames}.`,
       );
     }
   }
