@@ -232,6 +232,67 @@ describe('enumerateActions — required-prerequisite ADDs are restricted to usef
     expect(prereqAdds).toEqual(['year_3_semester_a']);
   });
 
+  // Codex finding on PR #53 (round 22): the same "group 4 must not offer an
+  // unconstrained ADD for a course group 1b already covers" gap applies
+  // equally to group 2 (category candidates) and group 3 (wanted courses) —
+  // neither had the exclusion, so a required-but-unplaced prerequisite that
+  // ALSO happens to be a category candidate or explicitly wanted still got a
+  // second, unfiltered proposal at every legal semester, including ones
+  // group 1b's boundary filter deliberately excludes.
+  it('does not let a not-yet-satisfied category (group 2) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    // P is legal in year_3_semester_a (useful — before M) and
+    // year_4_semester_a (useless — after M), and is ALSO a category
+    // candidate for an unsatisfied category — group 2's own loop has no
+    // boundary awareness and would otherwise offer BOTH semesters.
+    profiles.set('P', profile('P', {
+      hours: 4, category_id: 'cat', effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      categories: [{ id: 'cat', name: 'cat', required: 1, candidateIds: ['P'] }],
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
+  it('does not let a wanted course (group 3) propose an unconstrained ADD for a course already covered by group 1b', () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b', prerequisites: ['P'],
+    }));
+    profiles.set('P', profile('P', {
+      hours: 4, effective_allowed_semesters: ['year_3_semester_a', 'year_4_semester_a'],
+    }));
+
+    const m = baseModel({
+      profiles,
+      requiredMandatoryCourseIds: ['M'],
+      wantedCourseIds: new Set(['P']),
+    });
+
+    const state = emptyState(SEMS);
+    const actions = enumerateActions(state, m);
+    const prereqAdds = actions
+      .filter(a => a.type === 'ADD_COURSE' && (a as any).courseId === 'P')
+      .map(a => (a as any).semesterId);
+
+    expect(prereqAdds).toEqual(['year_3_semester_a']);
+  });
+
   // Codex finding on PR #53 (round 19): when the SAME prerequisite is
   // needed by more than one reachable mandatory course, an earlier version
   // recorded the LARGEST boundary seen across the shared dependents — so a
