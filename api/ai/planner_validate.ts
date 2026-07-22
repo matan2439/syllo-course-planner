@@ -125,6 +125,21 @@ export const ANNUAL_INCOMPLETE_ERROR_PREFIX = 'קורס שנתי (';
 export const STEP_LIMIT_ERROR = 'PLANNER_STEP_LIMIT';
 
 /**
+ * Stable prefix for generate-plan.ts's legalityGate, covering every
+ * validatePlanState legality-violation category that has no dedicated gate
+ * of its own (prerequisite strict-timing, duplicate placement, completed/
+ * currently-taking course reuse, pinned-course "don't move," illegal
+ * offering-semester placement) — same sharing reason as
+ * DISALLOWED_PLACED_ERROR_PREFIX/ANNUAL_INCOMPLETE_ERROR_PREFIX above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell this
+ * cause apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance (the exact bug class PR #44
+ * fixed for two other causes — see that file's own doc comment on
+ * hasOverloadError anticipating a "fifth" cause needing this same treatment).
+ */
+export const LEGALITY_VIOLATION_ERROR_PREFIX = 'הפרת חוקיות בתוכנית:';
+
+/**
  * Which of the given placed course ids are hard-excluded by the model (either
  * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
  * Shared by validateCandidate below and by generate-plan.ts's post-planning

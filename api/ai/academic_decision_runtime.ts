@@ -48,7 +48,12 @@ import {
 } from './course_topic_profiles_static';
 import { getSemesterLoad } from './completion_analysis';
 import type { ConstraintModel } from './planner_types';
-import { DISALLOWED_PLACED_ERROR_PREFIX, ANNUAL_INCOMPLETE_ERROR_PREFIX, STEP_LIMIT_ERROR } from './planner_validate';
+import {
+  DISALLOWED_PLACED_ERROR_PREFIX,
+  ANNUAL_INCOMPLETE_ERROR_PREFIX,
+  STEP_LIMIT_ERROR,
+  LEGALITY_VIOLATION_ERROR_PREFIX,
+} from './planner_validate';
 
 // ── Public shapes ───────────────────────────────────────────────────────────
 
@@ -310,9 +315,9 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const semCount = input.proposal.semesters.filter((s) => s.course_ids.length > 0).length;
 
   // blocked can be caused by several independent gates in generate-plan.ts —
-  // disallowedGate, annualCompletenessGate, overloadGate, and the
-  // PLANNER_STEP_LIMIT sentinel — and the explanation/suggested actions must
-  // name the actual cause(s) instead of defaulting to overload guidance.
+  // disallowedGate, annualCompletenessGate, overloadGate, legalityGate, and
+  // the PLANNER_STEP_LIMIT sentinel — and the explanation/suggested actions
+  // must name the actual cause(s) instead of defaulting to overload guidance.
   // Originally only disallowedGate was special-cased here (hasOtherBlockingError
   // treated every other error as overload); when annualCompletenessGate and
   // the step-limit sentinel were added later (PR #37, silent-empty-plan fix),
@@ -324,23 +329,30 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   // `overloaded`, which only reflects the user's soft max_weekly_hours
   // preference) so combinations (e.g. disallowed + annual-incomplete at once)
   // are all named, not just the first one checked. hasOverloadError is a
-  // catch-all for any error that isn't one of the three explicitly-known
+  // catch-all for any error that isn't one of the explicitly-known
   // non-overload causes — a genuinely new gate added in the future without a
   // matching flag here would still fall into this bucket, the same latent gap
-  // this fix closes for the two causes found so far.
+  // this fix closes for legalityGate (the "fifth" cause this comment used to
+  // anticipate, closed by the Agent Diagnosis Loop's prerequisite-timing
+  // finding — a plan blocked only by a pre-existing prerequisite/duplicate/
+  // pinned/illegal-semester violation was previously told "reduce your
+  // weekly load" too, same wrong-advice bug as the annual/step-limit cases).
   const hasDisallowedPlacedError = input.errors.some((e) => e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX));
   const hasAnnualIncompleteError = input.errors.some((e) => e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX));
   const hasStepLimitError = input.errors.includes(STEP_LIMIT_ERROR);
+  const hasLegalityViolationError = input.errors.some((e) => e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX));
   const hasOverloadError = input.errors.some(
     (e) =>
       !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX) &&
       !e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX) &&
+      !e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX) &&
       e !== STEP_LIMIT_ERROR,
   );
 
   const blockingCauseClauses: string[] = [];
   if (hasDisallowedPlacedError) blockingCauseClauses.push('היא עדיין כוללת קורס שסימנת להחרגה');
   if (hasAnnualIncompleteError) blockingCauseClauses.push('קורס שנתי לא שובץ בכל הסמסטרים הנדרשים לו');
+  if (hasLegalityViolationError) blockingCauseClauses.push('קיימת בתוכנית הפרת חוקיות (למשל סדר תנאי קדם, שיבוץ כפול או שיבוץ שאינו מותר) שטרם טופלה');
   if (hasOverloadError) blockingCauseClauses.push('יש חריגת עומס שטרם טופלה');
   if (hasStepLimitError) blockingCauseClauses.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים והתוכנית עשויה להיות חלקית');
 
@@ -386,6 +398,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     hasOverloadError,
     hasAnnualIncompleteError,
     hasStepLimitError,
+    hasLegalityViolationError,
     disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
@@ -417,10 +430,11 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
 
 function buildSuggestedNextActions(args: {
   overloaded: boolean;
-  /** True when input.errors contains a blocking error that isn't a disallowed-placed course, an incomplete annual course, or the step-limit sentinel — i.e. a genuine overload/other hard-cap gate. */
+  /** True when input.errors contains a blocking error that isn't a disallowed-placed course, an incomplete annual course, a legality violation, or the step-limit sentinel — i.e. a genuine overload/other hard-cap gate. */
   hasOverloadError: boolean;
   hasAnnualIncompleteError: boolean;
   hasStepLimitError: boolean;
+  hasLegalityViolationError: boolean;
   disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
@@ -438,6 +452,9 @@ function buildSuggestedNextActions(args: {
   }
   if (args.hasStepLimitError) {
     actions.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים — נסה/י לבקש בנייה מחדש כדי לקבל תוכנית מלאה.');
+  }
+  if (args.hasLegalityViolationError) {
+    actions.push('בתוכנית קיימת הפרת חוקיות (למשל קורס המשובץ לפני תנאי הקדם שלו) — בדוק/בדקי את שיבוץ הקורסים בלוח, או בקש/י בנייה מחדש.');
   }
   if (args.disallowedPlaced) {
     actions.push('הקורס שסימנת להחרגה עדיין מופיע בתוכנית — הסר/י אותו ידנית מהלוח, או בקש/י בנייה מחדש שמסירה אותו.');
