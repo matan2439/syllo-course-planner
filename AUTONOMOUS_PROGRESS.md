@@ -4,11 +4,78 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-21, session on branch `claude/determined-thompson-jkdpvy`
-(PR #41 merged, 25 rounds of Codex review — see below; supersedes the PR #39
-entry as the latest completed milestone)._
+_Last updated: 2026-07-22, session on branch `claude/determined-thompson-l4jl42`
+(PR #44 merged — see below; supersedes the PR #41 entry as the latest
+completed milestone)._
 
-## Latest session — PR #41: structural degree-hours gap disclosure, merged after 25 Codex rounds
+## Latest session — PR #44: misattributed block-cause explanation, fixed via a fresh Agent Diagnosis Loop pass
+
+Rolling window was compliant after PR #41 (no forced A/B pressure), so per the
+standing instruction, ran the mandated **Agent Diagnosis Loop** again before
+picking anything — this time targeting P1-checklist areas issue #25's prior
+diagnosis pass hadn't covered: draft/applied-state isolation, explanation-vs-
+plan-data faithfulness, multi-turn trace consistency, and the clarification-
+answer round-trip. Delegated to a subagent driving the real `generate-plan.ts`
+handler with real board fixtures (read-only; no product code touched during
+diagnosis), then independently reviewed its evidence before acting.
+
+Two areas came back clean (no finding): no surprise-rebuild path exists
+(`action_type` is parsed but never read — matches the already-tracked,
+deprioritized issue #25 Finding #5; `plan_simulation.ts`/
+`planner_orchestration.ts` confirmed not wired into `generate-plan.ts`); the
+handler is fully stateless per request, so no stale-trace/metadata leakage
+across turns is possible.
+
+Two real findings surfaced:
+
+1. **[Fixed, PR #44]** `academic_decision_runtime.ts`'s `buildAcademicDecision`
+   classified any blocking error that wasn't a disallowed-placed-course as
+   "overload" — correct when PR #27 introduced this logic (disallowedGate was
+   the only other `blockingErrors` source then), but PR #37
+   (`annualCompletenessGate`) and PR #39 (`PLANNER_STEP_LIMIT`) both added new
+   blocking-error sources afterward without this classification ever being
+   extended. A plan blocked only by an incomplete annual course, or only by
+   the step-limit cutoff, told the user to "reduce your weekly load or
+   confirm an exception" — wrong remedial advice for a block with nothing to
+   do with load. Reproduced via the real handler on
+   `test_program_annual_course_blocked_2027`. Fixed by replacing the
+   two-bucket classification with four explicit cause flags composed into the
+   explanation/rationale/suggested-actions, with new shared constants
+   (`ANNUAL_INCOMPLETE_ERROR_PREFIX`/`STEP_LIMIT_ERROR` in
+   `planner_validate.ts`, avoiding a circular import with `generate-plan.ts`).
+   TDD RED-verified (3 new tests reproduced the real "עומס" wording before the
+   fix). Full API suite 1267/1267 (82 suites), `tsc --noEmit` clean. **Merged**
+   (`c11df8a`) after a clean Codex review round (no findings) and green CI
+   (3/3). **Classification: C** (correctness/honesty; production-reachable via
+   `use_academic_decision_agent:true`, which the live frontend auto-enables
+   for any AI-interested user).
+2. **[Filed as issue #43, not fixed this session]** The clarification loop's
+   `track_or_focus` question can never be resolved once answered — re-asked
+   identically on every turn forever, unlike every other clarification field.
+   Distinct root cause (`academic_clarification.ts`/
+   `academic_clarification_plan_inputs.ts`), kept out of PR #44 to keep that
+   PR's diff narrow. P2 — doesn't block or corrupt a plan, but a real
+   user-visible "agent ignores my answer" trust defect.
+
+Rolling-three check: (39,41,44) = C/A/C — compliant. No forced A/B
+requirement on the next milestone.
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
+Vercel deploy-mechanism blocker every session since PR #27 has confirmed. PR
+#44 is not live for real users yet, same as every other merged fix this
+routine has produced so far.
+
+Also re-confirmed at start of this session (no new evidence, not
+re-investigated further): PR #14/#15 (Decision capability) correctly remain
+unmerged (would be a 3rd consecutive D-classified milestone with no named
+production consumer); issue #18's Vercel-architecture/canonical-branch
+reconciliation question is unchanged and still a genuine human decision;
+issue #25 Findings #4/#5 still need a human `GOAL_STACK` design call /
+remain correctly deprioritized; production is healthy (Vercel `READY`, zero
+runtime errors in the last 24h) — no incident, just the same standing
+staleness.
+
+## Prior session — PR #41: structural degree-hours gap disclosure, merged after 25 Codex rounds
 
 This is exactly the A-class milestone the prior session's own "Exact next
 action" #1 (below) called for: "does the frontend surface ANY signal when a
@@ -340,6 +407,12 @@ found is already a fully-diagnosed, open human decision from a prior session
     guidance for a real, reachable board-window-exhaustion scenario; found
     via the mandated Agent Diagnosis Loop, specifically satisfying the prior
     session's own "must-be-A-or-B" rolling-window requirement).
+12. PR #44 — academicDecision explanation block-cause misattribution fix,
+    **merged** (`c11df8a`), Codex-clean on the first review round, CI green
+    (3/3) — **C** (correctness/honesty: the agent path told users to reduce
+    workload for blocks that were actually an incomplete annual course or a
+    step-limit cutoff; found via a fresh Agent Diagnosis Loop pass targeting
+    previously-uncovered P1-checklist areas).
 
 Rolling-three checks:
 - (12,13,27) = D/D/C — **NOT compliant** (only 1 of 3 is A/B/C; 0 are A/B).
@@ -368,21 +441,26 @@ Rolling-three checks:
   two-consecutive-non-compliant-window flag; no rolling-window pressure on
   the immediate next milestone.
 
+- (39,41,44) = C/A/C — **compliant** (3 of 3 are A/B/C; 1 is A/B, from PR #41).
+  No rolling-window pressure on the immediate next milestone.
+
 Every merged window from PR #27 through PR #32/#34 is compliant. (32,34,37)
 and (34,37,39) were two consecutive non-compliant windows, both now cured by
 PR #41's A classification — unlike the very first (12,13,27) shortfall which
 predates the rule's enforcement and can't be fixed retroactively. The rolling
-window is compliant again as of PR #41; the next milestone has no forced
-A/B requirement unless a future window drifts non-compliant again.
+window is compliant again as of PR #41 and remains so through PR #44; the
+next milestone has no forced A/B requirement unless a future window drifts
+non-compliant again.
 
 ## Blockers
 
 1. **Vercel deploy access** — see above. Everything merged so far (PR #12,
-   #13, #27, #31, #32, #34, #37, #39, #41) is inert for real users until
+   #13, #27, #31, #32, #34, #37, #39, #41, #44) is inert for real users until
    someone deploys `ui/frontend-modernization` HEAD. This is the single
    highest-value unblock available right now — real, tested, Codex-reviewed
    correctness fixes (including a silent-empty-plan P0-severity bug, PR #39,
-   and the structural-gap disclosure fix, PR #41) are sitting unshipped.
+   the structural-gap disclosure fix, PR #41, and the block-cause explanation
+   fix, PR #44) are sitting unshipped.
 2. **Canonical branch reconciliation** (main rewrite / Vercel production-branch
    config, including the open question of which of the two Vercel projects —
    `tau-course-planner` (fastapi, currently serving prod) vs. `web` (nextjs,
@@ -417,29 +495,44 @@ A/B requirement unless a future window drifts non-compliant again.
    (not manufactured just to consume the capability — that would violate
    "Do not build unused capabilities merely to advance an architectural
    checklist" from the other direction).
+7. Issue #43 (new, this session) — the `track_or_focus` clarification question
+   never resolves once answered, re-asked every turn forever. P2, not blocking
+   or corrupting a plan, but a real user-visible "agent ignores my answer"
+   defect in the clarification loop. Fully diagnosed with repro + root cause;
+   not fixed this session to keep PR #44's diff narrow. A reasonable candidate
+   for the next small milestone if no higher-impact diagnosis finding
+   supersedes it.
 
 ## Exact next action
 
-1. **Rolling window is compliant again (PR #41 = A) — no forced A/B
+1. **Rolling window is compliant (39,41,44 = C/A/C) — no forced A/B
    constraint on the immediate next milestone.** Still run the mandated
    **Agent Diagnosis Loop** first (real Hebrew scenarios against the real
    `generate-plan` handler, both default and `use_academic_decision_agent`
    paths, using a real board fixture like `mechanical_engineering_2027`) to
    find the next highest-impact real Agent failure before picking anything —
-   that's the standing instruction regardless of rolling-window pressure.
+   that's the standing instruction regardless of rolling-window pressure. This
+   session's diagnosis pass covered draft/state isolation, explanation
+   faithfulness, multi-turn trace consistency, and the clarification
+   round-trip — future sessions should probe areas still untested: dual-
+   semester/multi-alternative comparison quality, simulate-then-apply user
+   flows once/if a real one exists, and accessibility/error-state UI
+   behavior for blocked plans.
+   - Issue #43 (track_or_focus never resolves) is a small, fully-scoped,
+     ready-to-implement candidate if nothing higher-impact turns up.
    - PR #14's Decision capability is the standing D candidate that could
      become a B if a genuine multi-candidate producer scenario exists — do
      not force this without a real scenario, per Blockers item 6's caveat.
      **PR #14 must stay unmerged** — D-classified infra with no production
      consumer, per established precedent (multiple sessions now).
 2. **Whoever has Vercel CLI access: deploy `ui/frontend-modernization` HEAD to
-   production.** Still the single most valuable pending action — 9 real,
+   production.** Still the single most valuable pending action — 10 real,
    tested, Codex-reviewed fixes (PR #12, #13, #27, #31, #32, #34, #37, #39,
-   #41) are merged and waiting, unchanged since the last several sessions all
-   flagged this identically. Do not re-investigate this further without new
-   evidence (e.g. Vercel CLI credentials becoming available) — the blocker
-   and the reasoning against using `deploy_to_vercel` are both already fully
-   documented above.
+   #41, #44) are merged and waiting, unchanged since the last several sessions
+   all flagged this identically. Do not re-investigate this further without
+   new evidence (e.g. Vercel CLI credentials becoming available) — the
+   blocker and the reasoning against using `deploy_to_vercel` are both
+   already fully documented above.
 3. Issue #25 Finding #4 (planner over-allocation) still needs a human decision
    on the intended `GOAL_STACK` tradeoff before implementation — see Blockers.
    If a decision arrives, the recommended starting point is unchanged: a

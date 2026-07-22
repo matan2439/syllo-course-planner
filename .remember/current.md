@@ -1,5 +1,15 @@
 # Current — read this first
 
+## ✅ PR #44 MERGED — Agent Diagnosis Loop finding: misleading block-cause explanation, fixed (2026-07-22, autonomous scheduled run)
+
+**Merged** via `mcp__github__merge_pull_request` (normal merge) into `ui/frontend-modernization` as `c11df8a`. CI green (3/3: Python tests, Next.js build, TypeScript API tests) on the sole commit (`af4d214`). Codex review: clean, no findings ("Didn't find any major issues"). No unresolved review threads. **Classification: C** (correctness/honesty — the `use_academic_decision_agent:true` path is production-reachable today; fixes the Agent giving actively wrong remedial guidance for a real, reproducible block).
+
+Rolling-three check: (39,41,44) = C/A/C — compliant (3 of 3 are A/B/C; PR #41 is the A). No forced A/B requirement on the immediate next milestone.
+
+**Production check**: still pinned at `26500d4` (PR #11) — same standing Vercel deploy-mechanism blocker every session since PR #27 has confirmed, unchanged this session. PR #44 (along with PR #12/13/27/31/32/34/37/39/41) is not live for real users yet.
+
+Full details of the diagnosis and fix below (written pre-merge, still accurate).
+
 ## 🔧 Agent Diagnosis Loop finding: misleading block-cause explanation, fixed (2026-07-21, autonomous scheduled run)
 
 Per the standing "run the Agent Diagnosis Loop before selecting a milestone" instruction, ran a fresh round covering P1-checklist areas issue #25's prior diagnosis hadn't touched (draft/applied-state isolation, explanation-vs-plan faithfulness, multi-turn trace consistency, clarification-answer round-trip), via a subagent driving the real `generate-plan.ts` handler with real board fixtures. Two areas came back clean (no `action_type`/simulation surprise-rebuild path exists; the handler is fully stateless per request, no stale-trace risk). Two real findings surfaced:
