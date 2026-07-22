@@ -261,6 +261,67 @@ describe('buildAcademicDecision — decision & explanation', () => {
     expect(actions).toMatch(/עומס|hours|ש"ש/); // reduce workload
     expect(view.explanation.missingData.length).toBeGreaterThan(0);
   });
+
+  // Diagnosis-loop finding: a plan blocked by annualCompletenessGate
+  // (generate-plan.ts) or the PLANNER_STEP_LIMIT sentinel used to be
+  // misattributed to "overload" here (hasOtherBlockingError treated any
+  // non-disallowed-placement error as overload), telling the user to reduce
+  // their weekly load or confirm an exception for a block that has nothing to
+  // do with load. Neither cause is a real overload — the explanation must
+  // name the actual cause instead.
+  test('names an incomplete annual course as the cause, not overload, when that is the only blocking error', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['ANNUAL'] }] }),
+      model: modelWith({ ANNUAL: 4 }, { ANNUAL: 'מעבדה שנתית' }),
+      blocked: true,
+      errors: ['קורס שנתי (מעבדה שנתית) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.'],
+      clarification: CLEAN_CLAR,
+      context: {},
+    });
+    expect(view.explanation.mainRecommendation).not.toMatch(/עומס|חריגה מפורשת/);
+    expect(view.explanation.mainRecommendation).toMatch(/שנתי/);
+    expect(view.decision.rationale).not.toMatch(/עומס/);
+    expect(view.decision.rationale).toMatch(/שנתי/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).not.toMatch(/עומס השבועי/);
+    expect(actions).toMatch(/שנתי/);
+  });
+
+  test('names the step-limit as the cause, not overload, when that is the only blocking error', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal(),
+      model: modelWith({ MAND: 4, FLU: 4 }),
+      blocked: true,
+      errors: ['PLANNER_STEP_LIMIT'],
+      clarification: CLEAN_CLAR,
+      context: {},
+    });
+    expect(view.explanation.mainRecommendation).not.toMatch(/עומס|חריגה מפורשת/);
+    expect(view.explanation.mainRecommendation).toMatch(/צעדים|חלקית/);
+    expect(view.decision.rationale).not.toMatch(/עומס/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).not.toMatch(/עומס השבועי/);
+    expect(actions).toMatch(/צעדים|בנייה מחדש/);
+  });
+
+  test('names both a disallowed-placed course AND an incomplete annual course when both block the plan', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['ANNUAL', 'BAD'] }] }),
+      model: modelWith({ ANNUAL: 4, BAD: 4 }, { ANNUAL: 'מעבדה שנתית', BAD: 'קורס אסור' }),
+      blocked: true,
+      errors: [
+        'קורס לא-זמין שובץ בתוכנית: קורס אסור.',
+        'קורס שנתי (מעבדה שנתית) לא הושלם בכל הסמסטרים הנדרשים ולכן התוכנית אינה תקפה.',
+      ],
+      clarification: CLEAN_CLAR,
+      context: {},
+    });
+    expect(view.explanation.mainRecommendation).toMatch(/קורס שסימנת להחרגה/);
+    expect(view.explanation.mainRecommendation).toMatch(/שנתי/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/שנתי/);
+    expect(actions).toMatch(/להחרגה/);
+  });
 });
 
 describe('buildClarificationDecision — blocked (critical missing) path', () => {
