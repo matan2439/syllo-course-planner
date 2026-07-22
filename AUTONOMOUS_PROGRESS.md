@@ -4,11 +4,139 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-3jgomc`
-(PR #58 merged as `5ea5d2f` — see below; supersedes the PR #56 entry as the
+_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-bybfn4`
+(PR #60 merged as `0e4ec0d` — see below; supersedes the PR #58 entry as the
 latest completed milestone)._
 
-## Latest session — PR #58 merged: wanted-vs-excluded contradiction disclosure, including a Codex-caught stale-placement wording bug
+## Latest session — PR #60 merged: prerequisite-driven placement delay never explained, found via a fresh Agent Diagnosis Loop
+
+Standing audit (scheduled autonomous run): session branch `claude/youthful-tesla-bybfn4`
+was, again, the same recurring mistake several prior sessions have had to
+correct, provisioned from a stale `main`-derived commit (`92c19e0`) — reset to
+`ui/frontend-modernization` tip (`19d65f9`), zero commits lost. Only one open
+PR existed (**#14**, Decision capability — correctly still parked per the
+D-stacking-cap precedent; issues #15/#18/#20/#21 reconfirmed unchanged, zero
+new human comments, `mergeable_state: dirty` against its own stale base but
+deliberately left untouched). CI green on the base tip. Production
+re-confirmed healthy via Vercel MCP tools (`tau-course-planner`, zero runtime
+errors in the last 24h) but still pinned at `26500d4` ("Merge PR #11") — no
+new deployment, same standing no-git-integration/no-CLI-credentials blocker
+every session since PR #27 has confirmed; re-verified via `list_deployments`
+that every deploy remains a one-off CLI `vercel --prod` invocation.
+
+Per the prior session's own "exact next action," ran a fresh **Agent
+Diagnosis Loop** (delegated to a background agent driving the real
+`api/ai/generate-plan.ts` handler end-to-end with real Hebrew scenarios, both
+the default and `use_academic_decision_agent` paths) targeting the four areas
+explicitly flagged as not-yet-covered by any prior pass: multi-alternative
+comparison, simulate-then-apply flows, multi-turn conversation honesty, and
+in-plan prerequisite sequencing.
+
+**Three areas came back clean** (reproduced against the real handler, not
+just static-read): multi-alternative comparison (the only comparison-capable
+path, `AI_USE_AGENTIC_PLANNER`, is unreachable in production — same standing
+finding as Simulation/Persistence/Decision — and the reachable
+`academicDecision.decision.rationale` already honestly discloses "זוהי
+התוכנית היחידה שנוצרה בסבב זה", no false "best option" claim); simulate-then-
+apply (no chat/free-text NLU entrypoint or simulate/apply distinction exists
+anywhere reachable — every call is a real full recompute); multi-turn honesty
+(the handler is fully stateless per request — a real 3-turn sequence produced
+byte-identical, non-stale explanations turn to turn).
+
+**The one real, reproduced finding — in-plan prerequisite sequencing**: when
+a course's own prerequisite forces it to be placed later than its earliest
+nominally-legal semester (the only gate is `plan_validation.ts`'s
+prerequisite strict-timing rule), nothing in the response ever explained why.
+`PlannerWorker`'s trace-reason buckets (mandatory/category/wanted/filler-
+hours) never reference sequencing, and
+`academicDecision.explanation.whyThisPlan` is plan-aggregate-only. A user who
+explicitly wanted a course "as soon as possible" got zero signal that
+prerequisite ordering — not preference, capacity, or any other visible
+constraint — is why it landed a year later. Reachable on the real default
+production path, not gated behind any inert flag.
+
+**Fix** (`1f8cfc2`, PR #60): new `prerequisiteSequencingNotes()` in
+`generate-plan.ts`'s `toProposal()`, following the file's existing gate
+convention (`disallowedGate`/`annualCompletenessGate`/`legalityGate`) — a pure
+function of `(finalState, model)` that re-derives the same strict-timing fact
+`plan_validation.ts`'s own validator enforces, pushing a Hebrew explanatory
+note into `warnings_he` when a placed course's delay is attributable to an
+unresolved prerequisite's own placement. Reaches both the default path's UI
+rendering and, via the shared warnings-composition,
+`academicDecision.explanation.risksAndTradeoffs` on the agent path.
+
+**Self-caught correctness guard, before any Codex round**: only fires when
+the course's nominal legal-semester data is *confident*
+(`getLegalSemesters`'s own flag) — the same "confident-or-stay-silent"
+convention `buildValidationContext`/`addCourseActionsFor`/`annualSpansFor`
+already use. Without this guard, an elective with no known offering
+restriction would get a false-positive note for almost any unresolved
+prerequisite (`legalSemestersFor`'s unconfident fallback treats every known
+semester as "legal", making semester 0 look spuriously early). Caught during
+self-review via a dedicated regression test, RED-verified specifically
+against the unguarded implementation before the guard was added.
+
+**Tests**: new `tests/api/generate_plan_prerequisite_sequencing_explanation.test.ts`
+(5 tests — real scenario, negative/no-delay sanity check, agent-path
+disclosure, agentic-planner-path disclosure, and the false-positive
+confidence-guard check) + a dedicated new fixture
+`data/boards/test_program_prereq_sequencing_2027.json` (the existing shared
+`test_program_prereq_2027.json` fixture can't reproduce this scenario — its
+`ADV` is only nominally legal starting *after* `PRE`'s own semester already,
+so there's no gap to explain; a new fixture avoids touching the two existing
+test files that depend on the shared one's exact shape). All 5 RED-verified
+(both against the unfixed code, and the confidence guard specifically against
+the unguarded version) before confirming green. Full API suite **85/85
+suites, 1325/1325 tests** (+5, zero regressions), `tsc --noEmit` clean. `git
+diff --stat`: `generate-plan.ts` (+90/-1) + the 2 new files only.
+
+**PR #60 opened against `ui/frontend-modernization`, marked ready, `@codex
+review` posted, subscribed to PR webhook activity.** Codex reviewed the only
+commit (`1f8cfc2`) clean ("Didn't find any major issues"), CI completed
+`success` (3/3: Python tests, Next.js build, TypeScript API tests),
+`mergeable_state: clean`, no review threads. **Merged as `0e4ec0d`** in the
+same session via the webhook-driven continuation; auto-unsubscribed on merge
+per the tooling's own notice.
+
+**Classification: A** (user-visible — the new note renders in the real chat
+UI: `semester_board_viewer.html`'s `warnings_he` classifier has no
+special-case regex match for this text, so it falls through to the generic
+`details` bucket and is displayed, not dropped).
+
+**Rolling-three check: (56, 58, 60) = C/A/A — compliant** (all three are
+A/B/C; two are A/B). No forced A/B/C-mix requirement on the immediate next
+milestone, though two A's in a row is worth noting for future tracking (not a
+violation — the rule only forbids 0-A/B windows and >2-D windows).
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
+standing Vercel deploy-mechanism blocker every session since PR #27 has
+confirmed, re-verified this session. PR #60 (along with every other merged
+fix since PR #11) joins the same growing merged-but-not-deployed backlog.
+
+**Standing blockers, unchanged, not re-investigated further this session (no
+new evidence since last check)**: issue #15/#18 (PR #14 D-stacking merge
+decision, Vercel `tau-course-planner` vs `web` canonical-project question),
+issue #20 (386/386 `jest.ui.config.js` failures, single root cause — missing
+gitignored fixture, needs a human sign-off on a sanitized replacement), issue
+#21 (dead-code delete-vs-restore call). All confirmed still open, zero new
+human comments.
+
+**Exact next action for the next session**: PR #60 is merged and closed — do
+not reopen it or re-address it. Rolling-three window (56, 58, 60) = C/A/A is
+compliant with no forced constraint on the next pick. Run a fresh **Agent
+Diagnosis Loop** against the real `generate-plan.ts` handler (both paths)
+targeting areas still not yet exercised by any session: dual-semester/multi-
+alternative comparison PLAN QUALITY (distinct from the "is a comparison
+mechanism reachable at all" question this session answered — e.g. does the
+single plan the default greedy search produces actually balance dual-offered
+electives well?), simulate-then-apply user flows (once/if a real one ever
+becomes reachable — currently confirmed not to exist), and
+accessibility/error-state UI behavior for blocked plans. Standing
+human-decision blockers above (issues #15/#18/#20/#21) remain untouched
+pending a human call; this does not override the standing
+P0/correctness-preemption rule.
+
+## Prior session — PR #58 merged: wanted-vs-excluded contradiction disclosure, including a Codex-caught stale-placement wording bug
 
 Start-of-session audit: session branch `claude/youthful-tesla-t0vt3j` was —
 again, the same recurring mistake several prior sessions have had to
