@@ -293,4 +293,64 @@ describe('renderAcademicDecision — clarification form accumulates answers acro
     expect(byId2.track_or_focus).toBe('design');
     expect(byId2.max_weekly_hours).toBe(20);
   });
+
+  // Codex review, 2nd round (discussion_r3626588953): the accumulator must be
+  // scoped to ONE clarification exchange — a fresh, non-resume plan request
+  // (any requestPlanProposal call with no 3rd argument, which is every caller
+  // except this form's own submit handler) must clear it, so a stale earlier
+  // answer (e.g. a previous max_weekly_hours reply) can never silently
+  // override fresh UI state — like a newly-changed sidebar cap — on a LATER,
+  // unrelated build that happens to also hit a clarification form.
+  test('a fresh (non-resume) requestPlanProposal call clears stale accumulated answers', async () => {
+    await window.eval(`(async function(){
+      _aiClarificationAnswersSoFar = [{ questionId: 'max_weekly_hours', value: 20 }];
+      // Any ordinary "generate a plan" call — no 3rd argument, i.e. NOT a
+      // clarification-form resume — must scope-reset the accumulator, even
+      // though this particular fetch is stubbed to reject (network-stub).
+      await requestPlanProposal({ action_type: 'full_plan' }, 'full_plan').catch(() => {});
+    })()`);
+    const remaining = ev(window, '_aiClarificationAnswersSoFar');
+    expect(remaining).toEqual([]);
+  });
+
+  test('the clarification-form resume call itself is unaffected by the fresh-request clear (still self-consistent)', () => {
+    const calls = window.eval(`(function(){
+      window.__requestPlanProposalCalls2 = [];
+      window.__origRequestPlanProposal2 = requestPlanProposal;
+      requestPlanProposal = function(prefs, actionType, answers) {
+        window.__requestPlanProposalCalls2.push(answers);
+        return Promise.resolve();
+      };
+      _aiClarificationAnswersSoFar = [];
+
+      if (!document.getElementById('ai-academic-decision')) {
+        var container = document.createElement('div');
+        container.id = 'ai-academic-decision';
+        container.className = 'agent-decision-wrap';
+        document.body.appendChild(container);
+      }
+
+      _aiPlanLastAcademicDecision = {
+        clarification: {
+          needsClarification: true,
+          missingInputs: [{ field: 'maxWeeklyHours', critical: false, message: 'x' }],
+          questions: [
+            { id: 'max_weekly_hours', inputKey: 'maxWeeklyHours', required: false, critical: false, answerType: 'number', question: 'What is your maximum weekly course-hour limit?' },
+          ],
+        },
+        explanation: { mainRecommendation: 'x', whyThisPlan: [], risksAndTradeoffs: [], missingData: [], suggestedNextActions: [] },
+      };
+      renderAcademicDecision();
+      var form = document.getElementById('ai-academic-decision').querySelector('.agent-clarify-form');
+      form.querySelector('[data-question-id="max_weekly_hours"]').value = '12';
+      form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+
+      var out = window.__requestPlanProposalCalls2;
+      requestPlanProposal = window.__origRequestPlanProposal2;
+      return out;
+    })()`);
+    const parsed = JSON.parse(JSON.stringify(calls));
+    const byId = Object.fromEntries(parsed[0].map((a) => [a.questionId, a.value]));
+    expect(byId.max_weekly_hours).toBe(12);
+  });
 });

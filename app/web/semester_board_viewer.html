@@ -17932,6 +17932,16 @@ function resolveStaleDisallowedBlockLocal(blocked, errors, finalPlacedIds, cours
 }
 
 async function requestPlanProposal(prefs, actionType, clarificationAnswers) {
+  // Codex review (PR #46, discussion_r3626588953): _aiClarificationAnswersSoFar
+  // must be scoped to ONE clarification exchange, not live forever — every
+  // caller except the clarification-form submit handler calls this with no
+  // 3rd argument, i.e. a fresh, non-resume request. Clearing it here (rather
+  // than only in resetAiConversation()) means a stale earlier answer (e.g. a
+  // previous max_weekly_hours reply) can never silently override fresh UI
+  // state — like a newly-changed sidebar cap — on a later, unrelated build.
+  if (clarificationAnswers === undefined) {
+    _aiClarificationAnswersSoFar = [];
+  }
   prefs = { ...prefs, action_type: actionType || prefs.action_type, pinned_course_ids: [...(state?.pinnedCourseIds || [])] };
 
   // Issue C — resolve explicitly-named avoided courses (free text + the
