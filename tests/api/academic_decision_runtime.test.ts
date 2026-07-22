@@ -428,6 +428,67 @@ describe('buildAcademicDecision — decision & explanation', () => {
     expect(actions).toMatch(/שנתי/);
     expect(actions).toMatch(/להחרגה/);
   });
+
+  // Agent Diagnosis Loop finding (2026-07-22, second pass after issue #25
+  // closed): a mandatory course missing because the USER THEMSELVES hard-
+  // excluded it (disallowed_course_ids) was still told "check what
+  // prerequisites it needs, or request a rebuild" — MAND has no
+  // prerequisites here, and a rebuild is guaranteed to reproduce the
+  // identical result as long as the exclusion stays in the request. Neither
+  // action can ever help; the only real fix is removing the course from the
+  // user's own exclusion list (or accepting the degree can't complete
+  // without it). Same "wrong remedial advice on a real cause" bug class as
+  // the annual/step-limit/legality fixes above, for a sub-case those never
+  // covered: the missing-mandatory cause itself has more than one root cause
+  // (search-budget shortfall vs. the user's own request-level exclusion).
+  test('names the user\'s own exclusion as the cause of a missing mandatory course, not generic prerequisite/rebuild advice, when that is the sole cause', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['FLU'] }] }),
+      model: modelWith({ MAND: 4, FLU: 4 }, { MAND: 'מנועי בעירה' }),
+      blocked: true,
+      errors: ['קורס חובה לא שובץ בתוכנית: מנועי בעירה.'],
+      clarification: CLEAN_CLAR,
+      context: { excludedCourseIds: ['MAND'] },
+    });
+    expect(view.explanation.mainRecommendation).toMatch(/החרגה/);
+    expect(view.decision.rationale).toMatch(/החרגה/);
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/להסיר.*מרשימת ההחרגה/);
+    // The generic "check prerequisites" advice must NOT appear when
+    // exclusion is the only cause — it can never help here.
+    expect(actions).not.toMatch(/קורסי קדם/);
+  });
+
+  test('still gives the generic missing-mandatory advice when the cause is NOT the user\'s own exclusion', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['FLU'] }] }),
+      model: modelWith({ MAND: 4, FLU: 4 }, { MAND: 'מנועי בעירה' }),
+      blocked: true,
+      errors: ['קורס חובה לא שובץ בתוכנית: מנועי בעירה.'],
+      clarification: CLEAN_CLAR,
+      context: { excludedCourseIds: [] },
+    });
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/קורסי קדם/);
+    expect(actions).not.toMatch(/מרשימת ההחרגה/);
+  });
+
+  test('names both an exclusion-caused and an other-caused missing mandatory course when both occur together', () => {
+    const view = buildAcademicDecision({
+      proposal: proposal({ semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['FLU'] }] }),
+      model: modelWith({ MAND: 4, MAND2: 4, FLU: 4 }, { MAND: 'מנועי בעירה', MAND2: 'תרמודינמיקה' }),
+      blocked: true,
+      errors: [
+        'קורס חובה לא שובץ בתוכנית: מנועי בעירה.',
+        'קורס חובה לא שובץ בתוכנית: תרמודינמיקה.',
+      ],
+      clarification: CLEAN_CLAR,
+      context: { excludedCourseIds: ['MAND'] },
+    });
+    const actions = view.explanation.suggestedNextActions.join(' | ');
+    expect(actions).toMatch(/להסיר.*מרשימת ההחרגה/);
+    expect(actions).toMatch(/קורסי קדם/);
+  });
 });
 
 describe('buildClarificationDecision — blocked (critical missing) path', () => {

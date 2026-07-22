@@ -342,7 +342,29 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const hasAnnualIncompleteError = input.errors.some((e) => e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX));
   const hasStepLimitError = input.errors.includes(STEP_LIMIT_ERROR);
   const hasLegalityViolationError = input.errors.some((e) => e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX));
-  const hasMissingMandatoryError = input.errors.some((e) => e.startsWith(MISSING_MANDATORY_ERROR_PREFIX));
+  // Agent Diagnosis Loop finding (2026-07-22): a missing mandatory course can
+  // have two entirely different root causes — a search-budget/reachability
+  // shortfall (fixable by checking prerequisite placement or requesting a
+  // rebuild), or the USER'S OWN hard exclusion (disallowed_course_ids /
+  // strongly_avoided_course_ids) covering a course that also happens to be
+  // mandatory. The generic "check prerequisites, or request a rebuild"
+  // advice is actively wrong for the second case: a rebuild is guaranteed to
+  // reproduce the identical result as long as the exclusion is still in the
+  // request, and a mandatory course may have no prerequisites at all. Names
+  // extracted (not ids — missingMandatoryGate's error message only carries
+  // name_he) via exact match after stripping the fixed Hebrew prefix, so a
+  // name that happens to share a substring with the prefix's own wording
+  // (e.g. the generic word "חובה") can never false-positive-match.
+  const missingMandatoryNames = input.errors
+    .filter((e) => e.startsWith(MISSING_MANDATORY_ERROR_PREFIX))
+    .map((e) => e.slice(MISSING_MANDATORY_ERROR_PREFIX.length).trim().replace(/\.$/, ''));
+  const excludedNamesInMissingMandatory = (input.context.excludedCourseIds ?? [])
+    .map((id) => input.model.profiles.get(id)?.name_he ?? id)
+    .filter((name) => missingMandatoryNames.includes(name));
+  const hasMissingMandatoryDueToExclusion = excludedNamesInMissingMandatory.length > 0;
+  const hasMissingMandatoryOtherCause = missingMandatoryNames.some(
+    (name) => !excludedNamesInMissingMandatory.includes(name),
+  );
   const hasOverloadError = input.errors.some(
     (e) =>
       !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX) &&
@@ -356,7 +378,12 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   if (hasDisallowedPlacedError) blockingCauseClauses.push('היא עדיין כוללת קורס שסימנת להחרגה');
   if (hasAnnualIncompleteError) blockingCauseClauses.push('קורס שנתי לא שובץ בכל הסמסטרים הנדרשים לו');
   if (hasLegalityViolationError) blockingCauseClauses.push('קיימת בתוכנית הפרת חוקיות (למשל סדר תנאי קדם, שיבוץ כפול או שיבוץ שאינו מותר) שטרם טופלה');
-  if (hasMissingMandatoryError) blockingCauseClauses.push('קורס חובה לא שובץ בתוכנית');
+  if (hasMissingMandatoryDueToExclusion) {
+    blockingCauseClauses.push(
+      `קורס חובה (${excludedNamesInMissingMandatory.join(', ')}) לא שובץ בתוכנית כי סימנת אותו להחרגה`,
+    );
+  }
+  if (hasMissingMandatoryOtherCause) blockingCauseClauses.push('קורס חובה לא שובץ בתוכנית');
   if (hasOverloadError) blockingCauseClauses.push('יש חריגת עומס שטרם טופלה');
   if (hasStepLimitError) blockingCauseClauses.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים והתוכנית עשויה להיות חלקית');
 
@@ -403,7 +430,9 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     hasAnnualIncompleteError,
     hasStepLimitError,
     hasLegalityViolationError,
-    hasMissingMandatoryError,
+    hasMissingMandatoryOtherCause,
+    hasMissingMandatoryDueToExclusion,
+    excludedNamesInMissingMandatory,
     disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
@@ -440,7 +469,11 @@ function buildSuggestedNextActions(args: {
   hasAnnualIncompleteError: boolean;
   hasStepLimitError: boolean;
   hasLegalityViolationError: boolean;
-  hasMissingMandatoryError: boolean;
+  /** True for a missing mandatory course NOT caused by the user's own hard exclusion — the only case "check prerequisites, or request a rebuild" can actually help. */
+  hasMissingMandatoryOtherCause: boolean;
+  /** True when at least one missing mandatory course is missing because the user hard-excluded it themselves — a rebuild can never fix this. */
+  hasMissingMandatoryDueToExclusion: boolean;
+  excludedNamesInMissingMandatory: string[];
   disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
@@ -462,7 +495,13 @@ function buildSuggestedNextActions(args: {
   if (args.hasLegalityViolationError) {
     actions.push('בתוכנית קיימת הפרת חוקיות (למשל קורס המשובץ לפני תנאי הקדם שלו) — בדוק/בדקי את שיבוץ הקורסים בלוח, או בקש/י בנייה מחדש.');
   }
-  if (args.hasMissingMandatoryError) {
+  if (args.hasMissingMandatoryDueToExclusion) {
+    actions.push(
+      `קורס החובה (${args.excludedNamesInMissingMandatory.join(', ')}) מוחרג על ידך ולכן לא ניתן לשבצו — ` +
+        'כדי להשלים את התואר יש להסיר אותו מרשימת ההחרגה שלך; בקשת בנייה מחדש לא תשנה זאת כל עוד ההחרגה בתוקף.',
+    );
+  }
+  if (args.hasMissingMandatoryOtherCause) {
     actions.push('קורס חובה לא שובץ בתוכנית — בדוק/בדקי אילו קורסי קדם נדרשים לו, או בקש/י בנייה מחדש.');
   }
   if (args.disallowedPlaced) {
