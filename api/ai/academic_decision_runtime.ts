@@ -53,6 +53,7 @@ import {
   ANNUAL_INCOMPLETE_ERROR_PREFIX,
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
+  MISSING_MANDATORY_ERROR_PREFIX,
 } from './planner_validate';
 
 // ── Public shapes ───────────────────────────────────────────────────────────
@@ -341,11 +342,13 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   const hasAnnualIncompleteError = input.errors.some((e) => e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX));
   const hasStepLimitError = input.errors.includes(STEP_LIMIT_ERROR);
   const hasLegalityViolationError = input.errors.some((e) => e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX));
+  const hasMissingMandatoryError = input.errors.some((e) => e.startsWith(MISSING_MANDATORY_ERROR_PREFIX));
   const hasOverloadError = input.errors.some(
     (e) =>
       !e.startsWith(DISALLOWED_PLACED_ERROR_PREFIX) &&
       !e.startsWith(ANNUAL_INCOMPLETE_ERROR_PREFIX) &&
       !e.startsWith(LEGALITY_VIOLATION_ERROR_PREFIX) &&
+      !e.startsWith(MISSING_MANDATORY_ERROR_PREFIX) &&
       e !== STEP_LIMIT_ERROR,
   );
 
@@ -353,6 +356,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
   if (hasDisallowedPlacedError) blockingCauseClauses.push('היא עדיין כוללת קורס שסימנת להחרגה');
   if (hasAnnualIncompleteError) blockingCauseClauses.push('קורס שנתי לא שובץ בכל הסמסטרים הנדרשים לו');
   if (hasLegalityViolationError) blockingCauseClauses.push('קיימת בתוכנית הפרת חוקיות (למשל סדר תנאי קדם, שיבוץ כפול או שיבוץ שאינו מותר) שטרם טופלה');
+  if (hasMissingMandatoryError) blockingCauseClauses.push('קורס חובה לא שובץ בתוכנית');
   if (hasOverloadError) blockingCauseClauses.push('יש חריגת עומס שטרם טופלה');
   if (hasStepLimitError) blockingCauseClauses.push('התהליך לא הושלם עד הסוף עקב מגבלת מספר הצעדים והתוכנית עשויה להיות חלקית');
 
@@ -399,6 +403,7 @@ export function buildAcademicDecision(input: BuildAcademicDecisionInput): Academ
     hasAnnualIncompleteError,
     hasStepLimitError,
     hasLegalityViolationError,
+    hasMissingMandatoryError,
     disallowedPlaced: hasDisallowedPlacedError,
     clarification: input.clarification,
     context: input.context,
@@ -435,6 +440,7 @@ function buildSuggestedNextActions(args: {
   hasAnnualIncompleteError: boolean;
   hasStepLimitError: boolean;
   hasLegalityViolationError: boolean;
+  hasMissingMandatoryError: boolean;
   disallowedPlaced: boolean;
   clarification: ClarificationResult;
   context: AcademicDecisionContext;
@@ -455,6 +461,9 @@ function buildSuggestedNextActions(args: {
   }
   if (args.hasLegalityViolationError) {
     actions.push('בתוכנית קיימת הפרת חוקיות (למשל קורס המשובץ לפני תנאי הקדם שלו) — בדוק/בדקי את שיבוץ הקורסים בלוח, או בקש/י בנייה מחדש.');
+  }
+  if (args.hasMissingMandatoryError) {
+    actions.push('קורס חובה לא שובץ בתוכנית — בדוק/בדקי אילו קורסי קדם נדרשים לו, או בקש/י בנייה מחדש.');
   }
   if (args.disallowedPlaced) {
     actions.push('הקורס שסימנת להחרגה עדיין מופיע בתוכנית — הסר/י אותו ידנית מהלוח, או בקש/י בנייה מחדש שמסירה אותו.');

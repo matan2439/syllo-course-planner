@@ -46,6 +46,7 @@ import {
   ANNUAL_INCOMPLETE_ERROR_PREFIX,
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
+  MISSING_MANDATORY_ERROR_PREFIX,
 } from './planner_validate';
 import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER, CURRENTLY_TAKING_REUSE_ERROR_MARKER } from './plan_validation';
 import {
@@ -55,6 +56,7 @@ import {
   degreeHours as computeDegreeHours,
   scorePlan,
   compareScore,
+  assessCompleteness,
 } from './planner_goals';
 import { enumerateActions, isExcluded, addCourseActionsFor, isMovable, legalSemestersFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
@@ -311,6 +313,45 @@ function annualCompletenessGate(
  * itself validates every mutation before accepting it (planner_worker.ts's
  * step()), so it can never introduce any of these violations on its own.
  */
+/**
+ * planner_goals.ts's assessCompleteness already computes missingMandatory
+ * against the FINAL state (excluding completed/currently-taking courses —
+ * see generate_plan_currently_taking_mandatory.test.ts), and
+ * validateCandidate's report.errors already includes a "קורס חובה חסר"
+ * message for it — but toProposal() above only ever turned it into a soft
+ * warnings_he entry, never a blockingErrors entry, so a plan could report
+ * success (blocked:false, and on the use_academic_decision_agent path,
+ * academicDecision.validation.valid:true) while a required course was
+ * silently absent. Same "computed-but-discarded validation signal" bug class
+ * as disallowedGate/annualCompletenessGate/legalityGate above.
+ *
+ * Unlike those three gates, this one is NOT limited to a pre-existing/
+ * client-supplied illegal state: the search itself can end up short a
+ * mandatory course, e.g. a permanent prerequisite-ordering deadlock (a
+ * mandatory course only legal in an earlier semester than its own
+ * prerequisite's only legal semester — no algorithm can resolve that), or a
+ * bounded beam-search budget converging on an incomplete state a different
+ * strategy would have avoided (the concrete Agent Diagnosis Loop finding
+ * that motivated this gate: on an identical real board fixture, the
+ * AI_USE_AGENTIC_PLANNER path failed to place 4 mandatory courses the
+ * default greedy path successfully placed, and both silently reported
+ * blocked:false). Either way, this routine's own product policy is explicit:
+ * "no successful plan may violate mandatory requirements" — so this is
+ * disclosed as a blocking error regardless of root cause, mirroring the
+ * established gate pattern: re-derive against the FINAL placed set so
+ * detection can never drift from the actual check.
+ */
+function missingMandatoryGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
+  const { missingMandatory } = assessCompleteness(state, model);
+  return missingMandatory.map(
+    id => `${MISSING_MANDATORY_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
+  );
+}
+
 function legalityGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
   model: ConstraintModel,
@@ -926,6 +967,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...disallowedGate(proposal.semesters, model),
     ...annualCompletenessGate(proposal.semesters, model),
     ...legalityGate(proposal.semesters, model, pinnedHome),
+    ...missingMandatoryGate(proposal.semesters, model),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via
