@@ -263,4 +263,61 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(true);
     expect(res._body.errors.some((e: string) => e.includes('182/185'))).toBe(true);
   });
+
+  test('9. Codex-caught regression (round 3): a still-recoverable soft-avoided elective must be found even when an unrelated currently-taking course is visibly placed on the board — the recovery probes must ignore the same benign reuse marker the gate itself does', async () => {
+    // test_program_gap_unwanted_2027: MAND(4h,mandatory)+FLU(4h,fluids)+
+    // SOL(4h,solids)+SPARE(4h, no category, marked unwanted here). FLU AND
+    // SOL are both PRE-PLACED (mandatory/category requirements already fully
+    // satisfied without the search doing anything — deliberately sidesteps a
+    // separate, deeper pre-existing PlannerWorker.step() gap this same Agent
+    // Diagnosis Loop pass surfaced: the worker's own candidate-legality
+    // filter also uses raw, unfiltered validatePlanState, so it independently
+    // stops finding ANY legal action once a currently-taking course is
+    // visibly placed — tracked separately, out of scope for this PR, which is
+    // about generate-plan.ts's post-search gates and recovery probes only).
+    // FLU is additionally listed as currently_taking (the same benign rule-2a
+    // reuse scenario as tests 7/8). SPARE remains a real, legal, recoverable
+    // option — canRecoverViaUnwantedElective must be able to find it despite
+    // FLU's unrelated, pre-existing reuse marker. Before this fix,
+    // canRecoverViaUnwantedElective's OWN internal validatePlanState call saw
+    // FLU's persistent reuse marker in EVERY candidate (since FLU is never
+    // removed by any recovery mutation) and wrongly rejected every one of
+    // them as illegal — reporting "not recoverable" and firing the new
+    // blocking shortfall error even though a real recovery genuinely exists.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_2027',
+      plan_context: {
+        program_name: 'בדיקה',
+        semesters: [
+          { id: 'year_3_semester_a', label: 'שנה ג׳ א׳', total_hours: 4, courses: [
+            { course_id: 'MAND', name_he: 'חובה', hours: 4, course_type: 'mandatory', placement_policy: 'fixed', effective_allowed_semesters: ['year_3_semester_a'] },
+          ] },
+          { id: 'year_3_semester_b', label: 'שנה ג׳ ב׳', total_hours: 0, courses: [] },
+          { id: 'year_4_semester_a', label: 'שנה ד׳ א׳', total_hours: 8, courses: [
+            { course_id: 'FLU', name_he: 'זורם', hours: 4, course_type: 'elective', placement_policy: 'flexible', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+            { course_id: 'SOL', name_he: 'מוצק', hours: 4, course_type: 'elective', placement_policy: 'flexible', effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+          ] },
+          { id: 'year_4_semester_b', label: 'שנה ד׳ ב׳', total_hours: 0, courses: [] },
+        ],
+        category_requirements: [
+          { name: 'זורמים', category_id: 'fluids', required: 1, placed: 1, candidates: [
+            { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+          ] },
+          { name: 'מוצקים', category_id: 'solids', required: 1, placed: 1, candidates: [
+            { course_id: 'SOL', name_he: 'מוצק', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
+          ] },
+        ],
+        total_hours_progress: { known_completed_hours: 0 },
+        personal_status: { completed: [], currently_taking: [{ course_id: 'FLU' }] },
+        mandatory_unplaced: [],
+      },
+      preferences: { unwanted_course_ids: ['SPARE'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.semesters.flatMap((s: any) => s.course_ids)).not.toContain('SPARE');
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(false);
+  });
 });

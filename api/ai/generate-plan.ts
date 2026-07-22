@@ -378,11 +378,12 @@ function missingMandatoryGate(
  * comment). Using report.legal unfiltered here silently suppressed this gate
  * for any actively-enrolled student whose currently-taking course is visible
  * on the board — the single most common real client state, not an edge case.
- * Re-derives legality the same way legalityGate does, filtering only that one
- * benign marker: every OTHER real legality violation (overload, incomplete
- * annual course, prerequisite timing, ...) must still suppress this gate, to
- * avoid double-counting or misattributing an already-differently-gated
- * blocker.
+ * Uses isLegalIgnoringCurrentlyTakingReuse (defined below, shared with
+ * canRecoverMoreHours/canRecoverViaUnwantedElective's own round-3 fix for the
+ * identical marker) instead of report.legal: every OTHER real legality
+ * violation (overload, incomplete annual course, prerequisite timing, ...)
+ * must still suppress this gate, to avoid double-counting or misattributing
+ * an already-differently-gated blocker.
  *
  * Codex review finding (PR #62, round 2): when that same benign
  * currently-taking course is kept visible in its placed board slot (as the
@@ -404,8 +405,6 @@ function degreeHoursGate(
 ): string[] {
   const state: PlanState = { semesters: Object.fromEntries(semesters.map(s => [s.semester_id, s.course_ids])) };
   const report = validateCandidate(state, model, pinnedHome);
-  const otherLegalityErrors = validatePlanState(state, model, pinnedHome).errors
-    .filter(e => !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER));
   const placedNow = new Set(placedCourseIds(state));
   const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
     .filter(id => !placedNow.has(id))
@@ -416,7 +415,7 @@ function degreeHoursGate(
     creditedHours < model.degreeRequiredHours &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
-    otherLegalityErrors.length === 0 &&
+    isLegalIgnoringCurrentlyTakingReuse(state, model, pinnedHome) &&
     report.disallowedPlaced.length === 0 &&
     !canRecoverViaUnwantedElective(state, model, pinnedHome) &&
     !canRecoverMoreHours(state, model, pinnedHome);
@@ -451,6 +450,28 @@ function deterministicRationale(finalState: PlanState, model: ConstraintModel): 
   return placed.length === 0
     ? 'תוכנית אוטומטית — לא שובצו קורסים חדשים.'
     : `תוכנית אוטומטית — ${placed.length} קורסים, ${totalHours} ש"ש לקראת השלמת התואר.`;
+}
+
+/**
+ * Same "benign rule-2a reuse, not a real violation" exception legalityGate/
+ * degreeHoursGate already apply to a currently-taking course kept visible in
+ * its placed slot (see degreeHoursGate's own doc comment). Every candidate
+ * mutation the recovery rollouts below generate PRESERVES that pre-existing
+ * placement — mutations only add/move/replace a DIFFERENT course, never
+ * remove an unrelated already-placed one — so the benign reuse marker
+ * persists identically in every candidate's own validatePlanState result.
+ * Without this exception, any visible currently-taking course would make
+ * EVERY recovery candidate register as "illegal," permanently reporting "not
+ * recoverable" regardless of whether a real recovery exists (Codex review
+ * finding, PR #62, round 3).
+ */
+function isLegalIgnoringCurrentlyTakingReuse(
+  state: PlanState,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+): boolean {
+  return validatePlanState(state, model, pinnedHome).errors
+    .filter(e => !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER)).length === 0;
 }
 
 /**
@@ -532,13 +553,14 @@ function canRecoverMoreHours(
       // one is a cheap, immediate dead end, not a genuine search state, so
       // it shouldn't count against a budget defined (see this function's own
       // docstring) as "the number of NEW states the search may generate."
-      if (!validatePlanState(candidate, model, pinnedHome).valid) continue;
+      if (!isLegalIgnoringCurrentlyTakingReuse(candidate, model, pinnedHome)) continue;
       visited++;
 
       if (computeDegreeHours(candidate, model) > baselineHours) {
+        // Legality (ignoring the benign reuse marker) is already guaranteed
+        // by the `continue` above — only completeness needs re-checking here.
         const rep = validateCandidate(candidate, model, pinnedHome);
         if (
-          rep.legal &&
           rep.missingMandatory.length === 0 &&
           rep.unsatisfiedCategories.length === 0 &&
           rep.disallowedPlaced.length === 0
@@ -596,12 +618,33 @@ function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
  * canRecoverViaUnwantedElective below, not folded into this rollout.
  */
 function recoveryCandidateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
-  const actions = enumerateActions(state, model);
+  // Codex review finding (PR #62, round 3): without excluding
+  // currentlyPlannedCourseIds here, this rollout could propose (re-)ADDing a
+  // currently-taking course that isn't yet on the board (e.g. an off-board
+  // CUR) — genuinely re-proposing it, a real rule-2a violation
+  // (CURRENTLY_TAKING_REUSE_ERROR_MARKER), not the benign pre-existing kind
+  // isLegalIgnoringCurrentlyTakingReuse below is meant to exempt. This
+  // applies to enumerateActions' OWN raw output too, not just this
+  // function's supplementary generation below — enumerateActions
+  // (planner_actions.ts) has no currently-taking awareness of its own (the
+  // real search relies on validatePlanState to reject any such candidate it
+  // happens to try, so this gap was previously invisible there). Excluding
+  // these ids from every ADD/REPLACE-in candidate this rollout considers
+  // means every reuse-marker error any candidate can still carry is
+  // necessarily inherited unchanged from the caller's own baseline
+  // finalState (its pre-existing placement is never removed by any mutation
+  // this rollout generates), so unconditionally ignoring that marker in the
+  // legality check is safe and never masks a freshly-introduced violation.
+  const isReAddOfCurrentlyTaking = (m: PlannerMutation) =>
+    (m.type === 'ADD_COURSE' || m.type === 'REPLACE_COURSE') &&
+    model.currentlyPlannedCourseIds?.has(m.type === 'ADD_COURSE' ? m.courseId : m.inId);
+  const actions = enumerateActions(state, model).filter(m => !isReAddOfCurrentlyTaking(m));
   const placedNow = new Set(placedCourseIds(state));
   const eligible = (id: string, p: { is_mandatory?: boolean; hours?: number | null; is_unwanted?: boolean }) =>
     !p.is_mandatory && p.hours != null && p.hours !== 0 && !p.is_unwanted &&
     !isFullyPlaced(state, model, placedNow, id) &&
-    !model.completedCourseIds.has(id) && !isExcluded(model, id);
+    !model.completedCourseIds.has(id) && !isExcluded(model, id) &&
+    !model.currentlyPlannedCourseIds?.has(id);
 
   for (const [id, p] of model.profiles) {
     if (!eligible(id, p)) continue;
@@ -679,9 +722,13 @@ function canRecoverViaUnwantedElective(
     if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
     if (isFullyPlaced(finalState, model, placedNow, id)) return false;
     if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
+    // Same reuse-avoidance reason recoveryCandidateActions' eligible() above
+    // documents: never propose (re-)adding a course the user is already
+    // currently taking, even an off-board one.
+    if (model.currentlyPlannedCourseIds?.has(id)) return false;
     return addCourseActionsFor(model, id).some(a => {
       const next = applyMutation(finalState, a);
-      return next != null && validatePlanState(next, model, pinnedHome).valid;
+      return next != null && isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome);
     });
   });
 }
