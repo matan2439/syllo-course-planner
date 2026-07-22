@@ -165,8 +165,21 @@ export function resolveHardExcludedCourseIds(
  * EXPECTED_ANSWER_KIND validation for the same question id (non-empty text).
  */
 function resolveTrackAnswer(answers?: Array<{ questionId: string; value: unknown }>): string | undefined {
-  const answer = answers?.find((a) => a.questionId === 'track_or_focus');
-  return typeof answer?.value === 'string' && answer.value.trim().length > 0 ? answer.value : undefined;
+  if (!answers) return undefined;
+  // Scan from the end so the most recent VALID answer wins — matches the
+  // "later answers win" convention the rest of the clarification-merge path
+  // already follows (academic_clarification_loop.ts's applyClarificationLoopAnswers).
+  // A later blank/invalid duplicate is skipped (not treated as "no answer at
+  // all"), so it can't shadow an earlier genuinely valid one — Codex review
+  // (PR #46, discussion_r3626609490): a naive .find() picking the FIRST
+  // matching entry regardless of validity could keep track unresolved even
+  // when a valid answer exists later in the same batch.
+  for (let i = answers.length - 1; i >= 0; i--) {
+    const a = answers[i];
+    if (a.questionId !== 'track_or_focus') continue;
+    if (typeof a.value === 'string' && a.value.trim().length > 0) return a.value;
+  }
+  return undefined;
 }
 
 /** Map generate-plan's plan_context/preferences onto the clarification context. */

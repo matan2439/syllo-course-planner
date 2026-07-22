@@ -121,6 +121,34 @@ describe('extractClarificationContext', () => {
     ]);
     expect(otherQuestion.track).toBeUndefined();
   });
+
+  // Codex review, 3rd round (PR #46, discussion_r3626609490): a naive
+  // "first match" lookup would keep track unresolved when a stale/blank
+  // duplicate happens to come BEFORE a later, genuinely valid answer in the
+  // same batch — even though the later one should win, matching the
+  // "later answers win" convention the rest of the clarification-merge path
+  // already follows.
+  test('the most recent VALID track_or_focus answer wins when a batch has duplicates', () => {
+    const laterValidWins = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: '' },
+      { questionId: 'track_or_focus', value: 'design' },
+    ]);
+    expect(laterValidWins.track).toBe('design');
+
+    // A later blank/invalid duplicate must not shadow an earlier valid one —
+    // it's skipped, not treated as "the answer is now unset."
+    const laterBlankSkipped = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'design' },
+      { questionId: 'track_or_focus', value: '   ' },
+    ]);
+    expect(laterBlankSkipped.track).toBe('design');
+
+    const laterOfTwoValidWins = extractClarificationContext({}, {}, undefined, [
+      { questionId: 'track_or_focus', value: 'analysis' },
+      { questionId: 'track_or_focus', value: 'systems' },
+    ]);
+    expect(laterOfTwoValidWins.track).toBe('systems');
+  });
 });
 
 // ── clarify + critical gate ──────────────────────────────────────────────────
