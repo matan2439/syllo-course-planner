@@ -322,14 +322,27 @@ function isMandatoryCourseReachable(state: PlanState, model: ConstraintModel, id
   return p.prerequisites.every(prereqId => {
     if (model.completedCourseIds.has(prereqId)) return true;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) return true;
-    // Already scheduled on the board — satisfied, full stop. Recursing into
+    // Already scheduled on the board — recursing into
     // isMandatoryCourseReachable here (an earlier version did) re-runs its
     // OWN fitsSemester check on prereqId as if it still needed to be ADDED,
     // double-counting its already-placed hours against its own semester's
     // cap (it's both the occupant being summed AND the course being
     // checked for room) — a real course can look permanently unreachable
-    // simply because it's already legally sitting exactly where it is.
-    if (isFullyPlaced(state, model, placedIds, prereqId)) return true;
+    // simply because it's already legally sitting exactly where it is. But
+    // "already placed" alone isn't "satisfied" — validatePlanState's strict-
+    // timing rule still requires the placement to be strictly EARLIER than
+    // the dependent course's own placement (an earlier version skipped this
+    // check entirely once placed, which could reserve budget for a
+    // mandatory course whose own prerequisite sits in the SAME or a LATER
+    // semester — an add validatePlanState will always reject regardless).
+    if (isFullyPlaced(state, model, placedIds, prereqId)) {
+      const placedIndices = Object.entries(state.semesters)
+        .filter(([, ids]) => ids.includes(prereqId))
+        .map(([sem]) => model.knownSemesterIds.indexOf(sem))
+        .filter(i => i >= 0);
+      if (!placedIndices.length) return true; // shouldn't happen; bias reachable
+      return Math.max(...placedIndices) < idLatest;
+    }
     const rawPrereq = rawLegalSemesters(model, prereqId);
     if (!rawPrereq.length) return true; // no legality data at all — ambiguous, bias reachable
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);

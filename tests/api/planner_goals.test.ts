@@ -660,6 +660,40 @@ describe('scorePlan — g2 mandatory vs category priority', () => {
     // legal semester on paper): budget = 16-4=12, g1 = min(14,12) = 12.
     expect(score[0]).toBe(14);
   });
+
+  // Codex finding on this PR (the exact residual honestly flagged, and left
+  // unfixed, in the reply to the prior round's "already-placed prerequisite"
+  // fix): an already-placed prerequisite only satisfies reachability if its
+  // placement is strictly EARLIER than the dependent course's own — a
+  // prerequisite placed in the SAME or a LATER semester still makes
+  // validatePlanState reject the add, so it must not be treated as
+  // "satisfied" just because it's on the board somewhere.
+  it('does not treat an already-placed prerequisite as satisfying reachability when it sits in the same or a later semester', () => {
+    const m = model({
+      degreeRequiredHours: 10,
+      requiredMandatoryCourseIds: ['M'],
+      categories: [],
+    });
+    // P is already placed in year_4_semester_a — LATER than M's own only
+    // legal semester (year_3_semester_b) — so M can never legally be added,
+    // no matter how correctly P itself is scheduled.
+    m.profiles.set('P', profile('P', { hours: 4, placement_policy: 'fixed', recommended_semester: 'year_4_semester_a' }));
+    m.profiles.set('M', profile('M', {
+      is_mandatory: true, hours: 2, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_b',
+      prerequisites: ['P'],
+    }));
+
+    const state = withCourses('year_4_semester_a', ['P']);
+    state.semesters['year_3_semester_a'] = ['e0'];
+    state.semesters['year_4_semester_b'] = ['e1'];
+    const score = scorePlan(state, m);
+    // dh = 12 (P+e0+e1). If M is correctly NOT reserved (P sits later, so M
+    // is unreachable): budget = 10 (no reservation), g1 = min(12,10) = 10.
+    // If the bug were present (P wrongly treated as "satisfied" just for
+    // being placed anywhere): budget = 10-2=8, g1 = min(12,8) = 8.
+    expect(score[0]).toBe(10);
+  });
 });
 
 describe('scorePlan — g5b unwanted_avoidance penalty', () => {
