@@ -140,6 +140,25 @@ export const STEP_LIMIT_ERROR = 'PLANNER_STEP_LIMIT';
 export const LEGALITY_VIOLATION_ERROR_PREFIX = 'הפרת חוקיות בתוכנית:';
 
 /**
+ * Stable prefix for generate-plan.ts's missingMandatoryGate — a mandatory
+ * course the search could not (or, on a pre-existing client-supplied state,
+ * did not) end up placing. Unlike disallowedGate/annualCompletenessGate/
+ * legalityGate above, this can genuinely originate from the search itself
+ * (e.g. a permanent prerequisite-ordering deadlock, or a beam-search budget
+ * that converges on an incomplete state a different strategy would have
+ * avoided — see missingMandatoryGate's own doc comment for the Agent
+ * Diagnosis Loop finding that motivated this), not only an inherited
+ * violation — but the disclosure requirement is the same: "no successful
+ * plan may violate mandatory requirements" (this routine's own product
+ * policy), so it must surface as a blocking error, never a silent warning.
+ * Same sharing reason as the other *_ERROR_PREFIX constants above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell this
+ * cause apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance.
+ */
+export const MISSING_MANDATORY_ERROR_PREFIX = 'קורס חובה לא שובץ בתוכנית:';
+
+/**
  * Which of the given placed course ids are hard-excluded by the model (either
  * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
  * Shared by validateCandidate below and by generate-plan.ts's post-planning
