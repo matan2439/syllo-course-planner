@@ -1,6 +1,6 @@
 # Current — read this first
 
-## 🔧 PR #56 opened (awaiting Codex review + CI): missing-mandatory cause misattributed to the user's own exclusion (2026-07-22, autonomous scheduled run)
+## ✅ PR #56 merged: missing-mandatory cause misattributed to the user's own exclusion (2026-07-22, autonomous scheduled run)
 
 Standing audit: no human comments on issues #15/#18/#20/#21 since last checked — all unchanged, correctly left un-acted-on. Only PR #14 open (Decision capability), left untouched per the D-stacking-cap precedent. No Vercel MCP tools reachable this session (checked via ToolSearch) — deploy blocker unchanged, not re-flagged again since nothing new. Session branch was provisioned from stale `main`-derived `92c19e0` (same recurring mistake as several prior sessions) — reset to `ui/frontend-modernization` tip `4bda2ab`, zero commits lost.
 
@@ -14,13 +14,15 @@ Fix (`b84c1d9`): split the flag into `hasMissingMandatoryDueToExclusion` (matche
 
 Tests: 3 new in `tests/api/academic_decision_runtime.test.ts`, RED-verified against unfixed code first. Full API suite **1314/1314** across 84 suites (+3, zero regressions), `tsc --noEmit` clean.
 
-**PR #56 opened against `ui/frontend-modernization`, marked ready, `@codex review` posted, subscribed to PR webhook activity for CI/review events.** As of this write-up CI had 0 check runs yet (just opened) — whichever session/turn picks this up next must confirm CI green + Codex clean before merging.
+**PR #56 opened against `ui/frontend-modernization`, marked ready, `@codex review` posted, subscribed to PR webhook activity.** Codex reviewed the final commit (`edd69c1`) clean ("Didn't find any major issues"), CI completed `success` on that commit, `mergeable_state: clean`. **Merged as `24d8877`** in the same session via the webhook-driven continuation; auto-unsubscribed on merge per the tooling's own notice.
 
 **Classification: C** (correctness/honesty).
 
-**Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session).
+**Rolling-three check: (48, 53, 56) = C/C/C — non-compliant** with "at least one of every three merged milestones must be A or B." The next milestone selected, whichever session picks it up, **must be classified A or B** — not another standalone correctness-only fix, and not D-classified infra. See `AUTONOMOUS_PROGRESS.md`'s top entry for two concrete candidates (wiring an unused Simulation/Persistence/Decision capability into a real caller = B; a UI improvement to how `academicDecision.explanation` is actually surfaced to users = A).
 
-**Exact next action**: check PR #56's CI/Codex status (webhook-subscribed — act on delivered events first if any arrived), merge once every gate passes, then continue the Agent Diagnosis Loop (candidates: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
+**Production check**: unchanged, still `26500d4` (PR #11) — same standing Vercel deploy blocker, re-confirmed (no Vercel MCP tools reachable this session). 14 merged fixes now sit behind production.
+
+**Exact next action**: PR #56 is done (merged/closed, do not reopen). Select an A- or B-classified milestone next per the rolling-three rule above before returning to more C-only Agent Diagnosis Loop findings (candidates once that's satisfied: Finding #2 above, or a fresh sweep of multi-turn/simulate-then-apply areas).
 
 ## ✅ PR #53 merged (rounds 21–25 of Codex review), issue #25 closed — all 5 findings resolved (2026-07-22, autonomous scheduled run)
 

@@ -5,12 +5,12 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-22, session on branch `claude/youthful-tesla-sgzgz9`
-(PR #56 opened — see below; supersedes the PR #53 entry as the latest
-milestone). Issue #25 remains fully closed; this is a fresh Agent Diagnosis
-Loop finding from a re-run after that closure, per this routine's own
-"repeat until all critical scenarios pass" instruction._
+(PR #56 merged as `24d8877` — see below; supersedes the PR #53 entry as the
+latest completed milestone). Issue #25 remains fully closed; this is a
+fresh Agent Diagnosis Loop finding from a re-run after that closure, per
+this routine's own "repeat until all critical scenarios pass" instruction._
 
-## Latest session — PR #56 opened (awaiting Codex review): missing-mandatory cause misattributed to the user's own hard exclusion
+## Latest session — PR #56 merged: missing-mandatory cause misattributed to the user's own hard exclusion
 
 Start-of-session audit: no human comments landed on the standing decision
 issues (#15/#18/#20/#21) since the last session — all still open, all still
@@ -72,24 +72,28 @@ across 84 suites (+3, zero regressions), `tsc --noEmit` clean. `git diff
 --stat`: only the runtime file + its test file.
 
 **PR #56 opened, marked ready, `@codex review` requested, subscribed to PR
-activity.** CI had not yet reported (0 check runs) as of this write-up —
-next session (or a resumed webhook-driven turn in this same session) must
-confirm CI green and Codex clean before merging, per the standard gate.
+activity.** Codex reviewed the final commit (`edd69c1`) clean ("Didn't find
+any major issues"), CI (`.github/workflows/ci.yml`) completed with
+`conclusion: success` on that same commit, `mergeable_state: clean`, no
+unresolved review threads. **Merged as `24d8877`** via the webhook-driven
+continuation of this same session.
 
 **Classification: C** (correctness/honesty — real, reproduced, in-product
-wrong advice on a production-reachable path). Rolling-three check: most
-recent three merged milestones remain (48=C, 53=C, this one pending) — once
-#56 merges, the next milestone after it must be A or B per the governance
-rule (two C's in a row is fine; a third C would need to be checked against
-the "at least one of every three is A/B" rule depending on what's already
-counted — flagging for the merging session to verify against the fuller
-history in `.remember/current.md` before selecting the next milestone).
+wrong advice on a production-reachable path). **Rolling-three check: (48,
+53, 56) = C/C/C — non-compliant** with the "at least one of every three
+must be A or B" rule (two C's in a row is fine; three is not). **The next
+milestone selected must be classified A or B** — do not select another
+isolated C-only correctness nit or any D-classified infra work until an
+A/B milestone lands. A good candidate: wiring any of the already-built but
+unconsumed Simulation/Persistence/Decision capabilities (PRs #12/#13/#14)
+into an actual production caller would be a B; a user-visible UI
+improvement to how `academicDecision.explanation` is rendered would be an A.
 
 **Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
 standing Vercel deploy-mechanism blocker every session since PR #27 has
 confirmed; re-confirmed this session that no Vercel MCP tool is reachable
-either. PR #56 (once merged) will join the same growing backlog of merged-
-but-not-deployed fixes.
+either. PR #56 (now merged) joins the same growing backlog of merged-but-
+not-deployed fixes (14 merged fixes behind production as of this count).
 
 **Standing blockers, unchanged, not re-investigated further this session
 (no new evidence since last check)**: issue #15/#18 (PR #14 D-stacking
@@ -101,13 +105,21 @@ committing a sanitized replacement), issue #21 (dead-code delete-vs-restore
 call). All confirmed still open with zero human comments as of this
 session's check.
 
-**Exact next action for the next session**: resume PR #56 — check CI/Codex
-status (subscribed via webhook this session; if the webhook already
-delivered events, act on them first), merge once every gate passes, then
-continue the Agent Diagnosis Loop for the next highest-impact real Agent
-failure (candidates already surfaced: the wanted-vs-disallowed disclosure
-gap noted above, or a fresh sweep of multi-turn conversation honesty /
-simulate-then-apply areas per the P1 checklist).
+**Exact next action for the next session**: PR #56 is merged and closed —
+do not reopen it or re-address it. Per the rolling-three non-compliance
+above, the next selected milestone **must be classified A or B**, not
+another standalone C fix or D infra. Two concrete starting points: (1)
+name a real production consumer for one of the unwired Simulation/
+Persistence/Decision capabilities (PRs #12/#13/#14) and wire it in (B), or
+(2) survey how `academicDecision.explanation` currently renders (or fails
+to render) in the actual UI and improve that surface directly (A) — this
+routine's own priority order places P2 UI work as valid whenever it
+exposes/explains/controls the real Agent, which this qualifies as. Only
+after landing an A/B milestone should the Agent Diagnosis Loop resume for
+the next C-classified correctness finding (candidates already surfaced:
+the wanted-vs-disallowed disclosure gap noted above, or a fresh sweep of
+multi-turn conversation honesty / simulate-then-apply areas per the P1
+checklist).
 
 ## Prior session — PR #53 merged: issue #25 Finding #4 (planner front-loads elective hours ahead of mandatory obligations), closing issue #25
 
