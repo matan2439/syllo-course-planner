@@ -563,4 +563,55 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(true);
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
   });
+
+  test('15. Codex-caught regression (round 11): total_hours_progress.currently_planned_hours aggregate without per-course hours must not be silently ignored — stay unblocked rather than guess', async () => {
+    // Same fixture/gap as test 14 (known_completed_hours=169, exactly 4h
+    // short) — but here the off-board planned course carries NO per-course
+    // `hours` field, only the client's aggregate
+    // total_hours_progress.currently_planned_hours:4. Before the round-11
+    // fix, both currentlyPlannedHours/offBoardPlannedHours (which only read
+    // per-course hours) credited 0 for this course, so degreeHoursGate
+    // wrongly hard-blocked a plan a compatible aggregate-only caller had
+    // already proven complete. Since the true split of the aggregate can't be
+    // derived precisely (the pre-existing round-10/11 comment already
+    // explains why it can't just be added on top), the fix stays silent
+    // (no hard block) rather than guess — this test only asserts the
+    // (previously false) hard block is gone, not an exact hours total.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'OFFBOARD_PLANNED' }] } as any;
+    ctx.total_hours_progress = { known_completed_hours: 169, currently_planned_hours: 4 } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
+
+  test('15b. Codex-caught regression (round 11) — control: the aggregate must NOT suppress a genuine block when off-board hours ARE fully known (no unverifiable course present)', async () => {
+    // Same fixture/gap as test 14b (SOL is on-board, so its hours are always
+    // known via model.profiles — never "unverifiable"), plus an aggregate
+    // that happens to equal SOL's own hours. Since there is no off-board
+    // course with unknown hours here, hasUnverifiedOffBoardPlannedHours must
+    // stay false and this must remain a genuine, correctly-detected block —
+    // guards against the round-11 fix over-suppressing whenever ANY aggregate
+    // is present, regardless of whether it's actually needed.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'SOL' }] } as any;
+    ctx.total_hours_progress = { known_completed_hours: 169, currently_planned_hours: 4 } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
+  });
 });

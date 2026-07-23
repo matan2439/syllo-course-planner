@@ -403,7 +403,15 @@ function degreeHoursGate(
   pinnedHome: Record<string, string>,
   currentlyTakingHoursFromContext?: Map<string, number>,
   plannedHoursFromContext?: Map<string, number>,
+  hasUnverifiedOffBoardPlannedHours = false,
 ): string[] {
+  // Codex review finding (PR #62, round 11): never hard-block on a shortfall
+  // when the client-supplied total_hours_progress.currently_planned_hours
+  // aggregate proves real off-board credit exists that this gate's own
+  // per-course credit computation below can't verify — see the caller's own
+  // doc comment for the full reasoning. Stay silent (no blocking error)
+  // rather than guess.
+  if (hasUnverifiedOffBoardPlannedHours) return [];
   // Codex review finding (PR #62, round 4): unlike every other gate above
   // (which only ever READ the reconstructed state — assessCompleteness,
   // validatePlanState), canRecoverViaUnwantedElective/canRecoverMoreHours
@@ -982,6 +990,7 @@ export function toProposal(
   rationale_he: string,
   currentlyTakingHoursFromContext?: Map<string, number>,
   plannedHoursFromContext?: Map<string, number>,
+  hasUnverifiedOffBoardPlannedHours = false,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -1092,6 +1101,10 @@ export function toProposal(
     .filter(([id]) => !model.profiles.has(id))
     .reduce((sum, [, hours]) => sum + hours, 0);
   if (
+    // Codex review finding (PR #62, round 11): same "never assert a false
+    // shortfall when off-board credit is unverifiable" guard as
+    // degreeHoursGate's own — see that gate's/the caller's doc comments.
+    !hasUnverifiedOffBoardPlannedHours &&
     !report.degreeMet &&
     report.degreeHours + currentlyPlannedHours + offBoardPlannedHours < model.degreeRequiredHours &&
     report.missingMandatory.length === 0 &&
@@ -1298,6 +1311,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
 
+  // Codex review finding (PR #62, round 11): currentlyTakingHoursFromContext/
+  // plannedHoursFromContext above only credit an off-board currently_taking/
+  // planned course when the client supplied that course's OWN `hours` field.
+  // A compatible caller relying instead on the coarse
+  // total_hours_progress.currently_planned_hours aggregate (real, accepted
+  // input — plan_context is z.any(), per-course hours were always optional)
+  // without per-course hours gets 0 credit for that course from either map,
+  // even though the aggregate proves real, uncounted credit exists. Rather
+  // than guess a precise split from the aggregate (its own components aren't
+  // separable — see the round-10/11 comment above on why the aggregate can't
+  // just be added on top of the per-course credits), this is the same
+  // "confident-or-stay-silent" convention prerequisiteSequencingNotes below
+  // already uses: when the aggregate is present but at least one off-board
+  // (no model.profiles entry) currently_taking/planned course has no
+  // per-course hours to verify against it, treat the true credit as
+  // unverifiable and never hard-block on it — falls back to the pre-existing
+  // soft-warning-only behavior instead of asserting a false shortfall.
+  const hasUnverifiedOffBoardPlannedHours =
+    typeof effectivePlanContext?.total_hours_progress?.currently_planned_hours === 'number' &&
+    [
+      ...(effectivePlanContext?.personal_status?.currently_taking ?? []),
+      ...(effectivePlanContext?.personal_status?.planned ?? []),
+    ].some((c: any) => typeof c?.hours !== 'number' && c?.course_id != null && !model.profiles.has(c.course_id));
+
   let proposal: ReturnType<typeof toProposal>;
   let traceForResponse: unknown[];
   let hitMaxSteps = false;
@@ -1329,7 +1366,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
     proposal = toProposal(
       agentResult.finalState, model, initialState, pinnedHome, rationale_he,
-      currentlyTakingHoursFromContext, plannedHoursFromContext,
+      currentlyTakingHoursFromContext, plannedHoursFromContext, hasUnverifiedOffBoardPlannedHours,
     );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
@@ -1348,7 +1385,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     proposal = toProposal(
       worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
-      currentlyTakingHoursFromContext, plannedHoursFromContext,
+      currentlyTakingHoursFromContext, plannedHoursFromContext, hasUnverifiedOffBoardPlannedHours,
     );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
@@ -1360,7 +1397,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...annualCompletenessGate(proposal.semesters, model),
     ...legalityGate(proposal.semesters, model, pinnedHome),
     ...missingMandatoryGate(proposal.semesters, model),
-    ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext, plannedHoursFromContext),
+    ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext, plannedHoursFromContext, hasUnverifiedOffBoardPlannedHours),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via
