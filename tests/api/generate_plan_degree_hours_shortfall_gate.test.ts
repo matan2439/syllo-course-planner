@@ -594,15 +594,44 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
 
   test('15b. Codex-caught regression (round 11) — control: the aggregate must NOT suppress a genuine block when off-board hours ARE fully known (no unverifiable course present)', async () => {
     // Same fixture/gap as test 14b (SOL is on-board, so its hours are always
-    // known via model.profiles — never "unverifiable"), plus an aggregate
-    // that happens to equal SOL's own hours. Since there is no off-board
-    // course with unknown hours here, hasUnverifiedOffBoardPlannedHours must
-    // stay false and this must remain a genuine, correctly-detected block —
-    // guards against the round-11 fix over-suppressing whenever ANY aggregate
-    // is present, regardless of whether it's actually needed.
+    // known exactly via model.profiles, regardless of the client's own
+    // per-course hours field), plus an aggregate that happens to equal SOL's
+    // own hours. impliedUnknownOffBoardHours = max(0, 4 - onBoardKnownHours(4)
+    // - offBoardKnownHours(0)) = 0 — the aggregate is fully absorbed by
+    // SOL's own known on-board hours, none left over to credit — so this
+    // must remain a genuine, correctly-detected block. Guards against the
+    // round-11/12 fix over-crediting whenever ANY aggregate is present,
+    // regardless of whether it's actually unclaimed.
     const ctx = planContext(169);
     ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'SOL' }] } as any;
     ctx.total_hours_progress = { known_completed_hours: 169, currently_planned_hours: 4 } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
+  });
+
+  test('16. Codex-caught regression (round 12): a small aggregate must not unconditionally skip the gate for a massive, genuinely unrecoverable gap', async () => {
+    // Codex's own exact repro: known_completed_hours=0 (MAND+FLU+SOL=12h
+    // placed/catalog total, same permanently-exhausted catalog test 1 already
+    // proves), an off-board planned course with NO per-course hours, and
+    // total_hours_progress.currently_planned_hours:4 — a small aggregate that
+    // can only ever justify 4h of credit (16/185), nowhere near closing a
+    // ~169h gap. Before the round-12 fix, an earlier version of the round-11
+    // fix unconditionally skipped this whole gate whenever ANY aggregate was
+    // present alongside an unverifiable off-board course, regardless of
+    // magnitude — wrongly reporting blocked:false for this obviously still-
+    // incomplete plan, the exact "incomplete presented as complete" bug this
+    // gate exists to prevent.
+    const ctx = planContext(0);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'OFFBOARD_PLANNED' }] } as any;
+    ctx.total_hours_progress = { known_completed_hours: 0, currently_planned_hours: 4 } as any;
     const res = await run({
       program_id: PROGRAM_ID,
       plan_context: ctx,
