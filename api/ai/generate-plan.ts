@@ -432,6 +432,14 @@ function degreeHoursGate(
   // currently-taking course's placement), so it carries over unchanged from
   // creditedHours' own derivation (Codex review finding, PR #62, round 7).
   const recoveryTargetHours = model.degreeRequiredHours - currentlyPlannedHours;
+  // Codex review finding (PR #62, round 9): a single unified rollout
+  // (includeUnwantedElectives:true) that can mix soft-avoided and ordinary
+  // courses in the same search subsumes the separate canRecoverViaUnwanted
+  // Elective probe — that probe only ever chained is_unwanted ADDs alone, so
+  // a recovery requiring both an approved soft-avoided course AND a regular
+  // one (e.g. a soft-avoided course that is itself an unmet prerequisite for
+  // a regular elective) was invisible to both probes independently. See
+  // canRecoverMoreHours'/recoveryCandidateActions' own doc comments.
   const structurallyShort =
     !report.degreeMet &&
     creditedHours < model.degreeRequiredHours &&
@@ -439,8 +447,7 @@ function degreeHoursGate(
     report.unsatisfiedCategories.length === 0 &&
     isLegalIgnoringCurrentlyTakingReuse(state, model, pinnedHome) &&
     report.disallowedPlaced.length === 0 &&
-    !canRecoverViaUnwantedElective(state, model, pinnedHome, recoveryTargetHours) &&
-    !canRecoverMoreHours(state, model, pinnedHome, recoveryTargetHours);
+    !canRecoverMoreHours(state, model, pinnedHome, recoveryTargetHours, true);
   return structurallyShort
     ? [`${DEGREE_HOURS_SHORTFALL_ERROR_PREFIX} ${creditedHours}/${model.degreeRequiredHours} ש"ש.`]
     : [];
@@ -547,12 +554,24 @@ function isLegalIgnoringCurrentlyTakingReuse(
  * at all, not about full closure, and changing that here would risk an
  * unrelated regression to already-shipped warning behavior outside this PR's
  * scope.
+ *
+ * Codex review finding (PR #62, round 9): `includeUnwantedElectives`, when
+ * true, lets this rollout's own recoveryCandidateActions also propose
+ * `is_unwanted` courses — needed so a recovery that MIXES an approved
+ * soft-avoided course with an ordinary one (e.g. a soft-avoided course that
+ * is itself the unmet prerequisite blocking a regular elective) is
+ * discoverable by this SAME multi-step search, not just each action class in
+ * isolation. degreeHoursGate passes true and, since this rollout now
+ * subsumes it, no longer also calls canRecoverViaUnwantedElective. The
+ * pre-existing toProposal warning call site passes neither this nor
+ * targetHours, keeping its exact prior behavior.
  */
 function canRecoverMoreHours(
   finalState: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
   targetHours?: number,
+  includeUnwantedElectives = false,
 ): boolean {
   const baselineHours = computeDegreeHours(finalState, model);
   const seen = new Set<string>([recoveryStateKey(finalState, model)]);
@@ -573,7 +592,7 @@ function canRecoverMoreHours(
     const { state } = frontier.shift()!;
     const spawned: typeof frontier = [];
 
-    for (const mut of recoveryCandidateActions(state, model)) {
+    for (const mut of recoveryCandidateActions(state, model, includeUnwantedElectives)) {
       if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
       const candidate = applyMutation(state, mut);
       if (!candidate) continue;
@@ -651,13 +670,33 @@ function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
  *    generates every movable-placed × unplaced-eligible pair gated only on
  *    net hours and legal-semester membership.
  *
- * `is_unwanted` (soft-avoided) courses are excluded from both supplements —
- * intentionally: the automatic search must never place a course the user
- * asked to avoid on its own. Whether the user could still approve one as a
- * risky elective is a distinct question, answered separately by
- * canRecoverViaUnwantedElective below, not folded into this rollout.
+ * `is_unwanted` (soft-avoided) courses are excluded from both supplements by
+ * default — the automatic search must never place a course the user asked to
+ * avoid on its own. Whether the user could still approve one as a risky
+ * elective is a distinct question.
+ *
+ * Codex review finding (PR #62, round 9): degreeHoursGate's own recoverability
+ * question is NOT "what would the automatic search do" — it's "does ANY
+ * legal, user-approvable path exist" — so a genuine recovery that MIXES an
+ * approved soft-avoided course with an ordinary one (e.g. approving a 1h
+ * soft-avoided prerequisite that unlocks an otherwise-illegal 4h regular
+ * elective in a later semester) was invisible to both this rollout (which
+ * never proposed the soft-avoided prerequisite at all) and the separate,
+ * unwanted-only canRecoverViaUnwantedElective rollout (which never proposed
+ * the regular course the prerequisite unlocks). `includeUnwantedElectives`,
+ * when true (degreeHoursGate only — see canRecoverMoreHours' own doc comment),
+ * makes `eligible` admit `is_unwanted` courses into this SAME action space,
+ * so the existing multi-step best-first search (already proven, by its own
+ * MOVE-then-ADD discovery, to explore action sequences rather than single
+ * moves) discovers mixed sequences for free, with no bespoke combinatorial
+ * code needed. Left false (default) for the pre-existing toProposal warning's
+ * own canRecoverMoreHours call, unchanged from its long-standing behavior.
  */
-function recoveryCandidateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
+function recoveryCandidateActions(
+  state: PlanState,
+  model: ConstraintModel,
+  includeUnwantedElectives = false,
+): PlannerMutation[] {
   // Codex review finding (PR #62, round 3, widened by round 5): a currently-
   // taking course kept visible in its placed slot must never be touched by
   // ANY candidate mutation this rollout generates — not just ADD/REPLACE-in
@@ -690,7 +729,7 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
   const actions = enumerateActions(state, model).filter(m => !touchesCurrentlyTaking(m));
   const placedNow = new Set(placedCourseIds(state));
   const eligible = (id: string, p: { is_mandatory?: boolean; hours?: number | null; is_unwanted?: boolean }) =>
-    !p.is_mandatory && p.hours != null && p.hours !== 0 && !p.is_unwanted &&
+    !p.is_mandatory && p.hours != null && p.hours !== 0 && (includeUnwantedElectives || !p.is_unwanted) &&
     !isFullyPlaced(state, model, placedNow, id) &&
     !model.completedCourseIds.has(id) && !isExcluded(model, id) &&
     !model.currentlyPlannedCourseIds?.has(id);

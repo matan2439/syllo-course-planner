@@ -488,4 +488,32 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.length).toBe(0);
   });
+
+  test('13. Codex-caught regression (round 9): a recovery that MIXES an approved soft-avoided prerequisite with a regular elective it unlocks must be discovered', async () => {
+    // data/boards/test_program_gap_unwanted_prereq_2027.json: MAND(4h)+
+    // FLU(4h,fluids)+SOL(4h,solids)+PREREQ(1h,unwanted,legal ONLY
+    // year_3_semester_b)+BONUS(4h, NOT unwanted, legal ONLY
+    // year_4_semester_a, prerequisites:["PREREQ"]). known_completed_hours=168:
+    // 12+168=180/185, exactly 5h short. BONUS can never be legally placed
+    // until PREREQ (its own prerequisite) is placed in a strictly earlier
+    // semester — and the automatic search never places PREREQ on its own
+    // since it's soft-avoided. Only a sequence that first approves PREREQ
+    // (1h) and then adds BONUS (4h, now legal) reaches 185/185 exactly.
+    // Before the round-9 fix, canRecoverViaUnwantedElective only ever chained
+    // is_unwanted ADDs (BONUS, not being unwanted, was invisible to it), and
+    // canRecoverMoreHours excluded is_unwanted courses entirely (PREREQ was
+    // invisible to it) — so neither probe, alone, could find this mixed
+    // sequence, and the gate wrongly reported this genuinely recoverable
+    // shortfall as blocked.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_prereq_2027',
+      plan_context: planContext(168),
+      preferences: { unwanted_course_ids: ['PREREQ'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
 });
