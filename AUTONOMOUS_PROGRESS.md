@@ -105,13 +105,16 @@ evidence, leave unresolved if uncertain" rule — a concrete fixture would
 still get fixed the same RED-verified way as every other finding here.
 
 **Final state**: CI green (3/3: Python tests, Next.js build, TypeScript API
-tests) on the final commit, all 17 review threads resolved with evidence (16
-by the prior session, the last one — the round-16 planned-course double-
-discount — resolved this session once its fix landed), `mergeable_state:
-clean`. **Merged by the human product owner as `1a2fda2`** (this session was
-subscribed to PR activity and handled the final round's Codex finding and
-thread resolution; the merge notification itself arrived as a webhook event,
-auto-unsubscribed per the tooling's own notice). Full API suite at merge
+tests) on the final commit, `mergeable_state: clean`. **16 of 17 review
+threads resolved with evidence** (15 by the prior session, the 16th — the
+round-16 planned-course double-discount — resolved this session once its fix
+landed); the 17th (the REMOVE_COURSE-starvation concern described above) was
+**deliberately left unresolved**, not an oversight — see the paragraph above
+for why. **Merged by the human product owner as `1a2fda2`** while that one
+thread was still open (this session was subscribed to PR activity and
+handled the final round's Codex finding and thread resolution; the merge
+notification itself arrived as a webhook event, auto-unsubscribed per the
+tooling's own notice). Full API suite at merge
 time: 86/86 suites, 1349/1349 tests, zero regressions; `tsc --noEmit` clean.
 
 **Classification: C** (correctness/honesty — closes a reproduced,
