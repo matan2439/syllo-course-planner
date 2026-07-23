@@ -787,4 +787,38 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.length).toBe(0);
   });
+
+  test('20. Codex-caught regression (round 16): a placed personal_status.planned course must not erase unrelated off-board aggregate credit', async () => {
+    // Mirrors test 19, but for personal_status.planned instead of
+    // currently_taking. SOL is pre-placed client-side (personal_status.planned,
+    // not currently_taking — so it's a plain, freely-movable course from the
+    // search's perspective, no rule-2a stuck-search risk) alongside an
+    // unrelated off-board OFFBOARD_PLANNED2 whose per-course hours are
+    // missing but whose real 4h is reflected only in the aggregate. Before
+    // the round-16 fix, round 15's own in-catalog exclusion for `planned`
+    // entries (correct for a NOT-yet-placed one like test 15b's SOL) was
+    // applied even to an ALREADY-placed one, double-discounting it the same
+    // way round 15 fixed for currently_taking.
+    // MAND(4)+SOL(4, placed)+FLU(4, search-placed)=12h, known_completed_hours=169
+    // → 181/185, exactly 4h short — closed ONLY by OFFBOARD_PLANNED2's real
+    // (aggregate-only) 4h.
+    const ctx: any = planContext(169);
+    ctx.semesters[2].courses.push({ course_id: 'SOL' });
+    ctx.personal_status = {
+      completed: [],
+      currently_taking: [],
+      planned: [{ course_id: 'SOL' }, { course_id: 'OFFBOARD_PLANNED2' }],
+    };
+    ctx.total_hours_progress = { known_completed_hours: 169, currently_planned_hours: 4 };
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
 });

@@ -1451,15 +1451,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   //    fallback) whenever either its catalog OR context hours are known —
   //    subtract that same amount. Only a not-placed entry with NEITHER is
   //    genuinely unclaimed.
-  //  - planned: the search CAN legitimately place an in-catalog one later
-  //    (e.g. to satisfy a category, like SOL in test 15b) — its hours will
-  //    be counted via report.degreeHours once the search does, an entirely
-  //    separate computation from anything here, so — per round 10's own
-  //    existing offBoardPlannedHours design — any in-catalog planned course
-  //    stays excluded regardless of its current placement state, to avoid
-  //    eventually double-counting once the search places it. Only an
-  //    off-catalog planned entry falls through to the same
-  //    known-context-hours-or-genuinely-unclaimed split as above.
+  //  - planned: the search CAN legitimately place an in-catalog, NOT-YET-
+  //    placed one later (e.g. to satisfy a category, like SOL in test 15b)
+  //    — its hours will be counted via report.degreeHours once the search
+  //    does, an entirely separate computation from anything here, so — per
+  //    round 10's own existing offBoardPlannedHours design — any in-catalog
+  //    NOT-YET-placed planned course stays excluded, to avoid eventually
+  //    double-counting once the search places it.
+  //
+  //    Codex review finding (PR #62, round 16): that in-catalog exclusion
+  //    is right for a not-yet-placed one, but the frontend's own placed-id
+  //    filter applies identically to BOTH personal_status arrays (see round
+  //    15's own comment above) — a planned course the client already
+  //    placed itself was ALSO never part of the aggregate, exactly like the
+  //    currently_taking case. Treating every in-catalog planned course the
+  //    same regardless of placement (as round 15 still did) double-
+  //    discounted an already-placed one the identical way round 15 fixed
+  //    for currently_taking. Guarded the same way: !initiallyPlacedIds.has
+  //    first, then the in-catalog-or-known-hours test.
   const totalCurrentlyPlannedHoursAggregate = effectivePlanContext?.total_hours_progress?.currently_planned_hours;
   let impliedUnknownOffBoardHours = 0;
   if (typeof totalCurrentlyPlannedHoursAggregate === 'number') {
@@ -1472,12 +1481,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     for (const c of effectivePlanContext?.personal_status?.planned ?? []) {
       if (c?.course_id != null && !currentlyTakingEntries.has(c.course_id)) plannedEntries.set(c.course_id, c);
     }
-    const knownHours = [...currentlyTakingEntries.values()]
+    const knownHours = [...currentlyTakingEntries.values(), ...plannedEntries.values()]
       .filter((c: any) => !initiallyPlacedIds.has(c.course_id) && (model.profiles.has(c.course_id) || typeof c?.hours === 'number'))
-      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0)
-      + [...plannedEntries.values()]
-        .filter((c: any) => model.profiles.has(c.course_id) || typeof c?.hours === 'number')
-        .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0);
+      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0);
     impliedUnknownOffBoardHours = Math.max(0, totalCurrentlyPlannedHoursAggregate - knownHours);
   }
 
