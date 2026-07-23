@@ -643,4 +643,63 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(true);
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
   });
+
+  test('17. Codex-caught regression (round 13): once off-board credit closes the gap, the generic "still incomplete" warning/rationale must not recreate the contradiction this whole gate exists to close', async () => {
+    // Exact same scenario as test 14 (known_completed_hours=169, an off-board
+    // OFFBOARD_PLANNED course worth 4h → 181 board/catalog hours + 4h
+    // off-board credit = 185/185, genuinely closing the gap). Test 14 only
+    // ever asserted blocked:false/errors:[] — it never checked warnings_he or
+    // the agent-path rationale. Before the round-13 fix, toProposal()'s
+    // generic "התוכנית משלימה X/Y ש"ש" warning (and, via risksAndTradeoffs,
+    // academicDecision.explanation) used raw report.degreeMet/
+    // report.degreeHours — uncredited — so it still said the plan only
+    // reached 181/185 and was incomplete, in the very same response that
+    // blocked:false/validation.valid:true call it done. Same self-
+    // contradiction bug class this whole PR (and PR #56/#60's disclosure
+    // fixes) exists to eliminate.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'OFFBOARD_PLANNED', hours: 4 }] } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      use_academic_decision_agent: true,
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+    // The generic uncredited "X/Y ש"ש" completion warning must not appear —
+    // credited hours (185/185) genuinely close the gap.
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה'))).toBe(false);
+    // Nor the structural-exhaustion message — the same credited total also
+    // feeds that branch's own condition.
+    expect(res._body.warnings_he.some((w: string) => w.includes('מיצית את כל הקורסים'))).toBe(false);
+    const b = res._body;
+    expect(b.academicDecision.validation.valid).toBe(true);
+    expect(
+      b.academicDecision.explanation.whyThisPlan.some((w: string) => w.includes('אינה מלאה') || w.includes('אינן מולאות')),
+    ).toBe(false);
+    expect(
+      b.academicDecision.explanation.risksAndTradeoffs.some((w: string) => w.includes('התוכנית משלימה')),
+    ).toBe(false);
+  });
+
+  test('17b. Codex-caught regression (round 13) — control: when credit does NOT close the gap, the generic warning must still appear with the credited (not raw) total', async () => {
+    // Same shape as 17 but the off-board course is only 3h — 181+3=184/185,
+    // still genuinely 1h short, so this must stay blocked AND the warning
+    // must still fire, using the credited total (184), not the raw board-
+    // only total (181), so the number a user sees matches reality.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'OFFBOARD_PLANNED', hours: 3 }] } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה 184/185'))).toBe(true);
+  });
 });

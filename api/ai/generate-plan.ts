@@ -1042,8 +1042,72 @@ export function toProposal(
     requirements_status.push({ name: cat.name, required: cat.required, placed: Math.min(p, cat.required), satisfied: p >= cat.required });
   }
 
+  // Codex review (round 6, refined by rounds 10-11) caught that
+  // report.degreeHours (model.priorHours + placedHours(finalState)) never
+  // includes hours from off-board personal_status.currently_taking courses —
+  // priorHoursFromContext deliberately excludes total_hours_progress.
+  // currently_planned_hours (see its own comment above), and a
+  // currently-taking course is never placed on the board either, so its
+  // hours are invisible to both terms. Credited by reading each
+  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
+  // the course is in the board catalog, else the client-resolved hours in
+  // personal_status.currently_taking itself (round 10's fix: some
+  // currently-taking courses predate the program's board window and have no
+  // model.profiles entry at all). Deliberately reads ONLY
+  // personal_status.currently_taking (round 11's fix), never the mixed
+  // total_hours_progress.currently_planned_hours aggregate (which also
+  // includes personal_status.planned — a course the planner can legitimately
+  // place and credit itself via report.degreeHours; adding the aggregate on
+  // top would double-count it).
+  //
+  // Codex review finding (PR #62, round 10): the same reasoning applies to an
+  // OFF-board personal_status.planned course (model.profiles has no entry) —
+  // the planner has nothing in its catalog to place, so report.degreeHours
+  // can never include it either, and it's real, uncounted credit.
+  // offBoardPlannedHours reads personal_status.planned directly (never the
+  // coarse aggregate) and keeps only the off-board subset, so it can never
+  // double-count an on-board planned course.
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
+    .filter(([id]) => !model.profiles.has(id))
+    .reduce((sum, [, hours]) => sum + hours, 0);
+  // Codex review finding (PR #62, round 11, bounded per round 12): same
+  // impliedUnknownOffBoardHours credit as degreeHoursGate's own — see that
+  // gate's/the caller's doc comments for why it's a bounded, mathematically
+  // derived credit rather than an unconditional skip.
+  const creditedDegreeHours = report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
+  const degreeMetCredited = report.degreeMet || creditedDegreeHours >= model.degreeRequiredHours;
+  // Codex review finding (PR #62, round 13): this generic degree-completion
+  // warning (and, via risksAndTradeoffs, the academic-decision rationale
+  // that surfaces warnings_he verbatim) previously used raw
+  // report.degreeMet/report.degreeHours. Whenever off-board-planned or
+  // aggregate-only credit alone closed the gap — the exact case
+  // degreeHoursGate below already treats as non-blocking — this warning
+  // still told the user the plan was short, recreating the
+  // blocked:false-but-"incomplete" self-contradiction this whole PR exists
+  // to close.
+  //
+  // Deliberately excludes currentlyPlannedHours here, unlike creditedDegreeHours
+  // above — tests 8/11 (rounds 6/10) established that an in-progress
+  // personal_status.currently_taking course must NOT silence this specific
+  // message: the student hasn't actually earned those hours yet, so it
+  // remains accurate (not contradictory) to report the board+known-completed
+  // total as still short, even though CUR finishing would close the gap —
+  // that stronger "nothing else can help" claim is exactly what the
+  // separate מיצית branch below (gated on the full creditedDegreeHours,
+  // unchanged) exists to distinguish. offBoardPlannedHours/
+  // impliedUnknownOffBoardHours are different in kind — the same aggregate/
+  // planned credit the frontend has ALREADY verified and reported as prior
+  // progress, not an in-progress enrollment — so crediting them here doesn't
+  // carry the same "not actually earned yet" caveat.
+  const genericCompletionCreditedHours = report.degreeHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
+  const degreeMetForGenericWarning = report.degreeMet || genericCompletionCreditedHours >= model.degreeRequiredHours;
+
   const warnings_he: string[] = [];
-  if (!report.degreeMet) warnings_he.push(`התוכנית משלימה ${report.degreeHours}/${model.degreeRequiredHours} ש"ש.`);
+  if (!degreeMetForGenericWarning) {
+    warnings_he.push(`התוכנית משלימה ${genericCompletionCreditedHours}/${model.degreeRequiredHours} ש"ש.`);
+  }
   for (const id of report.missingMandatory) warnings_he.push(`חסר קורס חובה: ${model.profiles.get(id)?.name_he ?? id}.`);
   for (const cid of report.unsatisfiedCategories) {
     const c = model.categories.find(x => x.id === cid);
@@ -1069,49 +1133,12 @@ export function toProposal(
   // above) is delegated entirely to those two functions instead of the prior
   // four hand-rolled combinatorial scans.
   //
-  // Codex review (round 6, refined by rounds 10-11) caught that
-  // report.degreeHours (model.priorHours + placedHours(finalState)) never
-  // includes hours from off-board personal_status.currently_taking courses —
-  // priorHoursFromContext deliberately excludes total_hours_progress.
-  // currently_planned_hours (see its own comment above), and a
-  // currently-taking course is never placed on the board either, so its
-  // hours are invisible to both terms. A student whose known-completed +
-  // board-placed hours fall short only because a real, already-in-progress
-  // course isn't counted yet would see "catalog exhausted" even though the
-  // gap closes once that course finishes. Credited by reading each
-  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
-  // the course is in the board catalog, else the client-resolved hours in
-  // personal_status.currently_taking itself (round 10's fix: some
-  // currently-taking courses, e.g. first/second-year mandatory ones the
-  // frontend tracks via a static fallback, predate the program's board
-  // window and have no model.profiles entry at all). Deliberately reads
-  // ONLY personal_status.currently_taking (round 11's fix), never the mixed
-  // total_hours_progress.currently_planned_hours aggregate (which also
-  // includes personal_status.planned — a course the planner can legitimately
-  // place and credit itself via report.degreeHours; adding the aggregate on
-  // top would double-count it).
-  //
-  // Codex review finding (PR #62, round 10): that reasoning is correct for an
-  // ON-board planned course (still true — never credited here), but doesn't
-  // apply to an OFF-board one (model.profiles has no entry, e.g. it predates
-  // this board's catalog window, same case round 10/11 already handle for
-  // currently_taking above) — the planner has nothing in its catalog to
-  // place, so report.degreeHours can never include it either, and it's real,
-  // uncounted credit. offBoardPlannedHours reads personal_status.planned
-  // directly (never the coarse aggregate) and keeps only the off-board
-  // subset, so it can never double-count an on-board planned course.
-  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
-    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
-  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
-    .filter(([id]) => !model.profiles.has(id))
-    .reduce((sum, [, hours]) => sum + hours, 0);
+  // currentlyPlannedHours/offBoardPlannedHours/creditedDegreeHours/
+  // degreeMetCredited are computed once, above, before warnings_he is even
+  // declared — see that block's own doc comment for the off-board credit
+  // reasoning (rounds 6, 10-12) and why round 13 moved it here.
   if (
-    !report.degreeMet &&
-    // Codex review finding (PR #62, round 11, bounded per round 12): same
-    // impliedUnknownOffBoardHours credit as degreeHoursGate's own — see that
-    // gate's/the caller's doc comments for why it's a bounded, mathematically
-    // derived credit rather than an unconditional skip.
-    report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours < model.degreeRequiredHours &&
+    !degreeMetCredited &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
     report.legal &&
@@ -1127,17 +1154,8 @@ export function toProposal(
       canRecoverViaUnwantedElective(finalState, model, pinnedHome) ||
       canRecoverMoreHours(finalState, model, pinnedHome);
     if (!recoverable) {
-      // Codex review (round 13) caught that this message's numerator used
-      // report.degreeHours alone, even though the guard just above credited
-      // currentlyPlannedHours (off-board currently-taking courses) before
-      // deciding the gap is genuinely structural — a partial-credit case
-      // (test 8b/11b) would show e.g. "172/185" while the branch's own logic
-      // already accounted for 176/185, understating real progress in this
-      // user-visible message. Use the same credited total the guard itself
-      // used — now including offBoardPlannedHours (round 10) and
-      // impliedUnknownOffBoardHours (round 12) too.
       warnings_he.push(
-        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours}/${model.degreeRequiredHours} ש"ש) — ` +
+        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${creditedDegreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,
       );
     }
@@ -1147,7 +1165,36 @@ export function toProposal(
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
 
-  return { semesters, moves, warnings_he, rationale_he, requirements_status };
+  // Codex review finding (PR #62, round 13, continued): report.valid (above)
+  // — and therefore the caller-supplied rationale_he (PlannerWorker.explain()'s
+  // summary_he for the default path, deterministicRationale for the agentic
+  // one; both built from the SAME validateCandidate result this function
+  // computes into `report`) — has no knowledge of the off-board/aggregate
+  // credit this whole file exists to apply. When degreeHoursGate (below,
+  // same full creditedDegreeHours) would NOT block this plan, but the ONLY
+  // reason report.valid is false is the raw, uncredited degree-hours check,
+  // the incoming rationale_he still literally states "התוכנית אינה מלאה
+  // עדיין" (the plan is not yet complete) — the exact
+  // academicDecision.validation.valid:true-next-to-"incomplete"
+  // self-contradiction from this PR's own original bug report, just one
+  // layer further upstream than warnings_he (which the earlier part of this
+  // fix already corrected). Corrected here, in the one place this function
+  // already has both the raw report and every credit source in scope. Only
+  // fires when degree hours are the SOLE reason report.valid is false —
+  // legality/mandatory/category/disallowed problems must surface as
+  // themselves via their own, unrelated gates, not be papered over here.
+  const rationaleOnlyIncompleteForHours =
+    !report.valid &&
+    !report.degreeMet &&
+    report.legal &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0 &&
+    report.disallowedPlaced.length === 0;
+  const correctedRationale_he = rationaleOnlyIncompleteForHours && degreeMetCredited
+    ? `התוכנית תקפה: ${creditedDegreeHours}/${model.degreeRequiredHours} ש"ש (כולל קורסים בתהליך/מחוץ ללוח שכבר נספרים לזכות התואר), כל קורסי החובה והקטגוריות שנבדקו שובצו.`
+    : rationale_he;
+
+  return { semesters, moves, warnings_he, rationale_he: correctedRationale_he, requirements_status };
 }
 
 /** Build pinnedHome map from model.pinnedCourseIds + initialState positions. */
