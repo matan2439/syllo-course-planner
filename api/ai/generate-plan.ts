@@ -769,6 +769,19 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
  * Left undefined by the pre-existing toProposal warning call site, for the
  * same "don't touch already-shipped, 21+-round-hardened (PR #41) warning
  * semantics" reason canRecoverMoreHours' own doc comment above explains.
+ *
+ * Codex review finding (PR #62, round 8): closing the gap can require
+ * approving MULTIPLE soft-avoided electives together (e.g. two 2h electives
+ * for a 4h shortfall) — testing each course in isolation against targetHours
+ * can never discover that, since no single candidate alone reaches it. When
+ * targetHours is supplied, this now runs its own small bounded rollout
+ * (mirrors canRecoverMoreHours' own bounded-search shape, RECOVERY_ROLLOUT_
+ * BUDGET-limited) chaining ADD actions across every eligible is_unwanted
+ * course, not just trying each once against the original finalState. When
+ * targetHours is undefined (the pre-existing toProposal warning call site),
+ * this still short-circuits on the very first legal single addition found —
+ * byte-identical to the old single-ADD-only behavior, since "is there any
+ * untried option at all" never needed combinations.
  */
 function canRecoverViaUnwantedElective(
   finalState: PlanState,
@@ -776,25 +789,41 @@ function canRecoverViaUnwantedElective(
   pinnedHome: Record<string, string>,
   targetHours?: number,
 ): boolean {
-  const placedNow = new Set(placedCourseIds(finalState));
-  return [...model.profiles].some(([id, p]) => {
-    if (!p.is_unwanted) return false;
-    if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
-    if (isFullyPlaced(finalState, model, placedNow, id)) return false;
+  const eligible = (state: PlanState, id: string, p: { is_unwanted?: boolean; is_mandatory?: boolean; hours?: number | null }): boolean => {
+    if (!p.is_unwanted || p.is_mandatory || p.hours == null || p.hours === 0) return false;
+    const placedNow = new Set(placedCourseIds(state));
+    if (isFullyPlaced(state, model, placedNow, id)) return false;
     if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
     // Same reuse-avoidance reason recoveryCandidateActions' eligible() above
     // documents: never propose (re-)adding a course the user is already
     // currently taking, even an off-board one.
     if (model.currentlyPlannedCourseIds?.has(id)) return false;
-    return addCourseActionsFor(model, id).some(a => {
-      const next = applyMutation(finalState, a);
-      return (
-        next != null &&
-        (targetHours == null || computeDegreeHours(next, model) >= targetHours) &&
-        isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome)
-      );
-    });
-  });
+    return true;
+  };
+
+  const seen = new Set<string>([recoveryStateKey(finalState, model)]);
+  let frontier: PlanState[] = [finalState];
+  let visited = 0;
+
+  while (frontier.length && visited < RECOVERY_ROLLOUT_BUDGET) {
+    const state = frontier.shift()!;
+    for (const [id, p] of model.profiles) {
+      if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
+      if (!eligible(state, id, p)) continue;
+      for (const a of addCourseActionsFor(model, id)) {
+        const next = applyMutation(state, a);
+        if (next == null) continue;
+        const key = recoveryStateKey(next, model);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome)) continue;
+        visited++;
+        if (targetHours == null || computeDegreeHours(next, model) >= targetHours) return true;
+        frontier.push(next);
+      }
+    }
+  }
+  return false;
 }
 
 /**

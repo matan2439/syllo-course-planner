@@ -467,4 +467,25 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(true);
     expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
   });
+
+  test('12. Codex-caught regression (round 8): closing the gap requires approving MULTIPLE soft-avoided electives together — must be discovered, not just each course tried alone', async () => {
+    // data/boards/test_program_gap_unwanted_multi_2027.json: MAND(4h)+
+    // FLU(4h,fluids)+SOL(4h,solids)+SPARE_A(2h,unwanted)+SPARE_B(2h,unwanted).
+    // known_completed_hours=169: 12+169=181/185, exactly 4h short. Neither
+    // SPARE_A nor SPARE_B alone (2h each) can close a 4h gap — only approving
+    // BOTH reaches 185/185 exactly. Before the round-8 fix,
+    // canRecoverViaUnwantedElective tested each course in isolation against
+    // targetHours, so neither single candidate ever reached it and the gate
+    // wrongly reported this genuinely recoverable shortfall as blocked.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_multi_2027',
+      plan_context: planContext(169),
+      preferences: { unwanted_course_ids: ['SPARE_A', 'SPARE_B'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
 });
