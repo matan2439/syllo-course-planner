@@ -516,4 +516,51 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.length).toBe(0);
   });
+
+  test('14. Codex-caught regression (round 10): an off-board personal_status.planned course (predates this board window) is real credit and must count toward the degree total', async () => {
+    // test_program_gap_2027 (PROGRAM_ID above): MAND(4h)+FLU(4h,fluids)+
+    // SOL(4h,solids)+HUGE(27h, illegal — over the hard cap). known_completed_
+    // hours=169: 12+169=181/185, exactly 4h short, and genuinely unrecoverable
+    // through the catalog alone (test 1's own scenario, same fixture, proves
+    // this exhaustively). An OFF-board personal_status.planned course (not in
+    // this board's catalog at all — model.profiles has no entry for it) is
+    // real, already-registered credit the planner can never place or count
+    // via report.degreeHours. Before the round-10 fix, degreeHoursGate only
+    // read model.currentlyPlannedCourseIds (personal_status.currently_taking
+    // only), so this real 4h credit was silently ignored and the plan was
+    // wrongly reported as an unrecoverable structural shortfall.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'OFFBOARD_PLANNED', hours: 4 }] } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
+
+  test('14b. Codex-caught regression (round 10) — control: an ON-board personal_status.planned course must NOT be credited (double-count guard)', async () => {
+    // Same fixture/gap as test 14, but the "planned" course_id (SOL) IS in
+    // this board's catalog — SOL is already placed automatically to satisfy
+    // the solids category, so crediting it a second time here would double-
+    // count it and could mask a genuine shortfall. known_completed_hours=169
+    // is still 4h short (181/185) with no other real recovery option, so this
+    // must stay blocked.
+    const ctx = planContext(169);
+    ctx.personal_status = { completed: [], currently_taking: [], planned: [{ course_id: 'SOL', hours: 4 }] } as any;
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
+  });
 });
