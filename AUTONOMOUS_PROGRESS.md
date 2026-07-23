@@ -83,8 +83,8 @@ something bigger" recoveries (rounds 22/24 per the code's own inline
 numbering); and, in the final two rounds, the off-board aggregate-credit
 subtraction double-discounting an already-*placed* currently-taking course
 (round 15) and then an already-placed `personal_status.planned` course
-(round 16) — the live frontend's own placed-id filter (`semester_board_
-viewer.html:2496-2498`) applies identically to both `personal_status`
+(round 16) — the live frontend's own placed-id filter
+(`app/web/semester_board_viewer.html:2496-2498`) applies identically to both `personal_status`
 arrays, and the fix had only reached one of them.
 
 **One finding pushed back on rather than fixed blind**: a final review
