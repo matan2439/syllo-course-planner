@@ -41,7 +41,17 @@ const PLAN_CONTEXT_WITH_FLU_PLACED = {
       { course_id: 'FLU', name_he: 'זורם', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
     ] },
   ],
-  total_hours_progress: { known_completed_hours: 177, degree_required_hours: 185 },
+  // known_completed_hours (181) + FLU's 4h placed = exactly 185, the degree
+  // target — the fixture must be genuinely COMPLETE, not just short-by-4-and-
+  // coincidentally-forgiven, so test 1's "no exclusion → not blocked" sanity
+  // check isn't itself blocked by an unrelated real gap (Agent Diagnosis Loop
+  // finding, generate_plan_degree_hours_shortfall_gate.test.ts's fix: a
+  // catalog genuinely exhausted before reaching degreeRequiredHours is now
+  // its own blocking error, degreeHoursGate — this fixture was previously
+  // 4h short at 177, which used to be silently forgiven as a soft warning
+  // only, but is now honestly blocked, which is correct for THAT gate but
+  // orthogonal to what this file actually tests).
+  total_hours_progress: { known_completed_hours: 181, degree_required_hours: 185 },
   personal_status: { completed: [{ course_id: 'MAND' }] },
   mandatory_unplaced: [],
 };

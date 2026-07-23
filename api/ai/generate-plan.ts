@@ -47,6 +47,7 @@ import {
   STEP_LIMIT_ERROR,
   LEGALITY_VIOLATION_ERROR_PREFIX,
   MISSING_MANDATORY_ERROR_PREFIX,
+  DEGREE_HOURS_SHORTFALL_ERROR_PREFIX,
 } from './planner_validate';
 import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER, CURRENTLY_TAKING_REUSE_ERROR_MARKER } from './plan_validation';
 import {
@@ -65,7 +66,7 @@ import { getSemesterLoad, getLegalSemesters, type CourseLegalityInfo } from './c
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
 import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
-import { placedCourseIds, semesterOf } from './planner_types';
+import { placedCourseIds, semesterOf, emptyState } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
@@ -352,6 +353,134 @@ function missingMandatoryGate(
   );
 }
 
+/**
+ * See DEGREE_HOURS_SHORTFALL_ERROR_PREFIX's own doc comment (planner_validate.ts)
+ * for the Agent Diagnosis Loop finding this closes.
+ *
+ * Deliberately re-derives the exact same unrecoverability condition
+ * toProposal's own "מיצית את כל הקורסים הזמינים" warnings_he branch already
+ * computes (same guard clauses, same canRecoverViaUnwantedElective/
+ * canRecoverMoreHours calls) — mirrors every other gate in this file
+ * (independent re-derivation from the FINAL placed set so detection can
+ * never drift from the actual check), rather than threading a boolean out of
+ * toProposal's return value, which would either leak an internal-only field
+ * into the public PlanProposal response contract (toProposal's result is
+ * spread directly into responseBody below) or require a second, easily
+ * forgotten call-site change every time toProposal's shape evolves.
+ *
+ * Codex review finding (PR #62): report.legal (validateCandidate's raw
+ * legality check) also flags the benign, expected "currently-taking course
+ * still present on the client-supplied board" marker (item 2a,
+ * CURRENTLY_TAKING_REUSE_ERROR_MARKER, plan_validation.ts) as illegal —
+ * legalityGate above already excludes this exact marker as normal client
+ * state, not a real violation (the real frontend deliberately keeps a
+ * currently-taking course visible in its placed slot; see legalityGate's own
+ * comment). Using report.legal unfiltered here silently suppressed this gate
+ * for any actively-enrolled student whose currently-taking course is visible
+ * on the board — the single most common real client state, not an edge case.
+ * Uses isLegalIgnoringCurrentlyTakingReuse (defined below, shared with
+ * canRecoverMoreHours/canRecoverViaUnwantedElective's own round-3 fix for the
+ * identical marker) instead of report.legal: every OTHER real legality
+ * violation (overload, incomplete annual course, prerequisite timing, ...)
+ * must still suppress this gate, to avoid double-counting or misattributing
+ * an already-differently-gated blocker.
+ *
+ * Codex review finding (PR #62, round 2): when that same benign
+ * currently-taking course is kept visible in its placed board slot (as the
+ * comment above says the real frontend deliberately does), report.degreeHours
+ * (model.priorHours + placedHours(state)) ALREADY counts its hours once, via
+ * placement — crediting it a second time from model.currentlyPlannedCourseIds
+ * below would double-count it and could push creditedHours to (falsely) meet
+ * or exceed model.degreeRequiredHours, silently suppressing this gate for a
+ * plan that is genuinely still short. Only credits a currently-taking id's
+ * hours here when it is NOT already placed in state — the off-board case
+ * (test 8/8b in generate_plan_structural_degree_gap_warning.test.ts) this
+ * credit exists for in the first place.
+ */
+function degreeHoursGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+  currentlyTakingHoursFromContext?: Map<string, number>,
+  plannedHoursFromContext?: Map<string, number>,
+  impliedUnknownOffBoardHours = 0,
+): string[] {
+  // Codex review finding (PR #62, round 4): unlike every other gate above
+  // (which only ever READ the reconstructed state — assessCompleteness,
+  // validatePlanState), canRecoverViaUnwantedElective/canRecoverMoreHours
+  // below call applyMutation, whose ADD_COURSE case (planner_goals.ts)
+  // returns null when the target semester key is missing from
+  // state.semesters entirely. toProposal() (the caller of this whole file)
+  // drops empty semesters from its own `semesters` output, so naively
+  // reconstructing state the same sparse way missingMandatoryGate/
+  // legalityGate do above would make every recovery candidate targeting a
+  // currently-empty (but legal) semester silently fail — falsely reporting
+  // "not recoverable" and blocking a plan whose catalog genuinely isn't
+  // exhausted. Seeds every model.knownSemesterIds key first (via emptyState,
+  // the same convention planner_worker.ts's own initial state construction
+  // uses) so every legal semester — placed or still empty — is a real
+  // ADD_COURSE target.
+  const state: PlanState = emptyState(model.knownSemesterIds);
+  for (const s of semesters) state.semesters[s.semester_id] = s.course_ids;
+  const report = validateCandidate(state, model, pinnedHome);
+  const placedNow = new Set(placedCourseIds(state));
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .filter(id => !placedNow.has(id))
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  // Codex review finding (PR #62, round 10): personal_status.planned courses
+  // that predate this board's catalog window (off-board — model.profiles has
+  // no entry) are real, uncounted credit, symmetric to currentlyPlannedHours'
+  // own off-board currently_taking case above. Guarded on !model.profiles.has
+  // (never credit an ON-board planned course — the search can and should
+  // place it itself, see this function's own doc comment for why crediting
+  // that would double-count or mask a real search gap) and !placedNow.has
+  // (defensive; an off-board id can never actually be placed, but mirrors
+  // currentlyPlannedHours' own guard for consistency).
+  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
+    .filter(([id]) => !model.profiles.has(id) && !placedNow.has(id))
+    .reduce((sum, [, hours]) => sum + hours, 0);
+  // Codex review finding (PR #62, round 12): round 11's fix disabled this
+  // whole gate whenever ANY off-board course lacked per-course hours and an
+  // aggregate was present — even a trivially small aggregate (e.g. 4h)
+  // against a massive, genuinely unrecoverable gap (e.g. 169h short) wrongly
+  // reported blocked:false, the exact "incomplete presented as complete" bug
+  // this whole gate exists to prevent. impliedUnknownOffBoardHours (computed
+  // by the caller — see its own doc comment) is a BOUNDED credit: it can
+  // never exceed what total_hours_progress.currently_planned_hours itself
+  // proves, after subtracting every hour already accounted for elsewhere, so
+  // adding it here can only ever close a gap the aggregate genuinely
+  // justifies — never an unconditional escape hatch.
+  const creditedHours = report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
+  // The computeDegreeHours() value a recovery candidate must actually reach
+  // to close the gap — currentlyPlannedHours/offBoardPlannedHours/
+  // impliedUnknownOffBoardHours are constant credits no recovery mutation can
+  // change (recoveryCandidateActions never touches a currently-taking
+  // course's placement, and an off-board course can never be placed at all),
+  // so they carry over unchanged from creditedHours' own derivation (Codex
+  // review finding, PR #62, round 7, extended rounds 10/12).
+  const recoveryTargetHours =
+    model.degreeRequiredHours - currentlyPlannedHours - offBoardPlannedHours - impliedUnknownOffBoardHours;
+  // Codex review finding (PR #62, round 9): a single unified rollout
+  // (includeUnwantedElectives:true) that can mix soft-avoided and ordinary
+  // courses in the same search subsumes the separate canRecoverViaUnwanted
+  // Elective probe — that probe only ever chained is_unwanted ADDs alone, so
+  // a recovery requiring both an approved soft-avoided course AND a regular
+  // one (e.g. a soft-avoided course that is itself an unmet prerequisite for
+  // a regular elective) was invisible to both probes independently. See
+  // canRecoverMoreHours'/recoveryCandidateActions' own doc comments.
+  const structurallyShort =
+    !report.degreeMet &&
+    creditedHours < model.degreeRequiredHours &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0 &&
+    isLegalIgnoringCurrentlyTakingReuse(state, model, pinnedHome) &&
+    report.disallowedPlaced.length === 0 &&
+    !canRecoverMoreHours(state, model, pinnedHome, recoveryTargetHours, true);
+  return structurallyShort
+    ? [`${DEGREE_HOURS_SHORTFALL_ERROR_PREFIX} ${creditedHours}/${model.degreeRequiredHours} ש"ש.`]
+    : [];
+}
+
 function legalityGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
   model: ConstraintModel,
@@ -378,6 +507,28 @@ function deterministicRationale(finalState: PlanState, model: ConstraintModel): 
   return placed.length === 0
     ? 'תוכנית אוטומטית — לא שובצו קורסים חדשים.'
     : `תוכנית אוטומטית — ${placed.length} קורסים, ${totalHours} ש"ש לקראת השלמת התואר.`;
+}
+
+/**
+ * Same "benign rule-2a reuse, not a real violation" exception legalityGate/
+ * degreeHoursGate already apply to a currently-taking course kept visible in
+ * its placed slot (see degreeHoursGate's own doc comment). Every candidate
+ * mutation the recovery rollouts below generate PRESERVES that pre-existing
+ * placement — mutations only add/move/replace a DIFFERENT course, never
+ * remove an unrelated already-placed one — so the benign reuse marker
+ * persists identically in every candidate's own validatePlanState result.
+ * Without this exception, any visible currently-taking course would make
+ * EVERY recovery candidate register as "illegal," permanently reporting "not
+ * recoverable" regardless of whether a real recovery exists (Codex review
+ * finding, PR #62, round 3).
+ */
+function isLegalIgnoringCurrentlyTakingReuse(
+  state: PlanState,
+  model: ConstraintModel,
+  pinnedHome: Record<string, string>,
+): boolean {
+  return validatePlanState(state, model, pinnedHome).errors
+    .filter(e => !e.includes(CURRENTLY_TAKING_REUSE_ERROR_MARKER)).length === 0;
 }
 
 /**
@@ -414,11 +565,41 @@ function deterministicRationale(finalState: PlanState, model: ConstraintModel): 
  * completeness (validateCandidate, exactly like rounds 19/20 already
  * required by hand) at EVERY state visited, not just a single followed path's
  * end.
+ *
+ * Codex review finding (PR #62, round 7): degreeHoursGate's completion check
+ * used to fire on ANY hours-increasing, still-complete candidate — e.g. a
+ * plan short by 5h with only one further-legal 4h elective would be reported
+ * "recoverable" even though placing it can never actually close the gap.
+ * `targetHours`, when supplied, is the computeDegreeHours() value a candidate
+ * must actually reach before a state counts as a genuine recovery rather than
+ * mere partial progress — used only by degreeHoursGate (the new blocking
+ * gate Codex's finding names), which must never suppress a blocking error
+ * over a partial-only recovery. Left undefined (falls back to the pre-
+ * existing "any legal, still-complete improvement" check) by the pre-existing
+ * toProposal "מיצית את כל הקורסים הזמינים" warning call site below — that
+ * warning's own, already Codex-hardened (21+ rounds, PR #41) semantics are
+ * deliberately about whether the visible catalog has ANY untried option left
+ * at all, not about full closure, and changing that here would risk an
+ * unrelated regression to already-shipped warning behavior outside this PR's
+ * scope.
+ *
+ * Codex review finding (PR #62, round 9): `includeUnwantedElectives`, when
+ * true, lets this rollout's own recoveryCandidateActions also propose
+ * `is_unwanted` courses — needed so a recovery that MIXES an approved
+ * soft-avoided course with an ordinary one (e.g. a soft-avoided course that
+ * is itself the unmet prerequisite blocking a regular elective) is
+ * discoverable by this SAME multi-step search, not just each action class in
+ * isolation. degreeHoursGate passes true and, since this rollout now
+ * subsumes it, no longer also calls canRecoverViaUnwantedElective. The
+ * pre-existing toProposal warning call site passes neither this nor
+ * targetHours, keeping its exact prior behavior.
  */
 function canRecoverMoreHours(
   finalState: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
+  targetHours?: number,
+  includeUnwantedElectives = false,
 ): boolean {
   const baselineHours = computeDegreeHours(finalState, model);
   const seen = new Set<string>([recoveryStateKey(finalState, model)]);
@@ -439,7 +620,24 @@ function canRecoverMoreHours(
     const { state } = frontier.shift()!;
     const spawned: typeof frontier = [];
 
-    for (const mut of recoveryCandidateActions(state, model)) {
+    // Codex review finding (PR #62, round 14): recoveryCandidateActions'
+    // own return order is plain enumeration order (model.profiles iteration
+    // order for ADD, placement order for REPLACE/REMOVE) — NOT prioritized
+    // by how much each candidate actually helps close the hours gap. With
+    // many small, individually-insufficient legal candidates (e.g. 200+ 1h
+    // soft-avoided electives) ahead of the one course that alone closes the
+    // gap, the budget could be exhausted discarding the small ones before
+    // ever reaching a genuine single-step recovery — a bounded-search miss
+    // masquerading as "the catalog is exhausted." Sorting by each mutation's
+    // OWN hours delta (descending) before spending any budget means the
+    // candidate most likely to close the gap outright is always tried
+    // first — a cheap, static computation (no applyMutation/validate call
+    // needed per candidate), so it doesn't cost any of the budget itself.
+    // Doesn't change WHAT the search can find, only the order — every
+    // candidate within budget is still tried exactly as before.
+    const byHoursDeltaDesc = [...recoveryCandidateActions(state, model, includeUnwantedElectives)]
+      .sort((a, b) => mutationHoursDelta(b, model) - mutationHoursDelta(a, model));
+    for (const mut of byHoursDeltaDesc) {
       if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
       const candidate = applyMutation(state, mut);
       if (!candidate) continue;
@@ -459,13 +657,14 @@ function canRecoverMoreHours(
       // one is a cheap, immediate dead end, not a genuine search state, so
       // it shouldn't count against a budget defined (see this function's own
       // docstring) as "the number of NEW states the search may generate."
-      if (!validatePlanState(candidate, model, pinnedHome).valid) continue;
+      if (!isLegalIgnoringCurrentlyTakingReuse(candidate, model, pinnedHome)) continue;
       visited++;
 
-      if (computeDegreeHours(candidate, model) > baselineHours) {
+      if (targetHours != null ? computeDegreeHours(candidate, model) >= targetHours : computeDegreeHours(candidate, model) > baselineHours) {
+        // Legality (ignoring the benign reuse marker) is already guaranteed
+        // by the `continue` above — only completeness needs re-checking here.
         const rep = validateCandidate(candidate, model, pinnedHome);
         if (
-          rep.legal &&
           rep.missingMandatory.length === 0 &&
           rep.unsatisfiedCategories.length === 0 &&
           rep.disallowedPlaced.length === 0
@@ -496,6 +695,25 @@ function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
 }
 
 /**
+ * Static (no applyMutation needed) estimate of a recoveryCandidateActions
+ * mutation's own effect on computeDegreeHours — used only to ORDER
+ * canRecoverMoreHours' bounded rollout so a decisive candidate is tried
+ * before a budget-exhausting run of small, individually-insufficient ones
+ * (Codex review finding, PR #62, round 14). MOVE_COURSE never changes
+ * placed hours by itself (0) but can still be a genuine multi-step enabler
+ * (e.g. round 20's MOVE-then-ADD), so it still gets a turn — just not
+ * ahead of a candidate that helps outright.
+ */
+function mutationHoursDelta(m: PlannerMutation, model: ConstraintModel): number {
+  switch (m.type) {
+    case 'ADD_COURSE': return model.profiles.get(m.courseId)?.hours ?? 0;
+    case 'REPLACE_COURSE': return (model.profiles.get(m.inId)?.hours ?? 0) - (model.profiles.get(m.outId)?.hours ?? 0);
+    case 'REMOVE_COURSE': return -(model.profiles.get(m.courseId)?.hours ?? 0);
+    default: return 0;
+  }
+}
+
+/**
  * The action set canRecoverMoreHours branches on at each visited state.
  * Starts from enumerateActions (planner_actions.ts) — the exact production
  * action space PlannerWorker.step() itself explores — and supplements the two
@@ -516,19 +734,69 @@ function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
  *    generates every movable-placed × unplaced-eligible pair gated only on
  *    net hours and legal-semester membership.
  *
- * `is_unwanted` (soft-avoided) courses are excluded from both supplements —
- * intentionally: the automatic search must never place a course the user
- * asked to avoid on its own. Whether the user could still approve one as a
- * risky elective is a distinct question, answered separately by
- * canRecoverViaUnwantedElective below, not folded into this rollout.
+ * `is_unwanted` (soft-avoided) courses are excluded from both supplements by
+ * default — the automatic search must never place a course the user asked to
+ * avoid on its own. Whether the user could still approve one as a risky
+ * elective is a distinct question.
+ *
+ * Codex review finding (PR #62, round 9): degreeHoursGate's own recoverability
+ * question is NOT "what would the automatic search do" — it's "does ANY
+ * legal, user-approvable path exist" — so a genuine recovery that MIXES an
+ * approved soft-avoided course with an ordinary one (e.g. approving a 1h
+ * soft-avoided prerequisite that unlocks an otherwise-illegal 4h regular
+ * elective in a later semester) was invisible to both this rollout (which
+ * never proposed the soft-avoided prerequisite at all) and the separate,
+ * unwanted-only canRecoverViaUnwantedElective rollout (which never proposed
+ * the regular course the prerequisite unlocks). `includeUnwantedElectives`,
+ * when true (degreeHoursGate only — see canRecoverMoreHours' own doc comment),
+ * makes `eligible` admit `is_unwanted` courses into this SAME action space,
+ * so the existing multi-step best-first search (already proven, by its own
+ * MOVE-then-ADD discovery, to explore action sequences rather than single
+ * moves) discovers mixed sequences for free, with no bespoke combinatorial
+ * code needed. Left false (default) for the pre-existing toProposal warning's
+ * own canRecoverMoreHours call, unchanged from its long-standing behavior.
  */
-function recoveryCandidateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
-  const actions = enumerateActions(state, model);
+function recoveryCandidateActions(
+  state: PlanState,
+  model: ConstraintModel,
+  includeUnwantedElectives = false,
+): PlannerMutation[] {
+  // Codex review finding (PR #62, round 3, widened by round 5): a currently-
+  // taking course kept visible in its placed slot must never be touched by
+  // ANY candidate mutation this rollout generates — not just ADD/REPLACE-in
+  // (re-proposing it, e.g. an off-board id like CUR — a genuine, NEW rule-2a
+  // violation, not the benign pre-existing kind isLegalIgnoringCurrentlyTakingReuse
+  // below is meant to exempt), but also MOVE/REMOVE/REPLACE-out of an
+  // ALREADY-placed one (e.g. FLU). The real production search
+  // (PlannerWorker.step()) can never actually relocate or remove such a
+  // course either — its own validate() call rejects any resulting state
+  // that still contains it anywhere BUT its original placement, the same
+  // way it rejects re-adding one that was never placed (see this codebase's
+  // separate, tracked follow-up finding on PlannerWorker.step() itself) — so
+  // a recovery this rollout only finds by moving/removing a currently-taking
+  // course is not one production can ever actually perform, and must not be
+  // reported as "recoverable." Guaranteeing every candidate leaves every
+  // currently-taking course's placement byte-identical to the caller's own
+  // baseline state means the ONLY reuse-marker errors any candidate can ever
+  // carry are inherited unchanged from that baseline, so unconditionally
+  // ignoring that marker in the legality check (isLegalIgnoringCurrentlyTakingReuse)
+  // stays safe and never masks a freshly-introduced or altered violation.
+  const touchesCurrentlyTaking = (m: PlannerMutation): boolean => {
+    const ids =
+      m.type === 'ADD_COURSE' ? [m.courseId] :
+      m.type === 'REMOVE_COURSE' ? [m.courseId] :
+      m.type === 'MOVE_COURSE' ? [m.courseId] :
+      m.type === 'REPLACE_COURSE' ? [m.outId, m.inId] :
+      [];
+    return ids.some(id => model.currentlyPlannedCourseIds?.has(id));
+  };
+  const actions = enumerateActions(state, model).filter(m => !touchesCurrentlyTaking(m));
   const placedNow = new Set(placedCourseIds(state));
   const eligible = (id: string, p: { is_mandatory?: boolean; hours?: number | null; is_unwanted?: boolean }) =>
-    !p.is_mandatory && p.hours != null && p.hours !== 0 && !p.is_unwanted &&
+    !p.is_mandatory && p.hours != null && p.hours !== 0 && (includeUnwantedElectives || !p.is_unwanted) &&
     !isFullyPlaced(state, model, placedNow, id) &&
-    !model.completedCourseIds.has(id) && !isExcluded(model, id);
+    !model.completedCourseIds.has(id) && !isExcluded(model, id) &&
+    !model.currentlyPlannedCourseIds?.has(id);
 
   for (const [id, p] of model.profiles) {
     if (!eligible(id, p)) continue;
@@ -536,7 +804,7 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
   }
 
   for (const outId of placedNow) {
-    if (!isMovable(model, outId)) continue;
+    if (!isMovable(model, outId) || model.currentlyPlannedCourseIds?.has(outId)) continue;
     const outHours = model.profiles.get(outId)?.hours ?? 0;
     const sem = semesterOf(state, outId);
     if (!sem) continue;
@@ -571,7 +839,7 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
   // MOVE-then-ADD (round 20) already falls out of this rollout's own
   // multi-step exploration rather than a bespoke check.
   for (const outId of placedNow) {
-    if (!isMovable(model, outId)) continue;
+    if (!isMovable(model, outId) || model.currentlyPlannedCourseIds?.has(outId)) continue;
     actions.push({ type: 'REMOVE_COURSE', courseId: outId });
   }
 
@@ -594,23 +862,71 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
  * removes a placed course), so — unlike REPLACE/MOVE-then-ADD in the rollout
  * above — it can't itself un-satisfy a category or mandatory requirement,
  * and needs no completeness re-check.
+ *
+ * Codex review finding (PR #62, round 7): legality alone isn't recovery for
+ * degreeHoursGate (the new blocking gate) — approving a single unwanted
+ * elective whose hours don't close the remaining gap (e.g. a 4h elective
+ * against a 5h shortfall) isn't a genuine recovery either, the same bug class
+ * canRecoverMoreHours' own round-7 fix closes. `targetHours`, when supplied,
+ * is the computeDegreeHours() value the resulting state must actually reach.
+ * Left undefined by the pre-existing toProposal warning call site, for the
+ * same "don't touch already-shipped, 21+-round-hardened (PR #41) warning
+ * semantics" reason canRecoverMoreHours' own doc comment above explains.
+ *
+ * Codex review finding (PR #62, round 8): closing the gap can require
+ * approving MULTIPLE soft-avoided electives together (e.g. two 2h electives
+ * for a 4h shortfall) — testing each course in isolation against targetHours
+ * can never discover that, since no single candidate alone reaches it. When
+ * targetHours is supplied, this now runs its own small bounded rollout
+ * (mirrors canRecoverMoreHours' own bounded-search shape, RECOVERY_ROLLOUT_
+ * BUDGET-limited) chaining ADD actions across every eligible is_unwanted
+ * course, not just trying each once against the original finalState. When
+ * targetHours is undefined (the pre-existing toProposal warning call site),
+ * this still short-circuits on the very first legal single addition found —
+ * byte-identical to the old single-ADD-only behavior, since "is there any
+ * untried option at all" never needed combinations.
  */
 function canRecoverViaUnwantedElective(
   finalState: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
+  targetHours?: number,
 ): boolean {
-  const placedNow = new Set(placedCourseIds(finalState));
-  return [...model.profiles].some(([id, p]) => {
-    if (!p.is_unwanted) return false;
-    if (p.is_mandatory || p.hours == null || p.hours === 0) return false;
-    if (isFullyPlaced(finalState, model, placedNow, id)) return false;
+  const eligible = (state: PlanState, id: string, p: { is_unwanted?: boolean; is_mandatory?: boolean; hours?: number | null }): boolean => {
+    if (!p.is_unwanted || p.is_mandatory || p.hours == null || p.hours === 0) return false;
+    const placedNow = new Set(placedCourseIds(state));
+    if (isFullyPlaced(state, model, placedNow, id)) return false;
     if (model.completedCourseIds.has(id) || isExcluded(model, id)) return false;
-    return addCourseActionsFor(model, id).some(a => {
-      const next = applyMutation(finalState, a);
-      return next != null && validatePlanState(next, model, pinnedHome).valid;
-    });
-  });
+    // Same reuse-avoidance reason recoveryCandidateActions' eligible() above
+    // documents: never propose (re-)adding a course the user is already
+    // currently taking, even an off-board one.
+    if (model.currentlyPlannedCourseIds?.has(id)) return false;
+    return true;
+  };
+
+  const seen = new Set<string>([recoveryStateKey(finalState, model)]);
+  let frontier: PlanState[] = [finalState];
+  let visited = 0;
+
+  while (frontier.length && visited < RECOVERY_ROLLOUT_BUDGET) {
+    const state = frontier.shift()!;
+    for (const [id, p] of model.profiles) {
+      if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
+      if (!eligible(state, id, p)) continue;
+      for (const a of addCourseActionsFor(model, id)) {
+        const next = applyMutation(state, a);
+        if (next == null) continue;
+        const key = recoveryStateKey(next, model);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome)) continue;
+        visited++;
+        if (targetHours == null || computeDegreeHours(next, model) >= targetHours) return true;
+        frontier.push(next);
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -714,6 +1030,8 @@ export function toProposal(
   pinnedHome: Record<string, string>,
   rationale_he: string,
   currentlyTakingHoursFromContext?: Map<string, number>,
+  plannedHoursFromContext?: Map<string, number>,
+  impliedUnknownOffBoardHours = 0,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -760,8 +1078,72 @@ export function toProposal(
     requirements_status.push({ name: cat.name, required: cat.required, placed: Math.min(p, cat.required), satisfied: p >= cat.required });
   }
 
+  // Codex review (round 6, refined by rounds 10-11) caught that
+  // report.degreeHours (model.priorHours + placedHours(finalState)) never
+  // includes hours from off-board personal_status.currently_taking courses —
+  // priorHoursFromContext deliberately excludes total_hours_progress.
+  // currently_planned_hours (see its own comment above), and a
+  // currently-taking course is never placed on the board either, so its
+  // hours are invisible to both terms. Credited by reading each
+  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
+  // the course is in the board catalog, else the client-resolved hours in
+  // personal_status.currently_taking itself (round 10's fix: some
+  // currently-taking courses predate the program's board window and have no
+  // model.profiles entry at all). Deliberately reads ONLY
+  // personal_status.currently_taking (round 11's fix), never the mixed
+  // total_hours_progress.currently_planned_hours aggregate (which also
+  // includes personal_status.planned — a course the planner can legitimately
+  // place and credit itself via report.degreeHours; adding the aggregate on
+  // top would double-count it).
+  //
+  // Codex review finding (PR #62, round 10): the same reasoning applies to an
+  // OFF-board personal_status.planned course (model.profiles has no entry) —
+  // the planner has nothing in its catalog to place, so report.degreeHours
+  // can never include it either, and it's real, uncounted credit.
+  // offBoardPlannedHours reads personal_status.planned directly (never the
+  // coarse aggregate) and keeps only the off-board subset, so it can never
+  // double-count an on-board planned course.
+  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
+    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
+    .filter(([id]) => !model.profiles.has(id))
+    .reduce((sum, [, hours]) => sum + hours, 0);
+  // Codex review finding (PR #62, round 11, bounded per round 12): same
+  // impliedUnknownOffBoardHours credit as degreeHoursGate's own — see that
+  // gate's/the caller's doc comments for why it's a bounded, mathematically
+  // derived credit rather than an unconditional skip.
+  const creditedDegreeHours = report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
+  const degreeMetCredited = report.degreeMet || creditedDegreeHours >= model.degreeRequiredHours;
+  // Codex review finding (PR #62, round 13): this generic degree-completion
+  // warning (and, via risksAndTradeoffs, the academic-decision rationale
+  // that surfaces warnings_he verbatim) previously used raw
+  // report.degreeMet/report.degreeHours. Whenever off-board-planned or
+  // aggregate-only credit alone closed the gap — the exact case
+  // degreeHoursGate below already treats as non-blocking — this warning
+  // still told the user the plan was short, recreating the
+  // blocked:false-but-"incomplete" self-contradiction this whole PR exists
+  // to close.
+  //
+  // Deliberately excludes currentlyPlannedHours here, unlike creditedDegreeHours
+  // above — tests 8/11 (rounds 6/10) established that an in-progress
+  // personal_status.currently_taking course must NOT silence this specific
+  // message: the student hasn't actually earned those hours yet, so it
+  // remains accurate (not contradictory) to report the board+known-completed
+  // total as still short, even though CUR finishing would close the gap —
+  // that stronger "nothing else can help" claim is exactly what the
+  // separate מיצית branch below (gated on the full creditedDegreeHours,
+  // unchanged) exists to distinguish. offBoardPlannedHours/
+  // impliedUnknownOffBoardHours are different in kind — the same aggregate/
+  // planned credit the frontend has ALREADY verified and reported as prior
+  // progress, not an in-progress enrollment — so crediting them here doesn't
+  // carry the same "not actually earned yet" caveat.
+  const genericCompletionCreditedHours = report.degreeHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
+  const degreeMetForGenericWarning = report.degreeMet || genericCompletionCreditedHours >= model.degreeRequiredHours;
+
   const warnings_he: string[] = [];
-  if (!report.degreeMet) warnings_he.push(`התוכנית משלימה ${report.degreeHours}/${model.degreeRequiredHours} ש"ש.`);
+  if (!degreeMetForGenericWarning) {
+    warnings_he.push(`התוכנית משלימה ${genericCompletionCreditedHours}/${model.degreeRequiredHours} ש"ש.`);
+  }
   for (const id of report.missingMandatory) warnings_he.push(`חסר קורס חובה: ${model.profiles.get(id)?.name_he ?? id}.`);
   for (const cid of report.unsatisfiedCategories) {
     const c = model.categories.find(x => x.id === cid);
@@ -787,51 +1169,29 @@ export function toProposal(
   // above) is delegated entirely to those two functions instead of the prior
   // four hand-rolled combinatorial scans.
   //
-  // Codex review (round 6, refined by rounds 10-11) caught that
-  // report.degreeHours (model.priorHours + placedHours(finalState)) never
-  // includes hours from off-board personal_status.currently_taking courses —
-  // priorHoursFromContext deliberately excludes total_hours_progress.
-  // currently_planned_hours (see its own comment above), and a
-  // currently-taking course is never placed on the board either, so its
-  // hours are invisible to both terms. A student whose known-completed +
-  // board-placed hours fall short only because a real, already-in-progress
-  // course isn't counted yet would see "catalog exhausted" even though the
-  // gap closes once that course finishes. Credited by reading each
-  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
-  // the course is in the board catalog, else the client-resolved hours in
-  // personal_status.currently_taking itself (round 10's fix: some
-  // currently-taking courses, e.g. first/second-year mandatory ones the
-  // frontend tracks via a static fallback, predate the program's board
-  // window and have no model.profiles entry at all). Deliberately reads
-  // ONLY personal_status.currently_taking (round 11's fix), never the mixed
-  // total_hours_progress.currently_planned_hours aggregate (which also
-  // includes personal_status.planned — a course the planner can legitimately
-  // place and credit itself via report.degreeHours; adding the aggregate on
-  // top would double-count it).
-  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
-    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
+  // currentlyPlannedHours/offBoardPlannedHours/creditedDegreeHours/
+  // degreeMetCredited are computed once, above, before warnings_he is even
+  // declared — see that block's own doc comment for the off-board credit
+  // reasoning (rounds 6, 10-12) and why round 13 moved it here.
   if (
-    !report.degreeMet &&
-    report.degreeHours + currentlyPlannedHours < model.degreeRequiredHours &&
+    !degreeMetCredited &&
     report.missingMandatory.length === 0 &&
     report.unsatisfiedCategories.length === 0 &&
     report.legal &&
     report.disallowedPlaced.length === 0
   ) {
+    // Deliberately omits targetHours (the round-7 strict-closure check) here
+    // — this pre-existing warning's own semantics (21+ Codex rounds, PR #41)
+    // are about whether the visible catalog has ANY untried option left, not
+    // full closure; see canRecoverMoreHours'/canRecoverViaUnwantedElective's
+    // own doc comments for why that distinction matters and stays untouched
+    // outside degreeHoursGate.
     const recoverable =
       canRecoverViaUnwantedElective(finalState, model, pinnedHome) ||
       canRecoverMoreHours(finalState, model, pinnedHome);
     if (!recoverable) {
-      // Codex review (round 13) caught that this message's numerator used
-      // report.degreeHours alone, even though the guard just above credited
-      // currentlyPlannedHours (off-board currently-taking courses) before
-      // deciding the gap is genuinely structural — a partial-credit case
-      // (test 8b/11b) would show e.g. "172/185" while the branch's own logic
-      // already accounted for 176/185, understating real progress in this
-      // user-visible message. Use the same credited total the guard itself
-      // used.
       warnings_he.push(
-        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${report.degreeHours + currentlyPlannedHours}/${model.degreeRequiredHours} ש"ש) — ` +
+        `מיצית את כל הקורסים הזמינים בחלון התכנון הנוכחי (${creditedDegreeHours}/${model.degreeRequiredHours} ש"ש) — ` +
         `הפער הנותר דורש קורסים שאינם זמינים בטווח הסמסטרים המוצג, לא בחירה נוספת מתוך הרשימה הקיימת.`,
       );
     }
@@ -841,7 +1201,36 @@ export function toProposal(
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
 
-  return { semesters, moves, warnings_he, rationale_he, requirements_status };
+  // Codex review finding (PR #62, round 13, continued): report.valid (above)
+  // — and therefore the caller-supplied rationale_he (PlannerWorker.explain()'s
+  // summary_he for the default path, deterministicRationale for the agentic
+  // one; both built from the SAME validateCandidate result this function
+  // computes into `report`) — has no knowledge of the off-board/aggregate
+  // credit this whole file exists to apply. When degreeHoursGate (below,
+  // same full creditedDegreeHours) would NOT block this plan, but the ONLY
+  // reason report.valid is false is the raw, uncredited degree-hours check,
+  // the incoming rationale_he still literally states "התוכנית אינה מלאה
+  // עדיין" (the plan is not yet complete) — the exact
+  // academicDecision.validation.valid:true-next-to-"incomplete"
+  // self-contradiction from this PR's own original bug report, just one
+  // layer further upstream than warnings_he (which the earlier part of this
+  // fix already corrected). Corrected here, in the one place this function
+  // already has both the raw report and every credit source in scope. Only
+  // fires when degree hours are the SOLE reason report.valid is false —
+  // legality/mandatory/category/disallowed problems must surface as
+  // themselves via their own, unrelated gates, not be papered over here.
+  const rationaleOnlyIncompleteForHours =
+    !report.valid &&
+    !report.degreeMet &&
+    report.legal &&
+    report.missingMandatory.length === 0 &&
+    report.unsatisfiedCategories.length === 0 &&
+    report.disallowedPlaced.length === 0;
+  const correctedRationale_he = rationaleOnlyIncompleteForHours && degreeMetCredited
+    ? `התוכנית תקפה: ${creditedDegreeHours}/${model.degreeRequiredHours} ש"ש (כולל קורסים בתהליך/מחוץ ללוח שכבר נספרים לזכות התואר), כל קורסי החובה והקטגוריות שנבדקו שובצו.`
+    : rationale_he;
+
+  return { semesters, moves, warnings_he, rationale_he: correctedRationale_he, requirements_status };
 }
 
 /** Build pinnedHome map from model.pinnedCourseIds + initialState positions. */
@@ -972,6 +1361,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       .filter((c: any) => typeof c?.hours === 'number')
       .map((c: any) => [c.course_id, c.hours]),
   );
+  // Codex review finding (PR #62, round 10): personal_status.planned is a
+  // real, distinct field (not currently_taking) for a course the student has
+  // already registered/planned but not yet started — when such a course
+  // predates this board's catalog window entirely (the same "off-board" case
+  // round 6/10/11 already handle for currently_taking), its hours are real
+  // credit toward the degree total that report.degreeHours can never include
+  // (the planner has nothing in its catalog to place). Deliberately kept
+  // SEPARATE from currentlyPlannedCourseIds/currentlyTakingHoursFromContext —
+  // not merged in — since that set also drives prerequisite-satisfaction and
+  // re-add-prevention semantics elsewhere (planner_goals.ts, this file's own
+  // recovery rollouts) that only make sense for a course actually IN
+  // PROGRESS, not one merely planned for later.
+  const plannedHoursFromContext = new Map<string, number>(
+    (effectivePlanContext?.personal_status?.planned ?? [])
+      .filter((c: any) => typeof c?.hours === 'number')
+      .map((c: any) => [c.course_id, c.hours]),
+  );
 
   // Board — always plan over the full course universe.
   let board: any = null;
@@ -993,6 +1399,93 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
+
+  // Codex review finding (PR #62, round 11): currentlyTakingHoursFromContext/
+  // plannedHoursFromContext above only credit an off-board currently_taking/
+  // planned course when the client supplied that course's OWN `hours` field.
+  // A compatible caller relying instead on the coarse
+  // total_hours_progress.currently_planned_hours aggregate (real, accepted
+  // input — plan_context is z.any(), per-course hours were always optional)
+  // without per-course hours gets 0 credit for that course from either map,
+  // even though the aggregate proves real, uncounted credit exists.
+  //
+  // Codex review finding (PR #62, round 12): an earlier version of this fix
+  // responded by unconditionally skipping the blocking gate whenever the
+  // aggregate was present and any off-board course lacked per-course hours —
+  // regardless of magnitude, so even a trivially small aggregate (4h) against
+  // a massive, genuinely unrecoverable gap (169h) wrongly went unblocked.
+  // impliedUnknownOffBoardHours instead derives a mathematically BOUNDED
+  // credit: onBoardKnownHours (exact — model.profiles, doesn't need
+  // client-supplied hours) and offBoardKnownHours (the same per-course
+  // amounts currentlyPlannedHours/offBoardPlannedHours already credit) are
+  // subtracted from the aggregate first; whatever remains (clamped at 0) is
+  // the hours the aggregate proves exist among ONLY the courses with unknown
+  // individual hours — never more than the aggregate itself justifies, so it
+  // can only close a gap the client's own numbers genuinely support, never an
+  // unconditional escape hatch.
+  // Codex review finding (PR #62, round 15): the live buildPlanContext
+  // (semester_board_viewer.html) computes total_hours_progress.
+  // currently_planned_hours by summing currently_taking + planned entries
+  // AFTER filtering out any course already PLACED on the submitted board
+  // (`!placedIds.has(...)`) — the real, canonical caller's aggregate NEVER
+  // includes a placed course's hours to begin with. The previous
+  // model.profiles.has(id)-based "onBoardKnownHours" subtraction assumed
+  // the opposite (that the aggregate might double-count an in-catalog
+  // course) and applied that assumption uniformly to BOTH statuses,
+  // silently erasing real off-board credit whenever a genuinely PLACED
+  // currently_taking course happened to coexist with an unrelated,
+  // genuinely off-board one lacking per-course hours (Codex's repro: a 4h
+  // board-visible course + a 4h aggregate-only off-board one wrongly
+  // produced impliedUnknownOffBoardHours:0 instead of 4).
+  //
+  // The two statuses need DIFFERENT exclusion criteria, matching the two
+  // different credit paths each already has elsewhere in this function —
+  // collapsing them into one shared model.profiles.has(id) test (as before)
+  // is what caused this bug:
+  //  - currently_taking: rule 2a means the search can NEVER place one
+  //    itself, so "in catalog" and "actually placed" are genuinely
+  //    different states here. A PLACED one was never part of the frontend's
+  //    aggregate (exclude, subtract nothing). A NOT-placed one is already
+  //    credited via currentlyPlannedHours above (which also doesn't care
+  //    whether it's in-catalog, using currentlyTakingHoursFromContext as a
+  //    fallback) whenever either its catalog OR context hours are known —
+  //    subtract that same amount. Only a not-placed entry with NEITHER is
+  //    genuinely unclaimed.
+  //  - planned: the search CAN legitimately place an in-catalog, NOT-YET-
+  //    placed one later (e.g. to satisfy a category, like SOL in test 15b)
+  //    — its hours will be counted via report.degreeHours once the search
+  //    does, an entirely separate computation from anything here, so — per
+  //    round 10's own existing offBoardPlannedHours design — any in-catalog
+  //    NOT-YET-placed planned course stays excluded, to avoid eventually
+  //    double-counting once the search places it.
+  //
+  //    Codex review finding (PR #62, round 16): that in-catalog exclusion
+  //    is right for a not-yet-placed one, but the frontend's own placed-id
+  //    filter applies identically to BOTH personal_status arrays (see round
+  //    15's own comment above) — a planned course the client already
+  //    placed itself was ALSO never part of the aggregate, exactly like the
+  //    currently_taking case. Treating every in-catalog planned course the
+  //    same regardless of placement (as round 15 still did) double-
+  //    discounted an already-placed one the identical way round 15 fixed
+  //    for currently_taking. Guarded the same way: !initiallyPlacedIds.has
+  //    first, then the in-catalog-or-known-hours test.
+  const totalCurrentlyPlannedHoursAggregate = effectivePlanContext?.total_hours_progress?.currently_planned_hours;
+  let impliedUnknownOffBoardHours = 0;
+  if (typeof totalCurrentlyPlannedHoursAggregate === 'number') {
+    const initiallyPlacedIds = new Set(placedCourseIds(initialState));
+    const currentlyTakingEntries = new Map<string, any>();
+    for (const c of effectivePlanContext?.personal_status?.currently_taking ?? []) {
+      if (c?.course_id != null) currentlyTakingEntries.set(c.course_id, c);
+    }
+    const plannedEntries = new Map<string, any>();
+    for (const c of effectivePlanContext?.personal_status?.planned ?? []) {
+      if (c?.course_id != null && !currentlyTakingEntries.has(c.course_id)) plannedEntries.set(c.course_id, c);
+    }
+    const knownHours = [...currentlyTakingEntries.values(), ...plannedEntries.values()]
+      .filter((c: any) => !initiallyPlacedIds.has(c.course_id) && (model.profiles.has(c.course_id) || typeof c?.hours === 'number'))
+      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0);
+    impliedUnknownOffBoardHours = Math.max(0, totalCurrentlyPlannedHoursAggregate - knownHours);
+  }
 
   let proposal: ReturnType<typeof toProposal>;
   let traceForResponse: unknown[];
@@ -1025,7 +1518,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
     proposal = toProposal(
       agentResult.finalState, model, initialState, pinnedHome, rationale_he,
-      currentlyTakingHoursFromContext,
+      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
     );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
@@ -1044,7 +1537,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     proposal = toProposal(
       worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
-      currentlyTakingHoursFromContext,
+      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
     );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
@@ -1056,6 +1549,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...annualCompletenessGate(proposal.semesters, model),
     ...legalityGate(proposal.semesters, model, pinnedHome),
     ...missingMandatoryGate(proposal.semesters, model),
+    ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via

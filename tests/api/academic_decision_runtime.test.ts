@@ -457,6 +457,12 @@ describe('buildAcademicDecision — decision & explanation', () => {
     // The generic "check prerequisites" advice must NOT appear when
     // exclusion is the only cause — it can never help here.
     expect(actions).not.toMatch(/קורסי קדם/);
+    // Codex-caught regression (PR #62, round 5): mainRecommendation's own
+    // blocked-branch template unconditionally suggested "(או לבקש בנייה
+    // מחדש)" regardless of cause — a rebuild is guaranteed to reproduce an
+    // identical result as long as the exclusion stands, the same
+    // self-contradiction suggestedNextActions was already fixed for above.
+    expect(view.explanation.mainRecommendation).not.toMatch(/בנייה מחדש/);
   });
 
   test('still gives the generic missing-mandatory advice when the cause is NOT the user\'s own exclusion', () => {
