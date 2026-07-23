@@ -1,0 +1,2913 @@
+{
+  "semesters": [
+    {
+      "semester_id": "year_3_semester_a",
+      "courses": [
+        {
+          "course_id": "MAND",
+          "name_he": "חובה",
+          "weekly_hours": 4,
+          "is_mandatory": true,
+          "course_type": "mandatory",
+          "placement_policy": "fixed",
+          "effective_allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "prerequisites": []
+        }
+      ]
+    },
+    {
+      "semester_id": "year_3_semester_b",
+      "courses": []
+    },
+    {
+      "semester_id": "year_4_semester_a",
+      "courses": []
+    },
+    {
+      "semester_id": "year_4_semester_b",
+      "courses": []
+    }
+  ],
+  "metadata": {
+    "completed_course_ids": [],
+    "program_requirements_categories": {
+      "total_required_hours": 185,
+      "categories": [
+        {
+          "category_id": "fluids",
+          "name_he": "זורמים",
+          "min_courses": 1,
+          "course_ids": [
+            "FLU"
+          ]
+        },
+        {
+          "category_id": "solids",
+          "name_he": "מוצקים",
+          "min_courses": 1,
+          "course_ids": [
+            "SOL"
+          ]
+        }
+      ]
+    },
+    "program_repository_courses": [
+      {
+        "course_id": "MAND",
+        "name_he": "חובה",
+        "weekly_hours": 4,
+        "is_mandatory": true,
+        "course_type": "mandatory",
+        "placement_policy": "fixed",
+        "effective_allowed_semesters": [
+          "year_3_semester_a"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "FLU",
+        "name_he": "זורם",
+        "weekly_hours": 4,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "program_category_id": "fluids",
+        "prerequisites": []
+      },
+      {
+        "course_id": "SOL",
+        "name_he": "מוצק",
+        "weekly_hours": 4,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "program_category_id": "solids",
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_001",
+        "name_he": "קטן 1",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_002",
+        "name_he": "קטן 2",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_003",
+        "name_he": "קטן 3",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_004",
+        "name_he": "קטן 4",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_005",
+        "name_he": "קטן 5",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_006",
+        "name_he": "קטן 6",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_007",
+        "name_he": "קטן 7",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_008",
+        "name_he": "קטן 8",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_009",
+        "name_he": "קטן 9",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_010",
+        "name_he": "קטן 10",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_011",
+        "name_he": "קטן 11",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_012",
+        "name_he": "קטן 12",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_013",
+        "name_he": "קטן 13",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_014",
+        "name_he": "קטן 14",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_015",
+        "name_he": "קטן 15",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_016",
+        "name_he": "קטן 16",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_017",
+        "name_he": "קטן 17",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_018",
+        "name_he": "קטן 18",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_019",
+        "name_he": "קטן 19",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_020",
+        "name_he": "קטן 20",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_021",
+        "name_he": "קטן 21",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_022",
+        "name_he": "קטן 22",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_023",
+        "name_he": "קטן 23",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_024",
+        "name_he": "קטן 24",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_025",
+        "name_he": "קטן 25",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_026",
+        "name_he": "קטן 26",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_027",
+        "name_he": "קטן 27",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_028",
+        "name_he": "קטן 28",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_029",
+        "name_he": "קטן 29",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_030",
+        "name_he": "קטן 30",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_031",
+        "name_he": "קטן 31",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_032",
+        "name_he": "קטן 32",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_033",
+        "name_he": "קטן 33",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_034",
+        "name_he": "קטן 34",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_035",
+        "name_he": "קטן 35",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_036",
+        "name_he": "קטן 36",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_037",
+        "name_he": "קטן 37",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_038",
+        "name_he": "קטן 38",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_039",
+        "name_he": "קטן 39",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_040",
+        "name_he": "קטן 40",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_041",
+        "name_he": "קטן 41",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_042",
+        "name_he": "קטן 42",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_043",
+        "name_he": "קטן 43",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_044",
+        "name_he": "קטן 44",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_045",
+        "name_he": "קטן 45",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_046",
+        "name_he": "קטן 46",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_047",
+        "name_he": "קטן 47",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_048",
+        "name_he": "קטן 48",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_049",
+        "name_he": "קטן 49",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_050",
+        "name_he": "קטן 50",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_051",
+        "name_he": "קטן 51",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_052",
+        "name_he": "קטן 52",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_053",
+        "name_he": "קטן 53",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_054",
+        "name_he": "קטן 54",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_055",
+        "name_he": "קטן 55",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_056",
+        "name_he": "קטן 56",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_057",
+        "name_he": "קטן 57",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_058",
+        "name_he": "קטן 58",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_059",
+        "name_he": "קטן 59",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_060",
+        "name_he": "קטן 60",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_061",
+        "name_he": "קטן 61",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_062",
+        "name_he": "קטן 62",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_063",
+        "name_he": "קטן 63",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_064",
+        "name_he": "קטן 64",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_065",
+        "name_he": "קטן 65",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_066",
+        "name_he": "קטן 66",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_067",
+        "name_he": "קטן 67",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_068",
+        "name_he": "קטן 68",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_069",
+        "name_he": "קטן 69",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_070",
+        "name_he": "קטן 70",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_071",
+        "name_he": "קטן 71",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_072",
+        "name_he": "קטן 72",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_073",
+        "name_he": "קטן 73",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_074",
+        "name_he": "קטן 74",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_075",
+        "name_he": "קטן 75",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_076",
+        "name_he": "קטן 76",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_077",
+        "name_he": "קטן 77",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_078",
+        "name_he": "קטן 78",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_079",
+        "name_he": "קטן 79",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_080",
+        "name_he": "קטן 80",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_081",
+        "name_he": "קטן 81",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_082",
+        "name_he": "קטן 82",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_083",
+        "name_he": "קטן 83",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_084",
+        "name_he": "קטן 84",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_085",
+        "name_he": "קטן 85",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_086",
+        "name_he": "קטן 86",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_087",
+        "name_he": "קטן 87",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_088",
+        "name_he": "קטן 88",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_089",
+        "name_he": "קטן 89",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_090",
+        "name_he": "קטן 90",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_091",
+        "name_he": "קטן 91",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_092",
+        "name_he": "קטן 92",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_093",
+        "name_he": "קטן 93",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_094",
+        "name_he": "קטן 94",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_095",
+        "name_he": "קטן 95",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_096",
+        "name_he": "קטן 96",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_097",
+        "name_he": "קטן 97",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_098",
+        "name_he": "קטן 98",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_099",
+        "name_he": "קטן 99",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_100",
+        "name_he": "קטן 100",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_101",
+        "name_he": "קטן 101",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_102",
+        "name_he": "קטן 102",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_103",
+        "name_he": "קטן 103",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_104",
+        "name_he": "קטן 104",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_105",
+        "name_he": "קטן 105",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_106",
+        "name_he": "קטן 106",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_107",
+        "name_he": "קטן 107",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_108",
+        "name_he": "קטן 108",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_109",
+        "name_he": "קטן 109",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_110",
+        "name_he": "קטן 110",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_111",
+        "name_he": "קטן 111",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_112",
+        "name_he": "קטן 112",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_113",
+        "name_he": "קטן 113",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_114",
+        "name_he": "קטן 114",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_115",
+        "name_he": "קטן 115",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_116",
+        "name_he": "קטן 116",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_117",
+        "name_he": "קטן 117",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_118",
+        "name_he": "קטן 118",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_119",
+        "name_he": "קטן 119",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_120",
+        "name_he": "קטן 120",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_121",
+        "name_he": "קטן 121",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_122",
+        "name_he": "קטן 122",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_123",
+        "name_he": "קטן 123",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_124",
+        "name_he": "קטן 124",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_125",
+        "name_he": "קטן 125",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_126",
+        "name_he": "קטן 126",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_127",
+        "name_he": "קטן 127",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_128",
+        "name_he": "קטן 128",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_129",
+        "name_he": "קטן 129",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_130",
+        "name_he": "קטן 130",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_131",
+        "name_he": "קטן 131",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_132",
+        "name_he": "קטן 132",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_133",
+        "name_he": "קטן 133",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_134",
+        "name_he": "קטן 134",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_135",
+        "name_he": "קטן 135",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_136",
+        "name_he": "קטן 136",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_137",
+        "name_he": "קטן 137",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_138",
+        "name_he": "קטן 138",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_139",
+        "name_he": "קטן 139",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_140",
+        "name_he": "קטן 140",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_141",
+        "name_he": "קטן 141",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_142",
+        "name_he": "קטן 142",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_143",
+        "name_he": "קטן 143",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_144",
+        "name_he": "קטן 144",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_145",
+        "name_he": "קטן 145",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_146",
+        "name_he": "קטן 146",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_147",
+        "name_he": "קטן 147",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_148",
+        "name_he": "קטן 148",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_149",
+        "name_he": "קטן 149",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_150",
+        "name_he": "קטן 150",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_151",
+        "name_he": "קטן 151",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_152",
+        "name_he": "קטן 152",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_153",
+        "name_he": "קטן 153",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_154",
+        "name_he": "קטן 154",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_155",
+        "name_he": "קטן 155",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_156",
+        "name_he": "קטן 156",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_157",
+        "name_he": "קטן 157",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_158",
+        "name_he": "קטן 158",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_159",
+        "name_he": "קטן 159",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_160",
+        "name_he": "קטן 160",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_161",
+        "name_he": "קטן 161",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_162",
+        "name_he": "קטן 162",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_163",
+        "name_he": "קטן 163",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_164",
+        "name_he": "קטן 164",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_165",
+        "name_he": "קטן 165",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_166",
+        "name_he": "קטן 166",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_167",
+        "name_he": "קטן 167",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_168",
+        "name_he": "קטן 168",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_169",
+        "name_he": "קטן 169",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_170",
+        "name_he": "קטן 170",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_171",
+        "name_he": "קטן 171",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_172",
+        "name_he": "קטן 172",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_173",
+        "name_he": "קטן 173",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_174",
+        "name_he": "קטן 174",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_175",
+        "name_he": "קטן 175",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_176",
+        "name_he": "קטן 176",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_177",
+        "name_he": "קטן 177",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_178",
+        "name_he": "קטן 178",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_179",
+        "name_he": "קטן 179",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_180",
+        "name_he": "קטן 180",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_181",
+        "name_he": "קטן 181",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_182",
+        "name_he": "קטן 182",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_183",
+        "name_he": "קטן 183",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_184",
+        "name_he": "קטן 184",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_185",
+        "name_he": "קטן 185",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_186",
+        "name_he": "קטן 186",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_187",
+        "name_he": "קטן 187",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_188",
+        "name_he": "קטן 188",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_189",
+        "name_he": "קטן 189",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_190",
+        "name_he": "קטן 190",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_191",
+        "name_he": "קטן 191",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_192",
+        "name_he": "קטן 192",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_193",
+        "name_he": "קטן 193",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_194",
+        "name_he": "קטן 194",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_195",
+        "name_he": "קטן 195",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_196",
+        "name_he": "קטן 196",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_197",
+        "name_he": "קטן 197",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_198",
+        "name_he": "קטן 198",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_199",
+        "name_he": "קטן 199",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "SMALL_200",
+        "name_he": "קטן 200",
+        "weekly_hours": 1,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      },
+      {
+        "course_id": "DECISIVE",
+        "name_he": "מכריע",
+        "weekly_hours": 5,
+        "is_mandatory": false,
+        "course_type": "elective",
+        "placement_policy": "elective",
+        "effective_allowed_semesters": [
+          "year_3_semester_b",
+          "year_4_semester_a",
+          "year_4_semester_b"
+        ],
+        "prerequisites": []
+      }
+    ]
+  }
+}

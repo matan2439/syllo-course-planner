@@ -702,4 +702,38 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(true);
     expect(res._body.warnings_he.some((w: string) => w.includes('התוכנית משלימה 184/185'))).toBe(true);
   });
+
+  test('18. Codex-caught regression (round 14): a decisive single-step recovery must not be missed because 200 individually-insufficient legal candidates exhaust the rollout budget first', async () => {
+    // data/boards/test_program_gap_unwanted_bounded_search_2027.json: same
+    // MAND(4h)+FLU(4h,fluids)+SOL(4h,solids)=12h shape as test 1's fixture,
+    // plus 200 soft-avoided 1h electives (SMALL_001..SMALL_200) enumerated
+    // BEFORE one soft-avoided 5h elective (DECISIVE) in
+    // program_repository_courses order (the exact order
+    // canRecoverMoreHours' ADD loop iterates model.profiles in). All 201 are
+    // marked unwanted so the automatic search never places any of them on
+    // its own — the gap stays genuinely open until the recovery probe (the
+    // thing actually under test) considers them via includeUnwantedElectives.
+    // known_completed_hours=168: 168+12=180/185, exactly 5h short — closed
+    // ONLY by DECISIVE alone (each SMALL_* is individually insufficient, and
+    // RECOVERY_ROLLOUT_BUDGET=200 legal candidates is exactly consumed by
+    // the 200 SMALL_* siblings from the very first state, before enumeration
+    // ever reaches DECISIVE) — Codex's exact repro shape (many small legal
+    // candidates ahead of the one that alone closes the gap). Before the
+    // round-14 fix (sorting each state's candidates by their own hours delta,
+    // descending, before spending any budget), this fixture reproduced
+    // exactly that: blocked:true even though a genuine single-step recovery
+    // exists and is trivially legal.
+    const ctx = planContext(168);
+    const smallIds = Array.from({ length: 200 }, (_, i) => `SMALL_${String(i + 1).padStart(3, '0')}`);
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_bounded_search_2027',
+      plan_context: ctx,
+      preferences: { unwanted_course_ids: [...smallIds, 'DECISIVE'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
 });

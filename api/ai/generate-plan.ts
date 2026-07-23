@@ -620,7 +620,24 @@ function canRecoverMoreHours(
     const { state } = frontier.shift()!;
     const spawned: typeof frontier = [];
 
-    for (const mut of recoveryCandidateActions(state, model, includeUnwantedElectives)) {
+    // Codex review finding (PR #62, round 14): recoveryCandidateActions'
+    // own return order is plain enumeration order (model.profiles iteration
+    // order for ADD, placement order for REPLACE/REMOVE) — NOT prioritized
+    // by how much each candidate actually helps close the hours gap. With
+    // many small, individually-insufficient legal candidates (e.g. 200+ 1h
+    // soft-avoided electives) ahead of the one course that alone closes the
+    // gap, the budget could be exhausted discarding the small ones before
+    // ever reaching a genuine single-step recovery — a bounded-search miss
+    // masquerading as "the catalog is exhausted." Sorting by each mutation's
+    // OWN hours delta (descending) before spending any budget means the
+    // candidate most likely to close the gap outright is always tried
+    // first — a cheap, static computation (no applyMutation/validate call
+    // needed per candidate), so it doesn't cost any of the budget itself.
+    // Doesn't change WHAT the search can find, only the order — every
+    // candidate within budget is still tried exactly as before.
+    const byHoursDeltaDesc = [...recoveryCandidateActions(state, model, includeUnwantedElectives)]
+      .sort((a, b) => mutationHoursDelta(b, model) - mutationHoursDelta(a, model));
+    for (const mut of byHoursDeltaDesc) {
       if (visited >= RECOVERY_ROLLOUT_BUDGET) break;
       const candidate = applyMutation(state, mut);
       if (!candidate) continue;
@@ -675,6 +692,25 @@ const RECOVERY_ROLLOUT_BUDGET = 200;
 /** Canonical key for a PlanState — dedupes the rollout's visited-state set. */
 function recoveryStateKey(state: PlanState, model: ConstraintModel): string {
   return model.knownSemesterIds.map(sem => [...(state.semesters[sem] ?? [])].sort().join(',')).join('|');
+}
+
+/**
+ * Static (no applyMutation needed) estimate of a recoveryCandidateActions
+ * mutation's own effect on computeDegreeHours — used only to ORDER
+ * canRecoverMoreHours' bounded rollout so a decisive candidate is tried
+ * before a budget-exhausting run of small, individually-insufficient ones
+ * (Codex review finding, PR #62, round 14). MOVE_COURSE never changes
+ * placed hours by itself (0) but can still be a genuine multi-step enabler
+ * (e.g. round 20's MOVE-then-ADD), so it still gets a turn — just not
+ * ahead of a candidate that helps outright.
+ */
+function mutationHoursDelta(m: PlannerMutation, model: ConstraintModel): number {
+  switch (m.type) {
+    case 'ADD_COURSE': return model.profiles.get(m.courseId)?.hours ?? 0;
+    case 'REPLACE_COURSE': return (model.profiles.get(m.inId)?.hours ?? 0) - (model.profiles.get(m.outId)?.hours ?? 0);
+    case 'REMOVE_COURSE': return -(model.profiles.get(m.courseId)?.hours ?? 0);
+    default: return 0;
+  }
 }
 
 /**
