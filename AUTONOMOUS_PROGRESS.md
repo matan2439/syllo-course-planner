@@ -4,11 +4,84 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-bybfn4`
-(PR #60 merged as `0e4ec0d` — see below; supersedes the PR #58 entry as the
+_Last updated: 2026-07-23, session on branch `claude/youthful-tesla-6ndcf6`
+(PR #62 merged as `1a2fda2` — see below; supersedes the PR #60 entry as the
 latest completed milestone)._
 
-## Latest session — PR #60 merged: prerequisite-driven placement delay never explained, found via a fresh Agent Diagnosis Loop
+## Latest session — PR #62 merged: degree-hours shortfall never surfaced as a blocking error
+
+Standing audit (scheduled autonomous run): session branch `claude/youthful-tesla-6ndcf6`
+(this routine's assigned branch) had no local commits of its own. PR #62
+(`claude/youthful-tesla-onsuif`) was already open against
+`ui/frontend-modernization`, opened earlier the same day by a prior
+autonomous run via a fresh Agent Diagnosis Loop pass targeting blocked/
+error-state honesty. Only PR #14 (Decision capability) also open —
+reconfirmed correctly left untouched per the D-stacking-cap precedent;
+issues #15/#18/#20/#21 reconfirmed unchanged, zero new human comments since
+last check.
+
+**PR #62's finding**: when every mandatory course and elective-category
+requirement is satisfied and the plan is otherwise legal, but the visible
+catalog is genuinely exhausted before reaching `model.degreeRequiredHours`,
+`generate-plan.ts` already detected this (the "מיצית את כל הקורסים הזמינים"
+warning) but only ever pushed it as a soft warning — never a `blockingErrors`
+entry. Reproduced: `blocked:false`, `academicDecision.validation.valid:true`,
+while `whyThisPlan[0]` admitted in the same response that the plan doesn't
+complete degree hours — a machine-verifiable self-contradiction, the one
+sibling case of the disallowed/annual/legality/missing-mandatory gates that
+had never gotten one. New `degreeHoursGate` (mirrors the existing gates'
+"re-derive from the final placed set" convention) plus a distinctly-worded
+`DEGREE_HOURS_SHORTFALL_ERROR_PREFIX` cause-attribution.
+
+**This PR went through 16 commits / 16 Codex review rounds before this
+session picked it up** (all real findings, each fixed and RED-verified
+before the next): benign currently-taking-reuse-marker false positives,
+double-counting a placed currently-taking/planned course's hours, recovery-
+probe legality checks not respecting rule-2a, empty-semester-key seeding for
+the recovery rollout's `applyMutation`, off-board `personal_status.planned`/
+aggregate-hours credit (four separate rounds refining exactly how much
+credit is verifiable vs. assumed), and a bounded-search ordering fix so a
+decisive single-course recovery isn't budget-starved by many smaller
+candidates ahead of it in enumeration order.
+
+**This session verified the final state before merging** (did not just
+trust the count): CI green (3/3) on the head commit (`96b28579`); Codex
+reviewed that exact head commit and raised one **P2** finding — a
+theoretical bounded-search miss on a REMOVE-then-add recovery path, no
+concrete repro given. The prior round's own reply (already posted)
+investigated it, confirmed the concern is real only in an adversarially-
+constructed ≥200-candidate catalog, noted the failure direction is the
+*safe* one (over-conservative blocking, not "invalid plan presented as
+complete"), and deliberately left the thread unresolved rather than chase
+an unbounded sequence of adversarial-budget constructions with no repro to
+anchor a fix to. Concurred with that judgment and merged as `1a2fda2`. Full
+API suite at merge time: 86/86 suites, 1349/1349 tests, zero regressions;
+`tsc --noEmit` clean.
+
+**Classification: C** (correctness). **Rolling-three: (58, 60, 62) = A/A/C
+— compliant** (two of three A/B; no forced constraint on the next pick).
+
+**Production check**: re-confirmed via Vercel MCP tools (`tau-course-planner`)
+— still pinned at `26500d4` ("Merge PR #11"), zero runtime errors (24h),
+same standing no-git-integration/no-CLI-credentials deploy blocker every
+session since PR #27 has confirmed; not attempting `deploy_to_vercel` (raw
+file-tree upload, no git linkage) without a human decision. PR #62 joins the
+same growing merged-but-not-deployed backlog.
+
+**Exact next action**: PR #62 is merged, do not reopen. A small docs PR
+(#63) records this in `.remember/current.md` and this file. Rolling-three
+(58,60,62)=A/A/C is compliant, no forced classification on the next pick.
+Run a fresh Agent Diagnosis Loop targeting: dual-semester/multi-alternative
+**plan quality itself** (not just "is comparison reachable," already
+answered clean — does the actual search genuinely balance a dual-offered
+elective under real load pressure?), and accessibility/error-state UI
+behavior for blocked plans (never yet exercised by any session — is a
+blocked plan actually visually/semantically distinguishable from a
+successful one in `semester_board_viewer.html`, not just internally
+correct?). PR #14 must stay unmerged unless a genuine multi-candidate-
+producer scenario emerges from real Agent-quality work.
+
+## Prior session — PR #60 merged: prerequisite-driven placement delay never explained, found via a fresh Agent Diagnosis Loop
 
 Standing audit (scheduled autonomous run): session branch `claude/youthful-tesla-bybfn4`
 was, again, the same recurring mistake several prior sessions have had to
