@@ -426,6 +426,12 @@ function degreeHoursGate(
     .filter(id => !placedNow.has(id))
     .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
   const creditedHours = report.degreeHours + currentlyPlannedHours;
+  // The computeDegreeHours() value a recovery candidate must actually reach
+  // to close the gap — currentlyPlannedHours is a constant credit no
+  // recovery mutation can change (recoveryCandidateActions never touches a
+  // currently-taking course's placement), so it carries over unchanged from
+  // creditedHours' own derivation (Codex review finding, PR #62, round 7).
+  const recoveryTargetHours = model.degreeRequiredHours - currentlyPlannedHours;
   const structurallyShort =
     !report.degreeMet &&
     creditedHours < model.degreeRequiredHours &&
@@ -433,8 +439,8 @@ function degreeHoursGate(
     report.unsatisfiedCategories.length === 0 &&
     isLegalIgnoringCurrentlyTakingReuse(state, model, pinnedHome) &&
     report.disallowedPlaced.length === 0 &&
-    !canRecoverViaUnwantedElective(state, model, pinnedHome) &&
-    !canRecoverMoreHours(state, model, pinnedHome);
+    !canRecoverViaUnwantedElective(state, model, pinnedHome, recoveryTargetHours) &&
+    !canRecoverMoreHours(state, model, pinnedHome, recoveryTargetHours);
   return structurallyShort
     ? [`${DEGREE_HOURS_SHORTFALL_ERROR_PREFIX} ${creditedHours}/${model.degreeRequiredHours} ש"ש.`]
     : [];
@@ -524,11 +530,29 @@ function isLegalIgnoringCurrentlyTakingReuse(
  * completeness (validateCandidate, exactly like rounds 19/20 already
  * required by hand) at EVERY state visited, not just a single followed path's
  * end.
+ *
+ * Codex review finding (PR #62, round 7): degreeHoursGate's completion check
+ * used to fire on ANY hours-increasing, still-complete candidate — e.g. a
+ * plan short by 5h with only one further-legal 4h elective would be reported
+ * "recoverable" even though placing it can never actually close the gap.
+ * `targetHours`, when supplied, is the computeDegreeHours() value a candidate
+ * must actually reach before a state counts as a genuine recovery rather than
+ * mere partial progress — used only by degreeHoursGate (the new blocking
+ * gate Codex's finding names), which must never suppress a blocking error
+ * over a partial-only recovery. Left undefined (falls back to the pre-
+ * existing "any legal, still-complete improvement" check) by the pre-existing
+ * toProposal "מיצית את כל הקורסים הזמינים" warning call site below — that
+ * warning's own, already Codex-hardened (21+ rounds, PR #41) semantics are
+ * deliberately about whether the visible catalog has ANY untried option left
+ * at all, not about full closure, and changing that here would risk an
+ * unrelated regression to already-shipped warning behavior outside this PR's
+ * scope.
  */
 function canRecoverMoreHours(
   finalState: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
+  targetHours?: number,
 ): boolean {
   const baselineHours = computeDegreeHours(finalState, model);
   const seen = new Set<string>([recoveryStateKey(finalState, model)]);
@@ -572,7 +596,7 @@ function canRecoverMoreHours(
       if (!isLegalIgnoringCurrentlyTakingReuse(candidate, model, pinnedHome)) continue;
       visited++;
 
-      if (computeDegreeHours(candidate, model) > baselineHours) {
+      if (targetHours != null ? computeDegreeHours(candidate, model) >= targetHours : computeDegreeHours(candidate, model) > baselineHours) {
         // Legality (ignoring the benign reuse marker) is already guaranteed
         // by the `continue` above — only completeness needs re-checking here.
         const rep = validateCandidate(candidate, model, pinnedHome);
@@ -735,11 +759,22 @@ function recoveryCandidateActions(state: PlanState, model: ConstraintModel): Pla
  * removes a placed course), so — unlike REPLACE/MOVE-then-ADD in the rollout
  * above — it can't itself un-satisfy a category or mandatory requirement,
  * and needs no completeness re-check.
+ *
+ * Codex review finding (PR #62, round 7): legality alone isn't recovery for
+ * degreeHoursGate (the new blocking gate) — approving a single unwanted
+ * elective whose hours don't close the remaining gap (e.g. a 4h elective
+ * against a 5h shortfall) isn't a genuine recovery either, the same bug class
+ * canRecoverMoreHours' own round-7 fix closes. `targetHours`, when supplied,
+ * is the computeDegreeHours() value the resulting state must actually reach.
+ * Left undefined by the pre-existing toProposal warning call site, for the
+ * same "don't touch already-shipped, 21+-round-hardened (PR #41) warning
+ * semantics" reason canRecoverMoreHours' own doc comment above explains.
  */
 function canRecoverViaUnwantedElective(
   finalState: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
+  targetHours?: number,
 ): boolean {
   const placedNow = new Set(placedCourseIds(finalState));
   return [...model.profiles].some(([id, p]) => {
@@ -753,7 +788,11 @@ function canRecoverViaUnwantedElective(
     if (model.currentlyPlannedCourseIds?.has(id)) return false;
     return addCourseActionsFor(model, id).some(a => {
       const next = applyMutation(finalState, a);
-      return next != null && isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome);
+      return (
+        next != null &&
+        (targetHours == null || computeDegreeHours(next, model) >= targetHours) &&
+        isLegalIgnoringCurrentlyTakingReuse(next, model, pinnedHome)
+      );
     });
   });
 }
@@ -963,6 +1002,12 @@ export function toProposal(
     report.legal &&
     report.disallowedPlaced.length === 0
   ) {
+    // Deliberately omits targetHours (the round-7 strict-closure check) here
+    // — this pre-existing warning's own semantics (21+ Codex rounds, PR #41)
+    // are about whether the visible catalog has ANY untried option left, not
+    // full closure; see canRecoverMoreHours'/canRecoverViaUnwantedElective's
+    // own doc comments for why that distinction matters and stays untouched
+    // outside degreeHoursGate.
     const recoverable =
       canRecoverViaUnwantedElective(finalState, model, pinnedHome) ||
       canRecoverMoreHours(finalState, model, pinnedHome);

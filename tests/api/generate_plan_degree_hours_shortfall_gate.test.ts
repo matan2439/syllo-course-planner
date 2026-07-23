@@ -114,10 +114,18 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.errors.length).toBe(0);
   });
 
-  test('3. a still-recoverable shortfall (a soft-avoided elective remains a real option) must NOT be blocked by this gate', async () => {
+  test('3. a still-recoverable shortfall (a soft-avoided elective can actually close the gap) must NOT be blocked by this gate', async () => {
+    // known_completed_hours=169: MAND(4)+FLU(4)+SOL(4)+169 = 181/185, exactly
+    // 4h short — SPARE's own 4h genuinely closes the gap to 185/185. Chosen
+    // deliberately (unlike an arbitrary/earlier known_completed_hours value)
+    // so this test's "recoverable" claim is mathematically true under the
+    // round-7 fix below: canRecoverViaUnwantedElective/canRecoverMoreHours
+    // must reach model.degreeRequiredHours exactly, not merely add *some*
+    // hours (round 7's own Codex finding — see those functions' doc comments
+    // — a smaller elective than the remaining gap is NOT a real recovery).
     const res = await run({
       program_id: 'test_program_gap_unwanted_2027',
-      plan_context: planContext(0),
+      plan_context: planContext(169),
       preferences: { unwanted_course_ids: ['SPARE'] },
       session_token: randomUUID(),
     });
@@ -125,6 +133,29 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.length).toBe(0);
+  });
+
+  test('3b. Codex-caught regression (round 7): a soft-avoided elective smaller than the remaining gap can NEVER fully close it — must still be blocked, not falsely reported recoverable', async () => {
+    // known_completed_hours=168: MAND(4)+FLU(4)+SOL(4)+168 = 180/185, 5h
+    // short — but SPARE (the only remaining catalog option) is only 4h, so
+    // even approving it as a risky elective caps the plan at 184/185,
+    // permanently 1h short (the catalog has nothing else). Before the fix,
+    // canRecoverViaUnwantedElective/canRecoverMoreHours returned true merely
+    // because SPARE was a legal, hours-adding action — never checking
+    // whether it (or any reachable sequence) could actually reach
+    // model.degreeRequiredHours — so this genuinely unrecoverable shortfall
+    // was reported blocked:false/errors:[]. Exact repro from Codex's own
+    // review comment on this PR.
+    const res = await run({
+      program_id: 'test_program_gap_unwanted_2027',
+      plan_context: planContext(168),
+      preferences: { unwanted_course_ids: ['SPARE'] },
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.errors.some((e: string) => e.includes('פער שעות תואר'))).toBe(true);
   });
 
   test('4. agent path (use_academic_decision_agent:true): validation.valid is honestly false, mainRecommendation/whyThisPlan route through the blocked branch, and the cause is named distinctly from overload guidance', async () => {
@@ -312,7 +343,13 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
             { course_id: 'SOL', name_he: 'מוצק', hours: 4, effective_allowed_semesters: ['year_4_semester_a', 'year_4_semester_b'] },
           ] },
         ],
-        total_hours_progress: { known_completed_hours: 0 },
+        // known_completed_hours=169 (not 0 — see test 3's own comment above,
+        // and round 7's own fix): MAND(4)+FLU(4)+SOL(4)+169=181/185, exactly
+        // 4h short, so SPARE's own 4h genuinely closes the gap — this test
+        // is about the currently-taking reuse-marker exclusion, not about
+        // round 7's separate "does recovery actually close the gap" fix, so
+        // it must use a mathematically real recovery, not merely a legal one.
+        total_hours_progress: { known_completed_hours: 169 },
         personal_status: { completed: [], currently_taking: [{ course_id: 'FLU' }] },
         mandatory_unplaced: [],
       },
@@ -362,7 +399,11 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
             { course_id: 'SOL', name_he: 'מוצק', hours: 4, effective_allowed_semesters: ['year_4_semester_a'] },
           ] },
         ],
-        total_hours_progress: { known_completed_hours: 0 },
+        // known_completed_hours=169 — same reason as test 9's own comment
+        // above (round 7's fix requires a mathematically real recovery, not
+        // merely a legal one): MAND(4)+FLU(4)+SOL(4)+169=181/185, exactly 4h
+        // short, closed exactly by SPARE's own 4h.
+        total_hours_progress: { known_completed_hours: 169 },
         personal_status: { completed: [], currently_taking: [] },
         mandatory_unplaced: [],
       },
