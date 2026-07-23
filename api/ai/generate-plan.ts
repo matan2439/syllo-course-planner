@@ -1423,24 +1423,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // individual hours — never more than the aggregate itself justifies, so it
   // can only close a gap the client's own numbers genuinely support, never an
   // unconditional escape hatch.
+  // Codex review finding (PR #62, round 15): the live buildPlanContext
+  // (semester_board_viewer.html) computes total_hours_progress.
+  // currently_planned_hours by summing currently_taking + planned entries
+  // AFTER filtering out any course already PLACED on the submitted board
+  // (`!placedIds.has(...)`) — the real, canonical caller's aggregate NEVER
+  // includes a placed course's hours to begin with. The previous
+  // model.profiles.has(id)-based "onBoardKnownHours" subtraction assumed
+  // the opposite (that the aggregate might double-count an in-catalog
+  // course) and applied that assumption uniformly to BOTH statuses,
+  // silently erasing real off-board credit whenever a genuinely PLACED
+  // currently_taking course happened to coexist with an unrelated,
+  // genuinely off-board one lacking per-course hours (Codex's repro: a 4h
+  // board-visible course + a 4h aggregate-only off-board one wrongly
+  // produced impliedUnknownOffBoardHours:0 instead of 4).
+  //
+  // The two statuses need DIFFERENT exclusion criteria, matching the two
+  // different credit paths each already has elsewhere in this function —
+  // collapsing them into one shared model.profiles.has(id) test (as before)
+  // is what caused this bug:
+  //  - currently_taking: rule 2a means the search can NEVER place one
+  //    itself, so "in catalog" and "actually placed" are genuinely
+  //    different states here. A PLACED one was never part of the frontend's
+  //    aggregate (exclude, subtract nothing). A NOT-placed one is already
+  //    credited via currentlyPlannedHours above (which also doesn't care
+  //    whether it's in-catalog, using currentlyTakingHoursFromContext as a
+  //    fallback) whenever either its catalog OR context hours are known —
+  //    subtract that same amount. Only a not-placed entry with NEITHER is
+  //    genuinely unclaimed.
+  //  - planned: the search CAN legitimately place an in-catalog one later
+  //    (e.g. to satisfy a category, like SOL in test 15b) — its hours will
+  //    be counted via report.degreeHours once the search does, an entirely
+  //    separate computation from anything here, so — per round 10's own
+  //    existing offBoardPlannedHours design — any in-catalog planned course
+  //    stays excluded regardless of its current placement state, to avoid
+  //    eventually double-counting once the search places it. Only an
+  //    off-catalog planned entry falls through to the same
+  //    known-context-hours-or-genuinely-unclaimed split as above.
   const totalCurrentlyPlannedHoursAggregate = effectivePlanContext?.total_hours_progress?.currently_planned_hours;
-  const currentlyTakingPlannedById = new Map<string, any>();
-  for (const c of [
-    ...(effectivePlanContext?.personal_status?.currently_taking ?? []),
-    ...(effectivePlanContext?.personal_status?.planned ?? []),
-  ]) {
-    if (c?.course_id != null && !currentlyTakingPlannedById.has(c.course_id)) currentlyTakingPlannedById.set(c.course_id, c);
-  }
   let impliedUnknownOffBoardHours = 0;
   if (typeof totalCurrentlyPlannedHoursAggregate === 'number') {
-    const entries = [...currentlyTakingPlannedById.values()];
-    const onBoardKnownHours = entries
-      .filter((c: any) => model.profiles.has(c.course_id))
-      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? 0), 0);
-    const offBoardKnownHours = entries
-      .filter((c: any) => !model.profiles.has(c.course_id) && typeof c?.hours === 'number')
-      .reduce((sum: number, c: any) => sum + c.hours, 0);
-    impliedUnknownOffBoardHours = Math.max(0, totalCurrentlyPlannedHoursAggregate - onBoardKnownHours - offBoardKnownHours);
+    const initiallyPlacedIds = new Set(placedCourseIds(initialState));
+    const currentlyTakingEntries = new Map<string, any>();
+    for (const c of effectivePlanContext?.personal_status?.currently_taking ?? []) {
+      if (c?.course_id != null) currentlyTakingEntries.set(c.course_id, c);
+    }
+    const plannedEntries = new Map<string, any>();
+    for (const c of effectivePlanContext?.personal_status?.planned ?? []) {
+      if (c?.course_id != null && !currentlyTakingEntries.has(c.course_id)) plannedEntries.set(c.course_id, c);
+    }
+    const knownHours = [...currentlyTakingEntries.values()]
+      .filter((c: any) => !initiallyPlacedIds.has(c.course_id) && (model.profiles.has(c.course_id) || typeof c?.hours === 'number'))
+      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0)
+      + [...plannedEntries.values()]
+        .filter((c: any) => model.profiles.has(c.course_id) || typeof c?.hours === 'number')
+        .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0);
+    impliedUnknownOffBoardHours = Math.max(0, totalCurrentlyPlannedHoursAggregate - knownHours);
   }
 
   let proposal: ReturnType<typeof toProposal>;

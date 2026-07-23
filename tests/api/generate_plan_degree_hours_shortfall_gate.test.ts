@@ -736,4 +736,55 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
     expect(res._body.blocked).toBe(false);
     expect(res._body.errors.length).toBe(0);
   });
+
+  test('19. Codex-caught regression (round 15): a placed currently-taking course must not erase unrelated off-board aggregate credit', async () => {
+    // The live buildPlanContext (semester_board_viewer.html) computes
+    // total_hours_progress.currently_planned_hours by summing
+    // currently_taking/planned entries AFTER filtering OUT any course
+    // already placed on the submitted board — the real aggregate NEVER
+    // includes a placed course's hours. Codex's exact repro: CUR_BOARD is a
+    // currently-taking course genuinely PLACED on the board (4h, known via
+    // its own personal_status.currently_taking[].hours), coexisting with an
+    // unrelated OFFBOARD_PLANNED course (personal_status.planned) whose
+    // per-course hours are missing from this payload but whose real 4h is
+    // reflected only in the aggregate. Before the round-15 fix, the
+    // model.profiles.has(id)-based "onBoardKnownHours" subtraction treated
+    // FLU's known 4h as if it were STILL part of the 4h aggregate
+    // (double-discounting it), leaving 0 credit for OFFBOARD_PLANNED even
+    // though the aggregate was already exclusively about it.
+    //
+    // Uses FLU (a real course in this fixture's board_json, unlike an
+    // invented id) as the placed currently-taking course — model.profiles
+    // is built from the server-side board_json, not plan_context, so an
+    // ad-hoc course embedded only in plan_context would never reach
+    // initialState at all (planContextToState skips any id
+    // !model.profiles.has). SOL is ALSO pre-placed client-side (not left for
+    // the search to place) — a separate, already-flagged, out-of-scope
+    // finding from an earlier round of this same PR notes PlannerWorker's
+    // own search can get stuck on unrelated actions whenever ANY
+    // currently-taking course is visibly placed on the board; pre-placing
+    // every requirement client-side keeps this test isolated to the
+    // aggregate-credit computation under test, not that separate search
+    // issue. MAND(4)+FLU(4)+SOL(4)=12h placed, known_completed_hours=169 →
+    // 181/185, exactly 4h short — closed ONLY by OFFBOARD_PLANNED's real
+    // (aggregate-only) 4h.
+    const ctx: any = planContext(169);
+    ctx.semesters[2].courses.push({ course_id: 'FLU' }, { course_id: 'SOL' });
+    ctx.personal_status = {
+      completed: [],
+      currently_taking: [{ course_id: 'FLU', hours: 4 }],
+      planned: [{ course_id: 'OFFBOARD_PLANNED' }],
+    };
+    ctx.total_hours_progress = { known_completed_hours: 169, currently_planned_hours: 4 };
+    const res = await run({
+      program_id: PROGRAM_ID,
+      plan_context: ctx,
+      preferences: {},
+      session_token: randomUUID(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.requirements_status.every((r: any) => r.satisfied)).toBe(true);
+    expect(res._body.blocked).toBe(false);
+    expect(res._body.errors.length).toBe(0);
+  });
 });
