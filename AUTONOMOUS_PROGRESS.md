@@ -4,11 +4,151 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-22, session on branch `claude/youthful-tesla-bybfn4`
-(PR #60 merged as `0e4ec0d` — see below; supersedes the PR #58 entry as the
+_Last updated: 2026-07-23, session on branch `claude/youthful-tesla-cihf6a`
+(PR #62 merged as `1a2fda2` — see below; supersedes the PR #60 entry as the
 latest completed milestone)._
 
-## Latest session — PR #60 merged: prerequisite-driven placement delay never explained, found via a fresh Agent Diagnosis Loop
+## Latest session — PR #62 merged: unrecoverable degree-hours shortfall silently reported as a soft warning instead of a blocking error, plus 20 real rounds of Codex-caught recovery-probe correctness gaps
+
+Standing audit (scheduled autonomous run): this session's assigned branch
+(`claude/youthful-tesla-cihf6a`) had zero commits of its own and was already
+level with `origin/main`'s tip — `main` remains ~190+ commits behind
+`ui/frontend-modernization`, unchanged, full reconciliation still not done
+(see prior entries). At session start, PR #62 (this entry's subject) was
+already open, mid-review, from a session provisioned earlier the same day —
+picked it up per the anti-duplication/queue-resolution rule (resolve the
+oldest in-flight item before starting anything new) rather than beginning a
+fresh Agent Diagnosis Loop pass. PR #14 (Decision capability) remained the
+only other open PR, correctly still parked per the standing D-stacking-cap
+precedent; issues #15/#18/#20/#21 reconfirmed unchanged, zero new human
+comments. Production reconfirmed via the Vercel API — `tau-course-planner`
+still pinned at `26500d4` ("Merge PR #11"), unchanged since every check going
+back to PR #27; every deployment's `creator`/`meta.actor` shape confirms
+deploys remain one-off CLI `vercel --prod` invocations with no Git
+integration on any branch (`get_runtime_errors` came back `403 Forbidden`
+this session — a permissions gap on that specific endpoint, not evidence of
+either a healthy or unhealthy production state, so not treated as a status
+signal either way).
+
+**The bug** (found via a fresh Agent Diagnosis Loop pass targeting
+blocked/error-state honesty, an area no prior session had exercised): when a
+plan satisfies every mandatory course and elective-category requirement, is
+otherwise fully legal, but the visible catalog is genuinely exhausted before
+reaching `model.degreeRequiredHours`, `generate-plan.ts` already computed
+this internally (the pre-existing "מיצית את כל הקורסים הזמינים" `warnings_he`
+message) but only ever surfaced it as a **soft warning** — never a
+`blockingErrors` entry. Concretely reproduced: a 100h-target fixture against
+a 12h catalog returned `blocked:false`, `academicDecision.validation.valid:
+true`, *and* `academicDecision.explanation.whyThisPlan[0]` stating outright
+"התוכנית אינה מלאה עדיין" (the plan is not yet complete) — a machine-visible
+self-contradiction inside one API response, directly violating this repo's
+own "no incomplete plan may be presented as complete" policy. Same bug class
+as PR #48's `legalityGate` and PR #41's structural-gap disclosure, but the
+one sibling case (of disallowedGate/annualCompletenessGate/legalityGate/
+missingMandatoryGate) that had never gotten its own gate.
+
+**Fix**: new `degreeHoursGate` (`generate-plan.ts`) independently re-derives
+the same unrecoverability condition the existing warning already computed,
+mirroring every other gate's "re-derive from the final placed set" pattern.
+New `DEGREE_HOURS_SHORTFALL_ERROR_PREFIX` (`planner_validate.ts`) gives
+`academic_decision_runtime.ts` a distinct cause-attribution instead of
+folding into the generic overload catch-all, with its own `suggestedNextActions`
+("expand the catalog/planning window or consult an advisor" — neither
+"reduce load" nor "rebuild" can fix a catalog-side shortfall).
+
+**Then 20 real, concrete, RED-verified Codex rounds followed**, each closing
+a genuine gap in the recovery-probe logic that decides whether a shortfall is
+truly unrecoverable (i.e. safe to hard-block) — every one reproduced with a
+specific numeric scenario before being fixed, none rubber-stamped:
+benign currently-taking-course-on-board reuse wrongly suppressing the gate
+(round 1); the same course's hours double-counted, masking a genuine
+shortfall (round 2); the recovery rollout itself having no currently-taking
+awareness at all (round 3, widened round 5); the rollout's state
+reconstruction dropping empty-semester keys that `applyMutation` needs
+(round 4); the blocked-branch template suggesting a rebuild for a cause a
+rebuild can't fix (round 5); recovery accepted on "any hours added" instead
+of actually reaching the target (round 7); needing to search *combinations*
+of soft-avoided electives, not just one at a time (round 8); needing to mix
+soft-avoided and ordinary actions in one sequence (round 9); off-board
+`personal_status.planned` hours never credited (round 10); the coarse
+`total_hours_progress.currently_planned_hours` aggregate never credited when
+per-course hours are missing (round 11); that credit applied as an
+unconditional skip instead of a magnitude-bounded amount (round 12); the
+generic completion warning and agent rationale still using uncredited raw
+hours even after the gate itself was fixed (round 13); a decisive single-step
+recovery candidate starved by 200+ smaller ones ahead of it in enumeration
+order (round 14); `REPLACE_COURSE` always illegal for an `is_annual` inId,
+and no `REMOVE_COURSE` candidate existing at all for "free this slot for
+something bigger" recoveries (rounds 22/24 per the code's own inline
+numbering); and, in the final two rounds, the off-board aggregate-credit
+subtraction double-discounting an already-*placed* currently-taking course
+(round 15) and then an already-placed `personal_status.planned` course
+(round 16) — the live frontend's own placed-id filter (`semester_board_
+viewer.html:2496-2498`) applies identically to both `personal_status`
+arrays, and the fix had only reached one of them.
+
+**One finding pushed back on rather than fixed blind**: a final review
+comment (no concrete repro given, unlike all 20 prior ones) raised that the
+hours-delta candidate sort (round 14's own fix) could in principle starve a
+`REMOVE_COURSE` candidate the same way it once starved small ADDs, since
+REMOVE always sorts last (non-positive delta). Replied with the technical
+tradeoff rather than iterating further: this is an irreducible property of
+any finite-budget heuristic search asked to prove a negative ("no legal path
+exists") — already stacked with four independent mitigations (best-first
+frontier expansion, the hours-delta sort itself, illegal candidates never
+consuming budget, and the REMOVE_COURSE inclusion this exact concern is
+about) — and, critically, the failure direction is the *safer* one
+(over-conservative false-positive block, not the "invalid plan presented as
+complete" direction this whole PR exists to close). Left the thread
+unresolved rather than dismissing it, per this routine's own "reply with
+evidence, leave unresolved if uncertain" rule — a concrete fixture would
+still get fixed the same RED-verified way as every other finding here.
+
+**Final state**: CI green (3/3: Python tests, Next.js build, TypeScript API
+tests) on the final commit, all 17 review threads resolved with evidence (16
+by the prior session, the last one — the round-16 planned-course double-
+discount — resolved this session once its fix landed), `mergeable_state:
+clean`. **Merged by the human product owner as `1a2fda2`** (this session was
+subscribed to PR activity and handled the final round's Codex finding and
+thread resolution; the merge notification itself arrived as a webhook event,
+auto-unsubscribed per the tooling's own notice). Full API suite at merge
+time: 86/86 suites, 1349/1349 tests, zero regressions; `tsc --noEmit` clean.
+
+**Classification: C** (correctness/honesty — closes a reproduced,
+machine-verifiable in-product self-contradiction, same pattern as PR #48;
+not a new user-facing explanation the way PR #58/#60 were).
+
+**Rolling-three check: (58, 60, 62) = A/A/C — compliant** (3 of 3 are
+A/B/C; 2 of 3 are A/B). No forced classification requirement on the
+immediate next milestone.
+
+**Production check**: still pinned at `26500d4` (PR #11) — unchanged, same
+standing Vercel deploy-mechanism blocker every session since PR #27 has
+confirmed. PR #62 (along with every other merged fix since PR #11) joins the
+same growing merged-but-not-deployed backlog.
+
+**Standing blockers, unchanged, not re-investigated further this session (no
+new evidence since last check)**: issue #15/#18 (PR #14 D-stacking merge
+decision, Vercel `tau-course-planner` vs `web` canonical-project question),
+issue #20 (386/386 `jest.ui.config.js` failures, single root cause — missing
+gitignored fixture, needs a human sign-off on a sanitized replacement), issue
+#21 (dead-code delete-vs-restore call). All confirmed still open, zero new
+human comments.
+
+**Exact next action for the next session**: PR #62 is merged and closed — do
+not reopen it or re-address it. Rolling-three window (58, 60, 62) = A/A/C is
+compliant with no forced constraint on the next pick. Run a fresh **Agent
+Diagnosis Loop** against the real `generate-plan.ts` handler (both paths)
+targeting areas still not yet exercised by any session: dual-semester/multi-
+alternative comparison PLAN QUALITY itself (distinct from "is a comparison
+mechanism reachable at all," already answered clean by the PR #60 session),
+simulate-then-apply user flows (once/if a real one ever becomes reachable —
+currently confirmed not to exist), and accessibility/error-state UI behavior
+for blocked plans. Standing human-decision blockers above (issues
+#15/#18/#20/#21) remain untouched pending a human call; this does not
+override the standing P0/correctness-preemption rule.
+
+## Prior session — PR #60 merged: prerequisite-driven placement delay never explained, found via a fresh Agent Diagnosis Loop
 
 Standing audit (scheduled autonomous run): session branch `claude/youthful-tesla-bybfn4`
 was, again, the same recurring mistake several prior sessions have had to
