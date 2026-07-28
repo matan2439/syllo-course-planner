@@ -83,6 +83,25 @@ already-fixed disallowed/annual/legality/missing-mandatory/degree-hours
 gates, this time for a silently-dropped preference rather than a dropped
 requirement).
 
+**Known related gap PR #65 does NOT fix (real Codex finding on this docs PR,
+#66 — verified against the code, not taken on faith)**: PR #65 only changed
+`PlannerWorker.step()`, the greedy path `generate-plan.ts` uses by default.
+The `AI_USE_AGENTIC_PLANNER=true` path (`PlannerAgent` + `planner_search_beam.ts`)
+has the identical predicate gap one level down — `TauPolicyProvider.isGoal`
+(`planner_policy.ts`) is the same bare degree/mandatory/category/legality/
+annual completion check, with zero `wantedCourseIds` awareness, and
+`planner_search_beam.ts`'s loop terminates (`terminationReason =
+'goal_reached'`) the instant every beam state satisfies it — so a wanted
+course can still be silently dropped on that path. Confirmed this session
+that `AI_USE_AGENTIC_PLANNER` is not set anywhere in this repo's production
+config (only referenced from test files and `generate-plan.ts`'s own
+`process.env` read) — consistent with every prior session's finding that
+this path is unreachable in production — so this is a real, currently
+non-user-facing gap, not a live incident. Left unfixed here to keep this
+docs-only PR's diff to the progress file alone; tracked explicitly below so
+the next session doesn't mistake PR #65 for having closed the whole bug
+class.
+
 **Rolling-three check: (60, 62, 65) = A/C/C — compliant** (all three are
 A/B/C; PR #60 is the A/B). **Net: positions 62 and 65 are both C, so the
 immediate next milestone should be A or B** — picking another C next would
@@ -113,10 +132,18 @@ gitignored fixture, needs a human sign-off on a sanitized replacement), issue
 human comments.
 
 **Exact next action for the next session**: PR #65 is merged and closed — do
-not reopen it or re-address it. Rolling-three window (60, 62, 65) = A/C/C is
-compliant, but positions 62 and 65 are both C — **the next milestone selected
-should be A or B**, not another C. Run a fresh **Agent Diagnosis Loop**
-against the real `generate-plan.ts` handler (both paths) if no A/B candidate
+not reopen it or re-address the greedy-path (`PlannerWorker.step()`) fix
+itself. However, the beam-search/`AI_USE_AGENTIC_PLANNER` analog of the same
+bug (see "Known related gap" above) is genuinely NOT fixed — a candidate for
+a future session once/if that path ever becomes production-reachable, or as
+a proactive correctness fix regardless (mirroring this bug class's own
+"fix it even before it's the highest-traffic path" precedent from PR #48).
+Rolling-three window (60, 62, 65) = A/C/C is compliant, but positions 62 and
+65 are both C — **the next milestone selected should be A or B**, not
+another C (the beam-search fix, being the same bug class, would itself be
+C — so it should not be the very next pick unless a P0/correctness emergency
+overrides the rolling-window preference). Run a fresh **Agent Diagnosis
+Loop** against the real `generate-plan.ts` handler (both paths) if no A/B candidate
 is otherwise picked up from the open queue; standing human-decision blockers
 above (issues #15/#18/#20/#21) remain untouched pending a human call, and
 this does not override the standing P0/correctness-preemption rule.
