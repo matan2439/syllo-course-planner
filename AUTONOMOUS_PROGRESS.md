@@ -4,11 +4,124 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-23, session on branch `claude/youthful-tesla-cihf6a`
-(PR #62 merged as `1a2fda2` — see below; supersedes the PR #60 entry as the
+_Last updated: 2026-07-28, session on branch `claude/youthful-tesla-d8p4o7`
+(PR #65 merged as `8d4b5f5` — see below; supersedes the PR #62 entry as the
 latest completed milestone)._
 
-## Latest session — PR #62 merged: unrecoverable degree-hours shortfall silently reported as a soft warning instead of a blocking error, plus 20 real rounds of Codex-caught recovery-probe correctness gaps
+## Latest session — PR #65 merged: search stopped the instant bare goal was met, silently dropping a still-legal wanted course
+
+Standing audit (scheduled autonomous run): production/branch/PR/CI/Codex/issue
+state inspected first, per this routine's own start-of-session checklist.
+`main` remains far behind `ui/frontend-modernization` (full reconciliation
+still not done — unchanged, no new evidence this session, not re-investigated
+further). Two open PRs existed: **#14** (Decision capability) — reconfirmed
+still correctly parked per the standing D-stacking-cap precedent (issue #18);
+left untouched, no new evidence changed that call — and **#65** (this entry's
+subject), already opened earlier the same day by a prior session, one commit
+deep, with CI still pending and only its first commit Codex-reviewed. Picked
+up #65 per the anti-duplication/queue-resolution rule (resolve the oldest
+in-flight item before starting anything new) rather than beginning a fresh
+Agent Diagnosis Loop pass. Issues #15/#18/#20/#21 reconfirmed unchanged, zero
+new human comments since the last check.
+
+**The bug** (found by the prior session's fresh Agent Diagnosis Loop pass,
+targeting dual-semester/multi-alternative **plan quality itself** — the area
+every recent session's "exact next action" had flagged as not yet exercised):
+`PlannerWorker.step()` (`api/ai/planner_worker.ts`) began with an
+unconditional `if (this.isGoalReached()) return this.recordStop(...)`.
+`isGoalReached()` reflects only bare degree-hours/mandatory/category/
+legality/annual completion — it has zero awareness of
+`model.wantedCourseIds` or of any further balance improvement. The instant
+that bare goal became true, the loop stopped for good, even though
+`enumerateActions`' group 3 (wanted courses) and group 5 (balance moves) are
+unconditional and can still legally, strictly improve the plan's score at
+that point. Reproduced against the real `mechanical_engineering_2027` board
+fixture: a student with `preferences.wanted_course_ids: ['0512-2508']` (a
+real dual-offered elective) got a plan back reporting `blocked:false`,
+"valid and complete," while the wanted course was silently never placed —
+the same "invalid/incomplete-in-effect plan reported as complete"
+self-contradiction class this track exists to close (same family as PR #48's
+`legalityGate`, PR #62's `degreeHoursGate`), this time for a dropped
+preference rather than a dropped requirement. Not gated behind any opt-in
+flag — reachable on `generate-plan.ts`'s default `worker.run(500,'greedy')`
+call and the beam-search fallback alike.
+
+**Fix**: `step()` no longer exits early on `isGoalReached()`; it always falls
+through to the same Reason → Act → Validate machinery and only stops once the
+existing terminal "no legal action advances the plan" check finds nothing
+left to improve. Can't reintroduce runaway extra-hour bloat: `g1` (degree
+completion) is capped at a reservation budget, and group 4 (arbitrary
+elective fill) stays gated on `degreeHours < target`, so neither fires
+post-goal — only wanted-course and balance-move actions become newly
+reachable, still filtered through the existing legality/hard-cap validation.
+
+**One real Codex finding on the initial commit, fixed this session**: the
+`run(maxSteps)` fallback recorded a truncation STOP only when
+`!isGoalReached()` — correct before this fix (since `step()` used to STOP
+the instant bare goal was met), but exactly wrong now that post-goal
+optimization can consume the remaining step budget: a run that exhausts
+`maxSteps` mid-optimization exited silently, with no STOP recorded and no
+signal that further legal improvements existed and were never attempted.
+Fixed (`006aad6`) by tracking whether `step()` itself ever produced a STOP,
+rather than inferring it from the bare-goal predicate. New regression test
+RED-verified against the pre-fix code first (trace ended on `ADD_COURSE`
+with no STOP). This session requested a fresh Codex review of the fix commit
+(the first round had only reviewed the initial commit) before merging, per
+the standing "Codex must review the latest commit" gate — round 2 came back
+clean ("Didn't find any major issues").
+
+**Final state**: CI green (3/3: Python tests, Next.js build, TypeScript API
+tests) on the final commit, `mergeable_state: clean`, the one review thread
+resolved with evidence. Full API suite at merge time: **86/86 suites,
+1351/1351 tests** (+2 across both commits), zero regressions; `tsc --noEmit`
+clean. `git diff --stat`: `api/ai/planner_worker.ts` (+29/-4 for the base
+fix, plus the maxSteps-truncation fix) + its test file only — no UI changes,
+no other planner files touched. **Merged as `8d4b5f5`.**
+
+**Classification: C** (correctness/honesty — same bug class as the
+already-fixed disallowed/annual/legality/missing-mandatory/degree-hours
+gates, this time for a silently-dropped preference rather than a dropped
+requirement).
+
+**Rolling-three check: (60, 62, 65) = A/C/C — compliant** (all three are
+A/B/C; PR #60 is the A/B). **Net: positions 62 and 65 are both C, so the
+immediate next milestone should be A or B** — picking another C next would
+produce (62, 65, next) = C/C/C, the same non-compliant pattern already
+avoided once before at the (53, 56) juncture. Candidates already on record:
+naming a real production consumer for one of the unwired Simulation/
+Persistence/Decision capabilities (PRs #12/#13/#14) and wiring it in (B), or
+a UI improvement to how `academicDecision.explanation`/blocked-plan states
+are surfaced (A) — the diagnosis pass this session inherited also reconfirmed
+a minor, not-yet-fixed accessibility gap in the blocked-plan panel
+(`app/web/semester_board_viewer.html`: no `aria-live`/focus-move on
+appearance) as one concrete A-classified candidate.
+
+**Production check**: not re-verified via the Vercel API this session (no
+new evidence prompting a re-check; standing pin at `26500d4`, "Merge PR #11",
+unchanged since every session's check going back to PR #27). PR #65 (along
+with every other merged fix since PR #11) joins the same growing
+merged-but-not-deployed backlog — this remains the standing, previously
+human-flagged (issue #18) deploy-mechanism blocker, not re-litigated this
+session absent new evidence.
+
+**Standing blockers, unchanged, not re-investigated further this session (no
+new evidence since last check)**: issue #15/#18 (PR #14 D-stacking merge
+decision, Vercel `tau-course-planner` vs `web` canonical-project question),
+issue #20 (386/386 `jest.ui.config.js` failures, single root cause — missing
+gitignored fixture, needs a human sign-off on a sanitized replacement), issue
+#21 (dead-code delete-vs-restore call). All confirmed still open, zero new
+human comments.
+
+**Exact next action for the next session**: PR #65 is merged and closed — do
+not reopen it or re-address it. Rolling-three window (60, 62, 65) = A/C/C is
+compliant, but positions 62 and 65 are both C — **the next milestone selected
+should be A or B**, not another C. Run a fresh **Agent Diagnosis Loop**
+against the real `generate-plan.ts` handler (both paths) if no A/B candidate
+is otherwise picked up from the open queue; standing human-decision blockers
+above (issues #15/#18/#20/#21) remain untouched pending a human call, and
+this does not override the standing P0/correctness-preemption rule.
+
+## Prior session — PR #62 merged: unrecoverable degree-hours shortfall silently reported as a soft warning instead of a blocking error, plus 20 real rounds of Codex-caught recovery-probe correctness gaps
 
 Standing audit (scheduled autonomous run): this session's assigned branch
 (`claude/youthful-tesla-cihf6a`) had zero commits of its own and was already
