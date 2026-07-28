@@ -132,6 +132,44 @@ describe('PlannerWorker — goal-driven convergence', () => {
     expect(Math.max(...Object.values(w.getState().semesterLoads))).toBeLessThanOrEqual(26);
   });
 
+  it('keeps searching past bare degree/mandatory/category completion to place a still-legal wanted course, instead of stopping and silently dropping it', () => {
+    // degreeRequiredHours (9) is exactly MAND(5) + one fluids candidate(4) —
+    // the bare goal (degree hours + mandatory + category, no over-cap, no
+    // incomplete annual) becomes true the instant one of FLU1/FLU2 is placed,
+    // with WANTED never having been touched. WANTED is legal in every known
+    // semester and, once added, strictly improves the preferences goal (g5)
+    // without regressing any higher-priority goal (g1 stays capped at the
+    // budget, g2a/g2b/g3/g4 unaffected) — a real, reachable improvement the
+    // search must not stop short of just because the bare goal already holds.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('FLU2', profile('FLU2', { category_id: 'fluids', hours: 4 }));
+    profiles.set('WANTED', profile('WANTED', { hours: 4, is_wanted: true }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS,
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1', 'FLU2'] }],
+      degreeRequiredHours: 9, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(),
+      wantedCourseIds: new Set(['WANTED']),
+    };
+    const w = new PlannerWorker(m);
+    w.run();
+    expect(w.isGoalReached()).toBe(true);
+    expect(w.getState().degreeHours).toBeGreaterThanOrEqual(9);
+    expect(w.getState().mandatoryPlaced).toBe(1);
+    expect(w.getState().categoriesSatisfied).toBe(1);
+    expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+    expect(Math.max(...Object.values(w.getState().semesterLoads))).toBeLessThanOrEqual(26);
+  });
+
   it('places a hard-but-required course rather than stopping short (completion over difficulty, test 6)', () => {
     // EASY alone (4h) cannot reach the 8h target; HARD (difficulty 5) is required
     // to complete. High difficulty must never block a needed placement.
