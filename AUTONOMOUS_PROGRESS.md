@@ -92,7 +92,7 @@ already-fixed disallowed/annual/legality/missing-mandatory/degree-hours
 gates, this time for a silently-dropped preference rather than a dropped
 requirement).
 
-**Known related gaps PR #65 does NOT fix (two real Codex findings on this
+**Known related gaps PR #65 does NOT fix (three real Codex findings on this
 docs PR, #66 — both verified against the code, not taken on faith, before
 acting):**
 
