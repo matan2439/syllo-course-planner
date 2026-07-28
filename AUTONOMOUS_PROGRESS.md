@@ -135,7 +135,8 @@ acting):**
    unknown how often real models exhibit either variant in practice. Filed as
    **issue #67** (now corrected twice) with this precise condition and a
    suggested repro-first approach, rather than fixed inline — this docs PR's
-   diff stays scoped to `AUTONOMOUS_PROGRESS.md`. **Downgraded from the
+   diff stays docs-only, across both `AUTONOMOUS_PROGRESS.md` and
+   `.remember/current.md`, no product code touched. **Downgraded from the
    initial P0/P1 label**: per Codex's correction, an unverified, conditional, model-dependent
    preference-quality gap should not automatically preempt the rolling-
    classification-window preference below without production reproduction
