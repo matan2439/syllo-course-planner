@@ -318,9 +318,22 @@ export class PlannerWorker {
 
   /** One loop iteration. Returns the action taken, or the STOP action when the loop ends. */
   step(by: 'greedy' | 'llm' = 'greedy'): PlannerAction | null {
-    if (this.isGoalReached()) {
-      return this.recordStop('המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.');
-    }
+    // isGoalReached() is NOT an early-exit here: it only reflects bare
+    // degree/mandatory/category/legality/annual completion, with zero
+    // awareness of model.wantedCourseIds or of any further balance
+    // improvement (see its own docstring) — enumerateActions' group 3
+    // (wanted courses) and group 5 (balance moves) are unconditional and
+    // stay reachable/beneficial even after that bare goal already holds.
+    // Stopping the instant it flips true — as this used to do — meant a
+    // still-legal, still-improving wanted-course placement was silently
+    // never even attempted, while the response nonetheless reported the
+    // plan as complete: a real self-contradiction reproduced against the
+    // real greedy search (see tests/api/planner_worker.test.ts, "keeps
+    // searching past bare degree/mandatory/category completion"). The loop
+    // now always falls through to the same Reason/Act/Validate machinery
+    // below and only stops once the terminal "no advancing action" check
+    // further down finds nothing left to legally improve — bare-goal status
+    // only changes which of the two STOP messages that check records.
 
     // Completing a partially-placed is_annual course is a structural
     // correctness repair (the plan is invalid until every span is filled),
@@ -431,18 +444,39 @@ export class PlannerWorker {
       if (res.accepted) return res.action;
     }
 
-    return this.recordStop('לא נמצאה פעולה חוקית שמשפרת את התוכנית או את התוצאה הסופית הניתנת להשגה.');
+    // The bare goal (isGoalReached()) may or may not hold at this point —
+    // convergence (no further legal action advances the plan) is the real
+    // stop condition either way, but the message should still say so
+    // accurately: "complete" only when it actually is.
+    return this.recordStop(
+      this.isGoalReached()
+        ? 'המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.'
+        : 'לא נמצאה פעולה חוקית שמשפרת את התוכנית או את התוצאה הסופית הניתנת להשגה.',
+    );
   }
 
   /** Run the loop to completion. */
   run(maxSteps = 500, by: 'greedy' | 'llm' = 'greedy'): void {
     for (let i = 0; i < maxSteps; i++) {
       const a = this.step(by);
-      if (!a || a.action === 'STOP') return;
+      if (!a) return;
+      if (a.action === 'STOP') return;
     }
-    if (!this.isGoalReached()) {
-      this.recordStop(`לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`);
-    }
+    // The for-loop ran out of iterations without step() itself ever recording
+    // a STOP — i.e. every one of the maxSteps iterations was a real accepted
+    // action. Since step() no longer exits the instant the bare goal is met
+    // (post-goal wanted-course/balance optimization keeps taking legal
+    // actions), isGoalReached() being true here does NOT mean nothing was
+    // left to do — it can equally mean the budget ran out mid-optimization,
+    // with further legal improvements never attempted. Always record the
+    // truncation explicitly (Codex finding on PR #65: silently staying quiet
+    // just because the bare goal already held concealed that case), worded
+    // for whichever one actually applies.
+    this.recordStop(
+      this.isGoalReached()
+        ? `הגעה למגבלת הצעדים (maxSteps: ${maxSteps}) תוך כדי שיפור נוסף מעבר למטרה הבסיסית (למשל שיבוץ קורסים מבוקשים או איזון עומס) — ייתכן שנותרו שיפורים חוקיים נוספים שלא בוצעו.`
+        : `לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`,
+    );
   }
 
   /**
