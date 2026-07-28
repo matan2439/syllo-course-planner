@@ -1,5 +1,47 @@
 # Current — read this first
 
+## 🛑 Release-gate re-check: PR queue confirmed resolved (only PR #14, parked); deploy still blocked, now directly reconfirmed via live Vercel MCP access (2026-07-28, autonomous scheduled run)
+
+Scheduled run under an external task prompt with an explicit "CURRENT RELEASE
+GATE — AUTHORITATIVE" directive: pause all roadmap work, resolve the open
+PR/branch queue, deploy a verified release, or — if deploy access is
+unavailable — record the single external blocker and stop before deploying.
+
+**Queue**: exactly one open PR, **#14** (Decision capability), reconfirmed
+correctly parked (D-classified, no production consumer, untouched — same
+precedent every session since issue #18). No other open PR or competing
+branch exists; the checkpoint hints in this session's own task prompt (citing
+a since-merged PR #53 as "the latest open implementation") were stale and
+did not match live GitHub state — verified directly rather than assumed.
+
+**Deploy blocker, now directly confirmed rather than inferred**: this
+session had live Vercel MCP tool access (a first — prior sessions had none).
+`tau-course-planner`'s `latestDeployment` is still `gitCommitSha: 26500d4`
+("Merge PR #11"), `target: production` — unchanged since PR #27 first
+flagged this, 5+ sessions ago. Every one of the last 20 deployments (via
+`list_deployments`) was created by a `claude-code_*_agent` actor doing a
+manual CLI-style push, never a git-triggered build. Decisively: `get_project`
+returns **no `link` field** on either `tau-course-planner` or `web` —
+Vercel's API only populates that when real Git integration exists, so its
+absence is definitive proof neither project is Git-linked. No available MCP
+tool can configure that link (`list_projects`/`get_project`/
+`list_deployments`/`get_deployment` are read-only; `deploy_to_vercel` does a
+raw file-tree upload with no git linkage, the same tradeoff every prior
+session declined without an explicit human decision — declined again here,
+since it would break the release gate's own "confirm the exact production
+commit after deployment" requirement).
+
+**Release candidate**: `ui/frontend-modernization` HEAD (`0dc09f9`, PR #69's
+merge) — already CI-green, ready to deploy the moment Git integration exists.
+
+**Exact next action, unchanged**: a human needs to either (a) link the
+`matan2439/syllo-course-planner` repo to the `tau-course-planner` Vercel
+project (Project Settings → Git), with `ui/frontend-modernization` (later
+`main`, once branch reconciliation completes) as the production branch, or
+(b) explicitly authorize a `deploy_to_vercel` raw-upload deploy as an interim
+measure. No autonomous session can make that call. No code merged, no
+roadmap work started this session, per the release gate's explicit pause.
+
 ## ✅ PR #66 merged: docs recording PR #65's merge; queue resolved to PR #14 (parked); deploy blocker re-confirmed unchanged (2026-07-28, autonomous scheduled run)
 
 Scheduled run under an external task prompt (from the human operator, not
