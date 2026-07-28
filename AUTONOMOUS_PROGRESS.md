@@ -44,10 +44,10 @@ self-contradiction class this track exists to close (same family as PR #48's
 `legalityGate`, PR #62's `degreeHoursGate`), this time for a dropped
 preference rather than a dropped requirement. Reachable on `generate-plan.ts`'s
 greedy `worker.run(500,'greedy')` call (used when no model is configured, or
-in dev mode) and the beam-search fallback alike — **but see the "Known
-related gap" section below: the actual default production path when a model
-IS configured (`LlmOrchestrator`, likely the real steady state) is a
-different, NOT-yet-fixed gap, filed as issue #67.**
+in dev mode) and the beam-search fallback alike — **see the "Known related
+gaps" section below for the `LlmOrchestrator` path's own, narrower, unverified
+version of this gap (issue #67, downgraded from an initial overclaim after a
+Codex correction).**
 
 **Fix**: `step()` no longer exits early on `isGoalReached()`; it always falls
 through to the same Reason → Act → Validate machinery and only stops once the
@@ -96,31 +96,38 @@ requirement).
 docs PR, #66 — all three verified against the code, not taken on faith, before
 acting):**
 
-1. **[Filed as issue #67 — the more important one]** PR #65 only changed
-   `PlannerWorker.step()`. But `generate-plan.ts`'s actual default branch,
-   whenever a model is configured (`resolveModel()` finds a provider API key)
-   and the app is not in dev mode, calls `LlmOrchestrator`, NOT
-   `worker.run(500,'greedy')` (`generate-plan.ts:1529-1532`). `isDevMode()`
-   (`course-planner.ts:197-200`) always returns `false` when
-   `VERCEL_ENV === 'production'` — so in real production, `useLlm` is true
-   whenever any provider key is configured, the expected steady state for
-   this product. `LlmOrchestrator.run()` (`planner_orchestrator.ts:52-78`)
-   only falls back to the deterministic finishing pass when
-   `!worker.validateCandidate().valid` — and `validateCandidate()`'s `valid`
-   flag (confirmed by reading it) is legality + degree/mandatory/category
-   completeness ONLY, with zero `wantedCourseIds` awareness. So if the model
-   reaches bare-complete and stops calling tools before placing every wanted
-   course, nothing catches it — the same user-facing symptom PR #65 closed
-   for the greedy path, still open on the path most real production traffic
-   likely takes. Behavior-dependent on the LLM (not 100%-deterministic like
-   PR #65's bug was), but a real gap with no deterministic backstop. Filed as
-   **issue #67** with full root-cause detail and a suggested fix direction,
-   rather than fixed inline here — this docs PR's diff is meant to stay
-   scoped to `AUTONOMOUS_PROGRESS.md`, and this needs its own reproduction
-   against a mocked `LlmOrchestrator` before a real fix. **Flagged as
-   P0/P1-priority**: per this routine's own rules, a correctness finding on
-   the actual default production path should take priority over the
-   rolling-classification-window preference below.
+1. **[Filed as issue #67 — downgraded after a real Codex finding on this
+   docs PR corrected the initial P0/P1 severity claim, see below]** PR #65
+   only changed `PlannerWorker.step()`. `generate-plan.ts`'s actual default
+   branch, whenever a model is configured and the app is not in dev mode,
+   calls `LlmOrchestrator`, NOT `worker.run(500,'greedy')` directly
+   (`generate-plan.ts:1529-1532`; `isDevMode()` always returns `false` under
+   `VERCEL_ENV=production`). `LlmOrchestrator.run()`'s OWN outer fallback
+   (`planner_orchestrator.ts:74-76`) only re-runs the deterministic loop when
+   `!worker.validateCandidate().valid`, which has zero `wantedCourseIds`
+   awareness. **However — verified after a Codex finding on this docs PR
+   correctly pushed back on the initial severity claim — the LLM's `tools`
+   include `finalize_plan` (`planner_tools.ts:82-95`), whose `execute()`
+   calls `worker.repair()`, which itself calls `this.run(500,'greedy')`: the
+   SAME fixed post-goal loop PR #65 patched.** The system prompt
+   (`planner_orchestrator.ts`'s `DEFAULT_SYSTEM`) explicitly instructs the
+   model to finish by calling `finalize_plan` ("סיים בקריאה ל-finalize_plan"),
+   so the normal, designed flow already gets PR #65's fix on this path too.
+   The residual gap is narrower than first stated: it's reachable **only**
+   if the LLM's own tool-calling loop ends (hits its `maxSteps:24` budget, or
+   simply stops issuing tool calls) WITHOUT ever invoking `finalize_plan` —
+   an LLM-instruction-compliance failure mode, not an unconditional missing
+   deterministic backstop. **Not reproduced against a real/mocked
+   `LlmOrchestrator` run** — genuinely unknown how often real models skip
+   `finalize_plan` in practice. Filed as **issue #67** (now corrected) with
+   this narrower framing and a suggested repro-first approach, rather than
+   fixed inline — this docs PR's diff stays scoped to
+   `AUTONOMOUS_PROGRESS.md`. **Downgraded from the initial P0/P1 label**: per
+   Codex's correction, an unverified, conditional, model-dependent
+   preference-quality gap should not automatically preempt the rolling-
+   classification-window preference below without production reproduction
+   first — that decision is deferred to whichever session actually
+   reproduces (or rules out) the no-`finalize_plan` case.
 2. The `AI_USE_AGENTIC_PLANNER=true` path (`PlannerAgent` +
    `planner_search_beam.ts`) has the identical predicate gap one level down —
    `TauPolicyProvider.isGoal` (`planner_policy.ts`) is the same bare
@@ -205,15 +212,16 @@ human comments.
 
 **Exact next action for the next session**: PR #65 is merged and closed — do
 not reopen it or re-address the greedy-path (`PlannerWorker.step()`) fix
-itself. **Pick up issue #67 first** — the `LlmOrchestrator` path (the real
-default production path whenever a model is configured) can still silently
-drop a wanted course, per the "Known related gaps" section above; this is a
-P0/P1 correctness finding on the actual default path, so per this routine's
-own priority rules it should take precedence over the rolling-classification-
-window preference, not wait for an A/B pick first. (It would itself be
-classified C once fixed — that's fine; a P0/P1 correctness finding always
-overrides the rolling-window preference, exactly as this routine's own rules
-say.) The `planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
+itself. **Issue #67 is NOT an automatic P0/P1 preemption** — corrected this
+session after a real Codex finding: `finalize_plan` (the LLM's own tool,
+which its system prompt instructs it to call to finish) already runs the
+SAME fixed `worker.repair()` → `run(500,'greedy')` loop PR #65 patched, so
+the gap only manifests if the LLM's tool loop ends without ever calling
+`finalize_plan` — unreproduced, model-dependent, not a confirmed default-path
+break. Treat issue #67 as a normal rolling-window candidate (reproduce
+against a real/mocked `LlmOrchestrator` first, per its own suggested
+approach), not something that must jump the queue. The
+`planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
 above) is lower priority — but per the "Known related gaps" caveat above,
 its live-production status is **default-off/not-committed, not
 independently confirmed**, not "unreachable"; if a future session with
