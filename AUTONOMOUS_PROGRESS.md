@@ -219,14 +219,17 @@ human comments.
 **Exact next action for the next session**: PR #65 is merged and closed — do
 not reopen it or re-address the greedy-path (`PlannerWorker.step()`) fix
 itself. **Issue #67 is NOT an automatic P0/P1 preemption** — corrected this
-session after a real Codex finding: `finalize_plan` (the LLM's own tool,
+session after two real Codex findings: `finalize_plan` (the LLM's own tool,
 which its system prompt instructs it to call to finish) already runs the
-SAME fixed `worker.repair()` → `run(500,'greedy')` loop PR #65 patched, so
-the gap only manifests if the LLM's tool loop ends without ever calling
-`finalize_plan` — unreproduced, model-dependent, not a confirmed default-path
-break. Treat issue #67 as a normal rolling-window candidate (reproduce
-against a real/mocked `LlmOrchestrator` first, per its own suggested
-approach), not something that must jump the queue. The
+SAME fixed `worker.repair()` → `run(500,'greedy')` loop PR #65 patched, but
+that tool doesn't terminate or lock the model's tool loop — so the precise
+gap is any run whose final relevant mutation is NOT followed by a
+`finalize_plan` call (covers both "never calls it" and "calls it, then
+mutates again afterward and drops the wanted course"), unreproduced,
+model-dependent, not a confirmed default-path break. Treat issue #67 as a
+normal rolling-window candidate (reproduce both variants against a
+real/mocked `LlmOrchestrator` first, per its own suggested approach), not
+something that must jump the queue. The
 `planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
 above) is lower priority — but per the "Known related gaps" caveat above,
 its live-production status is **default-off/not-committed, not
