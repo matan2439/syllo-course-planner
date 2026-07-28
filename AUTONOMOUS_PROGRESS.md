@@ -71,7 +71,13 @@ RED-verified against the pre-fix code first (trace ended on `ADD_COURSE`
 with no STOP). This session requested a fresh Codex review of the fix commit
 (the first round had only reviewed the initial commit) before merging, per
 the standing "Codex must review the latest commit" gate — round 2 came back
-clean ("Didn't find any major issues").
+clean ("Didn't find any major issues"). **This fix itself has its own residual
+gap — see "Known related gaps" item 3 below (filed as issue #68): it can't
+yet distinguish "genuinely truncated, real work left" from "the last
+permitted action already reached convergence," so a complete, goal-reached
+plan can in principle be falsely reported as blocked. Not reached at this
+session's review time — found afterward on this docs PR, not before merging
+PR #65.**
 
 **Final state**: CI green (3/3: Python tests, Next.js build, TypeScript API
 tests) on the final commit, `mergeable_state: clean`, the one review thread
@@ -130,6 +136,37 @@ acting):**
    as its own issue (lower priority than #67 since it's gated behind a flag
    nothing sets); worth folding into the same future fix session as #67
    since it's the identical bug class.
+3. **[Filed as issue #68]** PR #65's OWN maxSteps-truncation fix (the
+   `006aad6` commit, "One real Codex finding on the initial commit" above)
+   has a residual regression, itself a real bug in already-merged code, not
+   just a docs-accuracy gap: before PR #65, `step()` returned an instant STOP
+   the moment `isGoalReached()` became true (message never mentions
+   "maxSteps"), so `run(maxSteps)`'s loop always exited via that internal
+   STOP well before the budget could run out in the goal-reached case — this
+   was structurally unreachable. PR #65 removed that early return, making it
+   newly possible for the loop's very last permitted iteration to be a real
+   accepted action that itself reaches full convergence, with no further
+   `step()` call left in budget to detect it and emit the normal convergence
+   STOP — so `run()`'s post-loop code now always records a truncation STOP,
+   and BOTH of its message variants contain the substring `"maxSteps"`.
+   `generate-plan.ts:1543`'s `hitMaxSteps` detection (`.some(a => a.action
+   === 'STOP' && a.reason?.includes('maxSteps'))`) doesn't distinguish the
+   two cases, and `generate-plan.ts:1559-1561` unconditionally pushes
+   `STEP_LIMIT_ERROR` into `blockingErrors` whenever `hitMaxSteps` is true —
+   so a plan that is actually complete (bare goal met, fully legal) but
+   merely ran out of step budget mid-optimization can be falsely reported as
+   **blocked**, the mirror-image failure mode of the bug PR #65 fixed. Not
+   reproduced against the real default production budget (`worker.run(500,
+   'greedy')`) — 500 legal actions in one plan is implausible for any real
+   board, so low real-world likelihood at that scale (Codex's own badge on
+   this finding was P2, not P1) — but readily reproducible at small
+   `maxSteps` values, which is exactly how PR #65's own regression test
+   demonstrates the underlying mechanism. Filed as **issue #68** with a
+   suggested fix direction (distinguish real truncation from
+   last-action-was-the-convergence-point via a non-consuming post-loop
+   convergence check) rather than fixed inline — needs its own RED-verified
+   regression test isolating the exact boundary, out of scope for this
+   docs-only PR.
 
 **Rolling-three check: (60, 62, 65) = A/C/C — compliant** (all three are
 A/B/C; PR #60 is the A/B). **Net: positions 62 and 65 are both C, so the
@@ -172,7 +209,11 @@ classified C once fixed — that's fine; a P0/P1 correctness finding always
 overrides the rolling-window preference, exactly as this routine's own rules
 say.) The `planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
 above) is lower priority (gated behind a flag nothing sets) but worth folding
-into the same fix session since it's the identical bug class. Absent a
+into the same fix session since it's the identical bug class. **Issue #68**
+(the maxSteps-truncation false-block regression in PR #65's own merged code)
+is real but lower real-world likelihood at the actual production `maxSteps:
+500` budget — worth fixing in the same session as #67 given the shared file
+(`planner_worker.ts`), but not itself urgent enough to preempt #67. Absent a
 decision to pick up issue #67 immediately, run a fresh **Agent Diagnosis
 Loop** against the real `generate-plan.ts` handler (both paths) if no A/B candidate
 is otherwise picked up from the open queue; standing human-decision blockers
