@@ -459,11 +459,24 @@ export class PlannerWorker {
   run(maxSteps = 500, by: 'greedy' | 'llm' = 'greedy'): void {
     for (let i = 0; i < maxSteps; i++) {
       const a = this.step(by);
-      if (!a || a.action === 'STOP') return;
+      if (!a) return;
+      if (a.action === 'STOP') return;
     }
-    if (!this.isGoalReached()) {
-      this.recordStop(`לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`);
-    }
+    // The for-loop ran out of iterations without step() itself ever recording
+    // a STOP — i.e. every one of the maxSteps iterations was a real accepted
+    // action. Since step() no longer exits the instant the bare goal is met
+    // (post-goal wanted-course/balance optimization keeps taking legal
+    // actions), isGoalReached() being true here does NOT mean nothing was
+    // left to do — it can equally mean the budget ran out mid-optimization,
+    // with further legal improvements never attempted. Always record the
+    // truncation explicitly (Codex finding on PR #65: silently staying quiet
+    // just because the bare goal already held concealed that case), worded
+    // for whichever one actually applies.
+    this.recordStop(
+      this.isGoalReached()
+        ? `הגעה למגבלת הצעדים (maxSteps: ${maxSteps}) תוך כדי שיפור נוסף מעבר למטרה הבסיסית (למשל שיבוץ קורסים מבוקשים או איזון עומס) — ייתכן שנותרו שיפורים חוקיים נוספים שלא בוצעו.`
+        : `לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`,
+    );
   }
 
   /**

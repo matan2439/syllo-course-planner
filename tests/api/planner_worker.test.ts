@@ -455,4 +455,44 @@ describe('PlannerWorker — STOP trace on maxSteps limit', () => {
     const maxStepsStops = trace.filter(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
     expect(maxStepsStops.length).toBe(0);
   });
+
+  it('still records a STOP when maxSteps is exhausted DURING post-bare-goal optimization (Codex finding on PR #65)', () => {
+    // Same fixture as the "keeps searching past bare degree/mandatory/category
+    // completion" test above: bare goal (MAND + one fluids candidate) is
+    // reached after exactly 2 steps, and a 3rd step legally places the still-
+    // unplaced WANTED course (post-goal optimization enabled by that same
+    // fix). maxSteps=3 lets the loop take all 3 of those actions but not the
+    // 4th step that would record the real convergence STOP — run()'s own
+    // fallback must not stay silent just because isGoalReached() happens to
+    // already be true; the trace must still show that the run stopped
+    // because the step budget ran out, not vanish with no STOP at all.
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('FLU2', profile('FLU2', { category_id: 'fluids', hours: 4 }));
+    profiles.set('WANTED', profile('WANTED', { hours: 4, is_wanted: true }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS,
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1', 'FLU2'] }],
+      degreeRequiredHours: 9, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(),
+      wantedCourseIds: new Set(['WANTED']),
+    };
+    const w = new PlannerWorker(m);
+    w.run(3, 'greedy');
+
+    expect(w.isGoalReached()).toBe(true); // bare goal WAS reached...
+    const trace = w.getTrace();
+    // ...but the run must still explicitly record that it stopped on the
+    // step budget, not silently end on the last applied action.
+    expect(trace.at(-1)!.action).toBe('STOP');
+    expect(trace.at(-1)!.reason).toContain('maxSteps');
+  });
 });
