@@ -127,15 +127,21 @@ acting):**
    degree/mandatory/category/legality/annual completion check, with zero
    `wantedCourseIds` awareness, and `planner_search_beam.ts`'s loop
    terminates (`terminationReason = 'goal_reached'`) the instant every beam
-   state satisfies it. Confirmed this session that `AI_USE_AGENTIC_PLANNER`
-   is not set anywhere in this repo's production config (only referenced
-   from test files and `generate-plan.ts`'s own `process.env` read) —
-   consistent with every prior session's finding that this path is
-   unreachable in production — so, unlike #1 above, this is a real but
-   currently non-user-facing gap, not a live incident. Not separately filed
-   as its own issue (lower priority than #67 since it's gated behind a flag
-   nothing sets); worth folding into the same future fix session as #67
-   since it's the identical bug class.
+   state satisfies it. This session confirmed only that `AI_USE_AGENTIC_PLANNER`
+   is not set in any *committed* config — no tool in this session's Vercel
+   MCP access exposes live environment-variable values (`get_project` doesn't
+   include them, and no dedicated env-var tool is available), so **this does
+   NOT independently verify the live Vercel configuration** (real Codex
+   finding on this docs PR, `discussion_r3663503721` — a fair correction:
+   every prior session's identical "unreachable in production" claim about
+   this flag carries the same unverified gap, worth a future session actually
+   checking via `vercel env ls` or equivalent if/when that access exists).
+   Recorded here as **default-off / not committed / not independently
+   confirmed against the live environment** rather than "unreachable," per
+   Codex's suggested wording. Not separately filed as its own issue (lower
+   priority than #67 regardless, since #67 doesn't depend on any flag);
+   worth folding into the same future fix session as #67 since it's the
+   identical bug class.
 3. **[Filed as issue #68]** PR #65's OWN maxSteps-truncation fix (the
    `006aad6` commit, "One real Codex finding on the initial commit" above)
    has a residual regression, itself a real bug in already-merged code, not
