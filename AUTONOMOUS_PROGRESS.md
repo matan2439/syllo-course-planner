@@ -4,11 +4,107 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-28, session on branch `claude/record-pr66-merge`
-(PR #66 merged as `c923e0f` — see below; supersedes the PR #65 entry as the
-latest completed milestone)._
+_Last updated: 2026-07-28, session on branch `claude/youthful-tesla-7w4ls5`
+(release-gate re-check only — queue re-confirmed resolved, deploy blocker
+re-confirmed unchanged; no code merged this session)._
 
-## Latest session — PR #66 merged (docs-only, records PR #65); release-gate queue now resolved down to the standing Vercel deploy blocker; no new roadmap work started this session
+## Latest session — Release-gate re-check: PR queue confirmed resolved (only PR #14, deliberately parked); production deploy still blocked by the same external Vercel gap, now directly reconfirmed via live Vercel MCP access
+
+This was a scheduled autonomous run whose own external task prompt (from the
+human operator) carried an explicit "CURRENT RELEASE GATE — AUTHORITATIVE"
+directive: pause all new roadmap work, resolve the open PR/branch queue,
+then deploy a verified production release — with the same standing fallback
+every session since PR #27 has used: if deploy access is unavailable, record
+the single external blocker and stop before deployment, rather than guess.
+
+**State inspected fresh, per that instruction's own mandatory order** (not
+assumed from the prompt's own stale checkpoint hints, which named PR #53 as
+the "latest known open implementation" — that PR was merged 5 sessions ago,
+per PR history):
+
+- `git ls-remote`/GitHub API: **exactly one open PR — #14** (the Decision
+  capability). No open PRs matching the old "#12/#13" checkpoint remain (both
+  merged long ago). No competing `claude/*` or `feat/*` branch has an open PR
+  against it. PR #14 was re-read in full and reconfirmed correctly parked —
+  same D-classification precedent every session since issue #18 has upheld
+  (no production consumer named, `academic_decision_factory.ts` untouched);
+  left untouched again this session.
+- `ui/frontend-modernization` HEAD is `0dc09f9` (merge of PR #69, the last
+  docs-only PR). CI green on that commit (per PR #69's own merge gate,
+  re-verified at merge time by the prior session). This branch remains the
+  authoritative release candidate.
+- Open issues: #67 and #68 (both real, both about the `LlmOrchestrator`/
+  beam-search wanted-course-preservation edge cases from PR #65) are Agent-
+  quality follow-ups, correctly left unfixed this session — the release gate
+  explicitly pauses new roadmap work, and neither is a release blocker for
+  the already-merged `ui/frontend-modernization` candidate. #18/#20/#21
+  reconfirmed unchanged, zero new human comments on any of the four.
+
+**Production/deploy re-check — this session had live Vercel MCP tool access
+for the first time (previous sessions repeatedly reported no reachable
+credentials at all)**, so this was verified directly rather than inferred:
+- `tau-course-planner` (the canonical project — root `vercel.json` wires the
+  Next.js app + real serverless API + legacy static board viewer into one
+  deployment, settled by PR #41, re-confirmed unchanged): `get_project`
+  shows `latestDeployment.target: "production"`,
+  `gitCommitSha: 26500d4ffe56fff145eadc0a8745cf7803cb788e`
+  ("Merge PR #11") — **byte-identical to every session's check since PR #27
+  first flagged this, now 5+ sessions running**. `ui/frontend-modernization`
+  HEAD (`0dc09f9`) has never been deployed.
+- `list_deployments` (20 most recent): every single one has
+  `creator.username: "matanyaron-1633"` and `meta.actor` set to a
+  `claude-code_*_agent` identity — i.e. every past production deployment was
+  a manual `vercel --prod` / `deploy_to_vercel`-style push by an agent
+  session, never an automatic git-triggered build.
+- `get_project` returns **no `link` field** on either `tau-course-planner` or
+  `web` — Vercel's API only populates that field when a project has real Git
+  integration configured. Its absence, directly observed this session (not
+  inferred from tooling failures like prior sessions had to), is definitive
+  confirmation: **neither project has Git integration to any branch**, so
+  merging to `ui/frontend-modernization` (or eventually `main`) cannot
+  trigger a deploy on its own, and no MCP tool in this session's toolset can
+  configure that integration (`list_projects`/`get_project`/
+  `list_deployments`/`get_deployment` are read/list-only; the one write tool,
+  `deploy_to_vercel`, uploads a raw file tree with no git linkage — the same
+  tradeoff every prior session declined to accept without an explicit human
+  decision, upheld again this session for the same reason: it would break
+  the "confirm the exact production commit after deployment" gate this same
+  release-gate instruction requires).
+
+**Why this session stops here rather than using `deploy_to_vercel` anyway**:
+the release gate's own escape valve is explicit — "prepare and verify the
+exact release candidate, record the single external blocker and stop before
+deployment" — precisely for this situation. The release candidate
+(`ui/frontend-modernization` HEAD, `0dc09f9`) is already prepared and CI-
+verified. Using the raw-upload tool would produce a deployment that cannot
+be traced back to a specific verified commit via the normal
+`gitCommitSha` field, undermining the same release gate's own
+post-deployment verification requirement ("confirm the exact production
+commit after deployment"). That tradeoff is a product/ops decision for the
+human operator, not something to guess at autonomously — consistent with
+this repo's "never invent undocumented product policy" rule.
+
+**The actual blocker, stated plainly for the human operator**: production
+(`tau-course-planner`, `tau-course-planner.vercel.app`) is pinned at commit
+`26500d4` ("Merge PR #11"), which predates every fix since — including PR
+#48 (missing-mandatory legality), #56 (misattributed block cause), #58
+(wanted-vs-excluded disclosure), #60 (prerequisite-sequencing disclosure),
+#62 (degree-hours shortfall gate), #65 (post-goal wanted-course search
+continuation), and everything else recorded below. **To unblock**: either
+(a) link the `matan2439/syllo-course-planner` GitHub repo to the
+`tau-course-planner` Vercel project via the Vercel dashboard (Project
+Settings → Git), with `ui/frontend-modernization` (soon `main`, once branch
+reconciliation completes) as the production branch, or (b) explicitly
+authorize an agent session to use `deploy_to_vercel`'s raw-upload path as an
+interim measure, accepting that its deployment won't carry a verifiable
+`gitCommitSha`. No autonomous session can make this call.
+
+**No code merged, no deploy performed, no roadmap work started this
+session** — per the release gate's explicit pause, correctly upheld now that
+the PR queue is confirmed resolved and the deploy blocker is confirmed
+external and unchanged.
+
+## Prior session — PR #66 merged (docs-only, records PR #65); release-gate queue now resolved down to the standing Vercel deploy blocker; no new roadmap work started this session
 
 This was a scheduled autonomous run whose own external task prompt (from the
 human operator, not anything written into this file — see the correction
