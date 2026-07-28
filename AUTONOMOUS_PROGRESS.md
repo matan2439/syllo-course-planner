@@ -4,11 +4,267 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-23, session on branch `claude/youthful-tesla-cihf6a`
-(PR #62 merged as `1a2fda2` — see below; supersedes the PR #60 entry as the
+_Last updated: 2026-07-28, session on branch `claude/youthful-tesla-d8p4o7`
+(PR #65 merged as `8d4b5f5` — see below; supersedes the PR #62 entry as the
 latest completed milestone)._
 
-## Latest session — PR #62 merged: unrecoverable degree-hours shortfall silently reported as a soft warning instead of a blocking error, plus 20 real rounds of Codex-caught recovery-probe correctness gaps
+## Latest session — PR #65 merged: search stopped the instant bare goal was met, silently dropping a still-legal wanted course
+
+Standing audit (scheduled autonomous run): production/branch/PR/CI/Codex/issue
+state inspected first, per this routine's own start-of-session checklist.
+`main` remains far behind `ui/frontend-modernization` (full reconciliation
+still not done — unchanged, no new evidence this session, not re-investigated
+further). Two open PRs existed: **#14** (Decision capability) — reconfirmed
+still correctly parked per the standing D-stacking-cap precedent (issue #18);
+left untouched, no new evidence changed that call — and **#65** (this entry's
+subject), already opened earlier the same day by a prior session, one commit
+deep, with CI still pending and only its first commit Codex-reviewed. Picked
+up #65 per the anti-duplication/queue-resolution rule (resolve the oldest
+in-flight item before starting anything new) rather than beginning a fresh
+Agent Diagnosis Loop pass. Issues #15/#18/#20/#21 reconfirmed unchanged, zero
+new human comments since the last check.
+
+**The bug** (found by the prior session's fresh Agent Diagnosis Loop pass,
+targeting dual-semester/multi-alternative **plan quality itself** — the area
+every recent session's "exact next action" had flagged as not yet exercised):
+`PlannerWorker.step()` (`api/ai/planner_worker.ts`) began with an
+unconditional `if (this.isGoalReached()) return this.recordStop(...)`.
+`isGoalReached()` reflects only bare degree-hours/mandatory/category/
+legality/annual completion — it has zero awareness of
+`model.wantedCourseIds` or of any further balance improvement. The instant
+that bare goal became true, the loop stopped for good, even though
+`enumerateActions`' group 3 (wanted courses) and group 5 (balance moves) are
+unconditional and can still legally, strictly improve the plan's score at
+that point. Reproduced against the real `mechanical_engineering_2027` board
+fixture: a student with `preferences.wanted_course_ids: ['0512-2508']` (a
+real dual-offered elective) got a plan back reporting `blocked:false`,
+"valid and complete," while the wanted course was silently never placed —
+the same "invalid/incomplete-in-effect plan reported as complete"
+self-contradiction class this track exists to close (same family as PR #48's
+`legalityGate`, PR #62's `degreeHoursGate`), this time for a dropped
+preference rather than a dropped requirement. Reachable on `generate-plan.ts`'s
+greedy `worker.run(500,'greedy')` call (used when no model is configured, or
+in dev mode) and the beam-search fallback alike — **see the "Known related
+gaps" section below for the `LlmOrchestrator` path's own, narrower, unverified
+version of this gap (issue #67, downgraded from an initial overclaim after a
+Codex correction).**
+
+**Fix**: `step()` no longer exits early on `isGoalReached()`; it always falls
+through to the same Reason → Act → Validate machinery and only stops once the
+existing terminal "no legal action advances the plan" check finds nothing
+left to improve. Can't reintroduce runaway extra-hour bloat: `g1` (degree
+completion) is capped at a reservation budget, and group 4 (arbitrary
+elective fill) stays gated on `degreeHours < target`, so neither fires
+post-goal — only wanted-course and balance-move actions become newly
+reachable, still filtered through the existing legality/hard-cap validation.
+
+**One real Codex finding on the initial commit, fixed this session**: the
+`run(maxSteps)` fallback recorded a truncation STOP only when
+`!isGoalReached()` — correct before this fix (since `step()` used to STOP
+the instant bare goal was met), but exactly wrong now that post-goal
+optimization can consume the remaining step budget: a run that exhausts
+`maxSteps` mid-optimization exited silently, with no STOP recorded and no
+signal that further legal improvements existed and were never attempted.
+Fixed (`006aad6`) by tracking whether `step()` itself ever produced a STOP,
+rather than inferring it from the bare-goal predicate. New regression test
+RED-verified against the pre-fix code first (trace ended on `ADD_COURSE`
+with no STOP). This session requested a fresh Codex review of the fix commit
+(the first round had only reviewed the initial commit) before merging, per
+the standing "Codex must review the latest commit" gate — round 2 came back
+clean ("Didn't find any major issues"). **This fix itself has its own residual
+gap — see "Known related gaps" item 3 below (filed as issue #68): it can't
+yet distinguish "genuinely truncated, real work left" from "the last
+permitted action already reached convergence," so a complete, goal-reached
+plan can in principle be falsely reported as blocked. Not reached at this
+session's review time — found afterward on this docs PR, not before merging
+PR #65.**
+
+**Final state**: CI green (3/3: Python tests, Next.js build, TypeScript API
+tests) on the final commit, `mergeable_state: clean`, the one review thread
+resolved with evidence. Full API suite at merge time: **86/86 suites,
+1351/1351 tests** (+2 across both commits), zero regressions; `tsc --noEmit`
+clean. `git diff --stat`: `api/ai/planner_worker.ts` (+29/-4 for the base
+fix, plus the maxSteps-truncation fix) + its test file only — no UI changes,
+no other planner files touched. **Merged as `8d4b5f5`.**
+
+**Classification: C** (correctness/honesty — same bug class as the
+already-fixed disallowed/annual/legality/missing-mandatory/degree-hours
+gates, this time for a silently-dropped preference rather than a dropped
+requirement).
+
+**Known related gaps PR #65 does NOT fix (three real Codex findings on this
+docs PR, #66 — all three verified against the code, not taken on faith, before
+acting):**
+
+1. **[Filed as issue #67 — downgraded after a real Codex finding on this
+   docs PR corrected the initial P0/P1 severity claim, see below]** PR #65
+   only changed `PlannerWorker.step()`. `generate-plan.ts`'s actual default
+   branch, whenever a model is configured and the app is not in dev mode,
+   calls `LlmOrchestrator`, NOT `worker.run(500,'greedy')` directly
+   (`generate-plan.ts:1529-1532`; `isDevMode()` always returns `false` under
+   `VERCEL_ENV=production`). `LlmOrchestrator.run()`'s OWN outer fallback
+   (`planner_orchestrator.ts:74-76`) only re-runs the deterministic loop when
+   `!worker.validateCandidate().valid`, which has zero `wantedCourseIds`
+   awareness. **However — verified after a Codex finding on this docs PR
+   correctly pushed back on the initial severity claim — the LLM's `tools`
+   include `finalize_plan` (`planner_tools.ts:82-95`), whose `execute()`
+   calls `worker.repair()`, which itself calls `this.run(500,'greedy')`: the
+   SAME fixed post-goal loop PR #65 patched.** The system prompt
+   (`planner_orchestrator.ts`'s `DEFAULT_SYSTEM`) explicitly instructs the
+   model to finish by calling `finalize_plan` ("סיים בקריאה ל-finalize_plan"),
+   so the normal, designed flow already gets PR #65's fix on this path too.
+   **A further Codex finding refined the condition once more**: `finalize_plan`'s
+   `execute()` only calls `worker.repair()` and returns a report — it does
+   NOT terminate or lock the tool-calling loop, so nothing stops the model
+   from issuing more tool calls afterward (e.g. adding an ordinary filler,
+   then removing the just-placed wanted course) and finishing in a state
+   where `validateCandidate().valid` is still `true` — the outer fallback
+   never fires, and the wanted course is dropped again. **A third Codex
+   finding narrowed this further**: a mutation after `finalize_plan` only
+   removes the deterministic convergence *guarantee* — it doesn't by itself
+   reproduce the wanted-course loss (e.g. a post-finalize `move_course` can
+   easily leave the wanted course placed and the plan still fully optimized).
+   So the precise repro condition is not "any run whose final mutation
+   happens after its last `finalize_plan` call," but one where that
+   post-finalize activity **actually undoes or fails to redo an optimization**
+   `worker.repair()` had achieved (e.g. removes a wanted course, or
+   unbalances load) with no later `finalize_plan` call to recover it — still
+   an LLM-behavior-dependent compliance mode, not an unconditional missing
+   deterministic backstop.
+   **Not reproduced against a real/mocked `LlmOrchestrator` run** — genuinely
+   unknown how often real models exhibit either variant in practice. Filed as
+   **issue #67** (now corrected twice) with this precise condition and a
+   suggested repro-first approach, rather than fixed inline — this docs PR's
+   diff stays docs-only, across both `AUTONOMOUS_PROGRESS.md` and
+   `.remember/current.md`, no product code touched. **Downgraded from the
+   initial P0/P1 label**: per Codex's correction, an unverified, conditional, model-dependent
+   preference-quality gap should not automatically preempt the rolling-
+   classification-window preference below without production reproduction
+   first — that decision is deferred to whichever session actually
+   reproduces (or rules out) the no-`finalize_plan` case.
+2. The `AI_USE_AGENTIC_PLANNER=true` path (`PlannerAgent` +
+   `planner_search_beam.ts`) has the identical predicate gap one level down —
+   `TauPolicyProvider.isGoal` (`planner_policy.ts`) is the same bare
+   degree/mandatory/category/legality/annual completion check, with zero
+   `wantedCourseIds` awareness, and `planner_search_beam.ts`'s loop
+   terminates (`terminationReason = 'goal_reached'`) the instant every beam
+   state satisfies it. This session confirmed only that `AI_USE_AGENTIC_PLANNER`
+   is not set in any *committed* config — no tool in this session's Vercel
+   MCP access exposes live environment-variable values (`get_project` doesn't
+   include them, and no dedicated env-var tool is available), so **this does
+   NOT independently verify the live Vercel configuration** (real Codex
+   finding on this docs PR, `discussion_r3663503721` — a fair correction:
+   every prior session's identical "unreachable in production" claim about
+   this flag carries the same unverified gap, worth a future session actually
+   checking via `vercel env ls` or equivalent if/when that access exists).
+   Recorded here as **default-off / not committed / not independently
+   confirmed against the live environment** rather than "unreachable," per
+   Codex's suggested wording. **A further Codex finding correctly caught
+   that priority here is NOT "regardless" of #67 — it's conditional on the
+   live flag**: `generate-plan.ts:1495-1526`'s `if
+   (process.env.AI_USE_AGENTIC_PLANNER === 'true')` is a mutually-exclusive
+   dispatch — if that flag IS set live, every real request routes through
+   `PlannerAgent`/`planner_search_beam.ts` exclusively, the `LlmOrchestrator`
+   path issue #67 describes is never reached at all, and this beam-search gap
+   becomes the sole active production defect, not a lower-priority one. Not
+   separately filed as its own issue; worth folding into the same future fix
+   session as #67 since it's the identical bug class, but whichever of the
+   two is confirmed live-reachable should be treated as the priority one (see
+   "exact next action" below, which already states this correctly).
+3. **[Filed as issue #68]** PR #65's OWN maxSteps-truncation fix (the
+   `006aad6` commit, "One real Codex finding on the initial commit" above)
+   has a residual regression, itself a real bug in already-merged code, not
+   just a docs-accuracy gap: before PR #65, `step()` returned an instant STOP
+   the moment `isGoalReached()` became true (message never mentions
+   "maxSteps"), so `run(maxSteps)`'s loop always exited via that internal
+   STOP well before the budget could run out in the goal-reached case — this
+   was structurally unreachable. PR #65 removed that early return, making it
+   newly possible for the loop's very last permitted iteration to be a real
+   accepted action that itself reaches full convergence, with no further
+   `step()` call left in budget to detect it and emit the normal convergence
+   STOP — so `run()`'s post-loop code now always records a truncation STOP,
+   and BOTH of its message variants contain the substring `"maxSteps"`.
+   `generate-plan.ts:1543`'s `hitMaxSteps` detection (`.some(a => a.action
+   === 'STOP' && a.reason?.includes('maxSteps'))`) doesn't distinguish the
+   two cases, and `generate-plan.ts:1559-1561` unconditionally pushes
+   `STEP_LIMIT_ERROR` into `blockingErrors` whenever `hitMaxSteps` is true —
+   so a plan that is actually complete (bare goal met, fully legal) but
+   merely ran out of step budget mid-optimization can be falsely reported as
+   **blocked**, the mirror-image failure mode of the bug PR #65 fixed. Not
+   reproduced against the real default production budget (`worker.run(500,
+   'greedy')`) — 500 legal actions in one plan is implausible for any real
+   board, so low real-world likelihood at that scale (Codex's own badge on
+   this finding was P2, not P1) — but readily reproducible at small
+   `maxSteps` values, which is exactly how PR #65's own regression test
+   demonstrates the underlying mechanism. Filed as **issue #68** with a
+   suggested fix direction (distinguish real truncation from
+   last-action-was-the-convergence-point via a non-consuming post-loop
+   convergence check) rather than fixed inline — needs its own RED-verified
+   regression test isolating the exact boundary, out of scope for this
+   docs-only PR.
+
+**Rolling-three check: (60, 62, 65) = A/C/C — compliant** (all three are
+A/B/C; PR #60 is the A/B). **Net: positions 62 and 65 are both C, so the
+immediate next milestone should be A or B** — picking another C next would
+produce (62, 65, next) = C/C/C, the same non-compliant pattern already
+avoided once before at the (53, 56) juncture. Candidates already on record:
+naming a real production consumer for one of the unwired Simulation/
+Persistence/Decision capabilities (PRs #12/#13/#14) and wiring it in (B), or
+a UI improvement to how `academicDecision.explanation`/blocked-plan states
+are surfaced (A) — the diagnosis pass this session inherited also reconfirmed
+a minor, not-yet-fixed accessibility gap in the blocked-plan panel
+(`app/web/semester_board_viewer.html`: no `aria-live`/focus-move on
+appearance) as one concrete A-classified candidate.
+
+**Production check**: not re-verified via the Vercel API this session (no
+new evidence prompting a re-check; standing pin at `26500d4`, "Merge PR #11",
+unchanged since every session's check going back to PR #27). PR #65 (along
+with every other merged fix since PR #11) joins the same growing
+merged-but-not-deployed backlog — this remains the standing, previously
+human-flagged (issue #18) deploy-mechanism blocker, not re-litigated this
+session absent new evidence.
+
+**Standing blockers, unchanged, not re-investigated further this session (no
+new evidence since last check)**: issue #15/#18 (PR #14 D-stacking merge
+decision, Vercel `tau-course-planner` vs `web` canonical-project question),
+issue #20 (386/386 `jest.ui.config.js` failures, single root cause — missing
+gitignored fixture, needs a human sign-off on a sanitized replacement), issue
+#21 (dead-code delete-vs-restore call). All confirmed still open, zero new
+human comments.
+
+**Exact next action for the next session**: PR #65 is merged and closed — do
+not reopen it or re-address the greedy-path (`PlannerWorker.step()`) fix
+itself. **Issue #67 is NOT an automatic P0/P1 preemption** — corrected this
+session after two real Codex findings: `finalize_plan` (the LLM's own tool,
+which its system prompt instructs it to call to finish) already runs the
+SAME fixed `worker.repair()` → `run(500,'greedy')` loop PR #65 patched, but
+that tool doesn't terminate or lock the model's tool loop — so the precise
+gap is any run whose final relevant mutation is NOT followed by a
+`finalize_plan` call (covers both "never calls it" and "calls it, then
+mutates again afterward and drops the wanted course"), unreproduced,
+model-dependent, not a confirmed default-path break. Treat issue #67 as a
+normal rolling-window candidate (reproduce both variants against a
+real/mocked `LlmOrchestrator` first, per its own suggested approach), not
+something that must jump the queue. The
+`planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
+above) is lower priority — but per the "Known related gaps" caveat above,
+its live-production status is **default-off/not-committed, not
+independently confirmed**, not "unreachable"; if a future session with
+Vercel env-var access confirms the flag IS set live, this stops being
+lower priority and becomes as urgent as issue #67. Worth folding into the
+same fix session as #67 regardless, since it's the identical bug class.
+**Issue #68**
+(the maxSteps-truncation false-block regression in PR #65's own merged code)
+is real but lower real-world likelihood at the actual production `maxSteps:
+500` budget — worth fixing in the same session as #67 given the shared file
+(`planner_worker.ts`), but not itself urgent enough to preempt #67. Absent a
+decision to pick up issue #67 immediately, run a fresh **Agent Diagnosis
+Loop** against the real `generate-plan.ts` handler (both paths) if no A/B candidate
+is otherwise picked up from the open queue; standing human-decision blockers
+above (issues #15/#18/#20/#21) remain untouched pending a human call, and
+this does not override the standing P0/correctness-preemption rule.
+
+## Prior session — PR #62 merged: unrecoverable degree-hours shortfall silently reported as a soft warning instead of a blocking error, plus 20 real rounds of Codex-caught recovery-probe correctness gaps
 
 Standing audit (scheduled autonomous run): this session's assigned branch
 (`claude/youthful-tesla-cihf6a`) had zero commits of its own and was already
