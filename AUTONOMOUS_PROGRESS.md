@@ -4,11 +4,83 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-28, session on branch `claude/youthful-tesla-d8p4o7`
-(PR #65 merged as `8d4b5f5` — see below; supersedes the PR #62 entry as the
+_Last updated: 2026-07-28, session on branch `claude/record-pr66-merge`
+(PR #66 merged as `c923e0f` — see below; supersedes the PR #65 entry as the
 latest completed milestone)._
 
-## Latest session — PR #65 merged: search stopped the instant bare goal was met, silently dropping a still-legal wanted course
+## Latest session — PR #66 merged (docs-only, records PR #65); release-gate queue now resolved down to the standing Vercel deploy blocker; no new roadmap work started this session
+
+This was a scheduled autonomous run operating under this file's own "CURRENT
+RELEASE GATE — AUTHORITATIVE" instructions: pause new roadmap work, resolve
+the open PR queue, then release. State inspected first, per that section's
+mandatory order.
+
+**Queue found at session start**: two open PRs — **#14** (Decision capability,
+reconfirmed still correctly parked, see Blockers item 6, untouched) and
+**#66** (this entry's subject — docs recording PR #65's merge), already deep
+into a same-day Codex review cycle (11 commits, several real findings already
+fixed) when this session picked it up.
+
+**Concurrency note, worth recording explicitly**: partway through reviewing
+PR #66's two newest (at the time) unresolved threads — narrowing issue #67's
+repro condition, and making the beam-search priority claim conditional on
+`AI_USE_AGENTIC_PLANNER`'s live status rather than absolute — this session
+independently drafted the same fix, then found a **different concurrent
+session** had already pushed an equivalent fix (`bc30909`, then one more
+round `cd3bd90`) moments earlier. Discarded this session's own redundant
+commit before pushing (`git reset --hard` back to the remote branch) rather
+than create a duplicate/competing commit, per this routine's own "one
+implementation owner" rule — then waited for that session's round to finish
+rather than racing it.
+
+**This session's actual contribution to PR #66**: once all 14 review threads
+were resolved and CI was fully green (Python tests / Next.js build /
+TypeScript API tests, 3/3) with `mergeable_state: clean` and no further
+pushes for several minutes, merged it as `c923e0f`. No product code changed
+(`AUTONOMOUS_PROGRESS.md` + `.remember/current.md` only). Not separately
+classified (docs-only, same convention as PR #36/#38/#47).
+
+**Fresh production/deploy re-check this session** (Vercel MCP tools, working
+for the second session running now): `tau-course-planner`'s `latestDeployment`
+is still `dpl_HJZTB8zqondbwuSnHx6TveggoPVg`, `target: production`,
+`gitCommitSha: 26500d4` ("Merge PR #11") — byte-identical to the last several
+sessions' checks, confirming **no deploy has happened since this was first
+flagged, now 4+ sessions ago**. `web` (the Next.js project) still shows
+`target: null` on its latest deployment — never successfully promoted to
+production, unchanged. Neither `get_project` response exposes a linked git
+repository, consistent with every prior session's finding that both projects
+are still CLI-deployed (`vercel --prod`) with no Git integration configured.
+
+**Per this file's own authoritative release-gate override, stopping here
+rather than starting new Agent-quality work**: the open-PR-queue objective is
+satisfied (PR #14 is a deliberate, non-blocking exception with established
+multi-session precedent, not an unresolved prerequisite); the release/deploy
+objective is not — and remains blocked by the same external tooling gap
+every session since PR #27 has hit (no Vercel CLI login reachable from any
+sandbox so far, no Git integration configured on either project, and the one
+available deploy tool, `deploy_to_vercel`, uploads a raw file tree with no
+git linkage and was deliberately not used without a human decision to accept
+that tradeoff). Per the release gate's own "Definition of Done": *"If
+deployment is unavailable because authorization or credentials are missing,
+prepare and verify the exact release candidate, record the single external
+blocker and stop before deployment."* Recording it here rather than
+proceeding to a fresh Agent Diagnosis Loop pass, which the file's *older*
+(now-overridden) "Exact next action" section below would otherwise point to.
+**The release candidate is `ui/frontend-modernization` HEAD as of `c923e0f`**
+— already fully CI-green (every merge gate re-runs the full suite).
+
+**Exact next action for the next session**: same as every session since PR
+#27 — **a human (or a session with real `vercel` CLI credentials or the
+ability to configure Vercel Git integration) needs to deploy
+`ui/frontend-modernization` HEAD (`c923e0f`) to production**, and separately
+decide which of the two Vercel projects (`tau-course-planner` vs `web`) is
+meant to be canonical (issue #18). Until that happens, per this file's
+authoritative release-gate section, do not resume the normal Agent-quality
+roadmap (issue #67/#68, or a fresh Agent Diagnosis Loop pass) — re-confirm
+the deploy blocker is still unresolved first, and if it's still blocked,
+record that and stop again rather than continuing past it.
+
+## Prior session — PR #65 merged: search stopped the instant bare goal was met, silently dropping a still-legal wanted course
 
 Standing audit (scheduled autonomous run): production/branch/PR/CI/Codex/issue
 state inspected first, per this routine's own start-of-session checklist.
