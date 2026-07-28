@@ -42,9 +42,12 @@ real dual-offered elective) got a plan back reporting `blocked:false`,
 the same "invalid/incomplete-in-effect plan reported as complete"
 self-contradiction class this track exists to close (same family as PR #48's
 `legalityGate`, PR #62's `degreeHoursGate`), this time for a dropped
-preference rather than a dropped requirement. Not gated behind any opt-in
-flag — reachable on `generate-plan.ts`'s default `worker.run(500,'greedy')`
-call and the beam-search fallback alike.
+preference rather than a dropped requirement. Reachable on `generate-plan.ts`'s
+greedy `worker.run(500,'greedy')` call (used when no model is configured, or
+in dev mode) and the beam-search fallback alike — **but see the "Known
+related gap" section below: the actual default production path when a model
+IS configured (`LlmOrchestrator`, likely the real steady state) is a
+different, NOT-yet-fixed gap, filed as issue #67.**
 
 **Fix**: `step()` no longer exits early on `isGoalReached()`; it always falls
 through to the same Reason → Act → Validate machinery and only stops once the
@@ -83,24 +86,50 @@ already-fixed disallowed/annual/legality/missing-mandatory/degree-hours
 gates, this time for a silently-dropped preference rather than a dropped
 requirement).
 
-**Known related gap PR #65 does NOT fix (real Codex finding on this docs PR,
-#66 — verified against the code, not taken on faith)**: PR #65 only changed
-`PlannerWorker.step()`, the greedy path `generate-plan.ts` uses by default.
-The `AI_USE_AGENTIC_PLANNER=true` path (`PlannerAgent` + `planner_search_beam.ts`)
-has the identical predicate gap one level down — `TauPolicyProvider.isGoal`
-(`planner_policy.ts`) is the same bare degree/mandatory/category/legality/
-annual completion check, with zero `wantedCourseIds` awareness, and
-`planner_search_beam.ts`'s loop terminates (`terminationReason =
-'goal_reached'`) the instant every beam state satisfies it — so a wanted
-course can still be silently dropped on that path. Confirmed this session
-that `AI_USE_AGENTIC_PLANNER` is not set anywhere in this repo's production
-config (only referenced from test files and `generate-plan.ts`'s own
-`process.env` read) — consistent with every prior session's finding that
-this path is unreachable in production — so this is a real, currently
-non-user-facing gap, not a live incident. Left unfixed here to keep this
-docs-only PR's diff to the progress file alone; tracked explicitly below so
-the next session doesn't mistake PR #65 for having closed the whole bug
-class.
+**Known related gaps PR #65 does NOT fix (two real Codex findings on this
+docs PR, #66 — both verified against the code, not taken on faith, before
+acting):**
+
+1. **[Filed as issue #67 — the more important one]** PR #65 only changed
+   `PlannerWorker.step()`. But `generate-plan.ts`'s actual default branch,
+   whenever a model is configured (`resolveModel()` finds a provider API key)
+   and the app is not in dev mode, calls `LlmOrchestrator`, NOT
+   `worker.run(500,'greedy')` (`generate-plan.ts:1529-1532`). `isDevMode()`
+   (`course-planner.ts:197-200`) always returns `false` when
+   `VERCEL_ENV === 'production'` — so in real production, `useLlm` is true
+   whenever any provider key is configured, the expected steady state for
+   this product. `LlmOrchestrator.run()` (`planner_orchestrator.ts:52-78`)
+   only falls back to the deterministic finishing pass when
+   `!worker.validateCandidate().valid` — and `validateCandidate()`'s `valid`
+   flag (confirmed by reading it) is legality + degree/mandatory/category
+   completeness ONLY, with zero `wantedCourseIds` awareness. So if the model
+   reaches bare-complete and stops calling tools before placing every wanted
+   course, nothing catches it — the same user-facing symptom PR #65 closed
+   for the greedy path, still open on the path most real production traffic
+   likely takes. Behavior-dependent on the LLM (not 100%-deterministic like
+   PR #65's bug was), but a real gap with no deterministic backstop. Filed as
+   **issue #67** with full root-cause detail and a suggested fix direction,
+   rather than fixed inline here — this docs PR's diff is meant to stay
+   scoped to `AUTONOMOUS_PROGRESS.md`, and this needs its own reproduction
+   against a mocked `LlmOrchestrator` before a real fix. **Flagged as
+   P0/P1-priority**: per this routine's own rules, a correctness finding on
+   the actual default production path should take priority over the
+   rolling-classification-window preference below.
+2. The `AI_USE_AGENTIC_PLANNER=true` path (`PlannerAgent` +
+   `planner_search_beam.ts`) has the identical predicate gap one level down —
+   `TauPolicyProvider.isGoal` (`planner_policy.ts`) is the same bare
+   degree/mandatory/category/legality/annual completion check, with zero
+   `wantedCourseIds` awareness, and `planner_search_beam.ts`'s loop
+   terminates (`terminationReason = 'goal_reached'`) the instant every beam
+   state satisfies it. Confirmed this session that `AI_USE_AGENTIC_PLANNER`
+   is not set anywhere in this repo's production config (only referenced
+   from test files and `generate-plan.ts`'s own `process.env` read) —
+   consistent with every prior session's finding that this path is
+   unreachable in production — so, unlike #1 above, this is a real but
+   currently non-user-facing gap, not a live incident. Not separately filed
+   as its own issue (lower priority than #67 since it's gated behind a flag
+   nothing sets); worth folding into the same future fix session as #67
+   since it's the identical bug class.
 
 **Rolling-three check: (60, 62, 65) = A/C/C — compliant** (all three are
 A/B/C; PR #60 is the A/B). **Net: positions 62 and 65 are both C, so the
@@ -133,16 +162,18 @@ human comments.
 
 **Exact next action for the next session**: PR #65 is merged and closed — do
 not reopen it or re-address the greedy-path (`PlannerWorker.step()`) fix
-itself. However, the beam-search/`AI_USE_AGENTIC_PLANNER` analog of the same
-bug (see "Known related gap" above) is genuinely NOT fixed — a candidate for
-a future session once/if that path ever becomes production-reachable, or as
-a proactive correctness fix regardless (mirroring this bug class's own
-"fix it even before it's the highest-traffic path" precedent from PR #48).
-Rolling-three window (60, 62, 65) = A/C/C is compliant, but positions 62 and
-65 are both C — **the next milestone selected should be A or B**, not
-another C (the beam-search fix, being the same bug class, would itself be
-C — so it should not be the very next pick unless a P0/correctness emergency
-overrides the rolling-window preference). Run a fresh **Agent Diagnosis
+itself. **Pick up issue #67 first** — the `LlmOrchestrator` path (the real
+default production path whenever a model is configured) can still silently
+drop a wanted course, per the "Known related gaps" section above; this is a
+P0/P1 correctness finding on the actual default path, so per this routine's
+own priority rules it should take precedence over the rolling-classification-
+window preference, not wait for an A/B pick first. (It would itself be
+classified C once fixed — that's fine; a P0/P1 correctness finding always
+overrides the rolling-window preference, exactly as this routine's own rules
+say.) The `planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
+above) is lower priority (gated behind a flag nothing sets) but worth folding
+into the same fix session since it's the identical bug class. Absent a
+decision to pick up issue #67 immediately, run a fresh **Agent Diagnosis
 Loop** against the real `generate-plan.ts` handler (both paths) if no A/B candidate
 is otherwise picked up from the open queue; standing human-decision blockers
 above (issues #15/#18/#20/#21) remain untouched pending a human call, and
