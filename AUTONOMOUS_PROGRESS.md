@@ -113,17 +113,23 @@ acting):**
    (`planner_orchestrator.ts`'s `DEFAULT_SYSTEM`) explicitly instructs the
    model to finish by calling `finalize_plan` ("סיים בקריאה ל-finalize_plan"),
    so the normal, designed flow already gets PR #65's fix on this path too.
-   The residual gap is narrower than first stated: it's reachable **only**
-   if the LLM's own tool-calling loop ends (hits its `maxSteps:24` budget, or
-   simply stops issuing tool calls) WITHOUT ever invoking `finalize_plan` —
-   an LLM-instruction-compliance failure mode, not an unconditional missing
-   deterministic backstop. **Not reproduced against a real/mocked
-   `LlmOrchestrator` run** — genuinely unknown how often real models skip
-   `finalize_plan` in practice. Filed as **issue #67** (now corrected) with
-   this narrower framing and a suggested repro-first approach, rather than
-   fixed inline — this docs PR's diff stays scoped to
-   `AUTONOMOUS_PROGRESS.md`. **Downgraded from the initial P0/P1 label**: per
-   Codex's correction, an unverified, conditional, model-dependent
+   **A further Codex finding refined the condition once more**: `finalize_plan`'s
+   `execute()` only calls `worker.repair()` and returns a report — it does
+   NOT terminate or lock the tool-calling loop, so nothing stops the model
+   from issuing more tool calls afterward (e.g. adding an ordinary filler,
+   then removing the just-placed wanted course) and finishing in a state
+   where `validateCandidate().valid` is still `true` — the outer fallback
+   never fires, and the wanted course is dropped again. So the precise
+   condition is not merely "the model never calls `finalize_plan`" but **any
+   run whose final mutation happens after its last `finalize_plan` call** —
+   broader than the first correction stated, still an LLM-behavior-dependent
+   compliance mode, not an unconditional missing deterministic backstop.
+   **Not reproduced against a real/mocked `LlmOrchestrator` run** — genuinely
+   unknown how often real models exhibit either variant in practice. Filed as
+   **issue #67** (now corrected twice) with this precise condition and a
+   suggested repro-first approach, rather than fixed inline — this docs PR's
+   diff stays scoped to `AUTONOMOUS_PROGRESS.md`. **Downgraded from the
+   initial P0/P1 label**: per Codex's correction, an unverified, conditional, model-dependent
    preference-quality gap should not automatically preempt the rolling-
    classification-window preference below without production reproduction
    first — that decision is deferred to whichever session actually
