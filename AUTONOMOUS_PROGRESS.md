@@ -84,9 +84,17 @@ full suite) — ready to deploy whenever that access exists.
 **Exact next action for the next session**: **a human (or a session with
 real `vercel` CLI credentials or the ability to configure Vercel Git
 integration) needs to deploy `ui/frontend-modernization` HEAD (`c923e0f`) to
-production** — same standing ask as every session since PR #27 — and
-separately decide which of the two Vercel projects (`tau-course-planner` vs
-`web`) is meant to be canonical (issue #18). **This file does not mandate
+production** — same standing ask as every session since PR #27. **The
+"which Vercel project is canonical" question is already resolved, not a
+second open decision** — a real Codex finding on this PR correctly pointed
+out that `.remember/current.md`'s own PR #41 entry settled this by reading
+the root `vercel.json` directly (re-verified this session): it wires the
+Next.js app, the real serverless API endpoints, and the legacy static board
+viewer into ONE deployment, and `tau-course-planner` deploying that root
+config IS the complete, correct production setup — `web` is a leftover
+single-subdirectory deploy from before the root config existed, not a real
+second candidate. Deploy `tau-course-planner` from the root config; no
+project-choice decision is needed first. **This file does not mandate
 pausing Agent-quality work until that happens** — every session from PR #48
 through PR #65 correctly kept shipping real Agent-quality fixes in parallel
 with this same standing deploy blocker, treating it as a separate,

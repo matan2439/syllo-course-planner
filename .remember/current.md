@@ -44,8 +44,16 @@ blocker, unchanged, now 4+ sessions running.
 session since PR #27 — **a human (or a session with real `vercel` CLI
 credentials or the ability to configure Vercel Git integration) needs to
 deploy `ui/frontend-modernization` HEAD (currently `c923e0f`, or later once
-PR #69 itself merges) to production**, and separately decide which of
-`tau-course-planner`/`web` is canonical (issue #18). This does **not** mean
+PR #69 itself merges) to production**. **The "which Vercel project" question
+is already resolved, not a second open decision** — real Codex finding on
+PR #69: this file's own PR #41 entry (below, "Also confirmed this session,
+unrelated to PR #41's content") already settled it by reading the root
+`vercel.json` directly (re-verified this session, unchanged) — it wires the
+Next.js app, the real serverless API, and the legacy static viewer into ONE
+deployment, and `tau-course-planner` deploying that root config IS the
+complete, correct setup; `web` is leftover, not a real second candidate.
+Deploy `tau-course-planner`; no project-choice decision blocks that. This
+does **not** mean
 pausing Agent-quality work in the meantime — PR #48 through #65 all
 correctly kept shipping real fixes alongside this same standing blocker,
 treating it as a separate human-decision item rather than a gate on other
@@ -76,7 +84,7 @@ Standing audit: production/branch/PR/CI/Codex/issue state inspected first. `main
 
 **Production check**: not re-verified this session (no new evidence; standing pin at `26500d4`, unchanged since PR #27). PR #65 joins the same growing merged-but-not-deployed backlog.
 
-**Standing blockers, unchanged**: issue #15/#18 (PR #14 D-stacking decision, Vercel canonical-project question), issue #20 (386/386 `jest.ui.config.js` failures, needs human sign-off on a sanitized fixture), issue #21 (dead-code decision). All still open, zero new human comments.
+**Standing blockers, unchanged**: issue #15/#18 (PR #14 D-stacking decision; the Vercel canonical-project question is already resolved, see the correction above — the actual open item is just getting deploy access), issue #20 (386/386 `jest.ui.config.js` failures, needs human sign-off on a sanitized fixture), issue #21 (dead-code decision). All still open, zero new human comments.
 
 **Exact next action for the next session**: PR #65 and its docs follow-up (#66) are merged/closing — do not reopen or re-address the greedy-path fix itself. Issue #67 is **not** an automatic priority override (corrected this session) — treat it as a normal rolling-window candidate, reproduce against a real/mocked `LlmOrchestrator` first per its own revised recommendation before deciding whether it needs a fix. Per the rolling-three check, the next milestone should be A or B unless a genuine P0/P1 emerges. Issue #68 (maxSteps false-block regression) is worth fixing alongside #67 given the shared file (`planner_worker.ts`), but is also not urgent (P2, low real-world likelihood at `maxSteps:500`). The beam-search analog's priority is conditional on the live flag, not parallel to issue #67's: **first check whether `AI_USE_AGENTIC_PLANNER` is set live** (via `vercel env ls` or equivalent, if/when that access exists) — if it's OFF, the beam gap stays low-priority/deprioritized exactly like issue #67; if it's ON, `generate-plan.ts`'s dispatch is mutually exclusive, so the beam gap becomes the SOLE active production defect (making it the priority) and issue #67's `LlmOrchestrator` reproduction becomes moot/irrelevant (that code path isn't reached at all). Standing human-decision blockers (#15/#18/#20/#21) remain untouched pending a human call.
 
