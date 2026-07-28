@@ -1,5 +1,67 @@
 # Current — read this first
 
+## ✅ PR #66 merged: docs recording PR #65's merge; queue resolved to PR #14 (parked); deploy blocker re-confirmed unchanged (2026-07-28, autonomous scheduled run)
+
+Scheduled run under an external task prompt (from the human operator, not
+anything written into this file or `AUTONOMOUS_PROGRESS.md`) directing it to
+pause new roadmap work, resolve the open PR queue, then release — with an
+explicit fallback to record-and-stop if deploy access is unavailable.
+**This is a one-off instruction from this session's own operator prompt, not
+a standing rule of this file** — an earlier draft of this entry mis-described
+it as an in-file "CURRENT RELEASE GATE" section, a real Codex finding on PR
+#69 caught it, and it's corrected here from the start this time. Future
+sessions should follow whatever their own operating instructions say, not
+assume this pause carries forward.
+
+**Queue at session start**: PR #14 (Decision capability, reconfirmed still
+correctly parked, untouched) and PR #66 (docs recording PR #65's merge,
+already mid-review from an earlier same-day session, 11 commits deep).
+
+**Concurrency**: while addressing PR #66's last two open Codex threads
+(narrowing issue #67's repro condition; making the beam-search priority
+claim conditional on `AI_USE_AGENTIC_PLANNER`'s live status), this session
+independently drafted the same fix a **different concurrent session** had
+already pushed (`bc30909`/`cd3bd90`) moments earlier. Discarded the
+redundant local commit (`git reset --hard` to the remote branch) rather than
+push a competing one, per the "one implementation owner" convention, then
+waited for CI/threads to settle rather than racing the other session's push.
+
+**Merged PR #66 as `c923e0f`** once all 14 threads were resolved, CI was 3/3
+green, and `mergeable_state` was `clean` with no further activity. No
+product code changed (docs-only, not separately classified, same convention
+as PR #36/#38/#47).
+
+**Fresh Vercel re-check this session**: `tau-course-planner`'s
+`latestDeployment` is still `dpl_HJZTB8zqondbwuSnHx6TveggoPVg`,
+`gitCommitSha: 26500d4` ("Merge PR #11"), `target: production` — unchanged
+from every session's check since PR #27. `web`'s latest deployment is still
+`target: null` — never promoted to production. Neither `get_project`
+response exposes a linked git repository; both projects remain CLI-only
+(`vercel --prod`) deploys with no Git integration configured. Standing
+blocker, unchanged, now 4+ sessions running.
+
+**Exact next action for the next session**: same standing ask as every
+session since PR #27 — **a human (or a session with real `vercel` CLI
+credentials or the ability to configure Vercel Git integration) needs to
+deploy `ui/frontend-modernization` HEAD (currently `c923e0f`, or later once
+PR #69 itself merges) to production**. **The "which Vercel project" question
+is already resolved, not a second open decision** — real Codex finding on
+PR #69: this file's own PR #41 entry (below, "Also confirmed this session,
+unrelated to PR #41's content") already settled it by reading the root
+`vercel.json` directly (re-verified this session, unchanged) — it wires the
+Next.js app, the real serverless API, and the legacy static viewer into ONE
+deployment, and `tau-course-planner` deploying that root config IS the
+complete, correct setup; `web` is leftover, not a real second candidate.
+Deploy `tau-course-planner`; no project-choice decision blocks that. This
+does **not** mean
+pausing Agent-quality work in the meantime — PR #48 through #65 all
+correctly kept shipping real fixes alongside this same standing blocker,
+treating it as a separate human-decision item rather than a gate on other
+work. Absent a specific instruction to pause, resume the normal **Agent
+Diagnosis Loop**; issue #67 (repro-first, not an automatic P0/P1 preemption)
+and issue #68 (maxSteps false-block regression, P2) are the next concrete
+leads, per PR #65's entry below.
+
 ## ✅ PR #65 merged: search stopped the instant bare goal was met, silently dropping a still-legal wanted course (2026-07-28, autonomous scheduled run)
 
 Standing audit: production/branch/PR/CI/Codex/issue state inspected first. `main` remains far behind `ui/frontend-modernization` (full reconciliation still not done, unchanged, no new evidence). Two open PRs: **#14** (Decision capability) — reconfirmed still correctly parked per the D-stacking-cap precedent (issue #18), untouched — and **#65** (this entry's subject), already opened earlier the same day by a prior session, one commit deep, CI pending, only its first commit Codex-reviewed. Picked up #65 per the anti-duplication/queue-resolution rule rather than starting a fresh diagnosis pass. Issues #15/#18/#20/#21 reconfirmed unchanged, zero new human comments.
@@ -22,7 +84,7 @@ Standing audit: production/branch/PR/CI/Codex/issue state inspected first. `main
 
 **Production check**: not re-verified this session (no new evidence; standing pin at `26500d4`, unchanged since PR #27). PR #65 joins the same growing merged-but-not-deployed backlog.
 
-**Standing blockers, unchanged**: issue #15/#18 (PR #14 D-stacking decision, Vercel canonical-project question), issue #20 (386/386 `jest.ui.config.js` failures, needs human sign-off on a sanitized fixture), issue #21 (dead-code decision). All still open, zero new human comments.
+**Standing blockers, unchanged**: issue #15/#18 (PR #14 D-stacking decision; the Vercel canonical-project question is already resolved, see the correction above — the actual open item is just getting deploy access), issue #20 (386/386 `jest.ui.config.js` failures, needs human sign-off on a sanitized fixture), issue #21 (dead-code decision). All still open, zero new human comments.
 
 **Exact next action for the next session**: PR #65 and its docs follow-up (#66) are merged/closing — do not reopen or re-address the greedy-path fix itself. Issue #67 is **not** an automatic priority override (corrected this session) — treat it as a normal rolling-window candidate, reproduce against a real/mocked `LlmOrchestrator` first per its own revised recommendation before deciding whether it needs a fix. Per the rolling-three check, the next milestone should be A or B unless a genuine P0/P1 emerges. Issue #68 (maxSteps false-block regression) is worth fixing alongside #67 given the shared file (`planner_worker.ts`), but is also not urgent (P2, low real-world likelihood at `maxSteps:500`). The beam-search analog's priority is conditional on the live flag, not parallel to issue #67's: **first check whether `AI_USE_AGENTIC_PLANNER` is set live** (via `vercel env ls` or equivalent, if/when that access exists) — if it's OFF, the beam gap stays low-priority/deprioritized exactly like issue #67; if it's ON, `generate-plan.ts`'s dispatch is mutually exclusive, so the beam gap becomes the SOLE active production defect (making it the priority) and issue #67's `LlmOrchestrator` reproduction becomes moot/irrelevant (that code path isn't reached at all). Standing human-decision blockers (#15/#18/#20/#21) remain untouched pending a human call.
 
