@@ -119,11 +119,18 @@ acting):**
    from issuing more tool calls afterward (e.g. adding an ordinary filler,
    then removing the just-placed wanted course) and finishing in a state
    where `validateCandidate().valid` is still `true` — the outer fallback
-   never fires, and the wanted course is dropped again. So the precise
-   condition is not merely "the model never calls `finalize_plan`" but **any
-   run whose final mutation happens after its last `finalize_plan` call** —
-   broader than the first correction stated, still an LLM-behavior-dependent
-   compliance mode, not an unconditional missing deterministic backstop.
+   never fires, and the wanted course is dropped again. **A third Codex
+   finding narrowed this further**: a mutation after `finalize_plan` only
+   removes the deterministic convergence *guarantee* — it doesn't by itself
+   reproduce the wanted-course loss (e.g. a post-finalize `move_course` can
+   easily leave the wanted course placed and the plan still fully optimized).
+   So the precise repro condition is not "any run whose final mutation
+   happens after its last `finalize_plan` call," but one where that
+   post-finalize activity **actually undoes or fails to redo an optimization**
+   `worker.repair()` had achieved (e.g. removes a wanted course, or
+   unbalances load) with no later `finalize_plan` call to recover it — still
+   an LLM-behavior-dependent compliance mode, not an unconditional missing
+   deterministic backstop.
    **Not reproduced against a real/mocked `LlmOrchestrator` run** — genuinely
    unknown how often real models exhibit either variant in practice. Filed as
    **issue #67** (now corrected twice) with this precise condition and a
@@ -151,10 +158,18 @@ acting):**
    checking via `vercel env ls` or equivalent if/when that access exists).
    Recorded here as **default-off / not committed / not independently
    confirmed against the live environment** rather than "unreachable," per
-   Codex's suggested wording. Not separately filed as its own issue (lower
-   priority than #67 regardless, since #67 doesn't depend on any flag);
-   worth folding into the same future fix session as #67 since it's the
-   identical bug class.
+   Codex's suggested wording. **A further Codex finding correctly caught
+   that priority here is NOT "regardless" of #67 — it's conditional on the
+   live flag**: `generate-plan.ts:1495-1526`'s `if
+   (process.env.AI_USE_AGENTIC_PLANNER === 'true')` is a mutually-exclusive
+   dispatch — if that flag IS set live, every real request routes through
+   `PlannerAgent`/`planner_search_beam.ts` exclusively, the `LlmOrchestrator`
+   path issue #67 describes is never reached at all, and this beam-search gap
+   becomes the sole active production defect, not a lower-priority one. Not
+   separately filed as its own issue; worth folding into the same future fix
+   session as #67 since it's the identical bug class, but whichever of the
+   two is confirmed live-reachable should be treated as the priority one (see
+   "exact next action" below, which already states this correctly).
 3. **[Filed as issue #68]** PR #65's OWN maxSteps-truncation fix (the
    `006aad6` commit, "One real Codex finding on the initial commit" above)
    has a residual regression, itself a real bug in already-merged code, not
