@@ -214,8 +214,13 @@ window preference, not wait for an A/B pick first. (It would itself be
 classified C once fixed — that's fine; a P0/P1 correctness finding always
 overrides the rolling-window preference, exactly as this routine's own rules
 say.) The `planner_search_beam.ts`/`AI_USE_AGENTIC_PLANNER` analog (gap #2
-above) is lower priority (gated behind a flag nothing sets) but worth folding
-into the same fix session since it's the identical bug class. **Issue #68**
+above) is lower priority — but per the "Known related gaps" caveat above,
+its live-production status is **default-off/not-committed, not
+independently confirmed**, not "unreachable"; if a future session with
+Vercel env-var access confirms the flag IS set live, this stops being
+lower priority and becomes as urgent as issue #67. Worth folding into the
+same fix session as #67 regardless, since it's the identical bug class.
+**Issue #68**
 (the maxSteps-truncation false-block regression in PR #65's own merged code)
 is real but lower real-world likelihood at the actual production `maxSteps:
 500` budget — worth fixing in the same session as #67 given the shared file
