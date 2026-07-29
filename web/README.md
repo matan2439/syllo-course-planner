@@ -7,12 +7,12 @@ light/dark via `prefers-color-scheme`.
 
 | Surface | Where it lives |
 |---|---|
-| Landing / entry | `app/page.tsx` (Next, real UI). Primary CTA → `/ai-plan` (guided flow); no direct jump into raw HTML |
+| Landing / entry | `app/page.tsx` (Next, real UI). Primary CTA → `/planner` (the working embedded assistant); no direct jump into raw HTML |
 | Main planner (board, repo, AI) | `/planner` — Next **product-shell page** (`ProductShell fullBleed` + `LegacyPlannerFrame`) that embeds the canonical planner via a same-origin iframe. Gradient, brand and cross-navigation frame it; theme + saved program persist across the frame. Cross-cutting legacy actions (my courses / change degree / reset), the current-program label, the live `hdr-chips` status (סה״כ/מוצבים/במאגר/חסרות שעות — mirrored verbatim via a same-origin `MutationObserver` on `#hdr-chips`, `lib/chip-status.ts`) and a theme toggle are mirrored as product-styled controls in an outer toolbar — they call the legacy globals same-origin (reset is confirmation-gated). The theme toggle writes the legacy's own `tau_theme` and sets `data-theme` on both the shell and the iframe (a pre-paint bootstrap in `layout.tsx` seeds the shell from `tau_theme` so the two never desync across reloads/pages; `suppressHydrationWarning` covers the bootstrap mutation). With every control mirrored outward, the iframe requests `?embed=1`, which `/planner/legacy` (serve-time only, via `lib/embed-html.ts`) uses to collapse the now-redundant legacy `.page-hdr` — one unified header, no seam. The legacy in-frame toolbar/controls remain in the DOM (untouched, just visually collapsed) so raw `/planner/legacy` (no `embed`) is unaffected |
 | Raw legacy planner | `/planner/legacy` — the canonical `app/web/semester_board_viewer.html` served unchanged (own document context, all scripts intact). Also the honest fallback if the frame fails |
 | Semester board (read-only) | `/board` — Next-native components (`lib/board.ts` adapter, `CourseCard`, `SemesterColumn`, `ui.tsx` primitives) over the same board JSON |
 | Course repository (read-only) | `/repository` — `lib/repository.ts` adapter over `metadata.program_repository_courses`, client-side search (`RepositoryExplorer`, `RepositoryCourseCard`). Selecting a course opens a Next-native, read-only **course-details modal** (`CourseDetailsPanel` + `lib/course-details.ts`) — no board mutation, decoupled from the legacy iframe |
-| AI planning entry (presentation) | `/ai-plan` — `AiPlanningExperience` preference form + staged loading/result/error choreography. No planner call yet; hands off to the canonical assistant at `/planner` |
+| AI planning entry | `/ai-plan` — **retired**; redirects to `/planner`. It was a presentation-only placeholder (`AiPlanningExperience`) that faked a build animation and never called the planner API, so it was removed. Real AI planning is the embedded assistant at `/planner` |
 
 The static HTML file remains the **single source of truth** for the planner UI
 and is what production Vercel serves at `/` (see root `vercel.json`). The Next
@@ -77,14 +77,14 @@ fails if the canonical HTML, the `/planner` wiring, or the brand assets move.
 | Sidebar repository panel (search, categories, add-to-board) | UI + board mutations | medium — read-only part already exists at `/repository` |
 | Progress panel (התקדמות בתוכנית, category counters) | renders `metadata.program_requirements_*` | extracted read-only — `/plan` renders `program_requirements_validation` as shipped (`lib/requirements.ts` + `RequirementsProgressPanel`); the HTML panel remains canonical until cutover |
 | Semester board (drag/placement, locks, legality feedback) | heavy behavior | high — needs planner rules server-side |
-| AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream. Presentation entry extracted at `/ai-plan` (`AiPlanningExperience`): preference form + loading/result/error states, no planner call yet, hands off to `/planner` |
+| AI assistant panel (chat, drafts, plan preview/apply) | heavy behavior + `/api/ai/*` | high — active parallel workstream, served today by the embedded assistant at `/planner`. A native presentation entry (`AiPlanningExperience` at `/ai-plan`) was tried but faked generation, so it was retired (`/ai-plan` now redirects to `/planner`) until a real native flow is built |
 | Course details / My-Courses / exam-preference modals | UI + localStorage | course-details **extracted read-only** — `CourseDetailsPanel` (`lib/course-details.ts` VM) renders name/id/hours/credits/category/offered/prereqs/syllabus from the repository fields at `/repository`, decoupled from the iframe; a live `/planner`-iframe selection bridge is the deferred follow-up (needs a sanctioned legacy hook — reading `courseMap` on card click would double-open the legacy modal). My-Courses / exam-preference still legacy-only |
 | Theme toggle (`tau_theme`) | pure UI | bridged — `/planner` seeds it from the OS scheme |
 
 ### Next-native pieces that already exist
 `ProductShell`, `ShaderGradientBackground`, `BrandLogo`, `Card`/`Badge`/
 `EmptyState`, `CourseCard`, `SemesterColumn`, `RepositoryExplorer` +
-`RepositoryCourseCard`, `CourseDetailsPanel`, `AiPlanningExperience`, adapters
+`RepositoryCourseCard`, `CourseDetailsPanel`, adapters
 `lib/board.ts` (+ `planOverview`), `lib/repository.ts`, `lib/course-details.ts`,
 `lib/chip-status.ts` and `lib/embed-html.ts`, routes `/plan`, `/board`,
 `/repository`, `/ai-plan`.

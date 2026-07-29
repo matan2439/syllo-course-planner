@@ -1,12 +1,10 @@
-import { programSubtitle } from '../../lib/board-data'
+import { redirect } from 'next/navigation'
 import { getProgram, programQuery } from '../../lib/programs'
-import AiPlanningExperience from '../components/AiPlanningExperience'
-import ProductShell from '../components/ProductShell'
 
-export const metadata = { title: 'תכנון עם AI — מתכנן לימודים' }
-
-// Guided AI planning entry — presentation only for now (see
-// AiPlanningExperience). The canonical assistant stays at /planner.
+// The native /ai-plan entry was a presentation-only placeholder that faked a
+// build animation and never called the planner API. It is retired: real AI
+// planning is the embedded assistant at /planner. Redirect here so existing
+// links/bookmarks land on the working surface with the selected program kept.
 export default async function AiPlanPage({
   searchParams,
 }: {
@@ -14,20 +12,5 @@ export default async function AiPlanPage({
 }) {
   const { program: programParam } = await searchParams
   const program = getProgram(programParam)
-
-  return (
-    <ProductShell
-      title="תכנון עם AI"
-      subtitle={programSubtitle(program)}
-      width="narrow"
-      programId={program.id}
-    >
-      <p className="rise mb-6 max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
-        נבנה תוכנית לפי מצב הלימודים, ההעדפות והעומס הרצוי.
-      </p>
-      <div className="rise rise-1">
-        <AiPlanningExperience programQuerySuffix={programQuery(program.id)} />
-      </div>
-    </ProductShell>
-  )
+  redirect(`/planner${programQuery(program.id)}`)
 }

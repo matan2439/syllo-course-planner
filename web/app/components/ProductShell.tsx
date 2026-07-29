@@ -86,7 +86,7 @@ export default function ProductShell({
               </Link>
             ))}
             <Link
-              href={`/ai-plan${query}`}
+              href={`/planner${query}`}
               className="ms-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1.5 text-xs font-medium transition-colors duration-150 hover:border-purple-500/40 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
             >
               תכנון עם AI

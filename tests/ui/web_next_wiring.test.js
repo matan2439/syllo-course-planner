@@ -31,9 +31,10 @@ test('the legacy planner frame embeds the raw /planner/legacy route', () => {
   expect(read('web/app/components/LegacyPlannerFrame.tsx')).toContain('/planner/legacy');
 });
 
-test('landing primary CTA starts the guided flow, not the raw planner', () => {
+test('landing primary CTA opens the working /planner assistant, not the retired placeholder', () => {
   const page = read('web/app/page.tsx');
-  expect(page).toContain('/ai-plan');
+  expect(page).toContain('href="/planner"');
+  expect(page).not.toContain('/ai-plan');
 });
 
 test('landing page offers the plan hub as a quiet secondary route', () => {
@@ -85,29 +86,33 @@ test('the shell preserves a non-default program selection on nav links', () => {
   expect(read('web/app/components/ProductShell.tsx')).toContain('programQuery');
 });
 
-test('/ai-plan resolves the selected program like every other surface', () => {
+test('/ai-plan is retired — it redirects to the canonical /planner assistant, preserving program', () => {
   const page = read('web/app/ai-plan/page.tsx');
-  expect(page).toContain('getProgram');
-  expect(page).toContain('AiPlanningExperience');
+  expect(page).toContain('redirect');
+  expect(page).toContain('/planner');
+  expect(page).toContain('getProgram'); // still resolves/normalizes the selected program before redirecting
+  expect(page).not.toContain('AiPlanningExperience');
 });
 
-test('/plan AI section and the shell CTA route to the guided /ai-plan entry', () => {
-  expect(read('web/app/plan/page.tsx')).toContain("'/ai-plan'");
-  expect(read('web/app/components/ProductShell.tsx')).toContain('/ai-plan');
+test('/plan AI section and the shell CTA route to the working /planner assistant', () => {
+  expect(read('web/app/plan/page.tsx')).toContain("'/planner'");
+  expect(read('web/app/plan/page.tsx')).not.toContain("'/ai-plan'");
+  expect(read('web/app/components/ProductShell.tsx')).toContain('/planner');
+  expect(read('web/app/components/ProductShell.tsx')).not.toContain('/ai-plan');
 });
 
-test('the AI experience ships honest loading and error state copy', () => {
-  const xp = read('web/app/components/AiPlanningExperience.tsx');
-  expect(xp).toContain('בודק דרישות'); // staged loading, same language as the canonical panel
-  expect(xp).toContain('לא הצלחנו לבנות תוכנית כרגע'); // calm error state
-  expect(xp).toContain('/planner'); // hands off to the real assistant, no fake generation
+test('the fake AI placeholder experience is removed — no client-side fake generation ships', () => {
+  // AiPlanningExperience faked a loading animation and never called the API;
+  // it is deleted so nothing pretends to generate a plan (real generation is
+  // the embedded assistant at /planner). See Failure #2 root cause.
+  expect(fs.existsSync(path.join(ROOT, 'web/app/components/AiPlanningExperience.tsx'))).toBe(false);
 });
 
-test('the shared shell navigates to all planner surfaces', () => {
+test('the shared shell navigates to all planner surfaces including the assistant', () => {
   const shell = read('web/app/components/ProductShell.tsx');
   expect(shell).toContain('/repository');
   expect(shell).toContain('/board');
-  expect(shell).toContain('/ai-plan'); // canonical /planner is one hop away via the AI entry
+  expect(shell).toContain('/planner'); // the working AI assistant (embedded legacy planner)
   expect(shell).toContain('/plan');
 });
 
