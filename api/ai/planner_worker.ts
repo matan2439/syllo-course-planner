@@ -466,17 +466,58 @@ export class PlannerWorker {
     // a STOP — i.e. every one of the maxSteps iterations was a real accepted
     // action. Since step() no longer exits the instant the bare goal is met
     // (post-goal wanted-course/balance optimization keeps taking legal
-    // actions), isGoalReached() being true here does NOT mean nothing was
-    // left to do — it can equally mean the budget ran out mid-optimization,
-    // with further legal improvements never attempted. Always record the
-    // truncation explicitly (Codex finding on PR #65: silently staying quiet
-    // just because the bare goal already held concealed that case), worded
-    // for whichever one actually applies.
+    // actions), isGoalReached() being true here does NOT by itself mean
+    // nothing was left to do — it can equally mean the budget ran out
+    // mid-optimization, with further legal improvements never attempted
+    // (Codex finding on PR #65).
+    //
+    // But isGoalReached() alone can't distinguish that genuine-truncation
+    // case from the boundary case where the very last permitted action
+    // (i == maxSteps - 1) happened to be the one that reached full
+    // convergence — nothing left to do, we simply never spent one more
+    // step() call confirming it. Treating THAT case as truncation is itself
+    // a regression (issue #68): a complete, fully-legal, fully-optimized
+    // plan gets a "maxSteps" STOP reason, which generate-plan.ts's
+    // hitMaxSteps detection then reports as a blocking error — a valid plan
+    // presented as broken, the mirror image of the bug PR #65 fixed. So when
+    // the bare goal holds, do one non-consuming check (reusing step()'s own
+    // "is there a legal action that still advances the plan" logic without
+    // applying one) to tell genuine truncation apart from true convergence.
+    const genuinelyTruncated = this.isGoalReached() ? this.hasFurtherAdvancingAction() : true;
     this.recordStop(
-      this.isGoalReached()
-        ? `הגעה למגבלת הצעדים (maxSteps: ${maxSteps}) תוך כדי שיפור נוסף מעבר למטרה הבסיסית (למשל שיבוץ קורסים מבוקשים או איזון עומס) — ייתכן שנותרו שיפורים חוקיים נוספים שלא בוצעו.`
-        : `לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`,
+      !genuinelyTruncated
+        ? 'המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.'
+        : this.isGoalReached()
+          ? `הגעה למגבלת הצעדים (maxSteps: ${maxSteps}) תוך כדי שיפור נוסף מעבר למטרה הבסיסית (למשל שיבוץ קורסים מבוקשים או איזון עומס) — ייתכן שנותרו שיפורים חוקיים נוספים שלא בוצעו.`
+          : `לא הושגה המטרה עד תום מגבלת הצעדים (maxSteps: ${maxSteps}).`,
     );
+  }
+
+  /**
+   * Non-mutating peek: is there still a legal action that would advance the
+   * plan (immediate or lookahead-estimated final score improves), or an
+   * incomplete annual course still needing a repair placement? Mirrors the
+   * same "Reason" decision step() itself makes, without applying anything or
+   * recording a trace entry — used only to tell genuine step-budget
+   * truncation apart from the run() ending exactly on the converging action
+   * (see run()'s own comment). Deliberately does NOT truncate to opts.topN
+   * the way step()'s lookahead rollout does (that limit exists only to bound
+   * an expensive per-iteration rollout cost across many calls) — this runs
+   * once, so checking every legal candidate is the more correct answer to
+   * "does anything at all still advance the plan?", never a weaker one.
+   */
+  private hasFurtherAdvancingAction(): boolean {
+    if (this.findIncompleteAnnualCourse()) return true;
+    const current = scorePlan(this.state, this.model);
+    const curFinal = this.opts.lookahead ? estimateFinalScore(this.state, this.model, this.opts.rolloutSteps) : current;
+    const legal = this.enumerateActions(this.state)
+      .map(mut => applyMutation(this.state, mut))
+      .filter((next): next is PlanState => next != null && this.validate(next).valid);
+    return legal.some(next => {
+      const imm = scorePlan(next, this.model);
+      const fin = this.opts.lookahead ? estimateFinalScore(next, this.model, this.opts.rolloutSteps) : imm;
+      return compareScore(fin, curFinal) > 0 || compareScore(imm, current) > 0;
+    });
   }
 
   /**

@@ -456,16 +456,21 @@ describe('PlannerWorker — STOP trace on maxSteps limit', () => {
     expect(maxStepsStops.length).toBe(0);
   });
 
-  it('still records a STOP when maxSteps is exhausted DURING post-bare-goal optimization (Codex finding on PR #65)', () => {
+  it('records the real convergence STOP (not a "maxSteps" one) when the LAST permitted step is itself the converging action (issue #68 fix)', () => {
     // Same fixture as the "keeps searching past bare degree/mandatory/category
     // completion" test above: bare goal (MAND + one fluids candidate) is
     // reached after exactly 2 steps, and a 3rd step legally places the still-
-    // unplaced WANTED course (post-goal optimization enabled by that same
-    // fix). maxSteps=3 lets the loop take all 3 of those actions but not the
-    // 4th step that would record the real convergence STOP — run()'s own
-    // fallback must not stay silent just because isGoalReached() happens to
-    // already be true; the trace must still show that the run stopped
-    // because the step budget ran out, not vanish with no STOP at all.
+    // unplaced WANTED course (post-goal optimization). With maxSteps=3, that
+    // 3rd step IS the plan's true convergence point — nothing legal is left
+    // to improve afterwards. Before the issue #68 fix, run()'s post-loop
+    // fallback treated "isGoalReached() is true" alone as proof the budget
+    // ran out mid-optimization and always recorded a "maxSteps" STOP here —
+    // which generate-plan.ts's hitMaxSteps detection then reports as a
+    // *blocking* error, a complete/legal/fully-optimized plan falsely
+    // presented as broken (the mirror image of the bug PR #65 itself fixed).
+    // The fix adds a non-consuming "is anything still legally improvable"
+    // check so this exact boundary is told apart from genuine truncation
+    // (see the next test) and gets the honest convergence message instead.
     const profiles = new Map<string, CourseProfile>();
     profiles.set('MAND', profile('MAND', {
       is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
@@ -488,10 +493,55 @@ describe('PlannerWorker — STOP trace on maxSteps limit', () => {
     const w = new PlannerWorker(m);
     w.run(3, 'greedy');
 
-    expect(w.isGoalReached()).toBe(true); // bare goal WAS reached...
+    expect(w.isGoalReached()).toBe(true);
+    expect(placedCourseIds(w.getPlan())).toContain('WANTED'); // truly converged, not dropped
     const trace = w.getTrace();
-    // ...but the run must still explicitly record that it stopped on the
-    // step budget, not silently end on the last applied action.
+    expect(trace.at(-1)!.action).toBe('STOP');
+    // Honest convergence message — no "maxSteps" wording, since nothing was
+    // actually left undone; generate-plan.ts must not flag this as blocked.
+    expect(trace.at(-1)!.reason).not.toContain('maxSteps');
+    expect(trace.at(-1)!.reason).toBe('המטרה הושגה — התואר מושלם וכל האילוצים מתקיימים.');
+  });
+
+  it('still records a genuine "maxSteps" truncation STOP when real legal improvements remain unattempted (Codex finding on PR #65, still covered after the issue #68 fix)', () => {
+    // Two independent wanted courses this time (WANTED1, WANTED2), each its
+    // own legal, score-improving post-goal action. Bare goal (MAND + one
+    // fluids candidate) is reached after 2 steps; step 3 places WANTED1.
+    // With maxSteps=3, WANTED2 is REAL remaining work the budget cut off —
+    // unlike the previous test, this is genuine truncation, and run() must
+    // still say so (the exact case PR #65's own Codex round originally
+    // added this describe block to cover).
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a',
+      effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('FLU2', profile('FLU2', { category_id: 'fluids', hours: 4 }));
+    profiles.set('WANTED1', profile('WANTED1', { hours: 4, is_wanted: true }));
+    profiles.set('WANTED2', profile('WANTED2', { hours: 4, is_wanted: true }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS,
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1', 'FLU2'] }],
+      degreeRequiredHours: 9, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(),
+      wantedCourseIds: new Set(['WANTED1', 'WANTED2']),
+    };
+    const w = new PlannerWorker(m);
+    w.run(3, 'greedy');
+
+    expect(w.isGoalReached()).toBe(true); // bare goal WAS reached...
+    const placed = placedCourseIds(w.getPlan());
+    expect(placed).toContain('WANTED1');
+    expect(placed).not.toContain('WANTED2'); // ...but real work was cut off by the budget
+    const trace = w.getTrace();
+    // ...so the run must still explicitly record that it stopped on the
+    // step budget, not silently end on the last applied action, and not
+    // claim a false convergence either.
     expect(trace.at(-1)!.action).toBe('STOP');
     expect(trace.at(-1)!.reason).toContain('maxSteps');
   });
