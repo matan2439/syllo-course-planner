@@ -34,8 +34,19 @@ fresh first, per this routine's own start-of-session order:
 - Vercel/production-deploy state **not re-checked this session** — no new
   directive to re-verify it; the prior 5+ sessions' identical finding
   (production pinned at `26500d4`, no Git integration on either Vercel
-  project) has no reason to have changed on its own. Still the single most
-  valuable pending human action — see Blockers/Exact next action, unchanged.
+  project) has no reason to have changed on its own. **Still the single
+  most valuable pending human action, stated directly here (the file's own
+  `Blockers`/`Exact next action` sections near the bottom are a stale,
+  superseded PR #48-era snapshot — do not follow them, per this file's own
+  note at that section):** a human (or a session with real `vercel` CLI
+  credentials, or the ability to configure Vercel Git integration) needs to
+  either (a) link the `matan2439/syllo-course-planner` GitHub repo to the
+  `tau-course-planner` Vercel project (Project Settings → Git), with
+  `ui/frontend-modernization` (soon `main`, once branch reconciliation
+  completes) as the production branch, or (b) explicitly authorize an agent
+  session to use `deploy_to_vercel`'s raw-upload path as an interim
+  measure, accepting that its deployment won't carry a verifiable
+  `gitCommitSha`. No autonomous session can make this call unilaterally.
 
 **This session's milestone**: picked up issue #68 (filed by the immediately
 prior session, a real Codex finding on PR #66) — the highest-impact,
