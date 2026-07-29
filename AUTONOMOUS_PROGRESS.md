@@ -5,10 +5,93 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-29, session on branch `claude/youthful-tesla-wq1g2x`
-(PR #71 merged as `5f67194`, closing issue #68; production deploy blocker
+(PR #71 merged as `5f67194` closing issue #68, PR #73 merged as `681d883`
+closing issue #67, both in the same session; production deploy blocker
 unchanged, not re-checked this session — no new directive to do so)._
 
-## Latest session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
+## Latest session — PR #73 merged: LlmOrchestrator now always guarantees its finishing pass (issue #67), plus PR #71/#68 earlier the same session; a Codex finding on #73 uncovered and documented a distinct, still-open gap (issue #75)
+
+Continuation of the same session as PR #71/#68 below (that entry is now
+"Prior session" — see it for the branch-hygiene/queue-state notes at
+session start, unchanged for this second milestone). After PR #71 and its
+docs recap (PR #72) merged, picked up **issue #67** next — the other
+Agent-quality item the immediately prior session had flagged and
+deliberately left untouched to avoid parallel work on `planner_worker.ts`.
+
+**The bug**: `buildPlannerTools`'s `finalize_plan` tool (`api/ai/planner_tools.ts`)
+calls `worker.repair()` (which places any still-legal wanted course/balance
+move, per PR #65/#68's fix), but its `execute()` does not terminate the
+AI-SDK tool-calling loop — nothing stops the model from mutating further
+afterward (e.g. removing a wanted course `finalize_plan` had just placed),
+with no later `finalize_plan` call to recover it. `LlmOrchestrator.run()`'s
+own outer fallback only re-ran the deterministic finishing pass when
+`worker.validateCandidate().valid` was false, and that check has zero
+`wantedCourseIds`/balance awareness — verified against `planner_validate.ts`
+before writing any code. Also didn't match the class's own docstring
+("Whatever the model does ... a deterministic finishing pass guarantees a
+valid, complete plan" — unconditional in the comment, conditional in the
+code).
+
+**Fix** (`api/ai/planner_orchestrator.ts`): `LlmOrchestrator.run()` now
+always calls `worker.run(500, 'greedy')` after the model's tool-calling loop
+ends, not just when the candidate is invalid. Safe by construction —
+`worker.run()` only ever takes further legal, score-improving actions, so
+it can't discard anything the model validly chose to keep; an
+already-converged plan returns almost immediately, no added cost in the
+common case.
+
+**Tests**: new regression test reproduces the exact repro condition from
+issue #67's own (twice-corrected) writeup, RED-verified against the
+pre-fix code first (empirically confirmed `placedCourseIds` lost `WANTED`).
+Full API suite: **86/86 suites, 1354/1354 tests**, zero regressions across
+every pre-existing `LlmOrchestrator`/`GreedyOrchestrator`/tool test.
+`tsc --noEmit` clean.
+
+**One real Codex finding on this PR, NOT fixed inline (filed as issue #75
+instead)**: if the model removes a wanted course AND that course's own
+(non-mandatory, non-category) prerequisite post-`finalize_plan`, this fix
+still can't recover it — `requiredButUnplacedCourseIds` (`planner_goals.ts`)
+only seeds its prerequisite walk from `requiredMandatoryCourseIds`, never
+`wantedCourseIds`, so no `enumerateActions` group ever proposes re-adding
+that prerequisite once degree hours are otherwise met. **Verified this is
+NOT a regression from this PR** — empirically confirmed the identical
+outcome against the pre-PR-73 code too (its conditional fallback is equally
+skipped whenever the resulting state already reads as valid). **Not fixed
+inline**: `requiredButUnplacedCourseIds` also feeds `remainingMandatoryHours`'
+reservation-budget scoring — broadening its contract is a cross-cutting
+change to sensitive, shared scoring logic needing its own dedicated pass,
+not a hasty addition inside this PR's narrower scope. Filed as **issue #75**
+with the full analysis and a suggested fix direction; added a RED-verified
+(empirically, via a throwaway repro script), currently `.skip`'d regression
+test in `tests/api/planner_orchestrator.test.ts` as a ready starting point.
+
+**Final state**: CI green, Codex clean on the final commit (`c548969`), the
+one real finding documented with a filed issue and a resolved thread
+(not silently dismissed — a new issue + a skipped test is the "fixed" outcome
+for a deliberately-scoped-out finding, per this routine's own review-gate
+rules). Full suite 86/86 suites, 1354 passing + 1 documented skip. `git
+diff --stat` = `api/ai/planner_orchestrator.ts` (comment + one conditional
+removed) + its test file only. **Merged as `681d883`.** Issue #67 closed
+with the fix commit and evidence in the closing comment.
+
+**Classification: C** (correctness/honesty — closes a reproduced gap on the
+actual default production Agent path, `LlmOrchestrator`, same "valid plan
+misreported" bug family as PR #48/#56/#58/#60/#62/#65/#71).
+
+**Rolling three this session (68, then 67)**: both C. Per the rolling-window
+rule, the next milestone should aim for A or B unless a higher-priority
+correctness finding preempts it again — issue #75 (P2, just filed) or a
+fresh Agent Diagnosis Loop pass are the next candidates; #75 is itself
+another C if picked up next, so a fresh diagnosis pass specifically looking
+for an A/B (UI-exposing or end-to-end-integration) opportunity is worth
+trying first.
+
+**State as of this update**: only PR #14 remains open (still correctly
+parked). Issues #67 and #68 both closed this session. Issue #75 newly filed,
+open, not yet fixed. `AUTONOMOUS_PROGRESS.md`/`​.remember/current.md` recap
+for this merge: PR #74 (this docs update).
+
+## Prior session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
 
 This was a scheduled autonomous run under the standing product-engineering
 mandate (no special "release gate" directive this time). State inspected
