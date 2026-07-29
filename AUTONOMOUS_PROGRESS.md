@@ -5,17 +5,24 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-29, session on branch `claude/youthful-tesla-xx4car`
-(scheduled run under the "CURRENT RELEASE GATE" directive — queue resolved:
-PR #77 merged as `1ce8bf2`, PR #74 closed as a superseded duplicate;
-production deploy blocker re-checked and reconfirmed unchanged, still
-external/human-only — see this entry for the concrete numbers)._
+(queue resolved: PR #77 merged as `1ce8bf2`, PR #74 closed as a superseded
+duplicate; production deploy blocker re-checked and reconfirmed unchanged,
+still external/human-only — see this entry for the concrete numbers)._
 
-## Latest session — release-gate queue resolved (PR #77 merged, PR #74 closed as duplicate); production deploy blocker re-verified: still pinned at `26500d4`, now 232 commits behind
+## Latest session — PR queue resolved (PR #77 merged, PR #74 closed as duplicate); production deploy blocker re-verified: still pinned at `26500d4`, now 232 commits behind
 
-This was a scheduled run under this file's own "CURRENT RELEASE GATE —
-AUTHORITATIVE" directive, whose stored checkpoint (PR #53, commit `36de50f`)
-was stale, as the directive itself warns it might be — verified fresh
-against GitHub before acting, per the directive's own mandatory step 1.
+**Per this session's own external operating instructions, stopping here
+rather than starting new Agent-quality work** (not a standing rule of this
+file — see the correction the immediately-preceding session already made
+about exactly this framing, a few sections below): this session's own
+*external* scheduled-task prompt, given by the human operator, told it to
+pause new roadmap work until the open-PR queue was resolved and a verified
+production release was deployed, with an explicit escape valve for exactly
+this situation — if deployment is blocked by missing authorization/
+credentials, record the single external blocker and stop before deployment
+rather than proceed. That instruction's own stored checkpoint (PR #53,
+commit `36de50f`) was stale, as the prompt itself warned it might be —
+verified fresh against GitHub before acting.
 
 **Branch hygiene, same recurring gap as several prior sessions (issue #18's
 finding, still not permanently fixed)**: this session's assigned branch
@@ -66,27 +73,39 @@ Blockers item 1 (below) and many prior sessions have already recorded —
 confirmed unchanged, not a new finding, but now quantified precisely rather
 than just "some fixes are unshipped."
 
-Per this file's own "CURRENT RELEASE GATE" directive's explicit fallback —
-*"If deployment is unavailable because authorization or credentials are
-missing, prepare and verify the exact release candidate, record the single
-external blocker and stop before deployment"* — this session did not
-attempt `deploy_to_vercel`'s raw-upload path (no git linkage, would break
-`gitCommitSha` traceability for this multi-language repo, previously
-declined by name in this same file) and did not attempt to reconfigure
-Vercel Git integration unilaterally (a genuine human product decision:
-which of the two Vercel projects should be canonical, and linking a GitHub
-repo to a Vercel project's Git integration is exactly the kind of
-infrastructure/deployment-configuration action this routine's own
-prohibited-actions list reserves for a human).
+Per that scheduled-task prompt's own explicit fallback — *"if deployment is
+unavailable because authorization or credentials are missing, prepare and
+verify the exact release candidate, record the single external blocker and
+stop before deployment"* — this session did not attempt `deploy_to_vercel`'s
+raw-upload path (no git linkage, would break `gitCommitSha` traceability for
+this multi-language repo, previously declined by name in this same file) and
+did not attempt to reconfigure Vercel Git integration unilaterally. **Which
+Vercel project is canonical is already resolved, not a second open
+decision** (a real Codex finding on this PR correctly caught an earlier
+draft of this entry re-opening it) — the root `vercel.json` wires the
+Next.js app, the real serverless API endpoints, and the legacy static board
+viewer into ONE deployment, and `tau-course-planner` deploying that root
+config is the complete, correct production setup; `web` is a leftover
+single-subdirectory deploy from before the root config existed, not a real
+second candidate (see the fuller writeup a few sections below, from the
+session that originally settled this via a real Codex finding). The
+remaining blocker is purely authorization/configuration access — linking
+`tau-course-planner`'s Vercel Git integration to this GitHub repo, or a
+`vercel` CLI login reachable from an autonomous session — which is exactly
+the kind of infrastructure/deployment-configuration action this routine's
+own prohibited-actions list reserves for a human.
 
-**No implementation milestone was started this session.** The release-gate
-directive's mandatory sequence pauses new roadmap work until the queue is
-resolved and a release is deployed and smoke-tested; the queue is now
-resolved, but deployment remains externally blocked, so `DONE` per that
-directive's own definition cannot be reached this session. Stopping here
-per the Stop Conditions ("required data or credentials are unavailable")
-rather than starting a new Agent Diagnosis Loop milestone that the same
-directive says to hold off on.
+**No implementation milestone was started this session.** This session's
+own scheduled-task instructions paused new roadmap work until the queue was
+resolved and a release deployed and smoke-tested; the queue is now
+resolved, but deployment remains externally blocked, so that instruction's
+own "done" condition can't be reached this session. Stopping here rather
+than starting new Agent-quality work, per that instruction — **not because
+this file mandates it**; per the established multi-session convention a
+few sections below, absent a specific directive to pause, the norm here is
+to keep running the Agent Diagnosis Loop in parallel with this same
+standing deploy blocker rather than block on it. A future session without
+this same external pause instruction should default to that convention.
 
 **Classification**: not applicable (no code changed) — a queue-resolution
 housekeeping session (merge one clean PR, close one duplicate) plus a
