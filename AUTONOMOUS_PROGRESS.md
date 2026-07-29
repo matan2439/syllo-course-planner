@@ -5,10 +5,148 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-07-29, session on branch `claude/youthful-tesla-wq1g2x`
-(PR #71 merged as `5f67194`, closing issue #68; production deploy blocker
+(PR #71 merged as `5f67194` closing issue #68, PR #73 merged as `681d883`
+closing issue #67, both in the same session; production deploy blocker
 unchanged, not re-checked this session — no new directive to do so)._
 
-## Latest session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
+## Latest session — PR #73 merged: LlmOrchestrator now always guarantees its finishing pass (issue #67), plus PR #71/#68 earlier the same session; a Codex finding on #73 uncovered and documented a distinct, still-open gap (issue #75)
+
+Continuation of the same session as PR #71/#68 below (that entry is now
+"Prior session" — see it for the branch-hygiene/queue-state notes at
+session start, unchanged for this second milestone). After PR #71 and its
+docs recap (PR #72) merged, picked up **issue #67** next — the other
+Agent-quality item the immediately prior session had flagged and
+deliberately left untouched to avoid parallel work on `planner_worker.ts`.
+
+**The bug**: `buildPlannerTools`'s `finalize_plan` tool (`api/ai/planner_tools.ts`)
+calls `worker.repair()` (which places any still-legal wanted course/balance
+move, per PR #65/#68's fix), but its `execute()` does not terminate the
+AI-SDK tool-calling loop — nothing stops the model from mutating further
+afterward (e.g. removing a wanted course `finalize_plan` had just placed),
+with no later `finalize_plan` call to recover it. `LlmOrchestrator.run()`'s
+own outer fallback only re-ran the deterministic finishing pass when
+`worker.validateCandidate().valid` was false, and that check has zero
+`wantedCourseIds`/balance awareness — verified against `planner_validate.ts`
+before writing any code. Also didn't match the class's own docstring
+("Whatever the model does ... a deterministic finishing pass guarantees a
+valid, complete plan" — unconditional in the comment, conditional in the
+code).
+
+**Fix** (`api/ai/planner_orchestrator.ts`): `LlmOrchestrator.run()` now
+always calls `worker.run(500, 'greedy')` after the model's tool-calling loop
+ends, not just when the candidate is invalid. Safe in the sense that
+matters here — it only ever takes further legal actions, so it can never
+corrupt the plan or reintroduce an error the model's own choices avoided.
+**Correction (2nd Codex finding on PR #76)**: this entry originally also
+claimed "no added cost in the common case" for an already-converged plan —
+unsupported and likely false, not backed by any profiling. Removed. **3rd
+correction on this same claim (Codex found the 2nd correction still
+understated the worst case)**: three distinct cases exist, only one of
+which is pre-existing behavior:
+- **Already valid AND fully converged** (e.g. the model called
+  `finalize_plan` and did nothing since) — `worker.run()` executes exactly
+  one `step()` call: real, nonzero work under production defaults
+  (`lookahead:true`, `topN:6`, `rolloutSteps:80` — enumerate/validate/score
+  every legal action, forward-check, roll out the top `topN` candidates),
+  bounded to that single check before it confirms nothing advances and
+  stops. **New cost this fix adds** — the old validity gate skipped this
+  entirely (plan already read as valid, so the gate never fired).
+- **Valid but NOT fully optimized** — the exact motivating scenario for
+  this whole fix (e.g. issue #67's own regression test: removing a wanted
+  course still leaves `validateCandidate()` `true`) — `worker.run()` now
+  takes further real ADD/MOVE/REPLACE actions until it reconverges, up to
+  its full `500`-iteration bound, each iteration paying the same `step()`
+  cost as above. **Also new cost this fix adds**, same reason.
+- **Invalid** (legality/degree-hours/mandatory/category not yet satisfied)
+  — `worker.run()` runs up to the same `500`-iteration bound. **Unchanged
+  from before this fix** — the old validity gate already called
+  `worker.run(500,'greedy')` unconditionally in this case.
+
+None of the three cases' real-world latency was measured or profiled this
+session — a future session should record real profiling evidence, not
+assume any of these bounds is negligible in production. **Also corrected
+(1st Codex finding on PR #76)**: the stronger claim this entry originally
+made — "can't discard anything the model validly chose to keep" — is
+inaccurate and has been removed. `enumerateActions`' group 6
+(`REPLACE_COURSE`, `planner_actions.ts`)
+CAN swap out one of the model's own validly-placed, legal, movable courses
+(if it's among the placed set's bottom-3 by preference score) for a
+higher-preference unplaced alternative when that improves the score — this
+is pre-existing `worker.run()`/`step()` behavior, not new to PR #73 (the
+same replace logic already fired via `finalize_plan`'s `repair()` call
+before this fix), but PR #73's own code comment repeats the same overclaim
+and still needs the same wording correction — **not yet fixed in the
+merged code, flagged here as a fast-follow for the next session** (a
+comment-only change, no behavior change, low risk).
+
+**Tests**: new regression test reproduces the exact repro condition from
+issue #67's own (twice-corrected) writeup, RED-verified against the
+pre-fix code first (empirically confirmed `placedCourseIds` lost `WANTED`).
+Full API suite: **86/86 suites, 1354/1354 tests**, zero regressions across
+every pre-existing `LlmOrchestrator`/`GreedyOrchestrator`/tool test.
+`tsc --noEmit` clean.
+
+**One real Codex finding on this PR, NOT fixed inline (filed as issue #75
+instead)**: if the model removes a wanted course AND that course's own
+(non-mandatory, non-category) prerequisite post-`finalize_plan`, this fix
+still can't recover it — `requiredButUnplacedCourseIds` (`planner_goals.ts`)
+only seeds its prerequisite walk from `requiredMandatoryCourseIds`, never
+`wantedCourseIds`, so no `enumerateActions` group ever proposes re-adding
+that prerequisite once degree hours are otherwise met. **Verified this is
+NOT a regression from this PR** — empirically confirmed the identical
+outcome against the pre-PR-73 code too (its conditional fallback is equally
+skipped whenever the resulting state already reads as valid). **Not fixed
+inline**: `requiredButUnplacedCourseIds` also feeds `remainingMandatoryHours`'
+reservation-budget scoring — broadening its contract is a cross-cutting
+change to sensitive, shared scoring logic needing its own dedicated pass,
+not a hasty addition inside this PR's narrower scope. Filed as **issue #75**
+with the full analysis and a suggested fix direction; added a RED-verified
+(empirically, via a throwaway repro script), currently `.skip`'d regression
+test in `tests/api/planner_orchestrator.test.ts` as a ready starting point.
+
+**Final state**: CI green, Codex clean on the final commit (`c548969`), the
+one real finding documented with a filed issue and a resolved thread
+(not silently dismissed — a new issue + a skipped test is the "fixed" outcome
+for a deliberately-scoped-out finding, per this routine's own review-gate
+rules). Full suite 86/86 suites, 1354 passing + 1 documented skip. `git
+diff --stat` = `api/ai/planner_orchestrator.ts` (comment + one conditional
+removed) + its test file only. **Merged as `681d883`.** Issue #67 closed
+with the fix commit and evidence in the closing comment.
+
+**Classification: C** (correctness/honesty — closes a reproduced gap on the
+actual default production Agent path, `LlmOrchestrator`, same "valid plan
+misreported" bug family as PR #48/#56/#58/#60/#62/#65/#71).
+
+**Rolling window, corrected (Codex finding on PR #76 — the version below this
+replaces an earlier draft that only counted this session's own two entries
+and understated the streak)**: PR #65 (the milestone immediately preceding
+this session's PR #71) is also classified **C**. The real sequence is
+...62(C), 65(C), 71(C), 73(C) — `(62,65,71) = C/C/C` was ALREADY
+non-compliant before this session started (not something either PR #71 or
+#73 individually caused), and `(65,71,73) = C/C/C` extends it: **four
+consecutive C-classified milestones in a row**. Per this routine's own
+governance rule ("a fourth C-in-a-row pattern... worth a human sanity
+check"), this is now explicitly that trigger — flagged here, not corrected
+by picking an artificial A/B next just to satisfy the counter (each of these
+four Cs was independently a legitimate, reproduced, real correctness fix,
+not a rule violation in intent). **The next milestone genuinely should be A
+or B** unless yet another higher-priority correctness finding preempts it
+(a legitimate preemption per the priority order, but a fifth C in a row
+would be worth escalating to the human product owner as an explicit
+question rather than continuing to self-justify). Issue #75 (P2, just
+filed) would itself be a fifth C if picked up next — prefer a fresh Agent
+Diagnosis Loop pass specifically hunting for an A/B (UI-exposing or
+end-to-end-integration) opportunity first.
+
+**State as of this update**: only PR #14 remains open (still correctly
+parked). Issues #67 and #68 both closed this session. Issue #75 newly filed,
+open, not yet fixed. `AUTONOMOUS_PROGRESS.md`/`.remember/current.md` recap
+for this merge: **PR #76** (this docs update — corrected from an earlier
+draft that guessed #74 before the actual PR number was known; two real
+Codex findings on PR #76 itself, including this one, are folded into this
+entry rather than requiring a reader to cross-reference a separate PR).
+
+## Prior session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
 
 This was a scheduled autonomous run under the standing product-engineering
 mandate (no special "release gate" directive this time). State inspected
