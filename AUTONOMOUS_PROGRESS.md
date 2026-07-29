@@ -4,12 +4,114 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-wq1g2x`
-(PR #71 merged as `5f67194` closing issue #68, PR #73 merged as `681d883`
-closing issue #67, both in the same session; production deploy blocker
-unchanged, not re-checked this session — no new directive to do so)._
+_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-xx4car`
+(queue resolved: PR #77 merged as `1ce8bf2`, PR #74 closed as a superseded
+duplicate; production deploy blocker re-checked and reconfirmed unchanged,
+still external/human-only — see this entry for the concrete numbers)._
 
-## Latest session — PR #73 merged: LlmOrchestrator now always guarantees its finishing pass (issue #67), plus PR #71/#68 earlier the same session; a Codex finding on #73 uncovered and documented a distinct, still-open gap (issue #75)
+## Latest session — PR queue resolved (PR #77 merged, PR #74 closed as duplicate); production deploy blocker re-verified: still pinned at `26500d4`, now 232 commits behind
+
+**Per this session's own external operating instructions, stopping here
+rather than starting new Agent-quality work** (not a standing rule of this
+file — see the correction the immediately-preceding session already made
+about exactly this framing, a few sections below): this session's own
+*external* scheduled-task prompt, given by the human operator, told it to
+pause new roadmap work until the open-PR queue was resolved and a verified
+production release was deployed, with an explicit escape valve for exactly
+this situation — if deployment is blocked by missing authorization/
+credentials, record the single external blocker and stop before deployment
+rather than proceed. That instruction's own stored checkpoint (PR #53,
+commit `36de50f`) was stale, as the prompt itself warned it might be —
+verified fresh against GitHub before acting.
+
+**Branch hygiene, same recurring gap as several prior sessions (issue #18's
+finding, still not permanently fixed)**: this session's assigned branch
+(`claude/youthful-tesla-xx4car`) was created from stale `main` (`92c19e0`,
+0 unique commits, 391 behind `origin/ui/frontend-modernization` at session
+start), not from `ui/frontend-modernization` as directed. Reset to
+`ui/frontend-modernization` HEAD before doing anything else.
+
+**Queue at session start**: two open PRs beyond the permanently-parked #14 —
+
+- **PR #77** — a comment-only correction (a real Codex finding on PR #76's
+  docs recap: `LlmOrchestrator.run()`'s code comment overclaimed safety/cost
+  guarantees PR #73 didn't actually provide). CI green (TS/Python tests +
+  Next.js build all passed), Codex reviewed the exact head commit (`b68d52d`)
+  with no findings ("Didn't find any major issues"), current against
+  `ui/frontend-modernization` HEAD. All merge gates satisfied — **merged as
+  `1ce8bf2`**.
+- **PR #74** — turned out to be a duplicate: it implemented the exact same
+  fix as the already-merged PR #73 (`681d883`, closing issue #67), built
+  independently in a parallel session against a now-stale base. Diffed both
+  PRs to confirm before acting (not assumed) — functionally identical
+  `LlmOrchestrator.run()` change and regression test. **Closed as superseded**
+  with an explanatory comment; issue #67 was already closed by #73, so this
+  PR had nothing left to contribute and would only have been a second,
+  competing implementation of the same root cause.
+- **PR #14** (Decision capability) — reconfirmed still correctly parked: a
+  3rd consecutive D-classified milestone with no named production consumer,
+  per issue #18's still-unresolved governance conflict. Left untouched, per
+  every prior session's precedent.
+
+With PR #74 closed, only PR #14 remains open — a deliberate, already-decided
+parked state, not an unresolved item.
+
+**Production deploy blocker — re-verified this session, not just carried
+forward from memory**: queried the real Vercel API directly (`list_teams` →
+`list_projects` → `get_project` → `get_deployment`). `tau-course-planner`
+(the `fastapi`-framework project that's actually live) has no Git
+integration — its `latestDeployment.meta` shows `"source": "cli"` and
+`gitCommitSha: 26500d4ffe56fff145eadc0a8745cf7803cb788e`, deployed via a
+one-off CLI upload, not linked to any branch. That commit is now **232
+commits behind** `origin/ui/frontend-modernization` HEAD (confirmed via
+`git log 26500d4..origin/ui/frontend-modernization --oneline | wc -l`) —
+every Agent-quality and correctness fix from PR #27 onward, including every
+milestone this file's history below documents, is unshipped. The sibling
+`web` (Next.js) project is in the same state (`source` not git-linked,
+`target: null`, never promoted to production). This is the exact blocker
+Blockers item 1 (below) and many prior sessions have already recorded —
+confirmed unchanged, not a new finding, but now quantified precisely rather
+than just "some fixes are unshipped."
+
+Per that scheduled-task prompt's own explicit fallback — *"if deployment is
+unavailable because authorization or credentials are missing, prepare and
+verify the exact release candidate, record the single external blocker and
+stop before deployment"* — this session did not attempt `deploy_to_vercel`'s
+raw-upload path (no git linkage, would break `gitCommitSha` traceability for
+this multi-language repo, previously declined by name in this same file) and
+did not attempt to reconfigure Vercel Git integration unilaterally. **Which
+Vercel project is canonical is already resolved, not a second open
+decision** (a real Codex finding on this PR correctly caught an earlier
+draft of this entry re-opening it) — the root `vercel.json` wires the
+Next.js app, the real serverless API endpoints, and the legacy static board
+viewer into ONE deployment, and `tau-course-planner` deploying that root
+config is the complete, correct production setup; `web` is a leftover
+single-subdirectory deploy from before the root config existed, not a real
+second candidate (see the fuller writeup a few sections below, from the
+session that originally settled this via a real Codex finding). The
+remaining blocker is purely authorization/configuration access — linking
+`tau-course-planner`'s Vercel Git integration to this GitHub repo, or a
+`vercel` CLI login reachable from an autonomous session — which is exactly
+the kind of infrastructure/deployment-configuration action this routine's
+own prohibited-actions list reserves for a human.
+
+**No implementation milestone was started this session.** This session's
+own scheduled-task instructions paused new roadmap work until the queue was
+resolved and a release deployed and smoke-tested; the queue is now
+resolved, but deployment remains externally blocked, so that instruction's
+own "done" condition can't be reached this session. Stopping here rather
+than starting new Agent-quality work, per that instruction — **not because
+this file mandates it**; per the established multi-session convention a
+few sections below, absent a specific directive to pause, the norm here is
+to keep running the Agent Diagnosis Loop in parallel with this same
+standing deploy blocker rather than block on it. A future session without
+this same external pause instruction should default to that convention.
+
+**Classification**: not applicable (no code changed) — a queue-resolution
+housekeeping session (merge one clean PR, close one duplicate) plus a
+verification pass. Does not enter the rolling A/B/C/D window.
+
+## Prior session — PR #73 merged: LlmOrchestrator now always guarantees its finishing pass (issue #67), plus PR #71/#68 earlier the same session; a Codex finding on #73 uncovered and documented a distinct, still-open gap (issue #75)
 
 Continuation of the same session as PR #71/#68 below (that entry is now
 "Prior session" — see it for the branch-hygiene/queue-state notes at

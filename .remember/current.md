@@ -1,5 +1,45 @@
 # Current — read this first
 
+## ✅ PR queue resolved: PR #77 merged (comment-only Codex-finding fix), PR #74 closed as a superseded duplicate of already-merged PR #73 (2026-07-29, autonomous scheduled run, own session — not a continuation of the PR #73 session below)
+
+Session opened under its own external scheduled-task prompt (a one-off
+operator instruction, not anything stored in this file or
+`AUTONOMOUS_PROGRESS.md` — see that file's "Latest session" entry for the
+same correction, since an earlier draft of it mistakenly described the
+prompt as a standing directive of the file itself and a real Codex finding
+caught it). Branch hygiene: `claude/youthful-tesla-xx4car` was created from
+stale `main` (391 behind `ui/frontend-modernization`) — reset to
+`ui/frontend-modernization` HEAD before doing anything else, the same
+recurring gap issue #18 and several prior sessions have hit.
+
+**Queue at session start**: PR #77 (comment-only correction of an
+overclaimed safety/cost comment in `LlmOrchestrator.run()`, itself a real
+Codex finding on PR #76) — CI green, Codex reviewed the head commit with no
+findings, current against base. Merged as `1ce8bf2`. PR #74 — diffed
+against the already-merged PR #73 and confirmed it was an independently-built
+duplicate of the exact same fix (issue #67, already closed by #73). Closed
+as superseded rather than left open as a competing implementation. PR #14
+reconfirmed still correctly parked (3rd consecutive D-classified milestone,
+no production consumer, issue #18). Queue is now resolved — only PR #14
+remains open, a deliberate parked state.
+
+**Production deploy blocker — re-verified directly against the live Vercel
+API**, not carried forward from memory: `tau-course-planner`'s latest
+deployment (`meta.source: "cli"`, no Git integration) is still pinned at
+`26500d4`, now **232 commits behind** `origin/ui/frontend-modernization`
+HEAD. Same standing blocker every session since PR #27 has hit; which
+Vercel project is canonical was already settled by a prior session's
+`vercel.json` reading (`tau-course-planner`, see below) — not reopened.
+Per this session's own operator instructions' fallback, recorded the
+blocker and stopped rather than attempting `deploy_to_vercel`'s raw-upload
+path or reconfiguring Vercel Git integration unilaterally.
+
+No implementation milestone attempted this session — the operator prompt
+paused new roadmap work pending queue resolution + a deployed, verified
+release; deployment is externally blocked, so stopped here rather than
+starting new Agent-quality work. Does not enter the rolling A/B/C/D
+classification window (no code changed).
+
 ## ✅ PR #73 merged: LlmOrchestrator now always guarantees its finishing pass (issue #67); a Codex finding uncovered a distinct, still-open gap (issue #75) (2026-07-29, autonomous scheduled run, same session as PR #71/#68 below)
 
 Continuation of the same session as the PR #71 entry immediately below (see
