@@ -1,0 +1,60 @@
+/**
+ * Slice 1 — read-only native board (RTL). The board is exercised ONLY through
+ * the canonical path: board payload → shared/planner adapter → BoardModel →
+ * boardModelToVM → NativePlannerBoard. No hand-built BoardVM data fixtures.
+ */
+import { render, screen } from '@testing-library/react'
+import NativePlannerBoard from './NativePlannerBoard'
+import { boardModelToVM } from '../../lib/planner/board-vm'
+import { boardResponseToModel } from '../../../shared/planner/adapters'
+
+const BOARD = {
+  metadata: { board_data_version: 'rev-1' },
+  semesters: [
+    {
+      semester_id: 'year_3_semester_a',
+      courses: [{ course_id: 'C-1', name_he: 'קורס לדוגמה', weekly_hours: 3.5, course_type: 'mandatory', is_mandatory: true }],
+    },
+    { semester_id: 'year_3_semester_b', courses: [] },
+  ],
+}
+const vmFromPayload = (payload: unknown) => boardModelToVM(boardResponseToModel(payload))
+
+test('renders semesters and courses from the canonical path', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(screen.getByText('קורס לדוגמה')).toBeInTheDocument()
+})
+
+test('3.5 weekly hours render exactly as 3.5 (no rounding)', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(screen.getByText(/3\.5/)).toBeInTheDocument()
+})
+
+test('an empty semester shows the truthful "no courses" state', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(screen.getByText('אין קורסים משובצים')).toBeInTheDocument()
+})
+
+test('the board and its semesters expose accessible labels (RTL Hebrew)', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(screen.getByRole('list', { name: 'לוח סמסטרים' })).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })).toBeInTheDocument()
+})
+
+test('informational course cards are not focusable — no fake interactivity (Slice 1)', () => {
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(container.querySelectorAll('a, button, [tabindex]').length).toBe(0)
+})
+
+test('an entirely empty board renders the truthful board-unavailable state', () => {
+  render(<NativePlannerBoard board={vmFromPayload({ metadata: { board_data_version: 'x' }, semesters: [] })} />)
+  expect(screen.getByText(/עדיין לא זמינים/)).toBeInTheDocument()
+})
+
+test('uses the responsive grid (no forced horizontal overflow)', () => {
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  const grid = container.querySelector('[role="list"]') as HTMLElement
+  expect(grid.className).toMatch(/grid-cols-1/)
+  expect(grid.className).toMatch(/sm:grid-cols-2/)
+  expect(grid.className).toMatch(/xl:grid-cols-4/)
+})
