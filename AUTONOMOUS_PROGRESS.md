@@ -4,12 +4,36 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-xx4car`
-(queue resolved: PR #77 merged as `1ce8bf2`, PR #74 closed as a superseded
-duplicate; production deploy blocker re-checked and reconfirmed unchanged,
-still external/human-only — see this entry for the concrete numbers)._
+_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-nbj2r3`
+(pure re-verification pass, no state change: queue still resolved, PR #14
+still the only open PR and still correctly parked; production deploy
+blocker re-queried live against Vercel and GitHub — unchanged, still
+external/human-only, now 235 commits behind. **This is the second
+consecutive same-day session to hit this exact wall with nothing new to
+report — recommend the human product owner action the Vercel Git
+integration link directly rather than schedule further autonomous
+re-verification of an unchanged blocker.**)._
 
-## Latest session — PR queue resolved (PR #77 merged, PR #74 closed as duplicate); production deploy blocker re-verified: still pinned at `26500d4`, now 232 commits behind
+## Latest session — re-verification only: queue still resolved (PR #14 parked), deploy blocker unchanged (still `26500d4`, now 235 commits behind, still `source: cli`)
+
+Re-checked from scratch rather than trusting this file's prior entry:
+`list_pull_requests` (open) → exactly PR #14. `list_issues` (open) → #75,
+#21, #20, #18, #15, none newly actionable under this session's release-gate
+pause (all either pre-existing human-decision items or explicitly deferred
+Agent-quality work). Vercel (`list_teams` → `list_projects` → `get_project`
+→ `list_deployments` → `get_deployment`) → `tau-course-planner`'s latest
+deployment is byte-identical to the prior session's finding: same deployment
+ID, same `source: "cli"`, same `gitCommitSha: 26500d4`. No Git-integration
+tool exists in this session's Vercel MCP surface to fix this autonomously.
+
+Full detail in `.remember/current.md`'s matching entry. No code changed,
+no PR opened for implementation work, no deploy attempted (the raw-upload
+`deploy_to_vercel` path remains correctly declined — it has no Git linkage
+and would break commit traceability for this multi-language repo, per
+established precedent). This docs-only update is the sole change this
+session made.
+
+## Prior session — PR queue resolved (PR #77 merged, PR #74 closed as duplicate); production deploy blocker re-verified: still pinned at `26500d4`, now 232 commits behind
 
 **Per this session's own external operating instructions, stopping here
 rather than starting new Agent-quality work** (not a standing rule of this

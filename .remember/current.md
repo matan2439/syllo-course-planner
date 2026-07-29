@@ -1,5 +1,54 @@
 # Current — read this first
 
+## 🔁 Re-verification pass only, no change: queue still resolved (only PR #14 open, correctly parked), production deploy blocker still unchanged and still external (2026-07-29, autonomous scheduled run, own session — later same day than the PR #77/#74 session below)
+
+Session opened under its own external scheduled-task prompt (the "release
+gate" instruction: pause all new roadmap work until the open-PR queue is
+resolved and a verified production release is deployed). Branch hygiene:
+`claude/youthful-tesla-nbj2r3` was again created from stale `main` (`92c19e0`,
+0 unique commits vs. `origin/ui/frontend-modernization`) — reset to
+`ui/frontend-modernization` HEAD before doing anything else, the same
+recurring gap issue #18 flagged and every session since has had to redo.
+
+**Did not trust the file — re-checked GitHub and Vercel directly before
+concluding anything**: `list_pull_requests` shows exactly one open PR (#14,
+still correctly parked, no production consumer, per issue #18's
+still-unresolved governance note). No new PRs, no Codex findings pending
+reply, no unresolved review threads. `list_issues` shows nothing new
+requiring action under this session's pause — issue #75 (P2, wanted-course
+prerequisite-chain gap) is pre-existing from the PR #73 session earlier
+today, already fully documented below, correctly left unfixed since fixing
+it would be new Agent-quality roadmap work the release gate defers.
+
+**Production deploy blocker — re-queried the live Vercel API fresh** (`list_teams`
+→ `list_projects` → `get_project` → `list_deployments` → `get_deployment` on
+the latest), not assumed from this file: `tau-course-planner`'s production
+deployment (`dpl_HJZTB8zqondbwuSnHx6TveggoPVg`) is unchanged since the prior
+session's check — still `"source": "cli"`, still `gitCommitSha: 26500d4`,
+still no newer deployment despite `ui/frontend-modernization` receiving
+several merges since (`235 commits behind` now, confirmed via
+`git log 26500d4..origin/ui/frontend-modernization --oneline | wc -l`, up
+from 232). No Vercel MCP tool exists to link a project's Git integration
+(only `deploy_to_vercel`'s raw-upload path, already correctly declined by
+name in the entry below — it would break `gitCommitSha` traceability and
+was not reconsidered here). The blocker is identical to the immediately
+preceding session's finding: linking `tau-course-planner`'s Vercel Git
+integration to this GitHub repo (or a `vercel login` reachable from an
+autonomous session) requires human dashboard/credential access this session
+does not have.
+
+**No implementation milestone attempted.** Same conclusion as the session
+below, reached independently rather than assumed: the release gate's own
+"done" condition (queue resolved AND deployed AND smoke-tested) cannot be
+reached this session since deployment is externally blocked, and its own
+escape valve says to record the single blocker and stop rather than start
+new roadmap work. This is now the **second consecutive session, same day**,
+to hit this exact wall with zero state change in between — flagging in the
+handoff below that this has crossed from "record and continue autonomously"
+into "needs the human product owner to actually act," since no further
+autonomous re-verification will produce new information without that action.
+Does not enter the rolling A/B/C/D classification window (no code changed).
+
 ## ✅ PR queue resolved: PR #77 merged (comment-only Codex-finding fix), PR #74 closed as a superseded duplicate of already-merged PR #73 (2026-07-29, autonomous scheduled run, own session — not a continuation of the PR #73 session below)
 
 Session opened under its own external scheduled-task prompt (a one-off
