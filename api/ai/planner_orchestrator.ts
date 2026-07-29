@@ -83,11 +83,19 @@ export class LlmOrchestrator implements Orchestrator {
     // regression can leave the plan "valid" while silently worse than what the
     // model had already legally achieved. Always re-running the same
     // deterministic loop closes that gap unconditionally: it only ever takes
-    // further LEGAL, score-improving actions (the same ground truth the rest
-    // of the system trusts), so it can't discard anything the model validly
-    // chose to keep — a plan already at convergence returns from run() almost
-    // immediately (the same "no legal action still advances" check step()
-    // always makes), so this costs nothing extra in the common case.
+    // further LEGAL actions (the same ground truth the rest of the system
+    // trusts), so it can never corrupt the plan or reintroduce an error the
+    // model's own choices avoided. It is NOT guaranteed to leave every one of
+    // the model's own placements untouched, though (Codex finding on PR #76's
+    // docs recap: an earlier version of this comment overclaimed that it
+    // could) — enumerateActions' group 6 (REPLACE_COURSE) can still swap out
+    // one of the model's own validly-placed, movable courses for a
+    // higher-preference alternative when that improves the score, the same
+    // way it always could via finalize_plan's own repair() call. Cost is not
+    // free either: even an already-converged plan still costs one full
+    // step() call to confirm nothing legal advances before it stops; a
+    // valid-but-not-fully-optimized plan can cost up to the full 500-iteration
+    // budget re-converging. Neither cost has been profiled.
     worker.run(500, 'greedy');
   }
 }
