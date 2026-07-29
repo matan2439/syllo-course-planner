@@ -129,4 +129,49 @@ describe('LlmOrchestrator', () => {
     expect(w.isGoalReached()).toBe(true);
     expect(w.validateCandidate().valid).toBe(true);
   });
+
+  // Issue #67: finalize_plan's execute() calls worker.repair(), but does not
+  // terminate the AI-SDK tool-calling loop — the model can keep calling tools
+  // afterward. If a later mutation undoes an optimization repair() achieved
+  // (e.g. swaps out a wanted course for a plain elective of equal hours) and
+  // the model never calls finalize_plan again, the resulting plan is still
+  // LEGAL and COMPLETE (validateCandidate().valid only checks hours/mandatory/
+  // categories/legality — it has zero wantedCourseIds awareness), so the
+  // orchestrator's old `if (!validateCandidate().valid)` fallback never fired
+  // and the achievable wanted-course placement was silently lost.
+  it('restores an achievable wanted-course placement undone by a mutation after the last finalize_plan call', async () => {
+    const w = new PlannerWorker(model({ wantedCourseIds: new Set(['E0']) }));
+    const orch = new LlmOrchestrator({} as any, {
+      generate: scriptedGenerate(async tools => {
+        await tools.add_course.execute!({ courseId: 'MAND', semesterId: 'year_3_semester_a' }, {} as any);
+        await tools.add_course.execute!({ courseId: 'FLU1', semesterId: 'year_3_semester_a' }, {} as any);
+        // finalize_plan fills the remaining degree hours, preferring the
+        // wanted E0 over the other plain electives (planner_actions.ts group
+        // 3/6) — confirm the premise before undoing it.
+        const finalized = await tools.finalize_plan.execute!({}, {} as any);
+        expect(finalized.valid).toBe(true);
+        expect(placedCourseIds(w.getPlan())).toContain('E0');
+
+        // Undo the wanted placement with a legal, equal-hours swap for a
+        // plain (non-wanted) elective — still fully legal and complete
+        // afterward — and never call finalize_plan again.
+        const outSemester = semesterOf(w.getPlan(), 'E0')!;
+        const replacement = [...Array(9).keys()]
+          .map(i => `E${i}`)
+          .find(id => id !== 'E0' && !placedCourseIds(w.getPlan()).includes(id))!;
+        const swap = await tools.replace_course.execute!(
+          { outId: 'E0', inId: replacement, semesterId: outSemester },
+          {} as any,
+        );
+        expect(swap.accepted).toBe(true);
+        expect(placedCourseIds(w.getPlan())).not.toContain('E0');
+      }),
+    });
+    await orch.run(w);
+    expect(w.validateCandidate().valid).toBe(true);
+    // The achievable wanted-course placement must be restored, not left
+    // silently dropped just because the plan was already legal+complete
+    // without it.
+    expect(placedCourseIds(w.getPlan())).toContain('E0');
+  });
 });

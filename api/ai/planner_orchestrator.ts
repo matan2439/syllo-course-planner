@@ -47,7 +47,9 @@ const DEFAULT_SYSTEM =
  * LLM backend: the model reasons step-by-step and calls the worker's tools in a
  * generateText/tool-calling loop. The worker validates every call, so an invalid
  * tool call cannot corrupt the plan. Whatever the model does (or if it errors),
- * a deterministic finishing pass guarantees a valid, complete plan.
+ * a deterministic finishing pass guarantees a valid, complete, fully-converged
+ * plan — the same "no further legal improvement remains" invariant the
+ * deterministic backend gets for free from its own run() loop.
  */
 export class LlmOrchestrator implements Orchestrator {
   constructor(private model: LanguageModel, private opts: LlmOrchestratorOptions = {}) {}
@@ -69,10 +71,21 @@ export class LlmOrchestrator implements Orchestrator {
         err instanceof Error ? err.message : String(err));
     }
 
-    // Guarantee a valid, complete plan regardless of what the model did: the
-    // deterministic worker loop finishes/repairs whatever the LLM left.
-    if (!worker.validateCandidate().valid) {
-      worker.run(500, 'greedy');
-    }
+    // Unconditionally finish with the deterministic loop, not only when the
+    // plan is outright invalid (issue #67): finalize_plan's execute() calls
+    // worker.repair(), but does not terminate the tool-calling loop — the
+    // model can keep calling tools afterward. A later mutation can undo an
+    // optimization repair() already achieved (e.g. swap out an achievable
+    // wanted course for a plain elective of equal hours) without the model
+    // ever calling finalize_plan again. The resulting plan can still be
+    // fully LEGAL and COMPLETE (validateCandidate().valid only checks
+    // hours/mandatory/categories/legality — it has zero wantedCourseIds or
+    // balance awareness), so a validity-gated fallback would silently leave
+    // that regression in place. worker.run() only ever takes legal actions
+    // that improve the score (planner_goals.ts's scorePlan), so re-running
+    // it here can only recover dropped improvements — it can never revert a
+    // legitimate choice the model made, and is a cheap no-op (one
+    // convergence check) when the plan already has nothing left to improve.
+    worker.run(500, 'greedy');
   }
 }
