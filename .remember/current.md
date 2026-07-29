@@ -25,16 +25,22 @@ matters — only ever takes further legal actions, so it can't corrupt the
 plan or reintroduce an error the model's own choices avoided. New
 regression test RED-verified against the pre-fix code first (empirically
 confirmed `WANTED` got dropped). Full API suite: 86/86 suites, 1354/1354
-tests, zero regressions. **Two corrections (Codex findings on PR #76, this
-recap's own PR)**: (1) an earlier draft of this entry claimed an
-already-converged plan "returns almost immediately"/"no added cost" —
-unsupported, not profiled; even converged, `worker.run()` still executes
-at least one full `step()` call (enumerate/validate/score every legal
-action, forward-check, roll out `topN` candidates with production
-defaults) before it can confirm nothing advances — a real, nonzero,
-unmeasured cost of one bounded planner iteration per call, not a free
-no-op. (2) an earlier draft also overclaimed "can't discard anything the
-model validly chose to keep" — false: `enumerateActions`' group 6
+tests, zero regressions. **Three corrections (Codex findings on PR #76,
+this recap's own PR — the 3rd found the 1st still understated the worst
+case)**: (1)/(3) an earlier draft claimed an already-converged plan
+"returns almost immediately"/"no added cost" — unsupported, not profiled.
+Three real cases, only one pre-existing: **valid+converged** — one
+`step()` call (real work under production defaults: enumerate/validate/
+score every legal action, forward-check, roll out `topN` candidates),
+new cost this fix adds (old validity gate skipped this entirely). **Valid
+but not fully optimized** (the exact motivating scenario, e.g. issue #67's
+own test) — further real ADD/MOVE/REPLACE actions up to the full
+`500`-iteration bound, also new cost. **Invalid** — up to the same
+`500`-iteration bound, unchanged from before this fix (the old gate
+already ran this case unconditionally). None of the three measured or
+profiled this session. (2) an earlier draft also overclaimed "can't
+discard anything the model validly chose to keep" — false:
+`enumerateActions`' group 6
 (`REPLACE_COURSE`) can swap out a model-placed, legal, movable course (if
 among the placed set's bottom-3 by preference) for a higher-preference
 alternative — pre-existing `worker.run()` behavior, not new to this PR, but

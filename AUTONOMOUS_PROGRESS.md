@@ -39,16 +39,32 @@ matters here — it only ever takes further legal actions, so it can never
 corrupt the plan or reintroduce an error the model's own choices avoided.
 **Correction (2nd Codex finding on PR #76)**: this entry originally also
 claimed "no added cost in the common case" for an already-converged plan —
-unsupported and likely false, not backed by any profiling. Removed. Even
-when converged, `worker.run()` still executes at least one full `step()`
-call to confirm nothing legal still advances before it can stop — with
-production defaults (`lookahead:true`, `topN:6`, `rolloutSteps:80`) that's
-a real, nonzero unit of work (enumerate/validate/score every legal action,
-forward-check, roll out the top `topN` candidates), not a free no-op. The
-accurate framing: this fix adds one bounded additional planner iteration
-per `LlmOrchestrator.run()` call, whose cost was not measured or profiled
-this session — a future session should record real profiling evidence
-before treating that cost as negligible in production. **Also corrected
+unsupported and likely false, not backed by any profiling. Removed. **3rd
+correction on this same claim (Codex found the 2nd correction still
+understated the worst case)**: three distinct cases exist, only one of
+which is pre-existing behavior:
+- **Already valid AND fully converged** (e.g. the model called
+  `finalize_plan` and did nothing since) — `worker.run()` executes exactly
+  one `step()` call: real, nonzero work under production defaults
+  (`lookahead:true`, `topN:6`, `rolloutSteps:80` — enumerate/validate/score
+  every legal action, forward-check, roll out the top `topN` candidates),
+  bounded to that single check before it confirms nothing advances and
+  stops. **New cost this fix adds** — the old validity gate skipped this
+  entirely (plan already read as valid, so the gate never fired).
+- **Valid but NOT fully optimized** — the exact motivating scenario for
+  this whole fix (e.g. issue #67's own regression test: removing a wanted
+  course still leaves `validateCandidate()` `true`) — `worker.run()` now
+  takes further real ADD/MOVE/REPLACE actions until it reconverges, up to
+  its full `500`-iteration bound, each iteration paying the same `step()`
+  cost as above. **Also new cost this fix adds**, same reason.
+- **Invalid** (legality/degree-hours/mandatory/category not yet satisfied)
+  — `worker.run()` runs up to the same `500`-iteration bound. **Unchanged
+  from before this fix** — the old validity gate already called
+  `worker.run(500,'greedy')` unconditionally in this case.
+
+None of the three cases' real-world latency was measured or profiled this
+session — a future session should record real profiling evidence, not
+assume any of these bounds is negligible in production. **Also corrected
 (1st Codex finding on PR #76)**: the stronger claim this entry originally
 made — "can't discard anything the model validly chose to keep" — is
 inaccurate and has been removed. `enumerateActions`' group 6
