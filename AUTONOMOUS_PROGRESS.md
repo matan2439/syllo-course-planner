@@ -36,12 +36,23 @@ code).
 always calls `worker.run(500, 'greedy')` after the model's tool-calling loop
 ends, not just when the candidate is invalid. Safe in the sense that
 matters here — it only ever takes further legal actions, so it can never
-corrupt the plan or reintroduce an error the model's own choices avoided —
-and an already-converged plan returns almost immediately, no added cost in
-the common case. **Correction (Codex finding on PR #76, the docs recap of
-this PR)**: the stronger claim this entry originally made — "can't discard
-anything the model validly chose to keep" — is inaccurate and has been
-removed. `enumerateActions`' group 6 (`REPLACE_COURSE`, `planner_actions.ts`)
+corrupt the plan or reintroduce an error the model's own choices avoided.
+**Correction (2nd Codex finding on PR #76)**: this entry originally also
+claimed "no added cost in the common case" for an already-converged plan —
+unsupported and likely false, not backed by any profiling. Removed. Even
+when converged, `worker.run()` still executes at least one full `step()`
+call to confirm nothing legal still advances before it can stop — with
+production defaults (`lookahead:true`, `topN:6`, `rolloutSteps:80`) that's
+a real, nonzero unit of work (enumerate/validate/score every legal action,
+forward-check, roll out the top `topN` candidates), not a free no-op. The
+accurate framing: this fix adds one bounded additional planner iteration
+per `LlmOrchestrator.run()` call, whose cost was not measured or profiled
+this session — a future session should record real profiling evidence
+before treating that cost as negligible in production. **Also corrected
+(1st Codex finding on PR #76)**: the stronger claim this entry originally
+made — "can't discard anything the model validly chose to keep" — is
+inaccurate and has been removed. `enumerateActions`' group 6
+(`REPLACE_COURSE`, `planner_actions.ts`)
 CAN swap out one of the model's own validly-placed, legal, movable courses
 (if it's among the placed set's bottom-3 by preference score) for a
 higher-preference unplaced alternative when that improves the score — this
@@ -113,7 +124,7 @@ end-to-end-integration) opportunity first.
 
 **State as of this update**: only PR #14 remains open (still correctly
 parked). Issues #67 and #68 both closed this session. Issue #75 newly filed,
-open, not yet fixed. `AUTONOMOUS_PROGRESS.md`/`​.remember/current.md` recap
+open, not yet fixed. `AUTONOMOUS_PROGRESS.md`/`.remember/current.md` recap
 for this merge: **PR #76** (this docs update — corrected from an earlier
 draft that guessed #74 before the actual PR number was known; two real
 Codex findings on PR #76 itself, including this one, are folded into this

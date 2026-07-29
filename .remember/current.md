@@ -22,12 +22,18 @@ class's own docstring, which claims the guarantee unconditionally.
 **Fix**: `LlmOrchestrator.run()` now always calls `worker.run(500,'greedy')`
 after the tool loop ends, not conditionally. Safe in the sense that
 matters — only ever takes further legal actions, so it can't corrupt the
-plan or reintroduce an error the model's own choices avoided; an
-already-converged plan returns almost immediately. New regression test
-RED-verified against the pre-fix code first (empirically confirmed
-`WANTED` got dropped). Full API suite: 86/86 suites, 1354/1354 tests, zero
-regressions. **Correction (Codex finding on PR #76, this recap's own PR)**:
-an earlier draft of this entry overclaimed "can't discard anything the
+plan or reintroduce an error the model's own choices avoided. New
+regression test RED-verified against the pre-fix code first (empirically
+confirmed `WANTED` got dropped). Full API suite: 86/86 suites, 1354/1354
+tests, zero regressions. **Two corrections (Codex findings on PR #76, this
+recap's own PR)**: (1) an earlier draft of this entry claimed an
+already-converged plan "returns almost immediately"/"no added cost" —
+unsupported, not profiled; even converged, `worker.run()` still executes
+at least one full `step()` call (enumerate/validate/score every legal
+action, forward-check, roll out `topN` candidates with production
+defaults) before it can confirm nothing advances — a real, nonzero,
+unmeasured cost of one bounded planner iteration per call, not a free
+no-op. (2) an earlier draft also overclaimed "can't discard anything the
 model validly chose to keep" — false: `enumerateActions`' group 6
 (`REPLACE_COURSE`) can swap out a model-placed, legal, movable course (if
 among the placed set's bottom-3 by preference) for a higher-preference
