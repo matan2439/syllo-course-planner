@@ -34,11 +34,23 @@ code).
 
 **Fix** (`api/ai/planner_orchestrator.ts`): `LlmOrchestrator.run()` now
 always calls `worker.run(500, 'greedy')` after the model's tool-calling loop
-ends, not just when the candidate is invalid. Safe by construction —
-`worker.run()` only ever takes further legal, score-improving actions, so
-it can't discard anything the model validly chose to keep; an
-already-converged plan returns almost immediately, no added cost in the
-common case.
+ends, not just when the candidate is invalid. Safe in the sense that
+matters here — it only ever takes further legal actions, so it can never
+corrupt the plan or reintroduce an error the model's own choices avoided —
+and an already-converged plan returns almost immediately, no added cost in
+the common case. **Correction (Codex finding on PR #76, the docs recap of
+this PR)**: the stronger claim this entry originally made — "can't discard
+anything the model validly chose to keep" — is inaccurate and has been
+removed. `enumerateActions`' group 6 (`REPLACE_COURSE`, `planner_actions.ts`)
+CAN swap out one of the model's own validly-placed, legal, movable courses
+(if it's among the placed set's bottom-3 by preference score) for a
+higher-preference unplaced alternative when that improves the score — this
+is pre-existing `worker.run()`/`step()` behavior, not new to PR #73 (the
+same replace logic already fired via `finalize_plan`'s `repair()` call
+before this fix), but PR #73's own code comment repeats the same overclaim
+and still needs the same wording correction — **not yet fixed in the
+merged code, flagged here as a fast-follow for the next session** (a
+comment-only change, no behavior change, low risk).
 
 **Tests**: new regression test reproduces the exact repro condition from
 issue #67's own (twice-corrected) writeup, RED-verified against the
@@ -102,7 +114,10 @@ end-to-end-integration) opportunity first.
 **State as of this update**: only PR #14 remains open (still correctly
 parked). Issues #67 and #68 both closed this session. Issue #75 newly filed,
 open, not yet fixed. `AUTONOMOUS_PROGRESS.md`/`​.remember/current.md` recap
-for this merge: PR #74 (this docs update).
+for this merge: **PR #76** (this docs update — corrected from an earlier
+draft that guessed #74 before the actual PR number was known; two real
+Codex findings on PR #76 itself, including this one, are folded into this
+entry rather than requiring a reader to cross-reference a separate PR).
 
 ## Prior session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
 

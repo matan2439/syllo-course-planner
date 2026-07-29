@@ -20,11 +20,21 @@ against `planner_validate.ts` before touching code. Also didn't match the
 class's own docstring, which claims the guarantee unconditionally.
 
 **Fix**: `LlmOrchestrator.run()` now always calls `worker.run(500,'greedy')`
-after the tool loop ends, not conditionally. Safe by construction — only
-takes further legal, score-improving actions; an already-converged plan
-returns almost immediately. New regression test RED-verified against the
-pre-fix code first (empirically confirmed `WANTED` got dropped). Full API
-suite: 86/86 suites, 1354/1354 tests, zero regressions.
+after the tool loop ends, not conditionally. Safe in the sense that
+matters — only ever takes further legal actions, so it can't corrupt the
+plan or reintroduce an error the model's own choices avoided; an
+already-converged plan returns almost immediately. New regression test
+RED-verified against the pre-fix code first (empirically confirmed
+`WANTED` got dropped). Full API suite: 86/86 suites, 1354/1354 tests, zero
+regressions. **Correction (Codex finding on PR #76, this recap's own PR)**:
+an earlier draft of this entry overclaimed "can't discard anything the
+model validly chose to keep" — false: `enumerateActions`' group 6
+(`REPLACE_COURSE`) can swap out a model-placed, legal, movable course (if
+among the placed set's bottom-3 by preference) for a higher-preference
+alternative — pre-existing `worker.run()` behavior, not new to this PR, but
+the overclaim also lives in PR #73's own merged code comment and still
+needs the same correction there — **not yet fixed, flagged as a
+comment-only fast-follow for the next session**.
 
 **One real Codex finding, NOT fixed inline — filed as issue #75 instead**:
 if the model removes a wanted course AND that course's own non-mandatory
@@ -46,7 +56,8 @@ one real finding resolved via a filed issue + skipped test (not silently
 dismissed). Full suite: 86/86 suites, 1354 passing + 1 documented skip.
 `git diff --stat` = `api/ai/planner_orchestrator.ts` + its test file only.
 **Merged as `681d883`.** Issue #67 closed with the fix commit + evidence.
-`AUTONOMOUS_PROGRESS.md` recap: PR #74. **Release candidate updated:
+`AUTONOMOUS_PROGRESS.md` recap: **PR #76** (corrected from an earlier
+guessed #74). **Release candidate updated:
 `ui/frontend-modernization` HEAD is now `681d883`** (was `5f67194`/PR #71
 as of the entry below).
 
