@@ -4,11 +4,121 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-28, session on branch `claude/youthful-tesla-7w4ls5`
-(release-gate re-check only — queue re-confirmed resolved, deploy blocker
-re-confirmed unchanged; no code merged this session)._
+_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-wq1g2x`
+(PR #71 merged as `5f67194`, closing issue #68; production deploy blocker
+unchanged, not re-checked this session — no new directive to do so)._
 
-## Latest session — Release-gate re-check: PR queue confirmed resolved (only PR #14, deliberately parked); production deploy still blocked by the same external Vercel gap, now directly reconfirmed via live Vercel MCP access
+## Latest session — PR #71 merged: a truly converged plan could be falsely reported as maxSteps-blocked (issue #68), including a Codex-caught rollout-cost fix mid-review
+
+This was a scheduled autonomous run under the standing product-engineering
+mandate (no special "release gate" directive this time). State inspected
+fresh first, per this routine's own start-of-session order:
+
+- **Branch hygiene, recurring issue**: this session's assigned branch
+  (`claude/youthful-tesla-wq1g2x`) was created from stale `main` (0 unique
+  commits, 375 behind `origin/ui/frontend-modernization`) — the same
+  recurring gap issue #18 and several prior sessions have hit. Reset to
+  `ui/frontend-modernization` HEAD (`4174abc`, PR #70) before doing
+  anything else.
+- **PR queue at session start**: only PR #14 (Decision capability) was
+  open — reconfirmed still correctly parked (D-classified infra, no named
+  production consumer), left untouched per multi-session precedent (issue
+  #18, Blockers item 6).
+- **Open issues reconfirmed**: #15 (superseded by #14's status), #18
+  (reconciliation/D-stacking audit, still substantively accurate), #20 (386
+  pre-existing UI jest failures, needs a human fixture decision), #21
+  (dead-code decision, needs a human call), **#67** (LlmOrchestrator
+  wanted-course reliance on `finalize_plan` — needs a repro before a fix,
+  deliberately left untouched this session to avoid parallel work in the
+  same file family as #68), **#68** (this session's subject, now closed).
+- Vercel/production-deploy state **not re-checked this session** — no new
+  directive to re-verify it; the prior 5+ sessions' identical finding
+  (production pinned at `26500d4`, no Git integration on either Vercel
+  project) has no reason to have changed on its own. **Still the single
+  most valuable pending human action, stated directly here (the file's own
+  `Blockers`/`Exact next action` sections near the bottom are a stale,
+  superseded PR #48-era snapshot — do not follow them, per this file's own
+  note at that section):** a human (or a session with real `vercel` CLI
+  credentials, or the ability to configure Vercel Git integration) needs to
+  either (a) link the `matan2439/syllo-course-planner` GitHub repo to the
+  `tau-course-planner` Vercel project (Project Settings → Git), with
+  `ui/frontend-modernization` (soon `main`, once branch reconciliation
+  completes) as the production branch, or (b) explicitly authorize an agent
+  session to use `deploy_to_vercel`'s raw-upload path as an interim
+  measure, accepting that its deployment won't carry a verifiable
+  `gitCommitSha`. No autonomous session can make this call unilaterally.
+
+**This session's milestone**: picked up issue #68 (filed by the immediately
+prior session, a real Codex finding on PR #66) — the highest-impact,
+already-diagnosed, already-scoped, reproducible correctness gap on the
+queue — rather than starting a fresh diagnosis pass, per this routine's own
+"resume unfinished work before selecting anything new" instruction.
+
+**The bug**: PR #65 removed `PlannerWorker.step()`'s early return on
+`isGoalReached()` so post-goal optimization (wanted courses, balance moves)
+keeps running to real convergence instead of silently dropping still-legal
+improvements. That made a previously-unreachable state reachable: when the
+very last permitted `step()` call inside `run(maxSteps)`'s loop is itself
+the action that reaches full convergence, `run()`'s post-loop fallback has
+no further `step()` call left to detect "nothing left to improve" — it
+always recorded the "maxSteps" truncation message whenever
+`isGoalReached()` was true, even when nothing was actually left undone.
+`generate-plan.ts`'s `hitMaxSteps` detection then reported a complete,
+fully legal, fully optimized plan as **blocked** (`STEP_LIMIT_ERROR`) — a
+valid plan presented as broken, the mirror image of the bug PR #65 itself
+fixed.
+
+**Verified empirically before touching anything**: the existing PR #65
+regression test turned out to be a live demonstration of the exact bug —
+running the pre-fix code against it confirmed the "maxSteps" message fired
+even though its own fixture's 3rd/last permitted step (placing `WANTED`)
+was genuinely the plan's convergence point.
+
+**Fix** (`api/ai/planner_worker.ts`): `run()` now performs one
+non-consuming check when `isGoalReached()` is true — new private
+`hasFurtherAdvancingAction()`, mirroring `step()`'s own "Reason" decision
+without applying anything or touching the trace. When nothing legal
+remains, `run()` records the same honest convergence message `step()`
+itself would have. When something genuinely does remain, the existing
+truncation message is unchanged.
+
+**One real Codex finding, fixed same session** (P2): the initial version of
+`hasFurtherAdvancingAction()` called `estimateFinalScore` (an expensive
+`rolloutSteps`-deep rollout) once per *every* legal candidate when
+lookahead was on — unbounded, unlike `step()`'s own `topN`-truncated
+rollout (production uses `topN: 6`, `rolloutSteps: 80`). At the exact
+convergence boundary this check exists to detect, a plan with many legal
+but non-improving remaining moves could trigger roughly quadratic work and
+risk a timeout instead of returning the valid plan. Fixed by splitting into
+two passes: a cheap, unbounded immediate-score check over every legal
+candidate first (no rollout needed to prove something advances), then a
+lookahead rollout pass bounded to the same `opts.topN` candidates `step()`
+itself would ever roll out per iteration. New regression test spies on
+`estimateFinalScore` directly (`jest.spyOn` on the `planner_lookahead`
+module) with a 20-legal-candidate fixture and proves the call count stays
+≤9 regardless of how many legal candidates exist — empirically confirmed,
+not just reasoned about. Codex re-reviewed the fix commit and came back
+clean ("Didn't find any major issues").
+
+**Tests**: updated the existing PR #65 regression test to assert the
+corrected convergence message (renamed to describe what it now proves),
+added a new two-independent-wanted-course fixture so genuine truncation
+stays covered, and added the rollout-bound regression test above. Full API
+suite: **86/86 suites, 1353/1353 tests**, zero regressions elsewhere.
+`tsc --noEmit`: clean. `git diff --stat` = `api/ai/planner_worker.ts` (one
+`run()` change + one new private method) + its test file only — no UI, no
+`generate-plan.ts`, no other planner files touched.
+
+**Final state**: CI green on the final commit (`19775da`), Codex clean on
+that commit, the one real review finding fixed with evidence and its
+thread resolved, `mergeable_state: clean`. **Merged as `5f67194`.** Issue
+#68 closed with the fix commit and evidence recorded in the closing comment.
+
+**Classification: C** (correctness/honesty — closes a reproduced regression
+in already-merged code, same "valid plan misreported" bug family as PR
+#48/#56/#58/#60/#62/#65).
+
+## Prior session — Release-gate re-check: PR queue confirmed resolved (only PR #14, deliberately parked); production deploy still blocked by the same external Vercel gap, now directly reconfirmed via live Vercel MCP access
 
 This was a scheduled autonomous run whose own external task prompt (from the
 human operator) carried an explicit "CURRENT RELEASE GATE — AUTHORITATIVE"
