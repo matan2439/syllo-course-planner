@@ -2,3 +2,6 @@
 .env
 .env.local
 .env.production
+
+# Session runtime state (transient lock files race the upload walk)
+.remember
