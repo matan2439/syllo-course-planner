@@ -78,13 +78,26 @@ with the fix commit and evidence in the closing comment.
 actual default production Agent path, `LlmOrchestrator`, same "valid plan
 misreported" bug family as PR #48/#56/#58/#60/#62/#65/#71).
 
-**Rolling three this session (68, then 67)**: both C. Per the rolling-window
-rule, the next milestone should aim for A or B unless a higher-priority
-correctness finding preempts it again — issue #75 (P2, just filed) or a
-fresh Agent Diagnosis Loop pass are the next candidates; #75 is itself
-another C if picked up next, so a fresh diagnosis pass specifically looking
-for an A/B (UI-exposing or end-to-end-integration) opportunity is worth
-trying first.
+**Rolling window, corrected (Codex finding on PR #76 — the version below this
+replaces an earlier draft that only counted this session's own two entries
+and understated the streak)**: PR #65 (the milestone immediately preceding
+this session's PR #71) is also classified **C**. The real sequence is
+...62(C), 65(C), 71(C), 73(C) — `(62,65,71) = C/C/C` was ALREADY
+non-compliant before this session started (not something either PR #71 or
+#73 individually caused), and `(65,71,73) = C/C/C` extends it: **four
+consecutive C-classified milestones in a row**. Per this routine's own
+governance rule ("a fourth C-in-a-row pattern... worth a human sanity
+check"), this is now explicitly that trigger — flagged here, not corrected
+by picking an artificial A/B next just to satisfy the counter (each of these
+four Cs was independently a legitimate, reproduced, real correctness fix,
+not a rule violation in intent). **The next milestone genuinely should be A
+or B** unless yet another higher-priority correctness finding preempts it
+(a legitimate preemption per the priority order, but a fifth C in a row
+would be worth escalating to the human product owner as an explicit
+question rather than continuing to self-justify). Issue #75 (P2, just
+filed) would itself be a fifth C if picked up next — prefer a fresh Agent
+Diagnosis Loop pass specifically hunting for an A/B (UI-exposing or
+end-to-end-integration) opportunity first.
 
 **State as of this update**: only PR #14 remains open (still correctly
 parked). Issues #67 and #68 both closed this session. Issue #75 newly filed,

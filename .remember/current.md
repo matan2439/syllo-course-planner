@@ -51,13 +51,22 @@ dismissed). Full suite: 86/86 suites, 1354 passing + 1 documented skip.
 as of the entry below).
 
 **Classification: C** (correctness/honesty — same "valid plan misreported"
-bug family as PR #48/#56/#58/#60/#62/#65/#71). **Rolling-three this
-session: (68, 67) = C, C** — the next milestone should aim for A or B
-unless a higher-priority correctness finding preempts it; issue #75 (just
-filed, P2) would itself be another C if picked up next, so a fresh Agent
-Diagnosis Loop pass specifically looking for an A/B (UI-exposing or
-end-to-end-integration) opportunity is worth trying first, per the same
-rolling-window discipline PR #41 satisfied earlier in this track's history.
+bug family as PR #48/#56/#58/#60/#62/#65/#71). **Rolling window, corrected
+(Codex finding on PR #76 — an earlier draft only counted this session's own
+two entries and understated the streak)**: PR #65, immediately preceding
+this session's PR #71, is also C. Real sequence: ...62(C), 65(C), 71(C),
+73(C) — `(62,65,71)` was already non-compliant before this session started,
+and `(65,71,73) = C/C/C` extends it to **four consecutive C milestones**,
+this routine's own explicit "worth a human sanity check" trigger. Each of
+the four was independently a legitimate, reproduced correctness fix, not a
+rule violation — recorded honestly rather than resolved by forcing an
+artificial A/B. **The next milestone genuinely should be A or B** unless a
+higher-priority correctness finding preempts it again (legitimate, but a
+fifth C in a row would be worth flagging to the human operator directly).
+Issue #75 (P2, just filed) would itself be a fifth C — prefer a fresh Agent
+Diagnosis Loop pass hunting specifically for an A/B (UI-exposing or
+end-to-end-integration) opportunity first, per the same discipline PR #41
+satisfied earlier in this track's history.
 
 **Exact next action for the next session**: only PR #14 remains open
 (still correctly parked). Issue #75 is filed, open, not yet fixed — a real,
