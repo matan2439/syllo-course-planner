@@ -1,5 +1,71 @@
 # Current — read this first
 
+## ✅ PR #71 merged: converged plan could be falsely reported as maxSteps-blocked (issue #68), plus a Codex-caught rollout-cost fix mid-review (2026-07-29, autonomous scheduled run)
+
+Standing audit under the normal product-engineering mandate (no special
+release-gate directive this session). This session's assigned branch
+(`claude/youthful-tesla-wq1g2x`) had zero unique commits, level with stale
+`main` — reset to `ui/frontend-modernization` HEAD (`4174abc`, PR #70)
+first, the same recurring branch-hygiene gap issue #18 has flagged before.
+Queue at session start: only PR #14 (Decision capability), reconfirmed
+still correctly parked. Issues #15/#18/#20/#21/#67 reconfirmed unchanged,
+correctly left untouched (issue #67 specifically deferred to avoid parallel
+work on the same file, `planner_worker.ts`, this session was about to
+touch for #68). Production/Vercel state not re-checked this session (no new
+directive) — standing pin at `26500d4` presumed unchanged.
+
+**Picked up issue #68** (filed by the immediately prior session, a real
+Codex finding on PR #66) rather than starting a fresh Agent Diagnosis Loop
+pass, per the "resume unfinished work first" rule — already fully diagnosed
+and scoped, see issue #68's own entry below for the root cause writeup
+(unchanged, still accurate).
+
+**Fix** (`api/ai/planner_worker.ts`): `run()` now performs one
+non-consuming check when `isGoalReached()` is true — new private
+`hasFurtherAdvancingAction()`, mirroring `step()`'s own "Reason" decision
+(enumerate legal actions, check whether any still improves the immediate or
+lookahead score, or whether an annual course is incomplete) without
+applying anything or touching the trace. Verified empirically before
+touching code: the existing PR #65 regression test was a live
+demonstration of the bug (its own fixture's 3rd/last permitted step was
+genuinely the convergence point, yet the pre-fix code emitted "maxSteps").
+
+**One real Codex finding, fixed same session (P2)**: the initial
+`hasFurtherAdvancingAction()` called `estimateFinalScore` (an expensive
+`rolloutSteps`-deep rollout) once per *every* legal candidate when
+lookahead was on — unbounded, unlike `step()`'s own `topN`-truncated
+rollout (production: `topN:6`, `rolloutSteps:80`). At the exact convergence
+boundary this check exists to detect, a plan with many legal-but-flat
+remaining moves could trigger roughly quadratic work and risk a timeout.
+Fixed: cheap unbounded immediate-score pass first (no rollout needed to
+prove something advances), then a lookahead pass bounded to `opts.topN`
+candidates — matching `step()`'s own per-iteration cost. New test spies on
+`estimateFinalScore` (`jest.spyOn` on the `planner_lookahead` module) with
+a 20-legal-candidate fixture, empirically proves the call count stays ≤9.
+Codex re-reviewed the fix commit clean.
+
+**Final state**: CI green, Codex clean on the final commit (`19775da`), the
+one real finding fixed with evidence, thread resolved. Full API suite:
+**86/86 suites, 1353/1353 tests**, zero regressions. `tsc --noEmit` clean.
+`git diff --stat` = `api/ai/planner_worker.ts` + its test file only.
+**Merged as `5f67194`.** Issue #68 closed with the fix commit + evidence in
+the closing comment. `AUTONOMOUS_PROGRESS.md` recap: PR #72.
+
+**Classification: C** (correctness/honesty — same "valid plan misreported"
+bug family as PR #48/#56/#58/#60/#62/#65). **Release candidate updated:
+`ui/frontend-modernization` HEAD is now `5f67194`** (was `0dc09f9`/PR #69
+as of the prior session's entry below).
+
+**Exact next action for the next session**: issue #67 (LlmOrchestrator
+wanted-course reliance on `finalize_plan`) is next up per the prior
+session's own note — needs a repro against a real/mocked `LlmOrchestrator`
+before deciding whether it needs a fix, not an automatic priority override.
+Production/Vercel deploy blocker unchanged and still the single most
+valuable pending **human** action (link Git integration on
+`tau-course-planner`, or explicitly authorize a `deploy_to_vercel`
+raw-upload as an interim measure) — no autonomous session can make that
+call. Standing human-decision blockers (#15/#18/#20/#21) remain untouched.
+
 ## 🛑 Release-gate re-check: PR queue confirmed resolved (only PR #14, parked); deploy still blocked, now directly reconfirmed via live Vercel MCP access (2026-07-28, autonomous scheduled run)
 
 Scheduled run under an external task prompt with an explicit "CURRENT RELEASE
