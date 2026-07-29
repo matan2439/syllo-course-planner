@@ -71,8 +71,23 @@ export class LlmOrchestrator implements Orchestrator {
 
     // Guarantee a valid, complete plan regardless of what the model did: the
     // deterministic worker loop finishes/repairs whatever the LLM left.
-    if (!worker.validateCandidate().valid) {
-      worker.run(500, 'greedy');
-    }
+    //
+    // Unconditional, not gated on validateCandidate().valid (issue #67): the
+    // model's own finalize_plan tool call already runs this same finishing
+    // pass (worker.repair() -> run(500,'greedy')), but finalize_plan does not
+    // terminate the tool-calling loop — nothing stops the model from mutating
+    // further afterward (e.g. removing a wanted course finalize_plan had just
+    // placed) with no later finalize_plan call to recover it. validateCandidate()
+    // checks legality/degree-hours/mandatory/category completion only — zero
+    // wantedCourseIds or balance awareness — so that kind of post-finalize
+    // regression can leave the plan "valid" while silently worse than what the
+    // model had already legally achieved. Always re-running the same
+    // deterministic loop closes that gap unconditionally: it only ever takes
+    // further LEGAL, score-improving actions (the same ground truth the rest
+    // of the system trusts), so it can't discard anything the model validly
+    // chose to keep — a plan already at convergence returns from run() almost
+    // immediately (the same "no legal action still advances" check step()
+    // always makes), so this costs nothing extra in the common case.
+    worker.run(500, 'greedy');
   }
 }

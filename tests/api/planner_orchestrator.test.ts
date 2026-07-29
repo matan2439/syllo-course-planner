@@ -129,4 +129,108 @@ describe('LlmOrchestrator', () => {
     expect(w.isGoalReached()).toBe(true);
     expect(w.validateCandidate().valid).toBe(true);
   });
+
+  // Issue #67: finalize_plan's execute() calls worker.repair() (placing any
+  // still-legal wanted course/balance move, per PR #65/#68's fix) but does
+  // NOT terminate the tool-calling loop. Nothing stops the model from mutating
+  // further afterward. The precise repro condition (narrowed across 3 Codex
+  // corrections on issue #67): a POST-finalize_plan mutation that actually
+  // undoes an optimization repair() achieved, with no later finalize_plan call
+  // to recover it. validateCandidate() has zero wantedCourseIds awareness, so
+  // the resulting state can be fully "valid" (legal/complete) while silently
+  // missing a wanted course the plan had already legally placed.
+  it('recovers a wanted course the model dropped AFTER its last finalize_plan call (issue #67)', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a', effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('WANTED', profile('WANTED', { hours: 4, is_wanted: true }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1'] }],
+      degreeRequiredHours: 9, priorHours: 0, maxHoursPerSemester: 22, hardCap: 26, // met by MAND+FLU1 alone
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(['WANTED']),
+    };
+    const w = new PlannerWorker(m);
+    const orch = new LlmOrchestrator({} as any, {
+      generate: scriptedGenerate(async tools => {
+        await tools.add_course.execute!({ courseId: 'MAND', semesterId: 'year_3_semester_a' }, {} as any);
+        await tools.add_course.execute!({ courseId: 'FLU1' }, {} as any);
+        // finalize_plan repairs/optimizes: bare goal already met, so this also
+        // places WANTED (PR #65/#68's post-goal optimization).
+        const rep1 = await tools.finalize_plan.execute!({}, {} as any);
+        expect(rep1.valid).toBe(true);
+        expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+        // Model then removes the just-placed wanted course, with NO further
+        // finalize_plan call before the loop ends.
+        await tools.remove_course.execute!({ courseId: 'WANTED' }, {} as any);
+      }),
+    });
+    await orch.run(w);
+    // The deterministic finishing guarantee must recover it: WANTED is still
+    // legal and still improves the score, so it must be re-placed, not
+    // silently left dropped just because bare validity already holds.
+    expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+    expect(w.validateCandidate().valid).toBe(true);
+  });
+
+  // Issue #75 (a real Codex finding on THIS PR, #73): a distinct, PRE-EXISTING
+  // gap this PR's fix cannot close. requiredButUnplacedCourseIds
+  // (planner_goals.ts) only seeds its prerequisite walk from
+  // requiredMandatoryCourseIds, never from wantedCourseIds — so once a wanted
+  // course's own (non-mandatory, non-category) prerequisite gets removed
+  // alongside it, no enumerateActions group ever proposes re-adding that
+  // prerequisite again (group 1b only covers mandatory chains; group 4's
+  // degree-fill is gated off once degreeHours already meets the target). The
+  // wanted course becomes permanently unplaceable — silently, since
+  // validateCandidate() has no wantedCourseIds awareness either (same root
+  // cause as issue #67/#68).
+  //
+  // Empirically confirmed this is NOT a regression from this PR's fix: the
+  // exact same outcome (WANTED never recovered) occurs identically against
+  // the pre-PR-73 code too, since its conditional fallback is equally skipped
+  // whenever the resulting state already reads as valid. Fixing it requires
+  // broadening requiredButUnplacedCourseIds' contract, which also feeds
+  // remainingMandatoryHours' reservation-budget scoring — a cross-cutting
+  // change to core scoring logic, deliberately out of scope for this PR (see
+  // issue #75 for the full analysis and suggested fix direction).
+  it.skip('recovers a wanted course whose OWN prerequisite was also removed post-finalize_plan (issue #75, not yet fixed)', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a', effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('PREREQ', profile('PREREQ', { hours: 4 }));
+    profiles.set('WANTED', profile('WANTED', { hours: 4, is_wanted: true, prerequisites: ['PREREQ'] }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1'] }],
+      degreeRequiredHours: 9, priorHours: 0, maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(['WANTED']),
+    };
+    const w = new PlannerWorker(m);
+    const orch = new LlmOrchestrator({} as any, {
+      generate: scriptedGenerate(async tools => {
+        await tools.add_course.execute!({ courseId: 'MAND', semesterId: 'year_3_semester_a' }, {} as any);
+        await tools.add_course.execute!({ courseId: 'FLU1', semesterId: 'year_3_semester_b' }, {} as any);
+        // The model places PREREQ + WANTED itself (bypassing enumerateActions —
+        // an LLM add_course tool call only needs validate() to pass).
+        await tools.add_course.execute!({ courseId: 'PREREQ', semesterId: 'year_3_semester_b' }, {} as any);
+        await tools.add_course.execute!({ courseId: 'WANTED', semesterId: 'year_4_semester_a' }, {} as any);
+        await tools.finalize_plan.execute!({}, {} as any);
+        // Then removes BOTH, in either order — each individually legal once
+        // degree hours are otherwise already met — with no further finalize_plan.
+        await tools.remove_course.execute!({ courseId: 'WANTED' }, {} as any);
+        await tools.remove_course.execute!({ courseId: 'PREREQ' }, {} as any);
+      }),
+    });
+    await orch.run(w);
+    expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+    expect(w.validateCandidate().valid).toBe(true);
+  });
 });
