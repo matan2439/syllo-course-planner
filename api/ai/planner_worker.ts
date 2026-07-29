@@ -500,23 +500,39 @@ export class PlannerWorker {
    * same "Reason" decision step() itself makes, without applying anything or
    * recording a trace entry — used only to tell genuine step-budget
    * truncation apart from the run() ending exactly on the converging action
-   * (see run()'s own comment). Deliberately does NOT truncate to opts.topN
-   * the way step()'s lookahead rollout does (that limit exists only to bound
-   * an expensive per-iteration rollout cost across many calls) — this runs
-   * once, so checking every legal candidate is the more correct answer to
-   * "does anything at all still advance the plan?", never a weaker one.
+   * (see run()'s own comment).
+   *
+   * Two passes, cheapest first:
+   *  1. Immediate score, over EVERY legal candidate — no rollout, so
+   *     checking all of them (not just opts.topN) is free and strictly more
+   *     correct than step()'s own per-iteration search needs to be.
+   *  2. Lookahead-estimated final score, but — Codex finding on the initial
+   *     version of this method — bounded to the same opts.topN candidates
+   *     step() itself would ever roll out per iteration. An unbounded
+   *     estimateFinalScore call (rollout over rolloutSteps, each
+   *     re-enumerating/validating the full action set) per legal candidate
+   *     is roughly quadratic in the size of the action space and, called
+   *     right at the maxSteps boundary this method exists to detect, risks
+   *     timing out instead of returning the valid plan. Matching step()'s
+   *     own topN bound keeps this check's cost the same order of magnitude
+   *     as a single ordinary step() call, not worse.
    */
   private hasFurtherAdvancingAction(): boolean {
     if (this.findIncompleteAnnualCourse()) return true;
     const current = scorePlan(this.state, this.model);
-    const curFinal = this.opts.lookahead ? estimateFinalScore(this.state, this.model, this.opts.rolloutSteps) : current;
     const legal = this.enumerateActions(this.state)
       .map(mut => applyMutation(this.state, mut))
-      .filter((next): next is PlanState => next != null && this.validate(next).valid);
-    return legal.some(next => {
-      const imm = scorePlan(next, this.model);
-      const fin = this.opts.lookahead ? estimateFinalScore(next, this.model, this.opts.rolloutSteps) : imm;
-      return compareScore(fin, curFinal) > 0 || compareScore(imm, current) > 0;
+      .filter((next): next is PlanState => next != null && this.validate(next).valid)
+      .map(next => ({ next, imm: scorePlan(next, this.model) }))
+      .sort((a, b) => compareScore(b.imm, a.imm));
+
+    if (legal.some(x => compareScore(x.imm, current) > 0)) return true;
+    if (!this.opts.lookahead) return false;
+
+    const curFinal = estimateFinalScore(this.state, this.model, this.opts.rolloutSteps);
+    return legal.slice(0, this.opts.topN).some(x => {
+      const fin = estimateFinalScore(x.next, this.model, this.opts.rolloutSteps);
+      return compareScore(fin, curFinal) > 0;
     });
   }
 

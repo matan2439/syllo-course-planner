@@ -16,6 +16,7 @@ import {
   semesterOf,
 } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
+import * as plannerLookahead from '../../api/ai/planner_lookahead';
 
 const SEMS = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
 
@@ -544,5 +545,41 @@ describe('PlannerWorker — STOP trace on maxSteps limit', () => {
     // claim a false convergence either.
     expect(trace.at(-1)!.action).toBe('STOP');
     expect(trace.at(-1)!.reason).toContain('maxSteps');
+  });
+
+  it('bounds the convergence probe\'s lookahead rollout to opts.topN, not every legal candidate (Codex finding on the issue #68 fix)', () => {
+    // 20 identical, always-legal, never-excluded electives — far more than
+    // opts.topN (default 8). Bare goal is met by 3 of them; the other 17
+    // stay legal (nothing prevents adding them) but do not improve the
+    // score once the target is already met — exactly the "many legal but
+    // non-improving moves" case Codex's finding described. Before the fix,
+    // hasFurtherAdvancingAction's lookahead pass called estimateFinalScore
+    // (an expensive rollout) once per legal candidate — unbounded, unlike
+    // step()'s own topN-truncated rollout. This proves the bound now holds.
+    const profiles = new Map<string, CourseProfile>();
+    for (let i = 0; i < 20; i++) profiles.set(`E${i}`, profile(`E${i}`, { hours: 4 }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: [], categories: [],
+      degreeRequiredHours: 12, priorHours: 0, // 3 electives (12h) reaches the goal
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+    const w = new PlannerWorker(m, undefined, { lookahead: true, topN: 8 });
+    // Drive to bare convergence first (well within budget), THEN measure the
+    // probe in isolation — this test is about hasFurtherAdvancingAction's
+    // own cost bound, not step()'s per-iteration search.
+    w.run(500, 'greedy');
+    expect(w.isGoalReached()).toBe(true);
+
+    const spy = jest.spyOn(plannerLookahead, 'estimateFinalScore');
+    const stillAdvancing = (w as unknown as { hasFurtherAdvancingAction(): boolean }).hasFurtherAdvancingAction();
+    // 20 legal remaining electives exist, but none improve the plan once the
+    // 12h target is already met — a true convergence, correctly detected.
+    expect(stillAdvancing).toBe(false);
+    // 1 call for the current state's own estimated final score, plus at most
+    // topN (8) for the ranked candidates — never one per legal candidate.
+    expect(spy.mock.calls.length).toBeLessThanOrEqual(9);
+    spy.mockRestore();
   });
 });
