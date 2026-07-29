@@ -129,4 +129,51 @@ describe('LlmOrchestrator', () => {
     expect(w.isGoalReached()).toBe(true);
     expect(w.validateCandidate().valid).toBe(true);
   });
+
+  // Issue #67: finalize_plan's execute() calls worker.repair() (placing any
+  // still-legal wanted course/balance move, per PR #65/#68's fix) but does
+  // NOT terminate the tool-calling loop. Nothing stops the model from mutating
+  // further afterward. The precise repro condition (narrowed across 3 Codex
+  // corrections on issue #67): a POST-finalize_plan mutation that actually
+  // undoes an optimization repair() achieved, with no later finalize_plan call
+  // to recover it. validateCandidate() has zero wantedCourseIds awareness, so
+  // the resulting state can be fully "valid" (legal/complete) while silently
+  // missing a wanted course the plan had already legally placed.
+  it('recovers a wanted course the model dropped AFTER its last finalize_plan call (issue #67)', async () => {
+    const profiles = new Map<string, CourseProfile>();
+    profiles.set('MAND', profile('MAND', {
+      is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',
+      recommended_semester: 'year_3_semester_a', effective_allowed_semesters: ['year_3_semester_a'], hours: 5,
+    }));
+    profiles.set('FLU1', profile('FLU1', { category_id: 'fluids', hours: 4 }));
+    profiles.set('WANTED', profile('WANTED', { hours: 4, is_wanted: true }));
+    const m: ConstraintModel = {
+      profiles, knownSemesterIds: SEMS, completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['MAND'],
+      categories: [{ id: 'fluids', name: 'זורמים', required: 1, candidateIds: ['FLU1'] }],
+      degreeRequiredHours: 9, priorHours: 0, maxHoursPerSemester: 22, hardCap: 26, // met by MAND+FLU1 alone
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(['WANTED']),
+    };
+    const w = new PlannerWorker(m);
+    const orch = new LlmOrchestrator({} as any, {
+      generate: scriptedGenerate(async tools => {
+        await tools.add_course.execute!({ courseId: 'MAND', semesterId: 'year_3_semester_a' }, {} as any);
+        await tools.add_course.execute!({ courseId: 'FLU1' }, {} as any);
+        // finalize_plan repairs/optimizes: bare goal already met, so this also
+        // places WANTED (PR #65/#68's post-goal optimization).
+        const rep1 = await tools.finalize_plan.execute!({}, {} as any);
+        expect(rep1.valid).toBe(true);
+        expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+        // Model then removes the just-placed wanted course, with NO further
+        // finalize_plan call before the loop ends.
+        await tools.remove_course.execute!({ courseId: 'WANTED' }, {} as any);
+      }),
+    });
+    await orch.run(w);
+    // The deterministic finishing guarantee must recover it: WANTED is still
+    // legal and still improves the score, so it must be re-placed, not
+    // silently left dropped just because bare validity already holds.
+    expect(placedCourseIds(w.getPlan())).toContain('WANTED');
+    expect(w.validateCandidate().valid).toBe(true);
+  });
 });
