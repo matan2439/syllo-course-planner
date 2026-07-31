@@ -45,6 +45,15 @@ export function fromHalfHours(units: number): number {
   return units / 2;
 }
 
+/**
+ * Canonical course-id normalization — matches the established server policy
+ * (api/ai/course_topic_profile.ts:normalizeCourseId): trim strings, empty for
+ * non-strings. Applied before indexing courses into the catalog.
+ */
+export function normalizeCourseId(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 // ── Revisions (kept DISTINCT — never collapsed into one baseRevision) ─────────
 export type CatalogRevision = string & { readonly __brand: 'CatalogRevision' };
 export type ProposalBaseRevision = string & { readonly __brand: 'ProposalBaseRevision' };
@@ -83,6 +92,13 @@ export interface BoardSemesterModel {
 export interface BoardModel {
   catalogRevision: CatalogRevision;
   semesters: BoardSemesterModel[];
+  /**
+   * Full display universe from the SAME /api/board payload: placed courses
+   * (semesters[].courses) ∪ metadata.program_repository_courses, keyed by
+   * normalized course id. This is the authoritative lookup for interpreting
+   * generated course ids; `semesters` remain PLACEMENTS, not the whole universe.
+   */
+  courseCatalog: Record<string, BoardCourseModel>;
 }
 
 export interface PlanSemesterModel {

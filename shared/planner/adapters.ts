@@ -3,24 +3,62 @@
  * exact (throws on unsupported precision, never rounds). Runtime-neutral.
  */
 import { boardResponseSchema, generatePlanResponseSchema } from './wire';
-import { toHalfHours, catalogRevision } from './model';
-import type { BoardModel, GeneratedPlanModel } from './model';
+import { toHalfHours, catalogRevision, normalizeCourseId } from './model';
+import type { BoardModel, BoardCourseModel, GeneratedPlanModel } from './model';
 
-/** Parse + map a raw /api/board response into the canonical BoardModel. */
+/** Raw course shape shared by placed courses and program_repository_courses. */
+type RawCourse = {
+  course_id: string;
+  name_he?: string | null;
+  weekly_hours?: number | null;
+  course_type?: string;
+  is_mandatory?: boolean;
+};
+
+/** Map one raw course (from either source) to the canonical model. Half-hour exact. */
+function courseToModel(c: RawCourse): BoardCourseModel {
+  return {
+    courseId: normalizeCourseId(c.course_id),
+    nameHe: c.name_he ?? '',
+    halfHours: c.weekly_hours == null ? null : toHalfHours(c.weekly_hours),
+    courseType: c.course_type ?? '',
+    isMandatory: c.is_mandatory ?? false,
+  };
+}
+
+/** Parse + map a raw /api/board response into the canonical BoardModel + catalog. */
 export function boardResponseToModel(raw: unknown): BoardModel {
   const parsed = boardResponseSchema.parse(raw);
+
+  const semesters = parsed.semesters.map((s) => ({
+    semesterId: s.semester_id,
+    courses: s.courses.map(courseToModel),
+  }));
+
+  // courseCatalog = placed ∪ program_repository_courses, keyed by normalized id.
+  // Order-independent merge: within a source, the last occurrence wins; across
+  // sources the REPOSITORY entry is authoritative for shared fields, while the
+  // placement-only `courseType` (repo entries carry none) is retained.
+  const placedIndex: Record<string, BoardCourseModel> = {};
+  for (const s of parsed.semesters) {
+    for (const c of s.courses) placedIndex[normalizeCourseId(c.course_id)] = courseToModel(c);
+  }
+  const repoIndex: Record<string, BoardCourseModel> = {};
+  for (const c of parsed.metadata.program_repository_courses ?? []) {
+    repoIndex[normalizeCourseId(c.course_id)] = courseToModel(c);
+  }
+  const courseCatalog: Record<string, BoardCourseModel> = {};
+  for (const id of new Set([...Object.keys(placedIndex), ...Object.keys(repoIndex)])) {
+    const placed = placedIndex[id];
+    const repo = repoIndex[id];
+    courseCatalog[id] =
+      repo && placed ? { ...repo, courseType: repo.courseType || placed.courseType } : repo ?? placed;
+  }
+
   return {
     catalogRevision: catalogRevision(parsed.metadata.board_data_version),
-    semesters: parsed.semesters.map((s) => ({
-      semesterId: s.semester_id,
-      courses: s.courses.map((c) => ({
-        courseId: c.course_id,
-        nameHe: c.name_he ?? '',
-        halfHours: c.weekly_hours == null ? null : toHalfHours(c.weekly_hours),
-        courseType: c.course_type ?? '',
-        isMandatory: c.is_mandatory ?? false,
-      })),
-    })),
+    semesters,
+    courseCatalog,
   };
 }
 

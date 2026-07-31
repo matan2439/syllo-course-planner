@@ -18,7 +18,11 @@ const boardCourseSchema = z
     course_id: z.string().min(1),
     // Present in the real catalog as a decimal half-hour (e.g. 3.5) or null.
     weekly_hours: z.number().nullable().optional(),
-    name_he: z.string().optional(),
+    // The real program_repository_courses carry name_he: null for some courses
+    // (no known Hebrew name). nullish() accepts string | null | absent; the
+    // adapter coalesces null → '' (never fabricates a name). course_type is
+    // never null in the real payload (absent on repo entries), so it stays optional.
+    name_he: z.string().nullish(),
     course_type: z.string().optional(),
     is_mandatory: z.boolean().optional(),
   })
@@ -37,7 +41,14 @@ const boardSemesterSchema = z
 
 export const boardResponseSchema = z
   .object({
-    metadata: z.object({ board_data_version: z.string().min(1) }).passthrough(),
+    metadata: z
+      .object({
+        board_data_version: z.string().min(1),
+        // The elective universe the planner draws from, alongside placed courses.
+        // Optional: some program payloads may omit it (catalog is then placed-only).
+        program_repository_courses: z.array(boardCourseSchema).optional(),
+      })
+      .passthrough(),
     semesters: z.array(boardSemesterSchema),
     summary: z.object({ total_courses: z.number().optional() }).passthrough().optional(),
     warnings: z.array(z.string()).optional(),

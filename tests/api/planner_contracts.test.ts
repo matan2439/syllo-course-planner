@@ -22,6 +22,7 @@ import {
   toHalfHours,
   fromHalfHours,
   ContractError,
+  normalizeCourseId,
   boardResponseToModel,
   generatePlanResponseToModel,
   getBoard,
@@ -33,6 +34,8 @@ import {
   workspaceSchema,
   CONTRACT_VERSION,
 } from '../../shared/planner';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 const BOARD_FIXTURE = {
@@ -267,5 +270,151 @@ describe('validate-plan contract (PENDING — Slice 3; endpoint NOT implemented)
       totals: { perSemesterHalfHours: { year_3_semester_a: 7 }, degreeHalfHours: 7 },
     });
     expect(res.blocked).toBe(false);
+  });
+});
+
+// ── Slice 2: courseCatalog (full display universe from the existing payload) ───
+// Provenance: the real /api/board payload (verified this session) carries the full
+// course universe across TWO places — semesters[].courses[] (placed) and
+// metadata.program_repository_courses[] (electives). Real overlap between the two
+// is 0 and repo entries lack `course_type`; these fixtures exercise the merge rule
+// deterministically without claiming a real overlap exists.
+describe('boardResponseToModel courseCatalog (placed ∪ program_repository_courses)', () => {
+  const withRepo = {
+    metadata: {
+      board_data_version: 'cat-rev-1',
+      program_repository_courses: [
+        { course_id: '0542-4220', name_he: 'קורס מאגר', weekly_hours: 2.5, is_mandatory: false },
+      ],
+    },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: '0542-3243', name_he: 'קורס מוצב', weekly_hours: 3.5, course_type: 'mandatory', is_mandatory: true }],
+      },
+    ],
+  }
+
+  test('normalizeCourseId trims and rejects non-strings (matches the canonical policy)', () => {
+    expect(normalizeCourseId('  0542-1  ')).toBe('0542-1')
+    expect(normalizeCourseId(123 as unknown as string)).toBe('')
+  })
+
+  test('catalog includes a placed-only course and a repository-only course', () => {
+    const { courseCatalog } = boardResponseToModel(withRepo)
+    expect(courseCatalog['0542-3243'].nameHe).toBe('קורס מוצב') // placed
+    expect(courseCatalog['0542-4220'].nameHe).toBe('קורס מאגר') // repository-only
+    expect(courseCatalog['0542-4220'].halfHours).toBe(5) // 2.5h exact
+  })
+
+  test('semester placements are NOT reinterpreted as the whole universe (repo id absent from placements)', () => {
+    const model = boardResponseToModel(withRepo)
+    const placedIds = model.semesters.flatMap((s) => s.courses.map((c) => c.courseId))
+    expect(placedIds).toContain('0542-3243')
+    expect(placedIds).not.toContain('0542-4220') // repo course is in the catalog, not a placement
+  })
+
+  test('overlapping id: repository is authoritative for shared fields, placement-only course_type retained', () => {
+    const both = {
+      metadata: {
+        board_data_version: 'r',
+        program_repository_courses: [{ course_id: 'X-1', name_he: 'ממאגר', weekly_hours: 2.0, is_mandatory: false }],
+      },
+      semesters: [
+        { semester_id: 'year_3_semester_a', courses: [{ course_id: 'X-1', name_he: 'מוצב', weekly_hours: 3.0, course_type: 'elective', is_mandatory: true }] },
+      ],
+    }
+    const { courseCatalog } = boardResponseToModel(both)
+    expect(courseCatalog['X-1'].nameHe).toBe('ממאגר') // repo authoritative
+    expect(courseCatalog['X-1'].halfHours).toBe(4) // repo 2.0h
+    expect(courseCatalog['X-1'].isMandatory).toBe(false) // repo authoritative
+    expect(courseCatalog['X-1'].courseType).toBe('elective') // placement-only field retained (repo has none)
+  })
+
+  test('duplicate ids within a source after normalization resolve deterministically (last wins)', () => {
+    const dup = {
+      metadata: {
+        board_data_version: 'r',
+        program_repository_courses: [
+          { course_id: 'D-1', name_he: 'first', weekly_hours: 1.0, is_mandatory: false },
+          { course_id: ' D-1 ', name_he: 'second', weekly_hours: 1.5, is_mandatory: false },
+        ],
+      },
+      semesters: [],
+    }
+    const { courseCatalog } = boardResponseToModel(dup)
+    expect(courseCatalog['D-1'].nameHe).toBe('second')
+    expect(courseCatalog['D-1'].halfHours).toBe(3) // 1.5h
+  })
+
+  test('does not mutate the input payload', () => {
+    const input = JSON.parse(JSON.stringify(withRepo))
+    const snapshot = JSON.stringify(input)
+    boardResponseToModel(input)
+    expect(JSON.stringify(input)).toBe(snapshot)
+  })
+})
+
+// ── Slice 2 regression: the REAL Mechanical 2027 board payload at the boundary ──
+// Binds the generic canonical adapter to the actual repository fixture (loaded,
+// not copied). Regression check only — generic union/normalization/resolution
+// behavior stays covered by the inline unit fixtures above. If the real payload's
+// counts, overlap, or 0542-4220 metadata contradict the recorded discovery facts,
+// this fails loudly rather than being weakened.
+describe('boardResponseToModel — real mechanical_engineering_2027 payload (13 entries / 12 unique placed, 56 repository)', () => {
+  const REAL = JSON.parse(
+    readFileSync(
+      join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json'),
+      'utf8',
+    ),
+  );
+  const placedEntryIds = (): string[] =>
+    REAL.semesters.flatMap((s: { courses: Array<{ course_id: string }> }) =>
+      s.courses.map((c) => normalizeCourseId(c.course_id)),
+    );
+  const repoIds = (): string[] =>
+    (REAL.metadata.program_repository_courses ?? []).map((c: { course_id: string }) =>
+      normalizeCourseId(c.course_id),
+    );
+
+  test('counts: 13 placed entries, 12 unique placed ids, 56 repository, 0 overlap, catalog size 68', () => {
+    const entries = placedEntryIds();
+    const uniquePlaced = new Set(entries);
+    const repo = new Set(repoIds());
+    expect(entries.length).toBe(13); // ENTRIES (an annual course is placed twice)
+    expect(uniquePlaced.size).toBe(12); // unique normalized placed ids
+    expect(repoIds().length).toBe(56);
+    expect([...uniquePlaced].filter((id) => repo.has(id))).toEqual([]); // zero normalized overlap
+
+    const { courseCatalog } = boardResponseToModel(REAL);
+    expect(Object.keys(courseCatalog).length).toBe(68); // 12 unique placed ∪ 56 repository
+    expect(new Set(Object.keys(courseCatalog))).toEqual(new Set([...uniquePlaced, ...repo]));
+    for (const id of uniquePlaced) expect(courseCatalog[id]).toBeDefined();
+    for (const id of repo) expect(courseCatalog[id]).toBeDefined();
+  });
+
+  test('annual 0542-3792 spans {year_3_semester_a, year_3_semester_b} yet is ONE catalog entry', () => {
+    const id = normalizeCourseId('0542-3792');
+    const { semesters, courseCatalog } = boardResponseToModel(REAL);
+    const placedIn = semesters.filter((s) => s.courses.some((c) => c.courseId === id)).map((s) => s.semesterId);
+    expect(new Set(placedIn)).toEqual(new Set(['year_3_semester_a', 'year_3_semester_b']));
+    expect(Object.keys(courseCatalog).filter((k) => k === id).length).toBe(1); // single catalog entry
+  });
+
+  test('repository-only 0542-4220 resolves with its exact fixture name and halfHours=8 (4h)', () => {
+    const id = normalizeCourseId('0542-4220');
+    const repoEntry = (REAL.metadata.program_repository_courses as Array<{ course_id: string; name_he: string; weekly_hours: number }>).find(
+      (c) => normalizeCourseId(c.course_id) === id,
+    )!;
+    expect(new Set(placedEntryIds()).has(id)).toBe(false); // repository-only
+    const { courseCatalog } = boardResponseToModel(REAL);
+    expect(courseCatalog[id].nameHe).toBe(repoEntry.name_he); // fixture-derived, not hardcoded
+    expect(courseCatalog[id].halfHours).toBe(8);
+  });
+
+  test('adapting the real payload does not mutate it', () => {
+    const snapshot = JSON.stringify(REAL);
+    boardResponseToModel(REAL);
+    expect(JSON.stringify(REAL)).toBe(snapshot);
   });
 });
