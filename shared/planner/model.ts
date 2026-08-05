@@ -110,10 +110,19 @@ export interface PlanMoveModel {
   from: string | null;
   to: string;
 }
+/** Truthful record of how a free-text request fared against the ACTUAL plan. */
+export interface IntentOutcomeModel {
+  honored: string[];
+  partiallyHonored: string[];
+  unmet: string[];
+  notesHe: string[];
+}
 export interface GeneratedPlanModel {
   semesters: PlanSemesterModel[];
   moves: PlanMoveModel[];
   warningsHe: string[];
   errors: string[];
   blocked: boolean;
+  /** Present only when the server interpreted a free-text request (opt-in). */
+  intentOutcome?: IntentOutcomeModel;
 }

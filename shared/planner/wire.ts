@@ -80,6 +80,16 @@ export const generatePlanResponseSchema = z
     trace: z.unknown().optional(),
     interestEvaluation: z.unknown().optional(),
     academicDecision: z.unknown().optional(),
+    // Additive — present only when free-text interpretation ran. Honored /
+    // partially-honored / unmet lines DERIVED from the actual plan (never prose).
+    intentOutcome: z
+      .object({
+        honored: z.array(z.string()),
+        partiallyHonored: z.array(z.string()),
+        unmet: z.array(z.string()),
+        notesHe: z.array(z.string()),
+      })
+      .optional(),
   })
   .passthrough();
 export type GeneratePlanResponse = z.infer<typeof generatePlanResponseSchema>;

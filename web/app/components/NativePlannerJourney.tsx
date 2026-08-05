@@ -147,6 +147,9 @@ export default function NativePlannerJourney({
       plan_context: planContext,
       preferences,
       session_token: sessionToken(),
+      // Interpret the free-text conversation into structured planner intent so
+      // it measurably affects the plan (not just the LLM prompt). Additive.
+      interpret_free_text: true,
     }
   }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId])
 
@@ -216,6 +219,7 @@ export default function NativePlannerJourney({
         ) : (
           <ProposalView
             draft={buildDraftVM(proposal, current)}
+            intentOutcome={proposal.intentOutcome}
             removed={removed}
             stale={stale}
             canApply={canApply}
@@ -311,9 +315,10 @@ export default function NativePlannerJourney({
 }
 
 function ProposalView({
-  draft, removed, stale, canApply, onApply, onReject,
+  draft, intentOutcome, removed, stale, canApply, onApply, onReject,
 }: {
   draft: ReturnType<typeof buildDraftVM>
+  intentOutcome?: GeneratedPlanModel['intentOutcome']
   removed: Array<{ id: string; nameHe: string | null }>
   stale: boolean
   canApply: boolean
@@ -356,6 +361,25 @@ function ProposalView({
           {draft.warningsHe.map((w, i) => <li key={i}>{w}</li>)}
         </ul>
       )}
+      {intentOutcome &&
+        (intentOutcome.honored.length > 0 || intentOutcome.partiallyHonored.length > 0 || intentOutcome.unmet.length > 0 || intentOutcome.notesHe.length > 0) && (
+          <section aria-label="מה נלקח מהבקשה" className="rounded-lg border border-[var(--border)] px-3.5 py-3 text-sm">
+            <h3 className="mb-1.5 text-sm font-bold tracking-tight">מה נלקח מהבקשה שלך</h3>
+            {intentOutcome.honored.map((t, i) => (
+              <p key={`h${i}`} className="text-emerald-700 dark:text-emerald-300">✓ {t}</p>
+            ))}
+            {intentOutcome.partiallyHonored.map((t, i) => (
+              <p key={`p${i}`} className="text-amber-700 dark:text-amber-300">◐ {t}</p>
+            ))}
+            {intentOutcome.unmet.map((t, i) => (
+              <p key={`u${i}`} className="text-red-700 dark:text-red-300">✕ {t}</p>
+            ))}
+            {intentOutcome.notesHe.map((t, i) => (
+              <p key={`n${i}`} className="text-[var(--text-muted)]">• {t}</p>
+            ))}
+          </section>
+        )}
+
       {removed.length > 0 && (
         <div aria-label="קורסים שהוסרו" className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
           <span className="font-semibold">הוסרו: </span>

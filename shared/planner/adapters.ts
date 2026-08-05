@@ -71,5 +71,6 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     warningsHe: p.warnings_he,
     errors: p.errors,
     blocked: p.blocked,
+    ...(p.intentOutcome ? { intentOutcome: p.intentOutcome } : {}),
   };
 }

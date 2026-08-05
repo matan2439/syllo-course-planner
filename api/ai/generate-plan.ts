@@ -77,6 +77,13 @@ import {
   resolveHardExcludedCourseIds,
 } from './academic_decision_runtime';
 import type { ClarificationResult } from './academic_decision_types';
+import {
+  extractCatalog,
+  interpretPlanningIntent,
+  mergeIntentIntoPreferences,
+  buildIntentOutcome,
+  type PlanningIntent,
+} from './planning_intent';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -119,6 +126,13 @@ const requestSchema = z.object({
   // evaluation, decision, and a Hebrew-ready explanation around the (unchanged)
   // generated plan. Absent/false => byte-identical response to before.
   use_academic_decision_agent: z.boolean().optional(),
+  // Additive, opt-in — when true, preferences.extra_request_he (free-text
+  // Hebrew) is interpreted at the planning-intent boundary (planning_intent.ts)
+  // into the SAME structured planner fields (disallowed / wanted / max hours /
+  // balance) the greedy planner already honors, and an additive `intentOutcome`
+  // (honored / partiallyHonored / unmet, derived from the ACTUAL plan) is
+  // attached. Absent/false => free text reaches only the LLM context, as before.
+  interpret_free_text: z.boolean().optional(),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;
@@ -1258,7 +1272,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     return;
   }
-  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent } = parsed.data;
+  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent, interpret_free_text } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
@@ -1393,6 +1407,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!board) {
     sendError(res, 503, 'תוכנית הלימודים המלאה אינה זמינה. נא לנסות שוב מאוחר יותר.', 'NO_UNIVERSE');
     return;
+  }
+
+  // Planning-intent boundary (opt-in): interpret the free-text Hebrew request
+  // into the SAME structured planner fields the greedy planner already honors,
+  // resolved against THIS board's catalog (data-driven, no hard-coded ids), and
+  // merge with explicit precedence over the structured UI preferences. Runs
+  // BEFORE buildModel so it deterministically changes the plan (not just the
+  // LLM prompt). An empty/unrecognized request is a safe no-op.
+  let interpretedIntent: PlanningIntent | undefined;
+  const intentCatalog = interpret_free_text === true ? extractCatalog(board) : [];
+  if (interpret_free_text === true && typeof effectivePreferences.extra_request_he === 'string' && effectivePreferences.extra_request_he.trim()) {
+    interpretedIntent = interpretPlanningIntent(effectivePreferences.extra_request_he, intentCatalog);
+    const merged = mergeIntentIntoPreferences(effectivePreferences, interpretedIntent);
+    effectivePreferences = { ...effectivePreferences, ...merged };
   }
 
   const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds);
@@ -1574,6 +1602,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     blocked: blockingErrors.length > 0,
     trace: traceForResponse,
   };
+  // Additive intent outcome — derived from the ACTUAL placements above (never
+  // generated prose): which interpreted requests were honored, partially
+  // honored, or unmet (incl. an exclusion that conflicts with a mandatory
+  // requirement, and unresolved course phrases). Present only when free-text
+  // interpretation ran.
+  if (interpretedIntent) {
+    const hoursById = new Map<string, number | null | undefined>();
+    for (const [id, p] of model.profiles) hoursById.set(id, p.hours);
+    responseBody.intentOutcome = buildIntentOutcome(interpretedIntent, proposal.semesters, {
+      catalog: intentCatalog,
+      requiredMandatoryCourseIds: model.requiredMandatoryCourseIds,
+      hoursById,
+    });
+  }
   // Opt-in only, additive: attach an interest evaluation over the generated
   // plan. Never influences plan generation, scorePlan, ranking, or the fields
   // above — purely a read of proposal.semesters. Absent flag => key absent.
