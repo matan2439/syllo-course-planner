@@ -181,11 +181,23 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
   const isDisallowed = disallowed.has(id);
   const isUnwanted = unwanted.has(id);
 
+  // Catalog integrity: a course with no authoritative Hebrew name has no valid
+  // catalog record to display or validate against. It stays in the universe
+  // (never dropped — the trace can still explain it) but is flagged excluded so
+  // it can never be silently ADDed into an applicable proposal as a nameless
+  // "פרטי הקורס אינם זמינים" card. If such a course is a required mandatory/
+  // category course, the existing completion gates surface it as a BLOCK rather
+  // than a silent placement (see generate-plan.ts missingMandatoryGate).
+  const hasAuthoritativeName = typeof raw.name_he === 'string' && raw.name_he.trim().length > 0;
+
   let excluded = false;
   let exclusion_reason: string | null = null;
   if (isDisallowed) {
     excluded = true;
     exclusion_reason = 'הקורס סומן כלא-זמין (חריגה מפורשת / קורס מצטיינים / חופף).';
+  } else if (!hasAuthoritativeName) {
+    excluded = true;
+    exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר שם קורס מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';
   }
 
   return {
