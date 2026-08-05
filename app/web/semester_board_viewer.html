@@ -7543,9 +7543,16 @@ function computeDegreeProgress(context, boardState, draftState) {
   // also support draft proposals expressed as full semester maps (cid present
   // in board but absent from draft.semesters[sameSem]) — best-effort.
   if (draftState?.semesters) {
-    for (const [semId, ids] of Object.entries(boardState?.semesters || {})) {
-      const draftIds = new Set(draftState.semesters[semId] || ids);
-      for (const cid of ids) if (!draftIds.has(cid)) draftRemoved.add(cid);
+    // A board course PRESENT in the draft but in a DIFFERENT semester was MOVED,
+    // not removed — only treat it as removed when it is absent from the draft
+    // ENTIRELY. Otherwise a relocated board course (e.g. a dual-offered flexible
+    // mandatory shifted to its emptier legal half by the load-balance pass)
+    // silently vanishes from current_board while also being excluded from
+    // proposed_added (it is on the committed board), under-counting the degree
+    // total versus buildPlanContextFromState.
+    const draftPlacedAll = new Set(Object.values(draftState.semesters).flat());
+    for (const ids of Object.values(boardState?.semesters || {})) {
+      for (const cid of ids) if (!draftPlacedAll.has(cid)) draftRemoved.add(cid);
     }
   }
 
@@ -11608,6 +11615,28 @@ function buildDeterministicReplacementPlan(args) {
   // rebuildDraftFromProfileLocal AND as requestPlanProposal's own fallback)
   // never did. Mirror that here so no caller can show a partial annual draft.
   normalizeAnnualPlacements(proposal);
+
+  // Applied load-balance — honor the user's soft max in the ACTUAL proposal, not
+  // only in the discarded summary clone below. The fill above balances against the
+  // HARD cap (so it never sheds courses needed to reach 185); this pass relocates
+  // any semester still over the USER max down to it BY MOVING a course to another
+  // of ITS OWN legal semesters — e.g. a dual-offered mandatory shifting to its
+  // emptier half. It is applied ONLY when degree hours are preserved (a pure
+  // relocation, never a shed that would drop below target — repairPlanLoad against
+  // the soft cap CAN shed, which is exactly why the fill above does not use it).
+  // This keeps placements, per-semester totals, validation, warnings and Apply all
+  // describing the SAME final plan. Generic — no course id is special-cased.
+  try {
+    if (prefs.max_weekly_hours != null) {
+      let _beforeH; try { _beforeH = buildPlanContextFromState({ proposalSemesters: proposal.semesters }).totalAfterPlan; } catch (_) { _beforeH = null; }
+      const _rebalanced = repairPlanLoad(proposal, ctx).proposal;
+      let _afterH; try { _afterH = buildPlanContextFromState({ proposalSemesters: _rebalanced.semesters }).totalAfterPlan; } catch (_) { _afterH = null; }
+      if (_rebalanced && _beforeH != null && _afterH != null && _afterH + 0.001 >= _beforeH) {
+        proposal = _rebalanced;
+        normalizeAnnualPlacements(proposal);
+      }
+    }
+  } catch (_) { /* balancing is best-effort — never block the plan on it */ }
 
   // Overload transparency — a semester can be structurally over the user's
   // max weekly hours purely from fixed/effectively-fixed mandatory courses,

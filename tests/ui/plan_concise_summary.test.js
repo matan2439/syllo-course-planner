@@ -16,10 +16,11 @@
  * deterministic formatFull185SummaryLocal) feed it, so neither can regress to a
  * wall of duplicated text.
  *
- * Part A finding locked here: in the ME-2027 catalog, מעבר חם (heat transfer,
- * 0542-3620) has exactly ONE legal semester (year_3_semester_a), so it is NOT a
- * movable course — the 26 ש״ש peak is structurally irreducible, and the summary
- * must say so with a concrete reason rather than pretend it can be balanced away.
+ * Part A finding locked here: a course that is GENUINELY single-offering (one legal
+ * semester this year) is not movable, and the summary must say so with a concrete
+ * reason (exercised with a synthetic course below). מעבר חם (0542-3620) was proven
+ * dual-offered by the authoritative TAU listing, so the corrected load-balance pass
+ * moves it to Semester B — the old "irreducible 26 peak" was a single-group data bug.
  */
 const fs = require('fs');
 const path = require('path');
@@ -28,7 +29,7 @@ const { JSDOM } = require('jsdom');
 const HTML_PATH = path.join(__dirname, '..', '..', 'app', 'web', 'semester_board_viewer.html');
 const BOARD_JSON_PATH = path.join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json');
 
-const HEAT = '0542-3620'; // מעבר חם — single legal semester (year_3_semester_a)
+const HEAT = '0542-3620'; // מעבר חם — authoritatively dual-offered (year_3_semester_a + _b)
 
 function loadPage() {
   let html = fs.readFileSync(HTML_PATH, 'utf8');
@@ -199,28 +200,34 @@ describe('postPlanChangeSummary — concise, de-duplicated integration', () => {
       postPlanChangeSummary(before, after, p);
       const msgs = _aiChatMessages.filter(m => m.role === 'assistant');
       const last = msgs[msgs.length - 1].text;
-      // Count distinct overload mentions (semester over the user cap) — must be 1.
+      // Count distinct overload mentions (semester over the user cap).
       const overloadMentions = (last.match(/26\\/25|מעל המקסימום|עמוס/g) || []).length;
       // Count שער-רוח "unknown exam" mentions — must be collapsed to at most 1.
       const shaarUnknown = (last.match(/מידע חסר/g) || []).length;
+      // Actual applied plan (must match the summary — no silent over/under-cap).
+      const arr = x => Object.entries(x||{}).map(([k,v]) => ({ id:k, ids: Array.isArray(v)?v:(v&&v.course_ids)||[] }));
+      const load = s => s.ids.reduce((a,c)=>a+((courseMap[c]?.weekly_hours)||0),0);
+      const applied = arr(state.proposalDraft.semesters);
+      const appliedMax = Math.max(...applied.map(load));
       return JSON.stringify({
         last,
         hasStatusLine: /✅|⚠️|❌/.test(last),
         notAWall: last.split('\\n').length < 18,
         noOldOpener: !last.includes('עדכנתי את המערכת'),
-        overloadMentions, shaarUnknown,
+        overloadMentions, shaarUnknown, appliedMax,
       });
     })()`));
     expect(r.hasStatusLine).toBe(true);
     expect(r.noOldOpener).toBe(true);
     expect(r.notAWall).toBe(true);
     expect(r.shaarUnknown).toBeLessThanOrEqual(1);
-    // This exact production scenario reaches/overshoots 185 hours BUT carries
-    // unresolved warnings (unknown-exam שער-רוח + a 26/25 overload) — it must
-    // render ⚠️ "דורשת אישור", never plain ✅, and the overload must appear once.
-    expect(r.last).toContain('⚠️ טיוטה מלאה אך דורשת אישור');
-    expect(r.last).not.toContain('✅');
-    expect(r.overloadMentions).toBeGreaterThanOrEqual(1);
+    // With 0542-3620 corrected to A+B, the load-balance pass moves it to its emptier
+    // legal half in the ACTUAL applied plan (state.proposalDraft), so this scenario is a
+    // genuinely CLEAN full plan — no semester over the user max. CONSISTENCY invariant:
+    // the summary must not claim an overload the applied plan does not have (and vice
+    // versa). This is the coupled offering + repair-writeback fix, verified structurally.
+    expect(r.appliedMax).toBeLessThanOrEqual(25);
+    expect(r.overloadMentions).toBe(0);
   });
 
   test('REQ 1/2: hours satisfied + unresolved שער-רוח warnings → ⚠️, never ✅', () => {
@@ -360,26 +367,36 @@ describe('Part A — load reduction is correct, and the irreducible case is expl
     expect(r.moved).toBe(true);
   });
 
-  test('negative: מעבר חם has one legal semester, is NOT moved, and the overload note states the concrete reason', () => {
+  test('negative: a genuinely single-offering flexible-mandatory course is NOT moved, with a concrete reason (synthetic)', () => {
+    // The "immovable, explained" invariant, previously carried by מעבר חם's (buggy)
+    // single-semester data. מעבר חם is now authoritatively dual-offered and IS moved by
+    // the load-balance pass, so the invariant is exercised here with a SYNTHETIC course
+    // whose THIS-YEAR offering genuinely pins one legal semester — data-independent.
     const r = JSON.parse(window.eval(`(function(){
+      const SYN = 'SYN-STUCK';
+      courseMap[SYN] = { course_id: SYN, name_he: 'חובה תקועה', weekly_hours: 4, course_type: 'mandatory', is_mandatory: true,
+        placement_policy: 'flexible', allowed_semesters: ['year_3_semester_a'],
+        effective_allowed_semesters: ['year_3_semester_a'], offered_semesters: ['A'] };
       const ctx = buildPlanValidationInputs();
       ctx.maxHoursPerSemester = 25;
+      ctx.courses[SYN] = { hours: 4, course_type: 'mandatory', effective_allowed_semesters: ['year_3_semester_a'] };
       const proposal = { semesters: mapToProposalSemesters(state.semesters) };
+      const a = proposal.semesters.find(s => s.semester_id === 'year_3_semester_a');
+      a.course_ids = [...a.course_ids, SYN]; // push Y3A over the user cap with a stuck course
       const res = repairPlanLoad(proposal, ctx);
-      const heatSemBefore = proposal.semesters.find(s => (s.course_ids||[]).includes('${HEAT}'))?.semester_id;
-      const heatSemAfter = res.proposal.semesters.find(s => (s.course_ids||[]).includes('${HEAT}'))?.semester_id;
+      const synAfter = res.proposal.semesters.find(s => (s.course_ids||[]).includes(SYN))?.semester_id;
       const over = (res.unmovedOverloaded || []).find(o => o.semester_id === 'year_3_semester_a');
-      const heatReason = over && (over.not_movable_reasons || []).find(x => x.course_id === '${HEAT}');
+      const synReason = over && (over.not_movable_reasons || []).find(x => x.course_id === SYN);
       return JSON.stringify({
-        heatLegalSemesters: (courseMap['${HEAT}'].effective_allowed_semesters || []),
-        heatMoved: heatSemBefore !== heatSemAfter,
-        heatReason: heatReason ? heatReason.reason : null,
+        synLegalCount: getLegalSemestersLocal(courseMap[SYN], SEMESTERS.map(s=>s.id)).semesters.length,
+        synMoved: 'year_3_semester_a' !== synAfter,
+        synReason: synReason ? synReason.reason : null,
         overReported: !!over,
       });
     })()`));
-    expect(r.heatLegalSemesters).toEqual(['year_3_semester_a']);
-    expect(r.heatMoved).toBe(false);
-    expect(r.overReported).toBe(true);
-    expect(r.heatReason).toBe('no_legal_target');
+    expect(r.synLegalCount).toBe(1);        // offering pins exactly one legal semester
+    expect(r.synMoved).toBe(false);         // cannot be moved
+    expect(r.overReported).toBe(true);      // the over-cap semester is reported
+    expect(r.synReason).toBe('no_legal_target'); // with the concrete immovability reason
   });
 });

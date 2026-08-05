@@ -446,12 +446,14 @@
             "year_3_semester_b"
           ],
           "offered_semesters": [
-            "A"
+            "A",
+            "B"
           ],
           "effective_allowed_semesters": [
-            "year_3_semester_a"
+            "year_3_semester_a",
+            "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
+          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2025",
           "offering_source_confidence": "high"
         },
         {

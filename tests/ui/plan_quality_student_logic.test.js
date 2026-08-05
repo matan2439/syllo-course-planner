@@ -14,10 +14,13 @@
  * a risk≥0.9 course; now it places the LOWEST-risk such course as a last resort to reach
  * the target and flags it, instead of shipping an incomplete degree.
  *
- * Part A evidence baked into the heat-transfer audit: in the ME-2027 catalog several
- * "flexible mandatory" courses are offered in only ONE semester this year
- * (effective_allowed_semesters length 1), so they are NOT actually movable — the summary
- * must say so rather than the UI implying free flexibility.
+ * Part A evidence baked into the heat-transfer audit: a "flexible mandatory" course
+ * offered in only ONE semester this year (effective_allowed_semesters length 1) is NOT
+ * movable — exercised here with a SYNTHETIC single-offering course (data-independent).
+ * מעבר חם (0542-3620), long used as the real example, was proven by the authoritative
+ * TAU listing (groups 01/02 = Semester A, 05/06/07 = Semester B) to be offered in BOTH
+ * year-3 semesters; the old "Semester A only" was a single-group offering-override bug.
+ * With the corrected offering the load-balance pass MOVES it to its emptier legal half.
  */
 const fs   = require('fs');
 const path = require('path');
@@ -27,7 +30,7 @@ const HTML_PATH  = path.join(__dirname, '..', '..', 'app', 'web', 'semester_boar
 const BOARD_JSON = path.join(__dirname, '..', '..', 'data', 'parsed_json', 'mechanical_semester_board_2027.json');
 
 const THERMO     = '0542-4120'; // תרמודינמיקה (2) — hard-avoid course
-const HEAT_MAND  = '0542-3620'; // מעבר חם — flexible mandatory, offered sem A only this year
+const HEAT_MAND  = '0542-3620'; // מעבר חם — flexible mandatory, authoritatively offered in BOTH year-3 semesters
 const HEAT_ELEC  = '0542-4123'; // תהליכי מעבר חום וחומר — elective, genuinely 2 legal semesters
 
 function loadPage() {
@@ -178,7 +181,7 @@ describe('heat-transfer flexibility audit (no fake flexibility)', () => {
   beforeAll(async () => { dom = loadPage(); window = dom.window; await waitForInit(window); });
   afterAll(() => dom.window.close());
 
-  test('מעבר חם is offered in exactly one semester this year (data-proven immovable)', () => {
+  test('מעבר חם is authoritatively offered in BOTH year-3 semesters (corrected offering provenance)', () => {
     const r = JSON.parse(window.eval(`(function(){
       const c = courseMap['${HEAT_MAND}'];
       const legal = getLegalSemestersLocal(c, SEMESTERS.map(s=>s.id)).semesters;
@@ -187,10 +190,22 @@ describe('heat-transfer flexibility audit (no fake flexibility)', () => {
         effective: c.effective_allowed_semesters, legal, confidence: c.offering_source_confidence,
       });
     })()`));
-    // Curriculum allows two, offering pins one → exactly one legal semester.
-    expect(r.legal.length).toBe(1);
-    expect(r.offered).toEqual(['A']);
-    expect(r.effective).toEqual(['year_3_semester_a']);
+    expect(r.offered).toEqual(expect.arrayContaining(['A', 'B']));
+    expect(r.effective).toEqual(expect.arrayContaining(['year_3_semester_a', 'year_3_semester_b']));
+    expect(r.legal).toEqual(expect.arrayContaining(['year_3_semester_a', 'year_3_semester_b']));
+  });
+
+  test('a genuinely single-offering flexible-mandatory course IS immovable (invariant, synthetic)', () => {
+    const r = JSON.parse(window.eval(`(function(){
+      const c = { course_id: 'SYN-1SEM', name_he: 'חובה גמישה חד-סמסטרית', weekly_hours: 4,
+        course_type: 'mandatory', placement_policy: 'flexible',
+        allowed_semesters: ['year_3_semester_a','year_3_semester_b'],
+        program_allowed_semesters: ['year_3_semester_a','year_3_semester_b'],
+        offered_semesters: ['A'], effective_allowed_semesters: ['year_3_semester_a'] };
+      const legal = getLegalSemestersLocal(c, SEMESTERS.map(s=>s.id)).semesters;
+      return JSON.stringify({ legal });
+    })()`));
+    expect(r.legal).toEqual(['year_3_semester_a']); // offering pins the one legal semester
   });
 
   test('the heat-transfer ELECTIVE (תהליכי מעבר חום וחומר) IS genuinely movable (2 legal semesters)', () => {
@@ -202,17 +217,27 @@ describe('heat-transfer flexibility audit (no fake flexibility)', () => {
     expect(r.legalCount).toBeGreaterThanOrEqual(2);
   });
 
-  test('when a 26/25 semester is all fixed/single-offering mandatory, the summary explains it cannot be reduced', () => {
+  test('with corrected offering the ME Y3A peak is REDUCED in the APPLIED plan (מעבר חם moved to legal Semester B)', () => {
+    // Previously this scenario produced an "irreducible 26/25" peak the summary had to
+    // explain — but that irreducibility was a DATA ARTIFACT of the single-group offering
+    // bug (מעבר חם wrongly pinned to Semester A). With the corrected authoritative data the
+    // existing load-repair moves מעבר חם to Semester B and the peak is resolved IN THE
+    // ACTUAL applied proposal (state.proposalDraft), not only a discarded summary clone.
     const r = JSON.parse(window.eval(`(function(){
       degreeHoursProfile = { completed_degree_hours: 128.5 };
       _aiPickerState = { wanted: ['0542-4220','0542-4223'], unwanted: ['${THERMO}'], strongUnwanted: [], shaarRuachAssessmentPref: 'prefer_no_exam', _initialized: true };
       const p = sidebarQuickActionPrefs(); p.max_weekly_hours = 25; _aiPlanLastPreferences = p; _aiUserIntentProfile = null;
-      const plan = rebuildDraftFromProfileLocal({ fillToTarget: true });
-      const warns = (plan.proposal.warnings_he||[]).join(' || ');
-      return JSON.stringify({ warns });
+      state.proposalDraft = null;
+      rebuildDraftFromProfileLocal({ fillToTarget: true });
+      const arr = x => Object.entries(x||{}).map(([k,v]) => ({ id:k, ids: Array.isArray(v)?v:(v&&v.course_ids)||[] }));
+      const load = s => s.ids.reduce((a,c)=>a+((courseMap[c]?.weekly_hours)||0),0);
+      const applied = arr(state.proposalDraft.semesters);
+      const total = buildPlanContextFromState({ proposalSemesters: applied.map(s=>({semester_id:s.id, course_ids:s.ids})) }).totalAfterPlan;
+      return JSON.stringify({ heatSem: (applied.find(s=>s.ids.includes('${HEAT_MAND}'))||{}).id, maxLoad: Math.max(...applied.map(load)), total });
     })()`));
-    // The summary layer must state the limitation (offering-pinned mandatory), not imply free movability.
-    expect(r.warns).toMatch(/חובה|לא ניתן להפחית|ללא חלופת סמסטר/);
+    expect(r.heatSem).toBe('year_3_semester_b'); // moved off the over-cap Y3A to its now-legal B
+    expect(r.maxLoad).toBeLessThanOrEqual(25);    // the 26/25 peak is gone in the applied plan
+    expect(r.total).toBeGreaterThanOrEqual(185);  // degree still complete (pure relocation, no shed)
   });
 });
 
