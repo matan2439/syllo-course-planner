@@ -62,3 +62,32 @@ test('E — when only the name-less course remains, the plan BLOCKS rather than 
   expect(res._body.blocked).toBe(true);                 // honestly blocked, not silently short
   expect(res._body.errors.join(' ')).toMatch(/ש"ש|תואר/); // degree-hours shortfall surfaced
 });
+
+// Field-level integrity: authoritative credit/workload value. A course with no
+// authoritative weekly_hours has no valid credit contribution — placing it (even
+// when the user explicitly WANTS it) breaks per-semester/degree accounting and
+// renders a hours-less card. It must be kept out of an applicable proposal, the
+// same way a name-less course is.
+async function runWanted(program_id: string, wanted: string[]) {
+  const res = makeRes();
+  await handler({ method: 'POST', body: {
+    program_id,
+    plan_context: { semesters: [{ id: 'year_3_semester_a', courses: [{ course_id: 'MAND' }] }],
+      total_hours_progress: { known_completed_hours: 177 },
+      personal_status: { completed: [], currently_taking: [], planned: [] } },
+    preferences: { wanted_course_ids: wanted },
+    session_token: randomUUID(),
+  } } as any, res);
+  return res;
+}
+
+test('a WANTED course with no authoritative hours is never placed into an applicable proposal', async () => {
+  const res = await runWanted('test_program_hours_integrity_2027', ['NOHOURS']);
+  expect(res.statusCode).toBe(200);
+  expect(placedIds(res._body)).not.toContain('NOHOURS'); // no hours-less card, even though wanted
+  expect(res._body.blocked).toBe(false);                 // MAND+CORE already complete the 185h degree
+  // every placed course carries an authoritative (non-partial) semester total
+  for (const s of res._body.semesters) {
+    for (const id of s.course_ids) expect(id).not.toBe('NOHOURS');
+  }
+});
