@@ -18,6 +18,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import postgres from 'postgres';
+import { loadLocalBoardJson } from './ai/board_loader';
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,18 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   }
 
   const dbUrl = process.env.DATABASE_URL ?? '';
+
+  // DB OUTAGE fallback: a missing DATABASE_URL or a failed DB connection (e.g.
+  // the Supabase pooler returning ENOTFOUND when the free-tier project is
+  // paused) must NOT block board display when the identical board_json is
+  // committed at data/boards/<programId>.json — the SAME loadLocalBoardJson
+  // resilience api/ai/generate-plan.ts already relies on. This keeps the board
+  // display consistent with generation (both plan over that local universe when
+  // the DB is down). A DB that is REACHABLE but simply has no such program is a
+  // genuine 404 below — it does not fall back.
   if (!dbUrl) {
+    const local = loadLocalBoardJson(rawId);
+    if (local) { res.status(200).json(local); return; }
     res.status(503).json({
       error: 'DATABASE_URL is not configured on this server.',
       code: 'NO_DATABASE_URL',
@@ -135,6 +147,8 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
     board = await queryBoardJson(dbUrl, parsed.base, parsed.year);
   } catch (err) {
+    const local = loadLocalBoardJson(rawId);
+    if (local) { res.status(200).json(local); return; }
     res.status(503).json({
       error: 'Database query failed.',
       code: 'DB_ERROR',

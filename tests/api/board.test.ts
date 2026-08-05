@@ -136,24 +136,53 @@ describe('GET /api/board/[programId] handler', () => {
     expect((res.status as jest.Mock).mock.calls[0][0]).toBe(400);
   });
 
-  // ── 503 no database ──────────────────────────────────────────────────────
+  // ── 503 no database — ONLY when no committed local board exists ───────────
+  // (A program WITH a committed data/boards/<id>.json falls back to it — see
+  //  the "committed local board fallback" block below. These use a program id
+  //  that has no local snapshot, so the DB outage is genuinely unrecoverable.)
 
-  it('returns 503 with NO_DATABASE_URL when DATABASE_URL is absent', async () => {
+  it('returns 503 with NO_DATABASE_URL when DATABASE_URL is absent and no local board exists', async () => {
     delete process.env.DATABASE_URL;
     const res = makeRes();
-    await handler(makeReq('mechanical_engineering_2027'), res);
+    await handler(makeReq('nonexistent_program_9999'), res);
     expect((res.status as jest.Mock).mock.calls[0][0]).toBe(503);
     const body = (res.json as jest.Mock).mock.calls[0][0];
     expect(body.code).toBe('NO_DATABASE_URL');
   });
 
-  it('returns 503 with DB_ERROR on database exception', async () => {
+  it('returns 503 with DB_ERROR on database exception when no local board exists', async () => {
     mockSql.mockRejectedValueOnce(new Error('Connection refused'));
     const res = makeRes();
-    await handler(makeReq('mechanical_engineering_2027'), res);
+    await handler(makeReq('nonexistent_program_9999'), res);
     expect((res.status as jest.Mock).mock.calls[0][0]).toBe(503);
     const body = (res.json as jest.Mock).mock.calls[0][0];
     expect(body.code).toBe('DB_ERROR');
+  });
+
+  // ── committed local board fallback (resilience: DB outage must not block ──
+  //    the board display when the identical board_json is committed locally —
+  //    the same loadLocalBoardJson fallback api/ai/generate-plan.ts already
+  //    uses. Regression for the preview 503: ENOTFOUND on the Supabase pooler
+  //    503'd the whole /planner/native journey at board load) ────────────────
+
+  it('falls back to the committed local board (200) when DATABASE_URL is absent', async () => {
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq('mechanical_engineering_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+    const body = (res.json as jest.Mock).mock.calls[0][0];
+    expect(body).toHaveProperty('semesters');
+    expect(body.metadata).toHaveProperty('board_data_version'); // real snapshot, adapter-parseable
+  });
+
+  it('falls back to the committed local board (200) when the DB query throws (ENOTFOUND etc.)', async () => {
+    mockSql.mockRejectedValueOnce(new Error('(ENOTFOUND) tenant/user postgres.lxwtycowmqosuyfumcbo not found'));
+    const res = makeRes();
+    await handler(makeReq('mechanical_engineering_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+    const body = (res.json as jest.Mock).mock.calls[0][0];
+    expect(body).toHaveProperty('semesters');
+    expect(body).toHaveProperty('metadata');
   });
 
   // ── 404 not found ────────────────────────────────────────────────────────
