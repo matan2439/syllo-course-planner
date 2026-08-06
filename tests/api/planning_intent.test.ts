@@ -43,6 +43,29 @@ test('positive preferences → wanted ids, comma/vav separated, each resolved', 
   expect(intent.excludeCourseIds).toEqual([]);
 });
 
+test('imperative "שבץ לי את X" (schedule for me) → positive preference, resolved by name', () => {
+  // Symmetric positive counterpart of the accepted "אל תשבץ" exclusion marker.
+  const intent = interpretPlanningIntent('שבץ לי את תורת התנודות', CATALOG);
+  expect(intent.preferCourseIds).toEqual(['C-VIB']);
+  expect(intent.excludeCourseIds).toEqual([]);
+  expect(intent.recognized.find((r) => r.kind === 'prefer')).toMatchObject({
+    status: 'resolved',
+    resolvedCourseIds: ['C-VIB'],
+  });
+});
+
+test('imperative schedule marker variants ("שבץ את" / "תשבץ לי את" / no accusative) all resolve', () => {
+  for (const s of ['שבץ את תורת התנודות', 'תשבץ לי את תורת התנודות', 'שבץ לי תורת התנודות']) {
+    expect(interpretPlanningIntent(s, CATALOG).preferCourseIds).toEqual(['C-VIB']);
+  }
+});
+
+test('negated schedule ("אל תשבץ") stays an EXCLUSION — the imperative marker never overrides it', () => {
+  const intent = interpretPlanningIntent('אל תשבץ תורת התנודות', CATALOG);
+  expect(intent.excludeCourseIds).toEqual(['C-VIB']);
+  expect(intent.preferCourseIds).toEqual([]);
+});
+
 test('workload cap → maxWeeklyHours extracted with exact (half-hour) precision', () => {
   expect(interpretPlanningIntent('שמור על עד 25 ש״ש בסמסטר.', CATALOG).maxWeeklyHours).toBe(25);
   expect(interpretPlanningIntent('לא יותר מ-23.5 שעות בסמסטר', CATALOG).maxWeeklyHours).toBe(23.5);

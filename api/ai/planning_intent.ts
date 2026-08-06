@@ -81,7 +81,12 @@ function matchCourses(phrase: string, catalog: CatalogEntry[]): string[] {
 // ── marker-driven extraction ──────────────────────────────────────────────────
 // Longest-first so a longer marker is matched before a shorter substring of it.
 const EXCLUDE_MARKERS = ['אל תשבץ', 'אל תכלול', 'לא לשבץ', 'לא לכלול', 'אין לשבץ', 'לא רוצה', 'להוציא', 'בלי', 'ללא'];
-const PREFER_MARKERS = ['אני מעדיף', 'הייתי רוצה', 'מעדיף', 'אשמח', 'רוצה'];
+// Imperative "schedule for me" verbs ('שבץ'/'תשבץ') are the positive symmetry of
+// the 'אל תשבץ' exclusion marker. The 'לי' (dative) variants come before the bare
+// verb so afterMarker consumes "שבץ לי" as one unit (leaving the accusative object)
+// rather than matching "שבץ" and stranding "לי". Negated forms ("אל תשבץ", …) are
+// EXCLUDE markers checked first per clause, so they always win over these.
+const PREFER_MARKERS = ['אני מעדיף', 'הייתי רוצה', 'מעדיף', 'אשמח', 'רוצה', 'תשבץ לי', 'שבץ לי', 'תשבץ', 'שבץ'];
 
 /** Text after the first occurrence of `marker`, with a leading accusative "את " removed. */
 function afterMarker(clause: string, marker: string): string {

@@ -14,6 +14,86 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-06 (b) — positive free-text course preference connected end to end
+
+**Accepted baseline:** `92f473a` (branch `ui/frontend-modernization`). Prior accepted
+work untouched: explicit Hebrew exclusion end-to-end, fuzzy course-name search,
+authoritative offering (0542-4220 = תורת התנודות, Semester-B only). Production unchanged.
+
+**Product outcome delivered.** The Hebrew request "שבץ לי את תורת התנודות" now makes the
+ACTUAL native proposal prefer and include course `0542-4220`, placed ONLY in a Semester-B
+slot (its authoritative offering), whenever a legal complete plan can contain it — verified
+on the real Mechanical-Engineering board through `/planner/native`.
+
+**Existing positive-preference path (reused, unchanged):**
+`NativePlannerJourney.buildRequest` (always sends `interpret_free_text: true` +
+`extra_request_he`) → `POST /api/ai/generate-plan` → `interpretPlanningIntent`
+(planning_intent.ts) → `mergeIntentIntoPreferences` (wanted = union(UI, intent) MINUS
+disallowed; exclusion always wins) → `buildModel` `wantedCourseIds` →
+`buildCourseProfiles` `is_wanted` + `model.wantedCourseIds` → `enumerateActions` group 3
+("wanted courses — every legal semester", offering-restricted via `addCourseActionsFor`/
+`legalSemestersFor`) + `scorePlan` g5 (GOAL_STACK `preferences`, below degree/mandatory/
+balance) → `buildIntentOutcome` (honored/unmet derived from ACTUAL placements) →
+ProposalView. Every legality/workload gate (offered-semesters, prereqs, annual, degree
+completion, hard load cap, explicit exclusion) already governs this path.
+
+**Baseline behavior + smallest proven gap (non-vacuous).** On the real board (prior credit
+90h): CONTROL (no preference) → `0542-4220` NOT placed; structured `wanted_course_ids:[4220]`
+→ placed in `year_4_semester_b` (B); free-text "שבץ לי את תורת התנודות" via
+`interpret_free_text` → NOT placed, `intentOutcome` empty. Root cause:
+`interpretPlanningIntent` returned `preferCourseIds: []`, `recognized: []` — `PREFER_MARKERS`
+had no imperative "schedule for me" verb, so the sentence produced an empty intent and never
+reached `wanted_course_ids`. The downstream planner was already fully correct.
+
+**Exact missing connection (reuse, not new machinery).** Added the imperative markers
+`'תשבץ לי','שבץ לי','תשבץ','שבץ'` to `PREFER_MARKERS` in `api/ai/planning_intent.ts` — the
+positive symmetry of the already-accepted `אל תשבץ` exclusion marker. `'לי'` (dative)
+variants precede the bare verb so `afterMarker` consumes "שבץ לי" as one unit and the
+accusative "את" strip yields the course phrase. `afterMarker` itself untouched, so the
+exclusion phrase-extraction is byte-identical. No new parser/agent/policy/planner/endpoint/
+validator/UI. The course id is used only as an acceptance fixture; no sentence/id is
+special-cased in production logic (negated "אל תשבץ" is an EXCLUDE marker checked first per
+clause, so it always wins).
+
+**RED→GREEN evidence.** RED: 6 focused tests failed for the missing marker (intent empty →
+4220 not placed). GREEN after the marker append: all pass. Before/after real proposal (curl
+to the real handler): before → 4220 absent, `intentOutcome` undefined; after → 4220 in
+`year_4_semester_b`, `intentOutcome.honored:["שובצו לפי העדפתך: תורת התנודות."]`, `unmet:[]`,
+`blocked:false`, `errors:[]`.
+
+**Acceptance results (files):** `tests/api/generate_plan_free_text_preference_real_board.test.ts`
+(8 real-board tests — placement, B-only slot, structured↔free-text convergence, balance-load
+non-discard, exclusion-beats-preference structured + free-text, never-into-A, non-vacuous
+control) + 3 boundary unit tests in `tests/api/planning_intent.test.ts` (imperative resolve,
+marker variants, negated-stays-exclusion). Full API suite 1459 passed; UI suite 834 passed
+(1 pre-existing git-diff working-tree guard, `course_details_panel.test.js`, trips only on
+an uncommitted api change — green once committed); root + web typechecks clean; web
+production build clean; browser+network verified through `/planner/native` (Generate 200,
+4220 in a B slot, UI "✓ שובצו לפי העדפתך: תורת התנודות" matching, Apply → applied board keeps
+4220 in year_4_semester_b; console clean).
+
+**Legality/workload/explanation/Apply consistency.** Positive preference never overrode
+availability (B-only respected; never in an A slot), prereqs, annual rules, degree
+completion, hard load cap, or explicit exclusion. Under `balance_load` the preference was not
+discarded. `intentOutcome` is derived from the final proposal; proposal, validation, summary,
+and Apply agree; the control does not falsely claim the preference was honored.
+
+**Deferred product gaps (narrow):** broad NL preference phrasing beyond the imperative/
+"מעדיף/רוצה" markers (e.g. "אני רוצה לשבץ …" strands "לשבץ"); domain-interest ranking; workload
+requests in free text; the 3 single-syllabus-group offering records (4226/4559/4621) + 13
+downgraded self-referential records still need authoritative multi-group verification. All
+out of this slice's scope.
+
+**Pre-existing, out of scope:** 38 pytest failures (test_seed_postgres sqlite env,
+test_supabase_normalize network/DB, test_viewer_structure) exist on the baseline — this slice
+touches no Python. `python -m pytest` also mutates
+`data/import_reports/normalized_courses_mechanical_2027.json` as a side-effect (restored, not
+staged).
+
+**Doc duplication (report only, not redesigned):** `AUTONOMOUS_PROGRESS.md` canonical;
+`.remember/current.md` its detailed log; `docs/current.md` still exists and is EMPTY (stray)
+— recommend deleting in a dedicated docs pass, not here. Not modified this slice.
+
 ## Session 2026-08-06 — free-text exclusion locked + approximate course-name search across all bars
 
 **Accepted baseline:** `966be5f` (authoritative offering-data remediation — 4220
