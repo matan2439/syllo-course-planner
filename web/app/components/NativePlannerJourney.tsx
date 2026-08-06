@@ -16,7 +16,7 @@
  * beyond the anonymous quota session token. Transport is injected so this is
  * fully testable without a live backend; browser defaults hit the real routes.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/model'
 import { ContractError, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
@@ -25,6 +25,7 @@ import { boardModelToVM } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import NativePlannerBoard from './NativePlannerBoard'
+import CourseNamePicker from './CourseNamePicker'
 import { Badge, Card, EmptyState } from './ui'
 
 type BoardPhase = 'loading' | 'ready' | 'error'
@@ -68,9 +69,6 @@ function sessionToken(): string {
   }
 }
 
-function splitIds(raw: string): string[] {
-  return raw.split(',').map((s) => s.trim()).filter(Boolean)
-}
 
 export default function NativePlannerJourney({
   programId,
@@ -100,8 +98,14 @@ export default function NativePlannerJourney({
   const [draftText, setDraftText] = useState('')
   const [maxHours, setMaxHours] = useState('')
   const [priorHours, setPriorHours] = useState('')
-  const [wantIds, setWantIds] = useState('')
-  const [excludeIds, setExcludeIds] = useState('')
+  const [wantIds, setWantIds] = useState<string[]>([])
+  const [excludeIds, setExcludeIds] = useState<string[]>([])
+
+  // Course universe for the approximate-name pickers (fuzzy search by Hebrew name).
+  const pickerCourses = useMemo(
+    () => (current ? Object.values(current.courseCatalog).map((c) => ({ id: c.courseId, nameHe: c.nameHe || null })) : []),
+    [current],
+  )
 
   const sendMessage = () => {
     const text = draftText.trim()
@@ -128,8 +132,8 @@ export default function NativePlannerJourney({
     const preferences: Record<string, unknown> = {}
     const hrs = Number(maxHours)
     if (maxHours.trim() && Number.isFinite(hrs)) preferences.max_weekly_hours = hrs
-    if (splitIds(wantIds).length) preferences.wanted_course_ids = splitIds(wantIds)
-    if (splitIds(excludeIds).length) preferences.disallowed_course_ids = splitIds(excludeIds)
+    if (wantIds.length) preferences.wanted_course_ids = wantIds
+    if (excludeIds.length) preferences.disallowed_course_ids = excludeIds
     if (extra) preferences.extra_request_he = extra
     const planContext: Record<string, unknown> = {
       semesters: base.semesters.map((s) => ({
@@ -274,18 +278,10 @@ export default function NativePlannerJourney({
               onChange={(e) => setPriorHours(e.target.value)}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            קורסים להוספה (מזהים, מופרדים בפסיק)
-            <input aria-label="קורסים להוספה" value={wantIds}
-              onChange={(e) => setWantIds(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            קורסים להחריג (לא יופיעו בתוכנית)
-            <input aria-label="קורסים להחריג" value={excludeIds}
-              onChange={(e) => setExcludeIds(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
+          <CourseNamePicker label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
+            courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
+          <CourseNamePicker label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
+            courses={pickerCourses} selectedIds={excludeIds} onChange={setExcludeIds} />
         </Card>
 
         <div className="flex items-center gap-3">

@@ -14,6 +14,47 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-06 — free-text exclusion locked + approximate course-name search across all bars
+
+**Accepted baseline:** `966be5f` (authoritative offering-data remediation — 4220
+B-only / 4224 A-only inversions corrected, self-referential provenance downgraded).
+
+**Slice A — real-board free-text exclusion (commit `8346243`).** Investigated the
+native path (NativePlannerJourney.buildRequest → `POST /api/ai/generate-plan` →
+`interpret_free_text` → `planning_intent.ts interpretPlanningIntent` →
+`mergeIntentIntoPreferences` → `buildModel` `disallowedCourseIds` → planner +
+`disallowedGate`). Finding: **already works end-to-end** — "אל תשבץ תרמודינמיקה 2"
+resolves to `0542-4120` and is enforced (reqA absent; reqB exclusion beats a
+competing want; reqD pre-placed → honest BLOCK, never silently kept; reqC control
+shows 4120 IS placeable). The only gap was **missing acceptance coverage** on the
+real board (existing tests used a synthetic ALPHA/BETA fixture). Added
+`tests/api/generate_plan_free_text_exclusion_real_board.test.ts` (5 tests) and
+verified the real /planner/native browser journey (Generate + Apply keep 4120
+absent). No production code changed.
+
+**Slice B — approximate (fuzzy) Hebrew course-name search in ALL course bars
+(this commit).** Reused: nothing existed (repository search was plain
+`.includes`). New: one runtime-neutral matcher `shared/search/course-name-match.ts`
+(normalize parens/nikkud/punct/spacing + ranked exact→prefix→substring→token-subset→
+bounded-Levenshtein typo; 9 unit tests). Wired into all three surfaces:
+`RepositoryExplorer.tsx` (fuzzy+ranked filter), new `CourseNamePicker.tsx` ranked
+chooser in `NativePlannerJourney` add/exclude fields (name→id chips), and the
+legacy `semester_board_viewer.html` repo-search + `setupCoursePicker` (mirrored JS
+matcher). Browser-verified: "תרמודינמיקה 2" (no parens) and "תרמודנמיקה" (typo) both
+find "תרמודינמיקה (2)"; native picker ranks "התנודות" → "תורת התנודות 0542-4220".
+
+**Reused vs new:** reused the existing intent/exclusion pipeline unchanged (Slice A);
+Slice B added one shared matcher + one picker component + three thin call-site swaps.
+
+**Deferred (next product slices):** positive-preference / domain-interest ranking in
+free text; the 3 single-syllabus-group offering records (4226/4559/4621) + 13
+downgraded self-referential records still need authoritative multi-group
+verification; broad NL intent coverage.
+
+**Doc duplication (report, not redesigned):** `AUTONOMOUS_PROGRESS.md` is canonical;
+`.remember/current.md` is its detailed log; `docs/current.md` exists but is EMPTY
+(stray) — recommend deleting it in a dedicated docs pass, not here.
+
 ## Latest session — re-verification only: queue still resolved (PR #14 parked), deploy blocker unchanged (still `26500d4`, now 235 commits behind, still `source: cli`)
 
 Re-checked from scratch rather than trusting this file's prior entry:

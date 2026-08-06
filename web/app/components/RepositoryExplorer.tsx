@@ -6,6 +6,7 @@ import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-detai
 import CourseDetailsPanel from './CourseDetailsPanel'
 import RepositoryCourseCard from './RepositoryCourseCard'
 import { EmptyState } from './ui'
+import { rankCourseMatches, scoreCourseMatch } from '../../../shared/search/course-name-match'
 
 function RepositorySearch({
   query,
@@ -79,18 +80,16 @@ export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
   const [selected, setSelected] = useState<CourseDetailsVM | null>(null)
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = query.trim()
     if (!q) return repo.categories
     return repo.categories
-      .map((cat) => ({
-        ...cat,
-        courses: cat.courses.filter(
-          (c) =>
-            c.name.toLowerCase().includes(q) ||
-            c.id.includes(q) ||
-            cat.title.toLowerCase().includes(q)
-        ),
-      }))
+      .map((cat) => {
+        // Category-title hit keeps the whole category (search by category name);
+        // otherwise show courses fuzzy-ranked by approximate Hebrew name/id match.
+        const titleHit = scoreCourseMatch(q, cat.title) > 0
+        const ranked = rankCourseMatches(q, cat.courses, (c) => c.name, (c) => c.id)
+        return { ...cat, courses: titleHit ? cat.courses : ranked.map((m) => m.item) }
+      })
       .filter((cat) => cat.courses.length > 0)
   }, [query, repo])
 

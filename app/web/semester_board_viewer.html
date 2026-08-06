@@ -3720,6 +3720,47 @@ function renderSidebar() {
   applyRepoSearch();
 }
 
+// Approximate Hebrew course-name matching — mirrors shared/search/course-name-match.ts
+// so every legacy search bar (repository + AI want/avoid picker) ranks like the web app:
+// tolerant of parentheses, nikkud, punctuation, spacing, token order and small typos.
+function _normCourseSearch(s) {
+  return (s || '')
+    .replace(/[֑-ׇ]/g, '')
+    .replace(/["'׳״`()\[\]{}.,;:!?׀|/\\־–—_-]/g, ' ')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+function _levCourse(a, b, max) {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      if (cur[j] < rowMin) rowMin = cur[j];
+    }
+    if (rowMin > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function _courseSearchScore(query, name, id) {
+  const nq = _normCourseSearch(query); if (!nq) return 1;
+  const nn = _normCourseSearch(name); const nid = _normCourseSearch(id || '');
+  if (nn === nq) return 100;
+  if (nid && nid === nq) return 95;
+  if (nn.startsWith(nq)) return 85;
+  if (nid && nid.includes(nq)) return 80;
+  if (nn.includes(nq)) return 70;
+  const nt = nn.split(' ').filter(Boolean), qt = nq.split(' ').filter(Boolean);
+  if (qt.length && qt.every(q => nt.some(t => t.includes(q)))) return 55;
+  const budget = l => (l <= 3 ? 0 : (l <= 6 ? 1 : 2));
+  if (qt.length && qt.every(q => nt.some(t => _levCourse(q, t, budget(q.length)) <= budget(q.length)))) return 40;
+  if (qt.length === 1 && _levCourse(nq, nn, budget(nq.length)) <= budget(nq.length)) return 35;
+  return 0;
+}
+
 function applyRepoSearch() {
   const term = repoSearchTerm.trim().toLowerCase();
   const statusEl = document.getElementById('repo-search-status');
@@ -3739,7 +3780,9 @@ function applyRepoSearch() {
   groups.forEach(g => {
     let groupMatches = 0;
     g.querySelectorAll('.repo-card-wrap').forEach(w => {
-      const match = (w.dataset.search || '').includes(term);
+      // Approximate match on the card's search blob (name ∪ id ∪ category),
+      // normalized so parens/nikkud/spacing/typos still match.
+      const match = _courseSearchScore(repoSearchTerm, w.dataset.search || '', '') > 0;
       w.style.display = match ? '' : 'none';
       if (match) groupMatches++;
     });
@@ -13946,14 +13989,17 @@ function setupCoursePicker(prefix) {
     const q = searchEl.value.trim().toLowerCase();
     if (!q) { resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
 
+    // Approximate, RANKED matches (best first) — fuzzy Hebrew name/id/category.
     const matches = _aiPickerCourses
       .filter(c => !_aiPickerState[prefix].includes(c.course_id))
-      .filter(c =>
-        c.course_id.toLowerCase().includes(q) ||
-        (c.name_he || '').toLowerCase().includes(q) ||
-        (c.name_en || '').toLowerCase().includes(q) ||
-        (c.program_category_name_he || '').toLowerCase().includes(q))
-      .slice(0, 8);
+      .map(c => ({ c, s: Math.max(
+        _courseSearchScore(searchEl.value, c.name_he || '', c.course_id),
+        _courseSearchScore(searchEl.value, c.name_en || '', c.course_id),
+        _courseSearchScore(searchEl.value, c.program_category_name_he || '', '')) }))
+      .filter(x => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 8)
+      .map(x => x.c);
 
     resultsEl.innerHTML = matches.length
       ? matches.map(c => `<div class="ai-course-picker-result" data-cid="${esc(c.course_id)}">
