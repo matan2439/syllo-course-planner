@@ -1554,7 +1554,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -1643,7 +1643,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -1736,7 +1736,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -1826,7 +1826,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -1835,7 +1835,7 @@
         "name_he": "תורת התנודות",
         "weekly_hours": 4,
         "offered_semesters": [
-          "A"
+          "B"
         ],
         "offered_in_year": true,
         "category_id": "solids",
@@ -1903,11 +1903,11 @@
         "name_source": "program_json",
         "name_source_confidence": "high",
         "effective_allowed_semesters": [
-          "year_3_semester_a",
-          "year_4_semester_a"
+          "year_3_semester_b",
+          "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "board.offered_semesters",
+        "offering_source_url": "tau_listing:search_l.aspx?course_num=05424220&year=2025 (קב' 01 סמסטר ב')",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
       {
@@ -1990,7 +1990,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2084,7 +2084,7 @@
         "name_he": "מכניקת המוצקים (2)",
         "weekly_hours": 4,
         "offered_semesters": [
-          "B"
+          "A"
         ],
         "offered_in_year": true,
         "category_id": "solids",
@@ -2159,11 +2159,11 @@
         "name_source": "program_json",
         "name_source_confidence": "high",
         "effective_allowed_semesters": [
-          "year_3_semester_b",
-          "year_4_semester_b"
+          "year_3_semester_a",
+          "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "board.offered_semesters",
+        "offering_source_url": "tau_listing:search_l.aspx?course_num=05424224&year=2025 (קב' 01 סמסטר א')",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
       {
@@ -2247,7 +2247,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2416,7 +2416,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2497,7 +2497,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2580,7 +2580,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2685,7 +2685,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2772,7 +2772,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2857,7 +2857,7 @@
           "year_3_semester_a",
           "year_4_semester_a"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
@@ -2989,7 +2989,7 @@
           "year_3_semester_b",
           "year_4_semester_b"
         ],
-        "offering_source_confidence": "high",
+        "offering_source_confidence": "low",
         "offering_source_url": "board.offered_semesters",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality."
       },
