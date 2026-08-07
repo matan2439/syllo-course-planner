@@ -264,10 +264,17 @@ export interface IntentOutcomeContext {
   /**
    * Placed course ids that carry a positive user-fit score for the requested
    * focus area(s) — computed by the caller from the FINAL proposal and the same
-   * evidence (course topic profiles) the planner scored. Drives the truthful
-   * focus outcome; empty/undefined => nothing aligned was actually placed.
+   * official-syllabus evidence the planner scored. Drives the truthful focus
+   * outcome; empty/undefined => nothing aligned was actually placed.
    */
   fitAlignedPlacedCourseIds?: Set<string>;
+  /** Official-syllabus evidence (course-knowledge layer) per aligned placed course, for citation. */
+  focusEvidenceByCourseId?: Map<
+    string,
+    { inferenceLevel: string; extractedEvidence: string | null; sourceUrl: string | null; confidence: number }
+  >;
+  /** Authoritative external-context (goal→capability) relationships, for provenance — NOT course claims. */
+  focusExternalContext?: Array<{ capability: string; publisher: string; sourceUrl: string; extractedEvidence: string }>;
 }
 
 /**
@@ -290,6 +297,7 @@ export function buildIntentOutcome(
   const honored: string[] = [];
   const partiallyHonored: string[] = [];
   const unmet: string[] = [];
+  const notesHe: string[] = [];
 
   for (const r of intent.recognized) {
     if (r.kind === 'exclude') {
@@ -324,14 +332,25 @@ export function buildIntentOutcome(
       // Derived from the ACTUAL final placements, never from the request alone.
       const aligned = [...(ctx.fitAlignedPlacedCourseIds ?? new Set<string>())].filter((id) => placed.has(id));
       if (aligned.length) {
-        honored.push(`הותאמו קורסים להעדפת ההתמקדות שלך («${r.phrase}»): ${aligned.map(label).join(', ')}.`);
+        // Cite the OFFICIAL-SYLLABUS evidence per aligned course (course-knowledge layer).
+        const cite = (id: string) => {
+          const e = ctx.focusEvidenceByCourseId?.get(id);
+          if (!e || !e.extractedEvidence) return label(id);
+          const lvl = e.inferenceLevel === 'explicit' ? 'עדות מפורשת' : e.inferenceLevel === 'derived' ? 'עדות נגזרת' : 'עדות חלשה';
+          return `${label(id)} (${lvl} מהסילבוס הרשמי: «${e.extractedEvidence}»)`;
+        };
+        honored.push(`הותאמו קורסים לפי עדות סילבוס רשמית להעדפת ההתמקדות שלך («${r.phrase}»): ${aligned.map(cite).join('; ')}.`);
+        // Provenance for WHY the capability matters to the goal (external-context layer) —
+        // never presented as evidence that a course teaches it.
+        for (const x of ctx.focusExternalContext ?? []) {
+          notesHe.push(`הקשר חיצוני (${x.publisher}): הרלוונטיות של תחום זה למטרת התכן ההנדסי מבוססת על מקור סמכותי — ${x.sourceUrl}`);
+        }
       } else {
-        unmet.push(`לא שובצו קורסים חוקיים התואמים את העדפת ההתמקדות («${r.phrase}») בתוך תוכנית תקפה.`);
+        unmet.push(`לא שובצו קורסים בעלי עדות סילבוס רשמית התואמת את העדפת ההתמקדות («${r.phrase}») בתוך תוכנית תקפה.`);
       }
     }
   }
 
-  const notesHe: string[] = [];
   if (typeof intent.maxWeeklyHours === 'number' && ctx.hoursById) {
     const over = semesters
       .map((s) => ({ id: s.semester_id ?? '', hrs: s.course_ids.reduce((sum, id) => sum + (ctx.hoursById!.get(id) ?? 0), 0) }))

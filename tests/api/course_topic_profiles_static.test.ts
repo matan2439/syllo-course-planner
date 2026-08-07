@@ -77,12 +77,16 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     expect(summary.inferred + summary.default).toBe(CATALOG_IDS.length);
   });
 
-  test('honest distribution is pinned: 47 inferred, 21 default over the 68-course catalog', () => {
-    // Data-quality regression pin. The 21 defaults are genuinely non-ME electives
+  test('honest distribution is pinned: 46 inferred, 22 default over the 68-course catalog', () => {
+    // Data-quality regression pin. The defaults are genuinely non-ME electives
     // (EE/CS/OR/ethics/space) or unnamed courses — no topic can be added without
     // fabrication, so the count must NOT silently drift.
+    // NB: the broad title token 'מכונות' was removed from the mechanical_design rule
+    // (a machine course is not a design course — design alignment now comes from
+    // official-syllabus evidence, not the title), moving one machine-only course
+    // ("תורת המכונות") from inferred → default. See course_capability_evidence.ts.
     const summary = summarizeCourseTopicProfileSources(getMechanicalEngineering2027TopicProfiles());
-    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 47, default: 21 });
+    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 46, default: 22 });
     expect(summary.inferred + summary.default).toBe(68);
   });
 

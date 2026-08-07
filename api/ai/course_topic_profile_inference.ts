@@ -70,7 +70,13 @@ const TOPIC_NAME_RULES: ReadonlyArray<KeywordRule<AcademicFocusArea>> = [
   { keywords: ['תהליכי עיבוד', 'הדפס', 'ייצור', 'manufacturing', 'machining', '3d print'], value: 'manufacturing', weight: STRONG },
   { keywords: ['חומרים', 'פולימר', 'פלסטי', 'ננוחומר', 'material', 'polymer', 'plastic'], value: 'materials', weight: STRONG },
   { keywords: ['ביו', 'רקמות', 'תאים', 'אולטרסאונד', 'רפוא', 'bio', 'tissue', 'ultrasound', 'medical'], value: 'biomechanics', weight: STRONG },
-  { keywords: ['תכן', 'תיכון', 'מכונות', 'design', 'cad'], value: 'mechanical_design', weight: STRONG },
+  // NB: the broad token 'מכונות' (machines) was removed — a machine course
+  // (e.g. "תורת המכונות", theory of machines) is NOT a design course, so a title
+  // token alone must not establish design alignment. Substantive design alignment
+  // now comes from official-syllabus evidence (course_capability_evidence.ts), not
+  // the title. 'תכן'/'design'/'cad' are direct design words and are kept only for
+  // display-side topic hints and for LOCATING candidate courses, never as proof.
+  { keywords: ['תכן', 'תיכון', 'design', 'cad'], value: 'mechanical_design', weight: STRONG },
 ];
 
 /** Clean, homogeneous category ids that justify a (medium-weight) topic area on their own. */

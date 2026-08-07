@@ -84,9 +84,8 @@ import {
   buildIntentOutcome,
   type PlanningIntent,
 } from './planning_intent';
-import { normalizeAcademicInterestProfile } from './academic_interest_profile';
-import { matchCourseToAcademicInterests } from './interest_course_match';
-import { getMechanicalEngineering2027TopicProfiles } from './course_topic_profiles_static';
+import { extractCourseCapabilityEvidence, type CourseCapabilityEvidence } from './course_capability_evidence';
+import { getExternalContextEvidence } from './external_context_evidence';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -167,23 +166,47 @@ export function priorHoursFromContext(ctx: any): number {
   return thp.manual_completed_degree_hours ?? (thp.known_completed_hours ?? 0);
 }
 
+export interface CourseFitResult {
+  /** Planner-facing per-course soft fit weight (evidence strength × requested weight). */
+  fitById: Map<string, number>;
+  /** The strongest official-syllabus evidence per fit-carrying course (for the explanation). */
+  evidenceById: Map<string, CourseCapabilityEvidence>;
+}
+
 /**
  * Resolve interpreted focus-area preferences into a per-course general user-fit
- * score, reusing the existing evidence (course topic profiles) and evaluator
- * (matchCourseToAcademicInterests) — NOT a design-only flag: any AcademicFocusArea
- * (or, later, CourseStyle) flows through the same generic path. Empty/undefined
- * when no focus was expressed, so the planner is byte-identical to before.
+ * score DERIVED FROM OFFICIAL-SYLLABUS EVIDENCE (course_capability_evidence.ts), not
+ * from course-title inference — a course title never establishes design alignment.
+ * Evidence quality drives the weight (explicit > derived > estimated; missing → 0).
+ * Generic: any AcademicFocusArea for which an evidence extractor + data exist flows
+ * through the same path. Empty/undefined when no focus is expressed (planner
+ * byte-identical to before).
  */
-export function buildCourseFitById(focusAreas: PlanningIntent['focusAreas']): Map<string, number> | undefined {
+export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focusAreas']): CourseFitResult | undefined {
   if (!focusAreas?.length) return undefined;
-  const profile = normalizeAcademicInterestProfile({ focusAreas });
-  const topicProfiles = getMechanicalEngineering2027TopicProfiles();
-  const map = new Map<string, number>();
-  for (const [id, tp] of Object.entries(topicProfiles)) {
-    const fit = matchCourseToAcademicInterests(profile, tp).interestFitScore;
-    if (fit > 0) map.set(id, fit);
+  const courses: any[] = [];
+  for (const s of board?.semesters ?? []) for (const c of s?.courses ?? []) courses.push(c);
+  for (const c of board?.metadata?.program_repository_courses ?? []) courses.push(c);
+
+  const fitById = new Map<string, number>();
+  const evidenceById = new Map<string, CourseCapabilityEvidence>();
+  for (const c of courses) {
+    const id = c?.course_id;
+    if (typeof id !== 'string' || fitById.has(id)) continue;
+    let sum = 0;
+    let best: CourseCapabilityEvidence | undefined;
+    for (const fa of focusAreas) {
+      const ev = extractCourseCapabilityEvidence(c, fa.area);
+      if (ev.inferenceLevel === 'missing' || ev.strength <= 0) continue;
+      sum += ev.strength * fa.weight;
+      if (!best || ev.strength > best.strength) best = ev;
+    }
+    if (sum > 0) {
+      fitById.set(id, sum);
+      if (best) evidenceById.set(id, best);
+    }
   }
-  return map.size ? map : undefined;
+  return fitById.size ? { fitById, evidenceById } : undefined;
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */
@@ -1445,8 +1468,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const merged = mergeIntentIntoPreferences(effectivePreferences, interpretedIntent);
     effectivePreferences = { ...effectivePreferences, ...merged };
   }
-  // General user-fit (focus-area) → per-course soft fit signal for the planner.
-  const courseFitById = interpret_free_text === true ? buildCourseFitById(interpretedIntent?.focusAreas ?? []) : undefined;
+  // General user-fit (focus-area) → per-course soft fit signal for the planner,
+  // derived from OFFICIAL-SYLLABUS evidence (not title inference).
+  const courseFit = interpret_free_text === true ? buildCourseFitById(board, interpretedIntent?.focusAreas ?? []) : undefined;
+  const courseFitById = courseFit?.fitById;
 
   const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById);
   const initialState = planContextToState(effectivePlanContext, model);
@@ -1641,11 +1666,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const fitAlignedPlacedCourseIds = courseFitById
       ? new Set([...courseFitById.keys()].filter((id) => placedNow.has(id)))
       : undefined;
+    // Evidence chain for the explanation: official-syllabus course evidence for each
+    // aligned placed course, plus the authoritative external-context (goal→capability)
+    // relationships for the requested focus areas. Kept as two distinct layers.
+    const focusEvidenceByCourseId = courseFit
+      ? new Map(
+          [...(fitAlignedPlacedCourseIds ?? [])]
+            .map((id) => [id, courseFit.evidenceById.get(id)] as const)
+            .filter(([, e]) => e)
+            .map(([id, e]) => [id, { inferenceLevel: e!.inferenceLevel, extractedEvidence: e!.extractedEvidence, sourceUrl: e!.sourceUrl, confidence: e!.confidence }]),
+        )
+      : undefined;
+    const focusExternalContext = (interpretedIntent.focusAreas ?? []).some((f) => f.area === 'mechanical_design')
+      ? getExternalContextEvidence('engineering_design').map((r) => ({ capability: r.capability, publisher: r.publisher, sourceUrl: r.sourceUrl, extractedEvidence: r.extractedEvidence }))
+      : undefined;
     responseBody.intentOutcome = buildIntentOutcome(interpretedIntent, proposal.semesters, {
       catalog: intentCatalog,
       requiredMandatoryCourseIds: model.requiredMandatoryCourseIds,
       hoursById,
       fitAlignedPlacedCourseIds,
+      focusEvidenceByCourseId,
+      focusExternalContext,
     });
   }
   // Opt-in only, additive: attach an interest evaluation over the generated

@@ -14,6 +14,132 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-07 (b) — evidence-backed course matching (three-layer): syllabus evidence replaces title inference
+
+**Accepted baseline:** `544544d` (HEAD=origin, clean tree). `project_native_planner_journey_mvp.md`
+is EXTERNAL Claude memory (not tracked in repo). Production unchanged.
+
+**Problem fixed.** The 544544d fit path classified design from broad TITLE tokens
+(`מכונות → mechanical_design`), so "תורת המכונות" (theory of machines — a machine-THEORY
+syllabus, not design) got a false 0.7 design weight and was the course the design request
+pulled in. Title is not proof of content.
+
+**Three-layer evidence architecture implemented (smallest real vertical slice).**
+1. COURSE-KNOWLEDGE (`api/ai/course_capability_evidence.ts`): `CourseCapabilityEvidence`
+   {courseId, capability, claim, strength, sourceType, sourceUrl, sourceAuthority, sourceYear,
+   extractedEvidence, inferenceLevel, confidence, retrievedAt}. `extractCourseCapabilityEvidence`
+   reads ONLY the official syllabus text the board already carries (`syllabus_summary_he` +
+   provenance: `syllabus_source_url`, `syllabus_last_fetched_at`, `syllabus_confidence`), title-
+   blind. Distinguishes explicit / derived / estimated / missing. False-friend guard: "תכן הקורס"
+   (=course CONTENT) and "תוכן" are neutralized before design matching (TAU syllabi head their body
+   with "תכן הקורס", which otherwise reads nearly every course as design). Only `mechanical_design`
+   has an extractor this slice; other capabilities → honest `missing`.
+2. EXTERNAL-CONTEXT (`api/ai/external_context_evidence.ts`): `ExternalContextEvidence`
+   {goalOrContext, capability, relationship, strength, sourceType, sourceUrl, publisher,
+   publishedOrUpdatedAt, retrievedAt, confidence, corroborationCount, extractedEvidence} + a
+   `ExternalContextProvider` boundary (NOT connected to a runtime provider this slice). One CACHED,
+   real, authoritative relationship: engineering_design → mechanical_design, source **ABET**
+   (Engineering Accreditation Commission), Criteria for Accrediting Engineering Programs 2026-2027,
+   Criterion 3 Outcome (2) + Criterion 5, retrieved 2026-08-07 (fetched live during dev). It links
+   GOAL→CAPABILITY and carries NO courseId — never a claim that a course teaches it.
+3. USER-GOAL: reuses the 544544d `PlanningIntent.focusAreas` (the requested capability), unchanged.
+4. MATCH → PLANNER: `buildCourseFitById(board, focusAreas)` now derives the per-course soft fit
+   from course evidence strength (explicit 0.9 / derived 0.6 / estimated 0.3 / missing 0), feeding
+   the same `interest_fit` scorePlan goal (544544d). It also returns `evidenceById`; the explanation
+   (`buildIntentOutcome` focus branch) cites the OFFICIAL SYLLABUS quote per aligned placed course,
+   plus the ABET external-context provenance as a note — the two layers stay distinct.
+
+**Unsound behavior removed/contained.** `מכונות` removed from the mechanical_design TITLE rule
+(`course_topic_profile_inference.ts`) — a machine course is not a design course. Negative regression
+added (title `מכונות`/`תורת המכונות` alone ≠ mechanical_design). One machine-only course moved
+inferred→default (static distribution pin updated 47/21 → 46/22). The planner fit no longer uses
+title-topic-profiles at all.
+
+**User-goal → capability → course evidence chain (proven).** goal "אני רוצה להתמקד בתכן" →
+focusArea/capability `mechanical_design`; ABET (external) establishes the capability's relevance to
+the design goal; official TAU syllabus (course) establishes that 0542-4425 teaches it — quote
+"…שיטות התכן והחומרים…" (explicit). The two links are independent (external never asserts a course
+teaches X).
+
+**Official syllabus sources + extracted evidence (real, in-repo).**
+- 0542-4425 הדפסת תלת מימד ותכן חלקי פלסטיקה — EXPLICIT ("שיטות התכן"×2, "לתכן מתקדם", SOLIDWORKS/FEA),
+  src ims.tau.ac.il/…course=0542442501&year=2025, conf 0.8.
+- 0542-2400 תכן מכני (1) — EXPLICIT ("שיטות תכן שונות", "נושאים מתקדמים בתכן"). (mandatory)
+- 0542-4722 MEMS — EXPLICIT ("עקרונות תכן וייצור, תכן מפורט של התקנים").
+- 0542-4420 תורת המכונות — MISSING (syllabus is machine THEORY; title "מכונות" is not proof).
+- 0542-4422 תכן הנדסי — MISSING (official summary is boilerplate; not fabricated into evidence).
+
+**Control vs preference (real board, fixed prior-credit 92h — a legitimate exposing state, NOT an
+artificial fixture; scanned states 96/93/92/89/88 all expose it, 90/91 do not).**
+- Control (no request): 26 courses, 94h, blocked=false, 0542-4425 ABSENT, no intentOutcome.
+- Focus "אני רוצה להתמקד בתכן": 26 courses, **94h (equal — no surplus)**, blocked=false, errors=[],
+  **0542-4425 placed at year_3_semester_b** (its real B offering). Equal-cost swap: 4425 (design, 3h,
+  explicit evidence) IN ↔ **0542-4226 יישומי אלמנטים סופיים בתעשייה** (applied FEM, 3h, NOT design)
+  OUT — so the soft interest_fit legitimately decides among equal-hours, equally-complete plans.
+  **0542-4420 NOT placed** (the previously-unsound title swap is gone).
+- Why 90h shows no change (honest data note): the only evidence-backed design ELECTIVES are 4425 (3h)
+  and 4722 (5h, already in control); the 4h design-TITLED courses (4135/4422) have no extractable
+  syllabus evidence. So a change needs a state where a 3h design course completes the plan with
+  equal/less surplus than a 4h filler.
+
+**Legality/priority/consistency.** interest_fit stays a soft tie-break BELOW explicit wanted/unwanted,
+ABOVE difficulty. Verified: explicit exclusion of 4425 → absent; explicit wanted (non-design 4351) →
+honored alongside focus; offerings/prereqs/annual/completion/mandatory/category all still enforced as
+blocking gates; no surplus (equal hours); unsupported domain → honest unmet; control attaches no
+intentOutcome. Evidence quality drives the score (explicit>derived>estimated; missing→0); estimated is
+never presented as certain.
+
+**RED→GREEN.** RED: 2 new modules missing + `מכונות` still resolved. Probe-driven fix of a FALSE-FRIEND
+bug ("תכן הקורס"=content matched as design) — tightened to unambiguous design signals. GREEN: extractor
+units (real fixtures + explicit/derived/estimated/missing), external-context units (ABET provenance, no
+courseId), negative regression, and the real-board acceptance (evidence-backed swap, no surplus, syllabus-
+cited outcome, priority, honesty).
+
+**Capability matrix (end-to-end = a verified change in the ACTUAL legal proposal).**
+
+| Dimension | User-goal repr | External ctx | Official course evidence | Confidence/authority | Changes course choice | Changes sem arrangement | Verified E2E | Missing provider/data |
+|---|---|---|---|---|---|---|---|---|
+| Academic domain / design | focusArea mechanical_design | ABET (cached, real) | official syllabus extractor | explicit 0.9 / high | **yes** | no | **YES** (4425 swap @92h) | broaden domains → per-capability extractors |
+| Practical/project/lab | focusArea/style | none | styles inferred (partial) | low | potential | no | no | style extractor from syllabus + free-text style markers |
+| Theoretical | style theoretical | none | none | absent | no | no | no | reviewed evidence rule/source |
+| Assessment style | style exam_light + assessment_type | none | assessment_type mostly null | low/absent | no | no | no | populate assessment metadata |
+| Difficulty | difficulty_score | none | difficulty_score present | present | as g6 tiebreak only | no | no | free-text difficulty + semester aggregation |
+| Semester workload/balance | balance_load/max_hours | n/a | per-sem loads (authoritative) | authoritative | no | yes (existing) | balance/maxHours wired; free-text not | plan-level scheduling policy (separate slice) |
+| Career/industry alignment | (careerGoals) | ExternalContextProvider boundary only | none | absent | no | no | no | connect runtime research provider + goal→capability ingestion |
+| Personal project/activity | — | boundary only | none | absent | no | no | no | same as career |
+
+**Cached vs live vs deferred vs unsupported.** Course evidence: CACHED from committed board syllabus
+text (no live fetch at Generate; refresh path documented — re-run the board pipeline). External context:
+CACHED (ABET), provider boundary DEFERRED (no runtime research connected). Runtime web-search research:
+UNSUPPORTED at runtime (boundary only). Non-design course-fit dimensions: DEFERRED/data-limited.
+
+**Files changed.** New: api/ai/course_capability_evidence.ts, api/ai/external_context_evidence.ts,
+tests/api/course_capability_evidence.test.ts, tests/api/external_context_evidence.test.ts. Modified:
+api/ai/course_topic_profile_inference.ts (remove מכונות token), api/ai/generate-plan.ts (evidence-driven
+buildCourseFitById + evidence/external-context threaded to outcome), api/ai/planning_intent.ts
+(buildIntentOutcome cites evidence + external context), tests/api/course_topic_profile_inference.test.ts
+(negative regression), tests/api/course_topic_profiles_static.test.ts (distribution pin 46/22),
+tests/api/generate_plan_free_text_fit_real_board.test.ts (rewritten to evidence-backed @92h).
+
+**Verification.** Focused RED→GREEN; full API 1486 passed (1 skipped); full UI 835 passed post-commit
+(pre-commit lone failure is the course_details_panel working-tree git-diff guard, green once committed);
+root+web typechecks clean; web production build clean. Browser/network: control (4425 absent, no outcome)
++ focus (4425 @year_3_semester_b, 4420 absent, honored cites "שיטות התכן", ABET note) verified via direct
+curl to :3002 AND the actual :3001 next-dev proxy (both HTTP 200 ~8.5s), AND rendered in /planner/native
+with Apply → applied board preserves 4425 @year_3_semester_b; console clean. (Browser-automation note: ref-
+based clicks intermittently failed to fire the build/apply onClick; JS-dispatched element clicks worked —
+an automation quirk, not a product bug.) Pre-existing/out-of-scope: 38 pytest failures (test_seed_postgres
+sqlite, test_supabase_normalize DB/network, test_viewer_structure) — no Python touched; pytest mutates
+data/import_reports/normalized_courses_mechanical_2027.json as a side-effect (restored, not staged).
+
+**Next recommended slice.** Course-STYLE evidence extractor (practical/project/lab from syllabus, e.g.
+SOLIDWORKS/מעבדה/פרויקט) + free-text style markers → same evidence→fit path; then connect a real runtime
+ExternalContextProvider (web research with provenance) for career/industry goals. Keep plan-level workload
+free text as a separate scheduling-policy slice.
+
+**Doc duplication (report only):** AUTONOMOUS_PROGRESS.md canonical; `.remember/current.md` detailed log;
+`docs/current.md` still EMPTY (stray) — recommend deleting in a dedicated docs pass, not here.
+
 ## Session 2026-08-07 — general user-fit (focus-area) preferences connected to the real plan
 
 **Accepted baseline:** `45e5a11` (branch `ui/frontend-modernization`, HEAD=origin, clean tree).

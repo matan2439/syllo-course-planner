@@ -1,54 +1,45 @@
 /**
- * PRODUCT acceptance — a broad Hebrew USER-FIT request ("אני רוצה להתמקד בתכן",
- * "I want to focus on design") measurably shifts the ACTUAL native proposal's
- * elective selection toward design-aligned courses on the REAL Mechanical-
- * Engineering board — without violating legality, completion, or workload, and
- * without manufacturing surplus.
+ * PRODUCT acceptance — a broad Hebrew user-fit request ("אני רוצה להתמקד בתכן")
+ * shifts the ACTUAL native proposal toward a design course whose alignment is
+ * established by OFFICIAL-SYLLABUS EVIDENCE (course_capability_evidence.ts), not by
+ * course-title inference. Supersedes the earlier title-token version: the design
+ * course pulled in (0542-4425) carries an explicit official-syllabus design claim
+ * ("שיטות התכן"), while a title-only "machine" course (0542-4420 תורת המכונות, whose
+ * syllabus is machine THEORY) is NOT pulled in.
  *
- * Generic by construction: the request resolves to a canonical AcademicFocusArea
- * (mechanical_design) with a strength — NOT a design-only boolean — via the SAME
- * keyword vocabulary the course-side inference uses, and reaches the planner as a
- * per-course fit signal (scorePlan's interest_fit goal). The evidence that a
- * course is design-aligned is the existing deterministic topic-profile inference
- * (getTopicWeight(profile,'mechanical_design') > 0), never this test's opinion.
+ * Fixed prior-credit state: 92h. At this real state the design elective (3h) completes
+ * the plan with equal hours to the non-design alternative it displaces, so the soft
+ * interest_fit goal legitimately decides — no surplus, no offering/prereq change.
  *
- * No production logic is special-cased for this sentence, area, or course id.
+ * No production logic is special-cased for this sentence, area, or id (ids are fixtures).
  */
 import handler from '../../api/ai/generate-plan';
 import { randomUUID } from 'crypto';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { getMechanicalEngineering2027TopicProfiles } from '../../api/ai/course_topic_profiles_static';
-import { getTopicWeight } from '../../api/ai/course_topic_profile';
+import { extractCourseCapabilityEvidence } from '../../api/ai/course_capability_evidence';
 
-const BOARD = JSON.parse(
-  readFileSync(join(__dirname, '..', '..', 'data', 'boards', 'mechanical_engineering_2027.json'), 'utf8'),
-);
-const FOCUS_SENTENCE = 'אני רוצה להתמקד בתכן';
-const TOPICS = getMechanicalEngineering2027TopicProfiles();
-const designWeight = (id: string): number => {
-  const tp = TOPICS[id];
-  return tp ? getTopicWeight(tp, 'mechanical_design') : 0;
-};
+const BOARD = JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'boards', 'mechanical_engineering_2027.json'), 'utf8'));
+const PRIOR = 92;
+const FOCUS = 'אני רוצה להתמקד בתכן';
+const OSC_DESIGN = '0542-4425';     // הדפסת תלת מימד ותכן חלקי פלסטיקה — explicit official-syllabus design evidence
+const OSC_TITLE_ONLY = '0542-4420'; // תורת המכונות — title has "מכונות" but syllabus is machine THEORY (no design evidence)
+
+const byId = new Map<string, any>();
+for (const s of BOARD.semesters) for (const c of (s.courses || [])) byId.set(c.course_id, c);
+for (const c of (BOARD.metadata?.program_repository_courses || [])) byId.set(c.course_id, c);
+const hoursOf = (id: string): number => byId.get(id)?.weekly_hours ?? 0;
+const designLevel = (id: string) => extractCourseCapabilityEvidence(byId.get(id), 'mechanical_design').inferenceLevel;
 
 function planContext() {
   return {
-    semesters: BOARD.semesters.map((s: any) => ({
-      id: s.semester_id,
-      courses: (s.courses || []).map((c: any) => ({ course_id: c.course_id })),
-    })),
+    semesters: BOARD.semesters.map((s: any) => ({ id: s.semester_id, courses: (s.courses || []).map((c: any) => ({ course_id: c.course_id })) })),
     personal_status: { completed: [], currently_taking: [], planned: [] },
-    total_hours_progress: { known_completed_hours: 90 },
+    total_hours_progress: { known_completed_hours: PRIOR },
   };
 }
 const makeRes = () => {
-  const res: any = {
-    statusCode: 0,
-    setHeader: jest.fn().mockReturnThis(),
-    status: jest.fn(function (this: any, c: number) { this.statusCode = c; return this; }),
-    json: jest.fn(function (this: any, b: any) { this._body = b; return this; }),
-    write: jest.fn(), end: jest.fn(),
-  };
+  const res: any = { statusCode: 0, setHeader: jest.fn().mockReturnThis(), status: jest.fn(function (this: any, c: number) { this.statusCode = c; return this; }), json: jest.fn(function (this: any, b: any) { this._body = b; return this; }), write: jest.fn(), end: jest.fn() };
   return res;
 };
 async function run(body: any) {
@@ -56,95 +47,76 @@ async function run(body: any) {
   await handler({ method: 'POST', body: { program_id: 'mechanical_engineering_2027', session_token: randomUUID(), ...body } } as any, res);
   return res;
 }
-const placedIds = (body: any): string[] => [...new Set((body.semesters as any[]).flatMap((s) => s.course_ids))];
-const designFitSum = (body: any): number => placedIds(body).reduce((sum, id) => sum + designWeight(id), 0);
-const designPlaced = (body: any): string[] => placedIds(body).filter((id) => designWeight(id) > 0);
-const totalHours = (body: any): number => {
-  // exact accounting via the model's own hours would require the model; use the board's declared hours.
-  const hoursById = new Map<string, number>();
-  for (const s of BOARD.semesters) for (const c of (s.courses || [])) if (typeof c.hours === 'number') hoursById.set(c.course_id, c.hours);
-  for (const c of (BOARD.metadata?.program_repository_courses || [])) if (typeof c.hours === 'number') hoursById.set(c.course_id, c.hours);
-  return placedIds(body).reduce((sum, id) => sum + (hoursById.get(id) ?? 0), 0);
-};
+const placedIds = (b: any): string[] => [...new Set((b.semesters as any[]).flatMap((s) => s.course_ids))];
+const semesterOf = (b: any, id: string): string | null => { for (const s of b.semesters as any[]) if (s.course_ids.includes(id)) return s.semester_id; return null; };
+const totalHours = (b: any): number => placedIds(b).reduce((sum, id) => sum + hoursOf(id), 0);
 
 beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
 afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
 
-// (16) CONTROL — no focus request: never claims a design preference was requested/honored.
-test('CONTROL: without the request, no intentOutcome is attached (no false honored claim)', async () => {
+// The evidence layer itself (sanity): the fixtures are what we claim.
+test('the design fixture carries EXPLICIT official-syllabus evidence; the title-only machine course does NOT', () => {
+  expect(designLevel(OSC_DESIGN)).toBe('explicit');
+  expect(designLevel(OSC_TITLE_ONLY)).toBe('missing'); // "מכונות" title is not proof
+});
+
+// CONTROL — non-vacuous baseline + no false claim.
+test('CONTROL: without the request, the design elective is absent and no intentOutcome is attached', async () => {
   const res = await run({ plan_context: planContext(), preferences: {} });
   expect(res.statusCode).toBe(200);
+  expect(res._body.blocked).toBe(false);
+  expect(placedIds(res._body)).not.toContain(OSC_DESIGN);
   expect(res._body.intentOutcome).toBeUndefined();
 }, 60000);
 
-// (2,4,5,6,11,12,15,17) The core non-vacuous shift + legality/completion/outcome.
-test('the focus request shifts the real proposal toward design — legal, complete, no surplus, honestly reported', async () => {
+// Core evidence-backed shift, legality, no surplus, honest evidence-cited outcome.
+test('the focus request pulls in the evidence-backed design course (only) — legal, no surplus, cited from the official syllabus', async () => {
   const control = await run({ plan_context: planContext(), preferences: {} });
-  const focus = await run({
-    plan_context: planContext(),
-    preferences: { extra_request_he: FOCUS_SENTENCE },
-    interpret_free_text: true,
-  });
+  const focus = await run({ plan_context: planContext(), preferences: { extra_request_he: FOCUS }, interpret_free_text: true });
   expect(focus.statusCode).toBe(200);
   expect(focus._body.blocked).toBe(false);
   expect(focus._body.errors).toEqual([]);
 
-  // (4) non-vacuous: the request measurably increases design alignment of the actual placements
-  expect(designFitSum(focus._body)).toBeGreaterThan(designFitSum(control._body));
-  // (5)+(6) at least one verified design-aligned course present, backed by repository evidence
-  expect(designPlaced(focus._body).length).toBeGreaterThan(0);
-  for (const id of designPlaced(focus._body)) expect(designWeight(id)).toBeGreaterThan(0);
-  // a specific design course the control did NOT place is now present (the actual selection changed)
-  const newlyDesign = designPlaced(focus._body).filter((id) => !placedIds(control._body).includes(id));
-  expect(newlyDesign.length).toBeGreaterThan(0);
+  // (evidence-backed direction) the design course is now placed, in its real B offering
+  expect(placedIds(focus._body)).toContain(OSC_DESIGN);
+  expect(semesterOf(focus._body, OSC_DESIGN)).toMatch(/_semester_b$/i);
+  // the title-only "machine" course is NOT the mechanism (no syllabus design evidence)
+  expect(placedIds(focus._body)).not.toContain(OSC_TITLE_ONLY);
 
-  // (14) no surplus degree hours manufactured to fake alignment: focus does not carry more hours than control
-  expect(totalHours(focus._body)).toBeLessThanOrEqual(totalHours(control._body));
+  // (no surplus) same total hours as control — an equal-cost swap, not manufactured credit
+  expect(totalHours(focus._body)).toBe(totalHours(control._body));
+  // the course it displaced is NOT design-evidenced → the change is toward design, by evidence
+  const displaced = placedIds(control._body).filter((id) => !placedIds(focus._body).includes(id));
+  expect(displaced.length).toBeGreaterThan(0);
+  for (const id of displaced) expect(designLevel(id)).not.toBe('explicit');
 
-  // (15) outcome derived from the ACTUAL plan, and (16) truthful
-  expect(focus._body.intentOutcome).toBeDefined();
-  expect(focus._body.intentOutcome.honored.join(' ')).toContain('תכן');
+  // (explanation traces to evidence) honored cites the OFFICIAL SYLLABUS, not the title
+  const honored = focus._body.intentOutcome.honored.join(' ');
+  expect(honored).toContain('סילבוס רשמי');
+  expect(honored).toContain('שיטות התכן'); // the actual 0542-4425 syllabus quote
+  // (external-context layer present, as provenance — never a course claim)
+  expect(focus._body.intentOutcome.notesHe.join(' ')).toContain('ABET');
 }, 120000);
 
-// (9) explicit exclusion wins over a general user-fit preference.
-test('explicit exclusion beats the focus preference: a disallowed design course stays absent', async () => {
-  const control = await run({ plan_context: planContext(), preferences: {} });
-  const focus = await run({ plan_context: planContext(), preferences: { extra_request_he: FOCUS_SENTENCE }, interpret_free_text: true });
-  // A design course the FOCUS plan added beyond the control is, by construction, an
-  // elective (mandatory courses appear in both) — the exclusion must be able to drop it.
-  const newlyDesign = designPlaced(focus._body).filter((id) => !placedIds(control._body).includes(id));
-  const target = newlyDesign[0];
-  expect(typeof target).toBe('string');
-  const excluded = await run({
-    plan_context: planContext(),
-    preferences: { extra_request_he: FOCUS_SENTENCE, disallowed_course_ids: [target] },
-    interpret_free_text: true,
-  });
-  expect(excluded.statusCode).toBe(200);
-  expect(placedIds(excluded._body)).not.toContain(target); // exclusion wins over the fit preference
-}, 120000);
-
-// (10) an explicit wanted-course preference outranks the general fit preference.
-test('explicit wanted course is honored alongside the focus preference (wanted outranks fit)', async () => {
-  const OSC = '0542-4220'; // תורת התנודות — a non-design elective, B-only
-  const res = await run({
-    plan_context: planContext(),
-    preferences: { extra_request_he: FOCUS_SENTENCE, wanted_course_ids: [OSC] },
-    interpret_free_text: true,
-  });
+// (priority) explicit exclusion beats the general fit preference.
+test('explicit exclusion of the design course beats the focus preference', async () => {
+  const res = await run({ plan_context: planContext(), preferences: { extra_request_he: FOCUS, disallowed_course_ids: [OSC_DESIGN] }, interpret_free_text: true });
   expect(res.statusCode).toBe(200);
-  expect(placedIds(res._body)).toContain(OSC); // wanted honored despite the fit pull toward design
+  expect(placedIds(res._body)).not.toContain(OSC_DESIGN);
 }, 120000);
 
-// (19) an unsupported/undiscoverable focus domain is reported honestly, never fabricated into placements.
+// (priority) an explicit wanted course outranks the general fit preference.
+test('an explicit wanted (non-design) course is honored alongside the focus preference', async () => {
+  const WANTED = '0542-4351'; // הנדסה ימית — non-design elective
+  const res = await run({ plan_context: planContext(), preferences: { extra_request_he: FOCUS, wanted_course_ids: [WANTED] }, interpret_free_text: true });
+  expect(res.statusCode).toBe(200);
+  expect(placedIds(res._body)).toContain(WANTED);
+}, 120000);
+
+// (honesty) an unsupported focus domain is reported honestly, never fabricated into placements.
 test('an unresolved focus domain does not falsely claim to have changed the plan', async () => {
-  const res = await run({
-    plan_context: planContext(),
-    preferences: { extra_request_he: 'אני רוצה להתמקד במשהו שלא קיים כתחום' },
-    interpret_free_text: true,
-  });
+  const res = await run({ plan_context: planContext(), preferences: { extra_request_he: 'אני רוצה להתמקד במשהו שלא קיים כתחום' }, interpret_free_text: true });
   expect(res.statusCode).toBe(200);
   expect(res._body.intentOutcome.honored.join(' ')).not.toContain('התמקד');
-  // it is reported as not-recognized, not silently honored
   expect(res._body.intentOutcome.unmet.length).toBeGreaterThan(0);
 }, 60000);

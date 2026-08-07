@@ -31,6 +31,15 @@ describe('inferFocusAreasFromText — reuse the SAME keyword vocabulary for user
     expect(inferFocusAreasFromText('בקרה')).toContain('control_systems');
     expect(inferFocusAreasFromText('משהו כללי בלי דומיין')).toEqual([]);
   });
+
+  test('the broad ambiguous token "מכונות" alone is NOT sufficient proof of mechanical_design', () => {
+    // A machine course (e.g. "תורת המכונות" = theory of machines) is not a design course.
+    // Design alignment must come from evidence, not this broad title token.
+    expect(inferFocusAreasFromText('מכונות')).not.toContain('mechanical_design');
+    expect(inferFocusAreasFromText('תורת המכונות')).not.toContain('mechanical_design');
+    // the direct design word still resolves
+    expect(inferFocusAreasFromText('תכן')).toContain('mechanical_design');
+  });
 });
 
 describe('inferCourseTopicProfile — Hebrew topic keyword rules', () => {
