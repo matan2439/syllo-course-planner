@@ -91,6 +91,25 @@ function matches(haystack: string, keywords: string[]): boolean {
   return keywords.some((k) => haystack.includes(k));
 }
 
+/**
+ * Resolve arbitrary free text (a USER's phrase, not a course name) to the
+ * canonical AcademicFocusArea(s) it names, using the SAME keyword vocabulary
+ * the course-side topic inference already uses (TOPIC_NAME_RULES). Deliberate
+ * reuse — one Hebrew/English keyword→area taxonomy for both the supply side
+ * (course names) and the demand side (user "focus on X" requests) — so "תכן" in
+ * a request and a course named "תכן ..." resolve through identical rules, with
+ * no second taxonomy. Category rules are course-only (a user phrase has no
+ * categoryId) and are intentionally not applied here.
+ */
+export function inferFocusAreasFromText(text: string): AcademicFocusArea[] {
+  const haystack = (text ?? '').toLowerCase();
+  const areas = new Set<AcademicFocusArea>();
+  for (const rule of TOPIC_NAME_RULES) {
+    if (matches(haystack, rule.keywords)) areas.add(rule.value);
+  }
+  return [...areas];
+}
+
 export function inferCourseTopicProfile(course: CatalogCourse): CourseTopicProfile {
   const name = (course.nameHe ?? '').toLowerCase();
   const category = course.categoryId ?? '';

@@ -90,11 +90,16 @@ function withCourses(sem: string, ids: string[]): PlanState {
 describe('GOAL_STACK', () => {
   it('lists the prioritized goals, completion first and balance split into peak+spread', () => {
     expect(GOAL_STACK[0]).toBe('degree_completion');
-    expect(GOAL_STACK).toHaveLength(9);
+    expect(GOAL_STACK).toHaveLength(10);
     expect(GOAL_STACK[GOAL_STACK.length - 1]).toBe('difficulty_comfort');
     // balance is now two goals: peak (primary) above spread (secondary tiebreak).
     expect((GOAL_STACK as readonly string[]).indexOf('balance_peak'))
       .toBeLessThan((GOAL_STACK as readonly string[]).indexOf('balance_spread'));
+    // general course-fit is a soft signal: below explicit wanted/unwanted, above difficulty.
+    const idx = (g: string) => (GOAL_STACK as readonly string[]).indexOf(g);
+    expect(idx('preferences')).toBeLessThan(idx('interest_fit'));
+    expect(idx('unwanted_avoidance')).toBeLessThan(idx('interest_fit'));
+    expect(idx('interest_fit')).toBeLessThan(idx('difficulty_comfort'));
   });
 });
 
@@ -144,6 +149,34 @@ describe('scorePlan — goal priority is lexicographic', () => {
     const m = model();
     const a = withCourses('year_3_semester_a', ['e0', 'e1']);
     const b = withCourses('year_3_semester_a', ['e0', 'e1']);
+    expect(compareScore(scorePlan(a, m), scorePlan(b, m))).toBe(0);
+  });
+
+  it('interest_fit: with all higher goals equal, a plan with a higher-fit elective wins (above difficulty)', () => {
+    // Two same-hours electives, same difficulty; only course-fit differs.
+    const m = model({ degreeRequiredHours: 4, categories: [] });
+    m.profiles.set('aligned', profile('aligned', { hours: 4, difficulty_score: 3 }));
+    m.profiles.set('neutral', profile('neutral', { hours: 4, difficulty_score: 3 }));
+    m.courseFitById = new Map([['aligned', 0.7]]); // neutral defaults to 0
+    const withAligned = withCourses('year_3_semester_a', ['aligned']);
+    const withNeutral = withCourses('year_3_semester_a', ['neutral']);
+    expect(compareScore(scorePlan(withAligned, m), scorePlan(withNeutral, m))).toBeGreaterThan(0);
+  });
+
+  it('interest_fit ranks BELOW an explicit wanted course (wanted preference wins)', () => {
+    const m = model({ degreeRequiredHours: 4, categories: [], wantedCourseIds: new Set(['wantedNeutral']) });
+    m.profiles.set('wantedNeutral', profile('wantedNeutral', { hours: 4, difficulty_score: 3 }));
+    m.profiles.set('aligned', profile('aligned', { hours: 4, difficulty_score: 3 }));
+    m.courseFitById = new Map([['aligned', 0.7]]); // aligned has fit but is NOT wanted
+    const withWanted = withCourses('year_3_semester_a', ['wantedNeutral']); // honors wanted, no fit
+    const withAligned = withCourses('year_3_semester_a', ['aligned']);      // has fit, not wanted
+    expect(compareScore(scorePlan(withWanted, m), scorePlan(withAligned, m))).toBeGreaterThan(0);
+  });
+
+  it('interest_fit is inert when no fit map is present (control plans unchanged)', () => {
+    const m = model({ degreeRequiredHours: 4, categories: [] }); // no courseFitById
+    const a = withCourses('year_3_semester_a', ['e0']);
+    const b = withCourses('year_3_semester_a', ['e1']);
     expect(compareScore(scorePlan(a, m), scorePlan(b, m))).toBe(0);
   });
 });

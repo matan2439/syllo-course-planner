@@ -14,6 +14,121 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-07 — general user-fit (focus-area) preferences connected to the real plan
+
+**Accepted baseline:** `45e5a11` (branch `ui/frontend-modernization`, HEAD=origin, clean tree).
+Prior accepted work untouched: explicit Hebrew exclusion, positive course preference,
+fuzzy search, authoritative offering (4220 B-only / 4224 A-only / 3620 A+B). Production
+unchanged. `project_native_planner_journey_mvp.md` is EXTERNAL Claude memory (not tracked
+in the repo) — its earlier edit is intentionally external, no repo impact.
+
+**Product outcome delivered.** A broad Hebrew user-fit request "אני רוצה להתמקד בתכן"
+(focus on design) now measurably shifts the ACTUAL native proposal's ELECTIVE selection
+toward design-aligned courses, resolved to a canonical `AcademicFocusArea` (mechanical_design)
++ strength — NOT a design-only flag — and reaching the planner as a soft per-course fit
+signal. Verified through `/planner/native` end to end.
+
+**Existing user-fit path + canonical representations (all pre-existing, were UNWIRED).**
+The generic representation already existed but its own headers said "FOUNDATION EPIC ONLY —
+nothing wired into planner scoring/generate-plan/UI": `AcademicInterestProfile`
+(academic_interest_profile.ts) with canonical `AcademicFocusArea` (incl. `mechanical_design`,
+`control_systems`, `robotics`, …) + `CourseStyle` (project_based/practical/lab_based/
+theoretical/exam_light/math_heavy/industry_relevant) + `OptimizationPriority`; the course-side
+evidence `CourseTopicProfile` inferred deterministically by `inferCourseTopicProfile`
+(course_topic_profile_inference.ts, Hebrew/English keyword rules, e.g. `תכן|תיכון|מכונות|
+design|cad → mechanical_design` @0.7, source `inferred`) over the committed catalog
+(`getMechanicalEngineering2027TopicProfiles`); the per-course evaluator
+`matchCourseToAcademicInterests → interestFitScore ∈[0,1]`; and the post-hoc, display-only
+`buildGeneratePlanInterestEvaluation` (explicitly "no plan mutation, no ranking involvement").
+
+**Smallest proven gap (non-vacuous baseline, real board, 90h prior credit).** CONTROL (no
+request) designFitSum=3.50 (electives 4422, 4135 + mandatory design). Free-text
+"אני רוצה להתמקד בתכן" via `interpret_free_text` → `interpretPlanningIntent` returned
+`recognized:[{kind:'prefer',phrase:'להתמקד בתכן',status:'unresolved'}]`, NO focus preference
+(the `רוצה` course-marker stranded it) → plan IDENTICAL to control. Two gaps: (A) no
+focus-area recognition at the intent boundary; (B) `scorePlan` (GOAL_STACK) had no interest/
+fit term, so even the existing `AcademicInterestProfile` could never change placements.
+
+**Exact missing connection (reuse-first; canonical dimension+strength, not a boolean).**
+1. `inferFocusAreasFromText` exported from course_topic_profile_inference.ts — reuses the SAME
+   keyword→area vocabulary for the user's phrase (one taxonomy, supply+demand side).
+2. planning_intent.ts extended: `PlanningIntent.focusAreas:{area,weight}[]` + a `focus`
+   recognized kind; FOCUS_MARKERS (`להתמקד`/`להתמחות`/…) checked per clause BEFORE the
+   course-prefer markers; negated `אל תשבץ` etc. still EXCLUDE (checked first).
+3. generate-plan.ts `buildCourseFitById(focusAreas)` — builds `AcademicInterestProfile` and
+   scores every catalog course via `matchCourseToAcademicInterests` (reused evidence+evaluator)
+   → `Map<courseId, fit>`, threaded into `buildModel`/`buildConstraintModel`.
+4. ConstraintModel gains `courseFitById?`; scorePlan gains goal `interest_fit` = Σ fit of
+   placed courses, inserted BELOW `preferences`+`unwanted_avoidance`, ABOVE `difficulty_comfort`
+   (soft: inert/zero when no fit map → control byte-identical).
+5. `buildIntentOutcome` gains a `focus` branch driven by `fitAlignedPlacedCourseIds` computed
+   from the FINAL proposal — truthful, placement-derived.
+   No new parser/agent/policy/planner/endpoint/validator/UI; no course names/ids in production
+   logic; ids are acceptance fixtures only.
+
+**Control vs user-fit real proposal (before/after, evidence-backed).** With the focus request,
+the planner SWAPPED `0542-4351 הנדסה ימית` (marine/fluids, mechanical_design weight 0) OUT for
+`0542-4420 תורת המכונות` (mechanical_design 0.7 via `מכונות`) IN — one swap, same course count/
+hours (NO surplus), designFitSum 3.50→4.20, blocked:false, errors:[]. Repository evidence:
+`getTopicWeight(profile,'mechanical_design')` = 0.7 for 4420 (and 4422/4135/2400/4010/4020),
+0 for 4351. intentOutcome.honored (derived from actual placements): "הותאמו קורסים להעדפת
+ההתמקדות שלך («בתכן»): … תורת המכונות, …".
+
+**Legality/priority/consistency.** interest_fit is a soft tie-break only: explicit exclusion
+beats it (disallowed design course stays absent), explicit wanted-course outranks it
+(0542-4220 honored alongside focus), authoritative B-only/A-only offerings + prereqs + degree
+completion + mandatory/category + hard load all still enforced (all as blocking gates above
+scoring). No surplus hours added. Unsupported focus domain ("...משהו שלא קיים כתחום") →
+honest `unmet`, never fabricated. Control (no request) attaches NO intentOutcome. Browser:
+Generate 200, 4420 at year_4_semester_a, 4351 dropped, UI honored text == network response,
+Apply → applied board preserves 4420 (once) at year_4_semester_a; console clean; no server errors.
+
+**Capability matrix (end-to-end = a verified change in the ACTUAL legal proposal).**
+
+| Dimension | Canonical repr | Evidence | Confidence | Affects | Recognized (free text) | Verified E2E | Missing connection if deferred |
+|---|---|---|---|---|---|---|---|
+| Academic domain (design/control/fluids/robotics/…) | `AcademicFocusArea` | `CourseTopicProfile.topics` (keyword-inferred) | inferred, 0.6–0.7 | course choice | **yes** (`להתמקד ב…`) | **YES** (design proven; other domains share the identical path) | — |
+| Practical / project / lab orientation | `CourseStyle` (practical/project_based/lab_based) | `CourseTopicProfile.styles` (keyword-inferred) | inferred (partial) | course choice | no (no style markers yet) | no | add style free-text markers → reuse `matchCourseToAcademicInterests` style path (already scores styles) → same `courseFitById` |
+| Theoretical orientation | `CourseStyle.theoretical` | no inference rule emits `theoretical`/`math_heavy` yet | absent | course choice | no | no | add a deterministic evidence rule (or syllabus source) for theoretical/math_heavy; then same path |
+| Assessment style (exam vs project) | `CourseStyle.exam_light`, `assessment_type` on CourseProfile | `assessment_type` largely null in catalog | low/absent | course choice | no | no | populate assessment metadata; consume via style fit |
+| Difficulty | `difficulty_score` (planner) / no interest dim | `CourseProfile.difficulty_score` exists | present (course-level) | course choice + semester load | no (free text) | no | difficulty is already a scoring tiebreak (g `difficulty_comfort`); a "prefer easier" free-text request + semester-level aggregation is a distinct slice |
+| Semester workload / balance | `balance_load`, `max_weekly_hours` | per-semester loads | authoritative | semester ARRANGEMENT | partial (balance/maxHours markers exist) | balance/maxHours already wired; "lighter semesters"/"spread demanding courses" free text NOT | plan-level scheduling policy — deliberately NOT forced into the course-fit score |
+| Career / activity alignment | `careerGoals` (profile) / combine focus dims | none direct | absent | course choice | no | no | map career phrases → focus-area set (reuse focusAreas path) |
+
+**Additional non-domain fixture — DEFERRED (data-limited, honest).** Preferred order was
+practical/lab → assessment → difficulty. Practical/lab: `CourseStyle` styles ARE inferred
+(lab_based/project_based/practical) and `matchCourseToAcademicInterests` already scores styles,
+BUT there are no free-text STYLE markers yet and style evidence is partial; assessment_type is
+largely null; no theoretical/math_heavy rule emits. Rather than fabricate classifications
+(forbidden), the second fixture is deferred — the exact consumer (`courseFitById` via the style
+branch of `matchCourseToAcademicInterests`) already exists; only free-text style markers + a
+reviewed style/assessment evidence pass are missing.
+
+**Files changed (this slice):** api/ai/course_topic_profile_inference.ts, api/ai/planning_intent.ts,
+api/ai/generate-plan.ts, api/ai/planner_types.ts, api/ai/planner_model.ts, api/ai/planner_goals.ts;
+tests/api/course_topic_profile_inference.test.ts, tests/api/planning_intent.test.ts,
+tests/api/planner_goals.test.ts, new tests/api/generate_plan_free_text_fit_real_board.test.ts.
+
+**Verification.** Focused RED→GREEN (4 suites); full API 1472 passed (1 skipped); full UI
+835 passed post-commit (the lone pre-commit failure is the `course_details_panel.test.js`
+working-tree git-diff guard, green once the api change is committed); root + web typechecks
+clean; web production build clean; browser+network verified via `/planner/native` + Apply.
+Pre-existing/out-of-scope: 38 pytest failures (test_seed_postgres sqlite env,
+test_supabase_normalize DB/network, test_viewer_structure) — this slice touches no Python;
+pytest mutates data/import_reports/normalized_courses_mechanical_2027.json as a side-effect
+(restored, not staged).
+
+**Next recommended product slice:** free-text COURSE-STYLE fit ("אני מעדיף קורסים מעשיים / יותר
+פרויקטים ומעבדות") — add style free-text markers feeding the SAME `courseFitById` via the style
+branch of `matchCourseToAcademicInterests` (already implemented), plus a reviewed
+style/assessment evidence pass so theoretical/exam-style dims have authoritative data. Keep
+plan-level workload free text ("סמסטרים קלים יותר") as a separate scheduling-policy slice — do
+not fold it into the course-fit score.
+
+**Doc duplication (report only):** AUTONOMOUS_PROGRESS.md canonical; `.remember/current.md`
+detailed log; `docs/current.md` still EMPTY (stray) — recommend deleting in a dedicated docs
+pass, not here. Not modified this slice.
+
 ## Session 2026-08-06 (b) — positive free-text course preference connected end to end
 
 **Accepted baseline:** `92f473a` (branch `ui/frontend-modernization`). Prior accepted

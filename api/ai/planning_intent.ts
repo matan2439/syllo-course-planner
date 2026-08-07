@@ -23,6 +23,8 @@
  *    preference, and a preference can never re-add an excluded course.
  */
 import { z } from 'zod';
+import { inferFocusAreasFromText } from './course_topic_profile_inference';
+import { ACADEMIC_FOCUS_AREAS, DEFAULT_INTEREST_WEIGHT } from './academic_interest_profile';
 
 export interface CatalogEntry {
   id: string;
@@ -31,14 +33,18 @@ export interface CatalogEntry {
 
 // ── validated intent schema (the untrusted-input boundary) ────────────────────
 const recognizedItemSchema = z.object({
-  kind: z.enum(['exclude', 'prefer', 'maxHours', 'balance']),
+  kind: z.enum(['exclude', 'prefer', 'focus', 'maxHours', 'balance']),
   phrase: z.string(),
   resolvedCourseIds: z.array(z.string()),
+  /** For kind='focus': the canonical AcademicFocusArea(s) the phrase resolved to. */
+  resolvedAreas: z.array(z.enum(ACADEMIC_FOCUS_AREAS)).optional(),
   status: z.enum(['resolved', 'ambiguous', 'unresolved', 'applied']),
 });
 export const planningIntentSchema = z.object({
   excludeCourseIds: z.array(z.string()),
   preferCourseIds: z.array(z.string()),
+  /** Canonical, generic user-fit signal: focus AREA + strength (not a design-only flag). */
+  focusAreas: z.array(z.object({ area: z.enum(ACADEMIC_FOCUS_AREAS), weight: z.number() })),
   maxWeeklyHours: z.number().positive().optional(),
   balanceLoad: z.boolean().optional(),
   recognized: z.array(recognizedItemSchema),
@@ -87,6 +93,11 @@ const EXCLUDE_MARKERS = ['אל תשבץ', 'אל תכלול', 'לא לשבץ', '�
 // rather than matching "שבץ" and stranding "לי". Negated forms ("אל תשבץ", …) are
 // EXCLUDE markers checked first per clause, so they always win over these.
 const PREFER_MARKERS = ['אני מעדיף', 'הייתי רוצה', 'מעדיף', 'אשמח', 'רוצה', 'תשבץ לי', 'שבץ לי', 'תשבץ', 'שבץ'];
+// Course-FIT focus verbs ("focus/specialize in <domain>"). Checked per clause
+// BEFORE the course-prefer markers so "אני רוצה להתמקד בתכן" resolves to a canonical
+// focus AREA (via the shared keyword taxonomy) instead of the bare "רוצה" marker
+// stranding "להתמקד בתכן" as an unresolvable course name. Longer forms first.
+const FOCUS_MARKERS = ['להתמקד', 'להתמחות', 'מתמקד', 'מתמחה', 'התמקד', 'התמחות'];
 
 /** Text after the first occurrence of `marker`, with a leading accusative "את " removed. */
 function afterMarker(clause: string, marker: string): string {
@@ -112,6 +123,7 @@ function firstMarker(clause: string, markers: string[]): string | null {
 export function interpretPlanningIntent(text: string, catalog: CatalogEntry[]): PlanningIntent {
   const excludeCourseIds = new Set<string>();
   const preferCourseIds = new Set<string>();
+  const focusAreaWeights = new Map<(typeof ACADEMIC_FOCUS_AREAS)[number], number>();
   const recognized: RecognizedItem[] = [];
   let maxWeeklyHours: number | undefined;
   let balanceLoad: boolean | undefined;
@@ -153,6 +165,18 @@ export function interpretPlanningIntent(text: string, catalog: CatalogEntry[]): 
       }
       continue;
     }
+    const foMarker = firstMarker(clause, FOCUS_MARKERS);
+    if (foMarker) {
+      const phrase = afterMarker(clause, foMarker);
+      const areas = phrase ? inferFocusAreasFromText(phrase) : [];
+      if (areas.length) {
+        areas.forEach((a) => focusAreaWeights.set(a, DEFAULT_INTEREST_WEIGHT));
+        recognized.push({ kind: 'focus', phrase, resolvedCourseIds: [], resolvedAreas: areas, status: 'resolved' });
+      } else {
+        recognized.push({ kind: 'focus', phrase, resolvedCourseIds: [], resolvedAreas: [], status: 'unresolved' });
+      }
+      continue;
+    }
     const prMarker = firstMarker(clause, PREFER_MARKERS);
     if (prMarker) {
       for (const phrase of splitPreferenceList(afterMarker(clause, prMarker))) {
@@ -171,6 +195,10 @@ export function interpretPlanningIntent(text: string, catalog: CatalogEntry[]): 
     excludeCourseIds: [...excludeCourseIds],
     // exclusion always wins over preference (safety): a course can't be both
     preferCourseIds: [...preferCourseIds].filter((id) => !excludeCourseIds.has(id)),
+    focusAreas: ACADEMIC_FOCUS_AREAS.filter((a) => focusAreaWeights.has(a)).map((a) => ({
+      area: a,
+      weight: focusAreaWeights.get(a)!,
+    })),
     maxWeeklyHours,
     balanceLoad,
     recognized,
@@ -233,6 +261,13 @@ export interface IntentOutcomeContext {
   requiredMandatoryCourseIds?: string[];
   /** course id → weekly hours, to evaluate the max-hours request against actual loads. */
   hoursById?: Map<string, number | null | undefined>;
+  /**
+   * Placed course ids that carry a positive user-fit score for the requested
+   * focus area(s) — computed by the caller from the FINAL proposal and the same
+   * evidence (course topic profiles) the planner scored. Drives the truthful
+   * focus outcome; empty/undefined => nothing aligned was actually placed.
+   */
+  fitAlignedPlacedCourseIds?: Set<string>;
 }
 
 /**
@@ -280,6 +315,18 @@ export function buildIntentOutcome(
       if (missing.length) {
         const line = `לא שובצו (העדפה נכנעת לדרישות התואר/זמינות): ${missing.map(label).join(', ')}.`;
         (here.length ? partiallyHonored : unmet).push(line);
+      }
+    } else if (r.kind === 'focus') {
+      if (r.status !== 'resolved') {
+        unmet.push(`לא זוהה תחום התמקדות עבור «${r.phrase}» — הבקשה לא יושמה.`);
+        continue;
+      }
+      // Derived from the ACTUAL final placements, never from the request alone.
+      const aligned = [...(ctx.fitAlignedPlacedCourseIds ?? new Set<string>())].filter((id) => placed.has(id));
+      if (aligned.length) {
+        honored.push(`הותאמו קורסים להעדפת ההתמקדות שלך («${r.phrase}»): ${aligned.map(label).join(', ')}.`);
+      } else {
+        unmet.push(`לא שובצו קורסים חוקיים התואמים את העדפת ההתמקדות («${r.phrase}») בתוך תוכנית תקפה.`);
       }
     }
   }

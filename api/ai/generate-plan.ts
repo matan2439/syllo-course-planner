@@ -84,6 +84,9 @@ import {
   buildIntentOutcome,
   type PlanningIntent,
 } from './planning_intent';
+import { normalizeAcademicInterestProfile } from './academic_interest_profile';
+import { matchCourseToAcademicInterests } from './interest_course_match';
+import { getMechanicalEngineering2027TopicProfiles } from './course_topic_profiles_static';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -164,8 +167,27 @@ export function priorHoursFromContext(ctx: any): number {
   return thp.manual_completed_degree_hours ?? (thp.known_completed_hours ?? 0);
 }
 
+/**
+ * Resolve interpreted focus-area preferences into a per-course general user-fit
+ * score, reusing the existing evidence (course topic profiles) and evaluator
+ * (matchCourseToAcademicInterests) — NOT a design-only flag: any AcademicFocusArea
+ * (or, later, CourseStyle) flows through the same generic path. Empty/undefined
+ * when no focus was expressed, so the planner is byte-identical to before.
+ */
+export function buildCourseFitById(focusAreas: PlanningIntent['focusAreas']): Map<string, number> | undefined {
+  if (!focusAreas?.length) return undefined;
+  const profile = normalizeAcademicInterestProfile({ focusAreas });
+  const topicProfiles = getMechanicalEngineering2027TopicProfiles();
+  const map = new Map<string, number>();
+  for (const [id, tp] of Object.entries(topicProfiles)) {
+    const fit = matchCourseToAcademicInterests(profile, tp).interestFitScore;
+    if (fit > 0) map.set(id, fit);
+  }
+  return map.size ? map : undefined;
+}
+
 /** Build the model from board_json (full universe). board is always non-null here. */
-export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[]): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
   // already used above to route the board_json lookup, reused here for the
   // model's programId/catalogYear. No institutionId source exists yet.
@@ -175,6 +197,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     currentlyPlannedCourseIds,
     wantedCourseIds: prefs.wanted_course_ids,
     unwantedCourseIds: prefs.unwanted_course_ids,
+    courseFitById,
     disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
     pinnedCourseIds: ctx?.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
@@ -1422,8 +1445,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const merged = mergeIntentIntoPreferences(effectivePreferences, interpretedIntent);
     effectivePreferences = { ...effectivePreferences, ...merged };
   }
+  // General user-fit (focus-area) → per-course soft fit signal for the planner.
+  const courseFitById = interpret_free_text === true ? buildCourseFitById(interpretedIntent?.focusAreas ?? []) : undefined;
 
-  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds);
+  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById);
   const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
@@ -1610,10 +1635,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (interpretedIntent) {
     const hoursById = new Map<string, number | null | undefined>();
     for (const [id, p] of model.profiles) hoursById.set(id, p.hours);
+    // Aligned-placed set derived from the FINAL proposal ∩ the same fit evidence
+    // the planner scored — so the focus outcome reflects real placements only.
+    const placedNow = new Set(proposal.semesters.flatMap((s: any) => s.course_ids));
+    const fitAlignedPlacedCourseIds = courseFitById
+      ? new Set([...courseFitById.keys()].filter((id) => placedNow.has(id)))
+      : undefined;
     responseBody.intentOutcome = buildIntentOutcome(interpretedIntent, proposal.semesters, {
       catalog: intentCatalog,
       requiredMandatoryCourseIds: model.requiredMandatoryCourseIds,
       hoursById,
+      fitAlignedPlacedCourseIds,
     });
   }
   // Opt-in only, additive: attach an interest evaluation over the generated

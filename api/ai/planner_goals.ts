@@ -42,6 +42,7 @@ export const GOAL_STACK = [
   'balance_spread',
   'preferences',
   'unwanted_avoidance',
+  'interest_fit',
   'difficulty_comfort',
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
@@ -796,12 +797,22 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   // 5b. unwanted avoidance — penalise each unwanted course placed.
   const g5b = -[...placed].filter(id => model.profiles.get(id)?.is_unwanted).length;
 
+  // 5c. interest fit — SOFT general user-fit: total per-course fit score of the
+  //     placed courses, for the requested focus area(s)/style(s). Ranked below
+  //     explicit wanted/unwanted preferences and above the difficulty tiebreak,
+  //     so among equally-legal, equally-complete plans it prefers the one whose
+  //     ELECTIVE choices are more aligned — never overriding legality,
+  //     completion, or an explicit preference. Zero (inert) when no fit map is
+  //     supplied, so control plans are byte-identical to before.
+  let gFit = 0;
+  if (model.courseFitById) for (const cid of placed) gFit += model.courseFitById.get(cid) ?? 0;
+
   // 6. difficulty / comfort — lower total difficulty preferred (tiebreaker).
   let totalDifficulty = 0;
   for (const cid of placed) totalDifficulty += model.profiles.get(cid)?.difficulty_score ?? 0;
   const g6 = -totalDifficulty;
 
-  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, g6];
+  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, gFit, g6];
 }
 
 export interface CompletenessAssessment {

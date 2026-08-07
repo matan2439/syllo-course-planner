@@ -10,6 +10,7 @@
 
 import {
   inferCourseTopicProfile,
+  inferFocusAreasFromText,
   NEEDS_REVIEW_NOTE_PREFIX,
 } from '../../api/ai/course_topic_profile_inference';
 import { normalizeCourseTopicProfile } from '../../api/ai/course_topic_profile';
@@ -20,6 +21,17 @@ function topicAreas(courseId: string, nameHe: string | null, categoryId: string 
 function styleNames(courseId: string, nameHe: string | null, categoryId: string | null = null) {
   return inferCourseTopicProfile({ courseId, nameHe, categoryId }).styles.map((s) => s.style);
 }
+
+describe('inferFocusAreasFromText — reuse the SAME keyword vocabulary for user-side free text', () => {
+  test('"בתכן" (in design) → mechanical_design (same rule as course names)', () => {
+    expect(inferFocusAreasFromText('בתכן')).toContain('mechanical_design');
+    expect(inferFocusAreasFromText('להתמקד בתכן')).toContain('mechanical_design');
+  });
+  test('non-domain / control text resolves to its canonical area, empty when nothing matches', () => {
+    expect(inferFocusAreasFromText('בקרה')).toContain('control_systems');
+    expect(inferFocusAreasFromText('משהו כללי בלי דומיין')).toEqual([]);
+  });
+});
 
 describe('inferCourseTopicProfile — Hebrew topic keyword rules', () => {
   test('זורמים / זרימה -> fluids', () => {

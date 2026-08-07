@@ -56,6 +56,13 @@ export interface ConstraintModel {
   pinnedCourseIds: Set<string>;
   /** course_ids the user explicitly wants. */
   wantedCourseIds: Set<string>;
+  /**
+   * Optional per-course general user-fit score (0..1) for the requested focus
+   * area(s)/style(s) — a SOFT optimization signal scored below explicit
+   * wanted/unwanted preferences (scorePlan's interest_fit goal). Absent/empty
+   * => no fit preference expressed, and scoring is byte-identical to before.
+   */
+  courseFitById?: Map<string, number>;
   /** Phase 0 — institution identity. Left undefined until a real multi-institution source exists. */
   institutionId?: string;
   /** Phase 0 — program identity, derived from the request's program_id where already parsed. */

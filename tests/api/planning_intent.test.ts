@@ -66,6 +66,34 @@ test('negated schedule ("אל תשבץ") stays an EXCLUSION — the imperative m
   expect(intent.preferCourseIds).toEqual([]);
 });
 
+test('focus request "אני רוצה להתמקד בתכן" → canonical focus-area preference (mechanical_design), NOT a course-prefer', () => {
+  const intent = interpretPlanningIntent('אני רוצה להתמקד בתכן', CATALOG);
+  expect(intent.focusAreas).toEqual([{ area: 'mechanical_design', weight: 1 }]);
+  // the "רוצה" course-prefer path must NOT also fire and strand "להתמקד בתכן" as an unresolved course
+  expect(intent.preferCourseIds).toEqual([]);
+  expect(intent.recognized.find((r) => r.kind === 'prefer')).toBeUndefined();
+  expect(intent.recognized.find((r) => r.kind === 'focus')).toMatchObject({
+    status: 'resolved',
+    resolvedAreas: ['mechanical_design'],
+  });
+});
+
+test('focus is generic (non-domain): "להתמקד בבקרה" → control_systems; unknown domain → honest unresolved', () => {
+  expect(interpretPlanningIntent('אני רוצה להתמקד בבקרה', CATALOG).focusAreas).toEqual([
+    { area: 'control_systems', weight: 1 },
+  ]);
+  const unknown = interpretPlanningIntent('אני רוצה להתמקד במשהו שלא קיים', CATALOG);
+  expect(unknown.focusAreas).toEqual([]);
+  expect(unknown.recognized.find((r) => r.kind === 'focus')).toMatchObject({ status: 'unresolved' });
+});
+
+test('a plain course preference is unaffected by focus recognition', () => {
+  // no focus marker → the existing course-prefer path still resolves by name
+  const intent = interpretPlanningIntent('אני מעדיף תורת התנודות', CATALOG);
+  expect(intent.preferCourseIds).toEqual(['C-VIB']);
+  expect(intent.focusAreas).toEqual([]);
+});
+
 test('workload cap → maxWeeklyHours extracted with exact (half-hour) precision', () => {
   expect(interpretPlanningIntent('שמור על עד 25 ש״ש בסמסטר.', CATALOG).maxWeeklyHours).toBe(25);
   expect(interpretPlanningIntent('לא יותר מ-23.5 שעות בסמסטר', CATALOG).maxWeeklyHours).toBe(23.5);

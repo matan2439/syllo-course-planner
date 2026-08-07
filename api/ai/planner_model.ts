@@ -33,6 +33,8 @@ export interface BuildModelOptions {
   currentlyPlannedCourseIds?: string[];
   wantedCourseIds?: string[];
   unwantedCourseIds?: string[];
+  /** Per-course general user-fit score (0..1) for a requested focus area/style — soft planner signal. */
+  courseFitById?: Map<string, number>;
   /** Hard-excluded course_ids (explicit user exclusion / disallowed). */
   disallowedCourseIds?: string[];
   pinnedCourseIds?: string[];
@@ -135,6 +137,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     disallowedCourseIds,
     pinnedCourseIds,
     wantedCourseIds,
+    courseFitById: opts.courseFitById,
     institutionId: opts.institutionId,
     programId: opts.programId,
     catalogYear: opts.catalogYear,
