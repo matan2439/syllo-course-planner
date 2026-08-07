@@ -20,12 +20,15 @@ import {
   SCHEMA_VERSION,
   ONTOLOGY_VERSION,
   EXTRACTOR_VERSION,
+  type ExtractorKind,
   type ProfileCache,
   type ValidatedProfile,
 } from './course_profile_cache';
 
 export interface EnrichOptions {
   courseIds: string[];
+  /** Provenance of this enrichment run. 'live_semantic' = real model; 'captured' = reviewed fixture. */
+  extractorKind: ExtractorKind;
   timeoutMs?: number;
   previous?: ProfileCache | null;
   now?: string;
@@ -62,7 +65,7 @@ export async function enrichProgram(
 
     if (snapshot.sourceType === 'none') {
       profiles[courseId] = buildValidatedProfile({
-        snapshot, extractorName: provider.name, evaluatedCapabilities: [...CAPABILITY_ONTOLOGY], accepted: [], quarantined: [], createdAt: now.slice(0, 10),
+        snapshot, extractorName: provider.name, extractorKind: opts.extractorKind, evaluatedCapabilities: [...CAPABILITY_ONTOLOGY], accepted: [], quarantined: [], createdAt: now.slice(0, 10),
       });
       perCourse.push({ courseId, status: 'no_content', acceptedCount: 0, rejectedCount: 0 });
       continue;
@@ -84,7 +87,7 @@ export async function enrichProgram(
 
     const { accepted, rejected } = validateExtraction(extraction, snapshot, { courseTitle: course.name_he });
     profiles[courseId] = buildValidatedProfile({
-      snapshot, extractorName: provider.name, evaluatedCapabilities: [...CAPABILITY_ONTOLOGY],
+      snapshot, extractorName: provider.name, extractorKind: opts.extractorKind, evaluatedCapabilities: [...CAPABILITY_ONTOLOGY],
       accepted, quarantined: rejected.map((r) => ({ capability: r.capability, reason: r.reason })), createdAt: now.slice(0, 10),
     });
     perCourse.push({ courseId, status: 'enriched', acceptedCount: accepted.length, rejectedCount: rejected.length });
@@ -93,7 +96,7 @@ export async function enrichProgram(
   return {
     cache: {
       programOrCatalog, generatedAt: now, schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION,
-      extractorVersion: EXTRACTOR_VERSION, extractorName: provider.name, profiles,
+      extractorVersion: EXTRACTOR_VERSION, extractorName: provider.name, extractorKind: opts.extractorKind, profiles,
     },
     perCourse,
   };

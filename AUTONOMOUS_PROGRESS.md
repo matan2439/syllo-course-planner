@@ -14,6 +14,122 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-07 (d) — REAL semantic provider (LLM) + protected enrichment; live call credential-blocked
+
+**Accepted baseline:** `c1154b9` (HEAD=origin, clean tree). Production unchanged. This slice
+turns the c1154b9 foundation into a production-capable real-model path and removes the manual
+claims from the authoritative provider role.
+
+**Manual-claim limitation removed.** `ClaimSpecProvider` (human-authored captured claims) is no
+longer the intended production provider — it is now the deterministic test fixture / captured
+evaluation artifact / comparison tool. A real model provider replaces it on the authoritative path.
+
+**Real semantic provider (`api/ai/llm_semantic_provider.ts`, executable production code).**
+`LlmSemanticExtractionProvider` uses the repo's existing AI SDK abstraction: `resolveModel()`
+(course-planner.ts → `ai` `generateObject` with a strict zod schema). Guarantees: the syllabus
+snapshot is the ONLY prompt authority (title excluded; no course ids / expected classifications /
+planner choices injected — only a neutral bilingual capability gloss); bounded input (8k chars),
+timeout (raced, 30s), retries (2); provider/timeout/parse/schema/no_model failures are CLASSIFIED
+(`SemanticProviderError.kind`); the model returns verbatim excerpts only and WE compute offsets
+against the snapshot (buildCapturedExtraction) so a bad offset can't smuggle a claim past grounding;
+raw output never reaches the user; injectable `generate`/`model` for tests; NEVER imported by
+generate-plan (Generate stays deterministic). Model default gpt-4o-mini (Hebrew-capable) via
+resolveModel's OpenAI→Anthropic→Google fallback.
+
+**Protected enrichment (`scripts/enrich_syllabi.ts --live`).** `--live` instantiates the real
+provider (throws `no_model` naming the exact env vars if no credential), runs one real model call
+per evaluated course, validates deterministically, fail-closed preserves the previous valid profile
+on failure, and writes a validated, versioned, provenance-tagged profile. Not a public endpoint (a
+script/job). Default (no `--live`) uses the captured fixture. Distinguishes enriched / no_content /
+provider_failed_kept_previous / provider_failed_no_previous.
+
+**Provenance (`extractorKind`: 'live_semantic' | 'captured' | 'legacy').** Added to every
+ValidatedProfile and the ProfileCache; the app can distinguish live vs captured vs legacy. The
+committed cache is honestly tagged `captured` (not mislabeled live). A test asserts a captured
+profile never claims `llm:` provenance.
+
+**Durable/deployment cache.** The committed `data/enriched_profiles/<program>.json` is a
+deployment-safe IMMUTABLE PRECOMPUTED ARTIFACT bundled with the function exactly like `data/boards`
+(which already works in deployed functions) — production-capable persistence with NO DB migration.
+`loadEnrichedProfileCache` reads it read-only at plan time; Generate performs no extraction.
+
+**LIVE model call — BLOCKED (precise blocker, not "missing credential").** `vercel env ls` shows
+`AI_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DATABASE_URL` configured for Preview+Production.
+BUT they are stored **Sensitive/encrypted**: `vercel env pull --environment=preview` writes EMPTY
+values for them (verified: key value length = 2 chars `""`), so locally `resolveModel()` → NULL and
+a live call cannot run from this environment. The raw key values are injected only inside the
+deployed preview/production runtime. I did NOT ask for or fabricate a key, and deleted the pulled
+env file immediately (no secrets committed/logged). **The one live verification (an actual model
+call) is blocked by the Sensitive-secret retrieval, isolated exactly here.** Everything else —
+provider code, enrichment, validation, cache, provenance, wiring, deterministic tests — is complete
+and GREEN. The provider's full code path (prompt build → schema → grounding → validation → error
+classification) is proven with an INJECTED `generate` (identical code, deterministic).
+
+**Semantic-only decision change — DATA-BLOCKED (searched thoroughly, not manufactured).** The two
+semantic-only courses (0571-4174, 0542-4226; legacy-missed, semantic-derived, validated, bounded
+0.6) reach the planner fit map, but a fine prior-credit sweep (k=84..100, this run) plus last slice's
+exhaustive with/without-exclusion search finds NO state where either is placed by focus-only:
+0542-4226 is always a control filler (never focus-only) and 0571-4174 (2h, cross-faculty) is never a
+selected filler. Their design fit reaches scoring but does not flip the decision on this board's real
+authoritative data. Reported honestly per the task; not forced by editing offerings/prereqs/syllabi
+or deleting patterns. The real-board change remains 0542-4425 @92h (identified by both extractors),
+now cache-sourced.
+
+**Priority/legality (unchanged, re-verified).** interest_fit stays below legality/completion/
+mandatory/offerings/prereqs/exclusions/hard-load/explicit-wanted; exclusion of 4425 → absent; explicit
+wanted (4351) honored; no surplus; validated absence (4420) never introduced; Apply preserves the
+proposal.
+
+**RED→GREEN.** llm_semantic_provider.test.ts (6): structured-output parsing, verbatim grounding,
+confidence bounding through the real provider path, timeout/schema/provider error classification,
+no_model naming the env var, empty-content no-call. semantic_provider_boundary.test.ts (4): Generate
+imports no provider (source scan); cache honestly provenance-tagged (never live-mislabeled); a live
+run tags live_semantic and calls the provider once/course; provider failure keeps the previous valid
+profile. course_profile_cache updated for extractorKind.
+
+**Files changed.** New: api/ai/llm_semantic_provider.ts, tests/api/llm_semantic_provider.test.ts,
+tests/api/semantic_provider_boundary.test.ts. Modified: api/ai/course_profile_cache.ts (extractorKind
++ ExtractorKind type), api/ai/syllabus_enrichment.ts (thread extractorKind), scripts/enrich_syllabi.ts
+(--live real provider), data/enriched_profiles/mechanical_engineering_2027.json (regenerated with
+extractorKind), tests/api/course_profile_cache.test.ts (extractorKind).
+
+**Verification.** Full API 1526 passed (1 skipped); full UI 835 passed post-commit (pre-commit lone
+failure = course_details_panel working-tree git-diff guard, green committed); root+web typechecks
+clean; web build clean. Browser/network: control (4425 absent, no outcome) + focus (4425
+@year_3_semester_b, 4420 absent, honored cites cached quote) via direct :3002; **server log shows NO
+model/provider invocation during Generate** (deterministic); rendered /planner/native + Apply
+preserves 4425; console clean. Pre-existing: 38 pytest failures (no Python touched); side-effect file
+restored, not staged.
+
+### PRODUCTION ROLLOUT CHECKLIST (semantic enrichment — do NOT auto-deploy)
+- **Env vars (already set on Vercel, Sensitive):** `OPENAI_API_KEY` (and/or `ANTHROPIC_API_KEY`,
+  `GOOGLE_GENERATIVE_AI_API_KEY`), optional `AI_PROVIDER`. No values in repo.
+- **Model config:** default gpt-4o-mini via resolveModel; override with `AI_PROVIDER`. Cost control:
+  bounded 8k-char input, 2 retries, 30s timeout, one call per evaluated course; enrichment is manual/
+  batched (never per Generate).
+- **Durable cache:** committed `data/enriched_profiles/<program>.json` (immutable artifact, bundled).
+  No DB migration. (Optional future: durable store if profiles must be written at runtime.)
+- **Enrichment trigger + authz:** run `npx tsx scripts/enrich_syllabi.ts <program> --live` in an
+  environment that HAS the raw key (protected CI job / local with key), review the produced cache +
+  `evaluation.json` diff, then commit the artifact. It is NOT a public endpoint.
+- **Failure/rollback:** enrichment fails closed (keeps last valid profile); if the cache is absent/
+  corrupt, `loadEnrichedProfileCache` returns null → Generate proceeds with NO fit (honest, available).
+  Rollback = revert the cache artifact commit.
+- **Deployment ordering:** commit the validated cache artifact BEFORE/with the deploy so Generate reads
+  it; no runtime enrichment on the request path.
+- **Observability:** provider errors are classified (`SemanticProviderError.kind`); enrichment prints a
+  per-course summary (status/accepted/rejected) without raw output or secrets.
+- **Stale profiles:** `lookupProfile` returns `stale` on syllabus content-hash change and
+  `refresh_required` on schema/ontology/extractor-version change → re-run enrichment.
+- **Before production:** run one real `--live` enrichment with the key (in a key-bearing env), review
+  the live cache vs `evaluation.json`, commit as `extractorKind:'live_semantic'`, then deploy.
+
+**Next recommended slice.** Run `--live` enrichment where the key is available (protected CI or a
+key-bearing local env) to promote the committed cache to `live_semantic`; then broaden the ontology
+(practical/lab/theoretical/assessment) through the same grounded pipeline. The semantic-only decision
+change remains data-blocked on this board — revisit with a program/state where a legacy-missed course
+is genuinely decision-relevant.
+
 ## Session 2026-08-07 (c) — semantic syllabus-enrichment pipeline (validated, versioned, cache-fed planner)
 
 **Accepted baseline:** `22d9f3f` (HEAD=origin, clean tree). Production unchanged.

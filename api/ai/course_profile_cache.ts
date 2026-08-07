@@ -19,6 +19,9 @@ export const SCHEMA_VERSION = EXTRACTION_SCHEMA_VERSION;
 export const ONTOLOGY_VERSION = ONT_VER;
 export const EXTRACTOR_VERSION = '1';
 
+/** Provenance of the evidence — the real application must be able to tell these apart. */
+export type ExtractorKind = 'live_semantic' | 'captured' | 'legacy';
+
 export interface ValidatedProfile {
   courseId: string;
   snapshotHash: string;
@@ -26,6 +29,8 @@ export interface ValidatedProfile {
   ontologyVersion: string;
   extractorVersion: string;
   extractorName: string;
+  /** live_semantic = real model + validator; captured = reviewed fixture; legacy = pattern extractor. */
+  extractorKind: ExtractorKind;
   /** capabilities that were actually EVALUATED for this course (so a real absence ≠ "never checked"). */
   evaluatedCapabilities: string[];
   evidence: CourseCapabilityEvidence[];
@@ -40,6 +45,7 @@ export interface ProfileCache {
   ontologyVersion: string;
   extractorVersion: string;
   extractorName: string;
+  extractorKind: ExtractorKind;
   profiles: Record<string, ValidatedProfile>;
 }
 
@@ -90,6 +96,7 @@ export function loadEnrichedProfileCache(programOrCatalog: string): ProfileCache
 export function buildValidatedProfile(input: {
   snapshot: SyllabusSnapshot;
   extractorName: string;
+  extractorKind: ExtractorKind;
   evaluatedCapabilities: string[];
   accepted: CourseCapabilityEvidence[];
   quarantined: Array<{ capability: string; reason: string }>;
@@ -102,6 +109,7 @@ export function buildValidatedProfile(input: {
     ontologyVersion: ONTOLOGY_VERSION,
     extractorVersion: EXTRACTOR_VERSION,
     extractorName: input.extractorName,
+    extractorKind: input.extractorKind,
     evaluatedCapabilities: [...input.evaluatedCapabilities],
     evidence: input.accepted,
     quarantined: input.quarantined,

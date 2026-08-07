@@ -1,35 +1,56 @@
 /**
- * Explicit enrichment operation (run manually, NOT during Generate):
- *   board syllabi → captured semantic provider → grounding validator → versioned cache file.
+ * Protected enrichment operation (run manually / in a protected job, NOT during Generate):
+ *   board syllabi → semantic provider → grounding validator → versioned cache file.
  *
- * Usage: npx tsx scripts/enrich_syllabi.ts mechanical_engineering_2027
- * Writes data/enriched_profiles/<program>.json. Deterministic (captured provider).
+ * Modes:
+ *   npx tsx scripts/enrich_syllabi.ts <program> --live      # REAL model (needs a provider credential)
+ *   npx tsx scripts/enrich_syllabi.ts <program>             # captured reviewed fixture (deterministic)
+ *
+ * --live requires a configured provider credential (OPENAI_API_KEY / ANTHROPIC_API_KEY /
+ * GOOGLE_GENERATIVE_AI_API_KEY, and optionally AI_PROVIDER). It performs one real model call
+ * per evaluated course, deterministically validates the output, and writes a validated,
+ * versioned, provenance-tagged profile. It never exposes raw model output or secrets, and is
+ * never invoked by ordinary Generate. The written cache is a deployment-safe immutable artifact.
  */
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { ClaimSpecProvider } from '../api/ai/semantic_course_extraction';
+import { ClaimSpecProvider, type SemanticExtractionProvider } from '../api/ai/semantic_course_extraction';
+import { LlmSemanticExtractionProvider } from '../api/ai/llm_semantic_provider';
 import { enrichProgram } from '../api/ai/syllabus_enrichment';
-import { loadEnrichedProfileCache } from '../api/ai/course_profile_cache';
+import { loadEnrichedProfileCache, type ExtractorKind } from '../api/ai/course_profile_cache';
 
 async function main() {
-  const program = process.argv[2] || 'mechanical_engineering_2027';
+  const args = process.argv.slice(2);
+  const program = args.find((a) => !a.startsWith('--')) || 'mechanical_engineering_2027';
+  const live = args.includes('--live');
   const root = join(__dirname, '..');
   const board = JSON.parse(readFileSync(join(root, 'data', 'boards', `${program}.json`), 'utf8'));
   const captured = JSON.parse(readFileSync(join(root, 'data', 'enriched_profiles', 'captured_extractions.json'), 'utf8'));
-
-  const provider = new ClaimSpecProvider(captured.claims, captured.extractorName);
-  const courseIds = Object.keys(captured.claims);
+  const courseIds: string[] = Object.keys(captured.claims);
   const previous = loadEnrichedProfileCache(program);
 
-  // Deterministic generatedAt so re-running on unchanged inputs produces no diff.
+  let provider: SemanticExtractionProvider;
+  let extractorKind: ExtractorKind;
+  if (live) {
+    provider = new LlmSemanticExtractionProvider({ timeoutMs: 30000, maxRetries: 2 }); // throws no_model if no credential
+    extractorKind = 'live_semantic';
+    console.log(`[enrich] LIVE semantic extraction via ${provider.name}`);
+  } else {
+    provider = new ClaimSpecProvider(captured.claims, captured.extractorName);
+    extractorKind = 'captured';
+    console.log('[enrich] captured reviewed fixture (deterministic; NOT a live model)');
+  }
+
+  // Deterministic generatedAt for captured runs so re-running unchanged inputs is a no-op.
+  const now = live ? new Date().toISOString() : '2026-08-07T00:00:00.000Z';
   const { cache, perCourse } = await enrichProgram(board, program, provider, {
-    courseIds, timeoutMs: 20000, previous, now: '2026-08-07T00:00:00.000Z',
+    courseIds, extractorKind, timeoutMs: 30000, previous, now,
   });
 
   const outPath = join(root, 'data', 'enriched_profiles', `${program}.json`);
   writeFileSync(outPath, JSON.stringify(cache, null, 2) + '\n');
-  console.log(`[enrich] wrote ${outPath}`);
+  console.log(`[enrich] wrote ${outPath} (extractorKind=${cache.extractorKind}, extractor=${cache.extractorName})`);
   for (const r of perCourse) console.log(`  ${r.courseId}: ${r.status} accepted=${r.acceptedCount} rejected=${r.rejectedCount}`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => { console.error(`[enrich] failed: ${e?.kind ? e.kind + ': ' : ''}${e?.message ?? e}`); process.exit(1); });

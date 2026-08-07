@@ -22,11 +22,11 @@ const snap = (hash: string): SyllabusSnapshot => ({
 
 const profile = (over: Partial<ValidatedProfile> = {}): ValidatedProfile => ({
   courseId: '0542-4425', snapshotHash: 'abc', schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION,
-  extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', evaluatedCapabilities: ['mechanical_design'],
+  extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', extractorKind: 'captured', evaluatedCapabilities: ['mechanical_design'],
   evidence: [{ courseId: '0542-4425', capability: 'mechanical_design', claim: 'x', strength: 0.9, sourceType: 'official_syllabus', sourceUrl: 'u', sourceAuthority: 'tau_official_syllabus', sourceYear: 2025, extractedEvidence: 'שיטות התכן', inferenceLevel: 'explicit', confidence: 0.8, retrievedAt: 't' }],
   quarantined: [], createdAt: '2026-08-07', ...over,
 });
-const cache = (p: ValidatedProfile): ProfileCache => ({ programOrCatalog: 'mech', generatedAt: 't', schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION, extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', profiles: { [p.courseId]: p } });
+const cache = (p: ValidatedProfile): ProfileCache => ({ programOrCatalog: 'mech', generatedAt: 't', schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION, extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', extractorKind: 'captured', profiles: { [p.courseId]: p } });
 
 test('valid matching profile → cache HIT with the requested capability evidence', () => {
   const r = lookupProfile(cache(profile()), snap('abc'), 'mechanical_design');
@@ -35,7 +35,7 @@ test('valid matching profile → cache HIT with the requested capability evidenc
 });
 
 test('no profile for the course → REFRESH REQUIRED', () => {
-  const empty: ProfileCache = { programOrCatalog: 'mech', generatedAt: 't', schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION, extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', profiles: {} };
+  const empty: ProfileCache = { programOrCatalog: 'mech', generatedAt: 't', schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION, extractorVersion: EXTRACTOR_VERSION, extractorName: 'captured', extractorKind: 'captured', profiles: {} };
   expect(lookupProfile(empty, snap('abc'), 'mechanical_design').status).toBe('refresh_required');
 });
 
@@ -64,7 +64,7 @@ test('an evaluated capability with no positive evidence → HIT with insufficien
 
 test('buildValidatedProfile stamps all versions + snapshot hash so identity is content-tied', () => {
   const p = buildValidatedProfile({
-    snapshot: snap('HASH123'), extractorName: 'captured', evaluatedCapabilities: ['mechanical_design'],
+    snapshot: snap('HASH123'), extractorName: 'captured', extractorKind: 'captured', evaluatedCapabilities: ['mechanical_design'],
     accepted: profile().evidence, quarantined: [],
   });
   expect(p.snapshotHash).toBe('HASH123');

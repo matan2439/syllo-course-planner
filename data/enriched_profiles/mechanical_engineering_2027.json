@@ -5,6 +5,7 @@
   "ontologyVersion": "1",
   "extractorVersion": "1",
   "extractorName": "captured-review-v1",
+  "extractorKind": "captured",
   "profiles": {
     "0542-4425": {
       "courseId": "0542-4425",
@@ -13,6 +14,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -42,6 +44,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -71,6 +74,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -100,6 +104,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -129,6 +134,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -158,6 +164,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
@@ -172,6 +179,7 @@
       "ontologyVersion": "1",
       "extractorVersion": "1",
       "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
       "evaluatedCapabilities": [
         "mechanical_design"
       ],
