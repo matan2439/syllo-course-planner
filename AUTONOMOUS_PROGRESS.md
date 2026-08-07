@@ -14,6 +14,123 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-07 (c) — semantic syllabus-enrichment pipeline (validated, versioned, cache-fed planner)
+
+**Accepted baseline:** `22d9f3f` (HEAD=origin, clean tree). Production unchanged.
+
+**Why.** `22d9f3f` extracted course-capability evidence with hand-written phrase patterns over
+official syllabus text — sound but non-scaling. This slice adds the semantic-extraction pipeline
+that supersedes the pattern extractor on the authoritative path.
+
+**Provider status (audited).** The repo uses the Vercel AI SDK (`ai` + `@ai-sdk/anthropic|openai|
+google`) via `resolveModel()`, which builds a model only if a provider API key env var is set.
+`.env.local` has NO model key → **no runtime model provider is configured**. Per the provider rules
+the semantic-model step is CAPTURED (real-source-grounded, reviewed, labeled) not live; a fake
+provider covers failure/timeout tests; the LLM provider path (`resolveModel` + AI SDK generateObject)
+is a documented deferred boundary. No checkpoint blocker (22d9f3f in history, tree clean, no DB/
+crawler needed, grounding validator cleanly separates untrusted model output from evidence).
+
+**Pipeline (real vertical, model-independent safety core):**
+snapshot → semantic provider (untrusted) → grounding validator → validated versioned profile →
+cache → evidence-backed matcher → real planner → traceable explanation.
+- `syllabus_snapshot.ts` — `SyllabusSnapshot` {courseId, institution, programOrCatalog, sourceType,
+  sourceUrl, sourceAuthority, sourceYear, language, retrievedAt, contentHash, normalizedContent},
+  built from the board's official syllabus text (TITLE excluded); `contentHash`=sha256(normalized).
+- `semantic_course_extraction.ts` — ontology (`mechanical_design`, ONTOLOGY_VERSION), untrusted
+  `CandidateClaim` {capability, inferenceLevel, confidence, evidenceSpans[{excerpt,section,offsets}],
+  rationale}, `SemanticExtractionProvider`, `ClaimSpecProvider` (captured, grounds excerpts against the
+  live snapshot), `runExtractionWithTimeout` (bounded).
+- `semantic_extraction_validator.ts` — DETERMINISTIC grounding: excerpt must exist verbatim in the
+  snapshot, offsets must match, capability∈ontology, level/confidence valid, non-empty evidence for
+  explicit/derived, title-citation rejected, contradictions reconciled (strongest grounded wins),
+  `boundedConfidence` caps the model's number by inference level (explicit≤0.9 / derived≤0.6 /
+  estimated≤0.35) × source authority + small span bonus. Accepted claims map to the existing
+  `CourseCapabilityEvidence`.
+- `course_profile_cache.ts` — versioned cache; key = courseId + snapshot contentHash + schema/
+  ontology/extractor versions; `lookupProfile` → hit / stale (hash changed) / refresh_required
+  (missing course, version mismatch, or capability never evaluated) / insufficient_evidence
+  (evaluated, no positive evidence) / quarantined. `loadEnrichedProfileCache` reads the committed
+  JSON. Storage = committed JSON (narrowest versioned storage; persistent DB is deferred).
+- `syllabus_enrichment.ts` — the explicit (not-per-Generate) enrichment op; provider failure keeps
+  the previous valid profile (fail-closed). `scripts/enrich_syllabi.ts` writes
+  `data/enriched_profiles/mechanical_engineering_2027.json`.
+
+**Legacy pattern extractor — contained.** `course_capability_evidence.ts` is RETIRED from the
+authoritative planner path (`buildCourseFitById` now reads ONLY the validated cache) and kept only for
+regression/comparison in the evaluation. It never overrides validated evidence and never produces new
+high-confidence profiles.
+
+**Real courses + official sources evaluated (data/enriched_profiles/evaluation.json).** All TAU IMS
+syllabi already committed in the board (source urls + fetch dates + conf 0.8). Legacy vs semantic:
+- BOTH catch (explicit): 0542-4425 (הדפסת תלת מימד; "שיטות התכן"), 0542-2400 (תכן מכני 1;
+  "שיטות תכן שונות"), 0542-4722 (MEMS; "עקרונות תכן וייצור").
+- **SEMANTIC-ONLY** (legacy MISSING → semantic DERIVED, validated, bounded conf 0.6):
+  **0571-4174** (תיכון וחשיבה המצאתית; paraphrase "פתרונות יצירתיים וישימים"),
+  **0542-4226** (יישומי אלמנטים סופיים; "משלבי התכן הראשוניים" = early design stages).
+- Correct NEGATIVES (both missing): 0542-4420 (תורת המכונות — machine theory), 0542-4351 (marine/waves).
+
+**Confidence bounding demonstrated.** Captured model confidences were 0.9–0.95; the deterministic
+policy capped derived claims to 0.60 and explicit to 0.90 in the written cache — the model cannot
+self-certify high confidence.
+
+**User-goal → capability → course evidence chain.** "אני רוצה להתמקד בתכן" → focusArea/capability
+mechanical_design → cache lookup on each course's content-hashed snapshot → validated official-syllabus
+evidence → planner fit. External context (ABET, 22d9f3f) still attached to the explanation.
+
+**Control vs preference (real board, prior credit 92h).** Control: 26 courses, blocked=false, 0542-4425
+ABSENT, no intentOutcome. Focus: 0542-4425 placed at year_3_semester_b (real B offering), blocked=false,
+errors=[], **fit sourced from the validated cache** (honored cites the cached quote "שיטות תכן שונות …");
+0542-4420 (validated absence) NOT introduced. Exclusion of 4425 → absent (exclusion beats fit); explicit
+wanted (0542-4351) honored alongside; no surplus.
+
+**Honest planner-level limitation (NOT manufactured).** The semantic-only courses (0571-4174, 0542-4226)
+carry validated design evidence that reaches the planner fit map, but on THIS board they do not change
+the FINAL generated plan in any reachable legal state: 0571-4174 (2h, cross-faculty) is not a filler the
+planner selects, and 0542-4226 is already a control filler / is out-competed by 4425 (explicit, 0.9). The
+real-board plan change is driven by 4425 (which both extractors identify), now cache-sourced. Per the task
+("do not manufacture this case"), this is reported, not forced. The semantic signal's ability to reach and
+affect scoring IS proven (buildCourseFitById includes 0571-4174 & 0542-4226 with positive fit; scorePlan's
+interest_fit consumes courseFitById — 544544d). Deferred: a board/state where a legacy-missed course is
+genuinely decision-relevant, or connecting a runtime model provider to broaden coverage.
+
+**Provider actually used.** CAPTURED (ClaimSpecProvider over reviewed real-source claims), deterministic,
+no live model. Live LLM extraction is DEFERRED (no key configured) — the boundary (`SemanticExtractionProvider`
++ resolveModel/AI-SDK) exists but is not exercised.
+
+**Cache key + reuse/refresh/invalidation.** Reuse only when snapshot contentHash matches AND schema/
+ontology/extractor versions match AND the capability was evaluated. Changed syllabus → new hash → stale.
+Changed schema/ontology/extractor version → refresh_required. Generate performs NO extraction — it builds
+snapshots + reads the committed cache (proven: buildCourseFitById only calls loadEnrichedProfileCache +
+lookupProfile; generate-plan imports no provider).
+
+**Security/operability.** No secrets committed or logged; bounded timeout + fail-closed enrichment (keeps
+last valid profile); raw provider output never reaches the user (validated first); planner remains available
+with no fit when the cache is absent.
+
+**RED→GREEN.** 4 core suites (snapshot/extraction/validator/cache, 24 tests) RED (modules missing) → GREEN.
+A probe caught NO integration bug this time; a TS-narrowing fix in buildCapturedExtraction. Acceptance
+suite (6) GREEN: semantic>legacy, hallucination rejected, cache→matcher, real cache-sourced plan change,
+exclusion>fit, validated-absence-not-introduced.
+
+**Files changed.** New: api/ai/syllabus_snapshot.ts, api/ai/semantic_course_extraction.ts,
+api/ai/semantic_extraction_validator.ts, api/ai/course_profile_cache.ts, api/ai/syllabus_enrichment.ts,
+scripts/enrich_syllabi.ts, data/enriched_profiles/{captured_extractions.json, mechanical_engineering_2027.json,
+evaluation.json}, tests/api/{syllabus_snapshot, semantic_course_extraction, semantic_extraction_validator,
+course_profile_cache, semantic_enrichment_acceptance}.test.ts. Modified: api/ai/generate-plan.ts
+(buildCourseFitById reads the validated cache; legacy extractor retired from the fit path).
+
+**Verification.** Full API 1516 passed (1 skipped); full UI 835 passed post-commit (pre-commit lone failure
+= course_details_panel working-tree git-diff guard, green committed); root+web typechecks clean; web build
+clean. Browser/network: control (4425 absent, no outcome) + focus (4425 @year_3_semester_b, 4420 absent,
+honored cites the CACHED quote, ABET note) via direct :3002 and rendered /planner/native + Apply preserves
+4425; console clean. Pre-existing/out-of-scope: 38 pytest failures (no Python touched); pytest side-effect
+file restored, not staged.
+
+**Next recommended slice.** (1) Connect a runtime model provider (resolveModel + AI SDK generateObject with
+the schema) behind the same validator + cache, and run one real extraction; (2) broaden the ontology
+(practical/lab/theoretical/assessment) with the SAME grounded pipeline; (3) find/curate a board state where a
+legacy-missed course is decision-relevant so the semantic signal changes the generated plan end to end.
+
 ## Session 2026-08-07 (b) — evidence-backed course matching (three-layer): syllabus evidence replaces title inference
 
 **Accepted baseline:** `544544d` (HEAD=origin, clean tree). `project_native_planner_journey_mvp.md`

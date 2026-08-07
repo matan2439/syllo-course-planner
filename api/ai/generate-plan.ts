@@ -84,8 +84,10 @@ import {
   buildIntentOutcome,
   type PlanningIntent,
 } from './planning_intent';
-import { extractCourseCapabilityEvidence, type CourseCapabilityEvidence } from './course_capability_evidence';
+import { type CourseCapabilityEvidence } from './course_capability_evidence';
 import { getExternalContextEvidence } from './external_context_evidence';
+import { buildSyllabusSnapshot } from './syllabus_snapshot';
+import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -175,15 +177,19 @@ export interface CourseFitResult {
 
 /**
  * Resolve interpreted focus-area preferences into a per-course general user-fit
- * score DERIVED FROM OFFICIAL-SYLLABUS EVIDENCE (course_capability_evidence.ts), not
- * from course-title inference — a course title never establishes design alignment.
- * Evidence quality drives the weight (explicit > derived > estimated; missing → 0).
- * Generic: any AcademicFocusArea for which an evidence extractor + data exist flows
- * through the same path. Empty/undefined when no focus is expressed (planner
- * byte-identical to before).
+ * score, sourced ONLY from the VALIDATED, VERSIONED enrichment cache (semantic
+ * extraction → grounding validation → versioned profile). Generate performs no
+ * semantic extraction: it builds each course's syllabus snapshot (content hash) and
+ * reads the committed cache (course_profile_cache.ts). A course contributes fit only
+ * on a cache HIT for the requested capability; stale/refresh-required/insufficient →
+ * no fit (honest — we only trust reviewed, validated evidence, never title inference).
+ * Empty/undefined when no focus is expressed or no cache exists (planner unchanged).
  */
-export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focusAreas']): CourseFitResult | undefined {
-  if (!focusAreas?.length) return undefined;
+export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focusAreas'], programOrCatalog?: string): CourseFitResult | undefined {
+  if (!focusAreas?.length || !programOrCatalog) return undefined;
+  const cache = loadEnrichedProfileCache(programOrCatalog);
+  if (!cache) return undefined; // no validated evidence available → no fit
+
   const courses: any[] = [];
   for (const s of board?.semesters ?? []) for (const c of s?.courses ?? []) courses.push(c);
   for (const c of board?.metadata?.program_repository_courses ?? []) courses.push(c);
@@ -193,13 +199,14 @@ export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focus
   for (const c of courses) {
     const id = c?.course_id;
     if (typeof id !== 'string' || fitById.has(id)) continue;
+    const snapshot = buildSyllabusSnapshot(c, programOrCatalog);
     let sum = 0;
     let best: CourseCapabilityEvidence | undefined;
     for (const fa of focusAreas) {
-      const ev = extractCourseCapabilityEvidence(c, fa.area);
-      if (ev.inferenceLevel === 'missing' || ev.strength <= 0) continue;
-      sum += ev.strength * fa.weight;
-      if (!best || ev.strength > best.strength) best = ev;
+      const look = lookupProfile(cache, snapshot, fa.area);
+      if (look.status !== 'hit' || !look.evidence) continue;
+      sum += look.evidence.strength * fa.weight;
+      if (!best || look.evidence.strength > best.strength) best = look.evidence;
     }
     if (sum > 0) {
       fitById.set(id, sum);
@@ -1469,8 +1476,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     effectivePreferences = { ...effectivePreferences, ...merged };
   }
   // General user-fit (focus-area) → per-course soft fit signal for the planner,
-  // derived from OFFICIAL-SYLLABUS evidence (not title inference).
-  const courseFit = interpret_free_text === true ? buildCourseFitById(board, interpretedIntent?.focusAreas ?? []) : undefined;
+  // sourced from the VALIDATED enrichment cache (no semantic extraction at Generate).
+  const courseFit = interpret_free_text === true ? buildCourseFitById(board, interpretedIntent?.focusAreas ?? [], program_id) : undefined;
   const courseFitById = courseFit?.fitById;
 
   const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById);

@@ -1,0 +1,183 @@
+{
+  "programOrCatalog": "mechanical_engineering_2027",
+  "generatedAt": "2026-08-07T00:00:00.000Z",
+  "schemaVersion": "1",
+  "ontologyVersion": "1",
+  "extractorVersion": "1",
+  "extractorName": "captured-review-v1",
+  "profiles": {
+    "0542-4425": {
+      "courseId": "0542-4425",
+      "snapshotHash": "5baac092fddb8aa1ab6c8f8e64507f75a0740337276ff0cb74e0716beb79f8bd",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [
+        {
+          "courseId": "0542-4425",
+          "capability": "mechanical_design",
+          "claim": "Official syllabus states the course teaches plastic-part design methods and advanced design with CAD/FEA tooling.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "שיטות התכן … לתכן מתקדם",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-06-10T21:32:17.832852+00:00"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0542-2400": {
+      "courseId": "0542-2400",
+      "snapshotHash": "2874a6d2f0252ddf028488addd49976c8c110ed022fa26b8f17f28b8e53e986b",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [
+        {
+          "courseId": "0542-2400",
+          "capability": "mechanical_design",
+          "claim": "Official syllabus states the course teaches various machine-element design methods and advanced design topics.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542240001&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "שיטות תכן שונות … נושאים מתקדמים בתכן",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-06-10T21:31:52.277470+00:00"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0542-4722": {
+      "courseId": "0542-4722",
+      "snapshotHash": "7b01332ede1015c97b4817b45f784f639e05ab681a4b0758fa37231f84fbe15b",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [
+        {
+          "courseId": "0542-4722",
+          "capability": "mechanical_design",
+          "claim": "Official syllabus states the course teaches MEMS design principles and detailed device design.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472201&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "עקרונות תכן וייצור … תכן מפורט",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-06-10T21:32:23.581109+00:00"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0571-4174": {
+      "courseId": "0571-4174",
+      "snapshotHash": "c7ca38c2a509f6fead5587af9447107a71707a53f4cdfa41e3cc0112b600f6bf",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [
+        {
+          "courseId": "0571-4174",
+          "capability": "mechanical_design",
+          "claim": "Semantic paraphrase: the official syllabus frames the course around producing creative, feasible engineering solutions to real problems (inventive/design thinking) — no explicit design-methodology phrase, so DERIVED.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "פתרונות יצירתיים וישימים",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-06-10T21:32:36.141448+00:00"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0542-4226": {
+      "courseId": "0542-4226",
+      "snapshotHash": "c52f1ee705d9a7dc50accf3968bf98eb543d02e20be0d70f645fe4487019833d",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [
+        {
+          "courseId": "0542-4226",
+          "capability": "mechanical_design",
+          "claim": "Semantic paraphrase: the official syllabus places simulation work from the early design stages through final validation — design-process activity expressed without the exact manual phrases, so DERIVED.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422602&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "משלבי התכן הראשוניים",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-06-10T21:32:14.406706+00:00"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0542-4420": {
+      "courseId": "0542-4420",
+      "snapshotHash": "89c34faaa48450a0fb03ae7d51fd236355ca42128e201ddc6bef7921a82c455f",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    },
+    "0542-4351": {
+      "courseId": "0542-4351",
+      "snapshotHash": "b5def825a43bc1a260108367f184b569535c0238c636b26bf771d689206a4f6d",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "evaluatedCapabilities": [
+        "mechanical_design"
+      ],
+      "evidence": [],
+      "quarantined": [],
+      "createdAt": "2026-08-07"
+    }
+  }
+}
