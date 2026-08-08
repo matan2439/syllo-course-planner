@@ -14,6 +14,84 @@ report — recommend the human product owner action the Vercel Git
 integration link directly rather than schedule further autonomous
 re-verification of an unchanged blocker.**)._
 
+## Session 2026-08-08 — protected enrichment workflow + Supabase-503 diagnosis; live run owner-blocked
+
+**Accepted baseline:** `5b6aa86` (HEAD=origin, clean tree). Production unchanged. Focus: close the
+live-run gap via a protected execution mechanism, and diagnose the preview Supabase 503.
+
+**Protected execution mechanism (implemented).** `.github/workflows/enrich-syllabi.yml` — a
+manually-dispatched (`workflow_dispatch`) GitHub Actions workflow that runs the REAL
+`scripts/enrich_syllabi.ts --live` (LlmSemanticExtractionProvider) and uploads the validated profile
+as a REVIEWABLE ARTIFACT. Security boundary: dispatch-only (collaborators/write-access only);
+`permissions: contents: read` (cannot push or deploy); inputs passed via env (`"$PROGRAM"`/`"$COURSES"`),
+never interpolated into the shell → no command injection; a new `parseCourseAllowlist` re-validates the
+allowlist (strict `NNNN-NNNN`, max 12) and bounds model calls to one per course; `timeout-minutes: 10`;
+fails fast with the exact required-secret message if no provider credential is present; no secret/full-
+prompt logging.
+
+**Credential availability by environment (names only, never values).**
+- Local: NO provider key (`OPENAI_/ANTHROPIC_/GOOGLE_*_API_KEY` absent; Vercel-Sensitive values pull as
+  empty) → `resolveModel()` = null.
+- Vercel Preview/Production: `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`AI_PROVIDER` configured but **Sensitive**
+  (not retrievable to any non-runtime environment).
+- **GitHub Actions: NO provider secret** (`gh secret list` empty).
+
+**LIVE RUN — NOT PERFORMED (owner-blocked, two exact actions).** Dispatch of the workflow returned
+`HTTP 404: workflow not found on the default branch` — GitHub only exposes `workflow_dispatch` for
+workflows present on the **default branch (`main`)**; the workflow is on `ui/frontend-modernization`, and
+this run must not merge. So a live run requires the OWNER to: **(1)** land
+`.github/workflows/enrich-syllabi.yml` on the default branch (merge), and **(2)** add a GitHub Actions
+repository secret **`OPENAI_API_KEY`** (or `ANTHROPIC_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`; optional
+`AI_PROVIDER`). No local key exists and I did not ask for or fabricate one. **No live_semantic profile was
+produced this run; the committed cache remains `extractorKind:'captured'`** (honestly labeled; never
+relabeled live). Gaps 1–3 remain OPEN pending those owner actions; the mechanism to close them is now in
+place and tested.
+
+**Preview Supabase 503 — ROOT CAUSE DIAGNOSED (external, owner-only; no code defect).** The failing call
+is `POST /api/ai/generate-plan` → `runQuotaCheck` → `checkAndEnsureSession` (generate-plan.ts:147). When
+the quota-check DB is unreachable it throws (verified locally: `getaddrinfo ENOTFOUND` on the pooler host)
+→ fail-closed **503 `DB_ERROR` phase `quota_check`**. The app's Supabase project `lxwtycowmqosuyfumcbo`
+(tau-course-planner, eu-north-1) is **currently `ACTIVE_HEALTHY`** — the 503 was the **free-tier
+auto-pause** (paused project → pooler DNS NXDOMAIN → throw). This is correct fail-closed behavior:
+generation must NOT bypass the quota/authorization policy when the DB is down (a test now locks this;
+`AI_TEST_MODE` does not rescue a DB-down check). **Not a code defect — no code change.** Owner action for a
+permanent fix: keep the DB reachable (upgrade the Supabase project off the auto-pausing free tier, or add a
+keep-alive). While the project is ACTIVE, preview Generate is not DB-blocked; it re-pauses on inactivity.
+(The board-load path already has a local fallback; the quota path deliberately does not.)
+
+**RED→GREEN.** enrich_workflow.test.ts (7): parseCourseAllowlist accepts valid/dedupes/empty, rejects
+shell-metachar/arbitrary tokens and over-cap sets; the committed workflow is dispatch-only, cannot
+push/deploy, invokes `--live` (not ClaimSpecProvider), passes inputs via env (no injection), gates on the
+secret. generate_plan_quota_db_error.test.ts (2): DB-unreachable → 503 DB_ERROR/quota_check, no plan
+generated, `AI_TEST_MODE` no bypass. (Existing boundary tests already cover: Generate imports no provider;
+captured never relabeled live; live run tags live_semantic + calls provider once/course; provider failure
+keeps previous profile; version invalidation.)
+
+**Planner decision (unchanged, honest).** No live profile exists yet, so no re-run against live evidence
+was possible. Semantic-only status retained: **semantic-only planner decision acceptance: data-blocked**
+(0571-4174/0542-4226 reach the fit map but never change the final generated plan on this board;
+searched again k=84..100 last run — not manufactured). Matcher influence ≠ final-plan change: the cached
+semantic-only evidence DOES reach the fit map (proven), but does NOT change the final legal proposal.
+
+**Files changed.** New: `.github/workflows/enrich-syllabi.yml`, tests/api/enrich_workflow.test.ts,
+tests/api/generate_plan_quota_db_error.test.ts. Modified: api/ai/syllabus_enrichment.ts (parseCourseAllowlist),
+scripts/enrich_syllabi.ts (--courses). No production data relabeled.
+
+**Verification.** Full API 1536 (1535 passed, 1 skipped); full UI 835/835 (clean tree, guard passes);
+root+web typechecks clean; web build clean. Pre-existing: 38 pytest failures (no Python touched);
+side-effect file restored, not staged. Live workflow NOT executed (owner-blocked, above).
+
+**Production prerequisites (updated).** Before live semantic evidence can ship: (1) land the enrichment
+workflow on the default branch; (2) add the `OPENAI_API_KEY` GitHub Actions secret; (3) dispatch the
+workflow for the reviewed course allowlist; (4) review the artifact + re-verify grounding locally; (5)
+commit the `live_semantic` cache; (6) keep Supabase reachable (upgrade off free tier) so preview/prod
+Generate isn't 503'd by auto-pause. Everything else (real provider, validator, versioned cache, provenance,
+deterministic wiring, deployment-safe artifact) is in place.
+
+**Next recommended slice.** Once the two owner actions are done, execute the workflow (live), promote the
+cache to `live_semantic`, and re-run the control-vs-focus acceptance against live evidence; then revisit the
+data-blocked semantic-only decision on a program/state where a legacy-missed course is decision-relevant.
+
 ## Session 2026-08-07 (d) — REAL semantic provider (LLM) + protected enrichment; live call credential-blocked
 
 **Accepted baseline:** `c1154b9` (HEAD=origin, clean tree). Production unchanged. This slice
