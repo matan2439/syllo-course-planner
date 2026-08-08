@@ -34,6 +34,21 @@ export interface EnrichOptions {
   now?: string;
 }
 
+/**
+ * Parse a comma-separated course allowlist (e.g. a workflow input) into a bounded,
+ * validated id list. Strict format (NNNN-NNNN) prevents arbitrary-string/command
+ * injection; a hard cap bounds the model-call count. Throws (never silently passes)
+ * on an invalid token or an over-cap set. Empty input → [].
+ */
+export function parseCourseAllowlist(raw: string | undefined | null, opts: { max?: number } = {}): string[] {
+  const max = opts.max ?? 12;
+  const ids = (raw ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const bad = ids.filter((id) => !/^\d{4}-\d{4}$/.test(id));
+  if (bad.length) throw new Error(`invalid course id(s) in allowlist: ${bad.join(', ')}`);
+  if (ids.length > max) throw new Error(`allowlist too large: ${ids.length} > ${max}`);
+  return [...new Set(ids)];
+}
+
 export interface EnrichOutcome {
   cache: ProfileCache;
   perCourse: Array<{ courseId: string; status: 'enriched' | 'no_content' | 'provider_failed_kept_previous' | 'provider_failed_no_previous'; acceptedCount: number; rejectedCount: number }>;

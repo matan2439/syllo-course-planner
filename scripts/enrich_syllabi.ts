@@ -16,17 +16,25 @@ import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { ClaimSpecProvider, type SemanticExtractionProvider } from '../api/ai/semantic_course_extraction';
 import { LlmSemanticExtractionProvider } from '../api/ai/llm_semantic_provider';
-import { enrichProgram } from '../api/ai/syllabus_enrichment';
+import { enrichProgram, parseCourseAllowlist } from '../api/ai/syllabus_enrichment';
 import { loadEnrichedProfileCache, type ExtractorKind } from '../api/ai/course_profile_cache';
+
+function argValue(args: string[], flag: string): string | undefined {
+  const i = args.indexOf(flag);
+  return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+}
 
 async function main() {
   const args = process.argv.slice(2);
-  const program = args.find((a) => !a.startsWith('--')) || 'mechanical_engineering_2027';
+  const program = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--courses') || 'mechanical_engineering_2027';
   const live = args.includes('--live');
   const root = join(__dirname, '..');
   const board = JSON.parse(readFileSync(join(root, 'data', 'boards', `${program}.json`), 'utf8'));
   const captured = JSON.parse(readFileSync(join(root, 'data', 'enriched_profiles', 'captured_extractions.json'), 'utf8'));
-  const courseIds: string[] = Object.keys(captured.claims);
+  // Bounded, validated course allowlist (e.g. from a protected workflow input); defaults
+  // to the reviewed evaluation set when not supplied.
+  const allow = parseCourseAllowlist(argValue(args, '--courses'), { max: 12 });
+  const courseIds: string[] = allow.length ? allow : Object.keys(captured.claims);
   const previous = loadEnrichedProfileCache(program);
 
   let provider: SemanticExtractionProvider;
