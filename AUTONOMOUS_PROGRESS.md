@@ -4,15 +4,68 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-07-29, session on branch `claude/youthful-tesla-nbj2r3`
-(pure re-verification pass, no state change: queue still resolved, PR #14
-still the only open PR and still correctly parked; production deploy
-blocker re-queried live against Vercel and GitHub — unchanged, still
-external/human-only, now 235 commits behind. **This is the second
-consecutive same-day session to hit this exact wall with nothing new to
-report — recommend the human product owner action the Vercel Git
-integration link directly rather than schedule further autonomous
-re-verification of an unchanged blocker.**)._
+_Last updated: 2026-08-08, session on branch `ui/frontend-modernization`
+(protected enrichment LIVE RUN executed after owner unblocked `workflow`
+scope + `OPENAI_API_KEY`: workflow merged to `main` via PR #80, run
+31251292816 performed a genuine `gpt-4o-mini` invocation, artifact
+validated and grounded — but **no cache promotion is committable** (cache
+homogeneity invariant + partial/failed/over-classified results), so the
+committed cache stays `captured` unchanged. `semantic-only planner decision
+acceptance: data-blocked` retained. All gates green. Production unchanged;
+Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-08 (cont.) — live enrichment run EXECUTED; promotion structurally blocked (no cache change)
+
+**Owner unblocked both prerequisites** (verified by name only, secret value never retrieved): gh token now
+carries the `workflow` scope, and GitHub Actions secret `OPENAI_API_KEY` exists (`gh secret list`).
+
+**Workflow landed on default branch.** Opened a single-file PR (`.github/workflows/enrich-syllabi.yml`,
+copied byte-identical from `c97ea6f` — blob `345a87a…` matched on both PR and `c97ea6f`) targeting `main`;
+merged as **PR #80** (mergeCommit `b406a7d`). `main` is unprotected; `ci.yml` on `main` runs tests only (no
+deploy step); Vercel project is **not connected to a Git repo** (owner-confirmed) → the merge cannot deploy.
+Production/aliases unchanged.
+
+**Genuine live run confirmed.** Dispatched workflow (id **329892984**) against `ref: ui/frontend-modernization`,
+inputs `program=mechanical_engineering_2027`, `courses=0542-4425,0571-4174,0542-4226,0542-4420`.
+Run **31251292816** — success. Provider/model: **OpenAI `gpt-4o-mini`** (`llm:gpt-4o-mini`). Log:
+`[enrich] LIVE semantic extraction via llm:gpt-4o-mini`. Per-course status:
+- `0542-4425` **enriched (live)** accepted=1 — explicit/0.9; matches reviewed `explicit`.
+- `0542-4226` **enriched (live)** accepted=1 — explicit/0.9 — **OVER-CLASSIFIES** vs reviewed `derived`.
+- `0571-4174` **provider_failed_kept_previous** — no live result; kept captured `derived`/0.6.
+- `0542-4420` **provider_failed_kept_previous** — no live result; kept captured (no evidence).
+
+**Artifact validated** (`enriched-profile-mechanical_engineering_2027`, id 9020080496): no secrets. Every
+`snapshotHash` re-matched a freshly-built snapshot; every live excerpt is grounded **verbatim** in
+`normalizedContent`; offsets consistent. Live spans for 0542-4425 (SOLIDWORKS/FEA/Injection-Molding phrases)
+differ entirely from the captured fixture spans (`שיטות התכן`,`לתכן מתקדם`) → the live result is genuinely
+model-produced, **not** a copy/rename of captured evidence.
+
+**PROMOTION STRUCTURALLY BLOCKED → committed cache UNCHANGED (stays `captured`, honestly labeled).** Three
+independent reasons: (1) the committed cache's homogeneity invariant — `semantic_provider_boundary.test.ts`
+asserts every profile's `extractorKind` equals the top-level kind — forbids a mixed 1-live/6-captured cache;
+(2) a full `live_semantic` promotion is unachievable from this run (only 4 of the 7 cached courses were in the
+allowlist; 2 of those 4 hit provider failures); (3) promoting 0542-4226's live `explicit`/0.9 would break
+`semantic_enrichment_acceptance.test.ts` (expects that course `derived`, ≤0.6) and would over-state a
+precision-oriented claim beyond human review. So no `live_semantic` cache entry was written. The run stands as
+**verified external validation** of the captured cache (0542-4425 confirmed), not a promotion.
+
+**Planner control-vs-focus (rerun via the acceptance suite).** Design-focus (`interpret_free_text` +
+`extra_request_he:'…להתמקד בתכן'`) places `0542-4425` where control does not (evidence-backed, cited) — but
+that course is `explicit` design the **legacy** extractor also catches. Semantic-ONLY courses
+(`0571-4174`,`0542-4226`) reach the fit map and influence fit-score (fit==cache strength) but are never shown
+to flip a final legal proposal. Distinction holds: evidence→matcher ✓, fit-score influence ✓, final legal
+proposal change ✗ for semantic-only. **`semantic-only planner decision acceptance: data-blocked` RETAINED.**
+
+**Generate consumes the committed cache with NO model invocation** — `api/ai/generate-plan.ts` imports only
+`loadEnrichedProfileCache`/`lookupProfile` (no `LlmSemanticExtractionProvider`/`ClaimSpecProvider`); boundary
+test green.
+
+**Gates (all green):** root `tsc --noEmit` ✓; web `tsc --noEmit` ✓; web `next build` ✓; full API suite
+**1535 passed** (1 skipped) ✓; UI suite **835 passed** ✓. Working tree clean apart from this doc.
+
+**Production unchanged; no preview created.** Change is documentation-only (no functional/UI delta), Vercel is
+not Git-connected, no Vercel CLI is installed, and the sole available deploy MCP remains unsuited for this repo
+— a preview would prove nothing, so none was made (not fabricated).
 
 ## Session 2026-08-08 — protected enrichment workflow + Supabase-503 diagnosis; live run owner-blocked
 
