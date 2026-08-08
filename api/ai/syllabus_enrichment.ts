@@ -51,7 +51,13 @@ export function parseCourseAllowlist(raw: string | undefined | null, opts: { max
 
 export interface EnrichOutcome {
   cache: ProfileCache;
-  perCourse: Array<{ courseId: string; status: 'enriched' | 'no_content' | 'provider_failed_kept_previous' | 'provider_failed_no_previous'; acceptedCount: number; rejectedCount: number }>;
+  /**
+   * `failureKind` (present only on a provider_failed_* row) surfaces the provider's
+   * own error classification (`timeout | schema | parse | provider | no_model`, or
+   * `unknown` for an error that carried no kind) so a failed run is diagnosable —
+   * the enum only, never the message, so no credential or prompt can leak.
+   */
+  perCourse: Array<{ courseId: string; status: 'enriched' | 'no_content' | 'provider_failed_kept_previous' | 'provider_failed_no_previous'; acceptedCount: number; rejectedCount: number; failureKind?: string }>;
 }
 
 function courseIndex(board: any): Map<string, any> {
@@ -89,13 +95,18 @@ export async function enrichProgram(
     let extraction;
     try {
       extraction = await runExtractionWithTimeout(provider, snapshot, CAPABILITY_ONTOLOGY, { timeoutMs: opts.timeoutMs });
-    } catch {
+    } catch (err) {
       // Fail-closed: keep the previous valid profile if we have one (never corrupt the cache).
+      // Surface the provider's error classification (kind only — never the message) so the
+      // failure is diagnosable; duck-typed so this module stays decoupled from the LLM provider.
+      const failureKind = err && typeof err === 'object' && typeof (err as { kind?: unknown }).kind === 'string'
+        ? (err as { kind: string }).kind
+        : 'unknown';
       if (prev) {
         profiles[courseId] = prev;
-        perCourse.push({ courseId, status: 'provider_failed_kept_previous', acceptedCount: prev.evidence.length, rejectedCount: 0 });
+        perCourse.push({ courseId, status: 'provider_failed_kept_previous', acceptedCount: prev.evidence.length, rejectedCount: 0, failureKind });
       } else {
-        perCourse.push({ courseId, status: 'provider_failed_no_previous', acceptedCount: 0, rejectedCount: 0 });
+        perCourse.push({ courseId, status: 'provider_failed_no_previous', acceptedCount: 0, rejectedCount: 0, failureKind });
       }
       continue;
     }

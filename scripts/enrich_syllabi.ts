@@ -58,7 +58,7 @@ async function main() {
   const outPath = join(root, 'data', 'enriched_profiles', `${program}.json`);
   writeFileSync(outPath, JSON.stringify(cache, null, 2) + '\n');
   console.log(`[enrich] wrote ${outPath} (extractorKind=${cache.extractorKind}, extractor=${cache.extractorName})`);
-  for (const r of perCourse) console.log(`  ${r.courseId}: ${r.status} accepted=${r.acceptedCount} rejected=${r.rejectedCount}`);
+  for (const r of perCourse) console.log(`  ${r.courseId}: ${r.status}${r.failureKind ? ` [${r.failureKind}]` : ''} accepted=${r.acceptedCount} rejected=${r.rejectedCount}`);
 }
 
 main().catch((e) => { console.error(`[enrich] failed: ${e?.kind ? e.kind + ': ' : ''}${e?.message ?? e}`); process.exit(1); });
