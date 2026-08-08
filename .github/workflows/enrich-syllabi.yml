@@ -1,0 +1,64 @@
+# Protected, manually-dispatched semantic enrichment.
+#
+# Runs the REAL LlmSemanticExtractionProvider (scripts/enrich_syllabi.ts --live) against
+# authoritative syllabus snapshots, using a repository/environment provider secret, and
+# uploads the validated versioned profile as a REVIEWABLE ARTIFACT (it does NOT push,
+# commit, or deploy). A maintainer then reviews the artifact and commits it.
+#
+# Security boundary:
+#  - workflow_dispatch only → restricted to collaborators with write access (no public endpoint);
+#  - `permissions: contents: read` → the job cannot push to the repo or deploy;
+#  - inputs are passed via env vars ("$PROGRAM"/"$COURSES"), never interpolated into the
+#    shell, so a malicious input cannot inject commands; the script re-validates the
+#    allowlist (strict NNNN-NNNN, max 12) and bounds model calls to one per course;
+#  - bounded timeout; no secret or full-prompt logging (the script logs only a per-course
+#    status summary).
+#
+# REQUIRED SECRET (not present yet — a maintainer must add it): OPENAI_API_KEY (or
+# ANTHROPIC_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY), optionally AI_PROVIDER.
+name: Enrich syllabi (semantic, protected)
+
+on:
+  workflow_dispatch:
+    inputs:
+      program:
+        description: Program/catalog id (must exist under data/boards)
+        required: true
+        default: mechanical_engineering_2027
+      courses:
+        description: Comma-separated course allowlist (NNNN-NNNN), max 12
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Run protected live enrichment
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
+          PROGRAM: ${{ inputs.program }}
+          COURSES: ${{ inputs.courses }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$GOOGLE_GENERATIVE_AI_API_KEY" ]; then
+            echo "::error::No provider credential configured. Add a repository secret: OPENAI_API_KEY (or ANTHROPIC_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY)."
+            exit 1
+          fi
+          npx tsx scripts/enrich_syllabi.ts "$PROGRAM" --live --courses "$COURSES"
+      - name: Upload validated profile artifact (reviewable; not committed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: enriched-profile-${{ inputs.program }}
+          path: data/enriched_profiles/${{ inputs.program }}.json
+          if-no-files-found: error
