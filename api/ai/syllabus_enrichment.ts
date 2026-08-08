@@ -23,6 +23,7 @@ import {
   type ExtractorKind,
   type ProfileCache,
   type ValidatedProfile,
+  type CourseRunDiagnostics,
 } from './course_profile_cache';
 
 export interface EnrichOptions {
@@ -57,7 +58,7 @@ export interface EnrichOutcome {
    * `unknown` for an error that carried no kind) so a failed run is diagnosable —
    * the enum only, never the message, so no credential or prompt can leak.
    */
-  perCourse: Array<{ courseId: string; status: 'enriched' | 'no_content' | 'provider_failed_kept_previous' | 'provider_failed_no_previous'; acceptedCount: number; rejectedCount: number; failureKind?: string }>;
+  perCourse: Array<{ courseId: string; status: 'enriched' | 'no_content' | 'provider_failed_kept_previous' | 'provider_failed_no_previous'; acceptedCount: number; rejectedCount: number; failureKind?: string; repairAttempted?: boolean }>;
 }
 
 function courseIndex(board: any): Map<string, any> {
@@ -75,6 +76,7 @@ export async function enrichProgram(
 ): Promise<EnrichOutcome> {
   const idx = courseIndex(board);
   const profiles: Record<string, ValidatedProfile> = {};
+  const runDiagnostics: Record<string, CourseRunDiagnostics> = {};
   const perCourse: EnrichOutcome['perCourse'] = [];
   const now = opts.now ?? new Date().toISOString();
 
@@ -89,6 +91,7 @@ export async function enrichProgram(
         snapshot, extractorName: provider.name, extractorKind: opts.extractorKind, evaluatedCapabilities: [...CAPABILITY_ONTOLOGY], accepted: [], quarantined: [], createdAt: now.slice(0, 10),
       });
       perCourse.push({ courseId, status: 'no_content', acceptedCount: 0, rejectedCount: 0 });
+      runDiagnostics[courseId] = { normalAttempts: 0, schemaRepairAttempts: 0 };
       continue;
     }
 
@@ -102,11 +105,13 @@ export async function enrichProgram(
       const failureKind = err && typeof err === 'object' && typeof (err as { kind?: unknown }).kind === 'string'
         ? (err as { kind: string }).kind
         : 'unknown';
+      const repairAttempted = !!(err && typeof err === 'object' && (err as { repairAttempted?: unknown }).repairAttempted);
+      runDiagnostics[courseId] = { normalAttempts: 1, schemaRepairAttempts: repairAttempted ? 1 : 0, finalFailureKind: failureKind };
       if (prev) {
         profiles[courseId] = prev;
-        perCourse.push({ courseId, status: 'provider_failed_kept_previous', acceptedCount: prev.evidence.length, rejectedCount: 0, failureKind });
+        perCourse.push({ courseId, status: 'provider_failed_kept_previous', acceptedCount: prev.evidence.length, rejectedCount: 0, failureKind, repairAttempted });
       } else {
-        perCourse.push({ courseId, status: 'provider_failed_no_previous', acceptedCount: 0, rejectedCount: 0, failureKind });
+        perCourse.push({ courseId, status: 'provider_failed_no_previous', acceptedCount: 0, rejectedCount: 0, failureKind, repairAttempted });
       }
       continue;
     }
@@ -117,12 +122,13 @@ export async function enrichProgram(
       accepted, quarantined: rejected.map((r) => ({ capability: r.capability, reason: r.reason })), createdAt: now.slice(0, 10),
     });
     perCourse.push({ courseId, status: 'enriched', acceptedCount: accepted.length, rejectedCount: rejected.length });
+    runDiagnostics[courseId] = { normalAttempts: extraction.attempts?.normal ?? 1, schemaRepairAttempts: extraction.attempts?.schemaRepair ?? 0 };
   }
 
   return {
     cache: {
       programOrCatalog, generatedAt: now, schemaVersion: SCHEMA_VERSION, ontologyVersion: ONTOLOGY_VERSION,
-      extractorVersion: EXTRACTOR_VERSION, extractorName: provider.name, extractorKind: opts.extractorKind, profiles,
+      extractorVersion: EXTRACTOR_VERSION, extractorName: provider.name, extractorKind: opts.extractorKind, profiles, runDiagnostics,
     },
     perCourse,
   };

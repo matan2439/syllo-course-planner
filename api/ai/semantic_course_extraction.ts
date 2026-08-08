@@ -47,6 +47,8 @@ export interface CandidateExtraction {
   courseId: string;
   snapshotHash: string;
   claims: CandidateClaim[];
+  /** Per-course attempt accounting from a live provider (normal + bounded schema-repair). */
+  attempts?: { normal: number; schemaRepair: number };
 }
 
 export interface SemanticExtractionProvider {

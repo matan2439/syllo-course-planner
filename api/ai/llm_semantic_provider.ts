@@ -31,6 +31,8 @@ import type { SyllabusSnapshot } from './syllabus_snapshot';
 
 export type SemanticProviderFailureKind = 'no_model' | 'timeout' | 'provider' | 'parse' | 'schema';
 export class SemanticProviderError extends Error {
+  /** Set when a bounded schema-repair generation was attempted before this final failure. */
+  public repairAttempted?: boolean;
   constructor(public readonly kind: SemanticProviderFailureKind, message: string) {
     super(message);
     this.name = 'SemanticProviderError';
@@ -68,6 +70,12 @@ export interface LlmSemanticProviderOptions {
   timeoutMs?: number;
   maxRetries?: number;
   maxInputChars?: number;
+  /**
+   * Bounded schema-repair generations after a first attempt fails with kind 'schema'
+   * (the AI SDK's maxRetries covers transport/API only, never a schema-invalid
+   * generation). Default 1; a repair attempt can never itself trigger another repair.
+   */
+  repairMaxAttempts?: number;
 }
 
 /** Neutral, generic gloss of each ontology capability (NOT per-course answers). */
@@ -95,6 +103,28 @@ function buildPrompt(snapshot: SyllabusSnapshot, capabilities: readonly string[]
   ].join('\n');
 }
 
+/**
+ * STRUCTURE-ONLY repair prompt: reuses the exact classification instructions (criteria
+ * unchanged) and appends a purely-structural correction restating the output schema. It
+ * deliberately does NOT suggest that an empty result is preferred and does NOT mention any
+ * course id/title/institution/program or expected answer — so it cannot bias a subtle
+ * derived relationship toward a false "missing"/empty result.
+ */
+function buildRepairPrompt(snapshot: SyllabusSnapshot, capabilities: readonly string[], maxInputChars: number): string {
+  return [
+    buildPrompt(snapshot, capabilities, maxInputChars),
+    '',
+    'NOTE: your previous reply was not a valid JSON object matching the required schema.',
+    'Reply again with ONLY a single JSON object of exactly this shape and nothing else:',
+    '{ "claims": [ { "capability": string, "relationship": string,',
+    '  "inferenceLevel": "explicit"|"derived"|"estimated"|"missing", "strength": number (0..1),',
+    '  "confidence": number (0..1), "evidenceExcerpts": string[], "rationale": string,',
+    '  "unsupportedOrAmbiguous": boolean } ] }',
+    'Keep the SAME assessment you would otherwise give — do not add, drop, weaken, or change',
+    'any capability judgement in order to make the JSON valid; only fix the JSON structure.',
+  ].join('\n');
+}
+
 function classifyError(err: unknown): SemanticProviderError {
   const name = err instanceof Error ? err.name : '';
   const msg = err instanceof Error ? err.message : String(err);
@@ -111,6 +141,7 @@ export class LlmSemanticExtractionProvider implements SemanticExtractionProvider
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly maxInputChars: number;
+  private readonly repairMaxAttempts: number;
 
   constructor(opts: LlmSemanticProviderOptions = {}) {
     let model = opts.model;
@@ -130,32 +161,37 @@ export class LlmSemanticExtractionProvider implements SemanticExtractionProvider
     this.timeoutMs = opts.timeoutMs ?? 30000;
     this.maxRetries = opts.maxRetries ?? 2;
     this.maxInputChars = opts.maxInputChars ?? 8000;
+    this.repairMaxAttempts = opts.repairMaxAttempts ?? 1;
   }
 
-  async extract(snapshot: SyllabusSnapshot, capabilities: readonly string[]): Promise<CandidateExtraction> {
-    if (!snapshot.normalizedContent) return { courseId: snapshot.courseId, snapshotHash: snapshot.contentHash, claims: [] };
-    const prompt = buildPrompt(snapshot, capabilities, this.maxInputChars);
+  /** One structured generation, timeout-raced and error-classified (never swallowed). */
+  private async generateOnce(prompt: string): Promise<LlmExtractionObject> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
-    // Race an owned timeout so extract() rejects even if the driver ignores the signal.
+    // Race an owned timeout so the call rejects even if the driver ignores the signal.
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         controller.abort();
         reject(new SemanticProviderError('timeout', `semantic provider timed out after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
     });
-    let object: LlmExtractionObject;
     try {
       const call = this.generate({ model: this.model, schema: llmExtractionSchema, prompt, abortSignal: controller.signal, maxRetries: this.maxRetries });
-      ({ object } = await Promise.race([call, timeout]));
+      const { object } = await Promise.race([call, timeout]);
+      return object;
     } catch (err) {
       throw err instanceof SemanticProviderError ? err : classifyError(err);
     } finally {
       if (timer) clearTimeout(timer);
     }
-    // Map untrusted model claims → captured-spec shape → GROUNDED candidate extraction
-    // (offsets computed against the snapshot; excerpts not present verbatim are dropped
-    // here and any resulting empty positive claim is rejected by the validator).
+  }
+
+  /**
+   * Map untrusted model claims → captured-spec shape → GROUNDED candidate extraction.
+   * Offsets are computed against the snapshot; excerpts not present verbatim are dropped
+   * here and any resulting empty positive claim is rejected downstream by the validator.
+   */
+  private toExtraction(snapshot: SyllabusSnapshot, object: LlmExtractionObject, attempts: { normal: number; schemaRepair: number }): CandidateExtraction {
     const specs: CapturedClaimSpec[] = (object.claims ?? []).map((c) => ({
       capability: c.capability,
       relationship: c.relationship,
@@ -166,6 +202,32 @@ export class LlmSemanticExtractionProvider implements SemanticExtractionProvider
       excerpts: c.evidenceExcerpts ?? [],
       unsupportedOrAmbiguous: c.unsupportedOrAmbiguous,
     }));
-    return buildCapturedExtraction(snapshot, specs);
+    const extraction = buildCapturedExtraction(snapshot, specs);
+    extraction.attempts = attempts;
+    return extraction;
+  }
+
+  async extract(snapshot: SyllabusSnapshot, capabilities: readonly string[]): Promise<CandidateExtraction> {
+    if (!snapshot.normalizedContent) return { courseId: snapshot.courseId, snapshotHash: snapshot.contentHash, claims: [], attempts: { normal: 1, schemaRepair: 0 } };
+
+    let firstErr: SemanticProviderError;
+    try {
+      const object = await this.generateOnce(buildPrompt(snapshot, capabilities, this.maxInputChars));
+      return this.toExtraction(snapshot, object, { normal: 1, schemaRepair: 0 });
+    } catch (err) {
+      firstErr = err instanceof SemanticProviderError ? err : classifyError(err);
+    }
+
+    // Exactly one bounded, structure-only repair — ONLY for a schema failure, never for
+    // provider/timeout/parse, and a repair can never itself trigger a further repair.
+    if (firstErr.kind !== 'schema' || this.repairMaxAttempts < 1) throw firstErr;
+    try {
+      const object = await this.generateOnce(buildRepairPrompt(snapshot, capabilities, this.maxInputChars));
+      return this.toExtraction(snapshot, object, { normal: 1, schemaRepair: 1 });
+    } catch (err) {
+      const e = err instanceof SemanticProviderError ? err : classifyError(err);
+      e.repairAttempted = true;
+      throw e;
+    }
   }
 }

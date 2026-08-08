@@ -38,6 +38,13 @@ export interface ValidatedProfile {
   createdAt: string;
 }
 
+/** Per-course attempt accounting for a live enrichment run — sanitized (counts + kind only). */
+export interface CourseRunDiagnostics {
+  normalAttempts: number;
+  schemaRepairAttempts: number;
+  finalFailureKind?: string;
+}
+
 export interface ProfileCache {
   programOrCatalog: string;
   generatedAt: string;
@@ -47,6 +54,12 @@ export interface ProfileCache {
   extractorName: string;
   extractorKind: ExtractorKind;
   profiles: Record<string, ValidatedProfile>;
+  /**
+   * Optional per-course diagnostics for THIS run (present only on live runs): attempt
+   * counts and the final failure kind. Kept OUT of `profiles` so a fail-closed kept-previous
+   * profile is never mutated. Only counts + a bounded kind — never raw output or secrets.
+   */
+  runDiagnostics?: Record<string, CourseRunDiagnostics>;
 }
 
 export type LookupStatus =

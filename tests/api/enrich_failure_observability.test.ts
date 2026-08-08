@@ -56,3 +56,28 @@ test('a legitimate empty (no-evidence) model answer is a validated absence, NOT 
   expect(perCourse[0].acceptedCount).toBe(0);
   expect(perCourse[0].failureKind).toBeUndefined(); // no failure → no kind
 });
+
+test('sanitized per-course attempt metadata (normal + schema-repair) reaches the cache runDiagnostics', async () => {
+  // schema failure that survives the one bounded repair → 1 normal + 1 repair, still failed.
+  const provider = new LlmSemanticExtractionProvider({
+    model: {} as any, modelName: 'gpt-4o-mini',
+    generate: async () => { const e: any = new Error('response did not match schema'); e.name = 'NoObjectGeneratedError'; throw e; },
+  });
+  const { cache, perCourse } = await enrichProgram(BOARD, PROGRAM, provider, {
+    courseIds: [FAILED_COURSE], extractorKind: 'live_semantic', timeoutMs: 2000,
+  });
+  expect(perCourse[0].failureKind).toBe('schema');
+  expect(perCourse[0].repairAttempted).toBe(true);
+  expect(cache.runDiagnostics?.[FAILED_COURSE]).toEqual({ normalAttempts: 1, schemaRepairAttempts: 1, finalFailureKind: 'schema' });
+});
+
+test('a clean first-attempt success records zero schema-repair attempts', async () => {
+  const provider = new LlmSemanticExtractionProvider({
+    model: {} as any, modelName: 'gpt-4o-mini',
+    generate: async () => ({ object: { claims: [] } }),
+  });
+  const { cache } = await enrichProgram(BOARD, PROGRAM, provider, {
+    courseIds: [FAILED_COURSE], extractorKind: 'live_semantic', timeoutMs: 2000,
+  });
+  expect(cache.runDiagnostics?.[FAILED_COURSE]).toEqual({ normalAttempts: 1, schemaRepairAttempts: 0 });
+});
