@@ -79,6 +79,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
+      # web/ type-checks repo-root shared/ code (e.g. shared/planner/*), which resolves
+      # its own deps (zod) from the REPOSITORY-ROOT node_modules — so the root package
+      # must be installed too, not just web/. Without this the web type-check fails with
+      # TS2307 (zod) + cascading TS7006. Mirrors the api-ts job's root install.
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install web dependencies
         run: cd web && npm ci
 
