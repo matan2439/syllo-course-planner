@@ -15,6 +15,8 @@ const BOARD = {
     board_data_version: 'rev-1',
     program_repository_courses: [
       { course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 3.5, is_mandatory: false },
+      // Selectable in the exclude/want name-pickers (course-name → id resolution).
+      { course_id: 'THERMO-2', name_he: 'תרמודינמיקה 2', weekly_hours: 3.0, is_mandatory: false },
     ],
   },
   semesters: [
@@ -87,13 +89,17 @@ test('explicit Build calls the real endpoint once with the conversation + board 
   expect((req.preferences as any).extra_request_he).toContain('תעדיף בוקר')
 })
 
-test('an excluded course is sent as a hard exclusion (disallowed), never a soft hint', async () => {
+test('an excluded course (picked by name) is sent as a hard exclusion (disallowed), never a soft hint', async () => {
   let captured: GeneratePlanRequest | null = null
   const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
   await renderReady({ generateFn })
-  fireEvent.change(screen.getByRole('textbox', { name: /להחריג|להוציא|exclude/i }), { target: { value: 'THERMO-2' } })
+  // The exclude control is a name-picker (commit 92f473a): type the course NAME,
+  // then select the ranked match — that resolves the name to its canonical id.
+  fireEvent.change(screen.getByRole('textbox', { name: /להחריג|להוציא|exclude/i }), { target: { value: 'תרמודינמיקה' } })
+  fireEvent.click(await screen.findByRole('button', { name: /THERMO-2/ }))
   fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
   await waitFor(() => expect(generateFn).toHaveBeenCalled())
+  // Intent preserved: a user exclusion reaches the planner as a HARD disallow.
   expect((captured! as GeneratePlanRequest).preferences as any).toMatchObject({ disallowed_course_ids: ['THERMO-2'] })
 })
 
