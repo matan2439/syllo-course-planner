@@ -103,6 +103,25 @@ test('an excluded course (picked by name) is sent as a hard exclusion (disallowe
   expect((captured! as GeneratePlanRequest).preferences as any).toMatchObject({ disallowed_course_ids: ['THERMO-2'] })
 })
 
+test('default: Build does NOT send use_academic_decision_agent (feature off in Production)', async () => {
+  let captured: GeneratePlanRequest | null = null
+  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
+  await renderReady({ generateFn })
+  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
+  await waitFor(() => expect(generateFn).toHaveBeenCalled())
+  expect('use_academic_decision_agent' in (captured as any)).toBe(false)
+})
+
+test('dev injection: useAcademicDecisionAgent prop makes Build send use_academic_decision_agent:true', async () => {
+  let captured: GeneratePlanRequest | null = null
+  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
+  render(<NativePlannerJourney {...deps({ generateFn })} useAcademicDecisionAgent />)
+  await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
+  await waitFor(() => expect(generateFn).toHaveBeenCalled())
+  expect((captured as any).use_academic_decision_agent).toBe(true)
+})
+
 test('the proposal is shown with an added-course diff marker and apply/reject controls', async () => {
   await renderReady()
   fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))

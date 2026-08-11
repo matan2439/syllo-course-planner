@@ -83,10 +83,18 @@ export default function NativePlannerJourney({
   programId,
   getBoardFn = defaultGetBoard,
   generateFn = defaultGenerate,
+  useAcademicDecisionAgent = false,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
   generateFn?: (req: GeneratePlanRequest) => Promise<GeneratedPlanModel>
+  /**
+   * Development/diagnostic-only: when true, Build sends
+   * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
+   * toggle) so the default-off feature never leaks into the ordinary Production
+   * journey — the native page never sets it. Default false/absent.
+   */
+  useAcademicDecisionAgent?: boolean
 }) {
   // ── current plan ──────────────────────────────────────────────────────────
   const [boardPhase, setBoardPhase] = useState<BoardPhase>('loading')
@@ -163,8 +171,10 @@ export default function NativePlannerJourney({
       // Interpret the free-text conversation into structured planner intent so
       // it measurably affects the plan (not just the LLM prompt). Additive.
       interpret_free_text: true,
+      // Dev/diagnostic-only opt-in (default off) — never set by the Production page.
+      ...(useAcademicDecisionAgent ? { use_academic_decision_agent: true } : {}),
     }
-  }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId])
+  }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent])
 
   const build = useCallback(() => {
     if (!current) return
