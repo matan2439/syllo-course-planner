@@ -30,6 +30,7 @@ import type { BuildModelOptions } from './planner_model';
 import type { ProgramProvider } from './program_provider';
 import { EMPTY_GROUNDING, type PlanGrounding } from './plan_grounding';
 import type { AgentValidation } from './grounding_validation';
+import { buildStructuredClarification, type StructuredClarification } from './structured_clarification';
 import { parseProgramVersionId } from '../board';
 
 export interface RunAcademicDecisionAgentInput {
@@ -124,6 +125,12 @@ export interface AcademicDecisionAgentRun {
    * controlled-failure path (the class threw before validating).
    */
   validation?: AgentValidation;
+  /**
+   * Unified structured clarification contract (answerable preference gaps +
+   * non-answerable authoritative conflicts). A pure projection over
+   * clarification + validation — see structured_clarification.ts.
+   */
+  structuredClarification: StructuredClarification;
 }
 
 /**
@@ -182,6 +189,10 @@ export async function runAcademicDecisionAgent(
       // the single owner. EMPTY_GROUNDING only if the class ran with no plan.
       grounding: result.grounding ?? EMPTY_GROUNDING,
       validation: result.validation,
+      structuredClarification: buildStructuredClarification({
+        clarification: result.clarification,
+        validation: result.validation,
+      }),
     };
   } catch {
     // Controlled failure: the class threw before producing grounding, so there
@@ -195,6 +206,7 @@ export async function runAcademicDecisionAgent(
       },
       clarification: input.clarification,
       grounding: EMPTY_GROUNDING,
+      structuredClarification: buildStructuredClarification({ clarification: input.clarification }),
     };
   }
 }

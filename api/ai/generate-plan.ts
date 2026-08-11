@@ -1773,6 +1773,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Typed, provenance-carrying validation findings from the class stage.
     (responseBody.academicDecision as Record<string, unknown>).validationFindings =
       agentRun.validation?.findings ?? [];
+    // Unified structured clarification (answerable preference gaps +
+    // non-answerable authoritative conflicts). Distinction preserved per item.
+    (responseBody.academicDecision as Record<string, unknown>).structuredClarification =
+      agentRun.structuredClarification;
   }
   res.status(200).json(responseBody);
 }

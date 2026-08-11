@@ -202,6 +202,12 @@ describe('generate-plan — real AcademicDecisionAgent class integration', () =>
     // A draft still exists, but Apply must be gated until the critical input is provided.
     expect(res._body.academicDecision.applyEligible).toBe(false);
     expect(Array.isArray(res._body.semesters)).toBe(true);
+    // Slice 7: the missing critical input is an ANSWERABLE structured item.
+    const answerable = res._body.academicDecision.structuredClarification.items
+      .find((i: any) => i.reasonCode === 'completed_courses');
+    expect(answerable.kind).toBe('answerable_preference');
+    expect(answerable.answerable).toBe(true);
+    expect(answerable.inputKey).toBe('completedCourseIds');
   });
 
   test('outcome=blocked + applyEligible=false when a mandatory course cannot be placed (excluded)', async () => {

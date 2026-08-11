@@ -109,6 +109,15 @@ describe('generate-plan — grounding conflict → structured outcome (flagged p
     expect(coreFinding.severity).toBe('error');
     expect(coreFinding.provenance).toBeDefined();
     expect(coreFinding.message_he).toMatch(/הכרעה סמכותית|מקורות/);
+
+    // Slice 7: the authoritative conflict is surfaced as a NON-answerable
+    // structured-clarification item — the user is never asked to invent the
+    // academic truth, and it blocks Apply.
+    const items = res._body.academicDecision.structuredClarification.items;
+    const conflictItem = items.find((i: any) => i.reasonCode === 'GROUNDING_AVAILABILITY_CONFLICT');
+    expect(conflictItem.kind).toBe('authoritative_conflict');
+    expect(conflictItem.answerable).toBe(false);
+    expect(conflictItem.applyBlocked).toBe(true);
   });
 
   test('plan-inert: the conflict does not move CORE to hide it (placed in normalized availability, not catalog)', async () => {
