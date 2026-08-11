@@ -76,6 +76,7 @@ import {
   buildAcademicDecision,
   resolveHardExcludedCourseIds,
 } from './academic_decision_runtime';
+import { runAcademicDecisionAgent } from './academic_decision_integration';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1576,6 +1577,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let traceForResponse: unknown[];
   let hitMaxSteps = false;
   let useLlm = false;
+  // The stable planner's final PlanState — captured so the opt-in
+  // AcademicDecisionAgent path can inject it as the agent's PlanningCapability
+  // (orchestrate around the existing proposal, never re-plan from emptyState).
+  let stableFinalState: PlanState;
 
   if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
     // ── PlannerAgent path (Phase 5+) ─────────────────────────────────────────
@@ -1607,6 +1612,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     );
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
+    stableFinalState = agentResult.finalState;
 
   } else {
     // ── PlannerWorker path (default) ─────────────────────────────────────────
@@ -1626,6 +1632,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     );
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
+    stableFinalState = worker.getPlan();
   }
 
   const blockingErrors = [
@@ -1702,16 +1709,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (include_interest_evaluation === true) {
     responseBody.interestEvaluation = buildGeneratePlanInterestEvaluation(proposal.semesters, academic_interest_profile);
   }
-  // Opt-in AcademicDecisionAgent runtime — additive. Orchestrates the decision
-  // loop around the plan generated above (never regenerates it). Reuses the
-  // clarification result computed pre-planning. Absent flag => key absent.
+  // Opt-in AcademicDecisionAgent path — additive, default-off. The REAL
+  // AcademicDecisionAgent class (academic_decision_agent.ts, built by
+  // createDefaultAcademicDecisionAgent) genuinely executes here, orchestrating
+  // AROUND the plan generated above with the stable planner injected as its
+  // PlanningCapability (never re-planning from emptyState — see
+  // academic_decision_integration.ts). Its clarification/gaps then feed the
+  // Hebrew-ready academicDecision view (buildAcademicDecision, unchanged). A
+  // controlled agent failure falls back to the adapter-only clarification and
+  // is marked in `orchestration.engine`; committed state is never touched.
+  // Absent flag => `academicDecision` key absent (legacy contract preserved).
   if (use_academic_decision_agent === true) {
+    const agentRun = await runAcademicDecisionAgent({
+      programId: program_id,
+      dbUrl,
+      board,
+      model,
+      finalState: stableFinalState,
+      rationaleHe: proposal.rationale_he,
+      clarification: academicDecisionClarification!,
+      currentCourseIds: currentlyPlannedCourseIds,
+    });
     responseBody.academicDecision = buildAcademicDecision({
       proposal,
       model,
       blocked: blockingErrors.length > 0,
       errors: blockingErrors,
-      clarification: academicDecisionClarification!,
+      clarification: agentRun.clarification,
       context: {
         completedCourseIds: (effectivePlanContext?.personal_status?.completed ?? []).map((c: any) => c.course_id),
         currentCourseIds: currentlyPlannedCourseIds,
@@ -1721,6 +1745,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       },
       academicInterestProfileRaw: academic_interest_profile,
     });
+    // Safe diagnostics proving which orchestration engine ran — nested inside
+    // academicDecision (agent path only), so the default path's LEGACY_KEYS
+    // top-level contract is untouched.
+    (responseBody.academicDecision as Record<string, unknown>).orchestration = agentRun.orchestration;
   }
   res.status(200).json(responseBody);
 }
