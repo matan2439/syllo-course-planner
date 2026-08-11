@@ -28,6 +28,7 @@ import type { ClarificationResult } from './academic_decision_types';
 import type { ConstraintModel, PlanState } from './planner_types';
 import type { BuildModelOptions } from './planner_model';
 import type { ProgramProvider } from './program_provider';
+import { groundPlan, type PlanGrounding } from './plan_grounding';
 import { parseProgramVersionId } from '../board';
 
 export interface RunAcademicDecisionAgentInput {
@@ -64,6 +65,14 @@ export interface AcademicDecisionAgentRun {
   orchestration: AcademicDecisionOrchestration;
   /** The clarification the agent's Clarify stage produced (identical to the injected one on success). */
   clarification: ClarificationResult;
+  /**
+   * Plan-inert Knowledge Grounding over the generated plan (known / unknown /
+   * inferred / conflicting course facts, with provenance and structured
+   * conflicts). Reasoning/validation/clarification/explanation input only —
+   * never mutates the plan. Always computed on the flagged path (success or
+   * controlled failure) since it reads the stable model + plan directly.
+   */
+  grounding: PlanGrounding;
 }
 
 /**
@@ -88,6 +97,11 @@ export async function runAcademicDecisionAgent(
     gaps: [],
     rationale_he: input.rationaleHe,
   };
+
+  // Knowledge Grounding — plan-inert, deterministic, computed over the stable
+  // model + generated plan. Runs on the flagged path regardless of whether the
+  // agent pipeline itself succeeds (it never depends on the agent result).
+  const grounding = groundPlan(input.model, input.finalState);
 
   try {
     const agent = createDefaultAcademicDecisionAgent({
@@ -118,6 +132,7 @@ export async function runAcademicDecisionAgent(
         gapsDetected: result.gaps.length,
       },
       clarification: result.clarification,
+      grounding,
     };
   } catch {
     // Controlled failure: keep the caller's adapter-built view; mark the path.
@@ -129,6 +144,7 @@ export async function runAcademicDecisionAgent(
         gapsDetected: 0,
       },
       clarification: input.clarification,
+      grounding,
     };
   }
 }

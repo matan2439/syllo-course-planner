@@ -1749,6 +1749,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // academicDecision (agent path only), so the default path's LEGACY_KEYS
     // top-level contract is untouched.
     (responseBody.academicDecision as Record<string, unknown>).orchestration = agentRun.orchestration;
+    // Plan-inert Knowledge Grounding (known/unknown/inferred/conflicting course
+    // facts + provenance + structured conflicts) — reasoning input only, never
+    // mutates the plan. Nested inside academicDecision (agent path only).
+    (responseBody.academicDecision as Record<string, unknown>).grounding = agentRun.grounding;
   }
   res.status(200).json(responseBody);
 }

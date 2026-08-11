@@ -151,4 +151,34 @@ describe('generate-plan — real AcademicDecisionAgent class integration', () =>
     expect(res._body.academicDecision.decision).toBeDefined();
     expect(res._body.academicDecision.explanation).toBeDefined();
   });
+
+  test('Knowledge Grounding is invoked on the flagged path — grounded facts for every placed course', async () => {
+    const res = await run(sufficientBody({ use_academic_decision_agent: true }));
+    const grounding = res._body.academicDecision.grounding;
+    expect(grounding).toBeDefined();
+    expect(Array.isArray(grounding.facts)).toBe(true);
+    // Grounds exactly the placed courses — never fabricates facts about others.
+    expect(grounding.facts.map((f: any) => f.courseId).sort()).toEqual(placedIds(res._body).sort());
+    const { known, unknown, inferred, conflicting } = grounding.counts;
+    expect(known + unknown + inferred + conflicting).toBe(placedIds(res._body).length);
+    for (const f of grounding.facts) {
+      expect(['known', 'unknown', 'inferred', 'conflicting']).toContain(f.status);
+      expect(f.provenance).toBeDefined();
+    }
+    expect(Array.isArray(grounding.conflicts)).toBe(true);
+  });
+
+  test('grounding is plan-inert — the plan is byte-identical to the default path', async () => {
+    const base = sufficientBody();
+    const off = await run({ ...base });
+    const on = await run({ ...base, use_academic_decision_agent: true });
+    expect(on._body.semesters).toEqual(off._body.semesters);
+    // grounding never appears on the default path
+    expect('academicDecision' in off._body).toBe(false);
+  });
+
+  test('grounding is absent when the flag is off (no academicDecision at all)', async () => {
+    const res = await run(sufficientBody({ use_academic_decision_agent: false }));
+    expect('academicDecision' in res._body).toBe(false);
+  });
 });
