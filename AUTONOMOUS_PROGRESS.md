@@ -49,6 +49,29 @@ proposal). A draft is always still returned; Generate never mutates the committe
 board. TDD: `academic_decision_outcome.test.ts` + integration outcome assertions
 RED→GREEN.
 
+**Slice 3b — grounded conflicts drive a structured outcome** (commit follows).
+An unresolved grounding conflict on a placed course now yields
+`academicDecision.outcome='validation_failed'` + `applyEligible=false` instead of a
+clean proposal; neither source is silently chosen, the plan is unchanged, both facts
++ provenance survive. Outcome precedence: error > blocked > clarification_required >
+validation_failed > proposal. TDD: `generate_plan_grounding_conflict.test.ts`
+(full-boundary, generic mocked synthetic board — no catalog patch) +
+`academic_decision_outcome.test.ts` RED→GREEN.
+
+**Slice 4-ui — native contract for the 5 outcomes** (commit follows). Wire schema
+types `academicDecision.outcome/applyEligible`; `generatePlanResponseToModel` maps
+them onto `GeneratedPlanModel` (undefined on the legacy response); `buildDraftVM`
+carries them into `DraftVM`. New pure `isProposalApplyable(proposal, stale)` is the
+single native Apply gate — preserves blocked/errored/stale, and blocks Apply when
+`applyEligible===false` even with no blocking error. `NativePlannerJourney` uses it +
+renders a Hebrew badge per non-proposal outcome. Draft invariants unchanged. TDD:
+`apply-eligibility.test.ts` + `draft-vm.test.ts` RED→GREEN. Root + web `tsc` clean.
+Native UI now **consumes** `academicDecision` (was: not integrated).
+
+Pre-existing unrelated failure: `NativePlannerJourney.test.tsx` THERMO-2 preferences
+test fails at HEAD `8313c3b` independent of this work (proven by stash) — flagged as a
+separate task, not touched.
+
 **Corrected status (was overclaimed in the prior section as "reachable"):**
 - Runtime adapter — reachable (unchanged).
 - **AcademicDecisionAgent CLASS — now reachable/executing on the flagged path**
