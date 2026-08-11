@@ -72,5 +72,11 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     errors: p.errors,
     blocked: p.blocked,
     ...(p.intentOutcome ? { intentOutcome: p.intentOutcome } : {}),
+    // Opt-in AcademicDecisionAgent path only (default-off). Absent on the legacy
+    // response → both stay undefined and Apply gating is unchanged.
+    ...(p.academicDecision?.outcome ? { agentOutcome: p.academicDecision.outcome } : {}),
+    ...(typeof p.academicDecision?.applyEligible === 'boolean'
+      ? { applyEligible: p.academicDecision.applyEligible }
+      : {}),
   };
 }

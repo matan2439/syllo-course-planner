@@ -48,6 +48,21 @@ test('resolves a repository-only generated course through courseCatalog with rea
   expect(r.weeklyHours).toBe(2.5) // exact half-hour
 })
 
+test('carries the opt-in structured agent outcome + applyEligible through the full adapter chain', () => {
+  const vm = buildDraftVM(
+    genResponse({ academicDecision: { outcome: 'validation_failed', applyEligible: false } }),
+    base(),
+  )
+  expect(vm.agentOutcome).toBe('validation_failed')
+  expect(vm.applyEligible).toBe(false)
+})
+
+test('legacy response (no academicDecision) leaves agent fields undefined (backward-compatible)', () => {
+  const vm = buildDraftVM(genResponse(), base())
+  expect(vm.agentOutcome).toBeUndefined()
+  expect(vm.applyEligible).toBeUndefined()
+})
+
 test('markers: new / moved / unchanged derived from placement-set diff', () => {
   const vm = buildDraftVM(genResponse(), base())
   const byId = (id: string) => vm.semesters.flatMap((s) => s.courses).find((c) => c.id === id)!

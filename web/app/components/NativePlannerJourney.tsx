@@ -24,9 +24,18 @@ import { generatePlan, getBoard, type GeneratePlanRequest } from '../../../share
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
+import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import { Badge, Card, EmptyState } from './ui'
+
+/** Hebrew labels for the non-'proposal' structured agent outcomes (opt-in path). */
+const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
+  clarification_required: 'נדרש מידע נוסף לפני החלה',
+  validation_failed: 'נמצאה סתירה בנתונים — נדרשת בדיקה לפני החלה',
+  blocked: 'הצעה חסומה — לא ניתן להחיל',
+  error: 'אירעה שגיאה פנימית — לא ניתן להחיל',
+}
 
 type BoardPhase = 'loading' | 'ready' | 'error'
 type GenPhase = 'idle' | 'generating' | 'done' | 'error'
@@ -189,7 +198,7 @@ export default function NativePlannerJourney({
     setErrKind(null)
   }
 
-  const canApply = !!proposal && !proposal.blocked && proposal.errors.length === 0 && !stale
+  const canApply = !!proposal && isProposalApplyable(proposal, stale)
 
   const apply = () => {
     if (!current || !proposal || !canApply) return // hard guard: blocked/stale/errored never apply
@@ -342,6 +351,9 @@ function ProposalView({
       </div>
 
       {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
+      {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
+        <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>
+      )}
       {stale && (
         <p role="note" className="text-sm text-amber-700 dark:text-amber-300">
           הקטלוג השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.

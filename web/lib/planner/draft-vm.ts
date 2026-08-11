@@ -36,6 +36,10 @@ export interface DraftVM {
   blocked: boolean
   warningsHe: string[]
   errors: string[]
+  /** Structured agent outcome (opt-in path only). Absent on the legacy response. */
+  agentOutcome?: GeneratedPlanModel['agentOutcome']
+  /** Server Apply-eligibility floor (opt-in path only). Absent on the legacy response. */
+  applyEligible?: boolean
 }
 
 /** courseId(normalized) → set of semester ids it is placed in. */
@@ -115,5 +119,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     blocked: generated.blocked,
     warningsHe: generated.warningsHe,
     errors: generated.errors,
+    ...(generated.agentOutcome ? { agentOutcome: generated.agentOutcome } : {}),
+    ...(typeof generated.applyEligible === 'boolean' ? { applyEligible: generated.applyEligible } : {}),
   }
 }

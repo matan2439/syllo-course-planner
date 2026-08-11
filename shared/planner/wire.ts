@@ -79,7 +79,18 @@ export const generatePlanResponseSchema = z
     requirements_status: z.unknown().optional(),
     trace: z.unknown().optional(),
     interestEvaluation: z.unknown().optional(),
-    academicDecision: z.unknown().optional(),
+    // Opt-in AcademicDecisionAgent path only (default-off). Only the two fields
+    // the native contract consumes are typed; everything else (grounding,
+    // clarification, explanation, …) rides through untouched via passthrough.
+    academicDecision: z
+      .object({
+        outcome: z
+          .enum(['proposal', 'clarification_required', 'validation_failed', 'blocked', 'error'])
+          .optional(),
+        applyEligible: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional(),
     // Additive — present only when free-text interpretation ran. Honored /
     // partially-honored / unmet lines DERIVED from the actual plan (never prose).
     intentOutcome: z

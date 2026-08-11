@@ -125,4 +125,15 @@ export interface GeneratedPlanModel {
   blocked: boolean;
   /** Present only when the server interpreted a free-text request (opt-in). */
   intentOutcome?: IntentOutcomeModel;
+  /**
+   * Structured agent outcome — present only on the opt-in AcademicDecisionAgent
+   * path (default-off flag). Absent on the legacy/default response.
+   */
+  agentOutcome?: 'proposal' | 'clarification_required' | 'validation_failed' | 'blocked' | 'error';
+  /**
+   * Server-side Apply-eligibility floor for the agent path (true only for a
+   * clean 'proposal'). Absent on the legacy/default response — apply gating
+   * then falls back to blocked/errors/stale alone (backward-compatible).
+   */
+  applyEligible?: boolean;
 }
