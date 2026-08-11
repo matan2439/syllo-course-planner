@@ -1762,13 +1762,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       engineFailed: agentRun.orchestration.engine === 'runtime-adapter-fallback',
       blocked: blockingErrors.length > 0,
       hasCriticalMissingInput: hasCriticalMissingInput(agentRun.clarification),
-      // A grounded fact conflict on a placed course (surfaced plan-inert by the
-      // grounding layer) makes the draft unfit to Apply until reviewed — never
-      // silently resolved, never allowed to masquerade as a clean proposal.
-      hasUnresolvedConflicts: agentRun.grounding.conflicts.length > 0,
+      // Derived from the REAL agent grounding-validation result (Slice 6) — not
+      // an API-side re-count of conflicts. applyBlocked is true only when an
+      // unresolved authoritative conflict was found by the class's validation
+      // stage; the plan is never changed to hide it.
+      hasUnresolvedConflicts: agentRun.validation?.applyBlocked === true,
     });
     (responseBody.academicDecision as Record<string, unknown>).outcome = outcome;
     (responseBody.academicDecision as Record<string, unknown>).applyEligible = isApplyEligible(outcome);
+    // Typed, provenance-carrying validation findings from the class stage.
+    (responseBody.academicDecision as Record<string, unknown>).validationFindings =
+      agentRun.validation?.findings ?? [];
   }
   res.status(200).json(responseBody);
 }

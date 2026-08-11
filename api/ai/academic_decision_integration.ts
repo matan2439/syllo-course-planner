@@ -29,6 +29,7 @@ import type { ConstraintModel, PlanState } from './planner_types';
 import type { BuildModelOptions } from './planner_model';
 import type { ProgramProvider } from './program_provider';
 import { EMPTY_GROUNDING, type PlanGrounding } from './plan_grounding';
+import type { AgentValidation } from './grounding_validation';
 import { parseProgramVersionId } from '../board';
 
 export interface RunAcademicDecisionAgentInput {
@@ -117,6 +118,12 @@ export interface AcademicDecisionAgentRun {
    * controlled failure) since it reads the stable model + plan directly.
    */
   grounding: PlanGrounding;
+  /**
+   * Class-native grounding-validation result — typed conflict findings +
+   * whether an unresolved authoritative conflict blocks Apply. Undefined on the
+   * controlled-failure path (the class threw before validating).
+   */
+  validation?: AgentValidation;
 }
 
 /**
@@ -174,6 +181,7 @@ export async function runAcademicDecisionAgent(
       // Class-native grounding — the AcademicDecisionAgent Ground stage is now
       // the single owner. EMPTY_GROUNDING only if the class ran with no plan.
       grounding: result.grounding ?? EMPTY_GROUNDING,
+      validation: result.validation,
     };
   } catch {
     // Controlled failure: the class threw before producing grounding, so there

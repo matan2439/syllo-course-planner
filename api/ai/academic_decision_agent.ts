@@ -27,6 +27,7 @@
 import { detectGaps, type GapRecord, type ValidationCapability } from './planner_capabilities';
 import type { PlanningCapability, AgentResult } from './planner_agent';
 import type { GroundingCapability, PlanGrounding } from './plan_grounding';
+import type { GroundingValidationCapability, AgentValidation } from './grounding_validation';
 import { ProgramProvider, TauProgramProvider } from './program_provider';
 import type { BuildModelOptions } from './planner_model';
 import {
@@ -70,6 +71,12 @@ export interface AcademicDecisionDeps {
    * on the result (no wrapper computes it; the class is the single owner).
    */
   grounding?: GroundingCapability;
+  /**
+   * Class-native grounding-consuming validation — runs after Ground, turns
+   * unresolved authoritative conflicts into typed findings that block Apply.
+   * Distinct from `validation` below (that is the PlanState legality check).
+   */
+  groundingValidation?: GroundingValidationCapability;
   validation?: ValidationCapability;
   simulation?: SimulationCapability;
   decision?: DecisionCapability;
@@ -85,6 +92,8 @@ export interface AcademicDecisionResult {
   clarification: ClarificationResult;
   /** Class-native Ground-stage output over the generated plan. Absent when no plan ran or no GroundingCapability was wired. */
   grounding?: PlanGrounding;
+  /** Class-native grounding-validation output (typed conflict findings + Apply-block). Absent when no grounding/validation ran. */
+  validation?: AgentValidation;
   /** True when a critical missing input, combined with `blockOnMissingCriticalInputs: true`, stopped Plan from running. */
   blocked: boolean;
 }
@@ -138,7 +147,15 @@ export class AcademicDecisionAgent {
         })
       : undefined;
 
-    // Validate if wired
+    // Grounding-validation — consumes the Ground stage output; turns unresolved
+    // authoritative conflicts into typed, Apply-blocking findings. Deterministic;
+    // never re-plans, never mutates the plan.
+    const validation =
+      grounding && this.deps.groundingValidation
+        ? this.deps.groundingValidation.validate({ grounding })
+        : undefined;
+
+    // Validate if wired (PlanState legality — distinct from grounding-validation)
     if (this.deps.validation) {
       const { valid, reason } = this.deps.validation.validateState(planned.finalState);
       if (!valid) {
@@ -160,6 +177,6 @@ export class AcademicDecisionAgent {
     const persistence = this.deps.persistence ?? new NoOpPersistenceCapability();
     await persistence.persist(decided);
 
-    return { agentResult: decided, gaps, clarification: clarificationResult, grounding, blocked: false };
+    return { agentResult: decided, gaps, clarification: clarificationResult, grounding, validation, blocked: false };
   }
 }

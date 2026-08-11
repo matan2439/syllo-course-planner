@@ -55,6 +55,7 @@ import { runPlanningOrchestration, type OrchestrationRequest } from './planner_o
 import { ProgramProvider, TauProgramProvider } from './program_provider';
 import { PassThroughKnowledgeCapability, type KnowledgeCapability, type ExplanationCapability, type ValidationCapability, type SearchCapability } from './planner_capabilities';
 import { PlanGroundingCapability, type GroundingCapability } from './plan_grounding';
+import { DeterministicGroundingValidation, type GroundingValidationCapability } from './grounding_validation';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
 import type { PolicyProvider } from './planner_policy';
@@ -83,6 +84,8 @@ export interface DefaultAcademicDecisionAgentOptions {
     clarification?: ClarificationCapability;
     /** Class-native Ground stage. Defaults to a real PlanGroundingCapability (deterministic, plan-inert). */
     grounding?: GroundingCapability;
+    /** Class-native grounding-validation stage. Defaults to DeterministicGroundingValidation. */
+    groundingValidation?: GroundingValidationCapability;
     validation?: ValidationCapability;
     simulation?: SimulationCapability;
     decision?: DecisionCapability;
@@ -122,6 +125,7 @@ export function createDefaultAcademicDecisionAgent(
     planning,
     clarification: overrides.clarification ?? new DeterministicClarificationCapability(),
     grounding: overrides.grounding ?? new PlanGroundingCapability(),
+    groundingValidation: overrides.groundingValidation ?? new DeterministicGroundingValidation(),
     validation: overrides.validation,
     simulation: overrides.simulation ?? new NoOpSimulationCapability(),
     decision: overrides.decision ?? new PassThroughDecisionCapability(),

@@ -100,6 +100,15 @@ describe('generate-plan — grounding conflict → structured outcome (flagged p
 
     expect(res._body.academicDecision.outcome).toBe('validation_failed');
     expect(res._body.academicDecision.applyEligible).toBe(false);
+
+    // Slice 6: the outcome is derived from the real agent grounding-validation
+    // result — a typed, provenance-carrying finding, not an API-side re-count.
+    const findings = res._body.academicDecision.validationFindings;
+    const coreFinding = findings.find((f: any) => f.courseId === 'CORE');
+    expect(coreFinding.code).toBe('GROUNDING_AVAILABILITY_CONFLICT');
+    expect(coreFinding.severity).toBe('error');
+    expect(coreFinding.provenance).toBeDefined();
+    expect(coreFinding.message_he).toMatch(/הכרעה סמכותית|מקורות/);
   });
 
   test('plan-inert: the conflict does not move CORE to hide it (placed in normalized availability, not catalog)', async () => {
