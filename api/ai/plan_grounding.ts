@@ -69,6 +69,36 @@ export interface PlanGrounding {
   conflicts: GroundingConflict[];
 }
 
+/** Input to the grounding stage — the Observe model + the generated plan. */
+export interface GroundingInput {
+  model: ConstraintModel;
+  plan: PlanState;
+  completedCourseIds?: Iterable<string>;
+}
+
+/**
+ * Narrow capability contract for the AcademicDecisionAgent's class-native
+ * Ground stage. Pure and plan-inert by contract — an implementation must never
+ * mutate the plan, planner input, or semester assignments.
+ */
+export interface GroundingCapability {
+  ground(input: GroundingInput): PlanGrounding;
+}
+
+/** Default grounding: delegates to the deterministic, plan-inert groundPlan. */
+export class PlanGroundingCapability implements GroundingCapability {
+  ground(input: GroundingInput): PlanGrounding {
+    return groundPlan(input.model, input.plan, { completedCourseIds: input.completedCourseIds });
+  }
+}
+
+/** An empty grounding — used when no plan exists (e.g. the blocked/failed path). */
+export const EMPTY_GROUNDING: PlanGrounding = {
+  facts: [],
+  counts: { known: 0, unknown: 0, inferred: 0, conflicting: 0 },
+  conflicts: [],
+};
+
 function detectConflicts(
   courseId: string,
   p: CourseProfile,

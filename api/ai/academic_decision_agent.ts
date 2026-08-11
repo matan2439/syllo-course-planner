@@ -26,6 +26,7 @@
 
 import { detectGaps, type GapRecord, type ValidationCapability } from './planner_capabilities';
 import type { PlanningCapability, AgentResult } from './planner_agent';
+import type { GroundingCapability, PlanGrounding } from './plan_grounding';
 import { ProgramProvider, TauProgramProvider } from './program_provider';
 import type { BuildModelOptions } from './planner_model';
 import {
@@ -63,6 +64,12 @@ export interface AcademicDecisionDeps {
    */
   planning: (req: AcademicDecisionRequest) => PlanningCapability;
   clarification?: ClarificationCapability;
+  /**
+   * Class-native Ground stage — runs AFTER Plan over (Observe model, planned
+   * final state). Plan-inert by contract. Omitted → grounding stays undefined
+   * on the result (no wrapper computes it; the class is the single owner).
+   */
+  grounding?: GroundingCapability;
   validation?: ValidationCapability;
   simulation?: SimulationCapability;
   decision?: DecisionCapability;
@@ -76,6 +83,8 @@ export interface AcademicDecisionResult {
   gaps: GapRecord[];
   /** Result of the Clarify stage, which now always runs before Plan. */
   clarification: ClarificationResult;
+  /** Class-native Ground-stage output over the generated plan. Absent when no plan ran or no GroundingCapability was wired. */
+  grounding?: PlanGrounding;
   /** True when a critical missing input, combined with `blockOnMissingCriticalInputs: true`, stopped Plan from running. */
   blocked: boolean;
 }
@@ -117,6 +126,18 @@ export class AcademicDecisionAgent {
     // Plan — built from the same `req` as Observe, then treated as a black box
     const planned = await this.deps.planning(req).run();
 
+    // Ground — class-native stage over the generated plan's PLACED courses
+    // (hence AFTER Plan, not the conceptual "Observe → Ground" order: there is
+    // nothing placed to ground before Plan). Plan-inert: reads model + plan,
+    // never mutates them. The single owner of grounding (no wrapper computes it).
+    const grounding = this.deps.grounding
+      ? this.deps.grounding.ground({
+          model,
+          plan: planned.finalState,
+          completedCourseIds: req.buildModelOptions?.completedCourseIds,
+        })
+      : undefined;
+
     // Validate if wired
     if (this.deps.validation) {
       const { valid, reason } = this.deps.validation.validateState(planned.finalState);
@@ -139,6 +160,6 @@ export class AcademicDecisionAgent {
     const persistence = this.deps.persistence ?? new NoOpPersistenceCapability();
     await persistence.persist(decided);
 
-    return { agentResult: decided, gaps, clarification: clarificationResult, blocked: false };
+    return { agentResult: decided, gaps, clarification: clarificationResult, grounding, blocked: false };
   }
 }

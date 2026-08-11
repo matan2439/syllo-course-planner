@@ -28,7 +28,7 @@ import type { ClarificationResult } from './academic_decision_types';
 import type { ConstraintModel, PlanState } from './planner_types';
 import type { BuildModelOptions } from './planner_model';
 import type { ProgramProvider } from './program_provider';
-import { groundPlan, type PlanGrounding } from './plan_grounding';
+import { EMPTY_GROUNDING, type PlanGrounding } from './plan_grounding';
 import { parseProgramVersionId } from '../board';
 
 export interface RunAcademicDecisionAgentInput {
@@ -142,11 +142,6 @@ export async function runAcademicDecisionAgent(
     rationale_he: input.rationaleHe,
   };
 
-  // Knowledge Grounding — plan-inert, deterministic, computed over the stable
-  // model + generated plan. Runs on the flagged path regardless of whether the
-  // agent pipeline itself succeeds (it never depends on the agent result).
-  const grounding = groundPlan(input.model, input.finalState);
-
   try {
     const agent = createDefaultAcademicDecisionAgent({
       overrides: {
@@ -176,10 +171,13 @@ export async function runAcademicDecisionAgent(
         gapsDetected: result.gaps.length,
       },
       clarification: result.clarification,
-      grounding,
+      // Class-native grounding — the AcademicDecisionAgent Ground stage is now
+      // the single owner. EMPTY_GROUNDING only if the class ran with no plan.
+      grounding: result.grounding ?? EMPTY_GROUNDING,
     };
   } catch {
-    // Controlled failure: keep the caller's adapter-built view; mark the path.
+    // Controlled failure: the class threw before producing grounding, so there
+    // is none to surface. Outcome is 'error' (applyEligible false) anyway.
     return {
       orchestration: {
         engine: 'runtime-adapter-fallback',
@@ -188,7 +186,7 @@ export async function runAcademicDecisionAgent(
         gapsDetected: 0,
       },
       clarification: input.clarification,
-      grounding,
+      grounding: EMPTY_GROUNDING,
     };
   }
 }
