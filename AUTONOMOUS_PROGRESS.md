@@ -14,6 +14,52 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-11 (cont.) — real AcademicDecisionAgent class integration + Knowledge Grounding (owner-authorised)
+
+Owner authorised integrating the real `AcademicDecisionAgent` class behind the
+default-off flag, with the stable planner injected as its PlanningCapability (no
+emptyState re-planning, proposal parity preserved).
+
+**Slice 1+2 — real class/factory executes on the flagged Generate path** (commit
+`1c262fb`). New `academic_decision_integration.ts` is the injection seam: reuses
+the already-loaded board + already-built model as the ProgramProvider, wraps the
+stable planner's final `PlanState` as the injected `AgentResult`, reuses the
+already-computed `ClarificationResult`. So the real class runs its full
+Observe→detectGaps→Clarify→Plan→Validate→Decide→Persist pipeline while the plan
+stays byte-identical. `academicDecision.orchestration.engine ===
+'AcademicDecisionAgent'` is class-only proof (adapter fallback marks
+`'runtime-adapter-fallback'`). LEGACY_KEYS untouched (metadata nested inside
+`academicDecision`). Controlled failure → adapter fallback, committed state never
+touched. TDD: `generate_plan_academic_decision_agent_class.test.ts` RED→GREEN.
+
+**Slice 3 — plan-inert Knowledge Grounding on the flagged path** (commit
+`22f8913`). New `plan_grounding.ts` classifies every placed course's facts as
+known/unknown/inferred/conflicting with provenance, and surfaces structured
+conflicts (catalog `offered_semesters` vs normalized `effective_allowed_semesters`;
+user-asserted-completed course also placed). Deterministic, no LLM/I/O, never
+mutates the plan or fabricates a fact. Invoked from `academic_decision_integration.ts`
+on the real flagged path (not a bare unit call), exposed at
+`academicDecision.grounding`. TDD: `plan_grounding.test.ts` (8 unit) + integration
+assertions (invoked/plan-inert/grounds-only-placed) RED→GREEN.
+
+**Slice 4 — structured agent outcomes + Apply-eligibility** (commit `2e7aa65`).
+`classifyAgentOutcome` (error > blocked > clarification_required > proposal) at
+`academicDecision.outcome`; `applyEligible` server floor (true only for a clean
+proposal). A draft is always still returned; Generate never mutates the committed
+board. TDD: `academic_decision_outcome.test.ts` + integration outcome assertions
+RED→GREEN.
+
+**Corrected status (was overclaimed in the prior section as "reachable"):**
+- Runtime adapter — reachable (unchanged).
+- **AcademicDecisionAgent CLASS — now reachable/executing on the flagged path**
+  (stable planner injected; proposal parity proven).
+- **Knowledge Grounding — now invoked (plan-inert) on the flagged path.**
+
+Default-off preserved; default response backward-compatible (LEGACY_KEYS). No paid
+provider, no Supabase, no browser/Preview. Production/`main`/aliases/Vercel
+unchanged. Native web/ app does NOT yet consume `academicDecision` → native-UI
+contract tests deferred until that consumer seam is built.
+
 ## Session 2026-08-11 — planner-quality: wanted-course prerequisite recovery (issue #75 fixed)
 
 **Starting state verified.** Branch `ui/frontend-modernization`, HEAD `ae4c68e`
