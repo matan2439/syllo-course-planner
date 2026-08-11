@@ -197,7 +197,7 @@ describe('LlmOrchestrator', () => {
   // remainingMandatoryHours' reservation-budget scoring — a cross-cutting
   // change to core scoring logic, deliberately out of scope for this PR (see
   // issue #75 for the full analysis and suggested fix direction).
-  it.skip('recovers a wanted course whose OWN prerequisite was also removed post-finalize_plan (issue #75, not yet fixed)', async () => {
+  it('recovers a wanted course whose OWN prerequisite was also removed post-finalize_plan (issue #75)', async () => {
     const profiles = new Map<string, CourseProfile>();
     profiles.set('MAND', profile('MAND', {
       is_mandatory: true, course_type: 'mandatory', placement_policy: 'fixed',

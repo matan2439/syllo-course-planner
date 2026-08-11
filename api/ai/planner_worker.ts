@@ -459,8 +459,21 @@ export class PlannerWorker {
   run(maxSteps = 500, by: 'greedy' | 'llm' = 'greedy'): void {
     for (let i = 0; i < maxSteps; i++) {
       const a = this.step(by);
-      if (!a) return;
-      if (a.action === 'STOP') return;
+      if (!a || a.action === 'STOP') {
+        // Converged: the strict-improvement search found nothing more to take.
+        // Issue #75 — a wanted course stranded only by an unplaced prerequisite
+        // can't be recovered one step at a time (placing the bare prerequisite
+        // advances no score component until the wanted course follows, a
+        // two-step unlock step()'s strict-improvement gate — and the rollout
+        // bound by the same invariant — can never chain). Attempt the atomic
+        // bundle recovery; if it actually changed the plan, let the normal loop
+        // resume (balance/optimization/further recovery) until it too
+        // converges. Bounded: recovery fires at most once per wanted course.
+        const before = placedCourseIds(this.state).length;
+        this.recoverUnplacedWantedCourses(by);
+        if (placedCourseIds(this.state).length > before) continue;
+        return;
+      }
     }
     // The for-loop ran out of iterations without step() itself ever recording
     // a STOP — i.e. every one of the maxSteps iterations was a real accepted
@@ -546,6 +559,137 @@ export class PlannerWorker {
   repair(maxSteps = 500): import('./planner_validate').CandidateReport {
     this.run(maxSteps, 'greedy');
     return validateCandidate(this.state, this.model, this.pinnedHome);
+  }
+
+  /**
+   * Issue #75 — deterministic finishing recovery for a wanted course left
+   * unplaced only because its own (non-mandatory, non-category) prerequisite is
+   * unplaced. enumerateActions' group 3 offers the wanted course but it fails
+   * strict-timing legality while its prerequisite is missing, and that
+   * bare-elective prerequisite is only offered by the degree-fill group (gated
+   * off once degree hours are already met); step()'s strict-improvement gate
+   * then rejects placing the prerequisite on its own, because it advances no
+   * score component until the wanted course follows — a two-step unlock the
+   * greedy rollout (bound by the same invariant) can never chain.
+   *
+   * This pass evaluates the wanted course TOGETHER WITH its missing prerequisite
+   * chain atomically, and commits the whole bundle only when the resulting plan
+   * is valid AND strictly out-scores the current plan. Gated that way it is
+   * monotonic-safe: it can never yield a worse or illegal plan than it started
+   * from, so it is inert for any plan whose wanted courses are already placed,
+   * genuinely unplaceable, or whose recovery would not improve the score. It is
+   * seeded ONLY from wantedCourseIds and deliberately kept out of
+   * requiredButUnplacedCourseIds (planner_goals.ts), whose set also feeds
+   * remainingMandatoryHours' degree-hour reservation budget — a wanted course
+   * is a preference, not a degree requirement, and must never distort mandatory
+   * reservation scoring for every plan.
+   */
+  recoverUnplacedWantedCourses(by: Actor = 'worker'): void {
+    // At most one recovered wanted course per outer pass; re-scan after each so
+    // a freshly-placed chain can enable the next. Bounded by wanted count.
+    for (let guard = 0; guard <= this.model.wantedCourseIds.size; guard++) {
+      let placedOne = false;
+      for (const wantedId of this.model.wantedCourseIds) {
+        const placed = new Set(placedCourseIds(this.state));
+        if (placed.has(wantedId) || this.model.completedCourseIds.has(wantedId) || this.isExcluded(wantedId)) continue;
+        const chain = this.orderedMissingPrereqChain(wantedId, placed);
+        if (!chain) continue; // an excluded/unknown prerequisite — the wanted course is genuinely unplaceable
+        const layout = this.layoutBundleMinimizingPeak([...chain, wantedId]);
+        if (!layout) continue; // no legal, valid layout of the whole bundle
+        if (compareScore(scorePlan(layout.state, this.model), scorePlan(this.state, this.model)) <= 0) continue;
+        // Commit through the normal validated path (trace + invariants), in
+        // dependency order — every intermediate state is legal by construction.
+        let committed = true;
+        for (const { courseId, semesterId } of layout.placements) {
+          if (!this.tryApply({ type: 'ADD_COURSE', courseId, semesterId }, 'ADD_COURSE', this.addReason(courseId), by).accepted) {
+            committed = false;
+            break;
+          }
+        }
+        if (committed) { placedOne = true; break; }
+      }
+      if (!placedOne) break;
+    }
+  }
+
+  /**
+   * The unplaced/uncompleted prerequisites of `wantedId`, transitively, in
+   * dependency order (a prerequisite before every course that needs it), with
+   * `wantedId` itself excluded. Returns null if any prerequisite is excluded or
+   * has no profile — in that case the wanted course cannot be legally placed at
+   * all, so recovery must not attempt a partial bundle.
+   */
+  private orderedMissingPrereqChain(wantedId: string, placed: Set<string>): string[] | null {
+    const chain: string[] = [];
+    const seen = new Set<string>([wantedId]);
+    const visit = (id: string): boolean => {
+      const p = this.model.profiles.get(id);
+      if (!p) return false;
+      for (const prereqId of p.prerequisites ?? []) {
+        if (this.model.completedCourseIds.has(prereqId)) continue;
+        if (this.model.currentlyPlannedCourseIds?.has(prereqId)) continue;
+        if (placed.has(prereqId) || seen.has(prereqId)) continue;
+        seen.add(prereqId);
+        if (this.isExcluded(prereqId)) return false;
+        if (!visit(prereqId)) return false;
+        chain.push(prereqId);
+      }
+      return true;
+    };
+    return visit(wantedId) ? chain : null;
+  }
+
+  /**
+   * Lay out `ids` (in dependency order) into legal semesters, choosing for each
+   * the semester that MINIMIZES the resulting peak weekly load (tie-break:
+   * earliest semester, leaving later room for the dependents that follow). Every
+   * intermediate placement is validated, so prerequisite strict-timing is
+   * enforced automatically (a placement that would put a course before its
+   * prerequisite simply fails validation and is skipped). Returns the final
+   * state plus the chosen placements, or null if any course has no valid
+   * semester. Annual courses are out of scope for this recovery (they need
+   * atomic multi-span placement) — a bundle containing one is abandoned.
+   *
+   * Peak-minimizing (rather than earliest) placement matters: only a layout that
+   * uses spare/empty semesters keeps the plan's peak load unchanged, which is
+   * what lets the whole bundle strictly out-score the pre-recovery plan (the
+   * balance objective g4a outranks the wanted-course objective g5) — an
+   * earliest-first layout that raised the peak would fail recoverUnplaced...'s
+   * own strict-improvement gate and silently recover nothing.
+   */
+  private layoutBundleMinimizingPeak(
+    ids: string[],
+  ): { state: PlanState; placements: Array<{ courseId: string; semesterId: string }> } | null {
+    let cur = this.state;
+    const placements: Array<{ courseId: string; semesterId: string }> = [];
+    for (const id of ids) {
+      const p = this.model.profiles.get(id);
+      if (!p || p.is_annual) return null;
+      const legal = new Set(legalSemestersFor(this.model, id));
+      let bestState: PlanState | null = null;
+      let bestSem: string | null = null;
+      let bestPeak = Infinity;
+      for (const sem of this.model.knownSemesterIds) {
+        if (!legal.has(sem)) continue;
+        const next = applyMutation(cur, { type: 'ADD_COURSE', courseId: id, semesterId: sem });
+        if (!next || !this.validate(next).valid) continue;
+        const peak = this.peakLoad(next);
+        if (peak < bestPeak) { bestPeak = peak; bestState = next; bestSem = sem; }
+      }
+      if (!bestState || !bestSem) return null;
+      cur = bestState;
+      placements.push({ courseId: id, semesterId: bestSem });
+    }
+    return { state: cur, placements };
+  }
+
+  private peakLoad(state: PlanState): number {
+    let peak = 0;
+    for (const sem of this.model.knownSemesterIds) {
+      const load = (state.semesters[sem] ?? []).reduce((s, c) => s + (this.model.profiles.get(c)?.hours ?? 0), 0);
+      if (load > peak) peak = load;
+    }
+    return peak;
   }
 
   /** Full candidate gate for the current plan (legality + completeness). */
