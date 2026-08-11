@@ -55,18 +55,31 @@ export interface RunAcademicDecisionAgentInput {
  *   blocked                — the plan has a blocking gate error (not applyable);
  *   clarification_required — a critical planning input is missing (a draft still
  *                            exists, but Apply must wait for the answer);
- *   proposal               — a valid, complete, applyable draft.
+ *   validation_failed      — the plan is placed and fully specified, but the
+ *                            grounding layer surfaced an unresolved fact conflict
+ *                            (e.g. catalog vs normalized availability) that must
+ *                            be reviewed before Apply — the plan is NOT changed
+ *                            to hide it, and neither conflicting source is
+ *                            silently chosen;
+ *   proposal               — a valid, complete, conflict-free, applyable draft.
  */
-export type AcademicDecisionOutcome = 'proposal' | 'clarification_required' | 'blocked' | 'error';
+export type AcademicDecisionOutcome =
+  | 'proposal'
+  | 'clarification_required'
+  | 'validation_failed'
+  | 'blocked'
+  | 'error';
 
 export function classifyAgentOutcome(a: {
   engineFailed: boolean;
   blocked: boolean;
   hasCriticalMissingInput: boolean;
+  hasUnresolvedConflicts: boolean;
 }): AcademicDecisionOutcome {
   if (a.engineFailed) return 'error';
   if (a.blocked) return 'blocked';
   if (a.hasCriticalMissingInput) return 'clarification_required';
+  if (a.hasUnresolvedConflicts) return 'validation_failed';
   return 'proposal';
 }
 

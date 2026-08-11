@@ -1762,6 +1762,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       engineFailed: agentRun.orchestration.engine === 'runtime-adapter-fallback',
       blocked: blockingErrors.length > 0,
       hasCriticalMissingInput: hasCriticalMissingInput(agentRun.clarification),
+      // A grounded fact conflict on a placed course (surfaced plan-inert by the
+      // grounding layer) makes the draft unfit to Apply until reviewed — never
+      // silently resolved, never allowed to masquerade as a clean proposal.
+      hasUnresolvedConflicts: agentRun.grounding.conflicts.length > 0,
     });
     (responseBody.academicDecision as Record<string, unknown>).outcome = outcome;
     (responseBody.academicDecision as Record<string, unknown>).applyEligible = isApplyEligible(outcome);
