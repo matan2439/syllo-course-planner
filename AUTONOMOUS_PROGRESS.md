@@ -14,6 +14,52 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-11 — planner-quality: wanted-course prerequisite recovery (issue #75 fixed)
+
+**Starting state verified.** Branch `ui/frontend-modernization`, HEAD `ae4c68e`
+== remote, clean tree. No unrelated uncommitted/untracked work. Test cmd
+`npx jest --testPathPattern=tests/api` (+ `jest.ui.config.js`), `tsc --noEmit`.
+
+**Integration-gap map (code evidence).** Active Generate path: native UI →
+`POST /api/ai/generate-plan` → default `buildModel`→planner→`proposal` (stable).
+`use_academic_decision_agent` (generate-plan.ts:132/1395/1708) drives (a)
+pre-plan `clarifyForAcademicDecision` and (b) post-plan `buildAcademicDecision`
+(academic_decision_runtime.ts) — an ADAPTER that WRAPS the already-generated
+proposal (validation/evaluation/decision/explanation), NOT the
+`AcademicDecisionAgent` class. That class + `createDefaultAcademicDecisionAgent`
+factory remain **implemented-but-unintegrated** by deliberate design (their Plan
+stage `runPlanningOrchestration` builds a different model from emptyState →
+would change the plan; documented at academic_decision_runtime.ts:20-27).
+Knowledge Grounding Slice 1 (`KnowledgeCapability`, 679ce47) is plan-inert /
+reachable only via `runPlanningOrchestration` → **not used by the active
+generate path**. Default-path response is locked byte-identical by
+`LEGACY_KEYS` (generate_plan_academic_decision_agent.test.ts:67) — so a
+top-level path-diagnostics field is intentionally NOT added (would break that
+deliberate contract; the agent path is already observable by the presence of
+`academicDecision`).
+
+**Slice implemented (Workstream D — wanted-course enforcement).** Fixed
+**issue #75** (was an `it.skip` in planner_orchestrator.test.ts:200, documented
+as cross-cutting and deferred by prior sessions). Root cause: a wanted course
+whose own bare-elective prerequisite is removed is unrecoverable — group 3
+offers the wanted course but it fails strict-timing legality, the prerequisite
+is only offered by the degree-fill group (gated off once degree hours are met),
+and step()'s strict-improvement gate + the greedy rollout (same invariant)
+cannot chain the two-step unlock. Fix: `PlannerWorker.recoverUnplacedWantedCourses`
+— a deterministic finishing pass at run() convergence that places a wanted
+course TOGETHER WITH its missing prerequisite chain atomically, committing only
+when the bundle is valid AND strictly out-scores the current plan
+(peak-minimizing layout preserves balance objective g4a). Monotonic-safe (never
+a worse/illegal plan); seeded only from `wantedCourseIds` and kept OUT of
+`requiredButUnplacedCourseIds` so `remainingMandatoryHours` reservation scoring
+is untouched — the exact cross-cutting risk #75 flagged.
+
+**Verification.** issue #75 test RED (WANTED absent) → GREEN. Full API suite
+**115 suites / 1583 tests pass**; `tsc --noEmit` clean. No paid provider, no
+Supabase, no browser/Preview (deferred per owner). Commit `4965004` on
+`ui/frontend-modernization`. Production/`main`/aliases/Vercel settings
+unchanged; unrelated work preserved.
+
 ## Session 2026-08-08 (cont.) — live enrichment run EXECUTED; promotion structurally blocked (no cache change)
 
 **Owner unblocked both prerequisites** (verified by name only, secret value never retrieved): gh token now
