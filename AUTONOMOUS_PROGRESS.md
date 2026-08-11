@@ -14,6 +14,46 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-12 — class-native grounding/validation/clarification stages (slices 5–8)
+
+**THERMO-2 web test** — diagnosed (systematic-debugging) as a STALE test, not a
+regression: commit 92f473a turned the native exclude control into a CourseNamePicker
+(id added only on ranked-match selection); the MVP test (e7c0e14) typed a raw id and
+expected exclusion without selecting. Hard-exclude mapping intact; planner invariant
+covered by API regressions. Fixed by driving the picker (add THERMO-2 to the board,
+type the name, select) — committed separately.
+
+**Slice 5 — class-native GroundingCapability.** `AcademicDecisionAgent.run()` now owns
+grounding: narrow `GroundingCapability` + default `PlanGroundingCapability`, invoked
+AFTER Plan (grounds placed courses — documented ordering deviation), returned on
+`AcademicDecisionResult.grounding`. Wrapper no longer calls `groundPlan` (single owner).
+
+**Slice 6 — grounding-consuming ValidationCapability.** `DeterministicGroundingValidation`:
+class-native stage turning unresolved authoritative conflicts into typed,
+provenance-carrying findings (`GROUNDING_AVAILABILITY_CONFLICT` /
+`GROUNDING_COMPLETION_CONFLICT`, severity error) that block Apply. Never re-plans,
+never picks a source, never downgrades known facts or blocks on non-critical unknowns.
+API `validation_failed` now derived from `agentRun.validation.applyBlocked` (real agent
+result, not an API re-count); findings at `academicDecision.validationFindings`.
+
+**Slice 7 — unified structured clarification.** `buildStructuredClarification` projects
+clarification + validation into one list preserving the distinction:
+`answerable_preference` (user-resolvable, answerType+inputKey; critical blocks Apply) vs
+`authoritative_conflict` (answerable:false, provenance, blocks Apply — user never asked
+to invent academic truth). At `academicDecision.structuredClarification`.
+
+**Slice 8 — dev-only native flag.** Injectable `useAcademicDecisionAgent` prop (default
+false) on `NativePlannerJourney`; Build sends `use_academic_decision_agent:true` only
+when set. Production page never sets it → feature stays off. Tests prove both payloads.
+
+Final `AcademicDecisionAgent.run()` sequence: Observe → detectGaps → Clarify → Plan
+(injected stable planner) → **Ground** → **GroundingValidation** → (state Validate if
+wired) → Simulate → Decide → Persist.
+
+Verification: API 1623/1623, web 64/64, root+web tsc clean. Lint: ESLint not configured
+in repo (interactive setup prompt) — pre-existing, unchanged. No paid provider, no
+Supabase, no browser/Preview. Production/main/Vercel/env unchanged.
+
 ## Session 2026-08-11 (cont.) — real AcademicDecisionAgent class integration + Knowledge Grounding (owner-authorised)
 
 Owner authorised integrating the real `AcademicDecisionAgent` class behind the
