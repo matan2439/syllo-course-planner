@@ -75,8 +75,9 @@ import {
   clarifyForAcademicDecision,
   buildAcademicDecision,
   resolveHardExcludedCourseIds,
+  hasCriticalMissingInput,
 } from './academic_decision_runtime';
-import { runAcademicDecisionAgent } from './academic_decision_integration';
+import { runAcademicDecisionAgent, classifyAgentOutcome, isApplyEligible } from './academic_decision_integration';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1753,6 +1754,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // facts + provenance + structured conflicts) — reasoning input only, never
     // mutates the plan. Nested inside academicDecision (agent path only).
     (responseBody.academicDecision as Record<string, unknown>).grounding = agentRun.grounding;
+    // Structured, mutually-exclusive outcome + server-side Apply-eligibility
+    // floor (Slice 4). A draft is always still returned (never withheld); this
+    // only tells the client which state the draft is in and whether Apply is
+    // permitted. Generate never mutates the committed board regardless.
+    const outcome = classifyAgentOutcome({
+      engineFailed: agentRun.orchestration.engine === 'runtime-adapter-fallback',
+      blocked: blockingErrors.length > 0,
+      hasCriticalMissingInput: hasCriticalMissingInput(agentRun.clarification),
+    });
+    (responseBody.academicDecision as Record<string, unknown>).outcome = outcome;
+    (responseBody.academicDecision as Record<string, unknown>).applyEligible = isApplyEligible(outcome);
   }
   res.status(200).json(responseBody);
 }

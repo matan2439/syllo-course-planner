@@ -48,6 +48,37 @@ export interface RunAcademicDecisionAgentInput {
   currentCourseIds?: string[];
 }
 
+/**
+ * The structured, mutually-exclusive outcome of a flagged Generate run — the
+ * single discriminator a client switches on. Precedence (highest first):
+ *   error                  — the agent engine failed (safe fallback taken);
+ *   blocked                — the plan has a blocking gate error (not applyable);
+ *   clarification_required — a critical planning input is missing (a draft still
+ *                            exists, but Apply must wait for the answer);
+ *   proposal               — a valid, complete, applyable draft.
+ */
+export type AcademicDecisionOutcome = 'proposal' | 'clarification_required' | 'blocked' | 'error';
+
+export function classifyAgentOutcome(a: {
+  engineFailed: boolean;
+  blocked: boolean;
+  hasCriticalMissingInput: boolean;
+}): AcademicDecisionOutcome {
+  if (a.engineFailed) return 'error';
+  if (a.blocked) return 'blocked';
+  if (a.hasCriticalMissingInput) return 'clarification_required';
+  return 'proposal';
+}
+
+/**
+ * Apply is eligible only for a clean 'proposal'. Blocked/errored/clarification
+ * drafts must not be applyable; draft staleness is a separate, client-side gate
+ * (this is a server-side eligibility floor, not the whole rule).
+ */
+export function isApplyEligible(outcome: AcademicDecisionOutcome): boolean {
+  return outcome === 'proposal';
+}
+
 /** Safe, structured metadata proving which orchestration path executed. No secrets, no internal state. */
 export interface AcademicDecisionOrchestration {
   /** 'AcademicDecisionAgent' when the real class ran; 'runtime-adapter-fallback' when it threw and the adapter-only view was kept. */

@@ -181,4 +181,36 @@ describe('generate-plan — real AcademicDecisionAgent class integration', () =>
     const res = await run(sufficientBody({ use_academic_decision_agent: false }));
     expect('academicDecision' in res._body).toBe(false);
   });
+
+  // ── Slice 4: structured agent outcomes ─────────────────────────────────────
+
+  test('outcome=proposal + applyEligible=true for a valid, sufficient request', async () => {
+    const res = await run(sufficientBody({ use_academic_decision_agent: true }));
+    expect(res._body.academicDecision.outcome).toBe('proposal');
+    expect(res._body.academicDecision.applyEligible).toBe(true);
+  });
+
+  test('outcome=clarification_required + applyEligible=false when a critical input is missing', async () => {
+    const res = await run({
+      program_id: 'test_program_2027',
+      plan_context: PLAN_CONTEXT,
+      preferences: {},
+      session_token: randomUUID(),
+      use_academic_decision_agent: true,
+    });
+    expect(res._body.academicDecision.outcome).toBe('clarification_required');
+    // A draft still exists, but Apply must be gated until the critical input is provided.
+    expect(res._body.academicDecision.applyEligible).toBe(false);
+    expect(Array.isArray(res._body.semesters)).toBe(true);
+  });
+
+  test('outcome=blocked + applyEligible=false when a mandatory course cannot be placed (excluded)', async () => {
+    const res = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      preferences: { disallowed_course_ids: ['MAND'] },
+    }));
+    expect(res._body.blocked).toBe(true);
+    expect(res._body.academicDecision.outcome).toBe('blocked');
+    expect(res._body.academicDecision.applyEligible).toBe(false);
+  });
 });
