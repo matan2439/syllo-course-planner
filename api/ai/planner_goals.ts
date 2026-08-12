@@ -780,14 +780,24 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   //     scores better than one that consolidates onto an already-heavy semester
   //     (e.g. [16,4] peak 16 beats [20,0] peak 20). Over-cap is still handled at
   //     the higher-priority g3, so this only ranks otherwise-legal plans.
-  const g4a = loads.length ? -Math.max(...loads) : 0;
-
-  // 4b. balance (spread) — secondary tiebreak: among equal-peak plans, prefer a
-  //     tighter distribution across *non-empty* semesters. This never rewards
-  //     opening an empty semester on its own (it only breaks ties once the peak
-  //     is equal), so it does not scatter courses for its own sake.
+  // Slice 17A — semester-distribution policy (owns g4a/g4b ONLY). 'neutral'
+  // (default) and 'balanced' keep the legacy peak-then-spread preference;
+  // 'compact' rewards fewer ACTIVE (non-empty) periods — an order-invariant
+  // consolidation metric that never rewards an earlier period / lower index /
+  // period id (activeCount is invariant under period renaming/reordering). This
+  // slot sits BELOW completion (g1), requirements (g2a/g2b), and legality (g3),
+  // so the policy can never override any higher-priority objective.
   const activeLs = loads.filter(h => h > 0);
   const spread = activeLs.length > 1 ? Math.max(...activeLs) - Math.min(...activeLs) : 0;
+  const g4a =
+    model.distributionPolicy === 'compact'
+      ? -activeLs.length // fewer occupied periods preferred (consolidation)
+      : (loads.length ? -Math.max(...loads) : 0); // legacy: lower peak preferred
+
+  // 4b. balance (spread) — secondary tiebreak. Under 'balanced'/'neutral' it is
+  //     the legacy spread tiebreak among equal-peak plans; under 'compact' it is
+  //     the SAME deterministic spread tiebreak among equal active-count plans
+  //     (a legacy tiebreak, not a compact-policy preference). Order-invariant.
   const g4b = -spread;
 
   // 5. preferences — wanted courses placed.

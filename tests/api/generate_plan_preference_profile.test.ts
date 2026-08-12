@@ -69,4 +69,32 @@ describe('generate-plan — preference profile lifecycle', () => {
     const res = await run(body({ use_academic_decision_agent: true }));
     expect(res._body.academicDecision.profileVersion).toBeUndefined();
   });
+
+  test('a confirmed active semester_balance=compact resolves to a compact policy with provenance', async () => {
+    const res = await run(body({
+      use_academic_decision_agent: true,
+      preference_profile: {
+        version: 4,
+        preferences: [
+          { id: 'semester_balance', category: 'semester_balance', normalized: 'compact', value: 'compact', classification: 'soft_preference', affects: 'balance_score', source: 'explicit_answer', mayAffectPlanningBeforeConfirmation: true },
+        ],
+      },
+    }));
+    const dp = res._body.academicDecision.distributionPolicy;
+    expect(dp.policy).toBe('compact');
+    expect(dp.provenance).toMatchObject({ preferenceId: 'semester_balance', source: 'explicit_answer', profileVersion: 4 });
+  });
+
+  test('an inactive (uncertain) semester_balance produces a neutral policy (no preference-derived bias)', async () => {
+    const res = await run(body({
+      use_academic_decision_agent: true,
+      preference_profile: {
+        version: 2,
+        preferences: [
+          { id: 'semester_balance', category: 'semester_balance', normalized: 'free_text', classification: 'uncertain', affects: 'balance_score', source: 'explicit_answer', mayAffectPlanningBeforeConfirmation: false },
+        ],
+      },
+    }));
+    expect(res._body.academicDecision.distributionPolicy.policy).toBe('neutral');
+  });
 });

@@ -22,6 +22,15 @@ export interface CategoryReq {
  * hard fact the worker reasons over. Built once in LOAD_CONTEXT /
  * BUILD_CONSTRAINT_MODEL from the program board_json + the user's status.
  */
+/**
+ * Semester-distribution policy the scorer applies to its OWNED slots (g4a/g4b)
+ * only. 'neutral' (default/undefined) is the legacy baseline; 'balanced' keeps
+ * the legacy peak-then-spread preference; 'compact' rewards fewer ACTIVE periods
+ * (order-invariant consolidation), never an earlier period. It never affects
+ * completion, legality, requirements, or any higher-priority objective.
+ */
+export type DistributionPolicy = 'balanced' | 'compact' | 'neutral';
+
 export interface ConstraintModel {
   /** CourseProfile for every course in the eligible universe. */
   profiles: Map<string, CourseProfile>;
@@ -56,6 +65,12 @@ export interface ConstraintModel {
   pinnedCourseIds: Set<string>;
   /** course_ids the user explicitly wants. */
   wantedCourseIds: Set<string>;
+  /**
+   * Slice 17A — requested semester-distribution policy. Undefined = 'neutral'
+   * (legacy baseline). Only a confirmed active `semester_balance` preference
+   * sets 'balanced' or 'compact'; it influences ONLY scorePlan's g4a/g4b slots.
+   */
+  distributionPolicy?: DistributionPolicy;
   /**
    * Optional per-course general user-fit score (0..1) for the requested focus
    * area(s)/style(s) — a SOFT optimization signal scored below explicit

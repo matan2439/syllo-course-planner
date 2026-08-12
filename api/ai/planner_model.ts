@@ -24,7 +24,7 @@
 import { buildCourseProfiles } from './course_profile';
 import { DEGREE_REQUIRED_HOURS } from './completion_analysis';
 import { HARD_LOAD_CAP, DEFAULT_MAX_HOURS_PER_SEMESTER, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from './load_constants';
-import { type ConstraintModel, type CategoryReq, type PlanState, emptyState } from './planner_types';
+import { type ConstraintModel, type CategoryReq, type PlanState, type DistributionPolicy, emptyState } from './planner_types';
 
 export interface BuildModelOptions {
   /** course_ids the user has completed (merged with board metadata.completed_course_ids). */
@@ -61,6 +61,8 @@ export interface BuildModelOptions {
   softLoadMax?: number;
   /** Phase 1b — never-overridable blocking ceiling override. Defaults to ABSOLUTE_MAX_REASONABLE. */
   absoluteMaxReasonable?: number;
+  /** Slice 17A — requested semester-distribution policy. Undefined = 'neutral' (legacy baseline). */
+  distributionPolicy?: DistributionPolicy;
 }
 
 function uniq<T>(xs: T[]): T[] {
@@ -137,6 +139,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     disallowedCourseIds,
     pinnedCourseIds,
     wantedCourseIds,
+    ...(opts.distributionPolicy ? { distributionPolicy: opts.distributionPolicy } : {}),
     courseFitById: opts.courseFitById,
     institutionId: opts.institutionId,
     programId: opts.programId,

@@ -65,7 +65,7 @@ import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } f
 import { getSemesterLoad, getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
-import type { ConstraintModel, PlanState, PlannerMutation } from './planner_types';
+import type { ConstraintModel, PlanState, PlannerMutation, DistributionPolicy } from './planner_types';
 import { placedCourseIds, semesterOf, emptyState } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
@@ -78,7 +78,8 @@ import {
   hasCriticalMissingInput,
 } from './academic_decision_runtime';
 import { runAcademicDecisionAgent, classifyAgentOutcome, isApplyEligible } from './academic_decision_integration';
-import { effectivePlannerPreferences } from './preference_eligibility';
+import { effectivePlannerPreferences, type EffectivePlannerPreferences } from './preference_eligibility';
+import { resolveDistributionPolicy } from './distribution_policy';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -242,7 +243,7 @@ export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focus
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */
-export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>, distributionPolicy?: DistributionPolicy): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
   // already used above to route the board_json lookup, reused here for the
   // model's programId/catalogYear. No institutionId source exists yet.
@@ -261,6 +262,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     overloadConfirmedAt: prefs.overload_confirmed_at,
     programId: pv?.base,
     catalogYear: pv?.year,
+    ...(distributionPolicy ? { distributionPolicy } : {}),
   });
 }
 
@@ -1505,7 +1507,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const courseFit = interpret_free_text === true ? buildCourseFitById(board, interpretedIntent?.focusAreas ?? [], program_id) : undefined;
   const courseFitById = courseFit?.fitById;
 
-  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById);
+  // Slice 14/17A — resolve the typed preference profile ONCE (single source of
+  // truth): the eligibility filter drives both the semester-distribution policy
+  // fed to the planner here and the eligibility disclosure in the response below.
+  // Only the flagged path with a profile can set a non-neutral policy.
+  const effectivePrefs: EffectivePlannerPreferences | undefined =
+    use_academic_decision_agent === true && preference_profile
+      ? effectivePlannerPreferences({
+          version: preference_profile.version,
+          preferences: preference_profile.preferences.map((p) => ({
+            id: p.id, category: p.category ?? 'unknown', normalized: p.normalized, value: p.value,
+            classification: p.classification, confidence: p.confidence ?? 0,
+            source: p.source ?? 'existing_profile', confirmationStatus: p.confirmationStatus ?? 'unconfirmed',
+            affects: p.affects, mayAffectPlanningBeforeConfirmation: p.mayAffectPlanningBeforeConfirmation ?? false,
+          })),
+        })
+      : undefined;
+  const resolvedPolicy = effectivePrefs ? resolveDistributionPolicy(effectivePrefs) : undefined;
+  // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
+  const distributionPolicy: DistributionPolicy | undefined =
+    resolvedPolicy && resolvedPolicy.policy !== 'neutral' ? resolvedPolicy.policy : undefined;
+
+  const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById, distributionPolicy);
   const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
@@ -1799,28 +1822,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // excluded and why). The typed profile is the source of truth; ineligible
     // preferences are surfaced, never silently dropped. Absent when the client
     // sent no profile (backward-compatible).
-    if (preference_profile) {
-      const eligibility = effectivePlannerPreferences({
-        version: preference_profile.version,
-        preferences: preference_profile.preferences.map((p) => ({
-          id: p.id,
-          category: p.category ?? 'unknown',
-          normalized: p.normalized,
-          value: p.value,
-          classification: p.classification,
-          confidence: p.confidence ?? 0,
-          source: p.source ?? 'existing_profile',
-          confirmationStatus: p.confirmationStatus ?? 'unconfirmed',
-          affects: p.affects,
-          mayAffectPlanningBeforeConfirmation: p.mayAffectPlanningBeforeConfirmation ?? false,
-        })),
-      });
-      (responseBody.academicDecision as Record<string, unknown>).profileVersion = eligibility.profileVersion;
+    if (effectivePrefs) {
+      (responseBody.academicDecision as Record<string, unknown>).profileVersion = effectivePrefs.profileVersion;
       (responseBody.academicDecision as Record<string, unknown>).preferenceEligibility = {
-        hard: eligibility.hard.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
-        soft: eligibility.soft.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
-        excluded: eligibility.excluded,
+        hard: effectivePrefs.hard.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
+        soft: effectivePrefs.soft.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
+        excluded: effectivePrefs.excluded,
       };
+      // Slice 17A — the resolved semester-distribution policy the planner actually
+      // consumed, with provenance (preference id, source, profile version).
+      (responseBody.academicDecision as Record<string, unknown>).distributionPolicy = resolvedPolicy;
     }
     // Typed, provenance-carrying validation findings from the class stage.
     (responseBody.academicDecision as Record<string, unknown>).validationFindings =
