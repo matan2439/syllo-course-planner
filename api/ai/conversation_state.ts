@@ -144,6 +144,28 @@ export function reviseAnswer(
   return advance({ ...next, pendingInterpretation: undefined }, elicit, ctx);
 }
 
+/** Remove a captured preference (draft only). Bumps the version, re-advances, invalidates any proposal. */
+export function removeCapturedPreference(
+  state: ConversationState,
+  id: string,
+  elicit: DeterministicPreferenceElicitation,
+  ctx: ElicitationContext,
+): ConversationState {
+  const profile = removePreference(state.profile, id);
+  if (profile === state.profile) return state; // nothing removed
+  return advance({ ...state, profile, pendingInterpretation: undefined, rebuildRequired: true }, elicit, ctx);
+}
+
+/** Reject a pending interpretation without activating it — removes it and re-asks. */
+export function rejectPending(
+  state: ConversationState,
+  elicit: DeterministicPreferenceElicitation,
+  ctx: ElicitationContext,
+): ConversationState {
+  if (!state.pendingInterpretation) return state;
+  return removeCapturedPreference(state, state.pendingInterpretation.id, elicit, ctx);
+}
+
 export function markPlanning(state: ConversationState): ConversationState {
   return { ...state, status: 'planning' };
 }
