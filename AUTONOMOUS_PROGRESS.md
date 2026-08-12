@@ -14,6 +14,52 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-12 (cont.) — preference elicitation core + outcome details (slices 9–12, 15) + candidate investigation (16)
+
+**Slice 10 — typed preference model** (`preference_model.ts`): generic Preference
+(id, category, originalWording, normalized, value, classification [hard_constraint|
+soft_preference|goal|indifferent|uncertain], confidence, source, confirmationStatus,
+affects, scope/expiry, mayAffectPlanningBeforeConfirmation) + versioned
+PreferenceProfile. Invariant: vague → uncertain + inert, never a hard constraint.
+
+**Slice 11 — DeterministicPreferenceElicitation** (`preference_elicitation.ts`):
+impact-driven single-question selection over a generic catalog; skips known/irrelevant/
+cosmetic; sufficiency = nothing impactful left; vague answer → uncertain +
+requiresConfirmation; contradictions surfaced. No external provider.
+
+**Slice 12 — conversation state machine** (`conversation_state.ts`): typed bounded state
+(status/profile/currentQuestion/pendingInterpretation/conflicts/proposalProfileVersion/
+rebuildRequired). Answers update draft only, never auto-generate; proposal records
+profile version; later change → stale + rebuildRequired; revise bumps version.
+
+**Slice 9 — AgentOutcomeDetails** (web): accessible progressive disclosure (aria-expanded
+toggle, labelled region, text-not-color) for clarification_required/validation_failed/
+blocked/error; answerable vs authoritative distinction, provenance, safe error copy.
+Lean VMs threaded wire→adapter→GeneratedPlanModel→DraftVM; rendered in the draft view.
+
+**Slice 15 — authoritative_resolution.ts**: narrow auditable domain contract for an
+AUTHORIZED actor to correct an academic fact (fixed AUTHORITY_TYPES; requires
+provenance+actor+timestamp+original facts). Rejected without authority/provenance.
+Contract only — no student-facing control, no persistence.
+
+**Slice 16 — candidate-readiness investigation (read-only).** `scorePlan` (planner_goals.ts)
+is a lexicographic vector `[g1,g2a,g2b,g3,g4a,g4b,g5,g5b,gFit,g6]`:
+completion(g1) > mandatory(g2a) > categories(g2b) > legality/workload-cap(g3) >
+balance-peak(g4a) > balance-spread(g4b) > wanted(g5) > unwanted-avoid(g5b) >
+interest-fit(gFit) > difficulty(g6). **Exam load, morning/free-days: NOT represented.**
+The `PlannerWorker` is greedy/rollout (topN) and `BeamSearchStrategy` (beamWidth 6)
+collapse to ONE `getPlan()` — no distinct candidate SET is retained/compared. Alternatives
+are discarded at each step's topN truncation and final single-plan selection. Dual-semester
+A/B: balance (g4a/g4b) already lets B be chosen to cut peak ("[16,4] beats [20,0]"), but
+the course is placed once, not kept as an alternative; `semester_balance` (compact vs
+balanced) preference is elicited but NOT yet consumed by scorePlan (always balances).
+**Smallest next candidate slice:** run the stable planner twice under two balance policies
+(balanced vs compact) → two distinct legal candidates distinguished by `semester_balance`;
+reuses existing scoring, needs no new search. (Deferred — Simulation/Decision not authorized.)
+
+Remaining: Slice 13 (full conversational UI) and Slice 14 (thread confirmed preferences +
+profile version through Generate, stale-profile Apply rejection) — next.
+
 ## Session 2026-08-12 — class-native grounding/validation/clarification stages (slices 5–8)
 
 **THERMO-2 web test** — diagnosed (systematic-debugging) as a STALE test, not a
