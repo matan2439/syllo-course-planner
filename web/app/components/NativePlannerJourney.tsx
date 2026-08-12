@@ -26,6 +26,8 @@ import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../li
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import AgentOutcomeDetails from './AgentOutcomeDetails'
+import PreferenceConversation from './PreferenceConversation'
+import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import { Badge, Card, EmptyState } from './ui'
@@ -143,7 +145,15 @@ export default function NativePlannerJourney({
   const [errKind, setErrKind] = useState<'network' | 'contract' | null>(null)
   const tokenRef = useRef(0)
 
-  const buildRequest = useCallback((base: BoardModel): GeneratePlanRequest => {
+  // ── mounted preference conversation (flagged path only) ────────────────────
+  // The PreferenceConversation component owns the single authoritative typed
+  // ConversationState; here we mirror only the current profile VERSION (a scalar,
+  // not a second profile representation) for staleness comparison, and hold the
+  // latest profile in a ref so an explicit Build sends the exact typed profile.
+  const [convProfileVersion, setConvProfileVersion] = useState<number | undefined>(undefined)
+  const convProfileRef = useRef<PreferenceProfile | null>(null)
+
+  const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest => {
     const conversation = messages.filter((m) => m.role === 'user').map((m) => m.text)
     if (draftText.trim()) conversation.push(draftText.trim())
     const extra = conversation.join('\n').slice(0, 1000)
@@ -174,16 +184,32 @@ export default function NativePlannerJourney({
       interpret_free_text: true,
       // Dev/diagnostic-only opt-in (default off) — never set by the Production page.
       ...(useAcademicDecisionAgent ? { use_academic_decision_agent: true } : {}),
+      // Slice 14 — the typed preference profile (source of truth). Only on the
+      // flagged path, and only the typed profile (never the transcript). The
+      // server eligibility filter decides which preferences may reach planning.
+      ...(useAcademicDecisionAgent && profile
+        ? {
+            preference_profile: {
+              version: profile.version,
+              preferences: profile.preferences.map((p) => ({
+                id: p.id, category: p.category, normalized: p.normalized, value: p.value,
+                classification: p.classification, confidence: p.confidence, source: p.source,
+                confirmationStatus: p.confirmationStatus, affects: p.affects,
+                mayAffectPlanningBeforeConfirmation: p.mayAffectPlanningBeforeConfirmation,
+              })),
+            },
+          }
+        : {}),
     }
   }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent])
 
-  const build = useCallback(() => {
+  const build = useCallback((profile?: PreferenceProfile) => {
     if (!current) return
     const token = ++tokenRef.current // a newer Build supersedes any older in-flight one
     const revAtRequest = current.catalogRevision
     setGenPhase('generating')
     setErrKind(null)
-    generateFn(buildRequest(current)).then(
+    generateFn(buildRequest(current, profile)).then(
       (result) => {
         if (token !== tokenRef.current) return
         setProposal(result)
@@ -209,10 +235,14 @@ export default function NativePlannerJourney({
     setErrKind(null)
   }
 
-  const canApply = !!proposal && isProposalApplyable(proposal, stale)
+  const canApply = !!proposal && isProposalApplyable(proposal, stale, {
+    // On the flagged path, the proposal must match the CURRENT conversation
+    // profile version — an edit after Generate stales it. Legacy path: undefined.
+    currentProfileVersion: useAcademicDecisionAgent ? convProfileVersion : undefined,
+  })
 
   const apply = () => {
-    if (!current || !proposal || !canApply) return // hard guard: blocked/stale/errored never apply
+    if (!current || !proposal || !canApply) return // hard guard: blocked/stale/errored/version-mismatch never apply
     setCurrent(applyGeneratedToBoard(proposal, current))
     setMessages((m) => [...m, { role: 'system', text: 'התוכנית הוחלה והיא כעת התוכנית הנוכחית.' }])
     clearProposal()
@@ -284,6 +314,19 @@ export default function NativePlannerJourney({
           </div>
         </Card>
 
+        {useAcademicDecisionAgent && (
+          <Card className="flex flex-col gap-3 p-4">
+            <h2 className="text-sm font-bold tracking-tight">שיחת העדפות</h2>
+            <p className="text-xs text-[var(--text-muted)]">
+              כמה שאלות קצרות שיעזרו לבנות תוכנית מתאימה יותר. התשובות משפיעות רק על טיוטה — לא על הלוח הנוכחי — ורק לחיצה על "בנה תוכנית" מייצרת הצעה.
+            </p>
+            <PreferenceConversation
+              onBuild={(profile) => build(profile)}
+              onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+            />
+          </Card>
+        )}
+
         <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-bold tracking-tight">העדפות</h2>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
@@ -305,14 +348,18 @@ export default function NativePlannerJourney({
         </Card>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={build}
-            disabled={genPhase === 'generating'}
-            className="rounded-full bg-[var(--purple-strong)] px-6 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[var(--purple)] disabled:opacity-60"
-          >
-            {proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
-          </button>
+          {/* Flag-off: the standalone Build. Flag-on: the mounted conversation's
+              Build is the single generation trigger (sends the typed profile). */}
+          {!useAcademicDecisionAgent && (
+            <button
+              type="button"
+              onClick={() => build()}
+              disabled={genPhase === 'generating'}
+              className="rounded-full bg-[var(--purple-strong)] px-6 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[var(--purple)] disabled:opacity-60"
+            >
+              {proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
+            </button>
+          )}
           {genPhase === 'generating' && (
             <span role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">בונה תוכנית…</span>
           )}

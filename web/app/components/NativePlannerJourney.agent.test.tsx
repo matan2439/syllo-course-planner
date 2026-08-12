@@ -1,0 +1,126 @@
+/**
+ * Slice 13/14 integration closure — the live NativePlannerJourney mounts the
+ * real PreferenceConversation (typed conversation state machine) on the flagged
+ * path, sends its typed profile+version through the real Generate contract, and
+ * enforces profile-version staleness at the real Apply handler. Flag-off is
+ * unchanged.
+ */
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
+import NativePlannerJourney from './NativePlannerJourney'
+import { boardResponseToModel } from '../../../shared/planner/adapters'
+import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
+import type { GeneratedPlanModel } from '../../../shared/planner/model'
+
+const BOARD = {
+  metadata: { board_data_version: 'rev-1', program_repository_courses: [{ course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 3.5, is_mandatory: false }] },
+  semesters: [
+    { semester_id: 'year_3_semester_a', courses: [{ course_id: 'X-1', name_he: 'קורס בסיס X', weekly_hours: 3.0, course_type: 'mandatory', is_mandatory: true }] },
+    { semester_id: 'year_3_semester_b', courses: [] },
+  ],
+}
+const board = () => boardResponseToModel(BOARD)
+
+/** An agent proposal that ECHOES the request's profile version (as the real server does). */
+function agentProposal(req: GeneratePlanRequest): GeneratedPlanModel {
+  const version = (req as any).preference_profile?.version
+  return {
+    semesters: [
+      { semesterId: 'year_3_semester_a', courseIds: ['X-1', 'Y-1'] },
+      { semesterId: 'year_3_semester_b', courseIds: [] },
+    ],
+    moves: [{ courseId: 'Y-1', from: null, to: 'year_3_semester_a' }],
+    warningsHe: [], errors: [], blocked: false,
+    agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
+  }
+}
+
+const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecisionAgent: boolean }> = {}) => ({
+  programId: 'mechanical_engineering_2027',
+  getBoardFn: over.getBoardFn ?? (async () => board()),
+  generateFn: over.generateFn ?? (async (req: GeneratePlanRequest) => agentProposal(req)),
+  useAcademicDecisionAgent: over.useAcademicDecisionAgent ?? false,
+})
+
+async function renderReady(over = {}) {
+  render(<NativePlannerJourney {...deps(over)} />)
+  await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+}
+
+describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
+  test('flag OFF: no conversation is mounted (existing journey unchanged)', async () => {
+    await renderReady({ useAcademicDecisionAgent: false })
+    expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
+  })
+
+  test('flag ON: the real conversation is mounted (one question at a time)', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+    expect(screen.getByText(/מה חשוב לך יותר כרגע/)).toBeInTheDocument()
+  })
+
+  test('answering a conversation choice does NOT Generate', async () => {
+    const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
+    await renderReady({ useAcademicDecisionAgent: true, generateFn })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+    expect(generateFn).not.toHaveBeenCalled()
+  })
+
+  test('explicit Build sends the current typed profile + version through the real request', async () => {
+    let captured: GeneratePlanRequest | null = null
+    const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return agentProposal(req) })
+    await renderReady({ useAcademicDecisionAgent: true, generateFn })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' })) // answer one (version bumps)
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(1))
+    const pp = (captured as any).preference_profile
+    expect(pp).toBeDefined()
+    expect(pp.version).toBeGreaterThan(1)
+    expect(pp.preferences.find((p: any) => p.id === 'workload_target')).toBeTruthy()
+    expect((captured as any).use_academic_decision_agent).toBe(true)
+  })
+
+  test('a matching-version proposal applies exactly once and updates the committed board', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /החל/ }))
+    // committed board now shows the applied plan (Y-1 added) and the draft closed
+    await waitFor(() => expect(screen.getByText('התוכנית הנוכחית')).toBeInTheDocument())
+  })
+
+  test('editing a preference AFTER a proposal stales it — the real Apply handler rejects it', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
+    // remove the captured preference → profile version advances → proposal is stale
+    const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
+    fireEvent.click(within(summary).getByRole('button', { name: /הסר/ }))
+    const applyBtn = screen.getByRole('button', { name: /החל/ }) as HTMLButtonElement
+    expect(applyBtn).toBeDisabled()
+    // real handler enforces it too: clicking does not change the committed board
+    fireEvent.click(applyBtn)
+    expect(screen.queryByText('התוכנית הנוכחית')).toBeNull() // still showing the (now stale) draft, not committed
+  })
+
+  test('a late response superseded by a newer Build never becomes the proposal', async () => {
+    let resolveFirst: () => void = () => {}
+    let call = 0
+    const generateFn = jest.fn((req: GeneratePlanRequest) => {
+      call += 1
+      if (call === 1) return new Promise<GeneratedPlanModel>((res) => { resolveFirst = () => res(agentProposal(req)) })
+      return Promise.resolve(agentProposal(req))
+    })
+    await renderReady({ useAcademicDecisionAgent: true, generateFn })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' })) // build #1 (in-flight)
+    fireEvent.click(screen.getByRole('button', { name: 'עומס מאוזן' })) // answer more (version bumps)
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' })) // build #2 supersedes #1
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
+    // now resolve the STALE first response — it must be ignored
+    await act(async () => { resolveFirst() })
+    expect(generateFn).toHaveBeenCalledTimes(2)
+    // still a single, current proposal (not replaced by the late one)
+    expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument()
+  })
+})

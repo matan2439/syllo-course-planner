@@ -23,7 +23,6 @@ import {
   confirmPending,
   rejectPending,
   removeCapturedPreference,
-  markPlanning,
   type ConversationState,
 } from '../../../api/ai/conversation_state'
 import type { Preference, PreferenceProfile } from '../../../api/ai/preference_model'
@@ -51,7 +50,10 @@ export default function PreferenceConversation({
   const q = state.currentQuestion
   const captured = state.profile.preferences
 
-  const build = () => { setState((s) => markPlanning(s)); onBuild(state.profile) }
+  // Build only hands the typed profile to the owner (the journey). It does NOT
+  // transition to 'planning' — generation ownership + markPlanning belong to the
+  // real Generate action, and the conversation stays editable meanwhile.
+  const build = () => { onBuild(state.profile) }
 
   return (
     <div className="flex flex-col gap-4 text-sm" dir="rtl">
