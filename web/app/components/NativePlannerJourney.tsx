@@ -25,6 +25,7 @@ import { boardModelToVM } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
+import AgentOutcomeDetails from './AgentOutcomeDetails'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import { Badge, Card, EmptyState } from './ui'
@@ -363,6 +364,14 @@ function ProposalView({
       {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
       {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
         <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>
+      )}
+      {draft.agentOutcome && (
+        <AgentOutcomeDetails
+          outcome={draft.agentOutcome}
+          clarificationItems={draft.agentClarificationItems}
+          validationFindings={draft.agentValidationFindings}
+          errors={draft.errors}
+        />
       )}
       {stale && (
         <p role="note" className="text-sm text-amber-700 dark:text-amber-300">

@@ -136,4 +136,30 @@ export interface GeneratedPlanModel {
    * then falls back to blocked/errors/stale alone (backward-compatible).
    */
   applyEligible?: boolean;
+  /** Structured clarification items (agent path only). Lean VMs — no secrets. */
+  agentClarificationItems?: AgentClarificationItemVM[];
+  /** Typed grounding-validation findings (agent path only). */
+  agentValidationFindings?: AgentValidationFindingVM[];
+}
+
+/** Lean view-model of a structured clarification item (subset the UI renders). */
+export interface AgentClarificationItemVM {
+  reasonCode: string;
+  kind: 'answerable_preference' | 'authoritative_conflict';
+  messageHe: string;
+  answerable: boolean;
+  applyBlocked: boolean;
+  courseIds?: string[];
+  answerType?: string;
+  provenance?: { source: string | null; dataQuality: string | null; confidence: number } | null;
+  detail?: string;
+}
+
+/** Lean view-model of a grounding-validation finding. */
+export interface AgentValidationFindingVM {
+  code: string;
+  courseId: string;
+  messageHe: string;
+  detail: string;
+  provenance: { source: string | null; dataQuality: string | null; confidence: number } | null;
 }

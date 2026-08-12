@@ -40,6 +40,9 @@ export interface DraftVM {
   agentOutcome?: GeneratedPlanModel['agentOutcome']
   /** Server Apply-eligibility floor (opt-in path only). Absent on the legacy response. */
   applyEligible?: boolean
+  /** Structured clarification items + validation findings (opt-in path only). */
+  agentClarificationItems?: GeneratedPlanModel['agentClarificationItems']
+  agentValidationFindings?: GeneratedPlanModel['agentValidationFindings']
 }
 
 /** courseId(normalized) → set of semester ids it is placed in. */
@@ -121,5 +124,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     errors: generated.errors,
     ...(generated.agentOutcome ? { agentOutcome: generated.agentOutcome } : {}),
     ...(typeof generated.applyEligible === 'boolean' ? { applyEligible: generated.applyEligible } : {}),
+    ...(generated.agentClarificationItems ? { agentClarificationItems: generated.agentClarificationItems } : {}),
+    ...(generated.agentValidationFindings ? { agentValidationFindings: generated.agentValidationFindings } : {}),
   }
 }

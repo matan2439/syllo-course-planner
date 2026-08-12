@@ -88,6 +88,14 @@ export const generatePlanResponseSchema = z
           .enum(['proposal', 'clarification_required', 'validation_failed', 'blocked', 'error'])
           .optional(),
         applyEligible: z.boolean().optional(),
+        structuredClarification: z
+          .object({
+            items: z.array(z.record(z.unknown())),
+            applyBlocked: z.boolean().optional(),
+          })
+          .passthrough()
+          .optional(),
+        validationFindings: z.array(z.record(z.unknown())).optional(),
       })
       .passthrough()
       .optional(),

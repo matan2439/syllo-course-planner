@@ -78,5 +78,35 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(typeof p.academicDecision?.applyEligible === 'boolean'
       ? { applyEligible: p.academicDecision.applyEligible }
       : {}),
+    ...(p.academicDecision?.structuredClarification
+      ? { agentClarificationItems: mapClarificationItems(p.academicDecision.structuredClarification.items) }
+      : {}),
+    ...(p.academicDecision?.validationFindings
+      ? { agentValidationFindings: mapValidationFindings(p.academicDecision.validationFindings) }
+      : {}),
   };
+}
+
+function mapClarificationItems(items: Array<Record<string, unknown>>): GeneratedPlanModel['agentClarificationItems'] {
+  return items.map((i) => ({
+    reasonCode: String(i.reasonCode ?? ''),
+    kind: (i.kind === 'authoritative_conflict' ? 'authoritative_conflict' : 'answerable_preference'),
+    messageHe: String(i.message_he ?? ''),
+    answerable: i.answerable === true,
+    applyBlocked: i.applyBlocked === true,
+    ...(Array.isArray(i.courseIds) ? { courseIds: i.courseIds.map(String) } : {}),
+    ...(typeof i.answerType === 'string' ? { answerType: i.answerType } : {}),
+    ...(i.provenance !== undefined ? { provenance: i.provenance as never } : {}),
+    ...(typeof i.detail === 'string' ? { detail: i.detail } : {}),
+  }));
+}
+
+function mapValidationFindings(findings: Array<Record<string, unknown>>): GeneratedPlanModel['agentValidationFindings'] {
+  return findings.map((f) => ({
+    code: String(f.code ?? ''),
+    courseId: String(f.courseId ?? ''),
+    messageHe: String(f.message_he ?? ''),
+    detail: String(f.detail ?? ''),
+    provenance: (f.provenance ?? null) as never,
+  }));
 }
