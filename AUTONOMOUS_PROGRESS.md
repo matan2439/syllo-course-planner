@@ -14,6 +14,38 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-12 (cont. 2) — preference lifecycle through Generate (14) + conversation UI (13)
+
+**Slice 14 — preference lifecycle through Generate + Apply version gate.**
+`preference_eligibility.ts` (`effectivePlannerPreferences`): classification filtering
+BEFORE planning — confirmed hard→legality bucket, confirmed soft/goal→ranking bucket,
+indifferent/uncertain/unconfirmed→excluded with a deterministic reason (never silently
+dropped); source preserved (safe_default distinguishable). Generate request gains optional
+typed `preference_profile {version,preferences[]}` (typed profile is the source of truth,
+not the transcript). Flagged response echoes `academicDecision.profileVersion` +
+`preferenceEligibility {hard,soft,excluded}`. Apply boundary (`isProposalApplyable`) now
+rejects a flagged proposal whose `profileVersion` differs from / is missing against the
+current draft profile version — at the real gate, not UI-hidden. Flag-off byte-identical.
+No scorePlan consumption claimed (that's 17); unsupported categories stay typed, never
+become hard constraints. Tests: preference_eligibility (5), generate_plan_preference_profile
+(4), apply-eligibility (+4). Commit — feat(agent): ...slice 14.
+
+**Slice 13 — native conversation UI (component).** `PreferenceConversation` is a thin
+driver over the REAL `conversation_state` machine + elicitation (no parallel model): one
+question at a time, options + "לא משנה לי" + free text, confirmation for vague consequential
+answers, "מה הבנתי ממך" summary with remove, ready-to-build state. Answers/confirm/reject/
+remove update DRAFT state only and never Generate; only Build calls onBuild(profile). Added
+`removeCapturedPreference`/`rejectPending` transitions. 9 behavioral tests. web tsc clean.
+**Remaining integration:** mount `PreferenceConversation` in `NativePlannerJourney` and route
+its `onBuild` through the real generate request (`preference_profile` + `currentProfileVersion`
+into `isProposalApplyable`). Deferred to keep the change safe (no broad journey redesign this
+budget).
+
+**Slice 17 — NOT STARTED** (planner balance policy + candidate-set retention + dedup). Design
+ready from the Slice 16 investigation (two balance policies over the stable scorer,
+candidate contract). It touches core `scorePlan`/candidate machinery and must preserve every
+planner regression — reserved for its own full-rigor session.
+
 ## Session 2026-08-12 (cont.) — preference elicitation core + outcome details (slices 9–12, 15) + candidate investigation (16)
 
 **Slice 10 — typed preference model** (`preference_model.ts`): generic Preference
