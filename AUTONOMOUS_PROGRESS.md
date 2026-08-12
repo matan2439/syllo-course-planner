@@ -14,6 +14,25 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-12 (cont. 4) — Slice 17A investigation gate + planner policy consumption
+
+**Investigation gate (mandatory, evidence-based).** Traced generate-plan → PlannerWorker →
+scorePlan → PlanState:
+- `PlannerWorker.step()` (planner_worker.ts:356-445) enumerates ALL legal mutations
+  (`enumerateActions`), applies each to a `next` state, scores each with `scorePlan` (imm),
+  sorts by `compareScore`, rollout-scores top-N (`estimateFinalScore`), accepts the best
+  that advances. So scoring drives SELECTION, not just evaluation.
+- `enumerateActions` emits "one alternative ADD_COURSE per legal semester"
+  (planner_worker.ts:264) — semester placement for a dual-period course is chosen by
+  `step()`'s scorePlan/compareScore comparison.
+- g4a (peak) / g4b (spread) live in the score vector and participate in that per-step
+  selection + rollout. Changing them CAN change the selected placement.
+- Semester-A bias exists only on EXACT score ties (stable sort keeps enumeration order =
+  earliest first) — the existing deterministic legacy tiebreak.
+Conclusion: the stable planner already retains alternatives long enough for scoring to
+affect selection. No new choice boundary needed for 17A — thread the policy into scorePlan
+via the shared `model` (reaches every call), provable end-to-end via PlannerWorker.run().
+
 ## Session 2026-08-12 (cont. 3) — live conversation integration closure + distribution-policy mapping
 
 **Integration closure (Slices 13/14 live).** `NativePlannerJourney` now mounts the real
