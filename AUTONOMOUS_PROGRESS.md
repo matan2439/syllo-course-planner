@@ -14,6 +14,30 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-12 (cont. 3) — live conversation integration closure + distribution-policy mapping
+
+**Integration closure (Slices 13/14 live).** `NativePlannerJourney` now mounts the real
+`PreferenceConversation` on the flagged path. Single source of truth: the component owns
+the one typed `ConversationState`; the journey mirrors only the profile VERSION scalar
+(staleness) + holds the latest profile in a ref (Build payload). The conversation's
+`onBuild(profile)` is the sole generation trigger when flagged (standalone Build renders
+only flag-off). Proven end-to-end (no browser): answers/confirm/reject/edit/remove never
+Generate; explicit Build sends the exact typed `preference_profile {version,preferences}`;
+edit-after-Generate advances the version → proposal stale → the REAL Apply handler rejects
+it (isProposalApplyable currentProfileVersion + the hard `apply()` guard, not a disabled
+button); a late response superseded by a newer Build is dropped by the existing generation
+token; valid Apply commits once. Flag-off byte-identical. `PreferenceConversation` no
+longer calls `markPlanning` on Build (generation ownership belongs to the real action).
+Tests: `NativePlannerJourney.agent.test.tsx` (7). Commit — feat(web): ...slice 13/14 closure.
+
+**Slice 17A part 1 — distribution-policy mapping** (`distribution_policy.ts`):
+`resolveDistributionPolicy` maps a confirmed active `semester_balance` → balanced|compact|
+neutral; never infers compactness from missing data; provenance preserved. 6 tests.
+**Deferred (own session, regression-sensitive):** 17A scorer consumption (make g4a/g4b
+policy-dependent + thread through PlannerWorker/generate-plan; neutral must stay
+byte-identical) and 17B (candidate-set retention + normalized dedup + preference-sensitive
+elicitation). Design ready.
+
 ## Session 2026-08-12 (cont. 2) — preference lifecycle through Generate (14) + conversation UI (13)
 
 **Slice 14 — preference lifecycle through Generate + Apply version gate.**
