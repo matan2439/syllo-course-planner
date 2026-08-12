@@ -78,6 +78,9 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(typeof p.academicDecision?.applyEligible === 'boolean'
       ? { applyEligible: p.academicDecision.applyEligible }
       : {}),
+    ...(typeof p.academicDecision?.profileVersion === 'number'
+      ? { profileVersion: p.academicDecision.profileVersion }
+      : {}),
     ...(p.academicDecision?.structuredClarification
       ? { agentClarificationItems: mapClarificationItems(p.academicDecision.structuredClarification.items) }
       : {}),

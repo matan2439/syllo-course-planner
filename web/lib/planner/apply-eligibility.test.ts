@@ -39,4 +39,24 @@ describe('isProposalApplyable', () => {
       expect(isProposalApplyable(proposal({ agentOutcome, applyEligible: false }), false)).toBe(false)
     },
   )
+
+  // Slice 14 — profile-version staleness enforced at the Apply boundary.
+  test('a proposal whose profile version matches the current draft profile is applyable', () => {
+    const p = proposal({ agentOutcome: 'proposal', applyEligible: true, profileVersion: 5 })
+    expect(isProposalApplyable(p, false, { currentProfileVersion: 5 })).toBe(true)
+  })
+
+  test('a proposal built from an OLDER profile version is rejected at the Apply boundary', () => {
+    const p = proposal({ agentOutcome: 'proposal', applyEligible: true, profileVersion: 5 })
+    expect(isProposalApplyable(p, false, { currentProfileVersion: 6 })).toBe(false)
+  })
+
+  test('a flagged proposal LACKING version evidence is rejected when a profile version is in play', () => {
+    const p = proposal({ agentOutcome: 'proposal', applyEligible: true }) // no profileVersion
+    expect(isProposalApplyable(p, false, { currentProfileVersion: 6 })).toBe(false)
+  })
+
+  test('legacy proposal (no agent outcome) is unaffected by profile version', () => {
+    expect(isProposalApplyable(proposal(), false, { currentProfileVersion: 6 })).toBe(true)
+  })
 })

@@ -78,6 +78,7 @@ import {
   hasCriticalMissingInput,
 } from './academic_decision_runtime';
 import { runAcademicDecisionAgent, classifyAgentOutcome, isApplyEligible } from './academic_decision_integration';
+import { effectivePlannerPreferences } from './preference_eligibility';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -139,6 +140,28 @@ const requestSchema = z.object({
   // (honored / partiallyHonored / unmet, derived from the ACTUAL plan) is
   // attached. Absent/false => free text reaches only the LLM context, as before.
   interpret_free_text: z.boolean().optional(),
+  // Additive, optional — the typed elicited-preference profile (Slice 14). Only
+  // consumed on the flagged agent path; the typed PreferenceProfile (NOT the
+  // chat transcript) is the source of truth. Absent => byte-identical to before.
+  preference_profile: z
+    .object({
+      version: z.number().int().nonnegative(),
+      preferences: z.array(
+        z.object({
+          id: z.string().min(1),
+          category: z.string().optional(),
+          normalized: z.string(),
+          value: z.unknown().optional(),
+          classification: z.enum(['hard_constraint', 'soft_preference', 'goal', 'indifferent', 'uncertain']),
+          confidence: z.number().optional(),
+          source: z.enum(['explicit_answer', 'confirmed_interpretation', 'existing_profile', 'safe_default']).optional(),
+          confirmationStatus: z.enum(['unconfirmed', 'pending', 'confirmed', 'rejected']).optional(),
+          affects: z.string(),
+          mayAffectPlanningBeforeConfirmation: z.boolean().optional(),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;
@@ -1327,7 +1350,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     return;
   }
-  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent, interpret_free_text } = parsed.data;
+  const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent, interpret_free_text, preference_profile } = parsed.data;
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
@@ -1770,6 +1793,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     });
     (responseBody.academicDecision as Record<string, unknown>).outcome = outcome;
     (responseBody.academicDecision as Record<string, unknown>).applyEligible = isApplyEligible(outcome);
+    // Slice 14 — record the exact preference-profile version the proposal was
+    // built with, plus deterministic eligibility validation (which typed
+    // preferences reached the planner boundary as hard/soft, and which were
+    // excluded and why). The typed profile is the source of truth; ineligible
+    // preferences are surfaced, never silently dropped. Absent when the client
+    // sent no profile (backward-compatible).
+    if (preference_profile) {
+      const eligibility = effectivePlannerPreferences({
+        version: preference_profile.version,
+        preferences: preference_profile.preferences.map((p) => ({
+          id: p.id,
+          category: p.category ?? 'unknown',
+          normalized: p.normalized,
+          value: p.value,
+          classification: p.classification,
+          confidence: p.confidence ?? 0,
+          source: p.source ?? 'existing_profile',
+          confirmationStatus: p.confirmationStatus ?? 'unconfirmed',
+          affects: p.affects,
+          mayAffectPlanningBeforeConfirmation: p.mayAffectPlanningBeforeConfirmation ?? false,
+        })),
+      });
+      (responseBody.academicDecision as Record<string, unknown>).profileVersion = eligibility.profileVersion;
+      (responseBody.academicDecision as Record<string, unknown>).preferenceEligibility = {
+        hard: eligibility.hard.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
+        soft: eligibility.soft.map((p) => ({ id: p.id, affects: p.affects, source: p.source })),
+        excluded: eligibility.excluded,
+      };
+    }
     // Typed, provenance-carrying validation findings from the class stage.
     (responseBody.academicDecision as Record<string, unknown>).validationFindings =
       agentRun.validation?.findings ?? [];

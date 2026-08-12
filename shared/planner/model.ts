@@ -136,6 +136,8 @@ export interface GeneratedPlanModel {
    * then falls back to blocked/errors/stale alone (backward-compatible).
    */
   applyEligible?: boolean;
+  /** The preference-profile version this proposal was built from (agent path only). */
+  profileVersion?: number
   /** Structured clarification items (agent path only). Lean VMs — no secrets. */
   agentClarificationItems?: AgentClarificationItemVM[];
   /** Typed grounding-validation findings (agent path only). */

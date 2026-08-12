@@ -11,10 +11,22 @@
  */
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
 
-export function isProposalApplyable(proposal: GeneratedPlanModel, stale: boolean): boolean {
+export function isProposalApplyable(
+  proposal: GeneratedPlanModel,
+  stale: boolean,
+  opts: { currentProfileVersion?: number } = {},
+): boolean {
   if (stale) return false
   if (proposal.blocked) return false
   if (proposal.errors.length > 0) return false
   if (proposal.applyEligible === false) return false
+  // Slice 14 — profile-version staleness at the real Apply boundary. Only
+  // enforced on the flagged agent path (an outcome present); the legacy path
+  // has no profile and is unaffected.
+  if (proposal.agentOutcome && opts.currentProfileVersion !== undefined) {
+    // A flagged proposal must carry the version it was built from, and it must
+    // match the current draft profile — an older or missing version is stale.
+    if (proposal.profileVersion !== opts.currentProfileVersion) return false
+  }
   return true
 }
