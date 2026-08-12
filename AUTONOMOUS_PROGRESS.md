@@ -33,6 +33,27 @@ Conclusion: the stable planner already retains alternatives long enough for scor
 affect selection. No new choice boundary needed for 17A — thread the policy into scorePlan
 via the shared `model` (reaches every call), provable end-to-end via PlannerWorker.run().
 
+**Slice 17A — real distribution-policy consumption** (committed). `scorePlan` reads
+`model.distributionPolicy` for its OWNED slots (g4a/g4b) only: neutral/balanced = legacy
+peak-then-spread (byte-identical); compact = fewer ACTIVE periods (order-invariant, no
+earlier-period reward). Threaded via `DistributionPolicy` on `ConstraintModel` +
+`BuildModelOptions`; generate-plan resolves the policy ONCE from `preference_profile`
+(single source of truth, also drives eligibility disclosure) → `buildModel`; neutral →
+undefined (byte-identical). Response exposes `academicDecision.distributionPolicy` +
+provenance. End-to-end proof: PlannerWorker selects [8,8] under balanced, [16,0] under
+compact on the same fixture. Priority preserved (g1/g2/g3 dominate). Full API 1684/1684.
+
+**Slice 17B — internal validated candidate set** (committed). `candidate_set.ts`:
+same engine per policy → existing validator → normalized-identity dedup → deterministic
+FNV-1a id → real diff summary; `selectCandidate` (confirmed pref → matching candidate;
+neutral → legacy first); `shouldAskBalanceQuestion` (ask one question only when ≥2
+distinct legal candidates differ materially and unanswered; never on convergence).
+Convergence → one candidate + empty summary. Internal module only — NOT yet wired into
+the live proposal path (single-proposal UI unaffected); no Simulation/Decision/UI.
+12 tests. **Remaining:** wire candidate generation + selection + the gated question into
+the live flagged generate path (the single-proposal UI receives only the selected
+candidate) — the final integration step.
+
 ## Session 2026-08-12 (cont. 3) — live conversation integration closure + distribution-policy mapping
 
 **Integration closure (Slices 13/14 live).** `NativePlannerJourney` now mounts the real
