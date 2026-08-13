@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/model'
-import { ContractError, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
+import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
 import { generatePlan, getBoard, type GeneratePlanRequest } from '../../../shared/planner/api-client'
 import { boardModelToVM } from '../../lib/planner/board-vm'
@@ -27,6 +27,11 @@ import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import AgentOutcomeDetails from './AgentOutcomeDetails'
 import PreferenceConversation from './PreferenceConversation'
+import CompletedCoursesPanel, {
+  EMPTY_ACADEMIC_STATUS,
+  completedCourseIdsOf,
+  type AcademicStatusDraft,
+} from './CompletedCoursesPanel'
 import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
@@ -126,6 +131,31 @@ export default function NativePlannerJourney({
     () => (current ? Object.values(current.courseCatalog).map((c) => ({ id: c.courseId, nameHe: c.nameHe || null })) : []),
     [current],
   )
+  /** Authoritative catalog hours — the only credit source for completed electives. */
+  const catalogHoursById = useMemo(() => {
+    const out: Record<string, number | null | undefined> = {}
+    if (current) {
+      for (const c of Object.values(current.courseCatalog)) {
+        out[c.courseId] = c.halfHours == null ? null : fromHalfHours(c.halfHours)
+      }
+    }
+    return out
+  }, [current])
+
+  // ── the student's own academic status (flagged path) ───────────────────────
+  // Draft state only: editing never touches the committed board and never
+  // generates. `confirmed` is what makes the completed set KNOWN — an empty list
+  // is otherwise UNKNOWN, never an implicit "none" (academic_status_knowledge.ts).
+  const [academicStatus, setAcademicStatus] = useState<AcademicStatusDraft>(EMPTY_ACADEMIC_STATUS)
+  const [statusVersion, setStatusVersion] = useState(0)
+  const updateAcademicStatus = useCallback((next: AcademicStatusDraft) => {
+    setAcademicStatus(next)
+    setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
+  }, [])
+  // Exclusions: a non-empty selection is inherently explicit; an empty one is
+  // only an answer once the student says so. Untouched stays UNKNOWN.
+  const [exclusionsNoneConfirmed, setExclusionsNoneConfirmed] = useState(false)
+  const exclusionsKnown = excludeIds.length > 0 || exclusionsNoneConfirmed
 
   const sendMessage = () => {
     const text = draftText.trim()
@@ -142,6 +172,7 @@ export default function NativePlannerJourney({
   const [genPhase, setGenPhase] = useState<GenPhase>('idle')
   const [proposal, setProposal] = useState<GeneratedPlanModel | null>(null)
   const [capturedRev, setCapturedRev] = useState<ProposalBaseRevision | null>(null)
+  const [capturedStatusVersion, setCapturedStatusVersion] = useState<number | null>(null)
   const [errKind, setErrKind] = useState<'network' | 'contract' | null>(null)
   const tokenRef = useRef(0)
 
@@ -162,13 +193,29 @@ export default function NativePlannerJourney({
     if (maxHours.trim() && Number.isFinite(hrs)) preferences.max_weekly_hours = hrs
     if (wantIds.length) preferences.wanted_course_ids = wantIds
     if (excludeIds.length) preferences.disallowed_course_ids = excludeIds
+    // Flagged path only: an explicit "no courses to avoid" is a real answer, so
+    // send the key as [] to distinguish it from "never asked" (absent). Flag-off
+    // keeps the exact legacy payload (key present only when non-empty).
+    else if (useAcademicDecisionAgent && exclusionsNoneConfirmed) preferences.disallowed_course_ids = []
     if (extra) preferences.extra_request_he = extra
+    // Completed courses are ACADEMIC STATE (never a preference). Ids come only
+    // from what the student explicitly reported — never derived from an hours
+    // total — and the knowledge marker is attached only once they confirmed.
+    const completedIds = useAcademicDecisionAgent ? completedCourseIdsOf(academicStatus) : []
+    const personalStatus: Record<string, unknown> = {
+      completed: completedIds.map((course_id) => ({ course_id })),
+      currently_taking: [],
+      planned: [],
+    }
+    if (useAcademicDecisionAgent && academicStatus.confirmed) {
+      personalStatus.completed_knowledge = { status: 'known', provenance: 'explicit_user' }
+    }
     const planContext: Record<string, unknown> = {
       semesters: base.semesters.map((s) => ({
         id: s.semesterId,
         courses: s.courses.map((c) => ({ course_id: c.courseId })),
       })),
-      personal_status: { completed: [], currently_taking: [], planned: [] },
+      personal_status: personalStatus,
     }
     const prior = Number(priorHours)
     if (priorHours.trim() && Number.isFinite(prior)) {
@@ -201,12 +248,14 @@ export default function NativePlannerJourney({
           }
         : {}),
     }
-  }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent])
+  }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent,
+      academicStatus, exclusionsNoneConfirmed])
 
   const build = useCallback((profile?: PreferenceProfile) => {
     if (!current) return
     const token = ++tokenRef.current // a newer Build supersedes any older in-flight one
     const revAtRequest = current.catalogRevision
+    const statusAtRequest = statusVersion
     setGenPhase('generating')
     setErrKind(null)
     generateFn(buildRequest(current, profile)).then(
@@ -214,6 +263,7 @@ export default function NativePlannerJourney({
         if (token !== tokenRef.current) return
         setProposal(result)
         setCapturedRev(proposalBaseRevision(revAtRequest as unknown as string))
+        setCapturedStatusVersion(statusAtRequest)
         setGenPhase('done')
       },
       (e) => {
@@ -222,11 +272,15 @@ export default function NativePlannerJourney({
         setGenPhase('error')
       },
     )
-  }, [current, buildRequest, generateFn])
+  }, [current, buildRequest, generateFn, statusVersion])
 
   const stale =
-    genPhase === 'done' && capturedRev != null && current != null &&
-    isCatalogStale(capturedRev, current.catalogRevision)
+    (genPhase === 'done' && capturedRev != null && current != null &&
+      isCatalogStale(capturedRev, current.catalogRevision)) ||
+    // The academic status (completed courses / electives) changed since this
+    // proposal was generated — it was planned from facts that no longer hold, so
+    // it is stale and must be rebuilt before it can be applied.
+    (genPhase === 'done' && capturedStatusVersion != null && capturedStatusVersion !== statusVersion)
 
   const clearProposal = () => {
     tokenRef.current++ // supersede any in-flight generation so it can't re-open the draft
@@ -315,6 +369,16 @@ export default function NativePlannerJourney({
         </Card>
 
         {useAcademicDecisionAgent && (
+          <CompletedCoursesPanel
+            programId={programId}
+            catalogCourses={pickerCourses}
+            catalogHoursById={catalogHoursById}
+            value={academicStatus}
+            onChange={updateAcademicStatus}
+          />
+        )}
+
+        {useAcademicDecisionAgent && (
           <Card className="flex flex-col gap-3 p-4">
             <h2 className="text-sm font-bold tracking-tight">שיחת העדפות</h2>
             <p className="text-xs text-[var(--text-muted)]">
@@ -349,7 +413,24 @@ export default function NativePlannerJourney({
           <CourseNamePicker label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
             courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
           <CourseNamePicker label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
-            courses={pickerCourses} selectedIds={excludeIds} onChange={setExcludeIds} />
+            courses={pickerCourses} selectedIds={excludeIds}
+            onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
+          {/* An empty selection is only an ANSWER once the student says so —
+              untouched stays unknown, so it is never silently read as "none". */}
+          {useAcademicDecisionAgent && excludeIds.length === 0 && (
+            <button
+              type="button"
+              aria-pressed={exclusionsNoneConfirmed}
+              onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
+              className={`self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
+                exclusionsNoneConfirmed
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
+                  : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
+              }`}
+            >
+              אין קורסים שאני רוצה להימנע מהם
+            </button>
+          )}
         </Card>
 
         <div className="flex items-center gap-3">
