@@ -34,6 +34,8 @@ export interface PlanCandidate {
   /** Canonical course→period identity (sorted, order-invariant). */
   normalizedIdentity: string;
   profileVersion: number;
+  /** The stable planner's own Hebrew explanation for this plan (worker.explain().summary_he). */
+  rationaleHe: string;
   /** Populated on the surviving candidate when other policies converged to it. */
   convergedPolicies?: DistributionPolicy[];
 }
@@ -50,6 +52,8 @@ export interface CandidateSet {
    * candidate array/generation order.
    */
   legacyIdentity: string;
+  /** The raw legacy/neutral PlanState — proposal fallback when no candidate is valid. */
+  legacyState: PlanState;
 }
 
 export type SelectionReason = 'confirmed_balanced' | 'confirmed_compact' | 'legacy_default';
@@ -107,12 +111,13 @@ export function generateCandidateSet(input: {
     const worker = new PlannerWorker(model, structuredClone(input.initialState), { topN: 6, rolloutSteps: 80 });
     worker.run(500, 'greedy');
     const state = worker.getPlan();
-    return { policy, model, state, validation: validatePlanState(state, model, input.pinnedHome ?? {}), identity: normalizeIdentity(state), scoreVector: scorePlan(state, model) };
+    return { policy, model, state, validation: validatePlanState(state, model, input.pinnedHome ?? {}), identity: normalizeIdentity(state), scoreVector: scorePlan(state, model), rationaleHe: worker.explain().summary_he };
   };
 
   // Canonical LEGACY reference — the flag-off / 'neutral' stable-planner result.
   // Neutral selection matches THIS identity, never candidate/generation order.
-  const legacyIdentity = runPolicy('neutral').identity;
+  const legacyRun = runPolicy('neutral');
+  const legacyIdentity = legacyRun.identity;
 
   // Run the SAME engine per requested policy (deterministic worker config).
   const raw = policies.map(runPolicy);
@@ -137,6 +142,7 @@ export function generateCandidateSet(input: {
       scoreVector: r.scoreVector,
       normalizedIdentity: r.identity,
       profileVersion: input.profileVersion,
+      rationaleHe: r.rationaleHe,
     });
   }
   const candidates = [...byIdentity.values()];
@@ -159,7 +165,7 @@ export function generateCandidateSet(input: {
     }
   }
 
-  return { candidates, converged, differenceSummary, legacyIdentity };
+  return { candidates, converged, differenceSummary, legacyIdentity, legacyState: legacyRun.state };
 }
 
 /**

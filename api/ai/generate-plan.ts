@@ -80,6 +80,7 @@ import {
 import { runAcademicDecisionAgent, classifyAgentOutcome, isApplyEligible } from './academic_decision_integration';
 import { effectivePlannerPreferences, type EffectivePlannerPreferences } from './preference_eligibility';
 import { resolveDistributionPolicy } from './distribution_policy';
+import { generateCandidateSet, selectCandidate, selectionReason } from './candidate_set';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1628,8 +1629,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // AcademicDecisionAgent path can inject it as the agent's PlanningCapability
   // (orchestrate around the existing proposal, never re-plan from emptyState).
   let stableFinalState: PlanState;
+  // Lean candidate metadata (flagged path only) — populated by the candidate
+  // orchestration branch, surfaced under academicDecision.candidates below.
+  let candidateOrchestration: Record<string, unknown> | undefined;
 
-  if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
+  // ── Candidate-orchestration path (opt-in agent flag) — the SINGLE proposal
+  //    owner on the flagged path. Generates neutral(legacy)+balanced+compact
+  //    through the SAME stable planner, validates + dedups, selects by the
+  //    resolved policy or the canonical legacy default, and builds the proposal
+  //    from the SELECTED candidate's exact PlanState (no separate rerun). Absent
+  //    flag => the unchanged single-plan paths below run byte-identically.
+  if (use_academic_decision_agent === true) {
+    const candidateSet = generateCandidateSet({
+      buildModel: (p) =>
+        buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById, p === 'neutral' ? undefined : p),
+      initialState,
+      profileVersion: preference_profile?.version ?? 0,
+      pinnedHome,
+    });
+    const pref = distributionPolicy ?? 'neutral';
+    const selected = selectCandidate(candidateSet, pref);
+    // Proposal is built from the selected candidate's exact state; if no candidate
+    // is valid, fall back to the legacy state so the existing blocking gates below
+    // produce the deterministic blocked outcome (never a fabricated plan).
+    const selectedState = selected ? selected.state : candidateSet.legacyState;
+    stableFinalState = selectedState;
+    // Use the selected candidate's own stable-planner explanation so the proposal
+    // is byte-identical to the default single-run path (same state → same rationale).
+    const selectedRationale = selected ? selected.rationaleHe : deterministicRationale(selectedState, model);
+    proposal = toProposal(
+      selectedState, model, initialState, pinnedHome, selectedRationale,
+      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
+    );
+    traceForResponse = [];
+    hitMaxSteps = false;
+    useLlm = false;
+    candidateOrchestration = {
+      selectedCandidateId: selected?.id ?? null,
+      selectedPolicy: selected?.policy ?? null,
+      selectionReason: selectionReason(candidateSet, pref),
+      validCandidateCount: candidateSet.candidates.length,
+      hasMeaningfulAlternatives: !candidateSet.converged && candidateSet.candidates.length >= 2 && candidateSet.differenceSummary.length > 0,
+      converged: candidateSet.converged,
+      contributingPolicies: candidateSet.converged ? (candidateSet.candidates[0]?.convergedPolicies ?? null) : null,
+      differenceSummary: candidateSet.differenceSummary,
+      profileVersion: preference_profile?.version ?? null,
+      selectedNormalizedIdentity: selected?.normalizedIdentity ?? candidateSet.legacyIdentity,
+    };
+
+  } else if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
     // ── PlannerAgent path (Phase 5+) ─────────────────────────────────────────
     const useLlmExplain = !isDevMode() && !!modelCfg;
     const explanation = useLlmExplain ? new LlmExplainer(modelCfg!.model) : undefined;
@@ -1832,6 +1880,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // Slice 17A — the resolved semester-distribution policy the planner actually
       // consumed, with provenance (preference id, source, profile version).
       (responseBody.academicDecision as Record<string, unknown>).distributionPolicy = resolvedPolicy;
+    }
+    // Lean candidate-orchestration metadata (the flagged proposal is built from
+    // the selected validated candidate). Present on every flagged run.
+    if (candidateOrchestration) {
+      (responseBody.academicDecision as Record<string, unknown>).candidates = candidateOrchestration;
     }
     // Typed, provenance-carrying validation findings from the class stage.
     (responseBody.academicDecision as Record<string, unknown>).validationFindings =
