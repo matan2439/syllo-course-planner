@@ -1,0 +1,20 @@
+{
+  "semesters": [
+    { "semester_id": "year_3_semester_a", "courses": [] },
+    { "semester_id": "year_3_semester_b", "courses": [] }
+  ],
+  "metadata": {
+    "board_data_version": "test-agent-preview-1",
+    "completed_course_ids": [],
+    "program_requirements_categories": {
+      "total_required_hours": 16,
+      "categories": [
+        { "category_id": "electives", "name_he": "בחירה", "min_courses": 2, "course_ids": ["C1", "C2"] }
+      ]
+    },
+    "program_repository_courses": [
+      { "course_id": "C1", "name_he": "מבוא לתכן", "weekly_hours": 8, "is_mandatory": false, "course_type": "elective", "placement_policy": "elective", "offered_semesters": ["year_3_semester_a", "year_3_semester_b"], "program_category_id": "electives", "prerequisites": [] },
+      { "course_id": "C2", "name_he": "מכניקה מתקדמת", "weekly_hours": 8, "is_mandatory": false, "course_type": "elective", "placement_policy": "elective", "offered_semesters": ["year_3_semester_a", "year_3_semester_b"], "program_category_id": "electives", "prerequisites": [] }
+    ]
+  }
+}
