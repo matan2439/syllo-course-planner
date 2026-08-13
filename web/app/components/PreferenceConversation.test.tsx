@@ -24,6 +24,18 @@ test('impact-driven gating: when semester_balance is marked irrelevant, the bala
   expect(screen.getByText(/שעות בוקר/)).toBeInTheDocument() // time_of_day asked instead
 })
 
+test('reactive gating: a balance question already on screen is retracted when it becomes irrelevant after a Build', () => {
+  const onBuild = jest.fn()
+  const { rerender } = render(<PreferenceConversation onBuild={onBuild} elicitationContext={{}} />)
+  // reach the balance question (answer the higher-impact workload question first)
+  fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+  expect(screen.getByText(/מה עדיף לך/)).toBeInTheDocument() // balance question is current
+  // a Build reveals the candidates converge → balance can no longer change the plan.
+  // The context changes AFTER the question was chosen; it must be retracted.
+  rerender(<PreferenceConversation onBuild={onBuild} elicitationContext={{ irrelevantTopicIds: ['semester_balance'] }} />)
+  expect(screen.queryByText(/מה עדיף לך/)).toBeNull() // retracted, not left on screen
+})
+
 test('presents exactly one question at a time, with its rationale', () => {
   setup()
   expect(screen.getAllByRole('group', { name: /שאלה/ })).toHaveLength(1)

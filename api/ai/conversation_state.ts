@@ -81,6 +81,22 @@ export function initConversation(
   return advance(base, elicit, ctx);
 }
 
+/**
+ * Re-select the current question against a (possibly changed) elicitation ctx —
+ * for when impact-driven relevance changes AFTER a question was already chosen
+ * (e.g. a Build reveals the balance alternatives converge, marking
+ * `semester_balance` irrelevant). Only re-selects while awaiting a question;
+ * never disturbs a pending confirmation, a surfaced conflict, or the profile.
+ */
+export function refreshQuestion(
+  state: ConversationState,
+  elicit: DeterministicPreferenceElicitation,
+  ctx: ElicitationContext,
+): ConversationState {
+  if (state.status !== 'question_pending' && state.status !== 'ready_to_plan') return state;
+  return advance(state, elicit, ctx);
+}
+
 export function answerQuestion(
   state: ConversationState,
   answer: ElicitationAnswer,

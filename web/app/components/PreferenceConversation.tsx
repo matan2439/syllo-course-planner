@@ -24,6 +24,7 @@ import {
   confirmPending,
   rejectPending,
   removeCapturedPreference,
+  refreshQuestion,
   type ConversationState,
 } from '../../../api/ai/conversation_state'
 import type { Preference, PreferenceProfile } from '../../../api/ai/preference_model'
@@ -55,6 +56,18 @@ export default function PreferenceConversation({
   const [draft, setDraft] = useState('')
 
   useEffect(() => { onProfileChange?.(state.profile) }, [state.profile, onProfileChange])
+
+  // Impact-driven relevance can change AFTER a question is already on screen —
+  // e.g. the first Build reveals the balance alternatives converge, so
+  // `semester_balance` becomes irrelevant. Re-select the current question when
+  // the irrelevant-topics set changes so a now-pointless question is retracted
+  // (and a newly-relevant one can surface) without waiting for the next answer.
+  const irrelevantKey = (ctx.irrelevantTopicIds ?? []).join('|')
+  useEffect(() => {
+    setState((s) => refreshQuestion(s, elicit, ctx))
+    // ctx is recreated each render; irrelevantKey is its stable serialization.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [irrelevantKey, elicit])
 
   const q = state.currentQuestion
   const captured = state.profile.preferences
