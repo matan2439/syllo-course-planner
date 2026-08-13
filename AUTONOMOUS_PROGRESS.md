@@ -14,6 +14,85 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-14 — completed-course knowledge + native completion workflow (flagged Apply UNBLOCKED)
+
+**Blocker resolved.** The prior session's acceptance blocker (valid flagged Apply unreachable)
+is closed: `outcome:'proposal'` / `applyEligible:true` is now reachable through a legitimate
+explicit answer, and a real flagged Apply committed the board exactly once in the browser.
+
+### Phase 1 — legacy archaeology (app/web/semester_board_viewer.html)
+| Question | Finding (file evidence) |
+|---|---|
+| Modal | `openMyCoursesModal()` (13460) + `_renderMyCoursesGrid()` (13605); reached from the AI path via `OPEN_COMPLETED_COURSES` → `openCompletedCoursesUi()` (12814) |
+| Course list | `YEAR_1_2_MANDATORY_COURSES` (2018–2043) — 24 static TAU-ME courses `{course_id,name_he,semester,credit_hours}`, grouped by `YEAR_1_2_SEMESTERS` |
+| Why Years 1–2 | Those courses are **NOT in the board catalog** — the board holds Year 3+ only (comment at 2044–2047: they are not in `courseMap`, so accounting must fall back to the static table) |
+| Electives | **Mandatory only** — no completed-elective path existed (the gap the user reported) |
+| Status values | 4-way `not_taken | completed | currently_taking | planned` (`STATUS_SHORT` 13608) |
+| Untouched | `getUserStatus` (13370) defaults to **`not_taken`** — legacy had NO `unknown`; untouched silently meant "not taken" |
+| State owner | `userCourseStatuses[cid] = {status, planned_semester, override_reason}` |
+| Persistence | `localStorage` `tau_user_course_statuses_v1` (2254), migrated from legacy `tau_my_courses` — survives refresh |
+| Payload | `personal_status {completed,currently_taking,planned}` of `{course_id,name_he,hours}` (2383–2402); `not_taken` skipped (2386); ids in neither courseMap nor the Y1–2 table dropped (2393); **sent only when a list is non-empty, else `undefined` (2593)** → legacy also conflated "none" with "unknown" |
+| Hours | `known_completed_hours = completed_status_hours` (2488–2499) — **DERIVED from the identified completed courses' authoritative hours**, not an independent aggregate (a separate manual `degreeHoursProfile` total also exists) |
+| Planner consumption | completed ids → `excludedFromProposalIds` (2413) so never re-proposed; `_categoryPlacedCount` (2433) counts completed toward categories; `_year12PrereqIds` (11307) for prerequisites |
+| Reusable vs replaced | REUSED: status vocabulary, authoritative-hours accounting, dedup/no-reschedule, category/prereq consumption. REPLACED: innerHTML grid, localStorage globals, the `not_taken` default |
+
+### Contracts introduced
+**Completed courses** — `api/ai/academic_status_knowledge.ts`:
+`CourseIdKnowledge = known | known_empty | unknown` + provenance
+(`explicit_user | authoritative_board | imported_record`). Wire marker
+`plan_context.personal_status.completed_knowledge {status,provenance}`. **Absent → unknown**
+(every legacy/unflagged caller byte-identical). A `known` claim with an unrecognized/absent
+provenance falls back to unknown (fail-safe). `canonicalizeCourseIds` trims + de-dups
+deterministically and never drops an unknown-to-catalog id silently.
+`recognizedCompletedHours` sums only AUTHORITATIVE credits of uniquely identified courses —
+derived, never additive onto an aggregate → **no double counting**; there is no code path from
+an hours number to a course identity.
+
+Server rule (`academic_clarification.ts`): the completedCourses gap now fires only while the set
+is UNKNOWN. Not weakened — it stops conflating "none" with "never asked".
+
+**Exclusions** — already correct server-side (`resolveHardExcludedCourseIds` returns `undefined`
+when absent, `[]` when explicitly empty); the native UI simply never sent the key. Now: non-empty
+selection = explicit; empty becomes an answer only via "אין קורסים שאני רוצה להימנע מהם" → `[]`;
+untouched stays absent/unknown.
+
+### Native workflow (replaces the legacy modal)
+`shared/planner/early_year_courses.ts` — the Years 1–2 structure as typed DATA keyed by program
+id (documented limitation: the catalog cannot identify early years, so this is the smallest
+explicit typed configuration; components hold no course ids, other degrees are added as data).
+`web/app/components/CompletedCoursesPanel.tsx` — **tri-state** per course
+(completed/not_completed/**unknown**), explicit "none of these", catalog-backed completed-ELECTIVE
+picker (new capability), removal/correction, recognized-credits summary from authoritative hours
+only. Editing clears the confirmation and bumps a status version → a proposal built from older
+status is stale → Apply blocked until an explicit Rebuild. Nothing in the panel Generates.
+
+### Browser re-acceptance (local non-prod harness, deterministic)
+- Unanswered Build → `clarification_required` / `applyEligible:false`, both criticals retained
+  (**unknown is not treated as empty**).
+- Panel saved as explicit "none" + explicit no-exclusions → Rebuild → `outcome:'proposal'`,
+  `applyEligible:true`, criticals `[]`; candidates still the owner (`legacy_default`, proposal
+  identity === `selectedNormalizedIdentity`).
+- **Valid flagged Apply committed exactly once**: board went empty → C1@A + C2@B, draft cleared,
+  Apply button removed (repeat structurally impossible), confirmation posted.
+- One Build click = exactly one Generate (controlled delta); saving status / answering exclusions
+  never generated.
+- mechanical_engineering_2027: 4 semester fieldsets, **24 course groups**, explicit-none button,
+  RTL, no horizontal overflow. Tri-state verified live (toggle returns to unknown); credits
+  4.0 → 6.0 from authoritative data, each course counted once.
+- Flag-off: no panel, no conversation, no new control, standalone Build, board renders — unchanged.
+- Console/network: clean at rest (board 200, no error alert); earlier console entries are
+  historical residue from the pre-fix load and the server-restart window.
+
+**Verification:** full API **1730** (136 suites), full web **102** (12 suites), root+web tsc clean.
+Commits: `8efadca` (knowledge contract), `aad8b21` (native completion UI + wiring).
+
+**Remaining gaps (honest).** Category RECOGNITION for completed electives is not asserted by the
+UI (it shows credits only and states that category comes from catalog data); the server's existing
+authoritative rules do the category counting — a dedicated "uncertain recognition" surface is not
+built. `known_completed_hours` remains the separate legacy aggregate the student types; it is NOT
+merged with panel-derived credits (no double count, but also no unification yet). Wanted-course
+semantics unchanged (soft/best-effort). currently_taking/planned are not collected natively.
+
 ## Session 2026-08-13 — flagged AI-planner journey: real-browser Preview acceptance
 
 **Preview identity.** Local non-Production Preview (the only environment satisfying every
