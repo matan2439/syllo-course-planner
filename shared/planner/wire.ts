@@ -89,6 +89,10 @@ export const generatePlanResponseSchema = z
           .optional(),
         applyEligible: z.boolean().optional(),
         profileVersion: z.number().optional(),
+        candidates: z
+          .object({ hasMeaningfulAlternatives: z.boolean().optional() })
+          .passthrough()
+          .optional(),
         structuredClarification: z
           .object({
             items: z.array(z.record(z.unknown())),

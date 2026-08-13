@@ -81,6 +81,9 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(typeof p.academicDecision?.profileVersion === 'number'
       ? { profileVersion: p.academicDecision.profileVersion }
       : {}),
+    ...(typeof p.academicDecision?.candidates?.hasMeaningfulAlternatives === 'boolean'
+      ? { balanceAlternativesMaterial: p.academicDecision.candidates.hasMeaningfulAlternatives }
+      : {}),
     ...(p.academicDecision?.structuredClarification
       ? { agentClarificationItems: mapClarificationItems(p.academicDecision.structuredClarification.items) }
       : {}),

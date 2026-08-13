@@ -323,6 +323,11 @@ export default function NativePlannerJourney({
             <PreferenceConversation
               onBuild={(profile) => build(profile)}
               onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+              // Impact-driven: after a Generate whose candidates showed no material
+              // balanced/compact difference, don't ask the semester_balance question
+              // (it can't change the selected plan). Before any Generate, or when
+              // alternatives are material, it stays askable.
+              elicitationContext={proposal && proposal.balanceAlternativesMaterial === false ? { irrelevantTopicIds: ['semester_balance'] } : {}}
             />
           </Card>
         )}

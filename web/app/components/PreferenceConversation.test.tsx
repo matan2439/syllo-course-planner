@@ -14,6 +14,16 @@ function setup(over: Partial<React.ComponentProps<typeof PreferenceConversation>
   return { onBuild, onProfileChange }
 }
 
+test('impact-driven gating: when semester_balance is marked irrelevant, the balance question is never asked', () => {
+  const onBuild = jest.fn()
+  render(<PreferenceConversation onBuild={onBuild} elicitationContext={{ irrelevantTopicIds: ['semester_balance'] }} />)
+  // answer the highest-impact question (workload); the next impactful question
+  // must be time_of_day, NOT the (suppressed) balance question.
+  fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+  expect(screen.queryByText(/מה עדיף לך/)).toBeNull() // balance question suppressed
+  expect(screen.getByText(/שעות בוקר/)).toBeInTheDocument() // time_of_day asked instead
+})
+
 test('presents exactly one question at a time, with its rationale', () => {
   setup()
   expect(screen.getAllByRole('group', { name: /שאלה/ })).toHaveLength(1)

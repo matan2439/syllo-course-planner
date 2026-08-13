@@ -16,6 +16,7 @@ import { useMemo, useState, useEffect } from 'react'
 import {
   DeterministicPreferenceElicitation,
   DEFAULT_QUESTION_CATALOG,
+  type ElicitationContext,
 } from '../../../api/ai/preference_elicitation'
 import {
   initConversation,
@@ -37,12 +38,20 @@ function labelForPreference(p: Preference): string {
 export default function PreferenceConversation({
   onBuild,
   onProfileChange,
+  elicitationContext,
 }: {
   onBuild: (profile: PreferenceProfile) => void
   onProfileChange?: (profile: PreferenceProfile) => void
+  /**
+   * Impact-driven gating context. e.g. after a Generate whose candidates
+   * converge, pass { irrelevantTopicIds: ['semester_balance'] } so the balance
+   * question is not asked when it cannot change the selected plan.
+   */
+  elicitationContext?: ElicitationContext
 }) {
   const elicit = useMemo(() => new DeterministicPreferenceElicitation(), [])
-  const [state, setState] = useState<ConversationState>(() => initConversation(elicit, {}))
+  const ctx: ElicitationContext = elicitationContext ?? {}
+  const [state, setState] = useState<ConversationState>(() => initConversation(elicit, ctx))
   const [draft, setDraft] = useState('')
 
   useEffect(() => { onProfileChange?.(state.profile) }, [state.profile, onProfileChange])
@@ -69,14 +78,14 @@ export default function PreferenceConversation({
           <div className="flex flex-wrap gap-2">
             {q.options?.map((o) => (
               <button key={o.value} type="button"
-                onClick={() => setState((s) => answerQuestion(s, { kind: 'choice', value: o.value }, elicit, {}))}
+                onClick={() => setState((s) => answerQuestion(s, { kind: 'choice', value: o.value }, elicit, ctx))}
                 className="rounded-full border border-[var(--border)] px-4 py-1.5 hover:bg-[var(--surface-hover,rgba(0,0,0,0.05))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
                 {o.label_he}
               </button>
             ))}
             {q.allowIndifferent && (
               <button type="button"
-                onClick={() => setState((s) => answerQuestion(s, { kind: 'indifferent' }, elicit, {}))}
+                onClick={() => setState((s) => answerQuestion(s, { kind: 'indifferent' }, elicit, ctx))}
                 className="rounded-full border border-dashed border-[var(--border)] px-4 py-1.5 text-[var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
                 לא משנה לי
               </button>
@@ -88,7 +97,7 @@ export default function PreferenceConversation({
                 placeholder="אפשר גם לכתוב בחופשיות…"
                 className="flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-[var(--text)]" />
               <button type="button" disabled={!draft.trim()}
-                onClick={() => { setState((s) => answerQuestion(s, { kind: 'free_text', text: draft.trim() }, elicit, {})); setDraft('') }}
+                onClick={() => { setState((s) => answerQuestion(s, { kind: 'free_text', text: draft.trim() }, elicit, ctx)); setDraft('') }}
                 className="rounded-lg bg-[var(--purple-strong)] px-3 py-1.5 text-white disabled:opacity-50">
                 שליחת תשובה
               </button>
@@ -104,9 +113,9 @@ export default function PreferenceConversation({
           </p>
           <p className="mt-1 text-xs text-[var(--text-muted)]">זהו פירוש שלי — הוא ישפיע על התכנון רק אחרי שתאשר/י.</p>
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => setState((s) => confirmPending(s, elicit, {}))}
+            <button type="button" onClick={() => setState((s) => confirmPending(s, elicit, ctx))}
               className="rounded-full bg-emerald-600 px-4 py-1.5 text-white">כן, זו הכוונה</button>
-            <button type="button" onClick={() => setState((s) => rejectPending(s, elicit, {}))}
+            <button type="button" onClick={() => setState((s) => rejectPending(s, elicit, ctx))}
               className="rounded-full border border-[var(--border)] px-4 py-1.5">לא, נסח מחדש</button>
           </div>
         </div>
@@ -139,7 +148,7 @@ export default function PreferenceConversation({
                   {p.source === 'confirmed_interpretation' && <span className="mr-1 text-xs text-[var(--text-muted)]"> (פירוש שאושר)</span>}
                 </span>
                 <button type="button" aria-label={`הסר ${labelForPreference(p)}`}
-                  onClick={() => setState((s) => removeCapturedPreference(s, p.id, elicit, {}))}
+                  onClick={() => setState((s) => removeCapturedPreference(s, p.id, elicit, ctx))}
                   className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]">הסר</button>
               </li>
             ))}

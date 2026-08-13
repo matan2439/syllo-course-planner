@@ -138,6 +138,13 @@ export interface GeneratedPlanModel {
   applyEligible?: boolean;
   /** The preference-profile version this proposal was built from (agent path only). */
   profileVersion?: number
+  /**
+   * True when the flagged candidate orchestration found materially-distinct
+   * balanced vs compact plans — i.e. asking the semester_balance question could
+   * change the selected plan. Drives impact-driven elicitation. Absent/undefined
+   * on the legacy path (no candidate analysis).
+   */
+  balanceAlternativesMaterial?: boolean
   /** Structured clarification items (agent path only). Lean VMs — no secrets. */
   agentClarificationItems?: AgentClarificationItemVM[];
   /** Typed grounding-validation findings (agent path only). */
