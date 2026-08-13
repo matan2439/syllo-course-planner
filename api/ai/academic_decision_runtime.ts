@@ -35,6 +35,7 @@ import {
   type AcademicInterestProfile,
 } from './academic_interest_profile';
 import { DeterministicClarificationCapability } from './academic_clarification';
+import { isCompletedCoursesKnown, resolveCompletedCourseKnowledge } from './academic_status_knowledge';
 import type {
   ClarificationPlanningContext,
   ClarificationResult,
@@ -201,9 +202,14 @@ export function extractClarificationContext(
   const completed = (planContext?.personal_status?.completed ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const current = (planContext?.personal_status?.currently_taking ?? []).map((c: any) => c?.course_id).filter(Boolean);
   const excluded = resolveHardExcludedCourseIds(preferences);
+  // Explicit knowledge marker: an empty completed list only counts as an answer
+  // ("none completed") when the caller says so with a recognized provenance.
+  // Absent → unknown → the critical clarification is retained, unchanged.
+  const completedKnowledge = resolveCompletedCourseKnowledge(planContext?.personal_status);
 
   const context: ClarificationPlanningContext = {
     completedCourseIds: completed,
+    completedCoursesKnown: isCompletedCoursesKnown(completedKnowledge),
     currentCourseIds: current,
     excludedCourseIds: excluded,
     maxWeeklyHours: preferences?.max_weekly_hours ?? undefined,

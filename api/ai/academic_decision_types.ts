@@ -18,6 +18,15 @@ import type { AcademicInterestProfile } from './academic_interest_profile';
 /** User-supplied planning inputs relevant to clarification, sourced from AcademicDecisionRequest. */
 export interface ClarificationPlanningContext {
   completedCourseIds?: string[];
+  /**
+   * True when the completed-course set is ESTABLISHED — including an explicit
+   * "I have completed none" (an empty `completedCourseIds` that is a real
+   * answer). Absent/false means UNKNOWN, so the critical clarification is
+   * retained: an empty list alone never counts as an answer
+   * (academic_status_knowledge.ts). Every pre-existing caller omits this and is
+   * therefore unaffected.
+   */
+  completedCoursesKnown?: boolean;
   currentCourseIds?: string[];
   excludedCourseIds?: string[];
   maxWeeklyHours?: number;

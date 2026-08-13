@@ -144,7 +144,11 @@ export class DeterministicClarificationCapability implements ClarificationCapabi
     const { context } = request;
     const missingInputs: MissingInput[] = [];
 
-    if (!context.completedCourseIds || context.completedCourseIds.length === 0) {
+    // An empty list is a GAP only while the set is unknown. An explicit
+    // "I have completed no courses" (completedCoursesKnown) is a real answer and
+    // resolves it — the check is not weakened, it stops conflating "none" with
+    // "never asked" (academic_status_knowledge.ts).
+    if (!context.completedCoursesKnown && (!context.completedCourseIds || context.completedCourseIds.length === 0)) {
       missingInputs.push({
         field: 'completedCourses',
         critical: true,
