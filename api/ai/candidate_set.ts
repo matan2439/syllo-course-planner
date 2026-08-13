@@ -44,7 +44,15 @@ export interface CandidateSet {
   converged: boolean;
   /** Factual differences between the distinct candidates (empty when converged). */
   differenceSummary: DiffFact[];
+  /**
+   * Canonical identity of the LEGACY stable-planner result (the flag-off /
+   * 'neutral' run) — the reference neutral selection matches, independent of
+   * candidate array/generation order.
+   */
+  legacyIdentity: string;
 }
+
+export type SelectionReason = 'confirmed_balanced' | 'confirmed_compact' | 'legacy_default';
 
 // ── canonical identity ────────────────────────────────────────────────────────
 
@@ -94,15 +102,20 @@ export function generateCandidateSet(input: {
 }): CandidateSet {
   const policies = input.policies ?? DEFAULT_POLICIES;
 
-  // Run the SAME engine per policy (deterministic worker config).
-  const raw = policies.map((policy) => {
+  const runPolicy = (policy: DistributionPolicy) => {
     const model = input.buildModel(policy);
     const worker = new PlannerWorker(model, structuredClone(input.initialState), { topN: 6, rolloutSteps: 80 });
     worker.run(500, 'greedy');
     const state = worker.getPlan();
-    const validation = validatePlanState(state, model, input.pinnedHome ?? {});
-    return { policy, model, state, validation, identity: normalizeIdentity(state), scoreVector: scorePlan(state, model) };
-  });
+    return { policy, model, state, validation: validatePlanState(state, model, input.pinnedHome ?? {}), identity: normalizeIdentity(state), scoreVector: scorePlan(state, model) };
+  };
+
+  // Canonical LEGACY reference — the flag-off / 'neutral' stable-planner result.
+  // Neutral selection matches THIS identity, never candidate/generation order.
+  const legacyIdentity = runPolicy('neutral').identity;
+
+  // Run the SAME engine per requested policy (deterministic worker config).
+  const raw = policies.map(runPolicy);
 
   // Retain only candidates that pass the EXISTING authoritative validator.
   const valid = raw.filter((r) => r.validation.valid);
@@ -146,20 +159,30 @@ export function generateCandidateSet(input: {
     }
   }
 
-  return { candidates, converged, differenceSummary };
+  return { candidates, converged, differenceSummary, legacyIdentity };
 }
 
 /**
- * Deterministic selection: a confirmed balanced/compact preference selects the
- * matching validated candidate; neutral/indifferent keeps the legacy default
- * (the first candidate). Never assumes a policy the user did not confirm.
+ * Deterministic selection. A confirmed balanced/compact preference selects the
+ * matching validated candidate. Neutral/indifferent (no confirmed distribution
+ * preference) selects the candidate whose normalized plan equals the LEGACY
+ * stable-planner result — matched by identity, NOT array/generation order — so
+ * it can never silently mean "balanced-first". Never assumes an unconfirmed policy.
  */
 export function selectCandidate(set: CandidateSet, preference: DistributionPolicy): PlanCandidate | undefined {
   if (set.candidates.length === 0) return undefined;
   if (preference === 'balanced' || preference === 'compact') {
     return set.candidates.find((c) => c.policy === preference || c.convergedPolicies?.includes(preference)) ?? set.candidates[0];
   }
-  return set.candidates[0];
+  // neutral / indifferent → the canonical legacy result (order-independent).
+  return set.candidates.find((c) => c.normalizedIdentity === set.legacyIdentity) ?? set.candidates[0];
+}
+
+/** Truthful selection reason — a confirmed policy, or the legacy/default (never preference-derived for neutral). */
+export function selectionReason(_set: CandidateSet, preference: DistributionPolicy): SelectionReason {
+  if (preference === 'balanced') return 'confirmed_balanced';
+  if (preference === 'compact') return 'confirmed_compact';
+  return 'legacy_default';
 }
 
 /**
