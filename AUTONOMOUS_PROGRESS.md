@@ -14,6 +14,92 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-13 — flagged AI-planner journey: real-browser Preview acceptance
+
+**Preview identity.** Local non-Production Preview (the only environment satisfying every
+constraint: no Supabase, no paid provider, deterministic, non-prod). `dev_api_server.ts`
+(`AI_DEV_MODE=true AI_DEV_BYPASS_QUOTA=true`, real root handlers, `DATABASE_URL=unset` →
+`loadLocalBoardJson`, no DB/LLM) on :3002 behind `next dev` (:3001, `PLANNER_API_ORIGIN`
+proxy). Deterministic Generate ≈15–30ms on the small fixtures (the 30–134s figure was the
+full mechanical board), so the next-dev proxy timeout does NOT apply here. Vercel Production
+untouched, no deploy, no alias change.
+
+**Preview-only feature enablement (new, prod-safe).** `web/app/planner/native/agent-preview/
+page.tsx` mounts `NativePlannerJourney` with `useAcademicDecisionAgent` on. Gated by
+`process.env.ENABLE_ACADEMIC_AGENT_PREVIEW === '1'` (set only in git-ignored `web/.env.local`)
+→ `notFound()` in every Production deployment; the canonical `/planner/native` page is
+byte-identical and flag-off. `?program=` passes straight through (bypasses the registry) so
+board fixtures are reachable; `?agent=0` renders the unflagged legacy path for comparison.
+Fixtures: `test_program_agent_preview_2027` (2×8h dual electives, 16h target → material
+balanced [8,8] vs compact [16,0]); `test_program_dual_balance_2027` (+`board_data_version` →
+converged, 1 candidate, balance question suppressed). Commit `39c6f8c`.
+
+**Verified in the REAL browser (accessibility-tree + network evidence; pixel screenshots
+unavailable — Browser pane not composited).**
+- Flag-off baseline (agent=0): board renders, NO conversation panel, standalone Build, legacy
+  proposal [8,8], no candidate metadata leak, valid Apply commits exactly once, draft clears.
+- Flag-on initial: `PreferenceConversation` visible, one question at a time, RTL, natural
+  Hebrew (no ids as labels), "לא משנה לי" present, explicit Build, Build available without
+  answering.
+- No-auto-generate PROVEN by network count: select choice / "לא משנה לי" / free-text submit /
+  confirm interpretation / remove all left the Generate count unchanged; only Build/Rebuild
+  POSTs generate-plan.
+- Candidate orchestration RAN in-browser and the proposal MATCHED the selected candidate
+  (`selectedNormalizedIdentity` === the rendered board) every Build. First Build (no balance
+  answer) → `legacy_default`, [8,8], validCandidateCount 2, hasMeaningfulAlternatives true.
+  balanced → `confirmed_balanced` [8,8]; compact → `confirmed_compact` [16,0] (different
+  candidate id; consolidation, not a first-semester bias — balanced distributes A+B);
+  indifferent → `legacy_default`, identical candidate id/identity to neutral. Balance question
+  appears once, is not re-asked after answering, and uses correct tradeoff Hebrew.
+- Mobile 375px: no horizontal overflow, dir=rtl document+main.
+
+**Defect found + fixed (RED→GREEN, TDD).** Impact-driven balance suppression only reacted to
+`elicitationContext` at mount / on user transitions, so a `semester_balance` question already
+on screen was NOT retracted when the first Build revealed the candidates converge
+(`balanceAlternativesMaterial===false`) — it stayed askable though it could no longer change
+the plan (acceptance blocker: "converged scenarios show no unnecessary question"). Fix:
+`conversation_state.refreshQuestion` re-selects the current question against the latest ctx
+(only while awaiting a question — never disturbs a pending confirmation/conflict/profile) +
+a `PreferenceConversation` effect keyed on the irrelevant-topics set. New test
+`PreferenceConversation.test.tsx` "reactive gating"; verified in-browser on the converged
+fixture (balance question → time_of_day after Build). Commit `e50b493`.
+
+**BLOCKER (pre-existing, unresolved) — flagged Apply unreachable in-browser.** The
+`AcademicDecisionAgent` marks `completedCourses` and `excludedCourses` as CRITICAL clarifications
+(academic_clarification.ts); unmet criticals → `outcome:'clarification_required'` →
+`applyEligible:false` → `isProposalApplyable` correctly blocks Apply. The native `buildRequest`
+hardcodes `personal_status.completed:[]` (prior completion is modeled as HOURS, no completed-
+course-IDs input) and only sends `disallowed_course_ids` when the exclude picker is non-empty,
+so `completedCourses` can never be cleared through the browser → a valid flagged Apply is not
+reachable. Confirmed by curl: supplying `completed:[…]` + `disallowed_course_ids:[]` flips the
+outcome to `proposal`/`applyEligible:true`. This is PRE-EXISTING (Slice 4 gating + native
+completion-as-hours), surfaced by the first real browser journey. NOT fixed here (adding a
+completed-courses input = new product capability, out of scope; changing clarification
+criticality/sourcing = regression-sensitive core change — "do not weaken validation"). The
+safety invariants it enforces are all correct (blocked/stale/version-mismatch/clarification
+proposals cannot Apply; committed board never changes before a valid Apply). Recommended future
+fix: source `completedCourseIds` from the board's `metadata.completed_course_ids` (+ the
+journey's known_completed_hours), and send the exclude picker's value as `[]` when empty, so the
+native journey answers the criticals it legitimately owns without weakening prerequisite checks.
+
+**Late-response / stale Apply.** `NativePlannerJourney.build()` token guard (`++tokenRef.current`,
+drop when `token !== tokenRef.current`) + version-gated `isProposalApplyable` — a browser race is
+not reliably reproducible at ~20ms responses; covered by `NativePlannerJourney.agent.test.tsx`
+(late response dropped; edit→stale→Apply rejected). In-browser: answering after a Build kept the
+proposal non-applyable (version advanced), Apply stayed disabled.
+
+**Automated verification (post-fix).** root tsc ✓; web tsc ✓; full API 1713/1713 (134 suites);
+full web 92/92 (11 suites); web production build ✓ (new route builds dynamic/env-gated,
+/planner/native unchanged). Lint not run (ESLint not non-interactively configured — pre-existing).
+
+**Verdict.** Flagged journey is correct and browser-verified through conversation → Build →
+candidates → balance question (+ materiality suppression) → answer → stale → Rebuild →
+policy-selected proposal. Apply lifecycle on the flagged path is BLOCKED by the completedCourses
+critical clarification (no native answer surface) → NOT production-ready for the flagged path;
+flag-off unchanged. Do not recommend Production. Next smallest step: source completed courses
+from board metadata / prior-hours so the flagged proposal reaches `applyEligible` legitimately,
+then re-run the Apply-lifecycle acceptance.
+
 ## Session 2026-08-13 — candidate-set correctness gates (priority audit + neutral legacy selection)
 
 **Gate 1 — objective-priority audit (no comparator change).** Traced the score vector
