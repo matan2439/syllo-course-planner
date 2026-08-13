@@ -47,6 +47,33 @@ Note: the resolved distributionPolicy is ALREADY threaded into the single planne
 candidate metadata + the gated question, ideally by building the proposal from the
 candidate set as the single owner.
 
+## Session 2026-08-13 — live candidate orchestration + impact-driven elicitation
+
+**Slice 1 — candidate set is the single flagged proposal owner** (committed). generate-plan's
+flagged path runs `generateCandidateSet` (neutral+balanced+compact through the SAME stable
+planner over the current board/initialState — never emptyState), validates + dedups, selects
+by resolved policy or canonical `legacy_default`, and builds the proposal from the SELECTED
+candidate's exact PlanState (one selected state, one toProposal path, no post-selection rerun).
+Provenance proven: proposal normalized identity === selected candidate id. Rationale parity:
+the candidate carries `worker.explain().summary_he`, so the proposal is byte-identical to the
+default single-run for the same state (fixed a rationale-only parity break found via
+systematic-debugging). Lean metadata at `academicDecision.candidates` (selectedCandidateId,
+selectedPolicy, selectionReason, validCandidateCount, hasMeaningfulAlternatives, converged,
+contributingPolicies, differenceSummary, profileVersion, selectedNormalizedIdentity) — no full
+PlanStates to the UI. Neutral/indifferent == flag-off (order-independent). Flag-off unchanged.
+Tests: generate_plan_candidate_orchestration.test.ts (7); full API byte-identical.
+
+**Slice 2 — impact-driven balance elicitation** (committed). `hasMeaningfulAlternatives` threaded
+wire→adapter→GeneratedPlanModel.balanceAlternativesMaterial → the mounted journey passes an
+ElicitationContext to PreferenceConversation; when a Generate's candidates showed no material
+difference, semester_balance is marked `irrelevantTopicIds` so the REAL elicitation skips it (no
+parallel store/banner). Test: PreferenceConversation (+1). Existing journey lifecycle tests
+(answer≠Generate, edit→stale, Rebuild→profile, version-gated Apply) unchanged.
+
+**Wanted-course semantic gap (recorded, unchanged):** disallowed/avoid is hard (enumeration +
+validation); WANTED remains soft/best-effort (g5 + recovery) — the system does NOT guarantee
+inclusion of every explicitly wanted course. Not redesigned (out of scope).
+
 ## Session 2026-08-12 (cont. 4) — Slice 17A investigation gate + planner policy consumption
 
 **Investigation gate (mandatory, evidence-based).** Traced generate-plan → PlannerWorker →
