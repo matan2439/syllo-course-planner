@@ -14,6 +14,39 @@ committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
 
+## Session 2026-08-13 — candidate-set correctness gates (priority audit + neutral legacy selection)
+
+**Gate 1 — objective-priority audit (no comparator change).** Traced the score vector
+`[g1,g2a,g2b,g3,g4a,g4b,g5,g5b,gFit,g6]`. Finding: the order does NOT violate the required
+hierarchy. HARD-AVOIDED (disallowed) is enforced at enumeration + validation
+(`isCourseExcluded` gates `enumerateActions`; `validatePlanState` fails a plan with a
+disallowed course) — ABOVE all scoring, so distribution can never place a hard-avoided
+course. g5 (wanted) / g5b (unwanted) are SOFT terms, correctly BELOW the distribution
+slots (distribution = required item 6, soft preferences = item 7); there is NO hard-wanted
+gate (wanted = soft reward + recovery). Reordering would wrongly promote soft-wanted above
+distribution and change legacy behavior → the correct action is to PROVE, not reorder.
+`planner_priority_audit.test.ts` (6): disallowed never placed under any policy; distribution
+can't defeat completion/mandatory; legal wanted still placed under compact. Test-only commit.
+
+**Gate 2 — neutral = canonical legacy result (fix).** selectCandidate(neutral) no longer
+means "first candidate" (order-dependent). `generateCandidateSet` runs an explicit 'neutral'
+pass → records `legacyIdentity` (the flag-off stable result); neutral/indifferent selection
+matches that identity independent of array/generation order; `selectionReason` labels it
+`legacy_default` (never preference-derived). Proven: neutral == flag-off stable result;
+reversing generation order doesn't change neutral selection; indifferent == neutral.
+`candidate_set_neutral.test.ts` (4).
+
+**Deferred — live candidate wiring (objectives 3–5).** Both gates were the explicit
+prerequisite ("do not wire until proven") and are now proven. The live wiring (single
+orchestration owner in generate-plan building the proposal from the selected candidate +
+response metadata + impact-driven balance question through the real conversation state
+machine + full Build→candidates→question→proposal→Apply lifecycle) is a large,
+regression-sensitive refactor of the intricate planner-execution block — next session.
+Note: the resolved distributionPolicy is ALREADY threaded into the single planner run
+(17A), so the current proposal already reflects the selected policy; the wiring adds
+candidate metadata + the gated question, ideally by building the proposal from the
+candidate set as the single owner.
+
 ## Session 2026-08-12 (cont. 4) — Slice 17A investigation gate + planner policy consumption
 
 **Investigation gate (mandatory, evidence-based).** Traced generate-plan → PlannerWorker →
