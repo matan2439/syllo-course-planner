@@ -65,8 +65,15 @@ export interface CourseFeatures {
   academicYear: number;
   extractionVersion: string;
   topicVocabularyVersion: string;
-  /** Practical laboratory component. */
+  /** Practical laboratory component (official delivery mode). */
   laboratory: FeatureValue<Ternary>;
+  /**
+   * K8 — project/design-based delivery, read from the SAME schema-complete
+   * official `אופן ההוראה` field. Distinct from `project` below, which comes
+   * from the assessment field: the K8A audit measured assessment at 0/8 across
+   * the live corpus, while delivery mode is 8/8, so only this one is usable.
+   */
+  projectDelivery: FeatureValue<Ternary>;
   /** Project component. */
   project: FeatureValue<Ternary>;
   /** Final examination. */
@@ -141,6 +148,8 @@ const PREREQ_LABEL = 'קורסי קדם נדרשים';
 
 /** Laboratory delivery modes, as the official enumerated field spells them. */
 const LAB_MODE = /מעבד/;
+/** Project/design delivery mode — the field spells it "פרוייקט" (also "פרויקט"). */
+const PROJECT_MODE = /פרוי/;
 const PROJECT_TERMS = /פרויקט|פרוייקט|project/i;
 const EXAM_TERMS = /בחינה|מבחן|exam/i;
 const COURSEWORK_TERMS = /תרגיל|מטלה|מטלות|דו"?ח|דוח|הגש|assignment|homework/i;
@@ -181,14 +190,23 @@ export class RuleBasedFeatureExtractor implements FeatureExtractor {
         }
       : { value: 'unknown', confidence: 0, evidence: [], rule: 'rule:delivery_mode' };
 
-    const laboratory: FeatureValue<Ternary> = delivery
-      ? {
-          value: LAB_MODE.test(delivery),
-          confidence: 0.95,
-          evidence: evidenceFor(LAB_MODE.test(delivery), 0.95, 'rule:delivery_mode.laboratory', excerptAround(delivery, delivery), `field:${DELIVERY_LABEL}`),
-          rule: 'rule:delivery_mode.laboratory',
-        }
-      : UNKNOWN_TERNARY('rule:delivery_mode.laboratory');
+    /**
+     * Both readings share the SAME schema-complete field: present ⇒ we may
+     * conclude true AND false; absent ⇒ unknown for both. They are independent
+     * questions about one enumerated value, not competing interpretations.
+     */
+    const fromDeliveryMode = (test: RegExp, rule: string): FeatureValue<Ternary> =>
+      delivery
+        ? {
+            value: test.test(delivery),
+            confidence: 0.95,
+            evidence: evidenceFor(test.test(delivery), 0.95, rule, excerptAround(delivery, delivery), `field:${DELIVERY_LABEL}`),
+            rule,
+          }
+        : UNKNOWN_TERNARY(rule);
+
+    const laboratory = fromDeliveryMode(LAB_MODE, 'rule:delivery_mode.laboratory');
+    const projectDelivery = fromDeliveryMode(PROJECT_MODE, 'rule:delivery_mode.project');
 
     // ── assessment components (official assignments field) ───────────────────
     // This field is populated when the institution publishes assessment detail.
@@ -242,7 +260,7 @@ export class RuleBasedFeatureExtractor implements FeatureExtractor {
       academicYear: doc.academicYear,
       extractionVersion: FEATURE_EXTRACTION_VERSION,
       topicVocabularyVersion: TOPIC_VOCABULARY_VERSION,
-      laboratory, project, finalExam, coursework, deliveryMode, topics, prerequisiteText,
+      laboratory, projectDelivery, project, finalExam, coursework, deliveryMode, topics, prerequisiteText,
     };
   }
 }

@@ -100,6 +100,8 @@ export interface PrepareEvidenceInput {
 export interface SectionFeature {
   groupId: string;
   laboratory: string;
+  /** K8 — the project/design reading of the same official delivery-mode field. */
+  projectDelivery: string;
   contentHash: string;
   sourceUrl: string;
 }
@@ -163,42 +165,56 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
         .map((e) => ({
           groupId: e.groupId!,
           laboratory: String(e.features.laboratory.value),
+          projectDelivery: String(e.features.projectDelivery.value),
           contentHash: e.doc.contentHash,
           sourceUrl: e.doc.sourceUrl,
         }))
         .sort((a, b) => (a.groupId < b.groupId ? -1 : 1)),
     );
 
-    const aggregated = aggregateCourseLevelFeature({
-      observations: extracted.map((e) => ({
-        ...(e.groupId !== undefined ? { groupId: e.groupId } : {}),
-        value: e.features.laboratory.value,
-      })),
-      ...(input.groupUniverse?.[courseId] ? { groupUniverse: input.groupUniverse[courseId] } : {}),
-    });
+    // Every delivery-derived feature is aggregated under the SAME K7.5 rules, so
+    // a second objective can never acquire weaker applicability than the first.
+    const aggregateOf = (pick: (f: CourseFeatures) => CourseFeatures['laboratory']) =>
+      aggregateCourseLevelFeature({
+        observations: extracted.map((e) => ({
+          ...(e.groupId !== undefined ? { groupId: e.groupId } : {}),
+          value: pick(e.features).value,
+        })),
+        ...(input.groupUniverse?.[courseId] ? { groupUniverse: input.groupUniverse[courseId] } : {}),
+      });
 
-    if (aggregated.value === 'varies_by_section') variesBySectionCourseIds.push(courseId);
+    const aggregated = aggregateOf((f) => f.laboratory);
+    const aggregatedProject = aggregateOf((f) => f.projectDelivery);
+
+    if (aggregated.value === 'varies_by_section' || aggregatedProject.value === 'varies_by_section') {
+      variesBySectionCourseIds.push(courseId);
+    }
 
     // The course-level view carries the AGGREGATED value. Only an unambiguous
     // `true` can ever contribute to ranking (grounded_objectives.ts), so
     // 'varies_by_section' and 'unknown' are both inert by construction.
     const base = extracted[0].features;
+    /** Replace a feature with its safely-aggregated course-level value. */
+    const applied = (
+      f: CourseFeatures['laboratory'],
+      agg: ReturnType<typeof aggregateCourseLevelFeature>,
+    ): CourseFeatures['laboratory'] => ({
+      ...f,
+      value: agg.value as CourseFeatures['laboratory']['value'],
+      // An aggregate that is not a definite boolean supports no claim at all.
+      ...(agg.value === true || agg.value === false ? {} : { confidence: 0, evidence: [] }),
+      rule: `${f.rule}+aggregate:${agg.reason}`,
+    });
+
     features.set(courseId, {
       ...base,
-      laboratory: {
-        ...base.laboratory,
-        value: aggregated.value as CourseFeatures['laboratory']['value'],
-        // An aggregate that is not a definite boolean supports no claim at all.
-        ...(aggregated.value === true || aggregated.value === false
-          ? {}
-          : { confidence: 0, evidence: [] }),
-        rule: `${base.laboratory.rule}+aggregate:${aggregated.reason}`,
-      },
+      laboratory: applied(base.laboratory, aggregated),
+      projectDelivery: applied(base.projectDelivery, aggregatedProject),
     });
   }
 
   const unknownFeatureCourseIds = [...features.entries()]
-    .filter(([, f]) => f.laboratory.value === 'unknown')
+    .filter(([, f]) => f.laboratory.value === 'unknown' && f.projectDelivery.value === 'unknown')
     .map(([id]) => id)
     .sort();
 

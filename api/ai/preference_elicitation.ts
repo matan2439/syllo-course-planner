@@ -129,10 +129,13 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     id: 'course_feature_practical', category: 'course_feature',
     affects: 'grounded_course_feature', impact: 0.5,
     answerType: 'single_choice',
-    question_he: 'יש כמה הרכבים חוקיים שנבדלים ביניהם: חלקם כוללים קורסים עם מעבדה או עבודה מעשית. מה מתאים לך יותר?',
-    rationale_he: 'לפי הסילבוסים הרשמיים, חלק מהקורסים האפשריים כוללים רכיב מעבדה — זה יכול לשנות איזו תוכנית תיבחר.',
+    question_he: 'יש כמה הרכבים חוקיים שנבדלים ביניהם באופן ההוראה. איזה סוג קורס מתאים לך יותר?',
+    rationale_he: 'לפי הסילבוסים הרשמיים, חלק מהקורסים האפשריים מועברים כמעבדה או כפרויקט — זה יכול לשנות איזו תוכנית תיבחר.',
     options: [
       { value: 'practical_laboratory', label_he: 'מעדיף/ה קורסים עם מעבדה או עבודה מעשית' },
+      // K8 — added after the coverage audit measured the same official
+      // delivery-mode field at 8/8 and an end-to-end selection change was proven.
+      { value: 'project_based', label_he: 'מעדיף/ה קורסים מבוססי פרויקט' },
       { value: 'no_feature_preference', label_he: 'אין לי העדפה בעניין הזה' },
     ],
     allowIndifferent: true, allowFreeText: false,

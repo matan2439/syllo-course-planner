@@ -294,8 +294,11 @@ describe('grounded question impact is published so the UI can gate the question'
     const res = await run(body()); // NO confirmed preference — this is the probe
     const impact = candidates(res._body).evidence.groundedQuestionImpact;
     expect(impact).toBeDefined();
-    expect(impact.feature).toBe('practical_laboratory');
+    // K8 — the single question now covers every implemented delivery-format
+    // objective, so the probe reports the FIELD plus which objectives separate.
+    expect(impact.feature).toBe('course_delivery_format');
     expect(impact.distinguishesCandidates).toBe(true);
+    expect(impact.distinguishingObjectives).toContain('prefer_laboratory_courses');
     expect(impact.coverageSufficient).toBe(true);
     expect(impact.hasConflicts).toBe(false);
   });
@@ -314,5 +317,60 @@ describe('grounded question impact is published so the UI can gate the question'
     MOCK_DOCUMENTS = [];
     const res = await run(body());
     expect(candidates(res._body).evidence.groundedQuestionImpact.distinguishesCandidates).toBe(false);
+  });
+});
+
+// ── K8 — the project objective through the REAL handler ──────────────────────
+
+describe('K8 — prefer_project_courses changes real selection through Generate', () => {
+  beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
+  afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
+
+  const projectPref = () => labPref({ normalized: 'project_based', value: 'project_based' });
+
+  test('a confirmed project preference selects the project-delivery course', async () => {
+    // E3 is the only course whose official delivery mode is "פרוייקט".
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
+    const legacy = await run(body());
+    const withProject = await run(withPref([projectPref()]));
+
+    expect(placed(withProject._body)).not.toEqual(placed(legacy._body));
+    expect(placed(legacy._body)).not.toContain('E3');
+    expect(placed(withProject._body)).toContain('E3');
+    expect(candidates(withProject._body).evidence.groundedObjective).toBe('prefer_project_courses');
+    expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
+  });
+
+  test('the explanation names the PROJECT feature, not laboratory', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
+    const res = await run(withPref([projectPref()]));
+    const text = candidates(res._body).groundedExplanationHe ?? '';
+    expect(text).toMatch(/פרויקט/);
+    expect(text).not.toMatch(/מעבדה/);
+    expect(text).toContain('ims.tau.ac.il');
+  });
+
+  test('a laboratory corpus gives the project preference nothing to work with — no bias', async () => {
+    // Every course is a lecture or a lab; none is project-delivered.
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'מעבדה'), doc('E4', 'שיעור')];
+    const legacy = await run(body());
+    const withProject = await run(withPref([projectPref()]));
+    expect(placed(withProject._body)).toEqual(placed(legacy._body));
+    expect(candidates(withProject._body).selectedGroundedScore.score).toBe(0);
+  });
+
+  test('hard exclusion of the project course still wins', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
+    const res = await run(withPref([projectPref()], 4, { preferences: { disallowed_course_ids: ['E3'] } }));
+    expect(placed(res._body)).not.toContain('E3');
+    expect(candidates(res._body).selectedGroundedScore.score).toBe(0);
+  });
+
+  test('the impact probe reports the project objective as distinguishing', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
+    const res = await run(body());
+    const impact = candidates(res._body).evidence.groundedQuestionImpact;
+    expect(impact.distinguishesCandidates).toBe(true);
+    expect(impact.distinguishingObjectives).toContain('prefer_project_courses');
   });
 });

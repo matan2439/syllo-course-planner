@@ -40,12 +40,15 @@ export const GROUNDED_FEATURE_AFFECTS = 'grounded_course_feature';
  * one-line change once each has its OWN end-to-end ranking proof (see the
  * ledger's K8). Shipping an objective without that proof is forbidden.
  */
-export const SUPPORTED_GROUNDED_FEATURES = ['practical_laboratory'] as const;
+export const SUPPORTED_GROUNDED_FEATURES = ['practical_laboratory', 'project_based'] as const;
 export type SupportedGroundedFeature = (typeof SUPPORTED_GROUNDED_FEATURES)[number];
 
 /** Feature target → planner objective. The only place this translation exists. */
 const FEATURE_TO_OBJECTIVE: Record<SupportedGroundedFeature, GroundedObjectiveId> = {
   practical_laboratory: 'prefer_laboratory_courses',
+  // K8 — added only after the K8A audit measured its official coverage at 8/8
+  // and proved an end-to-end selection change. No objective ships without that.
+  project_based: 'prefer_project_courses',
 };
 
 export interface GroundedObjectiveExclusion {

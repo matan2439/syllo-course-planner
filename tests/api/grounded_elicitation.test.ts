@@ -83,9 +83,16 @@ describe('K9C — the grounded topic is asked only when it is impactful', () => 
 describe('K9C — the question wording is student-facing, never internal', () => {
   const q = DEFAULT_QUESTION_CATALOG.find((x) => x.id === TOPIC)!;
 
-  test('offers a natural Hebrew practical/laboratory choice and an indifferent option', () => {
-    expect(q.question_he).toMatch(/מעבדה|מעשית/);
-    expect(q.options!.map((o) => o.value)).toContain('practical_laboratory');
+  test('offers natural Hebrew delivery-format choices and an indifferent option', () => {
+    // K8 generalized the question to the official delivery-mode field, so the
+    // formats live in the OPTIONS while the stem asks which suits the student.
+    expect(q.question_he).toMatch(/אופן ההוראה|סוג קורס/);
+    const labels = q.options!.map((o) => o.label_he).join(' ');
+    expect(labels).toMatch(/מעבדה|מעשית/);
+    expect(labels).toMatch(/פרויקט/);
+    expect(q.options!.map((o) => o.value)).toEqual(
+      expect.arrayContaining(['practical_laboratory', 'project_based']),
+    );
     expect(q.allowIndifferent).toBe(true);
     expect(q.options!.some((o) => /אין לי העדפה/.test(o.label_he))).toBe(true);
   });

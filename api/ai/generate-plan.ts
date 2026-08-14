@@ -1769,15 +1769,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         // preference is confirmed, because the UI must gate the question BEFORE
         // the user has answered it.
         groundedQuestionImpact: (() => {
-          const probe = { id: 'prefer_laboratory_courses' as const, confirmed: true as const, snapshotId: preparedEvidence.snapshot.snapshotId };
-          const scores = candidateSet.candidates.map(
-            (c) => scoreCandidateOnObjective(candidateCourseIds(c), probe, preparedEvidence.features).score,
-          );
+          // Probe EVERY implemented objective: the one question offers all of
+          // them, so it is worth asking when ANY of them could change the
+          // outcome. Each probe uses the same prepared features and never
+          // affects ranking.
+          const probes = (['prefer_laboratory_courses', 'prefer_project_courses'] as const).map((id) => {
+            const scores = candidateSet.candidates.map(
+              (c) => scoreCandidateOnObjective(
+                candidateCourseIds(c),
+                { id, confirmed: true as const, snapshotId: preparedEvidence.snapshot.snapshotId },
+                preparedEvidence.features,
+              ).score,
+            );
+            return { id, distinguishes: new Set(scores).size > 1 };
+          });
           return {
-            feature: 'practical_laboratory',
-            // The answer can only change the outcome if the retained candidates
-            // actually differ on it.
-            distinguishesCandidates: new Set(scores).size > 1,
+            feature: 'course_delivery_format',
+            distinguishesCandidates: probes.some((p) => p.distinguishes),
+            distinguishingObjectives: probes.filter((p) => p.distinguishes).map((p) => p.id),
             coverageSufficient: preparedEvidence.coverage.coveredCourseCount > 0,
             hasConflicts: preparedEvidence.coverage.conflictingCourseIds.length > 0,
           };
