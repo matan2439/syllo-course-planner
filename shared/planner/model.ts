@@ -146,6 +146,18 @@ export interface GeneratedPlanModel {
    */
   balanceAlternativesMaterial?: boolean
   /**
+   * K9C — whether asking the grounded course-feature question could actually
+   * change the selected plan, computed server-side from the ONE prepared
+   * evidence snapshot. The conversation gates the question on this, so it is
+   * never asked merely because it exists in the catalog.
+   */
+  groundedQuestionImpact?: {
+    feature: string
+    distinguishesCandidates: boolean
+    coverageSufficient: boolean
+    hasConflicts: boolean
+  }
+  /**
    * K9C — the factual explanation of a confirmed grounded course-feature
    * preference's effect on selection, plus the official sources it rests on.
    * Absent when no grounded objective applied, so nothing is ever claimed

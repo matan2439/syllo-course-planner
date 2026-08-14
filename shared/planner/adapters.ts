@@ -84,6 +84,26 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(typeof p.academicDecision?.candidates?.hasMeaningfulAlternatives === 'boolean'
       ? { balanceAlternativesMaterial: p.academicDecision.candidates.hasMeaningfulAlternatives }
       : {}),
+    ...(p.academicDecision?.candidates?.evidence?.groundedQuestionImpact
+      ? { groundedQuestionImpact: p.academicDecision.candidates.evidence.groundedQuestionImpact }
+      : {}),
+    ...(typeof p.academicDecision?.candidates?.groundedExplanationHe === 'string' &&
+    p.academicDecision.candidates.groundedExplanationHe.length > 0
+      ? { groundedExplanationHe: p.academicDecision.candidates.groundedExplanationHe }
+      : {}),
+    ...(Array.isArray(p.academicDecision?.candidates?.groundedSources) && p.academicDecision.candidates.groundedSources.length
+      ? { groundedSources: p.academicDecision.candidates.groundedSources }
+      : {}),
+    // Coverage is disclosure only; emitted just when the server reported real
+    // counts, so a partial payload never becomes a fabricated "0 of 0".
+    ...(typeof p.academicDecision?.candidates?.evidence?.coveredCourseCount === 'number' &&
+    typeof p.academicDecision?.candidates?.evidence?.requestedCourseCount === 'number'
+      ? { groundedCoverage: {
+            coveredCourseCount: p.academicDecision.candidates.evidence.coveredCourseCount,
+            requestedCourseCount: p.academicDecision.candidates.evidence.requestedCourseCount,
+            unknownCourseIds: p.academicDecision.candidates.evidence.unknownFeatureCourseIds ?? [],
+          } }
+      : {}),
     ...(p.academicDecision?.structuredClarification
       ? { agentClarificationItems: mapClarificationItems(p.academicDecision.structuredClarification.items) }
       : {}),

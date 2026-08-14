@@ -26,6 +26,7 @@ import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../li
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import AgentOutcomeDetails from './AgentOutcomeDetails'
+import GroundedExplanation from './GroundedExplanation'
 import PreferenceConversation from './PreferenceConversation'
 import CompletedCoursesPanel, {
   EMPTY_ACADEMIC_STATUS,
@@ -394,7 +395,18 @@ export default function NativePlannerJourney({
               // balanced/compact difference, don't ask the semester_balance question
               // (it can't change the selected plan). Before any Generate, or when
               // alternatives are material, it stays askable.
-              elicitationContext={proposal && proposal.balanceAlternativesMaterial === false ? { irrelevantTopicIds: ['semester_balance'] } : {}}
+              elicitationContext={{
+                ...(proposal && proposal.balanceAlternativesMaterial === false
+                  ? { irrelevantTopicIds: ['semester_balance'] }
+                  : {}),
+                // K9C — the grounded course-feature question is gated on the
+                // server's impact probe over the ONE prepared evidence snapshot,
+                // so it is asked only when answering it could really change the
+                // selected plan. Absent before the first Build ⇒ never asked.
+                ...(proposal?.groundedQuestionImpact
+                  ? { groundedFeatureImpact: proposal.groundedQuestionImpact }
+                  : {}),
+              }}
             />
           </Card>
         )}
@@ -507,6 +519,13 @@ function ProposalView({
           clarificationItems={draft.agentClarificationItems}
           validationFindings={draft.agentValidationFindings}
           errors={draft.errors}
+        />
+      )}
+      {draft.groundedExplanationHe && (
+        <GroundedExplanation
+          explanationHe={draft.groundedExplanationHe}
+          sources={draft.groundedSources ?? []}
+          {...(draft.groundedCoverage ? { coverage: draft.groundedCoverage } : {})}
         />
       )}
       {stale && (

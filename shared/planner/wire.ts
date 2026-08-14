@@ -90,7 +90,36 @@ export const generatePlanResponseSchema = z
         applyEligible: z.boolean().optional(),
         profileVersion: z.number().optional(),
         candidates: z
-          .object({ hasMeaningfulAlternatives: z.boolean().optional() })
+          .object({
+            hasMeaningfulAlternatives: z.boolean().optional(),
+            // K9C — the grounded explanation + the question-impact probe the
+            // conversation gates on. All optional: absent on every legacy
+            // response and whenever no evidence was prepared.
+            groundedExplanationHe: z.string().nullable().optional(),
+            groundedSources: z
+              .array(z.object({
+                courseId: z.string(),
+                sourceRef: z.string(),
+                academicYear: z.union([z.number(), z.string()]),
+              }))
+              .optional(),
+            evidence: z
+              .object({
+                coveredCourseCount: z.number().optional(),
+                requestedCourseCount: z.number().optional(),
+                unknownFeatureCourseIds: z.array(z.string()).optional(),
+                groundedQuestionImpact: z
+                  .object({
+                    feature: z.string(),
+                    distinguishesCandidates: z.boolean(),
+                    coverageSufficient: z.boolean(),
+                    hasConflicts: z.boolean(),
+                  })
+                  .optional(),
+              })
+              .passthrough()
+              .optional(),
+          })
           .passthrough()
           .optional(),
         structuredClarification: z

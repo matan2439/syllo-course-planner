@@ -63,11 +63,20 @@ export default function PreferenceConversation({
   // the irrelevant-topics set changes so a now-pointless question is retracted
   // (and a newly-relevant one can surface) without waiting for the next answer.
   const irrelevantKey = (ctx.irrelevantTopicIds ?? []).join('|')
+  // The grounded course-feature impact is the SAME class of signal: it only
+  // becomes available after the first Build (it is computed from the retained
+  // candidates), so without it in the key a now-relevant grounded question would
+  // never surface — exactly the defect Preview acceptance caught.
+  const g = ctx.groundedFeatureImpact
+  const groundedKey = g
+    ? `${g.feature}|${g.distinguishesCandidates}|${g.coverageSufficient}|${g.hasConflicts}`
+    : ''
   useEffect(() => {
     setState((s) => refreshQuestion(s, elicit, ctx))
-    // ctx is recreated each render; irrelevantKey is its stable serialization.
+    // ctx is recreated each render; irrelevantKey/groundedKey are its stable
+    // serializations.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [irrelevantKey, elicit])
+  }, [irrelevantKey, groundedKey, elicit])
 
   const q = state.currentQuestion
   const captured = state.profile.preferences

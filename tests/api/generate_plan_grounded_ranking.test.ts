@@ -282,3 +282,37 @@ describe('K7.5 — section-scoped evidence never labels a course-level candidate
     expect(candidates(res._body).selectedGroundedScore.score).toBe(0);
   });
 });
+
+// ── K9C browser defect — the handler must publish the question-impact signal ──
+
+describe('grounded question impact is published so the UI can gate the question', () => {
+  beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
+  afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
+
+  test('applicable evidence that separates candidates reports distinguishesCandidates:true', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'מעבדה'), doc('E4', 'שיעור')];
+    const res = await run(body()); // NO confirmed preference — this is the probe
+    const impact = candidates(res._body).evidence.groundedQuestionImpact;
+    expect(impact).toBeDefined();
+    expect(impact.feature).toBe('practical_laboratory');
+    expect(impact.distinguishesCandidates).toBe(true);
+    expect(impact.coverageSufficient).toBe(true);
+    expect(impact.hasConflicts).toBe(false);
+  });
+
+  test('MIXED-section evidence reports distinguishesCandidates:false — no question', async () => {
+    MOCK_DOCUMENTS = [
+      { ...doc('E3', 'מעבדה'), contentHash: 'g05', labeledFields: { 'מספר קורס': ['0542-3792-05'], 'אופן ההוראה': ['מעבדה'] } },
+      { ...doc('E3', 'שיעור'), contentHash: 'g01', labeledFields: { 'מספר קורס': ['0542-3792-01'], 'אופן ההוראה': ['שיעור'] } },
+    ];
+    const res = await run(body());
+    const impact = candidates(res._body).evidence.groundedQuestionImpact;
+    expect(impact.distinguishesCandidates).toBe(false);
+  });
+
+  test('NO evidence at all reports distinguishesCandidates:false', async () => {
+    MOCK_DOCUMENTS = [];
+    const res = await run(body());
+    expect(candidates(res._body).evidence.groundedQuestionImpact.distinguishesCandidates).toBe(false);
+  });
+});

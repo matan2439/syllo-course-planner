@@ -43,6 +43,11 @@ export interface DraftVM {
   /** Structured clarification items + validation findings (opt-in path only). */
   agentClarificationItems?: GeneratedPlanModel['agentClarificationItems']
   agentValidationFindings?: GeneratedPlanModel['agentValidationFindings']
+  /** K9C — gates the grounded question; see GeneratedPlanModel. */
+  groundedQuestionImpact?: GeneratedPlanModel['groundedQuestionImpact']
+  groundedExplanationHe?: GeneratedPlanModel['groundedExplanationHe']
+  groundedSources?: GeneratedPlanModel['groundedSources']
+  groundedCoverage?: GeneratedPlanModel['groundedCoverage']
 }
 
 /** courseId(normalized) → set of semester ids it is placed in. */
@@ -127,6 +132,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     ...(generated.agentClarificationItems ? { agentClarificationItems: generated.agentClarificationItems } : {}),
     ...(generated.agentValidationFindings ? { agentValidationFindings: generated.agentValidationFindings } : {}),
     // K9C — carried through only when the grounded objective actually applied.
+    ...(generated.groundedQuestionImpact ? { groundedQuestionImpact: generated.groundedQuestionImpact } : {}),
     ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
     ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
     ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),

@@ -86,7 +86,7 @@ import { generateCandidateSet, selectCandidate, selectionReason, candidateCourse
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence } from './evidence_provider';
-import { explainGroundedRanking } from './grounded_objectives';
+import { explainGroundedRanking, scoreCandidateOnObjective } from './grounded_objectives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1762,6 +1762,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         ...preparedEvidence.coverage,
         groundedObjective: resolvedGrounded?.objective ?? null,
         preferenceProfileVersion: preference_profile?.version ?? null,
+        // K9C — the impact signal the conversation needs to decide whether asking
+        // the grounded question could actually change the selected plan. Computed
+        // as a PROBE over the already-retained candidates using the same prepared
+        // features; it never affects ranking and is present whether or not a
+        // preference is confirmed, because the UI must gate the question BEFORE
+        // the user has answered it.
+        groundedQuestionImpact: (() => {
+          const probe = { id: 'prefer_laboratory_courses' as const, confirmed: true as const, snapshotId: preparedEvidence.snapshot.snapshotId };
+          const scores = candidateSet.candidates.map(
+            (c) => scoreCandidateOnObjective(candidateCourseIds(c), probe, preparedEvidence.features).score,
+          );
+          return {
+            feature: 'practical_laboratory',
+            // The answer can only change the outcome if the retained candidates
+            // actually differ on it.
+            distinguishesCandidates: new Set(scores).size > 1,
+            coverageSufficient: preparedEvidence.coverage.coveredCourseCount > 0,
+            hasConflicts: preparedEvidence.coverage.conflictingCourseIds.length > 0,
+          };
+        })(),
       },
       selectedGroundedScore: selected?.groundedScore ?? null,
       // K9C — the concise, factual explanation of the grounded objective's
