@@ -46,3 +46,11 @@ next-env.d.ts
 .claude/skills/
 supabase_board_backup_2027_pre_sync.json
 Gemini_Generated_Image_50vd950vd950vd95.png
+
+# K7 — locally acquired official-source corpus. The cache holds full official
+# syllabus documents (third-party copyrighted content), so it is deliberately
+# NOT committed. Regenerate with:
+#   npx tsx scripts/acquire_official_syllabi.ts
+# The acquisition REPORT (metadata, hashes, coverage counts — no body text) is
+# committed; the corpus itself is not.
+data/evidence_cache/

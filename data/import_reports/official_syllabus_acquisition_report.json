@@ -1,0 +1,191 @@
+{
+  "generatedAt": "2026-08-14T11:37:19.341Z",
+  "bounds": {
+    "maxRequests": 14,
+    "delayMs": 2000,
+    "timeoutMs": 15000,
+    "maxBytes": 2000000,
+    "concurrency": 1
+  },
+  "requestsUsed": 12,
+  "stoppedEarly": null,
+  "attempted": 12,
+  "acquired": 8,
+  "unavailable": 4,
+  "failureReasons": {
+    "no_syllabus_published": 4
+  },
+  "extractionVersion": "1.0.0",
+  "featureCoverage": {
+    "documentsExtracted": 8,
+    "laboratoryKnown": 8,
+    "deliveryModeKnown": 8,
+    "assessmentKnown": 0
+  },
+  "attempts": [
+    {
+      "courseId": "0542-3792",
+      "year": 2025,
+      "group": "05",
+      "why": "known LABORATORY course (delivery mode מעבדה)",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_d458a3a7",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0542-3792",
+      "year": 2025,
+      "group": "01",
+      "why": "same course, different GROUP — group addressing",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_c4b317c1",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "שיעור"
+      }
+    },
+    {
+      "courseId": "0542-3791",
+      "year": 2025,
+      "group": "01",
+      "why": "sibling of the laboratory course — contrasting shape",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_21494f24",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0542-3780",
+      "year": 2025,
+      "group": "01",
+      "why": "elective referenced by the offering pipeline",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_de08081b",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "שיעור"
+      }
+    },
+    {
+      "courseId": "0542-4010",
+      "year": 2025,
+      "group": "01",
+      "why": "project/design-oriented elective",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_cedf93eb",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "פרוייקט"
+      }
+    },
+    {
+      "courseId": "0542-4020",
+      "year": 2025,
+      "group": "01",
+      "why": "exam-focused lecture elective",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_02dc21a9",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "פרוייקט"
+      }
+    },
+    {
+      "courseId": "0542-3112",
+      "year": 2025,
+      "group": "01",
+      "why": "core lecture course — exam-focused contrast",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311201&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_c7c931fd",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "פרוייקט"
+      }
+    },
+    {
+      "courseId": "0509-4010",
+      "year": 2025,
+      "group": "01",
+      "why": "different faculty prefix — layout generality probe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_c6f2846a",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "שיעור"
+      }
+    },
+    {
+      "courseId": "0542-4093",
+      "year": 2025,
+      "group": "01",
+      "why": "expected NOT offered this year — missing-document case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409301&year=2025",
+      "outcome": "unavailable",
+      "reason": "no_syllabus_published"
+    },
+    {
+      "courseId": "0542-4124",
+      "year": 2025,
+      "group": "01",
+      "why": "expected incomplete catalog record — missing/partial case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412401&year=2025",
+      "outcome": "unavailable",
+      "reason": "no_syllabus_published"
+    },
+    {
+      "courseId": "0542-9999",
+      "year": 2025,
+      "group": "01",
+      "why": "deliberately non-existent id — proves mismatch handling",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542999901&year=2025",
+      "outcome": "unavailable",
+      "reason": "no_syllabus_published"
+    },
+    {
+      "courseId": "0542-3792",
+      "year": 2019,
+      "group": "05",
+      "why": "OLDER year of the laboratory course — version applicability",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2019",
+      "outcome": "unavailable",
+      "reason": "no_syllabus_published"
+    }
+  ]
+}
