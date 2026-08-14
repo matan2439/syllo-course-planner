@@ -9,6 +9,13 @@ _Last updated: 2026-08-14 (cont. 5), session on branch `ui/frontend-modernizatio
 acceptance record below. API 150/1973, web 14/113 green. **Not merged, not
 deployed.**)_
 
+_Latest entry: 2026-08-14 (cont. 5) — T1 group-universe normalizer; T2 bounded
+acquisition (16 requests, 15 acquired) and the content-source coverage matrix;
+T3 normalized topic model; T4 typed topic-interest preference; T5 REAL
+selection change; T6 impact-gated question, server side only and deliberately
+NOT exposed pending browser acceptance. API 156/2104, UI 78/835, both tsc and
+the production build green. **Not merged, not deployed.**_
+
 _Previous entry: 2026-08-14 (cont. 4)
 (K8A measured official coverage per candidate objective and K8 shipped the
 SECOND grounded objective, `prefer_project_courses`, on 8/8 delivery-mode
@@ -92,6 +99,158 @@ blaming the catalog — was fixed by deriving a typed `staleReason`.
 Late-response protection is covered by the existing token-based automated test
 ("a late response superseded by a newer Build never becomes the proposal"); no
 browser race was manufactured.
+
+## Session 2026-08-14 (cont. 5) — T1–T6: group universe, content sources, and topic alignment
+
+Six commits. The headline: **content/topic alignment now provably changes which
+plan is selected**, and it did so only after the earlier REJECT was re-examined
+and found to have measured the wrong field.
+
+### T1 — authoritative offering/group universe normalizer (`00c1afb`)
+
+K7.5 refused to aggregate section evidence without a complete group universe,
+and nothing produced one, so every multi-section course was permanently
+`unknown`. `api/ai/group_universe.ts` turns the official course-details page
+into a typed universe: institution, course, year, semester, full group ids,
+official group type, source ref, content hash, normalizer version, completeness
+(`complete | incomplete | conflicting | unknown`) and applicability
+(`applicable | course_mismatch | year_mismatch | unidentified`).
+
+`authoritativeGroupIds` is the ONLY bridge into aggregation and yields nothing
+unless the universe is both applicable and complete — so a universe can turn an
+`unknown` into a known fact but can never make a known fact wrong. Completeness
+is never inferred from how many syllabi downloaded. No section-level planning
+was added.
+
+28 tests. Measured against the 25 recorded official pages: **17 complete
+universes over 34 groups, 8 "no results" shells correctly `unknown`, 0
+anomalies, 0 mismatches.** On the live corpus it resolved 3 previously-unknown
+courses; the rest stay unknown precisely because their universes list groups
+that were never downloaded.
+
+### T2 — official content-source discovery (`195630d`)
+
+**Declared budget: 16 requests.** Read-only GET, one official host, sequential,
+2 s apart, no credentials, one year. **Result: 15 acquired, 1 correctly
+`no_syllabus_published`, no early stop, no access restriction.** Every group
+number came from T1 rather than being guessed — acting on the first run's
+central finding. Corpus grew 8 documents/7 courses → **23 documents/18 courses**.
+
+| Source | Scope | Docs | Courses with usable topics | Unknown | Conflicting | Stale | Verdict |
+|---|---|---|---|---|---|---|---|
+| syllabus `נושאי לימוד` | course | 2/23 | **1/18** | 17 | 0 | 0 | INSUFFICIENT ALONE |
+| syllabus `תוכן הקורס ומטרתו` | course | **23/23** | **11/18** | 7 | 0 | 0 | **USABLE** |
+| official course-details page | offering+section | 25 | **0** | — | — | — | NO CONTENT — authoritative for the GROUP UNIVERSE only |
+| faculty course pages | — | — | — | — | — | — | NOT INSPECTED — needs a search engine or link traversal, both forbidden |
+
+8 distinct normalized topics; **52 distinguishing candidate pairs**.
+
+**The correction that unlocked this.** K8A measured `נושאי לימוד` and rejected
+topic alignment at 1/7. That measurement was right about that field and wrong
+about the source: `נושאי לימוד` is an optional sub-heading INSIDE the official
+`תוכן הקורס ומטרתו` section, and that section is present on 23/23 documents.
+
+**Scope finding, measured not assumed:** across the 5 multi-group courses the
+content section is byte-identical between groups, so content is COURSE-scoped
+and may label a course-level candidate without a complete group universe.
+
+### T3 — normalized topic knowledge (`521515e`)
+
+Each assertion preserves raw official wording, normalized topic id, evidence id,
+source, year, applicability, mapper version, confidence, ambiguity, language and
+status.
+
+**The load-bearing rule is exclusion, not matching.** The content section
+routinely names OTHER subjects: 0542-3792 lists solid mechanics and fluid
+mechanics as prerequisites and recommends electronics and heat transfer
+alongside. A deterministic sentence rule removes those clauses before mapping,
+verified on real wording — `מעבר חום` is correctly dropped from 0542-4094 and
+0542-4391 where it appears only as a prerequisite.
+
+Mapping is a controlled vocabulary of observed phrases with word-boundary and
+single-Hebrew-prefix rules, so `החומר הנלמד` cannot become materials science.
+Bare `בקרה`, `תכן`, `חומר`, `אנליזה`, `מודל` are AMBIGUOUS: detected, disclosed,
+never mapped — active on 6 real courses. No LLM, no title inference, no semantic
+expansion. **Absence is not falsehood**: a topic is affirmed or unknown, never
+false. 26 tests, including an ethics course that must yield nothing.
+
+Per-course audit found **no false positives**; 0555-4000 (ethics) and 0542-4125
+(environmental) correctly yield nothing.
+
+### T4 — typed topic-interest preference (`d029c08`)
+
+Category `course_topic_interest`, affects `grounded_topic_interest`, resolved at
+the same single boundary as the delivery preference. Confirmed+active+groundable
+→ soft ranking; indifferent/uncertain/unconfirmed activate nothing; an
+ungroundable topic is reported, never approximated. No legality output exists on
+the path. Precedence over delivery is fixed, documented and tested rather than
+emergent, because the two rest on different evidential strengths. Topics come
+from the SAME snapshot as features. One contribution per (course, topic) —
+duplicate wording and multiple documents never double-count. 20 tests.
+
+### T5 — real selection-change proof (`aa0730f`)
+
+Real `generateCandidateSet` over the real `PlannerWorker`, one policy, one
+profile version, identical hard constraints, real `prepareEvidence`. Real course
+ids and verbatim official wording; the board is a fixture, as in K4 and K8.
+
+**With confirmed `materials` the SELECTED candidate identity changes** from
+{0542-4094, 0542-4624} to a plan containing 0581-4131. A different confirmed
+topic selects a different plan, so no topic is privileged. Indifferent restores
+the canonical selection. Missing, ambiguous, stale and conflicting evidence each
+leave ranking unchanged. Hard exclusion of the favoured course still wins.
+Repeated runs are identical. 16 proofs.
+
+A determinism probe over six independent runs confirmed generation is
+byte-identical — the one differing assertion was a wrong assumption in the test
+(this fixture's soft terms already outrank the legacy single-plan identity), not
+a defect.
+
+### T6 — impact-gated question, server side only (`f4ca174`)
+
+`topicQuestionImpact` probes each topic over the already-retained candidates
+using the same snapshot; `distinguishingTopics` is both the gate and the offered
+choices, so this is not a generic interest questionnaire. Coverage counts as
+sufficient only when MORE than one course carries usable content. Internal ids
+are option values, never labels. 14 tests.
+
+**NOT EXPOSED TO THE BROWSER, deliberately.** The objective has automated
+end-to-end proof but no browser acceptance, so it must not reach a real user.
+Non-exposure is structural: the web conversation supplies only
+`groundedFeatureImpact`, never `topicInterestImpact`, so the question cannot
+render — and a guard test fails the moment someone wires it through.
+
+### Verification
+
+API **156 suites / 2104 tests** green (session baseline 151/2000). UI **78
+suites / 835 tests** green. Root and web `tsc --noEmit` clean. Production build
+green. No browser acceptance run — see above.
+
+### Honest capability statement
+
+**Supported:** an authoritative group universe from the official course-details
+page; bounded read-only acquisition addressed by real group ids; normalized,
+evidence-linked, ambiguity-aware topic extraction from the official content
+field; a typed topic-interest preference that provably changes the selected
+candidate through the real path.
+
+**NOT supported, and not claimed:** the topic question in the real UI (no
+browser acceptance); combining topic and delivery objectives (precedence only);
+assessment extraction; section-level planning; faculty course pages; any
+institution or syllabus template beyond this one.
+
+### Discovered, recorded, NOT acted on
+
+The K8A matrix reports assessment coverage as 0/8 because
+`labeledFields['מטלות הקורס']` is empty on every document. The acquired text of
+0509-4010 nonetheless shows `מטלות הקורס` followed by `פרוייקט`, so the value
+exists in the source and the K2 label extractor — which only reads
+`<small class="data-table-cell-label">` + `<span>` — is dropping it. That makes
+the recorded reason for the assessment REJECT ("the field carries a label but no
+values") **an extractor limitation, not a source limitation**. Not pursued: this
+session's mandate was topic alignment, and implementing an easier objective
+instead was explicitly out of scope. Needs its own verification before any
+assessment objective is considered.
 
 ## Session 2026-08-14 (cont. 4) — K8: a SECOND grounded objective, chosen by measurement
 
