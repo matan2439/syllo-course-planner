@@ -1,52 +1,52 @@
 {
-  "generatedAt": "2026-08-14T11:37:19.341Z",
+  "generatedAt": "2026-08-14T21:45:58.149Z",
   "bounds": {
-    "maxRequests": 14,
+    "maxRequests": 16,
     "delayMs": 2000,
     "timeoutMs": 15000,
     "maxBytes": 2000000,
     "concurrency": 1
   },
-  "requestsUsed": 12,
+  "requestsUsed": 16,
   "stoppedEarly": null,
-  "attempted": 12,
-  "acquired": 8,
-  "unavailable": 4,
+  "attempted": 16,
+  "acquired": 15,
+  "unavailable": 1,
   "failureReasons": {
-    "no_syllabus_published": 4
+    "no_syllabus_published": 1
   },
   "extractionVersion": "1.0.0",
   "featureCoverage": {
-    "documentsExtracted": 8,
-    "laboratoryKnown": 8,
-    "deliveryModeKnown": 8,
+    "documentsExtracted": 15,
+    "laboratoryKnown": 15,
+    "deliveryModeKnown": 15,
     "assessmentKnown": 0
   },
   "attempts": [
     {
-      "courseId": "0542-3792",
+      "courseId": "0542-4422",
       "year": 2025,
-      "group": "05",
-      "why": "known LABORATORY course (delivery mode מעבדה)",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2025",
+      "group": "01",
+      "why": "ENGINEERING DESIGN — 'תכן הנדסי: מבוא ושיטות'; the design-topic case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442201&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_d458a3a7",
+      "contentHash": "sha_4d112c92",
       "features": {
-        "laboratory": "true",
+        "laboratory": "false",
         "project": "unknown",
         "finalExam": "unknown",
         "coursework": "unknown",
-        "deliveryMode": "מעבדה"
+        "deliveryMode": "שיעור ותרגיל"
       }
     },
     {
-      "courseId": "0542-3792",
+      "courseId": "0542-4391",
       "year": 2025,
       "group": "01",
-      "why": "same course, different GROUP — group addressing",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",
+      "why": "NUMERICAL SIMULATION of flow and heat transfer — FEA/CFD + thermofluids case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542439101&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_c4b317c1",
+      "contentHash": "sha_fb7c50e9",
       "features": {
         "laboratory": "false",
         "project": "unknown",
@@ -56,13 +56,13 @@
       }
     },
     {
-      "courseId": "0542-3791",
+      "courseId": "0542-4391",
       "year": 2025,
-      "group": "01",
-      "why": "sibling of the laboratory course — contrasting shape",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
+      "group": "02",
+      "why": "same course, second authoritative group — completeness + content-scope probe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542439102&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_21494f24",
+      "contentHash": "sha_134c8c8d",
       "features": {
         "laboratory": "true",
         "project": "unknown",
@@ -72,13 +72,93 @@
       }
     },
     {
-      "courseId": "0542-3780",
+      "courseId": "0542-4624",
       "year": 2025,
       "group": "01",
-      "why": "elective referenced by the offering pipeline",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
+      "why": "ROBOTICS AND CONTROL laboratory",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462401&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_de08081b",
+      "contentHash": "sha_c1026463",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0542-4624",
+      "year": 2025,
+      "group": "02",
+      "why": "same course, second authoritative group — completeness + content-scope probe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462402&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_319fa06f",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0542-4559",
+      "year": 2025,
+      "group": "01",
+      "why": "MECHATRONICS laboratory — control/electronics case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542455901&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_fcb80dd3",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0581-4131",
+      "year": 2025,
+      "group": "01",
+      "why": "ENGINEERING MATERIALS laboratory — materials case, different faculty prefix",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413101&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_76d51109",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0581-4131",
+      "year": 2025,
+      "group": "02",
+      "why": "same course, second authoritative group — completeness probe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413102&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_9ecd14da",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0542-4425",
+      "year": 2025,
+      "group": "01",
+      "why": "3D PRINTING AND PLASTIC PART DESIGN — manufacturing + design case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_52e5ab29",
       "features": {
         "laboratory": "false",
         "project": "unknown",
@@ -88,29 +168,77 @@
       }
     },
     {
-      "courseId": "0542-4010",
+      "courseId": "0542-4094",
       "year": 2025,
       "group": "01",
-      "why": "project/design-oriented elective",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
+      "why": "ADVANCED FLOW AND ENERGY SYSTEMS laboratory — thermofluids case",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409401&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_cedf93eb",
+      "contentHash": "sha_f6edf675",
+      "features": {
+        "laboratory": "true",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "מעבדה"
+      }
+    },
+    {
+      "courseId": "0555-4432",
+      "year": 2025,
+      "group": "01",
+      "why": "BIOMEDICAL SYSTEMS DESIGN — design outside mechanical, generality probe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555443201&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_a760ed04",
       "features": {
         "laboratory": "false",
         "project": "unknown",
         "finalExam": "unknown",
         "coursework": "unknown",
-        "deliveryMode": "פרוייקט"
+        "deliveryMode": "שיעור"
       }
     },
     {
-      "courseId": "0542-4020",
+      "courseId": "0542-4125",
       "year": 2025,
       "group": "01",
-      "why": "exam-focused lecture elective",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
+      "why": "ENVIRONMENTAL ENGINEERING introduction — breadth, non-lab lecture",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_02dc21a9",
+      "contentHash": "sha_c216acd9",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "שיעור ותרגיל"
+      }
+    },
+    {
+      "courseId": "0555-4000",
+      "year": 2025,
+      "group": "01",
+      "why": "ETHICS — deliberate OFF-DOMAIN control; must yield NO engineering topics",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555400001&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_6ffba6b8",
+      "features": {
+        "laboratory": "false",
+        "project": "unknown",
+        "finalExam": "unknown",
+        "coursework": "unknown",
+        "deliveryMode": "שיעור"
+      }
+    },
+    {
+      "courseId": "0542-4011",
+      "year": 2025,
+      "group": "01",
+      "why": "RESEARCH PROJECT for honours students — project course contrast",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2025",
+      "outcome": "acquired",
+      "contentHash": "sha_ee5dc258",
       "features": {
         "laboratory": "false",
         "project": "unknown",
@@ -122,11 +250,11 @@
     {
       "courseId": "0542-3112",
       "year": 2025,
-      "group": "01",
-      "why": "core lecture course — exam-focused contrast",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311201&year=2025",
+      "group": "02",
+      "why": "second group of an ALREADY-ACQUIRED course — completes its group universe",
+      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311202&year=2025",
       "outcome": "acquired",
-      "contentHash": "sha_c7c931fd",
+      "contentHash": "sha_6efc53d6",
       "features": {
         "laboratory": "false",
         "project": "unknown",
@@ -136,54 +264,11 @@
       }
     },
     {
-      "courseId": "0509-4010",
-      "year": 2025,
-      "group": "01",
-      "why": "different faculty prefix — layout generality probe",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2025",
-      "outcome": "acquired",
-      "contentHash": "sha_c6f2846a",
-      "features": {
-        "laboratory": "false",
-        "project": "unknown",
-        "finalExam": "unknown",
-        "coursework": "unknown",
-        "deliveryMode": "שיעור"
-      }
-    },
-    {
       "courseId": "0542-4093",
       "year": 2025,
       "group": "01",
-      "why": "expected NOT offered this year — missing-document case",
+      "why": "course-details page returns NO results — expected missing/sparse case",
       "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409301&year=2025",
-      "outcome": "unavailable",
-      "reason": "no_syllabus_published"
-    },
-    {
-      "courseId": "0542-4124",
-      "year": 2025,
-      "group": "01",
-      "why": "expected incomplete catalog record — missing/partial case",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412401&year=2025",
-      "outcome": "unavailable",
-      "reason": "no_syllabus_published"
-    },
-    {
-      "courseId": "0542-9999",
-      "year": 2025,
-      "group": "01",
-      "why": "deliberately non-existent id — proves mismatch handling",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542999901&year=2025",
-      "outcome": "unavailable",
-      "reason": "no_syllabus_published"
-    },
-    {
-      "courseId": "0542-3792",
-      "year": 2019,
-      "group": "05",
-      "why": "OLDER year of the laboratory course — version applicability",
-      "url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379205&year=2019",
       "outcome": "unavailable",
       "reason": "no_syllabus_published"
     }

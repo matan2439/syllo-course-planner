@@ -1,0 +1,409 @@
+{
+  "generatedAt": "2026-08-14T21:55:12.349Z",
+  "targetAcademicYear": 2025,
+  "mapperVersion": "topic-map/1.0.0",
+  "corpus": {
+    "cacheRoot": "data/evidence_cache (git-ignored, regenerable)",
+    "documents": 23,
+    "distinctCourses": 18,
+    "corruptedObjects": 0,
+    "applicableDocuments": 23,
+    "staleDocuments": 0,
+    "sectionsObserved": 23
+  },
+  "sources": [
+    {
+      "priority": 1,
+      "sourceClass": "official_syllabus.נושאי לימוד (explicit topic list sub-label)",
+      "scope": "course",
+      "attemptedCourses": 18,
+      "identifiedDocuments": 2,
+      "applicableDocuments": 2,
+      "coursesWithUsableTopics": 1,
+      "unknownCourses": 17,
+      "conflicting": 0,
+      "staleOrMismatched": 0,
+      "verdict": "INSUFFICIENT ALONE — this is the field the K8A audit measured."
+    },
+    {
+      "priority": 1,
+      "sourceClass": "official_syllabus.תוכן הקורס ומטרתו (course content and objectives)",
+      "scope": "course (measured: identical across groups)",
+      "attemptedCourses": 18,
+      "identifiedDocuments": 23,
+      "applicableDocuments": 23,
+      "coursesWithUsableTopics": 11,
+      "unknownCourses": 7,
+      "conflicting": 0,
+      "staleOrMismatched": 0,
+      "normalizedTopicCandidates": [
+        "control",
+        "engineering_design",
+        "finite_element_analysis",
+        "manufacturing",
+        "materials",
+        "programming_electronics",
+        "robotics",
+        "thermofluids"
+      ],
+      "distinguishingCandidatePairs": 52,
+      "distinguishingPairsPerTopic": {
+        "engineering_design": 24,
+        "finite_element_analysis": 10,
+        "solid_mechanics": 0,
+        "robotics": 10,
+        "control": 18,
+        "manufacturing": 30,
+        "materials": 24,
+        "thermofluids": 24,
+        "programming_electronics": 18
+      },
+      "distinguishingPairsIncludingUnknownCourses": 129
+    },
+    {
+      "priority": 2,
+      "sourceClass": "official_course_details (timetable/offering page)",
+      "scope": "offering + section",
+      "attemptedCourses": 25,
+      "identifiedDocuments": 25,
+      "documentsCarryingCourseContent": 0,
+      "coursesWithUsableTopics": 0,
+      "verdict": "NO CONTENT. The page carries course id, group ids, group type, semester, lecturer, building, room, day and time — and no topic or description field. It is authoritative for the GROUP UNIVERSE (T1), not for content."
+    },
+    {
+      "priority": 3,
+      "sourceClass": "official_faculty_course_pages",
+      "verdict": "NOT INSPECTED — no faculty course page is referenced by this repository, and locating one would require a search engine or link traversal, both of which the acquisition restrictions forbid."
+    }
+  ],
+  "scopeFinding": {
+    "multiGroupCoursesWithContent": [
+      "0542-3112",
+      "0542-3792",
+      "0542-4391",
+      "0542-4624",
+      "0581-4131"
+    ],
+    "contentDifferedBetweenGroups": [],
+    "conclusion": "Content is COURSE-scoped: every multi-group course publishes an identical content section per group, so a topic fact may label a course-level candidate without a complete group universe."
+  },
+  "perCourse": [
+    {
+      "courseId": "0509-4010",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-3112",
+      "documents": 2,
+      "groups": [
+        "02",
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-3780",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "manufacturing"
+      ],
+      "assertionCount": 8,
+      "ambiguousPhrases": [
+        "תכן"
+      ],
+      "sampleWording": [
+        "טיב פני שטח",
+        "ייצור",
+        "עיבוד שבבי",
+        "תהליכי ייצור",
+        "תהליכי עיבוד"
+      ]
+    },
+    {
+      "courseId": "0542-3791",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "manufacturing"
+      ],
+      "assertionCount": 2,
+      "ambiguousPhrases": [],
+      "sampleWording": [
+        "ייצור"
+      ]
+    },
+    {
+      "courseId": "0542-3792",
+      "documents": 2,
+      "groups": [
+        "01",
+        "05"
+      ],
+      "topics": [
+        "manufacturing",
+        "materials",
+        "programming_electronics",
+        "thermofluids"
+      ],
+      "assertionCount": 8,
+      "ambiguousPhrases": [
+        "חומר"
+      ],
+      "sampleWording": [
+        "טיב פני שטח",
+        "תכונות החומר",
+        "עיבוד אותות",
+        "מעבר חום"
+      ]
+    },
+    {
+      "courseId": "0542-4010",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-4011",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-4020",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-4094",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "thermofluids"
+      ],
+      "assertionCount": 8,
+      "ambiguousPhrases": [],
+      "sampleWording": [
+        "גל הלם",
+        "זרימה",
+        "מחליפי החום",
+        "מיזוג אוויר"
+      ]
+    },
+    {
+      "courseId": "0542-4125",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0542-4391",
+      "documents": 2,
+      "groups": [
+        "02",
+        "01"
+      ],
+      "topics": [
+        "thermofluids"
+      ],
+      "assertionCount": 14,
+      "ambiguousPhrases": [
+        "בקרה",
+        "מודל"
+      ],
+      "sampleWording": [
+        "אווירודינמיים",
+        "זרימה",
+        "נוויה-סטוקס"
+      ]
+    },
+    {
+      "courseId": "0542-4422",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "engineering_design"
+      ],
+      "assertionCount": 2,
+      "ambiguousPhrases": [
+        "תכן",
+        "חומר"
+      ],
+      "sampleWording": [
+        "העיצוב ההנדסי",
+        "תכן הנדסי"
+      ]
+    },
+    {
+      "courseId": "0542-4425",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "finite_element_analysis",
+        "manufacturing",
+        "materials"
+      ],
+      "assertionCount": 6,
+      "ambiguousPhrases": [
+        "תכן",
+        "אנליזה"
+      ],
+      "sampleWording": [
+        "FEA",
+        "Injection Molding",
+        "הדפסה תלת-מימדית",
+        "הזרקה",
+        "פולימרים"
+      ]
+    },
+    {
+      "courseId": "0542-4559",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "control",
+        "engineering_design",
+        "manufacturing",
+        "programming_electronics"
+      ],
+      "assertionCount": 11,
+      "ambiguousPhrases": [
+        "תכן"
+      ],
+      "sampleWording": [
+        "בקרים",
+        "מכאטרונית",
+        "תכן מכני",
+        "הדפסת תלת-מימד",
+        "ארדואינו",
+        "חיישנים",
+        "מיקרו-בקר",
+        "מעגל חשמלי"
+      ]
+    },
+    {
+      "courseId": "0542-4624",
+      "documents": 2,
+      "groups": [
+        "02",
+        "01"
+      ],
+      "topics": [
+        "control",
+        "robotics"
+      ],
+      "assertionCount": 16,
+      "ambiguousPhrases": [
+        "בקרה"
+      ],
+      "sampleWording": [
+        "זיהוי מערכת",
+        "משוב כוח",
+        "תכנון מסלול",
+        "תכנון תנועה",
+        "RRT",
+        "זרוע רובוטית",
+        "קינמטיקה",
+        "רובוט"
+      ]
+    },
+    {
+      "courseId": "0555-4000",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [],
+      "assertionCount": 0,
+      "ambiguousPhrases": [
+        "חומר"
+      ],
+      "sampleWording": []
+    },
+    {
+      "courseId": "0555-4432",
+      "documents": 1,
+      "groups": [
+        "01"
+      ],
+      "topics": [
+        "engineering_design"
+      ],
+      "assertionCount": 3,
+      "ambiguousPhrases": [
+        "מודל"
+      ],
+      "sampleWording": [
+        "עיצוב מוצר",
+        "תכנון מפורט",
+        "תכנון ראשוני"
+      ]
+    },
+    {
+      "courseId": "0581-4131",
+      "documents": 2,
+      "groups": [
+        "01",
+        "02"
+      ],
+      "topics": [
+        "manufacturing",
+        "materials"
+      ],
+      "assertionCount": 12,
+      "ambiguousPhrases": [
+        "חומר"
+      ],
+      "sampleWording": [
+        "ייצור",
+        "חומרים הנדסיים",
+        "טיפולים תרמיים",
+        "נתכי",
+        "עולם החומר"
+      ]
+    }
+  ]
+}

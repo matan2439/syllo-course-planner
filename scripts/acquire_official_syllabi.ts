@@ -36,14 +36,21 @@
  *         JSON acquisition report. NO syllabus body text is ever printed or
  *         committed — only metadata, hashes and coverage counts.
  */
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { acquireSyllabus, buildSyllabusUrl, type HttpFetcher, type HttpResponse, type SyllabusDocument } from '../api/ai/syllabus_source';
 import { storeDocument } from '../api/ai/evidence_cache';
 import { RuleBasedFeatureExtractor, FEATURE_EXTRACTION_VERSION } from '../api/ai/course_features';
 
 // ── declared bounds ──────────────────────────────────────────────────────────
-const MAX_REQUESTS = 14;
+/**
+ * Overridable ONLY by an explicit `--max`, so a run's budget is always stated on
+ * the command line and recorded in the report. Never raised implicitly.
+ */
+const MAX_REQUESTS = (() => {
+  const i = process.argv.indexOf('--max');
+  return i >= 0 ? Number(process.argv[i + 1]) : 14;
+})();
 const DELAY_MS = 2000;
 const TIMEOUT_MS = 15_000;
 const MAX_BYTES = 2_000_000;
@@ -55,7 +62,21 @@ const STOP_STATUSES = new Set([401, 403, 429]);
  * repository's own catalog/offering references (scripts/add_offered_semester_fields.py
  * and data/raw_html/course_details/), not from a search.
  */
-const SELECTION: Array<{ courseId: string; year: number; group: string; why: string }> = [
+type SelectionItem = { courseId: string; year: number; group: string; why: string };
+
+/**
+ * `--selection <path>` supplies a declared selection file instead of the
+ * built-in list. Round 2 uses this so that every group number comes from the
+ * T1 group-universe normalizer — the first run's central finding was that group
+ * numbers must come from an authoritative source rather than be guessed.
+ */
+function declaredSelection(fallback: SelectionItem[]): SelectionItem[] {
+  const i = process.argv.indexOf('--selection');
+  if (i < 0) return fallback;
+  return JSON.parse(readFileSync(process.argv[i + 1], 'utf-8')) as SelectionItem[];
+}
+
+const DEFAULT_SELECTION: Array<{ courseId: string; year: number; group: string; why: string }> = [
   { courseId: '0542-3792', year: 2025, group: '05', why: 'known LABORATORY course (delivery mode מעבדה)' },
   { courseId: '0542-3792', year: 2025, group: '01', why: 'same course, different GROUP — group addressing' },
   { courseId: '0542-3791', year: 2025, group: '01', why: 'sibling of the laboratory course — contrasting shape' },
@@ -120,6 +141,7 @@ async function main() {
   const acquired: SyllabusDocument[] = [];
   let stoppedEarly: string | null = null;
 
+  const SELECTION = declaredSelection(DEFAULT_SELECTION);
   for (const item of SELECTION) {
     if (budget.used >= MAX_REQUESTS) { stoppedEarly = 'request budget reached'; break; }
     const url = buildSyllabusUrl({ courseId: item.courseId, academicYear: item.year, group: item.group });
