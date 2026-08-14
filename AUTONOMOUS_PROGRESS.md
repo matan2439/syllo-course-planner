@@ -9,6 +9,14 @@ _Last updated: 2026-08-14 (cont. 5), session on branch `ui/frontend-modernizatio
 acceptance record below. API 150/1973, web 14/113 green. **Not merged, not
 deployed.**)_
 
+_Previous entry: 2026-08-14 (cont. 4)
+(K8A measured official coverage per candidate objective and K8 shipped the
+SECOND grounded objective, `prefer_project_courses`, on 8/8 delivery-mode
+coverage and its own selection-change proof. Topic alignment (1/7 courses, 0
+distinguishing pairs) and assessment (0/8) were REJECTED on the evidence, and
+timetable DEFERRED for lack of section-level selection. K8 has no browser
+acceptance of its own — see that section.)_
+
 _Previous entry: 2026-08-14 (cont. 3)
 (K9A/B/C wired the grounded objective into the LIVE handler, conversation and
 explanation; K5 freshness/conflict; K6 durable cache; K7 bounded live acquisition
@@ -84,6 +92,117 @@ blaming the catalog — was fixed by deriving a typed `staleReason`.
 Late-response protection is covered by the existing token-based automated test
 ("a late response superseded by a newer Build never becomes the proposal"); no
 browser race was manufactured.
+
+## Session 2026-08-14 (cont. 4) — K8: a SECOND grounded objective, chosen by measurement
+
+Two commits: K8A `75d1c7e` (the audit), K8 `b039549` (the objective). The point
+of this slice was **not** "add another objective" — it was to establish that
+which objective ships is decided by measured official coverage, and that an
+objective without its own end-to-end selection-change proof does not ship.
+
+### K8A — objective coverage audit (`75d1c7e`)
+
+`scripts/audit_objective_coverage.ts` reads the already-acquired K6/K7 cache
+(8 documents, 7 distinct courses, year 2025, 0 corrupted). It performs **no
+acquisition and no network access**, so it is deterministic and repeatable.
+Output is metadata only — counts and decisions, never syllabus prose —
+committed as `data/import_reports/objective_coverage_matrix.json`.
+
+Field coverage over the live corpus: delivery mode 8/8, day+time 7/8,
+explicit topic list 2/8, learning outcomes 0/8, assignments 0/8.
+
+| # | Candidate objective | Official source | Applicable docs | Known | Unknown | Conflict / section-varying | Coverage | Distinguishing pairs | Decision |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | content / topic alignment | syllabus `נושאי לימוד` + learning outcomes | 2 | 1 | 6 | 0 | **1/7 courses** | **0** | **REJECT** |
+| 2 | final-exam / assessment | syllabus `מטלות הקורס` | 0 | 0 | 8 | 0 | **0/8 docs** | **0** | **REJECT** |
+| 3 | project / design-based learning | syllabus `אופן ההוראה` | 8 | 8 | 0 | 0 | **8/8 docs** | **12** | **IMPLEMENT** |
+| 4 | timetable / day / time | syllabus `יום` / `שעות` | 7 | 7 | 1 | 1 | 7/8 docs | 0 | **DEFER** |
+
+**Why 1 and 2 were rejected rather than worked around.** Topic alignment is the
+higher-priority product capability and was rejected anyway: with one
+topic-bearing course there is no *pair* of candidates the feature can separate,
+so no selection change is reachable. The available workarounds — mining
+narrative prose, or reading the course **title** — are inference, not official
+evidence, and are forbidden. Assessment carries the `מטלות הקורס` **label with
+no values on all 8 documents**; turning that absence into "no final exam" is the
+exact inference this pipeline exists to prevent. Absence is not falsehood.
+
+**Why 4 was deferred rather than rejected.** Day/time coverage is genuinely good
+(7/8) and 1 course already shows different meeting times across its groups — the
+values are SECTION-scoped. Per K7.5 a section fact cannot label a course-level
+candidate, and the planner selects a course and a period, never a group. The
+architectural prerequisite is section-level selection plus an authoritative
+timetable source mapping course+section+semester+day+time+year. That is a
+planner change, not a knowledge change, and was out of scope.
+
+### K8 — `prefer_project_courses` implemented (`b039549`)
+
+`projectDelivery` is a second, independent reading of the SAME schema-complete
+`אופן ההוראה` field: present ⇒ true *and* false are both concludable; absent ⇒
+unknown for both readings. `laboratory` and `projectDelivery` are independent
+questions about one enumerated value, not competing interpretations — proven by
+a test asserting a `מעבדה` document is `laboratory=true, projectDelivery=false`.
+Both are aggregated through the identical K7.5 rules, so a second objective can
+never acquire weaker applicability than the first.
+
+The typed preference gained one option (`project_based`) at the one existing
+mapping boundary, `resolveGroundedObjective`. The internal objective id remains
+an invalid input value. Indifferent / uncertain / unconfirmed still activate
+nothing, and the preference stays SOFT — `effectivePlannerPreferences` puts it
+in `soft` with `hard` empty.
+
+### Real selection-change proof (`tests/api/grounded_project_objective.test.ts`)
+
+Not a score-only proof. Every assertion runs the real `generateCandidateSet`
+over the real `PlannerWorker` under one fixed `neutral` policy, one profile
+version, and identical hard constraints; evidence comes from the real
+`prepareEvidence`.
+
+1. ≥2 candidates, each `validateCandidate` valid with `degreeMet`, same policy
+   and profile version.
+2. Official applicable evidence genuinely distinguishes them (E3 project=true,
+   E1 project=false; some candidates contain E3, some do not).
+3. **Without** the preference the canonical legacy selection is preserved and
+   `groundedScore` is absent.
+4. **With** the confirmed preference `normalizedIdentity` **changes**, the
+   selected plan gains E3, and the top contribution is E3 — the identity of the
+   selected candidate changes, not merely its score.
+5. Explanation cites the project feature (`פרוי`), never `מעבדה`, and carries
+   `ims.tau.ac.il` and the year; it makes no superiority claim.
+6. Indifferent restores the canonical selection.
+7. Repeated runs produce identical candidate ids and identical selection.
+8. Every candidate is scored against the SAME snapshot id (recomputed and
+   compared per candidate).
+
+### Unknown / missing / section-varying behaviour
+
+- **Missing field** ⇒ `projectDelivery = 'unknown'` with empty evidence, never
+  `false`.
+- **Empty corpus** ⇒ selection identical to baseline, `groundedScore.score === 0`.
+  Coverage is not a signal.
+- **Section-varying** ⇒ a course whose groups disagree (`0542-3003-05` project,
+  `-01` lecture) is inert: selection identical to baseline, score 0, and the
+  course is disclosed in `coverage.variesBySectionCourseIds`.
+- **Hard exclusion of the favoured course still wins**: with `E3` disallowed no
+  candidate contains it and the selected score is 0. Soft never overrides hard.
+
+### Browser acceptance — NOT performed for K8, and not claimed
+
+K8 changed a user-facing surface: the `course_feature_practical` question gained
+a second option and its Hebrew wording changed from a laboratory-specific
+sentence to a delivery-format one, and `groundedQuestionImpact` now probes both
+objectives (`feature: 'course_delivery_format'`, plus a
+`distinguishingObjectives` list). The committed six-check browser record above
+predates those commits and covers the laboratory option only. **The project
+option has automated end-to-end proof but no browser acceptance.** Recording it
+here as an outstanding item rather than borrowing the earlier record.
+
+### Remaining blocker after K8
+
+Content/topic alignment — the highest-priority remaining capability — is blocked
+on **official evidence, not on engine work**: 1/7 courses, 0 distinguishing
+pairs. It cannot ship until an authoritative source raises usable topic coverage
+enough to separate at least two candidate pairs.
 
 ## Session 2026-08-14 (cont. 3) — K9A–K7 live wiring, bounded acquisition, and the K7.5 applicability fix
 
