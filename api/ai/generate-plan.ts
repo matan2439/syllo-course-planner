@@ -86,6 +86,7 @@ import { generateCandidateSet, selectCandidate, selectionReason, candidateCourse
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence } from './evidence_provider';
+import { explainGroundedRanking } from './grounded_objectives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1763,6 +1764,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         preferenceProfileVersion: preference_profile?.version ?? null,
       },
       selectedGroundedScore: selected?.groundedScore ?? null,
+      // K9C — the concise, factual explanation of the grounded objective's
+      // effect, built only from evidence actually used. Absent when no grounded
+      // objective applied, so nothing is ever claimed without support.
+      groundedExplanationHe:
+        resolvedGrounded?.objective && selected?.groundedScore
+          ? explainGroundedRanking({
+              objective: {
+                id: resolvedGrounded.objective,
+                confirmed: true,
+                snapshotId: preparedEvidence.snapshot.snapshotId,
+              },
+              selected: selected.groundedScore,
+              ...(candidateSet.candidates.find((c) => c.id !== selected.id)?.groundedScore
+                ? { alternative: candidateSet.candidates.find((c) => c.id !== selected.id)!.groundedScore }
+                : {}),
+            })
+          : null,
+      // The official sources actually cited by the selected candidate, for the
+      // UI's source disclosure. Empty when nothing was grounded.
+      groundedSources: (selected?.groundedScore?.contributions ?? []).map((c) => ({
+        courseId: c.courseId, sourceRef: c.sourceRef, academicYear: c.academicYear,
+      })),
       // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
       // to rank and describe alternatives without shipping duplicate full plans.
       summaries: candidateSet.candidates.map((c) => ({

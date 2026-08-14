@@ -49,6 +49,25 @@ export interface ElicitationContext {
   impactThreshold?: number;
   /** At/above this impact, a vague free-text answer needs confirmation (default 0.5). */
   consequentialThreshold?: number;
+  /**
+   * K9C — the evidence-driven gate for a grounded course-feature question.
+   * Supplied ONLY when official evidence has actually been prepared for this
+   * request, and set truthfully from it. A grounded topic is asked when, and
+   * only when, answering it could really change which plan is selected:
+   * several legal candidates exist, the evidence genuinely separates them on
+   * the feature, coverage is sufficient, and nothing is in conflict. Absent ⇒
+   * the topic is never raised, so it can never be asked merely because it sits
+   * in a fixed catalog.
+   */
+  groundedFeatureImpact?: {
+    feature: string;
+    /** ≥2 retained legal candidates actually differ on this feature. */
+    distinguishesCandidates: boolean;
+    /** Enough of the relevant courses carry official evidence to answer usefully. */
+    coverageSufficient: boolean;
+    /** An unresolved authoritative conflict touches the relevant courses. */
+    hasConflicts: boolean;
+  };
 }
 
 export type ElicitationAnswer =
@@ -102,6 +121,26 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
       { value: 'morning_ok', label_he: 'בוקר בסדר' },
     ],
     allowIndifferent: true, allowFreeText: true,
+  },
+  {
+    // K9C — the grounded course-feature topic. Its wording is about the STUDENT'S
+    // experience of a course, never about evidence ids, source classes or the
+    // planner's internal objective name.
+    id: 'course_feature_practical', category: 'course_feature',
+    affects: 'grounded_course_feature', impact: 0.5,
+    answerType: 'single_choice',
+    question_he: 'יש כמה הרכבים חוקיים שנבדלים ביניהם: חלקם כוללים קורסים עם מעבדה או עבודה מעשית. מה מתאים לך יותר?',
+    rationale_he: 'לפי הסילבוסים הרשמיים, חלק מהקורסים האפשריים כוללים רכיב מעבדה — זה יכול לשנות איזו תוכנית תיבחר.',
+    options: [
+      { value: 'practical_laboratory', label_he: 'מעדיף/ה קורסים עם מעבדה או עבודה מעשית' },
+      { value: 'no_feature_preference', label_he: 'אין לי העדפה בעניין הזה' },
+    ],
+    allowIndifferent: true, allowFreeText: false,
+    // Asked ONLY when the answer can actually change the selected plan.
+    relevantWhen: (ctx) => {
+      const g = ctx.groundedFeatureImpact;
+      return !!g && g.distinguishesCandidates && g.coverageSufficient && !g.hasConflicts;
+    },
   },
 ];
 

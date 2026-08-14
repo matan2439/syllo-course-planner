@@ -126,5 +126,9 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     ...(typeof generated.applyEligible === 'boolean' ? { applyEligible: generated.applyEligible } : {}),
     ...(generated.agentClarificationItems ? { agentClarificationItems: generated.agentClarificationItems } : {}),
     ...(generated.agentValidationFindings ? { agentValidationFindings: generated.agentValidationFindings } : {}),
+    // K9C — carried through only when the grounded objective actually applied.
+    ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
+    ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
+    ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),
   }
 }

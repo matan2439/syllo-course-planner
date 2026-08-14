@@ -145,6 +145,16 @@ export interface GeneratedPlanModel {
    * on the legacy path (no candidate analysis).
    */
   balanceAlternativesMaterial?: boolean
+  /**
+   * K9C — the factual explanation of a confirmed grounded course-feature
+   * preference's effect on selection, plus the official sources it rests on.
+   * Absent when no grounded objective applied, so nothing is ever claimed
+   * without evidence behind it.
+   */
+  groundedExplanationHe?: string
+  groundedSources?: Array<{ courseId: string; sourceRef: string; academicYear: number | string }>
+  /** Truthful coverage disclosure — what the evidence did NOT cover. */
+  groundedCoverage?: { coveredCourseCount: number; requestedCourseCount: number; unknownCourseIds: string[] }
   /** Structured clarification items (agent path only). Lean VMs — no secrets. */
   agentClarificationItems?: AgentClarificationItemVM[];
   /** Typed grounding-validation findings (agent path only). */
