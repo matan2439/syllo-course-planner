@@ -14,12 +14,33 @@
  * Default: no documents. The grounded objective is then inert and the request
  * behaves exactly as before the feature existed.
  */
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { loadDocuments } from './evidence_cache';
 import type { SyllabusDocument } from './syllabus_source';
 
 /**
- * Prepared official documents for a program. Returns an empty list by default —
- * the durable cache (K6) replaces this body without changing any caller.
+ * Where the durable evidence cache (K6) lives. Overridable so a deployment or a
+ * test can point elsewhere; absent directory ⇒ no evidence, which is inert.
+ */
+export function evidenceCacheRoot(): string {
+  return (process.env.AI_EVIDENCE_CACHE_DIR ?? '').trim() || join(process.cwd(), 'data', 'evidence_cache');
+}
+
+/**
+ * Prepared official documents for a program, read from the durable cache.
+ *
+ * Cache-only by construction: this reads the local content-addressed store and
+ * has no transport of any kind, so a Generate request can never trigger an
+ * acquisition. A missing or corrupt cache yields an empty list (the cache itself
+ * fails safe), leaving the grounded objective inert rather than failing a plan.
  */
 export function loadPreparedEvidenceDocuments(_programId?: string): SyllabusDocument[] {
-  return [];
+  const root = evidenceCacheRoot();
+  if (!existsSync(root)) return [];
+  try {
+    return loadDocuments(root).documents;
+  } catch {
+    return []; // never let an evidence problem break plan generation
+  }
 }
