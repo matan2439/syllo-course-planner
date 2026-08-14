@@ -4,12 +4,16 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-14 (cont. 3), session on branch `ui/frontend-modernization`
+_Last updated: 2026-08-14 (cont. 5), session on branch `ui/frontend-modernization`
+(**The full six-check real-browser Preview acceptance now PASSES** — see the
+acceptance record below. API 150/1973, web 14/113 green. **Not merged, not
+deployed.**)_
+
+_Previous entry: 2026-08-14 (cont. 3)
 (K9A/B/C wired the grounded objective into the LIVE handler, conversation and
 explanation; K5 freshness/conflict; K6 durable cache; K7 bounded live acquisition
 (8/12); **K7.5 fixed a real semantic defect the live run exposed — one group can
-no longer label a whole course**. API 149/1964 green. **Not merged, not
-deployed.** Browser acceptance still OUTSTANDING.)_
+no longer label a whole course**. API 149/1964 green.)_
 
 _Previous entry: 2026-08-14 (cont. 2), session on branch `ui/frontend-modernization`
 (KnowledgeCapability epic STARTED and proven end to end for one narrow chain:
@@ -40,6 +44,46 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Browser acceptance record — the grounded KnowledgeCapability journey (COMPLETE)
+
+Local non-Production Preview only. API `scripts/dev_api_server.ts` on :3002
+(`AI_DEV_MODE=true AI_DEV_BYPASS_QUOTA=true`, `DATABASE_URL` unset,
+`AI_EVIDENCE_CACHE_DIR` pointing at a deterministic offering-scoped cache);
+`next dev` on :3001 behind `PLANNER_API_ORIGIN`; route
+`/planner/native/agent-preview?program=test_program_grounded_preview_2027`
+(gated by `ENABLE_ACADEMIC_AGENT_PREVIEW=1`, 404 in every Production deploy).
+Evidence snapshot `snap_2da7a25b`, coverage 4/4, `variesBySection: []`.
+
+Applicability note: the browser fixture uses OFFERING-scoped documents (no group
+suffix), so coverage is complete by construction. The incomplete live corpus was
+deliberately NOT used to make the flow pass.
+
+| # | Check | Verdict | Key browser evidence |
+|---|---|---|---|
+| 1 | Impact-driven question | PASS | Grounded question rendered only after the impact probe reported `distinguishesCandidates:true`; one question at a time; no internal ids/scores in the surface |
+| 2 | Suppression | PASS | Mixed-section and no-evidence corpora both report `distinguishesCandidates:false`; no question rendered |
+| 3 | Answer does not Generate | PASS | Three answers + completed-status save + exclusion confirm: Generate count unchanged (0→0, then 2→2) |
+| 4 | Stale → Rebuild → changed selection | PASS | One Generate per click; request carried `course_feature_practical` + `profileVersion 4`; selection changed `E1,E2 → E1,E3`; canonical candidate demoted to rank 1 |
+| 5 | Valid Apply exactly once | PASS | Committed board empty → `E1(א)/E2(ב)`; draft cleared; **Apply control REMOVED**, so a repeat is structurally impossible |
+| 6 | Stale Apply blocked | PASS | Preference edit disabled Apply and showed "ההעדפות שלך השתנו מאז הבנייה"; a forced click on the disabled control left the DOM byte-identical |
+| — | A11y / console / network | PASS | `dir=rtl`, `lang=he`, aria-live regions present, 0px horizontal overflow at 375px, every visible button named, fresh-tab console clean |
+
+Academic status was resolved through the REAL UI (panel → "שמור את הסטטוס" with
+0 courses → "נשמר: 0 קורסים שהושלמו"; then "אין קורסים שאני רוצה להימנע מהם"),
+which removed BOTH critical clarifications and produced `outcome:'proposal'`,
+`applyEligible:true`. Unknown and explicit-empty remain distinct.
+
+Three defects were found by the browser that server-side HTTP checks had missed,
+each fixed with a RED regression: a browser-facing fixture missing
+`board_data_version`; the handler never publishing the question-impact signal;
+and the conversation never re-selecting when that signal arrived. A fourth —
+profile-version staleness disabling Apply *silently*, then a shared note wrongly
+blaming the catalog — was fixed by deriving a typed `staleReason`.
+
+Late-response protection is covered by the existing token-based automated test
+("a late response superseded by a newer Build never becomes the proposal"); no
+browser race was manufactured.
 
 ## Session 2026-08-14 (cont. 3) — K9A–K7 live wiring, bounded acquisition, and the K7.5 applicability fix
 
