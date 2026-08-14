@@ -86,6 +86,7 @@ import { generateCandidateSet, selectCandidate, selectionReason, candidateCourse
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence } from './evidence_provider';
+import { TOPIC_IDS } from './course_topics';
 import { explainGroundedRanking, scoreCandidateOnObjective } from './grounded_objectives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
@@ -1702,15 +1703,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       academicYear: model.catalogYear ?? new Date(0).getFullYear(),
       documents: loadPreparedEvidenceDocuments(program_id),
     });
+    /**
+     * The one confirmed objective, built once so ranking, the explanation and
+     * the impact probe cannot drift apart. `topicIds` is carried only for
+     * `prefer_topic_alignment`; the topic index comes from the SAME prepared
+     * snapshot as the features.
+     */
+    const groundedObjectiveOf = (id: NonNullable<typeof resolvedGrounded>['objective']) => ({
+      id: id!,
+      confirmed: true as const,
+      snapshotId: preparedEvidence.snapshot.snapshotId,
+      ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
+    });
     const groundedForRanking =
       resolvedGrounded?.objective !== undefined
         ? {
-            objective: {
-              id: resolvedGrounded.objective,
-              confirmed: true as const,
-              snapshotId: preparedEvidence.snapshot.snapshotId,
-            },
+            objective: groundedObjectiveOf(resolvedGrounded.objective),
             features: preparedEvidence.features,
+            topics: preparedEvidence.topics,
           }
         : undefined;
 
@@ -1791,6 +1801,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             hasConflicts: preparedEvidence.coverage.conflictingCourseIds.length > 0,
           };
         })(),
+        /**
+         * T6 — the same truthful probe for CONTENT/TOPIC alignment, computed
+         * per topic over the already-retained candidates. The question is worth
+         * asking only for topics that genuinely separate at least two retained
+         * candidates, so `distinguishingTopics` is both the gate and the list of
+         * choices worth offering. Never affects ranking.
+         */
+        topicQuestionImpact: (() => {
+          const distinguishingTopics = TOPIC_IDS.filter((topicId) => {
+            const scores = candidateSet.candidates.map(
+              (c) => scoreCandidateOnObjective(
+                candidateCourseIds(c),
+                { id: 'prefer_topic_alignment', confirmed: true as const, snapshotId: preparedEvidence.snapshot.snapshotId, topicIds: [topicId] },
+                preparedEvidence.features,
+                preparedEvidence.topics,
+              ).score,
+            );
+            return new Set(scores).size > 1;
+          });
+          const coveredTopicCourses = [...preparedEvidence.topics.values()].filter((t) => t.topicIds.size > 0).length;
+          return {
+            category: 'course_topic_interest',
+            distinguishesCandidates: distinguishingTopics.length > 0,
+            distinguishingTopics,
+            // Coverage is sufficient only when more than one course carries a
+            // usable content statement — with one, nothing can be compared.
+            coverageSufficient: coveredTopicCourses > 1,
+            unknownTopicCourseCount: preparedEvidence.coverage.topicUnknownCourseIds.length,
+            hasConflicts: preparedEvidence.coverage.conflictingCourseIds.length > 0,
+          };
+        })(),
       },
       selectedGroundedScore: selected?.groundedScore ?? null,
       // K9C — the concise, factual explanation of the grounded objective's
@@ -1799,11 +1840,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       groundedExplanationHe:
         resolvedGrounded?.objective && selected?.groundedScore
           ? explainGroundedRanking({
-              objective: {
-                id: resolvedGrounded.objective,
-                confirmed: true,
-                snapshotId: preparedEvidence.snapshot.snapshotId,
-              },
+              objective: groundedObjectiveOf(resolvedGrounded.objective),
               selected: selected.groundedScore,
               ...(candidateSet.candidates.find((c) => c.id !== selected.id)?.groundedScore
                 ? { alternative: candidateSet.candidates.find((c) => c.id !== selected.id)!.groundedScore }

@@ -36,6 +36,12 @@ export interface ElicitationQuestionDef {
   question_he: string;
   rationale_he: string;
   options?: Array<{ value: string; label_he: string }>;
+  /**
+   * T6 — options derived from THIS request's real candidate differences, rather
+   * than a fixed list. Used by the topic question so the student is only ever
+   * offered choices that can actually change the outcome.
+   */
+  optionsFrom?: (ctx: ElicitationContext) => Array<{ value: string; label_he: string }>;
   allowIndifferent: boolean;
   allowFreeText: boolean;
   /** Optional extra relevance gate beyond impact + irrelevantTopicIds. */
@@ -68,7 +74,40 @@ export interface ElicitationContext {
     /** An unresolved authoritative conflict touches the relevant courses. */
     hasConflicts: boolean;
   };
+  /**
+   * T6 — the same evidence-driven gate for a course CONTENT/TOPIC question.
+   * `distinguishingTopics` is both the gate and the set of choices worth
+   * offering: a topic appears only when it genuinely separates at least two
+   * retained candidates in THIS request. This is deliberately not a generic
+   * interest questionnaire — with no distinguishing topic, nothing is asked.
+   */
+  topicInterestImpact?: {
+    category: string;
+    distinguishesCandidates: boolean;
+    /** Normalized topic ids that actually separate retained candidates. */
+    distinguishingTopics: string[];
+    /** More than one course carries a usable official content statement. */
+    coverageSufficient: boolean;
+    hasConflicts: boolean;
+  };
 }
+
+/**
+ * T6 — student-facing Hebrew names for the topic vocabulary. The internal id is
+ * carried as the option VALUE (it is the shared vocabulary between profile and
+ * evidence) but never shown as a label.
+ */
+export const TOPIC_INTEREST_LABELS_HE: Record<string, string> = {
+  engineering_design: 'תכן ועיצוב הנדסי',
+  finite_element_analysis: 'ניתוח אלמנטים סופיים',
+  solid_mechanics: 'מכניקת מוצקים',
+  robotics: 'רובוטיקה',
+  control: 'בקרה ומערכות',
+  manufacturing: 'ייצור ותהליכי עיבוד',
+  materials: 'חומרים',
+  thermofluids: 'זרימה, אנרגיה ומעבר חום',
+  programming_electronics: 'תכנות ואלקטרוניקה',
+};
 
 export type ElicitationAnswer =
   | { kind: 'choice'; value: string }
@@ -145,6 +184,27 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
       return !!g && g.distinguishesCandidates && g.coverageSufficient && !g.hasConflicts;
     },
   },
+  {
+    // T6 — the grounded course CONTENT/TOPIC question. Asked only when official
+    // content evidence genuinely separates retained candidates, and offering
+    // only the topics that do the separating.
+    id: 'course_topic_interest', category: 'course_topic_interest',
+    affects: 'grounded_topic_interest', impact: 0.45,
+    answerType: 'single_choice',
+    question_he: 'יש כמה הרכבים חוקיים שנבדלים בתוכן הקורסים. יש תחום תוכן שמעניין אותך במיוחד?',
+    rationale_he: 'לפי שדה "תוכן הקורס ומטרתו" בסילבוסים הרשמיים, חלק מהקורסים האפשריים עוסקים בתחומים שונים — זה יכול לשנות איזו תוכנית תיבחר.',
+    optionsFrom: (ctx) =>
+      (ctx.topicInterestImpact?.distinguishingTopics ?? []).map((value) => ({
+        value,
+        label_he: TOPIC_INTEREST_LABELS_HE[value] ?? value,
+      })),
+    allowIndifferent: true, allowFreeText: false,
+    relevantWhen: (ctx) => {
+      const t = ctx.topicInterestImpact;
+      return !!t && t.distinguishesCandidates && t.coverageSufficient && !t.hasConflicts
+        && t.distinguishingTopics.length > 0;
+    },
+  },
 ];
 
 const DEFAULT_IMPACT_THRESHOLD = 0.1;
@@ -171,7 +231,10 @@ export class DeterministicPreferenceElicitation {
     const candidates = this.candidates(profile, ctx);
     if (candidates.length === 0) return null;
     // Highest impact wins; stable catalog order breaks ties.
-    return candidates.reduce((best, q) => (q.impact > best.impact ? q : best), candidates[0]);
+    const q = candidates.reduce((best, c) => (c.impact > best.impact ? c : best), candidates[0]);
+    // T6 — materialise request-specific options, so a caller always receives a
+    // ready-to-render question and can never see an unresolved generator.
+    return q.optionsFrom ? { ...q, options: q.optionsFrom(ctx) } : q;
   }
 
   isSufficient(profile: PreferenceProfile, ctx: ElicitationContext): boolean {
