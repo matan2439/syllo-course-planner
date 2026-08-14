@@ -45,6 +45,8 @@ export interface DraftVM {
   agentValidationFindings?: GeneratedPlanModel['agentValidationFindings']
   /** K9C — gates the grounded question; see GeneratedPlanModel. */
   groundedQuestionImpact?: GeneratedPlanModel['groundedQuestionImpact']
+  /** W1 — gates the course content/topic question; see GeneratedPlanModel. */
+  topicQuestionImpact?: GeneratedPlanModel['topicQuestionImpact']
   groundedExplanationHe?: GeneratedPlanModel['groundedExplanationHe']
   groundedSources?: GeneratedPlanModel['groundedSources']
   groundedCoverage?: GeneratedPlanModel['groundedCoverage']
@@ -133,6 +135,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     ...(generated.agentValidationFindings ? { agentValidationFindings: generated.agentValidationFindings } : {}),
     // K9C — carried through only when the grounded objective actually applied.
     ...(generated.groundedQuestionImpact ? { groundedQuestionImpact: generated.groundedQuestionImpact } : {}),
+    ...(generated.topicQuestionImpact ? { topicQuestionImpact: generated.topicQuestionImpact } : {}),
     ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
     ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
     ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),

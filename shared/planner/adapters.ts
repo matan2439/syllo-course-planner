@@ -87,6 +87,11 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(p.academicDecision?.candidates?.evidence?.groundedQuestionImpact
       ? { groundedQuestionImpact: p.academicDecision.candidates.evidence.groundedQuestionImpact }
       : {}),
+    // W1 — carried through verbatim. The UI never reconstructs impact from the
+    // proposal or the explanation text; this is the only source.
+    ...(p.academicDecision?.candidates?.evidence?.topicQuestionImpact
+      ? { topicQuestionImpact: p.academicDecision.candidates.evidence.topicQuestionImpact }
+      : {}),
     ...(typeof p.academicDecision?.candidates?.groundedExplanationHe === 'string' &&
     p.academicDecision.candidates.groundedExplanationHe.length > 0
       ? { groundedExplanationHe: p.academicDecision.candidates.groundedExplanationHe }

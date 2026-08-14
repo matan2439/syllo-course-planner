@@ -87,6 +87,7 @@ import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_con
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
+import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, scoreCandidateOnObjective } from './grounded_objectives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
@@ -1825,11 +1826,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             category: 'course_topic_interest',
             distinguishesCandidates: distinguishingTopics.length > 0,
             distinguishingTopics,
+            // W1 — localized labels travel WITH the signal, so the browser never
+            // needs the topic vocabulary and an internal id can never surface as
+            // a visible label. The server stays authoritative for both what is
+            // impactful and what it is called.
+            topicLabels: Object.fromEntries(
+              distinguishingTopics.map((id) => [id, TOPIC_INTEREST_LABELS_HE[id] ?? id]),
+            ),
             // Coverage is sufficient only when more than one course carries a
             // usable content statement — with one, nothing can be compared.
             coverageSufficient: coveredTopicCourses > 1,
             unknownTopicCourseCount: preparedEvidence.coverage.topicUnknownCourseIds.length,
             hasConflicts: preparedEvidence.coverage.conflictingCourseIds.length > 0,
+            // The ONE snapshot these differences were computed from, and the
+            // profile version they describe — so a late response can be
+            // recognised as stale rather than silently applied.
+            snapshotId: preparedEvidence.snapshot.snapshotId,
+            profileVersion: preference_profile?.version ?? 0,
           };
         })(),
       },

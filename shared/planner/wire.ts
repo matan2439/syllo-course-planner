@@ -116,6 +116,22 @@ export const generatePlanResponseSchema = z
                     hasConflicts: z.boolean(),
                   })
                   .optional(),
+                // W1 — the course CONTENT/TOPIC impact probe. Declared
+                // explicitly rather than relying on `.passthrough()`, so a
+                // malformed probe is rejected instead of reaching the UI.
+                topicQuestionImpact: z
+                  .object({
+                    category: z.string(),
+                    distinguishesCandidates: z.boolean(),
+                    distinguishingTopics: z.array(z.string()),
+                    topicLabels: z.record(z.string()),
+                    coverageSufficient: z.boolean(),
+                    hasConflicts: z.boolean(),
+                    unknownTopicCourseCount: z.number(),
+                    snapshotId: z.string(),
+                    profileVersion: z.number(),
+                  })
+                  .optional(),
               })
               .passthrough()
               .optional(),

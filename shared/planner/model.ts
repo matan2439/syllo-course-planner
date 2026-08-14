@@ -158,6 +158,32 @@ export interface GeneratedPlanModel {
     hasConflicts: boolean
   }
   /**
+   * W1 — whether asking the course CONTENT/TOPIC question could actually change
+   * the selected plan, computed server-side over the retained candidates from
+   * the ONE prepared evidence snapshot.
+   *
+   * `distinguishingTopics` is both the gate and the only options worth
+   * offering: a topic present in official evidence but shared by every
+   * candidate cannot separate anything and is absent here. The UI must NOT
+   * decide impact for itself, and must not recompute candidate differences.
+   */
+  topicQuestionImpact?: {
+    category: string
+    distinguishesCandidates: boolean
+    /** Normalized topic ids that genuinely separate retained candidates. */
+    distinguishingTopics: string[]
+    /** Localized labels for exactly those ids — internal ids never surface. */
+    topicLabels: Record<string, string>
+    coverageSufficient: boolean
+    hasConflicts: boolean
+    /** Courses with no usable official content statement — disclosure only. */
+    unknownTopicCourseCount: number
+    /** The evidence snapshot the differences were computed from. */
+    snapshotId: string
+    /** The profile version this signal describes. */
+    profileVersion: number
+  }
+  /**
    * K9C — the factual explanation of a confirmed grounded course-feature
    * preference's effect on selection, plus the official sources it rests on.
    * Absent when no grounded objective applied, so nothing is ever claimed
