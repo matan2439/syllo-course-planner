@@ -85,6 +85,8 @@ import { resolveDistributionPolicy } from './distribution_policy';
 import { generateCandidateSet, selectCandidate, selectionReason, candidateCourseIds } from './candidate_set';
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import { resolveGroundedObjective } from './grounded_preference';
+import { prepareEvidence } from './evidence_provider';
+import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1687,6 +1689,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   //    byte-identically.
   if (use_academic_decision_agent === true) {
     const pref = distributionPolicy ?? 'neutral';
+
+    // K9B — prepare the ONE immutable evidence snapshot for this request, BEFORE
+    // any planning. This is the only place evidence is assembled; candidates
+    // never acquire or resolve their own, so every candidate is scored against
+    // the same snapshotId and no acquisition can occur inside the planner loop,
+    // a rollout, ranking, or Apply. With no prepared documents the snapshot is
+    // empty and completely inert (default-off).
+    const preparedEvidence = prepareEvidence({
+      courseIds: [...model.profiles.keys()],
+      academicYear: model.catalogYear ?? new Date(0).getFullYear(),
+      documents: loadPreparedEvidenceDocuments(program_id),
+    });
+    const groundedForRanking =
+      resolvedGrounded?.objective !== undefined
+        ? {
+            objective: {
+              id: resolvedGrounded.objective,
+              confirmed: true as const,
+              snapshotId: preparedEvidence.snapshot.snapshotId,
+            },
+            features: preparedEvidence.features,
+          }
+        : undefined;
+
     const candidateSet = generateCandidateSet({
       buildModel: (p) =>
         buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById, p === 'neutral' ? undefined : p),
@@ -1694,6 +1720,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       initialState,
       profileVersion: preference_profile?.version ?? 0,
       pinnedHome,
+      ...(groundedForRanking ? { groundedObjective: groundedForRanking } : {}),
     });
     const selected = selectCandidate(candidateSet);
     // Proposal is built from the primary candidate's exact state; if NOTHING
@@ -1726,6 +1753,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       searchBudget: candidateSet.searchBudget,
       profileVersion: preference_profile?.version ?? null,
       selectedNormalizedIdentity: selected?.normalizedIdentity ?? candidateSet.legacyIdentity,
+      // K9B — the ONE snapshot every candidate in this request was scored
+      // against, plus truthful coverage. Coverage is disclosure only: it never
+      // enters a score, so having a syllabus on file cannot itself rank a
+      // candidate higher.
+      evidence: {
+        ...preparedEvidence.coverage,
+        groundedObjective: resolvedGrounded?.objective ?? null,
+        preferenceProfileVersion: preference_profile?.version ?? null,
+      },
+      selectedGroundedScore: selected?.groundedScore ?? null,
       // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
       // to rank and describe alternatives without shipping duplicate full plans.
       summaries: candidateSet.candidates.map((c) => ({
