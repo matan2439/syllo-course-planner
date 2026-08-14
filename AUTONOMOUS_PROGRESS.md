@@ -4,7 +4,16 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-14 (cont.), session on branch `ui/frontend-modernization`
+_Last updated: 2026-08-14 (cont. 2), session on branch `ui/frontend-modernization`
+(KnowledgeCapability epic STARTED and proven end to end for one narrow chain:
+official academic source → versioned evidence → normalized course features →
+confirmed soft objective → **the selected candidate actually changes**. K0 also
+closed the pytest test-isolation defect. Five commits: K0 `4b404a0`, K1
+`d64f7f6`, K2 `bf01627`, K3 `76cf1c5`, K4 `bd812a7`. API 143/1862 green.
+**Not merged, not deployed.** Remaining KnowledgeCapability slices K5–K10 are
+listed below and are still required before the product is complete.)_
+
+_Previous entry: 2026-08-14 (cont.), session on branch `ui/frontend-modernization`
 (Slice 18A/18B: the wanted/avoided pickers are now HARD `must_include` /
 `must_exclude` constraints enforced by a validation GATE, unsatisfiable requests
 return a typed deterministic `infeasible` outcome instead of a degraded plan,
@@ -24,6 +33,152 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-14 (cont. 2) — KnowledgeCapability K0–K4: the first real grounded chain
+
+**What this session set out to prove, and did:** one narrow but genuinely
+end-to-end capability —
+`official academic source → versioned evidence → normalized course features →
+confirmed soft objective → candidate ranking changes` — with no step stubbed.
+
+### K0 — Python test isolation (commit `4b404a0`)
+
+Root cause: `writeNormalizedCourseData()` wrote unconditionally to the TRACKED
+`data/import_reports/normalized_courses_mechanical_2027.json`, which
+`tests/test_supabase_normalize.py` reads as fixture input. Running pytest
+rewrote repo state (74525 → 40733 bytes) and broke that suite on the next run
+(T02/T03/T05/T07/T08), leaving the worktree dirty.
+
+Fixed by **dependency injection, not cleanup**: `writeNormalizedCourseData(out_path)`
+defaults to `defaultNormalizedOutputPath()` (production behavior unchanged);
+T11/T12 inject `tmp_path`; new T13/T13b pin the contract. No assertions
+weakened, no catalog data regenerated or committed.
+
+Proof: tracked sha256 `be4178ff…` identical before and after every run;
+`git status --porcelain -- data/` empty after each; affected tests pass in
+forward AND reverse order; full pytest run twice → 33 failures both times,
+run1 == run2 exactly; versus pre-K0 in the same tree, exactly the 5 induced
+failures fixed and **zero new**.
+
+**Honest Python status: NOT green.** 33 pre-existing, unrelated failures remain
+and are not claimed fixed — `test_seed_postgres` 10, `test_viewer_structure` 4,
+`test_prerequisite_graph` 4, `test_eligibility_engine` 4, `test_elective_audit` 4,
+`test_recommendation_engine` 3, `test_difficulty_estimator` 3,
+`test_normalize_courses` T11 1. T11 needs the raw_html corpus (68+60 files) that
+was never committed — only 25+1 exist locally, 2 are tracked — and it fails
+identically at HEAD.
+
+### K1 — authoritative source + evidence contract (commit `d64f7f6`)
+
+`api/ai/academic_evidence.ts`. Generic: institution, program, course and year are
+parameters. Source hierarchy, descending: `official_catalog` → `official_syllabus`
+→ `official_timetable` → `authoritative_student_record` | `secondary_descriptive`
+→ `unverified`. Only the first four are authoritative; `LEGALITY_FACT_TYPES`
+(course_exists, credits, prerequisites, offering_periods, classification,
+exam_rules, degree_legality) may be determined ONLY by those.
+
+Evidence record: derived stable id, institution/program/course, fact type,
+normalized value, source ref, source class, academic year, source version,
+retrieval timestamp, effective date, extraction method+version, confidence,
+**derived** authoritative flag, copyright-safe excerpt or locator.
+
+States: `confirmed_authoritative | confirmed_descriptive | uncertain |
+conflicting | stale | missing | unsupported`. Rules: no bare facts (resolution
+always carries evidence, including losers); **applicability beats recency**;
+same-class authoritative disagreement → deterministic `conflicting` retaining
+both; a lower official class is OUTRANKED, not conflicting; `legalityValue()` is
+the single door and opens only for `confirmed_authoritative`.
+
+### K2 — official syllabus acquisition (commit `bf01627`)
+
+`api/ai/syllabus_source.ts`. A point-fetch of ONE document per (course, year) —
+**not a crawler**: no link following, discovery, search or traversal. Real source
+`https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=<8-digit><group>&year=<year>`,
+proven against the genuine official page already tracked at
+`data/raw_html/syllabus/syllabus_05423792.html`.
+
+Allowlist checked before any request (exact host match, no suffix spoofing);
+off-allowlist redirect classified not accepted; bounded timeout/size;
+content-type validation; deterministic retry for transient failures only (a 404
+is never retried); the transport boundary takes only `(url, {timeoutMs})` so no
+credential can cross it. Every failure is a typed `unavailable` state with no
+document. Version applicability: year mismatch, course-id mismatch and
+"no syllabus published" are all typed refusals, and `selectCurrentSyllabus`
+returns the requested year or **nothing** — never "the newest available".
+
+Determinism: planning never calls the adapter. It reads a frozen,
+content-addressed `EvidenceSnapshot`, so ranking cannot depend on network
+availability or a source changing mid-run.
+
+### K3 — grounded feature extraction (commit `76cf1c5`)
+
+`api/ai/course_features.ts`, rule-based, no LLM. Governing discipline:
+**absence is not falsehood**. A feature is `false` only from a SCHEMA-COMPLETE
+official field (`אופן ההוראה` is always published and always names the mode);
+free prose yields `unknown`. Ternary `true|false|'unknown'` throughout; a feature
+with no evidence makes no claim and carries zero confidence.
+
+Features: laboratory, project, finalExam, coursework, deliveryMode (verbatim),
+topics, prerequisiteText. Never extracted: subjective difficulty, weekly
+workload, teaching quality, career value, grading generosity, topic emphasis —
+a test asserts those keys never appear. Prerequisite text is
+`authoritativeForPlanning: false` permanently, so it can never override the
+normalized prerequisite engine. Topic vocabulary is generic and versioned;
+unmatched OR ambiguous phrases stay `uncertain` with raw wording preserved;
+topics come only from an explicit `נושאי לימוד:` list, never mined from prose.
+
+### K4 — one grounded objective that really changes ranking (commit `bd812a7`)
+
+`prefer_laboratory_courses`, chosen because the delivery-mode field is the
+best-evidenced feature available. Ranked at the CANDIDATE level (not inside
+`scorePlan`), so plan construction is untouched. Order:
+hard constraints + legality + confirmed distribution policy → **grounded
+objective** → remaining soft terms → identity tie-break. No objective ⇒
+byte-identical legacy ordering. Default-off.
+
+`unknown`, missing evidence and no-document courses contribute exactly ZERO; a
+genuinely `false` feature also contributes zero (a preference FOR, not a penalty
+against); only a `confirmed: true` objective contributes at all.
+
+**The proof is a selection change, not a score change:** without the preference
+the selected plan lacks the laboratory course; with it, the selected plan's
+identity differs and now contains the evidence-backed course. Hard exclusion of
+the favoured course still wins absolutely; a hard inclusion the objective does
+not favour is still honoured; every candidate is scored against the same
+`snapshotId`; ranking is reproducible.
+
+## Remaining KnowledgeCapability slices (K5–K10) — still REQUIRED
+
+The product is **not complete** until these are implemented and proven. K1–K4
+built the spine for exactly ONE feature and ONE objective against ONE recorded
+document; everything below is still missing.
+
+5. **K5 — conflict & freshness at scale.** `resolveFact` handles conflict and
+   staleness for a single fact; nothing yet re-resolves a whole corpus, ages
+   evidence out, or surfaces conflicts into the existing structured-clarification
+   channel as non-answerable authoritative items.
+6. **K6 — durable deterministic knowledge cache.** `EvidenceSnapshot` is built
+   in memory per request. Needs a versioned, content-addressed on-disk cache
+   with explicit invalidation, so a snapshot is reproducible across processes
+   and no acquisition repeats unnecessarily.
+7. **K7 — real corpus acquisition.** One document is recorded. Needs a bounded,
+   rate-respecting batch acquisition for a real program's course set, with the
+   allowlist and per-source access rules enforced, and the results committed as
+   a cache rather than as catalog data. **Requires the owner's explicit
+   go-ahead for live network access — not taken in this session.**
+8. **K8 — more grounded objectives, each independently proven.** Only
+   `prefer_laboratory_courses` exists. Each new objective (no-final-exam,
+   project-based, confirmed topic) needs its own end-to-end ranking-change proof.
+   **An objective that cannot be shown to change real candidate ranking must not
+   ship** — that rule is now enforced by precedent, not just stated.
+9. **K9 — grounded objectives in the live handler + preference profile.** K4 is
+   proven at the candidate-set level. It is NOT yet wired into
+   `generate-plan.ts`, the typed preference profile, or the confirmation flow,
+   so no real request can enable it yet.
+10. **K10 — evidence-backed explanation surfaced to the user.**
+    `explainGroundedRanking` produces the text; the response and UI do not carry
+    it yet. Needs the candidate-comparison surface that Slice 18B deliberately
+    deferred.
 
 ## Session 2026-08-14 (cont.) — HARD wanted/avoided constraints + real multi-combination candidate search (Slice 18A/18B)
 
