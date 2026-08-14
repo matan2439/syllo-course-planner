@@ -62,6 +62,12 @@ import { PlannerWorker } from './planner_worker';
 import { scorePlan, compareScore } from './planner_goals';
 import { validateCandidate } from './planner_validate';
 import { placedCourseIds, type ConstraintModel, type PlanState, type DistributionPolicy } from './planner_types';
+import {
+  scoreCandidateOnObjective,
+  type FeatureIndex,
+  type GroundedObjective,
+  type GroundedScore,
+} from './grounded_objectives';
 
 /** Production worker configuration — identical to generate-plan.ts's own. */
 const WORKER_OPTS = { topN: 6, rolloutSteps: 80 } as const;
@@ -113,6 +119,12 @@ export interface PlanCandidate {
   profileVersion: number;
   /** The stable planner's own Hebrew explanation for this plan. */
   rationaleHe: string;
+  /**
+   * K4 — the confirmed grounded soft objective's evidence-backed score for this
+   * candidate. Present only when such an objective was supplied; absent
+   * otherwise, so the legacy ordering is untouched.
+   */
+  groundedScore?: GroundedScore;
 }
 
 export interface CandidateSet {
@@ -220,7 +232,24 @@ export interface GenerateCandidateSetInput {
   maxCandidates?: number;
   /** Hard bound on planner runs (runtime guard). Default DEFAULT_MAX_RUNS. */
   maxRuns?: number;
+  /**
+   * K4 — a CONFIRMED grounded soft objective, plus the ONE evidence snapshot
+   * every candidate is scored against. Omitted (the default) ⇒ ranking is
+   * byte-identical to before this feature existed.
+   */
+  groundedObjective?: { objective: GroundedObjective; features: FeatureIndex };
 }
+
+/**
+ * How far into the lexicographic scoreVector the HARD/legality/distribution
+ * terms run: [g1 completion, g2a mandatory+must_include, g2b categories,
+ * g3 legality, g4a/g4b distribution]. Everything from index 6 on is soft
+ * (preferences, interest fit, difficulty). The grounded objective is compared
+ * strictly AFTER this prefix and strictly BEFORE the soft remainder, which is
+ * what makes it unable to trade away completion, legality, hard constraints or
+ * the user's confirmed distribution policy.
+ */
+const HARD_AND_POLICY_PREFIX = 6;
 
 export function generateCandidateSet(input: GenerateCandidateSetInput): CandidateSet {
   const maxCandidates = Math.max(1, input.maxCandidates ?? DEFAULT_MAX_CANDIDATES);
@@ -270,10 +299,32 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     // deviation that reproduces the baseline is simply collapsed by identity.
   }
 
-  // 3. Rank: the same lexicographic scorer, stable identity tie-break.
-  const ranked = [...byIdentity.values()].sort(
-    (a, b) => compareScore(b.scoreVector, a.scoreVector) || (a.identity < b.identity ? -1 : a.identity > b.identity ? 1 : 0),
-  ).slice(0, maxCandidates);
+  // 3. Rank. Lexicographic, in the documented priority order:
+  //      a. hard constraints + legality + the confirmed distribution policy
+  //         (the scoreVector's first HARD_AND_POLICY_PREFIX terms);
+  //      b. the confirmed GROUNDED soft objective (K4), when one is supplied;
+  //      c. the remaining existing soft terms (explicit preferences, interest
+  //         fit, difficulty);
+  //      d. normalized identity — a stable, deterministic final tie-break.
+  //    With no grounded objective, (b) is a constant 0 for every candidate and
+  //    the ordering is byte-identical to the legacy comparison.
+  const grounded = input.groundedObjective;
+  const groundedScoreOf = (r: Raw): GroundedScore | undefined =>
+    grounded
+      ? scoreCandidateOnObjective([...new Set(placedCourseIds(r.state))], grounded.objective, grounded.features)
+      : undefined;
+
+  const withGrounded = [...byIdentity.values()].map((r) => ({ raw: r, grounded: groundedScoreOf(r) }));
+
+  const ranked = withGrounded
+    .sort((a, b) =>
+      compareScore(b.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), a.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX)) ||
+      ((b.grounded?.score ?? 0) - (a.grounded?.score ?? 0)) ||
+      compareScore(b.raw.scoreVector, a.raw.scoreVector) ||
+      (a.raw.identity < b.raw.identity ? -1 : a.raw.identity > b.raw.identity ? 1 : 0),
+    )
+    .slice(0, maxCandidates)
+    .map((x) => ({ ...x.raw, groundedScore: x.grounded }));
 
   const primary = ranked[0];
   const candidates: PlanCandidate[] = ranked.map((r, i) => ({
@@ -289,6 +340,7 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     differences: i === 0 ? [] : describeDifferences(primary.state, r.state, r.model),
     profileVersion: input.profileVersion,
     rationaleHe: r.rationaleHe,
+    ...(r.groundedScore !== undefined ? { groundedScore: r.groundedScore } : {}),
   }));
 
   return {
