@@ -196,6 +196,12 @@ function extractLabeledFields(html: string): Record<string, string[]> {
     if (!values.length) continue;
     (out[label] ??= []).push(...values);
   }
+  // The official template repeats a cell across multi-semester rows (the second
+  // row is visibility:hidden but still in the markup), so the same value can
+  // appear twice. Identical repeats are ONE fact stated twice, not two facts.
+  // Distinct values are preserved in order — a course genuinely offered in both
+  // semesters really does have two different `סמסטר` values.
+  for (const label of Object.keys(out)) out[label] = [...new Set(out[label])];
   return out;
 }
 
