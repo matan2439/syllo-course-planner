@@ -69,6 +69,7 @@ export type AcademicDecisionOutcome =
   | 'proposal'
   | 'clarification_required'
   | 'validation_failed'
+  | 'infeasible'
   | 'blocked'
   | 'error';
 
@@ -77,8 +78,18 @@ export function classifyAgentOutcome(a: {
   blocked: boolean;
   hasCriticalMissingInput: boolean;
   hasUnresolvedConflicts: boolean;
+  /**
+   * Slice 18A — a HARD user constraint cannot be satisfied at all (a
+   * contradiction between two selections, or a structural impossibility against
+   * an authoritative catalog fact). Ranked ABOVE 'blocked': 'blocked' says the
+   * produced plan failed a gate, while 'infeasible' says no legal plan satisfying
+   * the request exists, which is the more specific and more actionable truth.
+   * Either way no degraded best-effort plan is ever presented as applyable.
+   */
+  hardConstraintsInfeasible?: boolean;
 }): AcademicDecisionOutcome {
   if (a.engineFailed) return 'error';
+  if (a.hardConstraintsInfeasible) return 'infeasible';
   if (a.blocked) return 'blocked';
   if (a.hasCriticalMissingInput) return 'clarification_required';
   if (a.hasUnresolvedConflicts) return 'validation_failed';

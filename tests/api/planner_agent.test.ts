@@ -318,7 +318,7 @@ describe('PlannerAgent', () => {
       score: (_s, _m) => [999],
       compareScore: (_a, _b) => 42,
       assessCompleteness: (_s, _m) => ({
-        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [], incompleteAnnual: [],
+        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [], incompleteAnnual: [], missingMustInclude: [],
       }),
       validate: (_s, _m, _p, _c) => ({ valid: false, reason: 'sentinel-reason' }),
       generateActions: (_s, _m) => [],
@@ -346,7 +346,7 @@ describe('PlannerAgent', () => {
       score: (_s, _m) => [0],
       compareScore: (_a, _b) => 0,
       assessCompleteness: (_s, _m) => ({
-        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [], incompleteAnnual: [],
+        degreeHours: 0, degreeMet: true, missingMandatory: [], unsatisfiedCategories: [], overCapSemesters: [], incompleteAnnual: [], missingMustInclude: [],
       }),
       validate: (_s, _m, _p, _c) => ({ valid: true }),
       generateActions: (_s, _m) => [sentinelAction],

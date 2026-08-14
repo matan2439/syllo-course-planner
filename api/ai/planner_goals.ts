@@ -547,8 +547,19 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
     }
   };
 
-  for (const id of model.requiredMandatoryCourseIds) {
+  // Slice 18A — a HARD user inclusion is a requirement in exactly the same
+  // sense: it must occupy a real plan slot, its own unplaced prerequisites are
+  // structurally required stepping stones, and its hours must be reserved
+  // against the degree budget so an ordinary elective can't crowd it out. Seeding
+  // it here is what makes `enumerateActions`' group 1b propose it (and its
+  // prerequisite chain) UNCONDITIONALLY — including once raw degree hours are
+  // already met, which is exactly the case the old best-effort g5 path could
+  // never recover from. Deliberately NOT extended to `wantedCourseIds`, which
+  // stays a soft preference and must not distort mandatory reservation scoring
+  // (see PlannerWorker.recoverUnplacedWantedCourses' own docstring).
+  for (const id of [...model.requiredMandatoryCourseIds, ...(model.mustIncludeCourseIds ?? [])]) {
     if (model.completedCourseIds.has(id)) continue;
+    if (model.currentlyPlannedCourseIds?.has(id)) continue;
     if (isFullyPlaced(state, model, placed, id)) continue;
     if (!isMandatoryCourseReachable(state, model, id)) continue;
     visit(id);
@@ -631,11 +642,14 @@ export function requiredCourseSemesterBoundaries(state: PlanState, model: Constr
     }
   };
 
-  for (const id of model.requiredMandatoryCourseIds) {
+  // Same seeding as requiredButUnplacedCourseIds above — a hard user inclusion's
+  // prerequisites need the identical ordering boundaries.
+  for (const id of [...model.requiredMandatoryCourseIds, ...(model.mustIncludeCourseIds ?? [])]) {
     if (model.completedCourseIds.has(id)) continue;
+    if (model.currentlyPlannedCourseIds?.has(id)) continue;
     if (isFullyPlaced(state, model, placed, id)) continue;
     if (!isMandatoryCourseReachable(state, model, id)) continue;
-    recordAndRecurse(id, undefined); // the mandatory course itself is unconstrained; only ITS prerequisites get a boundary
+    recordAndRecurse(id, undefined); // the required course itself is unconstrained; only ITS prerequisites get a boundary
   }
   return boundaries;
 }
@@ -668,6 +682,46 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
     sum += p.hours ?? 0;
   }
   return sum;
+}
+
+// ── HARD inclusion (`must_include_course_ids`) ───────────────────────────────
+
+/**
+ * Slice 18A — whether a hard-included course counts as SATISFIED. Deliberately
+ * broader than "placed", per product policy:
+ *   - already completed  → satisfied as academic history, and must NOT be
+ *     re-scheduled (rule 2a already forbids that everywhere else);
+ *   - currently taking   → satisfied by the same authoritative rule that forbids
+ *     re-proposing it;
+ *   - present in the plan → satisfied (fully placed, so an is_annual course must
+ *     occupy every one of its spans — same `isFullyPlaced` gate requirements use).
+ * Anything else is missing, and `validateCandidate` rejects the plan for it.
+ */
+export function isMustIncludeSatisfied(
+  state: PlanState,
+  model: ConstraintModel,
+  placed: Set<string>,
+  id: string,
+): boolean {
+  if (model.completedCourseIds.has(id)) return true;
+  if (model.currentlyPlannedCourseIds?.has(id)) return true;
+  return isFullyPlaced(state, model, placed, id);
+}
+
+/** Hard-included course ids not yet satisfied — the authoritative "what's missing" list. */
+export function missingMustIncludeCourseIds(state: PlanState, model: ConstraintModel): string[] {
+  const ids = model.mustIncludeCourseIds;
+  if (!ids || ids.size === 0) return [];
+  const placed = new Set(placedCourseIds(state));
+  return [...ids].filter(id => !isMustIncludeSatisfied(state, model, placed, id));
+}
+
+/** How many hard-included courses are satisfied (the g2a numerator contribution). */
+export function mustIncludeSatisfiedCount(state: PlanState, model: ConstraintModel): number {
+  const ids = model.mustIncludeCourseIds;
+  if (!ids || ids.size === 0) return 0;
+  const placed = new Set(placedCourseIds(state));
+  return [...ids].filter(id => isMustIncludeSatisfied(state, model, placed, id)).length;
 }
 
 export function categoriesSatisfied(state: PlanState, model: ConstraintModel): number {
@@ -761,9 +815,22 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const budget = model.degreeRequiredHours - remainingMandatoryHours(state, model);
   const g1 = Math.min(dh, budget);
 
-  // 2a. requirements (mandatory) — fraction of mandatory courses placed.
+  // 2a. requirements (mandatory + HARD user inclusions) — fraction satisfied.
+  //
+  //     Slice 18A: a `must_include` course is a REQUIREMENT, not a preference,
+  //     so it shares this slot with the degree's own mandatory courses rather
+  //     than the tradeable g5 preferences slot below. This is only a SEARCH
+  //     GRADIENT (it gives the greedy loop a reason to place the course);
+  //     the authoritative, non-tradeable enforcement is validateCandidate's
+  //     missingMustInclude gate, which rejects the plan outright no matter how
+  //     high any score is. With no hard inclusions the arithmetic is
+  //     byte-identical to before.
   const mandTotal = model.requiredMandatoryCourseIds.length;
-  const g2a = mandTotal > 0 ? mandatoryPlaced(state, model) / mandTotal : 1;
+  const hardIncludeTotal = model.mustIncludeCourseIds?.size ?? 0;
+  const reqTotal = mandTotal + hardIncludeTotal;
+  const g2a = reqTotal > 0
+    ? (mandatoryPlaced(state, model) + mustIncludeSatisfiedCount(state, model)) / reqTotal
+    : 1;
 
   // 2b. requirements (categories) — fraction of categories satisfied.
   const catTotal = model.categories.length;
@@ -844,6 +911,12 @@ export interface CompletenessAssessment {
    * would consider the goal reached with the course still split.
    */
   incompleteAnnual: string[];
+  /**
+   * Slice 18A — hard-included (`must_include`) course ids not satisfied by
+   * completion, currently-taking status, or an actual placement. A plan with a
+   * non-empty list here is NEVER valid, whatever it scores.
+   */
+  missingMustInclude: string[];
 }
 
 /**
@@ -897,8 +970,9 @@ export function assessCompleteness(state: PlanState, model: ConstraintModel): Co
   });
 
   const incompleteAnnual = incompleteAnnualCourseIds(state, model);
+  const missingMustInclude = missingMustIncludeCourseIds(state, model);
 
-  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters, incompleteAnnual };
+  return { degreeHours: dh, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters, incompleteAnnual, missingMustInclude };
 }
 
 /** Compare two score vectors lexicographically: >0 if a is better than b. */

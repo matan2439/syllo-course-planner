@@ -24,6 +24,7 @@ import {
   mandatoryPlaced as computeMandatoryPlaced,
   categoriesSatisfied as computeCategoriesSatisfied,
   incompleteAnnualCourseIds,
+  missingMustIncludeCourseIds,
   GOAL_STACK,
 } from './planner_goals';
 import {
@@ -85,6 +86,17 @@ export interface WorkerOptions {
   topN?: number;
   /** Rollout depth bound. */
   rolloutSteps?: number;
+  /**
+   * Slice 18B — deterministic BOUNDED DEVIATION, the whole mechanism behind
+   * multi-combination candidate generation. At scored-search step `atStep`, take
+   * the action ranked `rank` places below the one the greedy loop would pick,
+   * then continue greedily as usual. Same planner, same model, same policy, same
+   * validation — only which of the already-legal, already-ranked actions is
+   * committed at ONE step differs, which is what makes a genuinely different
+   * (but equally legal) course/period combination reachable. Absent ⇒ the
+   * legacy single-plan behavior, byte-identical.
+   */
+  deviation?: { atStep: number; rank: number };
 }
 
 type Actor = 'worker' | 'greedy' | 'llm';
@@ -115,13 +127,20 @@ export class PlannerWorker {
   private tracer = new PlannerTracer();
   /** Committed positions of pinned courses (must not move). */
   private pinnedHome: Record<string, string> = {};
-  private opts: Required<WorkerOptions>;
+  private opts: Required<Omit<WorkerOptions, 'deviation'>> & Pick<WorkerOptions, 'deviation'>;
+  /** How many scored-search decisions step() has made — the deviation index. */
+  private searchStepIndex = 0;
   /** Cached validation context — pure function of (model, pinnedHome), built once. */
   private readonly _validationCtx: PlanValidationContext;
 
   constructor(private model: ConstraintModel, initial?: PlanState, opts: WorkerOptions = {}) {
     this.state = initial ? cloneState(initial) : emptyState(model.knownSemesterIds);
-    this.opts = { lookahead: opts.lookahead ?? true, topN: opts.topN ?? 8, rolloutSteps: opts.rolloutSteps ?? 200 };
+    this.opts = {
+      lookahead: opts.lookahead ?? true,
+      topN: opts.topN ?? 8,
+      rolloutSteps: opts.rolloutSteps ?? 200,
+      ...(opts.deviation ? { deviation: opts.deviation } : {}),
+    };
     for (const cid of model.pinnedCourseIds) {
       const sem = this.semesterOfLocal(cid);
       if (sem) this.pinnedHome[cid] = sem;
@@ -189,6 +208,10 @@ export class PlannerWorker {
       categoriesSatisfied,
       allCategoriesSatisfied: categoriesSatisfied === this.model.categories.length,
       hasIncompleteAnnual: this.findIncompleteAnnualCourse(state) !== undefined,
+      // Slice 18A — a HARD user inclusion is a requirement, so the bare goal is
+      // not reached while one is unsatisfied. Without this the loop could report
+      // "המטרה הושגה" for a plan validateCandidate rejects outright.
+      missingMustInclude: missingMustIncludeCourseIds(state, this.model),
     };
   }
 
@@ -213,7 +236,8 @@ export class PlannerWorker {
       g.mandatoryPlaced === this.model.requiredMandatoryCourseIds.length &&
       g.allCategoriesSatisfied &&
       !overHard &&
-      !g.hasIncompleteAnnual
+      !g.hasIncompleteAnnual &&
+      g.missingMustInclude.length === 0
     );
   }
 
@@ -431,11 +455,26 @@ export class PlannerWorker {
         return compareScore(b.fin, a.fin) || compareScore(b.imm, a.imm);
       });
 
+    // Slice 18B — bounded deterministic deviation. This is the ONLY place the
+    // candidate search differs from the legacy single run: at one configured
+    // scored-search step it commits the Nth-ranked advancing action instead of
+    // the 1st. Every skipped action was already legal, already validated and
+    // already ranked by the same scorer, so the resulting plan is a genuine
+    // alternative under the SAME policy, not a degraded one. If fewer than
+    // `rank` advancing actions exist the run simply matches the baseline and the
+    // caller's identity dedup collapses it — no error, no randomness.
+    const skipCount = this.opts.deviation && this.opts.deviation.atStep === this.searchStepIndex
+      ? this.opts.deviation.rank
+      : 0;
+    this.searchStepIndex++;
+    let advancingSeen = 0;
+
     // Act + Validate — accept the best action that advances the reachable outcome
     // (better final than staying) or makes immediate progress; try next on reject.
     for (const x of evaluated) {
       const advances = compareScore(x.fin, curFinal) > 0 || compareScore(x.imm, current) > 0;
       if (!advances) continue;
+      if (advancingSeen++ < skipCount) continue;
       const res = this.applyChosen(x.mut, by, {
         immediateScore: scoreScalar(x.imm),
         estimatedFinalScore: scoreScalar(x.fin),
@@ -585,18 +624,32 @@ export class PlannerWorker {
    * reservation scoring for every plan.
    */
   recoverUnplacedWantedCourses(by: Actor = 'worker'): void {
-    // At most one recovered wanted course per outer pass; re-scan after each so
-    // a freshly-placed chain can enable the next. Bounded by wanted count.
-    for (let guard = 0; guard <= this.model.wantedCourseIds.size; guard++) {
+    // Slice 18A — HARD inclusions are recovered FIRST and are NOT subject to the
+    // strict-improvement gate below. That gate exists to keep a soft preference
+    // from making a plan worse; applied to a `must_include` course it would be a
+    // recovery mechanism that treats a missing hard-wanted course as acceptable,
+    // which product policy forbids outright. Any layout that survives the same
+    // validation is committed. (In practice g2a already improves for a hard
+    // inclusion, so this is belt-and-braces — but the gate must not be the thing
+    // deciding it.)
+    const hardIds = [...(this.model.mustIncludeCourseIds ?? [])];
+    const targets: Array<{ id: string; hard: boolean }> = [
+      ...hardIds.map(id => ({ id, hard: true })),
+      ...[...this.model.wantedCourseIds].filter(id => !hardIds.includes(id)).map(id => ({ id, hard: false })),
+    ];
+    // At most one recovered course per outer pass; re-scan after each so
+    // a freshly-placed chain can enable the next. Bounded by the target count.
+    for (let guard = 0; guard <= targets.length; guard++) {
       let placedOne = false;
-      for (const wantedId of this.model.wantedCourseIds) {
+      for (const { id: wantedId, hard } of targets) {
         const placed = new Set(placedCourseIds(this.state));
         if (placed.has(wantedId) || this.model.completedCourseIds.has(wantedId) || this.isExcluded(wantedId)) continue;
+        if (this.model.currentlyPlannedCourseIds?.has(wantedId)) continue;
         const chain = this.orderedMissingPrereqChain(wantedId, placed);
-        if (!chain) continue; // an excluded/unknown prerequisite — the wanted course is genuinely unplaceable
+        if (!chain) continue; // an excluded/unknown prerequisite — the course is genuinely unplaceable
         const layout = this.layoutBundleMinimizingPeak([...chain, wantedId]);
         if (!layout) continue; // no legal, valid layout of the whole bundle
-        if (compareScore(scorePlan(layout.state, this.model), scorePlan(this.state, this.model)) <= 0) continue;
+        if (!hard && compareScore(scorePlan(layout.state, this.model), scorePlan(this.state, this.model)) <= 0) continue;
         // Commit through the normal validated path (trace + invariants), in
         // dependency order — every intermediate state is legal by construction.
         let committed = true;

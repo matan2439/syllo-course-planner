@@ -41,6 +41,9 @@ import { Badge, Card, EmptyState } from './ui'
 const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
   clarification_required: 'נדרש מידע נוסף לפני החלה',
   validation_failed: 'נמצאה סתירה בנתונים — נדרשת בדיקה לפני החלה',
+  // Slice 18A — a HARD constraint cannot be satisfied at all (a contradiction
+  // between selections, or an impossibility against an authoritative fact).
+  infeasible: 'לא קיימת תוכנית חוקית שעונה על הדרישות שסימנת — לא ניתן להחיל',
   blocked: 'הצעה חסומה — לא ניתן להחיל',
   error: 'אירעה שגיאה פנימית — לא ניתן להחיל',
 }

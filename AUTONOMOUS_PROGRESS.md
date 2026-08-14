@@ -4,7 +4,18 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-08, session on branch `ui/frontend-modernization`
+_Last updated: 2026-08-14 (cont.), session on branch `ui/frontend-modernization`
+(Slice 18A/18B: the wanted/avoided pickers are now HARD `must_include` /
+`must_exclude` constraints enforced by a validation GATE, unsatisfiable requests
+return a typed deterministic `infeasible` outcome instead of a degraded plan,
+`balanced`/`compact` are user policies rather than alternatives, and the candidate
+set now holds multiple genuinely different LEGAL course/period combinations found
+by a bounded deterministic deviation of the SAME stable planner. Build green, API
+139/1790 green, web 12/102 green. **Not merged, not deployed.** The mandatory
+KnowledgeCapability sequence is recorded below and is required before the product
+can be called complete.)_
+
+_Previous entry: 2026-08-08, session on branch `ui/frontend-modernization`
 (protected enrichment LIVE RUN executed after owner unblocked `workflow`
 scope + `OPENAI_API_KEY`: workflow merged to `main` via PR #80, run
 31251292816 performed a genuine `gpt-4o-mini` invocation, artifact
@@ -13,6 +24,167 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-14 (cont.) — HARD wanted/avoided constraints + real multi-combination candidate search (Slice 18A/18B)
+
+**Three binding product decisions were made by the owner this session and are now
+authoritative policy:**
+
+1. `balanced` / `compact` are user PREFERENCES/POLICIES that configure scoring and
+   search — they are **not** the alternatives shown to the user.
+2. Courses selected in the existing **"wanted"** and **"avoided"** pickers are
+   **HARD constraints**, not best-effort preferences.
+3. The final system must generate **multiple meaningfully different course-plan
+   combinations** that all satisfy the same requirements, then rank and explain
+   them using intelligent, source-grounded preferences.
+
+### What shipped
+
+**Baseline first.** The production build was missing after the previous final
+commits — run at HEAD `2e95748` before any code change: **green**. API suite
+green (136 suites / 1730 tests). The one full-UI-suite failure was confirmed to be
+the long-documented jsdom **contention flake**, not a regression: the failing
+suite passes alone, and a different suite fails at a different worker count.
+
+**Slice 18A — correct constraint vocabulary + hard semantics.**
+- `ConstraintModel` gained `mustIncludeCourseIds` (`must_include_course_ids`).
+  `disallowedCourseIds` is `must_exclude_course_ids` (already hard). The SOFT
+  channel `wantedCourseIds` (`prefer_course_ids`, the old `g5` best-effort
+  behavior) is retained for backward compatibility but **the hard pickers no
+  longer feed it** — the two sets are mutually exclusive by construction, so a
+  hard selection can never also be scored as a tradeable preference.
+- "Satisfied" is defined once, in `planner_goals.ts`: completed (academic
+  history, never re-scheduled), currently taking, or fully placed.
+- **Enforcement is a retention GATE, not a score term.** `validateCandidate` +
+  `assessCompleteness` reject any plan with a missing hard inclusion regardless of
+  score (`MUST_INCLUDE_ERROR_PREFIX`), `generate-plan`'s new `mustIncludeGate`
+  turns it into a blocking error on BOTH the default and flagged paths, and
+  `PlannerWorker.isGoalReached` no longer reports "goal reached" for such a plan.
+  `g2a` also credits hard inclusions — but only as a **search gradient**; the gate
+  is what makes them non-tradeable.
+- Hard inclusions are seeded into `requiredButUnplacedCourseIds` /
+  `requiredCourseSemesterBoundaries`, which is what makes `enumerateActions`
+  group 1b propose them **and their prerequisite chains** unconditionally — the
+  exact case the old soft path could never recover from once degree hours were
+  already met. `recoverUnplacedWantedCourses` now recovers hard inclusions FIRST
+  and **exempts them from the strict-improvement gate**: that gate was, for a
+  hard constraint, precisely "a recovery mechanism that treats a missing
+  hard-wanted course as acceptable".
+- **New: `api/ai/hard_constraints.ts`** — deterministic pre-planning analysis
+  returning a typed outcome (`feasible` / `infeasible`, `applyEligible`) with
+  stable reason codes, affected course ids, conflicting constraints/facts, a
+  concise Hebrew explanation, safe user-resolvable actions, and an
+  **authoritative / non-answerable** flag. Codes:
+  `wanted_and_avoided_conflict`, `wanted_course_not_in_catalog` (covers both
+  catalog membership and catalog-integrity gaps),
+  `wanted_course_unavailable_in_horizon`, `wanted_prerequisite_impossible`,
+  `avoided_mandatory_conflict`, `wanted_exceeds_workload_cap`,
+  `completed_status_contradiction`. The student is **never** asked to adjudicate
+  an authoritative catalog fact. Deliberately NOT a conflict: an already-completed
+  hard-excluded course (exclusion governs future scheduling; history stays truthful).
+- `AcademicDecisionOutcome` gained **`infeasible`**, ranked above `blocked` and
+  never apply-eligible; surfaced as `academicDecision.hardConstraints`.
+- **Flag-off contract (documented + tested):** `AI_HARD_WANTED_CONSTRAINTS=false`
+  routes the wanted picker back to the soft `g5` channel and produces no
+  `mustIncludeCourseIds`; every new path is gated on that set being non-empty, so
+  behavior is byte-identical to pre-Slice-18.
+
+**Slice 18B — policy ≠ candidate identity, and real multi-combination search.**
+- `candidate_set.ts` was rewritten. `generateCandidateSet` now takes **one
+  resolved policy** and plans **every** candidate under it, with the same hard
+  constraints, catalog and rules. After a confirmed `balanced`, no `compact` plan
+  is retained (and vice versa).
+- The balanced-vs-compact dual run survives ONLY as `probeBalanceImpact`, an
+  internal elicitation probe that retains **no candidates**; `shouldAskBalanceQuestion`
+  reads it. Answering still never auto-generates.
+- **Search mechanism, chosen on repository evidence:** the single winner is chosen
+  in exactly one place — `PlannerWorker.step()` commits the FIRST advancing action
+  among already-legal, already-validated, already-ranked candidates. So the
+  smallest mechanism that retains more than the greedy winner is a **bounded
+  deterministic deviation**: `WorkerOptions.deviation = { atStep, rank }` commits
+  the rank-th advancing action at one step, then continues greedily. **No second
+  planner**, no randomness, no paid provider, bounded by `maxRuns` (default 8) and
+  `maxCandidates` (default 3). (`planner_search_beam.ts` was considered and
+  rejected: it drives the separate `PlannerAgent` path, so retaining its beam
+  survivors would have meant switching production planning engines.)
+- **Retention is the authoritative validator** (`validateCandidate`: completion,
+  mandatory, categories, prerequisites, load caps, `must_exclude`, `must_include`)
+  — a degraded plan is never an alternative. Zero valid candidates ⇒
+  `outcome:'infeasible'`, `applyEligible:false`, never a fabricated plan.
+- **Meaningful-distance rule (documented in-file):** two candidates differ iff
+  their **normalized academic identity** — the sorted set of (course_id → period)
+  pairs — differs. Invariant to object/array order, ids, explanation text and
+  equivalent section ordering; and because one policy governs the whole set,
+  balanced-vs-compact can no longer appear as a difference at all.
+- **Ranking:** hard constraints/legality are the retention gate; retained
+  candidates are ordered by the existing lexicographic `scorePlan` vector with the
+  normalized identity as a stable final tie-break. Primary = rank 0.
+  **No global-optimality claim is made** — this is a bounded deterministic search.
+- **UI scope respected:** no candidate-comparison UI. The handler exposes only a
+  **lean typed summary** (id, rank, normalized identity, selected flag, policy,
+  profile version, provenance, course ids, factual differences, score vector) —
+  no duplicate full plans. The UI still shows only the selected primary proposal;
+  `infeasible` got a Hebrew label and reuses the existing blocking-errors
+  disclosure.
+
+### Verification (all run, all green)
+
+- Production build at HEAD before changes, and again after: **green** both times.
+- API suite: **139 suites / 1790 tests pass** (was 136/1730).
+- `web/` suite: 12 suites / 102 tests pass. `tsc --noEmit` clean for both roots.
+- New suites: `hard_wanted_constraints` (27), `candidate_multi_combination` (20),
+  `generate_plan_hard_constraints` (11, through the REAL handler).
+- Two pre-existing tests were updated because the NEW POLICY changes their
+  expected behavior, and both changes are the policy working as intended:
+  excluding a mandatory course now reports the more specific `infeasible` rather
+  than the generic `blocked`; and a hard-wanted course with no sound catalog
+  record now **blocks instead of being silently dropped**.
+- `tests/ui/course_details_panel.test.js` contains a working-tree scope guard
+  (`git diff HEAD -- api` must be empty) — it trips on any uncommitted backend
+  work and clears once committed. Not a behavioral failure.
+
+### Not done in this session (deliberately, per instruction)
+
+No merge, no deploy, no internet access, no syllabus ingestion.
+
+## KnowledgeCapability continuation contract (MANDATORY next sequence)
+
+**The product is NOT complete until every item below is implemented and proven.**
+Slice 18B deliberately ranks candidates on the objectives that exist today
+(completion, requirements, legality, the confirmed distribution policy, existing
+soft interests, difficulty). Product decision #3 requires ranking and explanation
+grounded in **real, sourced course knowledge**, which does not exist yet. The
+ranking stack already has a reserved slot for it, so these capabilities plug in
+without another refactor. Implement in this order:
+
+1. **Authoritative source registry and evidence model** — which sources are
+   authoritative for which facts, with a typed evidence record (claim, source,
+   retrieval time, confidence, provenance chain).
+2. **Syllabus/document acquisition from official sources** — fetch from official
+   TAU endpoints only; respect robots/ToS; no scraping of unofficial mirrors.
+3. **Version / year / program matching** — bind each acquired document to the
+   exact program version and catalog year it describes; never apply a document to
+   a program version it was not published for.
+4. **Structured extraction** — topics, assessment structure, project/lab content,
+   workload signals, and skills, as typed records with per-field confidence.
+5. **Conflict and freshness handling** — detect contradictions between sources,
+   detect staleness, and surface both rather than silently choosing a winner
+   (reuse the existing authoritative / non-answerable distinction).
+6. **Deterministic cached course-knowledge records** — versioned, content-addressed,
+   reproducible; the planner must never depend on a live fetch at request time.
+7. **Map knowledge into explicit planner objectives** — each objective typed,
+   separately toggleable, and slotted into the documented ranking order.
+8. **Evidence that each objective changes ranking** — a test per objective proving
+   it reorders candidates on a real fixture. An objective that cannot be shown to
+   change ranking must not ship.
+9. **Top-K candidate comparison using those grounded objectives** — the candidate
+   set from Slice 18B, ranked and compared on real knowledge rather than
+   structural facts alone.
+10. **Explanation with source attribution** — every claim in a candidate's
+    explanation traceable to an evidence record from step 1.
+
+Only after step 10 does product decision #3 ("rank and explain them using
+intelligent, source-grounded preferences") hold end to end.
 
 ## Session 2026-08-14 — completed-course knowledge + native completion workflow (flagged Apply UNBLOCKED)
 

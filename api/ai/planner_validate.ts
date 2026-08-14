@@ -10,7 +10,7 @@
 import { validatePlanProposal, type PlanValidationContext, type PlanProposal } from './plan_validation';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { type ConstraintModel, type PlanState, placedCourseIds } from './planner_types';
-import { assessCompleteness } from './planner_goals';
+import { assessCompleteness, missingMustIncludeCourseIds } from './planner_goals';
 // Type-only — erased at compile time, so this does NOT create a runtime
 // circular import back from planner_policy.ts (which imports validatePlanState
 // and buildValidationContext from this file for TauPolicyProvider.validate).
@@ -101,6 +101,13 @@ export interface CandidateReport {
   unsatisfiedCategories: string[];
   disallowedPlaced: string[];
   overCapSemesters: string[];
+  /**
+   * Slice 18A — hard-included (`must_include`) course ids the plan does not
+   * satisfy. Non-empty ⇒ `valid` is false, unconditionally: a hard user
+   * inclusion is a retention gate, never a score term that a better-looking
+   * plan can trade away.
+   */
+  missingMustInclude: string[];
 }
 
 /**
@@ -188,6 +195,16 @@ export const MISSING_MANDATORY_ERROR_PREFIX = 'קורס חובה לא שובץ �
 export const DEGREE_HOURS_SHORTFALL_ERROR_PREFIX = 'פער שעות תואר שאינו ניתן להשלמה מתוך הקטלוג הזמין:';
 
 /**
+ * Slice 18A — stable prefix for a HARD user inclusion (`must_include`) the plan
+ * does not satisfy. Same sharing reason as the other *_ERROR_PREFIX constants
+ * above: academic_decision_runtime.ts's buildAcademicDecision must be able to
+ * name this exact cause rather than falling through to generic overload
+ * guidance. Product policy is explicit that a missing hard-wanted course can
+ * never be silently accepted, so this is a blocking error, never a warning.
+ */
+export const MUST_INCLUDE_ERROR_PREFIX = 'קורס שביקשת במפורש לא שובץ בתוכנית:';
+
+/**
  * Which of the given placed course ids are hard-excluded by the model (either
  * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
  * Shared by validateCandidate below and by generate-plan.ts's post-planning
@@ -233,14 +250,23 @@ export function validateCandidate(
   }
   for (const id of disallowedPlaced) errors.push(`${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`);
 
+  // Slice 18A — the HARD-inclusion retention gate. Computed from the model
+  // directly (not via the injected policy) so it holds for every caller,
+  // including a custom PolicyProvider: a proposal missing a must_include course
+  // is invalid regardless of how well it scores.
+  const missingMustInclude = missingMustIncludeCourseIds(state, model);
+  for (const id of missingMustInclude) {
+    errors.push(`${MUST_INCLUDE_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`);
+  }
+
   const legal = legality.valid;
   const complete = degreeMet && missingMandatory.length === 0 && unsatisfiedCategories.length === 0;
-  const valid = legal && complete && disallowedPlaced.length === 0;
+  const valid = legal && complete && disallowedPlaced.length === 0 && missingMustInclude.length === 0;
 
   return {
     valid, legal, complete,
     errors, warnings: legality.warnings,
-    constraintsChecked: ['degree_hours', 'mandatory', 'category', 'prerequisites', 'semester_load', 'offering', 'disallowed', 'duplicates'],
-    degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, disallowedPlaced, overCapSemesters,
+    constraintsChecked: ['degree_hours', 'mandatory', 'category', 'prerequisites', 'semester_load', 'offering', 'disallowed', 'must_include', 'duplicates'],
+    degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, disallowedPlaced, overCapSemesters, missingMustInclude,
   };
 }

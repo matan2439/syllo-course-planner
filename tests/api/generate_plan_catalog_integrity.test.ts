@@ -81,11 +81,17 @@ async function runWanted(program_id: string, wanted: string[]) {
   return res;
 }
 
-test('a WANTED course with no authoritative hours is never placed into an applicable proposal', async () => {
+// Slice 18A changes the SECOND half of this expectation, not the first. The
+// hours-less course is still never placed (catalog integrity is untouched), but
+// the wanted picker is now a HARD `must_include` constraint, so a request the
+// planner cannot honor may no longer come back as a clean, applyable plan with
+// the requested course quietly absent. It blocks, and says exactly why.
+test('a WANTED course with no authoritative hours is never placed, and its absence is disclosed', async () => {
   const res = await runWanted('test_program_hours_integrity_2027', ['NOHOURS']);
   expect(res.statusCode).toBe(200);
   expect(placedIds(res._body)).not.toContain('NOHOURS'); // no hours-less card, even though wanted
-  expect(res._body.blocked).toBe(false);                 // MAND+CORE already complete the 185h degree
+  expect(res._body.blocked).toBe(true);                  // never a silent drop of a hard request
+  expect(res._body.errors.some((e: string) => e.includes('קורס שביקשת במפורש לא שובץ בתוכנית'))).toBe(true);
   // every placed course carries an authoritative (non-partial) semester total
   for (const s of res._body.semesters) {
     for (const id of s.course_ids) expect(id).not.toBe('NOHOURS');

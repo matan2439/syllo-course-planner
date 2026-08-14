@@ -76,10 +76,33 @@ describe('generate-plan — live candidate orchestration (flag on)', () => {
     const c = res._body.academicDecision.candidates;
     expect(c).toBeDefined();
     expect(typeof c.selectedCandidateId).toBe('string');
-    expect(c.hasMeaningfulAlternatives).toBe(true); // balanced [8,8] vs compact [16,0]
-    expect(c.converged).toBe(false);
-    expect(c.validCandidateCount).toBe(2);
+    expect(c.outcome).toBe('proposal');
+    expect(c.validCandidateCount).toBeGreaterThanOrEqual(1);
     expect(c.selectionReason).toBe('legacy_default'); // no confirmed preference
+    // Slice 18B — every candidate carries the ONE resolved policy; balanced and
+    // compact are never retained side by side as competing user alternatives.
+    expect(c.selectedPolicy).toBe('neutral');
+    expect(new Set(c.summaries.map((s: any) => s.policy))).toEqual(new Set(['neutral']));
+  });
+
+  test('the lean candidate summary is typed and marks exactly one selected primary', async () => {
+    const res = await run(body({ use_academic_decision_agent: true }));
+    const c = res._body.academicDecision.candidates;
+    expect(Array.isArray(c.summaries)).toBe(true);
+    expect(c.summaries.filter((s: any) => s.selected)).toHaveLength(1);
+    const primary = c.summaries.find((s: any) => s.selected);
+    expect(primary.rank).toBe(0);
+    expect(primary.id).toBe(c.selectedCandidateId);
+    expect(primary.normalizedIdentity).toBe(c.selectedNormalizedIdentity);
+    expect(Array.isArray(primary.courseIds)).toBe(true);
+    // The bounded search discloses the budget it actually ran under.
+    expect(c.searchBudget.runsExecuted).toBeLessThanOrEqual(c.searchBudget.maxRuns);
+  });
+
+  test('a satisfiable request reports no hard-constraint reasons and stays applyable', async () => {
+    const res = await run(body({ use_academic_decision_agent: true }));
+    expect(res._body.academicDecision.hardConstraints.outcome).toBe('feasible');
+    expect(res._body.academicDecision.hardConstraints.reasons).toEqual([]);
   });
 
   test('provenance invariant: the proposal identity equals the selected candidate id', async () => {
@@ -111,10 +134,23 @@ describe('generate-plan — live candidate orchestration (flag on)', () => {
     expect(loads(res._body).sort((a, b) => b - a)).toEqual([8, 8]); // distributed
   });
 
-  test('difference summary + profile version are accurate on the flagged response', async () => {
+  test('profile version + fixed-policy provenance are accurate on the flagged response', async () => {
     const res = await run(body({ use_academic_decision_agent: true, preference_profile: profile([balancedPref], 5) }));
     const c = res._body.academicDecision.candidates;
     expect(c.profileVersion).toBe(5);
-    expect(c.differenceSummary.find((f: any) => f.kind === 'active_periods')).toMatchObject({ balanced: 2, compact: 1 });
+    expect(c.selectedPolicy).toBe('balanced');
+    expect(c.summaries.every((s: any) => s.policy === 'balanced' && s.profileVersion === 5)).toBe(true);
+    // A confirmed policy is never shown alongside its opposite.
+    expect(c.summaries.some((s: any) => s.policy === 'compact')).toBe(false);
+  });
+
+  test('any additional candidate differs by REAL course/period facts, under the same policy', async () => {
+    const res = await run(body({ use_academic_decision_agent: true, preference_profile: profile([balancedPref], 5) }));
+    const c = res._body.academicDecision.candidates;
+    for (const s of c.summaries.filter((x: any) => !x.selected)) {
+      expect(s.differences.length).toBeGreaterThan(0);
+      expect(s.normalizedIdentity).not.toBe(c.selectedNormalizedIdentity);
+      expect(s.policy).toBe('balanced');
+    }
   });
 });

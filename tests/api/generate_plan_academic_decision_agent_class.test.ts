@@ -210,13 +210,22 @@ describe('generate-plan — real AcademicDecisionAgent class integration', () =>
     expect(answerable.inputKey).toBe('completedCourseIds');
   });
 
-  test('outcome=blocked + applyEligible=false when a mandatory course cannot be placed (excluded)', async () => {
+  // Slice 18A: excluding a MANDATORY course is now recognised as a HARD
+  // CONSTRAINT CONTRADICTION before planning, so it reports the more specific
+  // 'infeasible' outcome (no legal plan satisfying the request exists) rather
+  // than the generic 'blocked' (the produced plan failed a gate). Both are
+  // non-applyable; the response still carries the same blocking error.
+  test('outcome=infeasible + applyEligible=false when a mandatory course cannot be placed (excluded)', async () => {
     const res = await run(sufficientBody({
       use_academic_decision_agent: true,
       preferences: { disallowed_course_ids: ['MAND'] },
     }));
     expect(res._body.blocked).toBe(true);
-    expect(res._body.academicDecision.outcome).toBe('blocked');
+    expect(res._body.academicDecision.outcome).toBe('infeasible');
     expect(res._body.academicDecision.applyEligible).toBe(false);
+    const reason = res._body.academicDecision.hardConstraints.reasons
+      .find((r: any) => r.code === 'avoided_mandatory_conflict');
+    expect(reason.courseIds).toContain('MAND');
+    expect(reason.authoritative).toBe(true); // the course's mandatory status is an authoritative fact
   });
 });

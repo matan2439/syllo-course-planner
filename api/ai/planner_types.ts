@@ -59,11 +59,31 @@ export interface ConstraintModel {
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp of that confirmation. Required alongside overloadAccepted to actually bypass hardCap. */
   overloadConfirmedAt?: number | null;
-  /** Hard-excluded course_ids (explicit user exclusion / disallowed). */
+  /**
+   * HARD exclusion (`must_exclude_course_ids`) — explicit user exclusion /
+   * disallowed. What the user-facing "avoided" picker feeds. Never overridable
+   * by completion, distribution, interest, difficulty, or candidate diversity.
+   */
   disallowedCourseIds: Set<string>;
   /** Pinned course_ids that must stay in their current semester. */
   pinnedCourseIds: Set<string>;
-  /** course_ids the user explicitly wants. */
+  /**
+   * Slice 18A — HARD inclusion (`must_include_course_ids`). Every applicable id
+   * here MUST be satisfied (already completed, currently taking, or actually
+   * scheduled) for a plan to be valid; `validateCandidate` rejects a proposal
+   * missing one, so no score can trade it away. This is what the user-facing
+   * "wanted" picker feeds under current product policy. Optional purely so
+   * hand-built fixtures predating it don't have to supply it (same precedent as
+   * `currentlyPlannedCourseIds`); `buildConstraintModel` always sets it.
+   */
+  mustIncludeCourseIds?: Set<string>;
+  /**
+   * SOFT course preferences (`prefer_course_ids`) — best-effort only, scored at
+   * the g5 slot and freely tradeable below legality/completion. Retained for
+   * backward compatibility and internal use; under current product policy the
+   * hard wanted/avoided pickers do NOT feed this set (see
+   * `mustIncludeCourseIds` above and `disallowedCourseIds` below).
+   */
   wantedCourseIds: Set<string>;
   /**
    * Slice 17A — requested semester-distribution policy. Undefined = 'neutral'

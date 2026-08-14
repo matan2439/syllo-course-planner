@@ -1,21 +1,88 @@
 /**
- * candidate_set.ts — Slice 17B: retain genuinely distinct, validated, deterministic
- * alternatives produced by the SAME stable planning engine under different
- * semester-distribution policies. No Simulation/Decision/Persistence capability,
- * no comparison UI, no second planner, no re-plan from emptyState (the caller
- * supplies the same starting state + model builder for every policy).
+ * candidate_set.ts — Slice 18B: retain multiple genuinely distinct, validated,
+ * deterministic COURSE/PERIOD COMBINATIONS produced by the SAME stable planner
+ * under ONE fixed user policy.
  *
- * Pipeline per policy: build the same model with only distributionPolicy differing
- * → run the SAME PlannerWorker → validate with the EXISTING validator
- * (validatePlanState) → normalize academic identity (course→period, order-invariant)
- * → deduplicate → summarize real differences → deterministic id from the normalized
- * identity (never array position / order / randomness / timestamps).
+ * Product policy this file implements (binding):
+ *   1. `balanced` / `compact` / `neutral` CONFIGURE scoring and search — they are
+ *      never the alternatives shown to the user. One confirmed profile resolves
+ *      to one fixed planning policy, and every candidate for a request uses that
+ *      same policy, the same hard constraints, the same catalog and the same
+ *      academic rules.
+ *   2. Candidate diversity therefore comes from different LEGAL course/period
+ *      combinations inside that one fixed problem — never from swapping the
+ *      user's stated policy.
+ *   3. The balanced-vs-compact dual run survives ONLY as an internal ELICITATION
+ *      probe (`probeBalanceImpact`), used to decide whether asking the
+ *      `semester_balance` question could still change the plan. It retains no
+ *      candidates and is never a user-facing alternative set.
+ *
+ * ── Search mechanism (why this one) ──────────────────────────────────────────
+ * The repository already has exactly one stable planner (`PlannerWorker`, the
+ * Observe→Reason→Act→Validate loop) and exactly one place where a single winner
+ * is chosen: `step()` commits the FIRST action, among the already-legal,
+ * already-validated, already-ranked candidates, that advances the plan. Every
+ * other action at that step was legal and merely lost the ranking.
+ *
+ * So the smallest mechanism that can retain more than the single greedy winner
+ * is a BOUNDED DETERMINISTIC DEVIATION: re-run the same planner with
+ * `deviation: { atStep, rank }`, which commits the rank-th advancing action at
+ * exactly one step and then continues greedily. No second planner, no random
+ * variation, no paid provider, no re-plan from a different starting state, and
+ * the run count is bounded by `maxRuns` up front.
+ *
+ * (A beam-search strategy also exists — `planner_search_beam.ts` — but it drives
+ * the separate `PlannerAgent` path, not the production `PlannerWorker` used by
+ * `generate-plan.ts`. Retaining its beam survivors would have meant switching
+ * production planning engines, which is precisely what "do not create a second
+ * planner" rules out.)
+ *
+ * ── Meaningful-distance rule (documented) ────────────────────────────────────
+ * Two candidates are meaningfully different IFF their NORMALIZED ACADEMIC
+ * IDENTITY differs. That identity is the set of (course_id → period) pairs,
+ * sorted by course id — so it is invariant to object key order, array order,
+ * equivalent section ordering, candidate ids, explanation text, and generation
+ * order. It captures exactly the differences product policy calls meaningful
+ * (elective/content composition, semester assignment, and thus workload
+ * distribution). Because every candidate shares ONE resolved policy, "balanced
+ * vs compact" can no longer appear as a difference at all.
+ *
+ * ── Ranking ──────────────────────────────────────────────────────────────────
+ * Hard constraints and legality are a RETENTION GATE, not score terms: a plan is
+ * only ever admitted to the set after `validateCandidate` (degree completion,
+ * mandatory courses, categories, prerequisites, load caps, `must_exclude`, and
+ * `must_include`) passes. Retained candidates are then ordered by the existing
+ * lexicographic `scorePlan` vector — degree completion, requirements, legality,
+ * the confirmed distribution preference, soft interests, difficulty — with the
+ * normalized identity as a stable final tie-break. The primary recommendation is
+ * simply rank 0. No claim of global optimality is made or implied: this is a
+ * bounded deterministic search, not a proof.
  */
 import { PlannerWorker } from './planner_worker';
-import { scorePlan } from './planner_goals';
-import { validatePlanState } from './planner_validate';
+import { scorePlan, compareScore } from './planner_goals';
+import { validateCandidate } from './planner_validate';
 import { placedCourseIds, type ConstraintModel, type PlanState, type DistributionPolicy } from './planner_types';
 
+/** Production worker configuration — identical to generate-plan.ts's own. */
+const WORKER_OPTS = { topN: 6, rolloutSteps: 80 } as const;
+
+/** Bounded search defaults. Deliberately small: candidate count, not runtime, is the product need. */
+export const DEFAULT_MAX_CANDIDATES = 3;
+export const DEFAULT_MAX_RUNS = 8;
+
+// ── difference facts ─────────────────────────────────────────────────────────
+
+/** A factual, plan-derived difference between a candidate and the primary. */
+export interface CandidateDifference {
+  kind: 'course_added' | 'course_removed' | 'course_moved' | 'peak_load' | 'active_periods';
+  courseId?: string;
+  /** Value in the primary candidate. */
+  primary?: number | string;
+  /** Value in this candidate. */
+  candidate?: number | string;
+}
+
+/** Legacy balanced-vs-compact fact — used ONLY by the elicitation probe. */
 export interface DiffFact {
   kind: 'peak_load' | 'spread' | 'active_periods' | 'course_moved';
   balanced?: number | string;
@@ -23,42 +90,50 @@ export interface DiffFact {
   courseId?: string;
 }
 
+// ── candidate ────────────────────────────────────────────────────────────────
+
 export interface PlanCandidate {
-  /** Deterministic id derived from the normalized academic identity (+ namespace). */
+  /** Deterministic id derived from the normalized academic identity (never array position). */
   id: string;
+  /** The ONE resolved user policy — identical on every candidate in a set. */
   policy: DistributionPolicy;
   state: PlanState;
+  /** Always true: only candidates passing the authoritative validator are retained. */
   valid: boolean;
   validationErrors: string[];
   scoreVector: number[];
   /** Canonical course→period identity (sorted, order-invariant). */
   normalizedIdentity: string;
+  /** 0-based position after ranking. 0 = the primary recommendation. */
+  rank: number;
+  /** How this combination was reached — deterministic provenance, not a label. */
+  provenance: string;
+  /** Factual differences against the primary. Empty on the primary itself. */
+  differences: CandidateDifference[];
   profileVersion: number;
-  /** The stable planner's own Hebrew explanation for this plan (worker.explain().summary_he). */
+  /** The stable planner's own Hebrew explanation for this plan. */
   rationaleHe: string;
-  /** Populated on the surviving candidate when other policies converged to it. */
-  convergedPolicies?: DistributionPolicy[];
 }
 
 export interface CandidateSet {
+  /** The single resolved policy every candidate was planned under. */
+  policy: DistributionPolicy;
+  /** Ranked, deduplicated, fully validated. Empty ⇒ no legal solution was found. */
   candidates: PlanCandidate[];
-  /** True when every attempted policy normalized to the same plan (no meaningful alternative). */
-  converged: boolean;
-  /** Factual differences between the distinct candidates (empty when converged). */
-  differenceSummary: DiffFact[];
-  /**
-   * Canonical identity of the LEGACY stable-planner result (the flag-off /
-   * 'neutral' run) — the reference neutral selection matches, independent of
-   * candidate array/generation order.
-   */
+  outcome: 'proposal' | 'infeasible';
+  /** False whenever no candidate survived the authoritative validator. */
+  applyEligible: boolean;
+  /** Canonical identity of the plain greedy (no-deviation) run under this policy. */
   legacyIdentity: string;
-  /** The raw legacy/neutral PlanState — proposal fallback when no candidate is valid. */
+  /** The raw greedy PlanState — the proposal fallback when nothing validates. */
   legacyState: PlanState;
+  /** What the bounded search was actually allowed to do. */
+  searchBudget: { maxCandidates: number; maxRuns: number; runsExecuted: number };
 }
 
 export type SelectionReason = 'confirmed_balanced' | 'confirmed_compact' | 'legacy_default';
 
-// ── canonical identity ────────────────────────────────────────────────────────
+// ── canonical identity ───────────────────────────────────────────────────────
 
 /** Course→period map, sorted by course id — invariant to insertion/display order. */
 function normalizeIdentity(state: PlanState): string {
@@ -92,113 +167,214 @@ function spreadOf(ls: number[]): number {
   return active.length > 1 ? Math.max(...active) - Math.min(...active) : 0;
 }
 
-// ── generation ────────────────────────────────────────────────────────────────
-
-const DEFAULT_POLICIES: DistributionPolicy[] = ['balanced', 'compact'];
-
-export function generateCandidateSet(input: {
-  /** Builds the SAME model for every policy — only distributionPolicy differs. */
-  buildModel: (policy: DistributionPolicy) => ConstraintModel;
-  initialState: PlanState;
-  profileVersion: number;
-  policies?: DistributionPolicy[];
-  pinnedHome?: Record<string, string>;
-}): CandidateSet {
-  const policies = input.policies ?? DEFAULT_POLICIES;
-
-  const runPolicy = (policy: DistributionPolicy) => {
-    const model = input.buildModel(policy);
-    const worker = new PlannerWorker(model, structuredClone(input.initialState), { topN: 6, rolloutSteps: 80 });
-    worker.run(500, 'greedy');
-    const state = worker.getPlan();
-    return { policy, model, state, validation: validatePlanState(state, model, input.pinnedHome ?? {}), identity: normalizeIdentity(state), scoreVector: scorePlan(state, model), rationaleHe: worker.explain().summary_he };
-  };
-
-  // Canonical LEGACY reference — the flag-off / 'neutral' stable-planner result.
-  // Neutral selection matches THIS identity, never candidate/generation order.
-  const legacyRun = runPolicy('neutral');
-  const legacyIdentity = legacyRun.identity;
-
-  // Run the SAME engine per requested policy (deterministic worker config).
-  const raw = policies.map(runPolicy);
-
-  // Retain only candidates that pass the EXISTING authoritative validator.
-  const valid = raw.filter((r) => r.validation.valid);
-
-  // Deduplicate by normalized identity; record convergence.
-  const byIdentity = new Map<string, PlanCandidate>();
-  for (const r of valid) {
-    const existing = byIdentity.get(r.identity);
-    if (existing) {
-      existing.convergedPolicies = [...(existing.convergedPolicies ?? [existing.policy]), r.policy];
-      continue;
-    }
-    byIdentity.set(r.identity, {
-      id: hashId(r.identity),
-      policy: r.policy,
-      state: r.state,
-      valid: true,
-      validationErrors: r.validation.errors,
-      scoreVector: r.scoreVector,
-      normalizedIdentity: r.identity,
-      profileVersion: input.profileVersion,
-      rationaleHe: r.rationaleHe,
-    });
-  }
-  const candidates = [...byIdentity.values()];
-  const converged = candidates.length <= 1 && valid.length > 1;
-
-  // Difference summary — only when two distinct candidates exist.
-  let differenceSummary: DiffFact[] = [];
-  if (candidates.length === 2) {
-    const bal = valid.find((r) => r.policy === 'balanced');
-    const com = valid.find((r) => r.policy === 'compact');
-    if (bal && com) {
-      const lb = loads(bal.state, bal.model);
-      const lc = loads(com.state, com.model);
-      const facts: DiffFact[] = [
-        { kind: 'peak_load', balanced: peak(lb), compact: peak(lc) },
-        { kind: 'spread', balanced: spreadOf(lb), compact: spreadOf(lc) },
-        { kind: 'active_periods', balanced: activePeriods(lb), compact: activePeriods(lc) },
-      ];
-      differenceSummary = facts.filter((f) => f.balanced !== f.compact);
-    }
-  }
-
-  return { candidates, converged, differenceSummary, legacyIdentity, legacyState: legacyRun.state };
+/** Period of each placed course — the comparison basis for `course_moved`. */
+function periodByCourse(state: PlanState): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [period, ids] of Object.entries(state.semesters)) for (const id of ids) out.set(id, period);
+  return out;
 }
 
 /**
- * Deterministic selection. A confirmed balanced/compact preference selects the
- * matching validated candidate. Neutral/indifferent (no confirmed distribution
- * preference) selects the candidate whose normalized plan equals the LEGACY
- * stable-planner result — matched by identity, NOT array/generation order — so
- * it can never silently mean "balanced-first". Never assumes an unconfirmed policy.
+ * Factual differences of `candidate` against `primary`: which courses were
+ * swapped in/out, which moved period, and the resulting load shape. Derived
+ * entirely from the two plan states, so a summary can never describe a
+ * difference the plans do not actually have.
  */
-export function selectCandidate(set: CandidateSet, preference: DistributionPolicy): PlanCandidate | undefined {
-  if (set.candidates.length === 0) return undefined;
-  if (preference === 'balanced' || preference === 'compact') {
-    return set.candidates.find((c) => c.policy === preference || c.convergedPolicies?.includes(preference)) ?? set.candidates[0];
+function describeDifferences(primary: PlanState, candidate: PlanState, model: ConstraintModel): CandidateDifference[] {
+  const a = periodByCourse(primary);
+  const b = periodByCourse(candidate);
+  const out: CandidateDifference[] = [];
+
+  for (const id of [...b.keys()].sort()) {
+    if (!a.has(id)) out.push({ kind: 'course_added', courseId: id, candidate: b.get(id) });
+    else if (a.get(id) !== b.get(id)) out.push({ kind: 'course_moved', courseId: id, primary: a.get(id), candidate: b.get(id) });
   }
-  // neutral / indifferent → the canonical legacy result (order-independent).
-  return set.candidates.find((c) => c.normalizedIdentity === set.legacyIdentity) ?? set.candidates[0];
+  for (const id of [...a.keys()].sort()) {
+    if (!b.has(id)) out.push({ kind: 'course_removed', courseId: id, primary: a.get(id) });
+  }
+
+  const la = loads(primary, model);
+  const lb = loads(candidate, model);
+  if (peak(la) !== peak(lb)) out.push({ kind: 'peak_load', primary: peak(la), candidate: peak(lb) });
+  if (activePeriods(la) !== activePeriods(lb)) {
+    out.push({ kind: 'active_periods', primary: activePeriods(la), candidate: activePeriods(lb) });
+  }
+  return out;
 }
 
-/** Truthful selection reason — a confirmed policy, or the legacy/default (never preference-derived for neutral). */
-export function selectionReason(_set: CandidateSet, preference: DistributionPolicy): SelectionReason {
-  if (preference === 'balanced') return 'confirmed_balanced';
-  if (preference === 'compact') return 'confirmed_compact';
+// ── generation ───────────────────────────────────────────────────────────────
+
+export interface GenerateCandidateSetInput {
+  /**
+   * Builds the model for THIS request. Called once per run and must be
+   * deterministic — every run must see the same catalog, academic rules, hard
+   * constraints, workload limits and distribution policy.
+   */
+  buildModel: (policy: DistributionPolicy) => ConstraintModel;
+  /** The single resolved user policy. */
+  policy: DistributionPolicy;
+  initialState: PlanState;
+  profileVersion: number;
+  pinnedHome?: Record<string, string>;
+  /** How many distinct combinations to retain. Default DEFAULT_MAX_CANDIDATES. */
+  maxCandidates?: number;
+  /** Hard bound on planner runs (runtime guard). Default DEFAULT_MAX_RUNS. */
+  maxRuns?: number;
+}
+
+export function generateCandidateSet(input: GenerateCandidateSetInput): CandidateSet {
+  const maxCandidates = Math.max(1, input.maxCandidates ?? DEFAULT_MAX_CANDIDATES);
+  const maxRuns = Math.max(1, input.maxRuns ?? DEFAULT_MAX_RUNS);
+  const pinnedHome = input.pinnedHome ?? {};
+
+  const run = (deviation?: { atStep: number; rank: number }) => {
+    const model = input.buildModel(input.policy);
+    const worker = new PlannerWorker(model, structuredClone(input.initialState), {
+      ...WORKER_OPTS,
+      ...(deviation ? { deviation } : {}),
+    });
+    worker.run(500, 'greedy');
+    const state = worker.getPlan();
+    return {
+      model,
+      state,
+      // The AUTHORITATIVE gate: completion + legality + mandatory + categories +
+      // must_exclude + must_include. A candidate that fails is never retained —
+      // a degraded plan is not an alternative.
+      report: validateCandidate(state, model, pinnedHome),
+      identity: normalizeIdentity(state),
+      scoreVector: scorePlan(state, model),
+      rationaleHe: worker.explain().summary_he,
+      provenance: deviation ? `deviation:${deviation.atStep}:${deviation.rank}` : 'greedy_baseline',
+    };
+  };
+
+  // 1. The plain greedy run under the resolved policy — the legacy single-plan
+  //    result, and the proposal fallback if nothing validates.
+  const baseline = run();
+  let runsExecuted = 1;
+
+  type Raw = ReturnType<typeof run>;
+  const byIdentity = new Map<string, Raw>();
+  if (baseline.report.valid) byIdentity.set(baseline.identity, baseline);
+
+  // 2. Bounded deterministic deviations. Deviating EARLY changes which course
+  //    enters the plan first and so reshapes the whole combination; deviating at
+  //    increasing depths reaches progressively more of the space. Fixed order ⇒
+  //    identical candidates, ids and ranking on every run.
+  for (let atStep = 0; runsExecuted < maxRuns && byIdentity.size < maxCandidates; atStep++) {
+    const r = run({ atStep, rank: 1 });
+    runsExecuted++;
+    if (r.report.valid && !byIdentity.has(r.identity)) byIdentity.set(r.identity, r);
+    // ponytail: no early-exit heuristic — maxRuns already bounds this, and a
+    // deviation that reproduces the baseline is simply collapsed by identity.
+  }
+
+  // 3. Rank: the same lexicographic scorer, stable identity tie-break.
+  const ranked = [...byIdentity.values()].sort(
+    (a, b) => compareScore(b.scoreVector, a.scoreVector) || (a.identity < b.identity ? -1 : a.identity > b.identity ? 1 : 0),
+  ).slice(0, maxCandidates);
+
+  const primary = ranked[0];
+  const candidates: PlanCandidate[] = ranked.map((r, i) => ({
+    id: hashId(r.identity),
+    policy: input.policy,
+    state: r.state,
+    valid: true,
+    validationErrors: r.report.errors,
+    scoreVector: r.scoreVector,
+    normalizedIdentity: r.identity,
+    rank: i,
+    provenance: r.provenance,
+    differences: i === 0 ? [] : describeDifferences(primary.state, r.state, r.model),
+    profileVersion: input.profileVersion,
+    rationaleHe: r.rationaleHe,
+  }));
+
+  return {
+    policy: input.policy,
+    candidates,
+    outcome: candidates.length ? 'proposal' : 'infeasible',
+    applyEligible: candidates.length > 0,
+    legacyIdentity: baseline.identity,
+    legacyState: baseline.state,
+    searchBudget: { maxCandidates, maxRuns, runsExecuted },
+  };
+}
+
+/**
+ * The primary recommendation: the highest-ranked retained candidate. The user's
+ * policy was already applied to EVERY candidate during generation, so selection
+ * no longer chooses between policies — it only reads rank 0.
+ */
+export function selectCandidate(set: CandidateSet): PlanCandidate | undefined {
+  return set.candidates[0];
+}
+
+/** Truthful provenance of the policy the whole set was planned under. */
+export function selectionReason(set: CandidateSet): SelectionReason {
+  if (set.policy === 'balanced') return 'confirmed_balanced';
+  if (set.policy === 'compact') return 'confirmed_compact';
   return 'legacy_default';
 }
 
+// ── elicitation probe ────────────────────────────────────────────────────────
+
+export interface BalanceImpactProbe {
+  /** True when balanced and compact would produce materially different legal plans. */
+  materiallyDifferent: boolean;
+  /** The factual differences behind that judgment. Empty when they converge. */
+  differenceSummary: DiffFact[];
+}
+
 /**
- * Ask the single balance question ONLY when the answer could change the selected
- * plan: at least two distinct legal candidates whose difference is material, and
- * the topic is not already answered/indifferent. Never ask on convergence.
+ * INTERNAL elicitation only. Runs the same stable planner under `balanced` and
+ * `compact` purely to answer "could the `semester_balance` answer still change
+ * the plan?". It retains NO candidates and produces no user-facing alternative:
+ * once the user has confirmed a policy, `generateCandidateSet` plans every
+ * candidate under that one policy and the opposing plan is never kept.
  */
-export function shouldAskBalanceQuestion(set: CandidateSet, opts: { alreadyAnswered: boolean }): boolean {
+export function probeBalanceImpact(input: {
+  buildModel: (policy: DistributionPolicy) => ConstraintModel;
+  initialState: PlanState;
+  pinnedHome?: Record<string, string>;
+}): BalanceImpactProbe {
+  const pinnedHome = input.pinnedHome ?? {};
+  const runPolicy = (policy: DistributionPolicy) => {
+    const model = input.buildModel(policy);
+    const worker = new PlannerWorker(model, structuredClone(input.initialState), WORKER_OPTS);
+    worker.run(500, 'greedy');
+    const state = worker.getPlan();
+    return { model, state, report: validateCandidate(state, model, pinnedHome), identity: normalizeIdentity(state) };
+  };
+
+  const bal = runPolicy('balanced');
+  const com = runPolicy('compact');
+  if (bal.identity === com.identity) return { materiallyDifferent: false, differenceSummary: [] };
+
+  const lb = loads(bal.state, bal.model);
+  const lc = loads(com.state, com.model);
+  const differenceSummary = ([
+    { kind: 'peak_load', balanced: peak(lb), compact: peak(lc) },
+    { kind: 'spread', balanced: spreadOf(lb), compact: spreadOf(lc) },
+    { kind: 'active_periods', balanced: activePeriods(lb), compact: activePeriods(lc) },
+  ] as DiffFact[]).filter((f) => f.balanced !== f.compact);
+
+  return { materiallyDifferent: differenceSummary.length > 0, differenceSummary };
+}
+
+/**
+ * Ask the single balance question ONLY when the answer could change the plan:
+ * the two policies produce materially different legal plans and the topic is not
+ * already answered. Answering never generates a plan by itself — the caller
+ * decides when to plan.
+ */
+export function shouldAskBalanceQuestion(probe: BalanceImpactProbe, opts: { alreadyAnswered: boolean }): boolean {
   if (opts.alreadyAnswered) return false;
-  if (set.converged) return false;
-  if (set.candidates.length < 2) return false;
-  return set.differenceSummary.length > 0;
+  return probe.materiallyDifferent;
+}
+
+/** Course ids placed in a candidate — small helper for callers building lean summaries. */
+export function candidateCourseIds(candidate: PlanCandidate): string[] {
+  return [...new Set(placedCourseIds(candidate.state))].sort();
 }

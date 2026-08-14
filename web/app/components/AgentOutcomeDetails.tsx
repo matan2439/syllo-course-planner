@@ -14,7 +14,16 @@
 import { useId, useState } from 'react'
 import type { AgentClarificationItemVM, AgentValidationFindingVM } from '../../../shared/planner/model'
 
-export type AgentOutcome = 'proposal' | 'clarification_required' | 'validation_failed' | 'blocked' | 'error'
+export type AgentOutcome =
+  | 'proposal'
+  | 'clarification_required'
+  | 'validation_failed'
+  // Slice 18A — no legal plan satisfying the user's HARD constraints exists.
+  // Disclosed through the same blocking-errors list as 'blocked' (the reasons
+  // are already surfaced there); the full candidate/reason UI is a later slice.
+  | 'infeasible'
+  | 'blocked'
+  | 'error'
 
 const ANSWER_TYPE_HE: Record<string, string> = {
   course_ids: 'רשימת קורסים',
@@ -42,7 +51,7 @@ export default function AgentOutcomeDetails({
 
   const hasClarification = outcome === 'clarification_required' && clarificationItems.length > 0
   const hasValidation = outcome === 'validation_failed' && validationFindings.length > 0
-  const hasBlocked = outcome === 'blocked' && errors.length > 0
+  const hasBlocked = (outcome === 'blocked' || outcome === 'infeasible') && errors.length > 0
   const isError = outcome === 'error'
   if (!hasClarification && !hasValidation && !hasBlocked && !isError) return null
 

@@ -31,6 +31,14 @@ export interface BuildModelOptions {
   completedCourseIds?: string[];
   /** course_ids the user is currently taking/in-progress (must not be re-proposed by the planner). */
   currentlyPlannedCourseIds?: string[];
+  /**
+   * Slice 18A — HARD inclusion (`must_include_course_ids`), what the user-facing
+   * "wanted" picker feeds under current product policy. Kept STRICTLY separate
+   * from `wantedCourseIds` (the soft `prefer_course_ids` channel) so a hard
+   * selection can never be scored/traded as a mere preference.
+   */
+  mustIncludeCourseIds?: string[];
+  /** SOFT `prefer_course_ids` — best-effort only. The hard pickers do not feed this. */
   wantedCourseIds?: string[];
   unwantedCourseIds?: string[];
   /** Per-course general user-fit score (0..1) for a requested focus area/style — soft planner signal. */
@@ -76,12 +84,16 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   ]);
   const disallowedCourseIds = new Set<string>(opts.disallowedCourseIds ?? []);
   const wantedCourseIds = new Set<string>(opts.wantedCourseIds ?? []);
+  const mustIncludeCourseIds = new Set<string>(opts.mustIncludeCourseIds ?? []);
   const pinnedCourseIds = new Set<string>(opts.pinnedCourseIds ?? []);
   const currentlyPlannedCourseIds = new Set<string>(opts.currentlyPlannedCourseIds ?? []);
 
   const profiles = buildCourseProfiles(boardJson, {
     completedCourseIds,
-    wantedCourseIds: opts.wantedCourseIds,
+    // `is_wanted` is a descriptive/UI + REPLACE-ranking label, so it covers both
+    // channels; the hard/soft distinction that actually drives planning lives in
+    // mustIncludeCourseIds vs wantedCourseIds below, never in this flag.
+    wantedCourseIds: [...new Set([...(opts.wantedCourseIds ?? []), ...(opts.mustIncludeCourseIds ?? [])])],
     unwantedCourseIds: opts.unwantedCourseIds,
     disallowedCourseIds: opts.disallowedCourseIds,
   });
@@ -139,6 +151,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     disallowedCourseIds,
     pinnedCourseIds,
     wantedCourseIds,
+    mustIncludeCourseIds,
     ...(opts.distributionPolicy ? { distributionPolicy: opts.distributionPolicy } : {}),
     courseFitById: opts.courseFitById,
     institutionId: opts.institutionId,

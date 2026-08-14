@@ -48,10 +48,12 @@ import {
   LEGALITY_VIOLATION_ERROR_PREFIX,
   MISSING_MANDATORY_ERROR_PREFIX,
   DEGREE_HOURS_SHORTFALL_ERROR_PREFIX,
+  MUST_INCLUDE_ERROR_PREFIX,
 } from './planner_validate';
 import { OVERLOAD_ERROR_MARKER, ANNUAL_PARTIAL_PLACEMENT_MARKER, CURRENTLY_TAKING_REUSE_ERROR_MARKER } from './plan_validation';
 import {
   incompleteAnnualCourseIds,
+  missingMustIncludeCourseIds,
   applyMutation,
   isFullyPlaced,
   degreeHours as computeDegreeHours,
@@ -80,7 +82,8 @@ import {
 import { runAcademicDecisionAgent, classifyAgentOutcome, isApplyEligible } from './academic_decision_integration';
 import { effectivePlannerPreferences, type EffectivePlannerPreferences } from './preference_eligibility';
 import { resolveDistributionPolicy } from './distribution_policy';
-import { generateCandidateSet, selectCandidate, selectionReason } from './candidate_set';
+import { generateCandidateSet, selectCandidate, selectionReason, candidateCourseIds } from './candidate_set';
+import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -252,7 +255,16 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
   return buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
     currentlyPlannedCourseIds,
-    wantedCourseIds: prefs.wanted_course_ids,
+    // Slice 18A — current product policy: the user-facing "wanted" picker is a
+    // HARD `must_include` constraint, and the "avoided" picker a HARD
+    // `must_exclude` one (already resolveHardExcludedCourseIds, below). The two
+    // channels are mutually exclusive by construction so a hard selection can
+    // never also be scored as a soft, tradeable g5 preference. Flag-off
+    // (AI_HARD_WANTED_CONSTRAINTS=false) restores the legacy soft-only mapping
+    // byte-identically — see hard_constraints.ts for that contract.
+    ...(hardWantedConstraintsEnabled()
+      ? { mustIncludeCourseIds: prefs.wanted_course_ids }
+      : { wantedCourseIds: prefs.wanted_course_ids }),
     unwantedCourseIds: prefs.unwanted_course_ids,
     courseFitById,
     disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
@@ -339,6 +351,27 @@ function disallowedGate(
   const placed = new Set(semesters.flatMap(s => s.course_ids));
   return disallowedPlacedCourseIds(placed, model).map(
     id => `${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
+  );
+}
+
+/**
+ * Slice 18A — the mirror image of disallowedGate for HARD INCLUSION. A course the
+ * user explicitly asked for (`must_include`, the wanted picker) that the final
+ * plan does not satisfy — not completed, not currently taking, not scheduled —
+ * must surface as a BLOCKING error, never as a silently-dropped preference.
+ * validateCandidate already computes this (missingMustInclude), but that report
+ * is internal to the candidate machinery; this re-derives it against the FINAL
+ * placed set so the handler turns it into a real blocking error rather than a
+ * plan that reports blocked:false with the requested course quietly absent.
+ */
+function mustIncludeGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  const state: PlanState = { semesters: Object.fromEntries(model.knownSemesterIds.map(id => [id, [] as string[]])) };
+  for (const s of semesters) if (state.semesters[s.semester_id]) state.semesters[s.semester_id] = [...s.course_ids];
+  return missingMustIncludeCourseIds(state, model).map(
+    id => `${MUST_INCLUDE_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`,
   );
 }
 
@@ -1632,26 +1665,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // Lean candidate metadata (flagged path only) — populated by the candidate
   // orchestration branch, surfaced under academicDecision.candidates below.
   let candidateOrchestration: Record<string, unknown> | undefined;
+  // Slice 18A — deterministic hard-constraint analysis (flagged path only).
+  let hardConstraintOutcome: ReturnType<typeof analyzeHardConstraints> | undefined;
 
   // ── Candidate-orchestration path (opt-in agent flag) — the SINGLE proposal
-  //    owner on the flagged path. Generates neutral(legacy)+balanced+compact
-  //    through the SAME stable planner, validates + dedups, selects by the
-  //    resolved policy or the canonical legacy default, and builds the proposal
-  //    from the SELECTED candidate's exact PlanState (no separate rerun). Absent
-  //    flag => the unchanged single-plan paths below run byte-identically.
+  //    owner on the flagged path.
+  //
+  //    Slice 18B: every candidate is planned under ONE resolved user policy
+  //    (`balanced` / `compact` / `neutral` configure scoring and search; they are
+  //    NOT the alternatives shown to the user). Diversity comes from different
+  //    legal course/period combinations found by bounded deterministic
+  //    deviations of the SAME stable planner, each gated on the same
+  //    authoritative validator and the same hard constraints. The proposal is
+  //    built from the PRIMARY (rank 0) candidate's exact PlanState — no separate
+  //    rerun. Absent flag => the unchanged single-plan paths below run
+  //    byte-identically.
   if (use_academic_decision_agent === true) {
+    const pref = distributionPolicy ?? 'neutral';
     const candidateSet = generateCandidateSet({
       buildModel: (p) =>
         buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById, p === 'neutral' ? undefined : p),
+      policy: pref,
       initialState,
       profileVersion: preference_profile?.version ?? 0,
       pinnedHome,
     });
-    const pref = distributionPolicy ?? 'neutral';
-    const selected = selectCandidate(candidateSet, pref);
-    // Proposal is built from the selected candidate's exact state; if no candidate
-    // is valid, fall back to the legacy state so the existing blocking gates below
-    // produce the deterministic blocked outcome (never a fabricated plan).
+    const selected = selectCandidate(candidateSet);
+    // Proposal is built from the primary candidate's exact state; if NOTHING
+    // validated, fall back to the plain greedy state so the existing blocking
+    // gates below produce the deterministic non-applyable outcome — never a
+    // fabricated plan, and never a degraded plan presented as an alternative.
     const selectedState = selected ? selected.state : candidateSet.legacyState;
     stableFinalState = selectedState;
     // Use the selected candidate's own stable-planner explanation so the proposal
@@ -1664,17 +1707,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     traceForResponse = [];
     hitMaxSteps = false;
     useLlm = false;
+    // Deterministic pre-planning analysis of the HARD constraints themselves — a
+    // contradiction or a structural impossibility is reported as typed reasons,
+    // never silently absorbed into a best-effort plan.
+    hardConstraintOutcome = analyzeHardConstraints(model);
     candidateOrchestration = {
       selectedCandidateId: selected?.id ?? null,
-      selectedPolicy: selected?.policy ?? null,
-      selectionReason: selectionReason(candidateSet, pref),
+      selectedPolicy: candidateSet.policy,
+      selectionReason: selectionReason(candidateSet),
       validCandidateCount: candidateSet.candidates.length,
-      hasMeaningfulAlternatives: !candidateSet.converged && candidateSet.candidates.length >= 2 && candidateSet.differenceSummary.length > 0,
-      converged: candidateSet.converged,
-      contributingPolicies: candidateSet.converged ? (candidateSet.candidates[0]?.convergedPolicies ?? null) : null,
-      differenceSummary: candidateSet.differenceSummary,
+      hasMeaningfulAlternatives: candidateSet.candidates.length >= 2,
+      outcome: candidateSet.outcome,
+      searchBudget: candidateSet.searchBudget,
       profileVersion: preference_profile?.version ?? null,
       selectedNormalizedIdentity: selected?.normalizedIdentity ?? candidateSet.legacyIdentity,
+      // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
+      // to rank and describe alternatives without shipping duplicate full plans.
+      summaries: candidateSet.candidates.map((c) => ({
+        id: c.id,
+        rank: c.rank,
+        normalizedIdentity: c.normalizedIdentity,
+        selected: c.id === selected?.id,
+        policy: c.policy,
+        profileVersion: c.profileVersion,
+        provenance: c.provenance,
+        courseIds: candidateCourseIds(c),
+        differences: c.differences,
+        scoreVector: c.scoreVector,
+      })),
     };
 
   } else if (process.env.AI_USE_AGENTIC_PLANNER === 'true') {
@@ -1736,6 +1796,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...annualCompletenessGate(proposal.semesters, model),
     ...legalityGate(proposal.semesters, model, pinnedHome),
     ...missingMandatoryGate(proposal.semesters, model),
+    ...mustIncludeGate(proposal.semesters, model),
     ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
@@ -1861,9 +1922,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // unresolved authoritative conflict was found by the class's validation
       // stage; the plan is never changed to hide it.
       hasUnresolvedConflicts: agentRun.validation?.applyBlocked === true,
+      // Slice 18A — a hard user constraint that cannot be satisfied at all.
+      hardConstraintsInfeasible: hardConstraintOutcome?.outcome === 'infeasible',
     });
     (responseBody.academicDecision as Record<string, unknown>).outcome = outcome;
     (responseBody.academicDecision as Record<string, unknown>).applyEligible = isApplyEligible(outcome);
+    // Typed, deterministic hard-constraint reasons (stable codes, affected course
+    // ids, conflicting constraints/facts, concise Hebrew explanation, safe
+    // user-resolvable actions, authoritative/non-answerable distinction). Present
+    // on every flagged run; `reasons` is empty when the request is satisfiable.
+    (responseBody.academicDecision as Record<string, unknown>).hardConstraints = hardConstraintOutcome;
     // Slice 14 — record the exact preference-profile version the proposal was
     // built with, plus deterministic eligibility validation (which typed
     // preferences reached the planner boundary as hard/soft, and which were
