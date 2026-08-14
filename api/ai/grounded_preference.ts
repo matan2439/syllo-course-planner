@@ -25,11 +25,17 @@
  */
 import type { EffectivePlannerPreferences } from './preference_eligibility';
 import type { GroundedObjectiveId } from './grounded_objectives';
+import { TOPIC_IDS, type TopicId } from './course_topics';
 
 /** The preference category the conversation uses for a course-feature question. */
 export const GROUNDED_FEATURE_CATEGORY = 'course_feature';
 /** The planner knob a course-feature preference influences. */
 export const GROUNDED_FEATURE_AFFECTS = 'grounded_course_feature';
+
+/** T4 — the preference category for a course CONTENT/TOPIC interest. */
+export const GROUNDED_TOPIC_CATEGORY = 'course_topic_interest';
+/** The planner knob a topic-interest preference influences. */
+export const GROUNDED_TOPIC_AFFECTS = 'grounded_topic_interest';
 
 /**
  * Feature targets this build can actually ground in official evidence. A value
@@ -55,7 +61,7 @@ export interface GroundedObjectiveExclusion {
   id: string;
   value: string;
   /** Stable machine-readable reason. */
-  reason: 'unsupported_grounded_feature';
+  reason: 'unsupported_grounded_feature' | 'unsupported_grounded_topic';
 }
 
 export interface GroundedObjectiveResult {
@@ -65,16 +71,26 @@ export interface GroundedObjectiveResult {
   provenance?: {
     preferenceId: string;
     /** The user-facing feature target, for explanation text. */
-    feature: SupportedGroundedFeature;
+    feature: SupportedGroundedFeature | 'course_topic_interest';
     source: string;
     profileVersion: number;
   };
+  /**
+   * T4 — the confirmed topics, present only with `prefer_topic_alignment`.
+   * Deduplicated and sorted, so the objective is identical for the same answers
+   * regardless of the order they were given in.
+   */
+  topicIds?: TopicId[];
   /** Eligible preferences naming a feature this build cannot ground. Never silently dropped. */
   excluded?: GroundedObjectiveExclusion[];
 }
 
 function isSupported(value: string): value is SupportedGroundedFeature {
   return (SUPPORTED_GROUNDED_FEATURES as readonly string[]).includes(value);
+}
+
+function isSupportedTopic(value: string): value is TopicId {
+  return (TOPIC_IDS as readonly string[]).includes(value);
 }
 
 /**
@@ -88,7 +104,10 @@ export function resolveGroundedObjective(effective: EffectivePlannerPreferences)
   const prefs = active.filter(
     (p) => p.affects === GROUNDED_FEATURE_AFFECTS || p.category === GROUNDED_FEATURE_CATEGORY,
   );
-  if (!prefs.length) return {};
+  const topicPrefs = active.filter(
+    (p) => p.affects === GROUNDED_TOPIC_AFFECTS || p.category === GROUNDED_TOPIC_CATEGORY,
+  );
+  if (!prefs.length) return resolveTopicInterest(topicPrefs, effective);
 
   const excluded: GroundedObjectiveExclusion[] = [];
   for (const p of prefs) {
@@ -107,5 +126,54 @@ export function resolveGroundedObjective(effective: EffectivePlannerPreferences)
     }
     excluded.push({ id: p.id, value, reason: 'unsupported_grounded_feature' });
   }
-  return { excluded };
+  // No delivery feature could be grounded — fall through to topic interest, so
+  // an unsupported feature answer does not silently suppress a supported topic.
+  const topic = resolveTopicInterest(topicPrefs, effective);
+  return { ...topic, excluded: [...excluded, ...(topic.excluded ?? [])] };
+}
+
+/**
+ * T4 — resolve confirmed topic interests into the topic-alignment objective.
+ *
+ * Deliberately reached only when no DELIVERY-feature objective resolved. The
+ * two are not combined: delivery mode rests on a schema-complete enumerated
+ * field where `false` is a real finding, while a topic is only ever affirmed or
+ * unknown. Ranking them together would silently mix two different evidential
+ * strengths, so the precedence is fixed, documented and tested rather than
+ * emergent.
+ *
+ * Nothing here is specific to any particular topic: every id the mapper can
+ * ground is accepted, and an id it cannot is reported rather than approximated.
+ */
+function resolveTopicInterest(
+  topicPrefs: EffectivePlannerPreferences['soft'],
+  effective: EffectivePlannerPreferences,
+): GroundedObjectiveResult {
+  if (!topicPrefs.length) return {};
+  const excluded: GroundedObjectiveExclusion[] = [];
+  const topicIds: TopicId[] = [];
+  let provenanceOf: (typeof topicPrefs)[number] | undefined;
+
+  for (const p of topicPrefs) {
+    const value = String(p.normalized);
+    if (isSupportedTopic(value)) {
+      if (!topicIds.includes(value)) topicIds.push(value);
+      provenanceOf ??= p;
+      continue;
+    }
+    excluded.push({ id: p.id, value, reason: 'unsupported_grounded_topic' });
+  }
+
+  if (!topicIds.length) return { ...(excluded.length ? { excluded } : {}) };
+  return {
+    objective: 'prefer_topic_alignment',
+    topicIds: topicIds.sort(),
+    provenance: {
+      preferenceId: provenanceOf!.id,
+      feature: 'course_topic_interest',
+      source: provenanceOf!.source,
+      profileVersion: effective.profileVersion,
+    },
+    ...(excluded.length ? { excluded } : {}),
+  };
 }

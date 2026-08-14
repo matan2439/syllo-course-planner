@@ -29,6 +29,8 @@
 import { buildEvidenceSnapshot, type EvidenceSnapshot, type SyllabusDocument } from './syllabus_source';
 import { aggregateCourseLevelFeature, groupIdOfDocument } from './feature_applicability';
 import { RuleBasedFeatureExtractor, FEATURE_EXTRACTION_VERSION, type CourseFeatures, type FeatureExtractor } from './course_features';
+import { extractCourseTopics, supportedTopics, type TopicId } from './course_topics';
+import type { CourseTopicSupport } from './grounded_objectives';
 
 /** Truthful, disclosure-only summary of what the snapshot does and does not cover. */
 export interface EvidenceCoverage {
@@ -54,6 +56,11 @@ export interface EvidenceCoverage {
    * does not select a section.
    */
   variesBySectionCourseIds: string[];
+  /**
+   * T4 — courses whose official content section yields no normalized topic.
+   * Disclosed so the absence is visible; it never biases ranking.
+   */
+  topicUnknownCourseIds: string[];
 }
 
 export interface PreparedEvidence {
@@ -70,6 +77,16 @@ export interface PreparedEvidence {
    * exact chosen group from here.
    */
   sectionFeatures: Map<string, SectionFeature[]>;
+  /**
+   * T4 — COURSE-LEVEL supported topics, from the official content section.
+   *
+   * No group aggregation is applied, and deliberately so: the acquired corpus
+   * publishes an identical content section for every group of a course, so the
+   * fact is course-scoped by measurement (see the T2 coverage matrix). Should a
+   * future corpus contradict that, the conflict surfaces here as a union rather
+   * than as a silent per-group override.
+   */
+  topics: Map<string, CourseTopicSupport>;
   coverage: EvidenceCoverage;
 }
 
@@ -213,6 +230,17 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
     });
   }
 
+  // T4 — topics from the SAME usable documents, so features and topics can never
+  // come from different snapshots.
+  const topics = new Map<string, CourseTopicSupport>();
+  for (const [courseId, docs] of byCourse) {
+    const extractions = docs.map((d) => extractCourseTopics(d, { academicYear: input.academicYear }));
+    const ids: ReadonlySet<TopicId> = supportedTopics(extractions);
+    const anchor = docs.find((d) => extractions[docs.indexOf(d)].contentAvailable) ?? docs[0];
+    topics.set(courseId, { topicIds: ids, sourceRef: anchor.sourceUrl, academicYear: anchor.academicYear });
+  }
+  const topicUnknownCourseIds = [...topics.entries()].filter(([, t]) => t.topicIds.size === 0).map(([id]) => id).sort();
+
   const unknownFeatureCourseIds = [...features.entries()]
     .filter(([, f]) => f.laboratory.value === 'unknown' && f.projectDelivery.value === 'unknown')
     .map(([id]) => id)
@@ -225,6 +253,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
     snapshot,
     features,
     sectionFeatures,
+    topics,
     coverage: {
       snapshotId: snapshot.snapshotId,
       extractionVersion: FEATURE_EXTRACTION_VERSION,
@@ -236,6 +265,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
       staleCourseIds,
       conflictingCourseIds: conflicting,
       variesBySectionCourseIds: variesBySectionCourseIds.sort(),
+      topicUnknownCourseIds,
     },
   };
 }

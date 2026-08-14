@@ -30,8 +30,19 @@
 
 import type { AcademicEvidence } from './academic_evidence';
 import type { CourseFeatures } from './course_features';
+import type { TopicId } from './course_topics';
 
-export type GroundedObjectiveId = 'prefer_laboratory_courses' | 'prefer_project_courses';
+export type GroundedObjectiveId =
+  | 'prefer_laboratory_courses'
+  | 'prefer_project_courses'
+  /**
+   * T4 — content/topic alignment with confirmed interests. Unlike the two
+   * delivery objectives, this one is PARAMETERISED by the topics the student
+   * confirmed, and it reads a different evidence field (`תוכן הקורס ומטרתו`)
+   * whose semantics are weaker: a topic is affirmed or unknown, never false,
+   * because prose that omits a subject does not establish its absence.
+   */
+  | 'prefer_topic_alignment';
 
 /**
  * Which extracted feature each objective reads, and how it is described. Both
@@ -39,10 +50,41 @@ export type GroundedObjectiveId = 'prefer_laboratory_courses' | 'prefer_project_
  * audit measured at 8/8 coverage — topic alignment (1/7) and assessment (0/8)
  * did not meet the threshold and are not implemented.
  */
-const OBJECTIVE_FEATURE: Record<GroundedObjectiveId, { key: 'laboratory' | 'projectDelivery'; labelHe: string }> = {
+const OBJECTIVE_FEATURE: Record<'prefer_laboratory_courses' | 'prefer_project_courses', { key: 'laboratory' | 'projectDelivery'; labelHe: string }> = {
   prefer_laboratory_courses: { key: 'laboratory', labelHe: 'מעבדה' },
   prefer_project_courses: { key: 'projectDelivery', labelHe: 'פרויקט' },
 };
+
+/**
+ * Student-facing Hebrew names for the topic vocabulary. The internal id is never
+ * shown; these are the words the official documents themselves use, so the
+ * explanation stays recognisable and auditable.
+ */
+const TOPIC_LABEL_HE: Record<TopicId, string> = {
+  engineering_design: 'תכן ועיצוב הנדסי',
+  finite_element_analysis: 'ניתוח אלמנטים סופיים',
+  solid_mechanics: 'מכניקת מוצקים',
+  robotics: 'רובוטיקה',
+  control: 'בקרה',
+  manufacturing: 'ייצור ועיבוד',
+  materials: 'חומרים',
+  thermofluids: 'זרימה ומעבר חום',
+  programming_electronics: 'תכנות ואלקטרוניקה',
+};
+
+/**
+ * One course's affirmatively-supported topics, with the official document they
+ * came from. Provenance travels WITH the fact so an explanation can cite it
+ * without re-deriving anything.
+ */
+export interface CourseTopicSupport {
+  topicIds: ReadonlySet<TopicId>;
+  sourceRef: string;
+  academicYear: number | string;
+}
+
+/** Courses' supported topics, keyed by course id — one snapshot's worth. */
+export type TopicIndex = ReadonlyMap<string, CourseTopicSupport>;
 
 /**
  * A confirmed, active grounded preference. Constructing one is the ONLY way to
@@ -55,12 +97,19 @@ export interface GroundedObjective {
   confirmed: true;
   /** The evidence snapshot every candidate in this request is scored against. */
   snapshotId: string;
+  /**
+   * T4 — the confirmed topics, for `prefer_topic_alignment` only. Absent or
+   * empty makes the objective inert rather than an error.
+   */
+  topicIds?: readonly TopicId[];
 }
 
 /** One course's evidence-backed contribution to the objective. */
 export interface ObjectiveContribution {
   courseId: string;
-  feature: 'laboratory' | 'projectDelivery';
+  feature: 'laboratory' | 'projectDelivery' | 'topic';
+  /** Present for `feature: 'topic'` — which confirmed topic this course supports. */
+  topicId?: TopicId;
   /** Official source the claim rests on. */
   sourceRef: string;
   academicYear: number | string;
@@ -103,10 +152,15 @@ export function scoreCandidateOnObjective(
   courseIds: readonly string[],
   objective: GroundedObjective,
   features: FeatureIndex,
+  topics?: TopicIndex,
 ): GroundedScore {
   const contributions: ObjectiveContribution[] = [];
   const unknownCourseIds: string[] = [];
   const variesBySectionCourseIds: string[] = [];
+
+  if (objective.id === 'prefer_topic_alignment') {
+    return scoreTopicAlignment(courseIds, objective, features, topics);
+  }
 
   const { key } = OBJECTIVE_FEATURE[objective.id];
 
@@ -139,6 +193,51 @@ export function scoreCandidateOnObjective(
 }
 
 /**
+ * T4 — score a candidate on confirmed CONTENT/TOPIC alignment.
+ *
+ * One contribution per (course, confirmed topic) the course affirmatively
+ * supports. Because `supportedTopics` already collapses repeated wording and
+ * multiple documents into a set, a topic stated three times — or in three
+ * documents — is one contribution, never three.
+ *
+ * A course with no topic evidence is DISCLOSED and adds zero. It is never
+ * penalised: topic prose that omits a subject does not establish the course
+ * lacks it, so unknown is genuinely unknown, and a candidate can neither gain
+ * nor lose from missing coverage.
+ */
+function scoreTopicAlignment(
+  courseIds: readonly string[],
+  objective: GroundedObjective,
+  features: FeatureIndex,
+  topics?: TopicIndex,
+): GroundedScore {
+  const contributions: ObjectiveContribution[] = [];
+  const unknownCourseIds: string[] = [];
+  const wanted = [...new Set(objective.topicIds ?? [])].sort();
+
+  for (const courseId of [...courseIds].sort()) {
+    const support = topics?.get(courseId);
+    if (!support || support.topicIds.size === 0) {
+      // No official content statement for this course — disclosed, never counted.
+      if (topics?.has(courseId) || features.has(courseId)) unknownCourseIds.push(courseId);
+      continue;
+    }
+    for (const topicId of wanted) {
+      if (!support.topicIds.has(topicId)) continue;
+      contributions.push({
+        courseId,
+        feature: 'topic',
+        topicId,
+        sourceRef: support.sourceRef,
+        academicYear: support.academicYear,
+      });
+    }
+  }
+
+  return { score: contributions.length, contributions, unknownCourseIds, variesBySectionCourseIds: [] };
+}
+
+/**
  * A concise, factual Hebrew explanation of the objective's effect. States which
  * confirmed preference applied, which course feature supported it, and the
  * official source and year — and, when a lower-ranked candidate is supplied, why
@@ -153,6 +252,7 @@ export function explainGroundedRanking(input: {
   alternative?: GroundedScore;
 }): string {
   const { selected, alternative } = input;
+  if (input.objective.id === 'prefer_topic_alignment') return explainTopicAlignment(input);
   const label = OBJECTIVE_FEATURE[input.objective.id].labelHe;
   if (selected.contributions.length === 0 && (!alternative || alternative.contributions.length === 0)) {
     const varying = selected.variesBySectionCourseIds?.length
@@ -180,4 +280,47 @@ export function explainGroundedRanking(input: {
     ? ` עבור ${selected.variesBySectionCourseIds.length} קורס/ים אופן ההוראה משתנה בין קבוצות, ולכן הם לא השפיעו על הדירוג.`
     : '';
   return head + provenance + compare + unknown + varies;
+}
+
+/**
+ * T4 — the topic-alignment explanation.
+ *
+ * States which content interest was confirmed, which selected courses officially
+ * cover it, the official source and year, and — crucially — that courses without
+ * a published statement were NOT counted against anything. It never claims the
+ * selected plan is better, only that it matches a confirmed interest.
+ */
+function explainTopicAlignment(input: {
+  objective: GroundedObjective;
+  selected: GroundedScore;
+  alternative?: GroundedScore;
+}): string {
+  const { objective, selected, alternative } = input;
+  const wanted = [...new Set(objective.topicIds ?? [])].sort();
+  const names = wanted.map((t) => TOPIC_LABEL_HE[t]).join(', ');
+
+  if (selected.contributions.length === 0) {
+    return `לא נמצאה עדות רשמית שתומכת בתחומי התוכן שסימנת (${names}) בתוכנית הנבחרת, ולכן ההעדפה לא השפיעה על הדירוג.`;
+  }
+
+  const byCourse = new Map<string, TopicId[]>();
+  for (const c of selected.contributions) {
+    byCourse.set(c.courseId, [...(byCourse.get(c.courseId) ?? []), c.topicId!]);
+  }
+  const perCourse = [...byCourse.entries()]
+    .map(([courseId, ts]) => `${courseId} (${[...new Set(ts)].map((t) => TOPIC_LABEL_HE[t]).join(', ')})`)
+    .join('; ');
+  const src = selected.contributions[0];
+
+  const head = `לפי תחומי התוכן שאישרת (${names}), התוכנית הנבחרת כוללת ${byCourse.size} קורס/ים שהתוכן הרשמי שלהם מציין אותם: ${perCourse}.`;
+  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).`;
+  const compare = alternative
+    ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} התאמות תוכן), ולא מסיבה אקדמית אחרת.`
+    : '';
+  // Coverage limitation, always stated: silence in the official text is not a
+  // statement that the course lacks the topic.
+  const unknown = selected.unknownCourseIds.length
+    ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא פורסם תוכן רשמי שניתן להשוות, ולכן הם לא נספרו לכאן ולא לכאן.`
+    : ' יש לשים לב שהיעדר אזכור בתוכן הרשמי אינו קביעה שהנושא לא נלמד בקורס.';
+  return head + provenance + compare + unknown;
 }

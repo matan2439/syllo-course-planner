@@ -64,6 +64,7 @@ import { validateCandidate } from './planner_validate';
 import { placedCourseIds, type ConstraintModel, type PlanState, type DistributionPolicy } from './planner_types';
 import {
   scoreCandidateOnObjective,
+  type TopicIndex,
   type FeatureIndex,
   type GroundedObjective,
   type GroundedScore,
@@ -237,7 +238,16 @@ export interface GenerateCandidateSetInput {
    * every candidate is scored against. Omitted (the default) ⇒ ranking is
    * byte-identical to before this feature existed.
    */
-  groundedObjective?: { objective: GroundedObjective; features: FeatureIndex };
+  groundedObjective?: {
+    objective: GroundedObjective;
+    features: FeatureIndex;
+    /**
+     * T4 — course-level supported topics from the SAME snapshot. Required only
+     * by `prefer_topic_alignment`; omitted, that objective scores zero for every
+     * candidate and ranking is unchanged.
+     */
+    topics?: TopicIndex;
+  };
 }
 
 /**
@@ -311,7 +321,7 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   const grounded = input.groundedObjective;
   const groundedScoreOf = (r: Raw): GroundedScore | undefined =>
     grounded
-      ? scoreCandidateOnObjective([...new Set(placedCourseIds(r.state))], grounded.objective, grounded.features)
+      ? scoreCandidateOnObjective([...new Set(placedCourseIds(r.state))], grounded.objective, grounded.features, grounded.topics)
       : undefined;
 
   const withGrounded = [...byIdentity.values()].map((r) => ({ raw: r, grounded: groundedScoreOf(r) }));
