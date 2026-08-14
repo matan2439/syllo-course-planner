@@ -233,3 +233,52 @@ describe('K9B — grounded ranking through the real Generate handler', () => {
     }
   });
 });
+
+// ── K7.5 — mixed-group evidence through the REAL handler ─────────────────────
+
+describe('K7.5 — section-scoped evidence never labels a course-level candidate', () => {
+  beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
+  afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
+
+  /** A group-addressed document, exactly as the live endpoint returns one. */
+  const groupDoc = (courseId: string, group: string, delivery: string): SyllabusDocument => ({
+    ...doc(courseId, delivery),
+    contentHash: `sha_${courseId}_${group}_${delivery}`,
+    labeledFields: { 'מספר קורס': [`0542379${group === '05' ? '2' : '2'}-${group}`], 'אופן ההוראה': [delivery] },
+  });
+
+  test('the live mixed-group case (05 lab, 01 lecture) does NOT change selection', async () => {
+    // Reproduces the real K7 finding for E3.
+    MOCK_DOCUMENTS = [
+      { ...groupDoc('E3', '05', 'מעבדה'), labeledFields: { 'מספר קורס': ['0542-3792-05'], 'אופן ההוראה': ['מעבדה'] } },
+      { ...groupDoc('E3', '01', 'שיעור'), labeledFields: { 'מספר קורס': ['0542-3792-01'], 'אופן ההוראה': ['שיעור'] } },
+    ];
+    const legacy = await run(body());
+    const withPreference = await run(withPref());
+    expect(placed(withPreference._body)).toEqual(placed(legacy._body)); // ranking unchanged
+    expect(candidates(withPreference._body).selectedGroundedScore.score).toBe(0);
+    expect(candidates(withPreference._body).evidence.variesBySectionCourseIds).toEqual(['E3']);
+  });
+
+  test('the response discloses varies_by_section truthfully', async () => {
+    MOCK_DOCUMENTS = [
+      { ...doc('E3', 'מעבדה'), contentHash: 'h05', labeledFields: { 'מספר קורס': ['0542-3792-05'], 'אופן ההוראה': ['מעבדה'] } },
+      { ...doc('E3', 'שיעור'), contentHash: 'h01', labeledFields: { 'מספר קורס': ['0542-3792-01'], 'אופן ההוראה': ['שיעור'] } },
+    ];
+    const res = await run(withPref());
+    expect(candidates(res._body).evidence.variesBySectionCourseIds).toEqual(['E3']);
+    // …and the explanation never calls it a laboratory course.
+    const explanation = candidates(res._body).groundedExplanationHe ?? '';
+    expect(explanation).not.toMatch(/כוללת 1 קורס\/ים עם רכיב מעבדה/);
+  });
+
+  test('a SINGLE group with no authoritative universe stays unknown — one group cannot label the course', async () => {
+    MOCK_DOCUMENTS = [
+      { ...doc('E3', 'מעבדה'), contentHash: 'honly', labeledFields: { 'מספר קורס': ['0542-3792-05'], 'אופן ההוראה': ['מעבדה'] } },
+    ];
+    const legacy = await run(body());
+    const res = await run(withPref());
+    expect(placed(res._body)).toEqual(placed(legacy._body)); // no ranking change
+    expect(candidates(res._body).selectedGroundedScore.score).toBe(0);
+  });
+});

@@ -131,6 +131,7 @@ describe('K9C — the explanation is factual and makes no unsupported claim', ()
     score: 1,
     contributions: [{ courseId: 'E3', feature: 'laboratory' as const, sourceRef: 'https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379200&year=2025', academicYear: 2025, excerpt: 'מעבדה' }],
     unknownCourseIds: [] as string[],
+    variesBySectionCourseIds: [] as string[],
   };
 
   test('states the confirmed preference, the supporting feature, the source and the year', () => {
@@ -144,7 +145,7 @@ describe('K9C — the explanation is factual and makes no unsupported claim', ()
   test('never claims the course is better, easier, less work, or career-valuable', () => {
     const text = explainGroundedRanking({
       objective, selected,
-      alternative: { score: 0, contributions: [], unknownCourseIds: [] },
+      alternative: { score: 0, contributions: [], unknownCourseIds: [], variesBySectionCourseIds: [] },
     });
     for (const forbidden of ['טוב יותר', 'קל יותר', 'עומס', 'שכר', 'קריירה', 'מומלץ יותר']) {
       expect(text).not.toContain(forbidden);
@@ -163,7 +164,7 @@ describe('K9C — the explanation is factual and makes no unsupported claim', ()
   test('with no supporting evidence it says so plainly rather than inventing a reason', () => {
     const text = explainGroundedRanking({
       objective,
-      selected: { score: 0, contributions: [], unknownCourseIds: [] },
+      selected: { score: 0, contributions: [], unknownCourseIds: [], variesBySectionCourseIds: [] },
     });
     expect(text).toMatch(/לא נמצאה עדות רשמית/);
   });

@@ -21,6 +21,7 @@ import { buildConstraintModel } from '../../api/ai/planner_model';
 import { validateCandidate } from '../../api/ai/planner_validate';
 import { acquireSyllabus, buildEvidenceSnapshot, type HttpFetcher, type SyllabusDocument } from '../../api/ai/syllabus_source';
 import { RuleBasedFeatureExtractor, type CourseFeatures } from '../../api/ai/course_features';
+import { prepareEvidence } from '../../api/ai/evidence_provider';
 import { explainGroundedRanking, scoreCandidateOnObjective, type GroundedObjective } from '../../api/ai/grounded_objectives';
 import type { ConstraintModel, PlanState } from '../../api/ai/planner_types';
 
@@ -85,27 +86,45 @@ async function officialDoc(
 function lectureStub(courseNumber: string): string {
   const cell = (l: string, v: string) =>
     `<div class="data-table-cell"><small class="data-table-cell-label">${l}</small><span>${v}</span></div>`;
+  // No group suffix on the course number ⇒ OFFERING scope, so the fact applies to
+  // the whole offering the candidate actually selects.
   return `<div class="data-table">${cell('מספר קורס', courseNumber)}${cell('שם הקורס', 'קורס עיוני')}${cell('אופן ההוראה', 'שיעור')}${cell('מטלות הקורס', 'בחינה סופית')}</div>`;
 }
 
 const extractor = new RuleBasedFeatureExtractor();
 
 /**
- * The evidence snapshot for this request. E3 is backed by the REAL official
- * laboratory syllabus; E1/E2/E4 by lecture stubs. E4 deliberately has NO
- * document at all, so "missing evidence" is exercised too.
+ * The evidence snapshot for this request.
+ *
+ * K7.5 — APPLICABILITY IS EXPLICIT AND COMPLETE. Evidence goes through the real
+ * `prepareEvidence`, so the same course/offering/section aggregation the handler
+ * uses applies here too; this test can no longer prove ranking with a
+ * section-scoped fact attributed to a course-level candidate.
+ *
+ *  - E3 is backed by the GENUINE official laboratory syllabus (group 05), and
+ *    the fixture declares the authoritative group universe for E3 as exactly
+ *    ['05'] — a single-section offering — so coverage is COMPLETE and the
+ *    course-level value is legitimately `true`.
+ *  - E1/E2/E4 carry offering-scoped lecture documents (no group marker), so they
+ *    resolve to a definite `false`. The unfavoured candidates are therefore NOT
+ *    merely missing evidence — they have applicable evidence that says "no
+ *    laboratory", which is what makes the comparison meaningful.
  */
 async function buildScenario() {
   const docs = await Promise.all([
-    officialDoc(lectureStub('0542-1111-01'), '0542-1111', 'E1'),
-    officialDoc(lectureStub('0542-2222-01'), '0542-2222', 'E2'),
+    officialDoc(lectureStub('0542-1111'), '0542-1111', 'E1'),
+    officialDoc(lectureStub('0542-2222'), '0542-2222', 'E2'),
+    officialDoc(lectureStub('0542-4444'), '0542-4444', 'E4'),
     officialDoc(REAL_HTML, '0542-3792', 'E3'), // the genuine official LABORATORY syllabus
   ]);
-  const snapshot = buildEvidenceSnapshot(docs);
-  const features = new Map<string, CourseFeatures>(
-    docs.map((d) => [d.courseId, extractor.extract(d)] as const),
-  );
-  return { snapshot, features };
+  const prepared = prepareEvidence({
+    courseIds: ELECTIVES,
+    academicYear: YEAR,
+    documents: docs,
+    // Authoritative, complete group universe for the evidenced course.
+    groupUniverse: { E3: ['05'] },
+  });
+  return { snapshot: prepared.snapshot, features: prepared.features, prepared };
 }
 
 const objectiveFor = (snapshotId: string): GroundedObjective => ({
@@ -151,7 +170,7 @@ describe('K4 — a confirmed grounded objective changes real candidate selection
     expect(features.get('E3')!.laboratory.value).toBe(true);   // real official lab syllabus
     expect(features.get('E1')!.laboratory.value).toBe(false);  // official lecture mode
     expect(features.get('E2')!.laboratory.value).toBe(false);
-    expect(features.has('E4')).toBe(false);                     // no evidence at all
+    expect(features.get('E4')!.laboratory.value).toBe(false);  // applicable evidence, not absence
 
     const set = generate();
     const withLab = set.candidates.filter((c) => courseIdsOf(c.state).includes('E3'));

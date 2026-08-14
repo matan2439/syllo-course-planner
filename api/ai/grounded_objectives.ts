@@ -64,6 +64,13 @@ export interface GroundedScore {
   contributions: ObjectiveContribution[];
   /** Courses whose feature is genuinely unknown — disclosed, never counted. */
   unknownCourseIds: string[];
+  /**
+   * K7.5 — courses whose official sections genuinely DISAGREE on the feature
+   * (e.g. group 05 is a laboratory, group 01 is not). Disclosed, never counted:
+   * the candidate selects a course and a period, not a group, so the plan does
+   * not establish which format the student would actually get.
+   */
+  variesBySectionCourseIds: string[];
 }
 
 /** A course's extracted features, keyed by course id — one snapshot's worth. */
@@ -88,10 +95,17 @@ export function scoreCandidateOnObjective(
 ): GroundedScore {
   const contributions: ObjectiveContribution[] = [];
   const unknownCourseIds: string[] = [];
+  const variesBySectionCourseIds: string[] = [];
 
   for (const courseId of [...courseIds].sort()) {
     const f = features.get(courseId);
     if (!f) continue; // no evidence at all — no bias in either direction
+    // K7.5 — the sections disagree. Neither true nor false applies to a
+    // course-level candidate, so this is disclosed and contributes nothing.
+    if ((f.laboratory.value as unknown) === 'varies_by_section') {
+      variesBySectionCourseIds.push(courseId);
+      continue;
+    }
     if (f.laboratory.value === 'unknown') {
       unknownCourseIds.push(courseId);
       continue; // disclosed, never counted
@@ -107,7 +121,7 @@ export function scoreCandidateOnObjective(
     });
   }
 
-  return { score: contributions.length, contributions, unknownCourseIds };
+  return { score: contributions.length, contributions, unknownCourseIds, variesBySectionCourseIds };
 }
 
 /**
@@ -126,7 +140,10 @@ export function explainGroundedRanking(input: {
 }): string {
   const { selected, alternative } = input;
   if (selected.contributions.length === 0 && (!alternative || alternative.contributions.length === 0)) {
-    return 'לא נמצאה עדות רשמית שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.';
+    const varying = selected.variesBySectionCourseIds?.length
+      ? ' עבור חלק מהקורסים אופן ההוראה משתנה בין קבוצות, ולכן לא ניתן לייחס אותו לקורס כולו.'
+      : '';
+    return 'לא נמצאה עדות רשמית שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.' + varying;
   }
   const names = selected.contributions.map((c) => c.courseId).join(', ');
   const src = selected.contributions[0];
@@ -142,5 +159,10 @@ export function explainGroundedRanking(input: {
   const unknown = selected.unknownCourseIds.length
     ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא קיימת עדות רשמית על אופן ההוראה, ולכן הם לא נספרו לכאן ולא לכאן.`
     : '';
-  return head + provenance + compare + unknown;
+  // K7.5 — a course whose sections disagree is described AS varying. It is never
+  // called a laboratory course on the strength of one group.
+  const varies = selected.variesBySectionCourseIds?.length
+    ? ` עבור ${selected.variesBySectionCourseIds.length} קורס/ים אופן ההוראה משתנה בין קבוצות, ולכן הם לא השפיעו על הדירוג.`
+    : '';
+  return head + provenance + compare + unknown + varies;
 }

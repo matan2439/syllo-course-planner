@@ -27,6 +27,7 @@
  */
 
 import { buildEvidenceSnapshot, type EvidenceSnapshot, type SyllabusDocument } from './syllabus_source';
+import { aggregateCourseLevelFeature, groupIdOfDocument } from './feature_applicability';
 import { RuleBasedFeatureExtractor, FEATURE_EXTRACTION_VERSION, type CourseFeatures, type FeatureExtractor } from './course_features';
 
 /** Truthful, disclosure-only summary of what the snapshot does and does not cover. */
@@ -47,12 +48,28 @@ export interface EvidenceCoverage {
   staleCourseIds: string[];
   /** Course ids with an unresolved authoritative conflict. */
   conflictingCourseIds: string[];
+  /**
+   * K7.5 — courses whose observed sections genuinely disagree on the feature.
+   * Disclosed truthfully; contributes NOTHING to ranking, because the candidate
+   * does not select a section.
+   */
+  variesBySectionCourseIds: string[];
 }
 
 export interface PreparedEvidence {
   snapshot: EvidenceSnapshot;
-  /** Extracted features, keyed by course id — derived from the snapshot only. */
+  /**
+   * COURSE-LEVEL features, safely aggregated across sections — the only view
+   * ranking may consult, because a candidate selects a course and a period, not
+   * a group.
+   */
   features: Map<string, CourseFeatures>;
+  /**
+   * K7.5 — the underlying SECTION-level facts, retained in full. Not used for
+   * ranking today; a future section-selecting planner binds evidence to the
+   * exact chosen group from here.
+   */
+  sectionFeatures: Map<string, SectionFeature[]>;
   coverage: EvidenceCoverage;
 }
 
@@ -69,6 +86,22 @@ export interface PrepareEvidenceInput {
   /** Course ids known to carry an unresolved authoritative conflict. */
   conflictingCourseIds?: string[];
   extractor?: FeatureExtractor;
+  /**
+   * K7.5 — the AUTHORITATIVE complete group/section list per course, from the
+   * official timetable source. Without it, section-level evidence can never be
+   * aggregated to a course-level `true`/`false`, because completeness cannot be
+   * established. Absent ⇒ every multi-section course resolves to unknown or
+   * varies_by_section, which is the safe direction.
+   */
+  groupUniverse?: Record<string, string[]>;
+}
+
+/** One section's extracted facts, retained for a future section-selecting planner. */
+export interface SectionFeature {
+  groupId: string;
+  laboratory: string;
+  contentHash: string;
+  sourceUrl: string;
 }
 
 const EMPTY_EXTRACTOR = new RuleBasedFeatureExtractor();
@@ -104,8 +137,65 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
   const usable = applicable.filter((d) => !conflictingSet.has(d.courseId));
 
   const snapshot = buildEvidenceSnapshot(applicable);
+
+  // K7.5 — group documents by course, extract EACH section faithfully, then
+  // aggregate to the course level under the safe rules. Previously the last (or
+  // first) document simply won, which let one favourable group define the whole
+  // course — the exact defect the live acquisition exposed.
+  const byCourse = new Map<string, SyllabusDocument[]>();
+  for (const d of usable) {
+    const list = byCourse.get(d.courseId) ?? [];
+    list.push(d);
+    byCourse.set(d.courseId, list);
+  }
+
   const features = new Map<string, CourseFeatures>();
-  for (const d of usable) features.set(d.courseId, extractor.extract(d));
+  const sectionFeatures = new Map<string, SectionFeature[]>();
+  const variesBySectionCourseIds: string[] = [];
+
+  for (const [courseId, docs] of byCourse) {
+    const extracted = docs.map((d) => ({ doc: d, features: extractor.extract(d), groupId: groupIdOfDocument(d) }));
+
+    sectionFeatures.set(
+      courseId,
+      extracted
+        .filter((e) => e.groupId !== undefined)
+        .map((e) => ({
+          groupId: e.groupId!,
+          laboratory: String(e.features.laboratory.value),
+          contentHash: e.doc.contentHash,
+          sourceUrl: e.doc.sourceUrl,
+        }))
+        .sort((a, b) => (a.groupId < b.groupId ? -1 : 1)),
+    );
+
+    const aggregated = aggregateCourseLevelFeature({
+      observations: extracted.map((e) => ({
+        ...(e.groupId !== undefined ? { groupId: e.groupId } : {}),
+        value: e.features.laboratory.value,
+      })),
+      ...(input.groupUniverse?.[courseId] ? { groupUniverse: input.groupUniverse[courseId] } : {}),
+    });
+
+    if (aggregated.value === 'varies_by_section') variesBySectionCourseIds.push(courseId);
+
+    // The course-level view carries the AGGREGATED value. Only an unambiguous
+    // `true` can ever contribute to ranking (grounded_objectives.ts), so
+    // 'varies_by_section' and 'unknown' are both inert by construction.
+    const base = extracted[0].features;
+    features.set(courseId, {
+      ...base,
+      laboratory: {
+        ...base.laboratory,
+        value: aggregated.value as CourseFeatures['laboratory']['value'],
+        // An aggregate that is not a definite boolean supports no claim at all.
+        ...(aggregated.value === true || aggregated.value === false
+          ? {}
+          : { confidence: 0, evidence: [] }),
+        rule: `${base.laboratory.rule}+aggregate:${aggregated.reason}`,
+      },
+    });
+  }
 
   const unknownFeatureCourseIds = [...features.entries()]
     .filter(([, f]) => f.laboratory.value === 'unknown')
@@ -118,6 +208,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
   return {
     snapshot,
     features,
+    sectionFeatures,
     coverage: {
       snapshotId: snapshot.snapshotId,
       extractionVersion: FEATURE_EXTRACTION_VERSION,
@@ -128,6 +219,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
       unknownFeatureCourseIds,
       staleCourseIds,
       conflictingCourseIds: conflicting,
+      variesBySectionCourseIds: variesBySectionCourseIds.sort(),
     },
   };
 }
