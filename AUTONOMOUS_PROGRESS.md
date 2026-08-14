@@ -4,7 +4,14 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-14 (cont. 2), session on branch `ui/frontend-modernization`
+_Last updated: 2026-08-14 (cont. 3), session on branch `ui/frontend-modernization`
+(K9A/B/C wired the grounded objective into the LIVE handler, conversation and
+explanation; K5 freshness/conflict; K6 durable cache; K7 bounded live acquisition
+(8/12); **K7.5 fixed a real semantic defect the live run exposed — one group can
+no longer label a whole course**. API 149/1964 green. **Not merged, not
+deployed.** Browser acceptance still OUTSTANDING.)_
+
+_Previous entry: 2026-08-14 (cont. 2), session on branch `ui/frontend-modernization`
 (KnowledgeCapability epic STARTED and proven end to end for one narrow chain:
 official academic source → versioned evidence → normalized course features →
 confirmed soft objective → **the selected candidate actually changes**. K0 also
@@ -33,6 +40,105 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-14 (cont. 3) — K9A–K7 live wiring, bounded acquisition, and the K7.5 applicability fix
+
+### K9A — typed grounded preference (`891157f`)
+
+Generic `course_feature` / `practical_laboratory` preference. ONE mapping
+boundary (`resolveGroundedObjective`, alongside `resolveDistributionPolicy`) so
+UI, handler and planner cannot reinterpret it differently. The internal objective
+name is never a valid input. Confirmed+active+supported → objective; indifferent
+records the topic without bias; uncertain/unconfirmed/rejected/absent → nothing;
+unsupported value → typed `unsupported_grounded_feature`. Stays SOFT — the result
+type has no legality output at all.
+
+### K9B — live Generate + frozen snapshot (`39c71b6`)
+
+`prepareEvidence` runs ONCE per request before planning; candidates never acquire
+or resolve evidence. `evidence_loader.ts` is the single seam and has no transport,
+so no fetch can occur in `PlannerWorker.step`, a rollout, ranking or Apply
+(proven with a `globalThis.fetch` spy). Response carries snapshot id, extraction
+version, years, covered/missing/unknown/stale/conflicting, objective and profile
+version. **Coverage is not a signal**: "all covered but none a laboratory"
+produces the identical plan to "no evidence".
+
+### K9C — impact-driven question + explanation (`e2dce02`)
+
+The topic joins the EXISTING elicitation catalog, gated on a truthful
+`groundedFeatureImpact` signal: asked only when candidates genuinely differ,
+coverage is sufficient and nothing conflicts. Student-facing Hebrew wording; no
+evidence ids or internal names leak. `GroundedExplanation` shows one factual
+sentence with source/year behind an accessible disclosure.
+
+### K5 — freshness and conflict (`d1c0a70`)
+
+One `FreshnessPolicy` replaces scattered timestamp comparisons. Applicability
+beats recency; catalog outranks syllabus; same-level disagreement stays a
+conflict with both records retained; a not-yet-effective record does not govern
+the present.
+
+### K6 — durable cache (`ddaa2e4`)
+
+Content-addressed, atomic (temp+rename), idempotent, stable manifest, fails safe
+on corruption, never erases on failure, explicit refresh. Planning reads
+immutable snapshots, never mutable cache state.
+
+### K7 — bounded live acquisition (`032336c`)
+
+Two runs, 25 requests total, read-only, official host only, 14-request cap, 2s
+delay, sequential, no credentials.
+
+**First run: 13 requests, 0 acquired.** Discovery: the official endpoint is
+addressed by **course + GROUP + year**, not course + year. Group `00` returns
+HTTP 200 reading "קבוצה לא נמצא" with labels present and values empty — correctly
+classified as `no_syllabus_published` rather than fabricated. Group numbers are
+per-offering data and must come from the timetable source, never guessed.
+
+**Second run: 12 requests, 8 acquired, 4 unavailable.** Delivery-mode extraction
+**8/8**; **assessment extraction 0/8** — the live pages carry `מטלות הקורס` with
+no values, so exam/project/coursework are all `unknown`. That is
+"absence is not falsehood" working, not a silent false.
+
+### K7.5 — scoped evidence applicability (`dd7a40a`) — a real defect, found and fixed
+
+The live run showed 0542-3792/2025 is `laboratory=true` for group 05 and `false`
+for group 01. `prepareEvidence` was doing `features.set(courseId, extract(doc))`
+in document order, so **whichever group was processed last defined the whole
+course**. Since the planner selects a course and a period — never a group — that
+attributed a section fact to a course-level candidate.
+
+Fixed: scopes `course | offering | section`; section id read from the document's
+own course-number field; `aggregateCourseLevelFeature` with
+`true | false | varies_by_section | unknown`.
+
+> **Recorded rule: live group-level syllabus evidence does NOT influence
+> course-level ranking unless applicability, or safe COMPLETE aggregation over an
+> authoritative group universe, is proven.**
+
+All-true or all-false require complete authoritative coverage; mixed →
+`varies_by_section`; incomplete coverage or unknown universe → `unknown`; a
+failed acquisition is never read as `false`; the first/lowest/downloaded group
+never decides. Section facts are retained for a future section-selecting planner.
+
+The K4 proof was **revalidated, not preserved**: it had bypassed aggregation and
+proved ranking with section-scoped evidence. It now runs through the real
+`prepareEvidence` with an explicit complete group universe, and the unfavoured
+candidates carry applicable evidence saying "no laboratory" rather than merely
+missing data.
+
+### Honest capability statement
+
+**Supported:** delivery-mode/laboratory extraction from this institution's
+syllabus template; bounded read-only acquisition; deterministic evidence
+resolution, caching and snapshotting; one grounded objective that provably
+changes selection under complete applicable evidence.
+
+**NOT supported, and not claimed:** general syllabus support (one template, one
+institution); assessment extraction (0/8 live); an authoritative group universe
+(the recorded course-details page lists groups, but no normalizer is built yet,
+so multi-section courses stay `unknown`); section-level planning; any objective
+beyond `prefer_laboratory_courses`.
 
 ## Session 2026-08-14 (cont. 2) — KnowledgeCapability K0–K4: the first real grounded chain
 
