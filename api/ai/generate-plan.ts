@@ -84,6 +84,7 @@ import { effectivePlannerPreferences, type EffectivePlannerPreferences } from '.
 import { resolveDistributionPolicy } from './distribution_policy';
 import { generateCandidateSet, selectCandidate, selectionReason, candidateCourseIds } from './candidate_set';
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
+import { resolveGroundedObjective } from './grounded_preference';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1558,6 +1559,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         })
       : undefined;
   const resolvedPolicy = effectivePrefs ? resolveDistributionPolicy(effectivePrefs) : undefined;
+  // K9A — the grounded course-feature objective, resolved at the SAME eligibility
+  // boundary as the distribution policy so the two can never disagree about what
+  // a confirmed preference means. Soft ranking only; it has no path to legality.
+  const resolvedGrounded = effectivePrefs ? resolveGroundedObjective(effectivePrefs) : undefined;
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
   const distributionPolicy: DistributionPolicy | undefined =
     resolvedPolicy && resolvedPolicy.policy !== 'neutral' ? resolvedPolicy.policy : undefined;
@@ -1948,6 +1953,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // Slice 17A — the resolved semester-distribution policy the planner actually
       // consumed, with provenance (preference id, source, profile version).
       (responseBody.academicDecision as Record<string, unknown>).distributionPolicy = resolvedPolicy;
+      // K9A — the resolved grounded course-feature objective (or an explicit
+      // null when none applies), with provenance and any unsupported feature
+      // values surfaced rather than silently dropped.
+      (responseBody.academicDecision as Record<string, unknown>).groundedObjective = {
+        objective: resolvedGrounded?.objective ?? null,
+        ...(resolvedGrounded?.provenance ? { provenance: resolvedGrounded.provenance } : {}),
+        ...(resolvedGrounded?.excluded ? { excluded: resolvedGrounded.excluded } : {}),
+      };
     }
     // Lean candidate-orchestration metadata (the flagged proposal is built from
     // the selected validated candidate). Present on every flagged run.
