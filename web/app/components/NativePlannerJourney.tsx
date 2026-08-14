@@ -49,6 +49,14 @@ const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
   error: 'אירעה שגיאה פנימית — לא ניתן להחיל',
 }
 
+/** WHY a proposal is stale — the note must name the real cause, never guess. */
+type StaleReason = 'catalog' | 'status' | 'preferences'
+const STALE_MESSAGE_HE: Record<StaleReason, string> = {
+  catalog: 'הקטלוג השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
+  status: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
+  preferences: 'ההעדפות שלך השתנו מאז הבנייה — יש לבנות מחדש לפני החלה.',
+}
+
 type BoardPhase = 'loading' | 'ready' | 'error'
 type GenPhase = 'idle' | 'generating' | 'done' | 'error'
 type ChatMsg = { role: 'user' | 'system'; text: string }
@@ -278,13 +286,30 @@ export default function NativePlannerJourney({
     )
   }, [current, buildRequest, generateFn, statusVersion])
 
-  const stale =
-    (genPhase === 'done' && capturedRev != null && current != null &&
-      isCatalogStale(capturedRev, current.catalogRevision)) ||
-    // The academic status (completed courses / electives) changed since this
-    // proposal was generated — it was planned from facts that no longer hold, so
-    // it is stale and must be rebuilt before it can be applied.
-    (genPhase === 'done' && capturedStatusVersion != null && capturedStatusVersion !== statusVersion)
+  // WHY the proposal is stale, not merely THAT it is — the note must name the
+  // real cause. Browser acceptance (check 4B) found the profile-version case
+  // silently disabling Apply, and then found a single shared message wrongly
+  // blaming the catalog for a preference edit.
+  const staleReason: StaleReason | null =
+    genPhase !== 'done'
+      ? null
+      : capturedRev != null && current != null && isCatalogStale(capturedRev, current.catalogRevision)
+        ? 'catalog'
+        // The academic status (completed courses / electives) changed since this
+        // proposal was generated — it was planned from facts that no longer hold.
+        : capturedStatusVersion != null && capturedStatusVersion !== statusVersion
+          ? 'status'
+          // The typed preference profile advanced. `isProposalApplyable` already
+          // REFUSED to apply in this case, but that guard is silent — it only
+          // greys the button out. Surfacing it here can only make MORE proposals
+          // stale, never fewer, so no guard is loosened.
+          : useAcademicDecisionAgent && proposal?.profileVersion != null &&
+            proposal.profileVersion !== convProfileVersion
+            ? 'preferences'
+            : null
+  const stale = staleReason !== null
+
+
 
   const clearProposal = () => {
     tokenRef.current++ // supersede any in-flight generation so it can't re-open the draft
@@ -334,6 +359,7 @@ export default function NativePlannerJourney({
             intentOutcome={proposal.intentOutcome}
             removed={removed}
             stale={stale}
+            staleReason={staleReason}
             canApply={canApply}
             onApply={apply}
             onReject={clearProposal}
@@ -479,12 +505,13 @@ export default function NativePlannerJourney({
 }
 
 function ProposalView({
-  draft, intentOutcome, removed, stale, canApply, onApply, onReject,
+  draft, intentOutcome, removed, stale, staleReason, canApply, onApply, onReject,
 }: {
   draft: ReturnType<typeof buildDraftVM>
   intentOutcome?: GeneratedPlanModel['intentOutcome']
   removed: Array<{ id: string; nameHe: string | null }>
   stale: boolean
+  staleReason: StaleReason | null
   canApply: boolean
   onApply: () => void
   onReject: () => void
@@ -528,9 +555,9 @@ function ProposalView({
           {...(draft.groundedCoverage ? { coverage: draft.groundedCoverage } : {})}
         />
       )}
-      {stale && (
+      {staleReason && (
         <p role="note" className="text-sm text-amber-700 dark:text-amber-300">
-          הקטלוג השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.
+          {STALE_MESSAGE_HE[staleReason]}
         </p>
       )}
       {draft.errors.length > 0 && (

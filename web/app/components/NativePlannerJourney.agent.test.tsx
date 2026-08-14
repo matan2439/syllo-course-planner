@@ -103,6 +103,28 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.queryByText('התוכנית הנוכחית')).toBeNull() // still showing the (now stale) draft, not committed
   })
 
+  test('a profile-version-stale proposal is VISIBLY marked stale, not just disabled', async () => {
+    // Browser acceptance (check 4B) found the guard working but silent: editing a
+    // preference disabled Apply while rendering no explanation, so the state was
+    // conveyed only by a greyed-out control. Meaning must be carried by TEXT.
+    await renderReady({ useAcademicDecisionAgent: true })
+    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
+
+    const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
+    fireEvent.click(within(summary).getByRole('button', { name: /הסר/ }))
+
+    expect(screen.getByRole('button', { name: /החל/ })).toBeDisabled()
+    // …and the reason is stated in text the user can actually read.
+    const note = screen.getByRole('note')
+    expect(note).toBeInTheDocument()
+    // …and it names the ACTUAL cause. Saying "the catalog changed" here would be
+    // false: the catalog is untouched, the preference profile advanced.
+    expect(note.textContent ?? '').toMatch(/העדפ/)
+    expect(note.textContent ?? '').not.toMatch(/הקטלוג/)
+  })
+
   test('a late response superseded by a newer Build never becomes the proposal', async () => {
     let resolveFirst: () => void = () => {}
     let call = 0
