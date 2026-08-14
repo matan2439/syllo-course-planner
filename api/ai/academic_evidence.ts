@@ -205,6 +205,31 @@ export interface ResolvedFact {
   conflict?: { reason: string; evidenceIds: string[] };
 }
 
+/**
+ * K5 — the single deterministic freshness/applicability policy. Every staleness
+ * and version decision reads from ONE of these rather than comparing timestamps
+ * ad hoc at each call site, so two callers can never disagree about whether the
+ * same record is current.
+ */
+export interface FreshnessPolicy {
+  /** Max age of a retrieval before the record is stale. Omitted ⇒ age never expires it. */
+  maxAgeDays?: number;
+  /**
+   * Whether a record whose `effectiveFrom` is AFTER the moment of evaluation is
+   * usable. False (the default) treats a not-yet-effective record as stale — a
+   * future regulation must not govern the current plan.
+   */
+  allowNotYetEffective?: boolean;
+  /** Minimum confidence to confirm a fact. Default 0.5. */
+  minConfidence?: number;
+}
+
+export const DEFAULT_FRESHNESS_POLICY: FreshnessPolicy = {
+  maxAgeDays: undefined,
+  allowNotYetEffective: false,
+  minConfidence: 0.5,
+};
+
 export interface ResolveContext {
   /** The academic year the plan is being built for. */
   academicYear: number | string;
@@ -212,10 +237,12 @@ export interface ResolveContext {
   now: string;
   /** When set, evidence for a different program does not apply. */
   programId?: string;
-  /** Minimum confidence to confirm a fact. Default 0.5. */
+  /** Minimum confidence to confirm a fact. Overrides the policy's own value. */
   minConfidence?: number;
-  /** Freshness bound in days. Omitted ⇒ no freshness requirement. */
+  /** Freshness bound in days. Overrides the policy's own value. */
   maxAgeDays?: number;
+  /** K5 — the deterministic freshness policy. Defaults to DEFAULT_FRESHNESS_POLICY. */
+  policy?: FreshnessPolicy;
 }
 
 const DAY_MS = 86_400_000;
@@ -248,7 +275,9 @@ export function resolveFact(candidates: AcademicEvidence[], ctx: ResolveContext)
   const all = sortEvidence(candidates);
   if (all.length === 0) return { state: 'missing', evidence: [] };
 
-  const minConfidence = ctx.minConfidence ?? 0.5;
+  const policy = { ...DEFAULT_FRESHNESS_POLICY, ...(ctx.policy ?? {}) };
+  const minConfidence = ctx.minConfidence ?? policy.minConfidence ?? 0.5;
+  const maxAgeDays = ctx.maxAgeDays ?? policy.maxAgeDays;
 
   const applicable = all.filter(
     (e) =>
@@ -258,11 +287,17 @@ export function resolveFact(candidates: AcademicEvidence[], ctx: ResolveContext)
   );
   if (applicable.length === 0) return { state: 'stale', evidence: all };
 
-  const fresh = ctx.maxAgeDays === undefined
-    ? applicable
-    : applicable.filter(
-        (e) => Date.parse(ctx.now) - Date.parse(e.retrievedAt) <= ctx.maxAgeDays! * DAY_MS,
-      );
+  // One policy decides freshness: retrieval age, and whether a record that is
+  // not yet in effect may govern the present.
+  const fresh = applicable.filter((e) => {
+    if (maxAgeDays !== undefined && Date.parse(ctx.now) - Date.parse(e.retrievedAt) > maxAgeDays * DAY_MS) {
+      return false;
+    }
+    if (!policy.allowNotYetEffective && e.effectiveFrom && Date.parse(e.effectiveFrom) > Date.parse(ctx.now)) {
+      return false;
+    }
+    return true;
+  });
   if (fresh.length === 0) return { state: 'stale', evidence: all };
 
   const authoritative = fresh.filter((e) => e.authoritative);
