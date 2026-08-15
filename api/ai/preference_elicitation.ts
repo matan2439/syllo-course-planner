@@ -86,6 +86,12 @@ export interface ElicitationContext {
     distinguishesCandidates: boolean;
     /** Normalized topic ids that actually separate retained candidates. */
     distinguishingTopics: string[];
+    /**
+     * W1 — localized labels supplied BY THE SERVER for exactly those ids. The
+     * server owns the vocabulary, so the UI never has to; the local map below
+     * is only a fallback for a response that predates this field.
+     */
+    topicLabels?: Record<string, string>;
     /** More than one course carries a usable official content statement. */
     coverageSufficient: boolean;
     hasConflicts: boolean;
@@ -196,7 +202,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     optionsFrom: (ctx) =>
       (ctx.topicInterestImpact?.distinguishingTopics ?? []).map((value) => ({
         value,
-        label_he: TOPIC_INTEREST_LABELS_HE[value] ?? value,
+        label_he: ctx.topicInterestImpact?.topicLabels?.[value] ?? TOPIC_INTEREST_LABELS_HE[value] ?? value,
       })),
     allowIndifferent: true, allowFreeText: false,
     relevantWhen: (ctx) => {

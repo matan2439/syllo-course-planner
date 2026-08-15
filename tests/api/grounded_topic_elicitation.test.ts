@@ -99,14 +99,20 @@ describe('T6 — when it is SUPPRESSED', () => {
   });
 });
 
-describe('T6 — the question is NOT yet exposed to the browser surface', () => {
+describe('T6/W2 — the topic question requires its OWN server signal', () => {
   /**
-   * The topic objective is proven server-side but has had no browser
-   * acceptance, so it must not reach a real user yet. Non-exposure is
-   * STRUCTURAL, not incidental: the web conversation builds its context from
-   * `groundedFeatureImpact` only and never supplies `topicInterestImpact`, so
-   * `relevantWhen` is false and the question cannot render. This test fails the
-   * moment someone wires the signal through without also removing it.
+   * This began as a non-exposure guard: the topic objective was proven
+   * server-side but had no browser acceptance, so the question had to be
+   * unreachable. W1/W2 replaced that with real exposure, proven end to end by
+   * `tests/api/topic_impact_wire.test.ts` (handler → wire → adapter → draft view
+   * model) and `web/app/components/PreferenceConversation.topic.test.tsx` (the
+   * mounted conversation renders it).
+   *
+   * The guard is kept, not deleted, because the underlying invariant outlived
+   * the exposure decision and is now the stronger claim: the topic question is
+   * driven ONLY by the topic probe. The delivery-feature signal — or any other
+   * context — can never raise it, so a caller cannot accidentally surface a
+   * content question off the back of an unrelated impact probe.
    */
   test('a context carrying only the delivery signal never raises the topic question', () => {
     const webShapedContext: ElicitationContext = {

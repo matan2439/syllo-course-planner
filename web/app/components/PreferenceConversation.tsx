@@ -16,6 +16,7 @@ import { useMemo, useState, useEffect } from 'react'
 import {
   DeterministicPreferenceElicitation,
   DEFAULT_QUESTION_CATALOG,
+  TOPIC_INTEREST_LABELS_HE,
   type ElicitationContext,
 } from '../../../api/ai/preference_elicitation'
 import {
@@ -33,7 +34,13 @@ function labelForPreference(p: Preference): string {
   if (p.originalWording) return p.originalWording
   const q = DEFAULT_QUESTION_CATALOG.find((c) => c.id === p.id)
   const opt = q?.options?.find((o) => o.value === p.value)
-  return opt?.label_he ?? String(p.normalized)
+  if (opt?.label_he) return opt.label_he
+  // W2 — the topic question's options are built per request, so the catalog
+  // carries no static list to look a captured answer up in. Without this the
+  // summary would render the INTERNAL topic id, which must never be a label.
+  const topic = TOPIC_INTEREST_LABELS_HE[String(p.normalized)]
+  if (topic) return topic
+  return String(p.normalized)
 }
 
 export default function PreferenceConversation({
@@ -71,12 +78,20 @@ export default function PreferenceConversation({
   const groundedKey = g
     ? `${g.feature}|${g.distinguishesCandidates}|${g.coverageSufficient}|${g.hasConflicts}`
     : ''
+  // W2 — the topic impact is the SAME class of post-Build signal, and it also
+  // changes WHICH options are offered, so the distinguishing set is part of the
+  // key. Without it the topic question could never surface after the first
+  // Build, and a later Build reporting convergence could never retract it.
+  const t = ctx.topicInterestImpact
+  const topicKey = t
+    ? `${t.distinguishesCandidates}|${t.coverageSufficient}|${t.hasConflicts}|${t.distinguishingTopics.join(',')}`
+    : ''
   useEffect(() => {
     setState((s) => refreshQuestion(s, elicit, ctx))
-    // ctx is recreated each render; irrelevantKey/groundedKey are its stable
-    // serializations.
+    // ctx is recreated each render; irrelevantKey/groundedKey/topicKey are its
+    // stable serializations.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [irrelevantKey, groundedKey, elicit])
+  }, [irrelevantKey, groundedKey, topicKey, elicit])
 
   const q = state.currentQuestion
   const captured = state.profile.preferences

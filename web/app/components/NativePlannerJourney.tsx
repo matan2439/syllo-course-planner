@@ -432,6 +432,14 @@ export default function NativePlannerJourney({
                 ...(proposal?.groundedQuestionImpact
                   ? { groundedFeatureImpact: proposal.groundedQuestionImpact }
                   : {}),
+                // W2 — the course content/topic question is gated on the same
+                // kind of server-side probe, computed over the retained
+                // candidates from the ONE prepared snapshot. Passed straight
+                // through: the browser never recomputes candidate differences
+                // and never decides for itself that a topic is interesting.
+                ...(proposal?.topicQuestionImpact
+                  ? { topicInterestImpact: proposal.topicQuestionImpact }
+                  : {}),
               }}
             />
           </Card>
