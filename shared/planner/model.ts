@@ -193,6 +193,8 @@ export interface GeneratedPlanModel {
   groundedSources?: Array<{ courseId: string; sourceRef: string; academicYear: number | string }>
   /** Truthful coverage disclosure — what the evidence did NOT cover. */
   groundedCoverage?: { coveredCourseCount: number; requestedCourseCount: number; unknownCourseIds: string[] }
+  /** W3 — the grounded objective that actually applied, if any. */
+  groundedObjective?: string
   /** Structured clarification items (agent path only). Lean VMs — no secrets. */
   agentClarificationItems?: AgentClarificationItemVM[];
   /** Typed grounding-validation findings (agent path only). */

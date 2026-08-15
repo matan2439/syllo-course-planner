@@ -25,10 +25,18 @@ export default function GroundedExplanation({
   explanationHe,
   sources = [],
   coverage,
+  objectiveKind = 'delivery',
 }: {
   explanationHe?: string
   sources?: Array<{ courseId: string; sourceRef: string; academicYear: number | string }>
   coverage?: { coveredCourseCount: number; requestedCourseCount: number; unknownCourseIds: string[] }
+  /**
+   * W3 — which grounded objective actually applied. The coverage limitation
+   * must describe the fact that was MISSING: for delivery that is the teaching
+   * mode, for topic alignment it is the official content statement. Saying
+   * "no laboratory" about a content-ranked plan would describe the wrong fact.
+   */
+  objectiveKind?: 'delivery' | 'topic'
 }) {
   const [open, setOpen] = useState(false)
   const regionId = useId()
@@ -65,7 +73,9 @@ export default function GroundedExplanation({
                 <p className="text-xs text-[var(--text-muted)]">
                   {`נמצאה עדות רשמית עבור ${coverage.coveredCourseCount} מתוך ${coverage.requestedCourseCount} קורסים אפשריים.`}
                   {coverage.unknownCourseIds.length > 0 &&
-                    ` עבור חלק מהקורסים אופן ההוראה אינו מצוין במקור הרשמי — היעדר מידע אינו מעיד שאין בהם מעבדה.`}
+                    (objectiveKind === 'topic'
+                      ? ` עבור חלק מהקורסים לא פורסם תוכן רשמי שניתן להשוות — היעדר אזכור בתוכן הרשמי אינו מעיד שהנושא אינו נלמד בקורס.`
+                      : ` עבור חלק מהקורסים אופן ההוראה אינו מצוין במקור הרשמי — היעדר מידע אינו מעיד שאין בהם מעבדה.`)}
                 </p>
               )}
             </div>

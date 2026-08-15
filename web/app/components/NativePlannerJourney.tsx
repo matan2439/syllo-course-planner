@@ -561,6 +561,7 @@ function ProposalView({
           explanationHe={draft.groundedExplanationHe}
           sources={draft.groundedSources ?? []}
           {...(draft.groundedCoverage ? { coverage: draft.groundedCoverage } : {})}
+          objectiveKind={draft.groundedObjective === 'prefer_topic_alignment' ? 'topic' : 'delivery'}
         />
       )}
       {staleReason && (

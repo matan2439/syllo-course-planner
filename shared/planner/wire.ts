@@ -105,6 +105,9 @@ export const generatePlanResponseSchema = z
               .optional(),
             evidence: z
               .object({
+                // W3 — which grounded objective actually applied, so the UI can
+                // describe the RIGHT missing fact rather than guessing.
+                groundedObjective: z.string().nullable().optional(),
                 coveredCourseCount: z.number().optional(),
                 requestedCourseCount: z.number().optional(),
                 unknownFeatureCourseIds: z.array(z.string()).optional(),

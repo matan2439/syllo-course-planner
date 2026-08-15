@@ -99,6 +99,9 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(Array.isArray(p.academicDecision?.candidates?.groundedSources) && p.academicDecision.candidates.groundedSources.length
       ? { groundedSources: p.academicDecision.candidates.groundedSources }
       : {}),
+    ...(typeof p.academicDecision?.candidates?.evidence?.groundedObjective === 'string'
+      ? { groundedObjective: p.academicDecision.candidates.evidence.groundedObjective }
+      : {}),
     // Coverage is disclosure only; emitted just when the server reported real
     // counts, so a partial payload never becomes a fabricated "0 of 0".
     ...(typeof p.academicDecision?.candidates?.evidence?.coveredCourseCount === 'number' &&

@@ -50,6 +50,7 @@ export interface DraftVM {
   groundedExplanationHe?: GeneratedPlanModel['groundedExplanationHe']
   groundedSources?: GeneratedPlanModel['groundedSources']
   groundedCoverage?: GeneratedPlanModel['groundedCoverage']
+  groundedObjective?: GeneratedPlanModel['groundedObjective']
 }
 
 /** courseId(normalized) → set of semester ids it is placed in. */
@@ -139,5 +140,6 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
     ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
     ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),
+    ...(generated.groundedObjective ? { groundedObjective: generated.groundedObjective } : {}),
   }
 }
