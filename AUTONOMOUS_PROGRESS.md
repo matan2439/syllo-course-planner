@@ -4,12 +4,18 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-14 (cont. 5), session on branch `ui/frontend-modernization`
-(**The full six-check real-browser Preview acceptance now PASSES** — see the
-acceptance record below. API 150/1973, web 14/113 green. **Not merged, not
-deployed.**)_
+_Last updated: 2026-08-15, session on branch `ui/frontend-modernization`
+(**Topic alignment is now EXPOSED to users on the flagged Preview path**, with a
+full eleven-check browser acceptance PASSING. **Not merged, not deployed.**)_
 
-_Latest entry: 2026-08-14 (cont. 5) — T1 group-universe normalizer; T2 bounded
+_Latest entry: 2026-08-15 — W1 wired `topicQuestionImpact` through the real
+typed journey; W2 exposed the impact-driven topic question in the real
+conversation; W3 made the explanation state the limitation of the RIGHT
+objective; one browser-found defect fixed (an indifferent answer rendered its
+internal token). **Next epic: composable multi-objective preference
+optimization — recorded below and NOT started.**_
+
+_Previous entry: 2026-08-14 (cont. 5) — T1 group-universe normalizer; T2 bounded
 acquisition (16 requests, 15 acquired) and the content-source coverage matrix;
 T3 normalized topic model; T4 typed topic-interest preference; T5 REAL
 selection change; T6 impact-gated question, server side only and deliberately
@@ -59,6 +65,161 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-15 — W1–W3: topic alignment reaches real users, and its browser acceptance
+
+Five commits: W1 `7e96ca7`, W2 `f7527a7`, W3 `64eb6d0`, fixture `0820443`,
+defect fix `c732efd`.
+
+The topic ENGINE was already proven (T5). What was missing was that a real
+browser could never learn a topic question was worth asking, so the capability
+was inert for users. This session closed exactly that gap and nothing else.
+
+### W1 — the wire (`7e96ca7`)
+
+RED first, and it failed at exactly the predicted boundary: the handler emitted
+`topicQuestionImpact` but `generatePlanResponseToModel` dropped it, so the field
+existed on the response and on neither `GeneratedPlanModel` nor `DraftVM`.
+
+Path, all existing and typed:
+`generate-plan response → shared wire contract → adapters → GeneratedPlanModel
+→ draft view model → NativePlannerJourney → PreferenceConversation`.
+
+Declared EXPLICITLY in the zod contract rather than riding on `.passthrough()`,
+so a malformed probe is rejected instead of reaching the UI. The signal carries
+localized labels, the snapshot id and the profile version, so the browser never
+needs the topic vocabulary and an internal id can never surface as a label.
+Nothing else crosses: no evidence ids, no score vectors, no candidate ids —
+asserted by test.
+
+**Topic option filtering, pinned against the REAL retained candidates**
+({E1,E2} and {E1,E3}):
+
+| Topic | In official evidence? | Offered? | Why |
+|---|---|---|---|
+| `robotics` | yes (E3) | **yes** | unique to E3, which is in one candidate only |
+| `control` | yes (E3) | **yes** | same |
+| `engineering_design` | yes (all four courses) | no | every candidate scores alike |
+| `manufacturing` | yes (E1) | no | E1 is in BOTH candidates |
+| `thermofluids` | yes (E4) | no | E4 is in NEITHER candidate |
+| `solid_mechanics` | no | no | absent from the corpus entirely |
+
+### W2 — the conversation (`f7527a7`)
+
+Uses the EXISTING machinery only — `DeterministicPreferenceElicitation`,
+`ConversationState`, `PreferenceProfile`, `PreferenceConversation`. No fixed
+interests questionnaire was added: with no distinguishing topic, nothing is
+asked.
+
+Three changes, each with its own RED: the journey passes the server probe
+straight through; the conversation re-selects when the topic signal changes
+(without this the question could never surface after the first Build and could
+never be retracted — the same defect class an earlier acceptance caught for the
+delivery question); `labelForPreference` stopped falling through to the internal
+id.
+
+**Asked only when** ≥2 valid candidates differ, applicable official topic
+evidence distinguishes them, coverage is sufficient, the topic is unanswered,
+the user has not chosen indifferent, and no higher-priority question is pending.
+**Suppressed or retracted when** candidates converge, evidence is missing /
+stale / conflicting / ambiguous, no topic separates a pair, or the topic is
+already answered.
+
+Lifecycle: answering, editing, removing, confirming and choosing indifferent all
+update DRAFT state only and never Generate; the profile version advances; the
+current proposal becomes visibly stale; only an explicit Rebuild sends the
+profile; Apply stays version-gated.
+
+### W3 — the explanation (`64eb6d0`)
+
+The coverage limitation now describes the fact that was actually MISSING. For a
+content-ranked plan it reads "absence of a mention in the official content is
+not a determination that the topic is not taught", instead of the delivery
+objective's "no laboratory" — which would have described the wrong fact.
+
+### Browser acceptance — ELEVEN CHECKS, ALL PASS
+
+Local non-Production Preview only. API `scripts/dev_api_server_topic_preview.ts`
+on :3002 (PID 21496) pinned to the COMMITTED fixture
+`data/evidence_fixtures/topic_preview`; `next dev` on :3001 (PID 36076); route
+`/planner/native/agent-preview?program=test_program_grounded_preview_2027`.
+Evidence snapshot **`snap_efe2f017`**, coverage **4/4**. Both ports verified
+free before starting and after stopping.
+
+Pixel screenshots were unavailable (the Browser pane was not compositing), so
+evidence is accessibility-tree, DOM, network and console — recorded honestly
+rather than claimed.
+
+| # | Check | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Question only when impactful | PASS | Absent before any Build; rendered only after the Build that reported impact |
+| 2 | Only evidence-backed distinguishing options | PASS | Exactly `רובוטיקה` + `בקרה ומערכות`; the four excluded topics absent |
+| 3 | Suppressed on insufficient evidence | PASS | Board with 0/2 coverage produced a proposal, no question, no options |
+| 4 | Choosing a topic sends no Generate | PASS | Generate count unchanged 1→1 |
+| 5 | Version advances, proposal visibly stale | PASS | "ההעדפות שלך השתנו מאז הבנייה"; version 3→5 |
+| 6 | Stale Apply disabled and inert | PASS | `disabled:true`; forced click left DOM byte-identical (45204→45204), no request |
+| 7 | Rebuild sends exactly one request | PASS | Exactly 2 Generates total; carried `prefer_topic_alignment` + version 5 |
+| 8 | Selected identity changes, matches render | PASS | `E1,E2 → E1,E3`; `cand_f49f0d08` rank 0, canonical demoted to rank 1; DOM shows E1/E3 |
+| 9 | Explanation correct, no overclaiming | PASS | Cites topic, E3, `תוכן הקורס ומטרתו`, source URL, year 2027, coverage limit |
+| 10 | Indifferent restores canonical | PASS | Back to E1,E2; no explanation; question not re-asked |
+| 11 | Valid Apply commits exactly once | PASS | Committed E1/E2; Apply control REMOVED, so a repeat is structurally impossible |
+
+Also verified: hard `disallowed_course_ids:['E3']` with a confirmed robotics
+preference still placed E1/E2 with score 0 — **soft never overrides hard**;
+completed-course status resolved through the real panel ("נשמר: 0 קורסים");
+flag-off (`agent=0`) has no conversation at all; `dir=rtl`, `lang=he`, two
+`aria-live` polite status regions, 0 unnamed buttons, 0px horizontal overflow at
+375px, keyboard-reachable options with a computed solid focus outline; console
+clean (React DevTools + Fast Refresh only); **every network request went to
+localhost — no internet fetch during Build, ranking or Apply**.
+
+### One browser-found defect, fixed at root (`c732efd`)
+
+Check 10 exposed `indifferent (לא משנה)` — the internal token as the primary
+label. Root cause was not topic-specific: an indifferent answer stores
+`normalized:'indifferent'` with `value:null`, so no catalog option matched and
+`labelForPreference` fell through to the raw value for EVERY question. Fixed by
+giving catalog questions a short Hebrew `subject_he`; re-verified in the browser
+as "תחום תוכן (לא משנה)".
+
+### Honest capability statement
+
+**Supported:** one confirmed topic interest, chosen from server-computed
+distinguishing topics, changing the real selected candidate on the flagged
+Preview path, with an evidence-linked explanation and full staleness/Apply
+gating.
+
+**NOT supported, and not claimed:** simultaneous multi-topic weighting (the UI
+offers ONE topic answer because that is what the contract proves); combining a
+topic preference with the project/laboratory objectives (see the next epic); the
+7 of 18 corpus courses with no mappable official topic — they stay unknown and
+contribute nothing in either direction; assessment extraction; section-level
+planning.
+
+### MANDATORY NEXT EPIC — composable multi-objective preference optimization
+
+The current behaviour is **precedence only**: `resolveGroundedObjective` picks a
+single objective, so a student who prefers a topic AND projects AND laboratories
+has only one of those honoured. This is the next epic and was deliberately NOT
+started here.
+
+It must eventually let confirmed topic interests, project preference, laboratory
+preference and distribution preference influence ranking TOGETHER, with a
+defined, testable combination rule — not one objective winning by precedence.
+Open questions it must answer: how objectives are weighted against each other,
+whether the user states relative importance, how the explanation stays factual
+across several objectives, and how the impact probe reports that a combination
+(rather than a single topic) would change selection.
+
+### Assessment-extractor discovery (recorded, NOT acted on)
+
+The K8A audit reported assessment coverage as 0/8 because
+`labeledFields['מטלות הקורס']` was empty on every document. The acquired text
+shows the field DOES carry values for some courses (e.g. `פרוייקט` on
+0509-4010) — the K2 `<small class="data-table-cell-label">` + `<span>` reader
+simply does not capture that markup shape. So "0/8" measured an extractor
+limitation, not the source. Assessment remains out of scope and unshipped; this
+is recorded so the next audit does not repeat the wrong conclusion.
 
 ## Browser acceptance record — the grounded KnowledgeCapability journey (COMPLETE)
 
