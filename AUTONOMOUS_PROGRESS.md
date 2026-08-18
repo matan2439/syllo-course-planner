@@ -300,6 +300,71 @@ against a server-held plan run, and persists per authenticated user; or (b) an
 explicit, documented product decision that the committed board is intentionally
 local-only — in which case the UI must stop implying otherwise.
 
+## Session 2026-08-19 — S0–S5: authoritative server Apply, board persistence, session ownership
+
+### S0 — inventory (traced, with file/function evidence)
+
+| Area | Finding |
+|---|---|
+| `api/board.ts` | GET-only (`_handle`, line 108 rejects every other method). Serves the **program CATALOG** (`program_versions.board_json`) — per-program, read-only, identical for every visitor. It is **not** a user board, so it must never be mutated by Apply. |
+| Local JSON fallback | `api/ai/board_loader.ts:loadLocalBoardJson` reads `data/boards/<programId>.json`. Used when `DATABASE_URL` is unset or the query throws. Tracked catalog data — never user storage. |
+| `plan_persistence.ts` | `InMemoryPlanRunStore` / `InMemoryPersistenceCapability` only. Its sole importer is `tests/api/plan_persistence.test.ts`; wired to no route, and its own header says it is deliberately not durable. Records `AgentResult`s, not boards — wrong shape for this epic. |
+| DB adapters / schema | `postgres` (npm) used directly in `api/board.ts:queryBoardJson` and `api/ai/_quota.ts`. Alembic heads: `a1b2c3d4e5f6` (initial), `b2c3d4e5f6a7` (board_json), `c3d4e5f6a7b8` (quota), `d4e5f6a7b8c9` (planner_runs). |
+| Existing user tables | `users`, `user_profiles`, `user_completed_courses`, `user_course_plans`, `plan_semesters`, `plan_courses` all exist — but every one is `user_id UUID NOT NULL REFERENCES users(id)`. **Unusable anonymously**, and no code writes to any of them. |
+| Existing session table | `anonymous_sessions (session_token TEXT UNIQUE, credits_used, credits_paid)` — quota only. Its token is **chosen by the client** (`localStorage` `tau_ai_session`, `NativePlannerJourney.sessionToken()`), so it is an ownership key an attacker can simply pick. Not reusable as an ownership boundary. |
+| `DATABASE_URL` | Read in `api/board.ts:126`, `api/ai/generate-plan.ts:1399`, `api/ai/planner-run.ts:96`. Absent ⇒ documented local fallback / dev bypass. No migration exists for a board-state or proposal table. |
+| Serverless constraints | `vercel.json` builds each `api/**` entry as its own `@vercel/node` function. No shared process memory across invocations, and no durable local filesystem — module-level state and `/tmp` are per-instance and evictable. Any production adapter must be external. |
+| Session/cookie utilities | **None.** Repo-wide search for `cookie` / `Set-Cookie` / `HttpOnly` in `api/`, `shared/`, `web/` returns only unrelated comments in `scripts/acquire_official_syllabi.ts`. |
+| Authentication | **None.** No login, no token verification, no user id anywhere in `api/`. |
+| Proposal ownership | **None.** `generate-plan` returns candidates and retains nothing; `candidateOrchestration` is built and discarded with the response. |
+| Board/version fields | `metadata.board_data_version` → `CatalogRevision` (`shared/planner/model.ts:58-77`). It versions the CATALOG, not a user's committed plan. `ProposalBaseRevision` is the client's captured copy. There is no user-board version at all. |
+| Feature flag | `use_academic_decision_agent` (default off). Browser entry only via `/planner/native/agent-preview`, itself gated on `ENABLE_ACADEMIC_AGENT_PREVIEW=1`, so it 404s in Production. |
+| API routing | `vercel.json` rewrites `/api/board/:programId` and `/api/ai/*` to root `@vercel/node` functions; everything else to `web/`. Locally, `web/next.config.ts` proxies `/api/*` to `PLANNER_API_ORIGIN` (`scripts/dev_api_server.ts` on :3002). CORS on `/api/(.*)`: `Access-Control-Allow-Origin: *`, methods `GET, POST, OPTIONS`. |
+
+### Decision matrix
+
+| | A. Client-only | B. Signed stateless token | **C. Anonymous server session** | D. Authenticated user |
+|---|---|---|---|---|
+| Vercel compatible | yes | yes | yes (needs external store) | yes |
+| Durable | no | no (browser-held) | adapter-dependent | yes |
+| Survives refresh | **no** (proven) | yes | yes | yes |
+| Cross-device | no | no | no (by design) | yes |
+| Exactly-once | no | **no** — nothing to dedupe against | yes | yes |
+| Stale-write prevention | no | **no** — two holders of v1 both verify | yes (CAS) | yes |
+| Privacy | best | whole plan in token; size grows with candidates | opaque id, no PII | real PII |
+| Operational cost | none | signing secret + rotation | moderate | high |
+| Existing repo support | current behaviour | none | `postgres` client already a dependency | `users` table exists, **zero auth code** |
+| New external service | none | none | **none** | would require one |
+
+### Selected: C — anonymous server-owned session
+
+It is the smallest model that is server-authoritative, and the only one of A/B/C
+that can express exactly-once and compare-and-swap at all. B was rejected on a
+specific technical ground rather than taste: a stateless token can prove the
+client did not tamper with a plan, but two concurrent Applies both holding a
+token minted at board version *v1* would both verify, so it cannot prevent the
+stale write this epic exists to prevent — and it cannot revoke or supersede.
+
+D was not invented: no authentication code exists anywhere in the repository,
+and the brief forbids adding an auth provider. C upgrades to D by adding a
+nullable `user_id` beside `owner_id` and preferring it when present — no
+rewrite of the repository boundary.
+
+**Ownership key.** The existing `anonymous_sessions.session_token` is deliberately
+NOT reused as the owner: the client picks that value, so any caller could claim
+another caller's proposals. Ownership is a new server-issued opaque id in an
+HttpOnly cookie. The quota token keeps its existing, separate job.
+
+### Production persistence: an explicit REMAINING decision
+
+No production-compatible durable store for user board state exists today. Per
+the brief, this session implements the repository interfaces, a deterministic
+in-memory adapter for tests, and the safest local Preview adapter — and does
+**not** silently choose a vendor. Postgres is already this project's database,
+so it is the obvious candidate, but shipping an untested SQL adapter plus an
+unrun migration would be a durability claim this session cannot support. What a
+production adapter needs is recorded below as required work, not as done work.
+
 ## Exact next action (current — supersedes the archival block at the end)
 
 1. **The Apply-authority epic is MANDATORY and comes first.** The full audit is
