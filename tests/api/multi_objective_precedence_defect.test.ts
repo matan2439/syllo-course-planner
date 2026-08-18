@@ -242,3 +242,55 @@ describe('M7 — answering one preference does not silence the others', () => {
     expect(comp.dominatedCount + comp.nonDominatedCount).toBeGreaterThan(0);
   });
 })
+
+/**
+ * M4 — a genuine TRADE-OFF must be represented, never resolved by precedence.
+ *
+ * Different corpus: E2 is a project course with no distinguishing topic, E3
+ * covers robotics but is a lecture. Neither candidate dominates — each is
+ * strictly better on a different objective. The old code would simply have let
+ * delivery win because it came first; the composed policy must report the
+ * conflict instead.
+ */
+describe('M4 — trade-offs are reported, not decided by objective order', () => {
+  const TRADEOFF = [
+    doc('E1', 'שיעור', 'תכן הנדסי בלבד.'),
+    doc('E2', 'פרוייקט', 'תכן הנדסי בלבד.'),
+    doc('E3', 'שיעור', 'תכן הנדסי, הכרת זרוע רובוטית, קינמטיקה ישירה והפוכה.'),
+    doc('E4', 'שיעור', 'תכן הנדסי בלבד.'),
+  ];
+
+  test('an unresolved trade-off is retained and reported truthfully', async () => {
+    MOCK_DOCUMENTS = TRADEOFF;
+    const body = (await run(request([projectPref(), topicPref()])))._body;
+    const comp = body.academicDecision.candidates.groundedComposition;
+    expect(comp.objectiveIds).toEqual(['prefer_project_courses', 'prefer_topic_alignment']);
+    expect(comp.unresolvedTradeoff).toBe(true);
+    // Explicitly NOT a precedence outcome.
+    expect(comp.reason).toBe('equal_confirmed_preferences');
+    expect(comp.nonDominatedCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('the trade-off explanation says so, without claiming the student chose weights', async () => {
+    MOCK_DOCUMENTS = TRADEOFF;
+    const body = (await run(request([projectPref(), topicPref()])))._body;
+    const text: string = body.academicDecision.candidates.groundedExplanationHe ?? '';
+    expect(text).toMatch(/אין חלופה חוקית שמצטיינת בכל ההעדפות/);
+    expect(text).toMatch(/זו מדיניות הדירוג של המערכת, לא קביעה שלך/);
+  });
+
+  test('reversing the preference order does not change the selected plan', async () => {
+    MOCK_DOCUMENTS = TRADEOFF;
+    const forward = placed((await run(request([projectPref(), topicPref()])))._body);
+    const reverse = placed((await run(request([topicPref(), projectPref()])))._body);
+    expect(reverse).toEqual(forward);
+  });
+
+  test('one official document cited by two objectives is disclosed once', async () => {
+    MOCK_DOCUMENTS = CORPUS; // E3 satisfies BOTH objectives from one document
+    const body = (await run(request([projectPref(), topicPref()])))._body;
+    const sources = body.academicDecision.candidates.groundedSources;
+    const keys = sources.map((s: { courseId: string; sourceRef: string }) => `${s.courseId}|${s.sourceRef}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+})

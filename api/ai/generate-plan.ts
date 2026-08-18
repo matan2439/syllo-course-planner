@@ -1875,10 +1875,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // UI's source disclosure. Empty when nothing was grounded.
       // Sources cited by EVERY active objective on the selected candidate, so a
       // composed explanation's disclosure is complete rather than first-only.
-      groundedSources: (selected?.objectiveScores?.flatMap((c) => c.contributions)
-        ?? selected?.groundedScore?.contributions ?? []).map((c) => ({
-        courseId: c.courseId, sourceRef: c.sourceRef, academicYear: c.academicYear,
-      })),
+      groundedSources: (() => {
+        const all = (selected?.objectiveScores?.flatMap((c) => c.contributions)
+          ?? selected?.groundedScore?.contributions ?? [])
+          .map((c) => ({ courseId: c.courseId, sourceRef: c.sourceRef, academicYear: c.academicYear }));
+        // Two objectives citing the SAME official document is one source, not
+        // two: the disclosure lists documents, not score contributions.
+        const seen = new Set<string>();
+        return all.filter((s) => {
+          const key = `${s.courseId}|${s.sourceRef}|${s.academicYear}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      })(),
       // M3/M4 — how the confirmed objectives were combined. Truthful metadata,
       // never a claim the student assigned weights.
       groundedComposition: candidateSet.composition ?? null,
