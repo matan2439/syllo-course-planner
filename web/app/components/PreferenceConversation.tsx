@@ -12,7 +12,7 @@
  * question transitions, no decorative motion; accessible (labelled groups,
  * aria-live status, real buttons, RTL, text-not-color).
  */
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   DeterministicPreferenceElicitation,
   DEFAULT_QUESTION_CATALOG,
@@ -30,11 +30,17 @@ import {
 } from '../../../api/ai/conversation_state'
 import type { Preference, PreferenceProfile } from '../../../api/ai/preference_model'
 
-function labelForPreference(p: Preference): string {
+function labelForPreference(p: Preference, dynamicLabels: Record<string, string> = {}): string {
   if (p.originalWording) return p.originalWording
   const q = DEFAULT_QUESTION_CATALOG.find((c) => c.id === p.id)
   const opt = q?.options?.find((o) => o.value === p.value)
   if (opt?.label_he) return opt.label_he
+  // C5 — the priority question's options are built per request from the server's
+  // impact contract, so the catalog holds no static list to look the captured
+  // answer up in. Without this the summary would render the INTERNAL objective
+  // id, which must never be a label.
+  const dynamic = dynamicLabels[String(p.normalized)]
+  if (dynamic) return dynamic
   // W2 — the topic question's options are built per request, so the catalog
   // carries no static list to look a captured answer up in. Without this the
   // summary would render the INTERNAL topic id, which must never be a label.
@@ -90,12 +96,26 @@ export default function PreferenceConversation({
   const topicKey = t
     ? `${t.distinguishesCandidates}|${t.coverageSufficient}|${t.hasConflicts}|${t.distinguishingTopics.join(',')}`
     : ''
+  // C5 — the priority impact is the same class of post-Build signal: it only
+  // exists once candidates have been ranked, and both its eligibility and its
+  // option list change between Builds.
+  const pr = ctx.objectivePriorityImpact
+  const priorityKey = pr ? `${pr.eligible}|${pr.options.map((o) => o.value).join(',')}` : ''
   useEffect(() => {
     setState((s) => refreshQuestion(s, elicit, ctx))
-    // ctx is recreated each render; irrelevantKey/groundedKey/topicKey are its
-    // stable serializations.
+    // ctx is recreated each render; irrelevantKey/groundedKey/topicKey/priorityKey
+    // are its stable serializations.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [irrelevantKey, groundedKey, topicKey, elicit])
+  }, [irrelevantKey, groundedKey, topicKey, priorityKey, elicit])
+
+  /**
+   * Labels for options the SERVER built for this request. Remembered across
+   * responses so a captured answer never degrades into its internal id once the
+   * proposal that produced the option list is gone.
+   */
+  const dynamicLabels = useRef<Record<string, string>>({})
+  for (const o of pr?.options ?? []) dynamicLabels.current[o.value] = o.labelHe
+  const labelOf = (p: Preference) => labelForPreference(p, dynamicLabels.current)
 
   const q = state.currentQuestion
   const captured = state.profile.preferences
@@ -183,12 +203,12 @@ export default function PreferenceConversation({
             {captured.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2">
                 <span className="text-[var(--text)]">
-                  {labelForPreference(p)}
+                  {labelOf(p)}
                   {p.classification === 'uncertain' && <span className="mr-1 text-xs text-amber-600"> (טעון אישור)</span>}
                   {p.classification === 'indifferent' && <span className="mr-1 text-xs text-[var(--text-muted)]"> (לא משנה)</span>}
                   {p.source === 'confirmed_interpretation' && <span className="mr-1 text-xs text-[var(--text-muted)]"> (פירוש שאושר)</span>}
                 </span>
-                <button type="button" aria-label={`הסר ${labelForPreference(p)}`}
+                <button type="button" aria-label={`הסר ${labelOf(p)}`}
                   onClick={() => setState((s) => removeCapturedPreference(s, p.id, elicit, ctx))}
                   className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]">הסר</button>
               </li>

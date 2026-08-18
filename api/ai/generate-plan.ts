@@ -1894,6 +1894,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           selected: components.map(asScore),
           ...(other?.objectiveScores?.length ? { alternative: other.objectiveScores.map(asScore) } : {}),
           reason: candidateSet.composition?.reason ?? 'single_objective',
+          // C5 — named only when the student genuinely chose it, so the
+          // explanation can never attribute a priority they did not express.
+          ...(resolvedGrounded?.primaryObjectiveId
+            ? { primaryObjectiveId: resolvedGrounded.primaryObjectiveId }
+            : {}),
         });
       })(),
       // The official sources actually cited by the selected candidate, for the

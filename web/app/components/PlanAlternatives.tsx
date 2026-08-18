@@ -76,8 +76,14 @@ export default function PlanAlternatives({
         </p>
       </div>
 
+      {/* One live region for the whole group: it announces the set going STALE
+          (a state change the student did not initiate on this control, and which
+          removes their ability to choose) as well as the selection. Staleness
+          takes precedence, because it is the fact that changes what they can do. */}
       <p role="status" aria-live="polite" className="sr-only">
-        {`נבחרה חלופה: ${selected.labelHe}`}
+        {disabled
+          ? 'החלופות אינן זמינות לבחירה — ההעדפות השתנו מאז הבנייה, ויש לבנות מחדש.'
+          : `נבחרה חלופה: ${selected.labelHe}`}
       </p>
 
       <div
@@ -148,6 +154,8 @@ export default function PlanAlternatives({
       </div>
 
       {disabled && (
+        // Text, not colour: the disabled cards are also dimmed, but dimming alone
+        // would leave the reason invisible to anyone who cannot perceive it.
         <p className="text-xs text-[var(--text-muted)]">
           ההעדפות שלך השתנו מאז הבנייה — צריך לבנות מחדש כדי לבחור חלופה.
         </p>

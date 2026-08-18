@@ -372,6 +372,13 @@ export function explainGroundedComposition(input: {
     | 'explicit_priority'
     | 'canonical_tie_break'
     | 'no_distinguishing_evidence';
+  /**
+   * C5 — the objective the student explicitly named as mattering more. Supplied
+   * ONLY when they genuinely said so; its absence is why the equal-importance
+   * wording has always described itself as the SYSTEM's policy rather than the
+   * student's statement.
+   */
+  primaryObjectiveId?: GroundedObjectiveId;
 }): string {
   const { objectives, selected, alternative, snapshotId } = input;
   if (objectives.length === 0 || selected.length === 0) return '';
@@ -398,8 +405,7 @@ export function explainGroundedComposition(input: {
       ' התוכנית הנבחרת מתאימה לכל ההעדפות שאישרת לפחות כמו כל חלופה חוקית אחרת שנבדקה, ועדיפה על חלקן בלפחות העדפה אחת.',
     equal_confirmed_preferences:
       ' אין חלופה חוקית שמצטיינת בכל ההעדפות שאישרת בו-זמנית. לא ציינת מה חשוב יותר, ולכן כל ההעדפות נשקלו במשקל שווה — זו מדיניות הדירוג של המערכת, לא קביעה שלך.',
-    explicit_priority:
-      ' הבחירה נעשתה לפי סדר החשיבות שציינת בין ההעדפות.',
+    explicit_priority: explicitPrioritySentence(input),
     canonical_tie_break:
       ' כל החלופות החוקיות התאימו להעדפות שאישרת באותה מידה, ולכן נשמרה תוכנית ברירת המחדל.',
     no_distinguishing_evidence:
@@ -407,4 +413,42 @@ export function explainGroundedComposition(input: {
   };
 
   return per.join(' ') + (combined[input.reason] ?? '');
+}
+
+/**
+ * C5 — what an explicit priority actually did, stated factually.
+ *
+ * It names the objective the student chose, says that is why this plan was
+ * recommended, and — crucially — names the objective a different legal plan is
+ * still stronger on. Suppressing that would turn a trade-off the student
+ * resolved by preference into an implied claim of superiority, which it is not.
+ */
+function explicitPrioritySentence(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId; topicIds?: readonly TopicId[] }>;
+  selected: readonly GroundedScore[];
+  alternative?: readonly GroundedScore[];
+  primaryObjectiveId?: GroundedObjectiveId;
+}): string {
+  const { objectives, selected, alternative, primaryObjectiveId } = input;
+  const k = objectives.findIndex((o) => o.id === primaryObjectiveId);
+  if (k < 0) {
+    // Reason says a priority decided, but we were not told which. Say only what
+    // is supported rather than naming an objective on a guess.
+    return ' הבחירה נעשתה לפי סדר החשיבות שציינת בין ההעדפות.';
+  }
+  const primaryName = objectiveSubjectHe(objectives[k].id, objectives[k].topicIds ?? []);
+  const head = ` ציינת ש${primaryName} חשוב לך יותר, ולכן ההמלצה נבחרה לפי ההעדפה הזו ולא לפי שקלול שווה של כולן.`;
+
+  // The objective a rejected legal alternative is still stronger on.
+  const strongerElsewhere = alternative
+    ? objectives
+        .map((o, i) => ({ o, i }))
+        .find(({ i }) => i !== k && (alternative[i]?.score ?? 0) > (selected[i]?.score ?? 0))
+    : undefined;
+  const tradeoff = strongerElsewhere
+    ? ` חלופה חוקית אחרת עדיין מתאימה יותר ל${objectiveSubjectHe(strongerElsewhere.o.id, strongerElsewhere.o.topicIds ?? [])}, והיא נשארת זמינה לבחירה.`
+    : '';
+  const scope =
+    ' כל החלופות המוצגות עומדות באותן דרישות ומגבלות — סדר החשיבות שציינת השפיע רק על ההמלצה, לא על מה שמותר.';
+  return head + tradeoff + scope;
 }

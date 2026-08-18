@@ -497,6 +497,23 @@ export default function NativePlannerJourney({
                 ...(proposal?.topicQuestionImpact
                   ? { topicInterestImpact: proposal.topicQuestionImpact }
                   : {}),
+                // C5 — the relative-priority question is gated on the server's
+                // own replay of the ranking under each possible answer. The
+                // browser forwards `eligible` and the option list verbatim: it
+                // never decides from two alternatives existing, from
+                // `unresolvedTradeoff`, from the objective vectors, or from card
+                // order. A STALE set is not an invitation to ask again, so the
+                // signal is withheld while the current proposal is stale.
+                ...(proposal?.priorityQuestionImpact && !stale
+                  ? {
+                      objectivePriorityImpact: {
+                        eligible: proposal.priorityQuestionImpact.eligible,
+                        options: proposal.priorityQuestionImpact.options.map((o) => ({
+                          value: o.value, labelHe: o.labelHe,
+                        })),
+                      },
+                    }
+                  : {}),
               }}
             />
           </Card>

@@ -102,6 +102,20 @@ export interface ElicitationContext {
     coverageSufficient: boolean;
     hasConflicts: boolean;
   };
+  /**
+   * C5 — the impact-driven gate for the RELATIVE-PRIORITY question, supplied by
+   * the server and never derived here. `eligible` already folds in all eight
+   * conditions (two non-dominated comparable alternatives, a material trade-off,
+   * an answer that genuinely changes the recommendation, nothing already
+   * answered, nothing blocking) — so this file deliberately does NOT re-derive
+   * impact from the option list, the objective ids or anything else it can see.
+   * Absent ⇒ the question is never raised.
+   */
+  objectivePriorityImpact?: {
+    eligible: boolean;
+    /** Exactly the answers worth offering, already localized by the server. */
+    options: Array<{ value: string; labelHe: string }>;
+  };
 }
 
 /**
@@ -221,6 +235,36 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
       return !!t && t.distinguishesCandidates && t.coverageSufficient && !t.hasConflicts
         && t.distinguishingTopics.length > 0;
     },
+  },
+  {
+    /**
+     * C5 — the RELATIVE-PRIORITY question. It exists only when several confirmed
+     * objectives pull toward different legal plans AND naming one of them would
+     * genuinely change which plan is recommended.
+     *
+     * It is generic by construction: the options are stable objective ids
+     * supplied per request, so there is no `topic_over_project` field, no
+     * pairwise vocabulary and therefore no possibility of a priority cycle.
+     *
+     * There is no separate "doesn't matter" answer. Explicit equal importance
+     * and indifference would produce the IDENTICAL product state — the
+     * documented equal-importance composition — and offering two labels for one
+     * outcome would misrepresent it as a choice. The single equal-importance
+     * option is the answer, and it is a real answer: it is recorded, it stops
+     * the question being re-asked, and it is different from silence.
+     */
+    id: 'objective_priority', category: 'objective_priority',
+    affects: 'grounded_objective_priority', impact: 0.55,
+    answerType: 'single_choice',
+    question_he: 'החלופות מתאימות לכל הדרישות שלך, אבל יש ביניהן פשרה. מה חשוב לך יותר לצורך ההמלצה?',
+    rationale_he: 'כל החלופות עומדות באותן דרישות ומגבלות. התשובה משפיעה רק על סדר ההעדפה בין המטרות שאישרת, ורק אחרי בנייה מחדש.',
+    subject_he: 'סדר החשיבות בין ההעדפות',
+    optionsFrom: (ctx) =>
+      (ctx.objectivePriorityImpact?.options ?? []).map((o) => ({ value: o.value, label_he: o.labelHe })),
+    // No free text: a priority is an explicit bounded choice, and an
+    // interpretation of prose would be exactly the inference this forbids.
+    allowIndifferent: false, allowFreeText: false,
+    relevantWhen: (ctx) => ctx.objectivePriorityImpact?.eligible === true,
   },
 ];
 
