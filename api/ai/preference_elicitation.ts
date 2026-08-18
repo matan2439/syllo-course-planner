@@ -35,6 +35,12 @@ export interface ElicitationQuestionDef {
   answerType: 'single_choice' | 'number' | 'boolean' | 'text';
   question_he: string;
   rationale_he: string;
+  /**
+   * Short Hebrew name for WHAT this question is about. Needed because an
+   * indifferent answer stores no option value, so there is nothing to look a
+   * label up by — without this the summary fell back to the internal token.
+   */
+  subject_he?: string;
   options?: Array<{ value: string; label_he: string }>;
   /**
    * T6 — options derived from THIS request's real candidate differences, rather
@@ -139,6 +145,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     answerType: 'single_choice',
     question_he: 'מה חשוב לך יותר כרגע: שבוע קל יותר, או לסיים כמה שיותר קורסים מוקדם?',
     rationale_he: 'זה קובע כמה קורסים לשבץ בכל סמסטר ומשפיע ישירות על העומס השבועי.',
+    subject_he: 'עומס שבועי',
     options: [
       { value: 'lighter_week', label_he: 'שבוע קל יותר' },
       { value: 'finish_sooner', label_he: 'לסיים מוקדם' },
@@ -150,6 +157,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     answerType: 'single_choice',
     question_he: 'יש שתי אפשרויות חוקיות: מערכת מרוכזת יותר או עומס מאוזן בין הסמסטרים. מה עדיף לך?',
     rationale_he: 'קורסים שחוקיים בשני הסמסטרים יכולים להתאזן — זה משנה את פיזור העומס.',
+    subject_he: 'פיזור העומס בין הסמסטרים',
     options: [
       { value: 'balanced', label_he: 'עומס מאוזן' },
       { value: 'compact', label_he: 'מערכת מרוכזת' },
@@ -161,6 +169,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     answerType: 'single_choice',
     question_he: 'האם שעות בוקר מוקדמות מפריעות לך?',
     rationale_he: 'אם כן, אפשר להעדיף שיבוצים מאוחרים יותר כשקיימת אפשרות חוקית.',
+    subject_he: 'שעות הלימוד',
     options: [
       { value: 'avoid_morning', label_he: 'עדיף להימנע מבוקר' },
       { value: 'morning_ok', label_he: 'בוקר בסדר' },
@@ -176,6 +185,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     answerType: 'single_choice',
     question_he: 'יש כמה הרכבים חוקיים שנבדלים ביניהם באופן ההוראה. איזה סוג קורס מתאים לך יותר?',
     rationale_he: 'לפי הסילבוסים הרשמיים, חלק מהקורסים האפשריים מועברים כמעבדה או כפרויקט — זה יכול לשנות איזו תוכנית תיבחר.',
+    subject_he: 'אופן ההוראה',
     options: [
       { value: 'practical_laboratory', label_he: 'מעדיף/ה קורסים עם מעבדה או עבודה מעשית' },
       // K8 — added after the coverage audit measured the same official
@@ -199,6 +209,7 @@ export const DEFAULT_QUESTION_CATALOG: ElicitationQuestionDef[] = [
     answerType: 'single_choice',
     question_he: 'יש כמה הרכבים חוקיים שנבדלים בתוכן הקורסים. יש תחום תוכן שמעניין אותך במיוחד?',
     rationale_he: 'לפי שדה "תוכן הקורס ומטרתו" בסילבוסים הרשמיים, חלק מהקורסים האפשריים עוסקים בתחומים שונים — זה יכול לשנות איזו תוכנית תיבחר.',
+    subject_he: 'תחום תוכן',
     optionsFrom: (ctx) =>
       (ctx.topicInterestImpact?.distinguishingTopics ?? []).map((value) => ({
         value,

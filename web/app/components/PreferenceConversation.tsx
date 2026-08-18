@@ -40,6 +40,10 @@ function labelForPreference(p: Preference): string {
   // summary would render the INTERNAL topic id, which must never be a label.
   const topic = TOPIC_INTEREST_LABELS_HE[String(p.normalized)]
   if (topic) return topic
+  // An INDIFFERENT answer stores no option value at all, so nothing above can
+  // match and the raw token ('indifferent') would surface. Name the SUBJECT
+  // instead — the row already carries its own "(לא משנה)" marker.
+  if (q?.subject_he) return q.subject_he
   return String(p.normalized)
 }
 

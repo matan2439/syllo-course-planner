@@ -171,3 +171,32 @@ describe('W2 — answering never plans, and is recorded understandably', () => {
     expect(topic.classification).toBe('soft_preference')
   })
 })
+
+/**
+ * Browser-acceptance defect (Preview check 10): choosing "לא משנה לי" rendered
+ * the row as `indifferent (לא משנה)` — the INTERNAL token as the primary label.
+ *
+ * Root cause: an indifferent answer is stored as `normalized: 'indifferent'`
+ * with `value: null`, so no catalog option matches and `labelForPreference`
+ * fell through to `String(p.normalized)`. This affects EVERY question, not just
+ * the topic one, so both are pinned here.
+ */
+describe('W2 defect — an indifferent answer never renders its internal token', () => {
+  test('the topic row names the subject in Hebrew, not "indifferent"', () => {
+    const { rerender } = mount()
+    rerender(<PreferenceConversation onBuild={() => {}} elicitationContext={ctx()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'לא משנה לי' }))
+
+    const summary = screen.getByRole('region', { name: 'מה הבנתי ממך' })
+    expect(summary.textContent).not.toContain('indifferent')
+    expect(summary).toHaveTextContent('תחום תוכן')
+  })
+
+  test('an indifferent answer to a NON-topic question is also named in Hebrew', () => {
+    render(<PreferenceConversation onBuild={() => {}} elicitationContext={{}} />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'לא משנה לי' })[0])
+
+    const summary = screen.getAllByRole('region', { name: 'מה הבנתי ממך' })[0]
+    expect(summary.textContent).not.toContain('indifferent')
+  })
+})
