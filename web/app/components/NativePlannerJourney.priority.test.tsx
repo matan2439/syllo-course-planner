@@ -17,6 +17,7 @@ import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
+import { createServerApplyStub } from './serverApplyStub'
 
 const BOARD = {
   metadata: {
@@ -100,6 +101,14 @@ function proposalFor(req: GeneratePlanRequest, opts: { impact?: boolean } = {}):
   ]
   const recommended = alternatives.find((a) => a.recommended)!
   return {
+    proposal: {
+      proposalId: PROPOSAL_ID,
+      candidateIds: alternatives.map((a) => a.candidateId),
+      recommendedCandidateId: recommended.candidateId,
+      baseBoardVersion: null,
+      profileVersion: profile?.version ?? 0,
+      expiresAt: Date.now() + 3_600_000,
+    },
     semesters: recommended.semesters,
     moves: [],
     warningsHe: [], errors: [], blocked: false,
@@ -126,12 +135,24 @@ const PRIORITY_QUESTION = /יש ביניהן פשרה\. מה חשוב לך יו�
 const TOPIC_OPTION = 'תחום התוכן: רובוטיקה'
 const EQUAL_OPTION = 'שניהם חשובים לי באותה מידה'
 
+const PROPOSAL_ID = 'prop_priority'
+let server: ReturnType<typeof createServerApplyStub>
+
 async function renderReady(generateFn?: unknown) {
+  server = createServerApplyStub({
+    proposalId: PROPOSAL_ID,
+    candidates: [
+      { candidateId: PROJECT_LEADER, semesters: alternative(PROJECT_LEADER, 'E2', '', false).semesters },
+      { candidateId: TOPIC_LEADER, semesters: alternative(TOPIC_LEADER, 'E3', '', false).semesters },
+    ],
+  })
   render(
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => board()}
       generateFn={(generateFn as never) ?? (async (req: GeneratePlanRequest) => proposalFor(req))}
+      applyFn={server.applyFn}
+      committedBoardFn={server.committedBoardFn}
       useAcademicDecisionAgent
     />,
   )

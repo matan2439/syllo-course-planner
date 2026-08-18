@@ -89,6 +89,21 @@ export const generatePlanResponseSchema = z
           .optional(),
         applyEligible: z.boolean().optional(),
         profileVersion: z.number().optional(),
+        /**
+         * S1 — the AUTHORITATIVE proposal receipt. Ids and versions only: the
+         * client holds no plan the server would have to trust back, and Apply
+         * names a candidate rather than sending one.
+         */
+        proposal: z
+          .object({
+            proposalId: z.string().min(1),
+            candidateIds: z.array(z.string()),
+            recommendedCandidateId: z.string().nullable(),
+            baseBoardVersion: z.string().nullable(),
+            profileVersion: z.number(),
+            expiresAt: z.number(),
+          })
+          .optional(),
         candidates: z
           .object({
             hasMeaningfulAlternatives: z.boolean().optional(),
@@ -223,6 +238,45 @@ export const generatePlanResponseSchema = z
   })
   .passthrough();
 export type GeneratePlanResponse = z.infer<typeof generatePlanResponseSchema>;
+
+
+// ── POST /api/ai/apply-plan + GET (the session's committed board) ────────────
+export const applyPlanResponseSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    replayed: z.boolean(),
+    board: z.object({
+      programId: z.string(),
+      version: z.string().min(1),
+      semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
+    }),
+    appliedCandidateId: z.string(),
+    appliedProposalId: z.string(),
+  }),
+  z.object({
+    ok: z.literal(false),
+    code: z.string(),
+    message_he: z.string(),
+    currentBoardVersion: z.string().nullable().optional(),
+  }),
+]);
+export type ApplyPlanResponse = z.infer<typeof applyPlanResponseSchema>;
+
+export const committedBoardResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    board: z
+      .object({
+        programId: z.string(),
+        version: z.string().min(1),
+        semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
+      })
+      .nullable(),
+    /** Truthful disclosure of what this deployment can actually promise. */
+    storage: z.string().optional(),
+  })
+  .passthrough();
+export type CommittedBoardResponse = z.infer<typeof committedBoardResponseSchema>;
 
 // ── Local workspace (persisted client-side; versioned, program-scoped) ───────
 export const workspaceSchema = z

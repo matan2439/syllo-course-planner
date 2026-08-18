@@ -20,7 +20,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/model'
 import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
-import { generatePlan, getBoard, type GeneratePlanRequest } from '../../../shared/planner/api-client'
+import {
+  applyPlan, generatePlan, getBoard, getCommittedBoard,
+  type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest,
+} from '../../../shared/planner/api-client'
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
@@ -73,6 +76,10 @@ const defaultGetBoard = (programId: string) =>
   getBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
 const defaultGenerate = (req: GeneratePlanRequest) =>
   generatePlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
+const defaultApply = (req: Parameters<typeof applyPlan>[1]) =>
+  applyPlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
+const defaultCommittedBoard = (programId: string) =>
+  getCommittedBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
 
 /** RFC-4122 v4 UUID with graceful fallback (older/embedded runtimes lack crypto.randomUUID). */
 function uuidv4(): string {
@@ -104,11 +111,17 @@ export default function NativePlannerJourney({
   programId,
   getBoardFn = defaultGetBoard,
   generateFn = defaultGenerate,
+  applyFn = defaultApply,
+  committedBoardFn = defaultCommittedBoard,
   useAcademicDecisionAgent = false,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
   generateFn?: (req: GeneratePlanRequest) => Promise<GeneratedPlanModel>
+  /** S5 — the authoritative server Apply. Injected so tests need no backend. */
+  applyFn?: (req: Parameters<typeof applyPlan>[1]) => Promise<ApplyPlanResult>
+  /** S5 — the session's committed board, read on mount and after Apply. */
+  committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -120,16 +133,38 @@ export default function NativePlannerJourney({
   // ── current plan ──────────────────────────────────────────────────────────
   const [boardPhase, setBoardPhase] = useState<BoardPhase>('loading')
   const [current, setCurrent] = useState<BoardModel | null>(null)
+  /**
+   * S5 — the server's version of the committed board. `null` means this session
+   * has never applied one, which is a legitimate expected value for a first
+   * Apply rather than a missing field.
+   */
+  const [boardVersion, setBoardVersion] = useState<string | null>(null)
 
   useEffect(() => {
     let live = true
     setBoardPhase('loading')
-    getBoardFn(programId).then(
-      (b) => { if (live) { setCurrent(b); setBoardPhase('ready') } },
+    // The CATALOG is program data (course universe, names, hours); the
+    // COMMITTED board is this session's own state. Both are needed, and only
+    // the second is user data — so a failure to read it must not hide the
+    // catalog, but it must also never be replaced by a silent default.
+    const committed = useAcademicDecisionAgent
+      ? committedBoardFn(programId).catch((e) => {
+          console.error('[NativePlannerJourney] committed board load failed:', e)
+          return null
+        })
+      : Promise.resolve(null)
+
+    Promise.all([getBoardFn(programId), committed]).then(
+      ([catalog, saved]) => {
+        if (!live) return
+        setCurrent(saved ? applyGeneratedToBoard({ semesters: saved.semesters } as GeneratedPlanModel, catalog) : catalog)
+        setBoardVersion(saved?.version ?? null)
+        setBoardPhase('ready')
+      },
       (e) => { if (live) { console.error('[NativePlannerJourney] board load failed:', e); setBoardPhase('error') } },
     )
     return () => { live = false }
-  }, [programId, getBoardFn])
+  }, [programId, getBoardFn, committedBoardFn, useAcademicDecisionAgent])
 
   // ── conversation + preferences (recorded; never auto-generate) ─────────────
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -194,6 +229,15 @@ export default function NativePlannerJourney({
   const [capturedStatusVersion, setCapturedStatusVersion] = useState<number | null>(null)
   const [errKind, setErrKind] = useState<'network' | 'contract' | null>(null)
   const tokenRef = useRef(0)
+  /** S5 — Apply is a real round-trip now, so it has a pending state. */
+  const [applyPhase, setApplyPhase] = useState<'idle' | 'applying'>('idle')
+  /** The server's typed refusal, rendered as-is. Never a stack trace. */
+  const [applyError, setApplyError] = useState<string | null>(null)
+  /**
+   * Held across retries of ONE apply attempt so a repeat is recognised as the
+   * same work. Cleared on success and whenever the proposal changes.
+   */
+  const applyKeyRef = useRef<string | null>(null)
 
   // ── mounted preference conversation (flagged path only) ────────────────────
   // The PreferenceConversation component owns the single authoritative typed
@@ -202,6 +246,26 @@ export default function NativePlannerJourney({
   // latest profile in a ref so an explicit Build sends the exact typed profile.
   const [convProfileVersion, setConvProfileVersion] = useState<number | undefined>(undefined)
   const convProfileRef = useRef<PreferenceProfile | null>(null)
+
+  /**
+   * The ACADEMIC STATUS both Generate and Apply describe.
+   *
+   * Apply echoes it so the server can confirm the plan's assumptions still
+   * hold — a plan built before the student edited their completed courses must
+   * not be committed afterwards. It is one function so the two can never
+   * describe the same state differently and produce a spurious mismatch.
+   */
+  const applyAcademicStatus = useCallback((): Record<string, unknown> => {
+    const completedIds = useAcademicDecisionAgent ? completedCourseIdsOf(academicStatus) : []
+    const status: Record<string, unknown> = {
+      completed: completedIds.map((course_id) => ({ course_id })),
+      currently_taking: [],
+    }
+    if (useAcademicDecisionAgent && academicStatus.confirmed) {
+      status.completed_knowledge = { status: 'known', provenance: 'explicit_user' }
+    }
+    return status
+  }, [useAcademicDecisionAgent, academicStatus])
 
   const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest => {
     const conversation = messages.filter((m) => m.role === 'user').map((m) => m.text)
@@ -220,15 +284,7 @@ export default function NativePlannerJourney({
     // Completed courses are ACADEMIC STATE (never a preference). Ids come only
     // from what the student explicitly reported — never derived from an hours
     // total — and the knowledge marker is attached only once they confirmed.
-    const completedIds = useAcademicDecisionAgent ? completedCourseIdsOf(academicStatus) : []
-    const personalStatus: Record<string, unknown> = {
-      completed: completedIds.map((course_id) => ({ course_id })),
-      currently_taking: [],
-      planned: [],
-    }
-    if (useAcademicDecisionAgent && academicStatus.confirmed) {
-      personalStatus.completed_knowledge = { status: 'known', provenance: 'explicit_user' }
-    }
+    const personalStatus: Record<string, unknown> = { ...applyAcademicStatus(), planned: [] }
     const planContext: Record<string, unknown> = {
       semesters: base.semesters.map((s) => ({
         id: s.semesterId,
@@ -268,7 +324,7 @@ export default function NativePlannerJourney({
         : {}),
     }
   }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent,
-      academicStatus, exclusionsNoneConfirmed])
+      applyAcademicStatus, exclusionsNoneConfirmed])
 
   const build = useCallback((profile?: PreferenceProfile) => {
     if (!current) return
@@ -281,6 +337,10 @@ export default function NativePlannerJourney({
       (result) => {
         if (token !== tokenRef.current) return
         setProposal(result)
+        // A new proposal retires any previous apply attempt: reusing its key
+        // would make this different work look like a retry of the old one.
+        applyKeyRef.current = null
+        setApplyError(null)
         // The recommended alternative is the initial selection, and it is the
         // same plan the handler already put in `semesters`.
         setSelectedAlternativeId(result.alternatives?.find((a) => a.recommended)?.candidateId ?? null)
@@ -327,6 +387,8 @@ export default function NativePlannerJourney({
     setSelectedAlternativeId(null)
     setGenPhase('idle')
     setErrKind(null)
+    setApplyError(null)
+    applyKeyRef.current = null
   }
 
   const canApply = !!proposal && isProposalApplyable(proposal, stale, {
@@ -345,16 +407,76 @@ export default function NativePlannerJourney({
     return { ...proposal, semesters: alt.semesters.map((sem) => ({ semesterId: sem.semesterId, courseIds: sem.courseIds })) }
   }
 
-  const apply = () => {
-    if (!current || !proposal || !canApply) return // hard guard: blocked/stale/errored/version-mismatch never apply
-    // C4 — commit the plan the student is actually looking at. `applyTarget` is
-    // the exact candidate state from the CURRENT response: an id that is not in
-    // this response's alternative set never resolves, so a fabricated or stale
-    // selection falls back to the recommended proposal rather than committing
-    // something the server never validated.
-    const applyTarget = applyTargetProposal()
-    if (!applyTarget) return
-    setCurrent(applyGeneratedToBoard(applyTarget, current))
+  /**
+   * S5 — Apply is now a SERVER action on the flagged path.
+   *
+   * The request names the proposal and the chosen candidate; it carries no
+   * plan, because the server holds the validated ones. The committed board is
+   * replaced only with what the server returns, and only after it succeeds —
+   * an optimistic update here would be the client asserting an outcome it does
+   * not own, which is the exact defect this epic exists to remove.
+   *
+   * Flag-off keeps the previous client-side behaviour, unchanged.
+   */
+  const apply = async () => {
+    if (!current || !proposal || !canApply || applyPhase === 'applying') return
+
+    if (!useAcademicDecisionAgent) {
+      // Legacy path, byte-identical to before.
+      const applyTarget = applyTargetProposal()
+      if (!applyTarget) return
+      setCurrent(applyGeneratedToBoard(applyTarget, current))
+      setMessages((m) => [...m, { role: 'system', text: 'התוכנית הוחלה והיא כעת התוכנית הנוכחית.' }])
+      clearProposal()
+      return
+    }
+
+    const receipt = proposal.proposal
+    const candidateId = selectedAlternativeId ?? receipt?.recommendedCandidateId ?? null
+    if (!receipt || !candidateId) {
+      setApplyError('לא ניתן להחיל — יש לבנות תוכנית מחדש.')
+      return
+    }
+
+    // One key per (proposal, candidate) attempt, so a retry of THIS apply is
+    // recognised as the same work rather than a second mutation.
+    const key = applyKeyRef.current ?? `${receipt.proposalId}:${candidateId}`
+    applyKeyRef.current = key
+
+    setApplyPhase('applying')
+    setApplyError(null)
+    let result: ApplyPlanResult
+    try {
+      result = await applyFn({
+        program_id: programId,
+        proposal_id: receipt.proposalId,
+        candidate_id: candidateId,
+        expected_board_version: boardVersion,
+        expected_profile_version: receipt.profileVersion,
+        idempotency_key: key,
+        academic_status: applyAcademicStatus(),
+      })
+    } catch {
+      // The call never happened: the committed board is untouched and the draft
+      // stays inspectable, so the student can simply try again.
+      setApplyPhase('idle')
+      setApplyError('שליחת ההחלה נכשלה (שגיאת רשת). התוכנית הנוכחית לא השתנתה.')
+      return
+    }
+
+    if (!result.ok) {
+      setApplyPhase('idle')
+      setApplyError(result.messageHe)
+      // A conflict means the server moved on; adopting its version lets a
+      // Rebuild resync instead of retrying against a version that cannot win.
+      if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
+      return
+    }
+
+    setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+    setBoardVersion(result.board.version)
+    setApplyPhase('idle')
+    applyKeyRef.current = null
     setMessages((m) => [...m, { role: 'system', text: 'התוכנית הוחלה והיא כעת התוכנית הנוכחית.' }])
     clearProposal()
   }
@@ -416,7 +538,9 @@ export default function NativePlannerJourney({
             removed={removed}
             stale={stale}
             staleReason={staleReason}
-            canApply={canApply}
+            canApply={canApply && applyPhase === 'idle'}
+            applying={applyPhase === 'applying'}
+            applyError={applyError}
             onApply={apply}
             onReject={clearProposal}
           />
@@ -587,7 +711,7 @@ export default function NativePlannerJourney({
 }
 
 function ProposalView({
-  draft, intentOutcome, removed, stale, staleReason, canApply, onApply, onReject,
+  draft, intentOutcome, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
 }: {
   draft: ReturnType<typeof buildDraftVM>
   intentOutcome?: GeneratedPlanModel['intentOutcome']
@@ -595,6 +719,10 @@ function ProposalView({
   stale: boolean
   staleReason: StaleReason | null
   canApply: boolean
+  /** S5 — a real round-trip is in flight. */
+  applying?: boolean
+  /** S5 — the server's typed refusal, in its own words. */
+  applyError?: string | null
   onApply: () => void
   onReject: () => void
 }) {
@@ -610,14 +738,32 @@ function ProposalView({
             type="button"
             onClick={onApply}
             disabled={!canApply}
+            aria-busy={applying || undefined}
             title={canApply ? undefined : 'לא ניתן להחיל הצעה חסומה, שגויה או מיושנת'}
             className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {/* The label stays STABLE while a request is in flight: a control
+                that renames itself loses its identity for assistive tech, and
+                the live region above already announces the progress. `disabled`
+                + `aria-busy` carry the state. */}
             החל תוכנית
           </button>
         </div>
       </div>
 
+      {applying && (
+        <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">
+          מחיל את התוכנית…
+        </p>
+      )}
+      {/* The server refused, in its own words. The committed board is unchanged
+          and the draft below is still inspectable, so the student can see
+          exactly what was not applied. */}
+      {applyError && (
+        <p role="alert" className="rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {applyError}
+        </p>
+      )}
       {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
       {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
         <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>

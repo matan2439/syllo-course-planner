@@ -81,6 +81,8 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(typeof p.academicDecision?.profileVersion === 'number'
       ? { profileVersion: p.academicDecision.profileVersion }
       : {}),
+    // S1 — carried through verbatim; it is the only handle Apply may use.
+    ...(p.academicDecision?.proposal ? { proposal: p.academicDecision.proposal } : {}),
     ...(typeof p.academicDecision?.candidates?.hasMeaningfulAlternatives === 'boolean'
       ? { balanceAlternativesMaterial: p.academicDecision.candidates.hasMeaningfulAlternatives }
       : {}),

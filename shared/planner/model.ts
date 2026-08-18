@@ -139,6 +139,20 @@ export interface GeneratedPlanModel {
   /** The preference-profile version this proposal was built from (agent path only). */
   profileVersion?: number
   /**
+   * S1 — the authoritative proposal receipt. Apply names `proposalId` +
+   * a candidate id from `candidateIds`; it never sends a plan, because the
+   * server holds the validated ones and resolves them itself.
+   */
+  proposal?: {
+    proposalId: string
+    candidateIds: string[]
+    recommendedCandidateId: string | null
+    /** The committed board version this was planned on top of; null ⇒ none. */
+    baseBoardVersion: string | null
+    profileVersion: number
+    expiresAt: number
+  }
+  /**
    * True when the flagged candidate orchestration found materially-distinct
    * balanced vs compact plans — i.e. asking the semester_balance question could
    * change the selected plan. Drives impact-driven elicitation. Absent/undefined

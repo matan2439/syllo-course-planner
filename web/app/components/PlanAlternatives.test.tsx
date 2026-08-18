@@ -13,6 +13,7 @@ import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
+import { createServerApplyStub } from './serverApplyStub'
 
 type Alternative = NonNullable<GeneratedPlanModel['alternatives']>[number]
 
@@ -136,15 +137,39 @@ function proposal(req: GeneratePlanRequest): GeneratedPlanModel {
     warningsHe: [], errors: [], blocked: false,
     agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
     alternatives: [A, B],
+    // S1 — the authoritative receipt. Apply names the proposal and a candidate;
+    // it never sends a plan.
+    proposal: {
+      proposalId: PROPOSAL_ID,
+      candidateIds: [A.candidateId, B.candidateId],
+      recommendedCandidateId: A.candidateId,
+      baseBoardVersion: null,
+      profileVersion: version ?? 0,
+      expiresAt: Date.now() + 3_600_000,
+    },
   }
 }
 
+const PROPOSAL_ID = 'prop_alternatives'
+/**
+ * The server's own copy of the candidates. Note it is built from A and B
+ * directly rather than from anything the journey sends, so a test can only pass
+ * if the journey genuinely asked the server to commit a NAMED candidate.
+ */
+let server: ReturnType<typeof createServerApplyStub>
+
 async function renderReady(over: Partial<{ generateFn: unknown }> = {}) {
+  server = createServerApplyStub({
+    proposalId: PROPOSAL_ID,
+    candidates: [A, B].map((a) => ({ candidateId: a.candidateId, semesters: a.semesters })),
+  })
   render(
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
       generateFn={(over.generateFn as never) ?? (async (req: GeneratePlanRequest) => proposal(req))}
+      applyFn={server.applyFn}
+      committedBoardFn={server.committedBoardFn}
       useAcademicDecisionAgent
     />,
   )
@@ -198,6 +223,13 @@ describe('C4 — selecting an alternative, and applying the one selected', () =>
     await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toBeInTheDocument())
     expect(committedText()).toContain('קורס Z')
     expect(committedText()).not.toContain('קורס Y')
+    // The commit came from the SERVER's copy of candidate B, named by id.
+    expect(server.calls).toHaveLength(1)
+    expect(server.calls[0].candidate_id).toBe('cand_b')
+    expect(server.calls[0].proposal_id).toBe(PROPOSAL_ID)
+    // …and the request carried no plan at all.
+    expect(JSON.stringify(server.calls[0])).not.toMatch(/courseIds|semesterId/)
+    expect(server.committed?.version).toBe('bv_1')
   })
 
   test('applying without changing selection commits the recommended plan', async () => {
@@ -206,6 +238,7 @@ describe('C4 — selecting an alternative, and applying the one selected', () =>
     applyPlan()
     await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toBeInTheDocument())
     expect(committedText()).toContain('קורס Y')
+    expect(server.calls[0].candidate_id).toBe('cand_a')
   })
 
   test('Apply is possible exactly once — the control is gone afterwards', async () => {

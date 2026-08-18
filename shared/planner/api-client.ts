@@ -6,6 +6,7 @@
  * missing identifiers/flags are never silently coerced.
  */
 import { boardResponseToModel, generatePlanResponseToModel } from './adapters';
+import { applyPlanResponseSchema, committedBoardResponseSchema } from './wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
 
@@ -67,4 +68,91 @@ export async function generatePlan(
   } catch (e) {
     throw asContractError(e, 'generate-plan');
   }
+}
+
+// ── S2: the authoritative Apply ─────────────────────────────────────────────
+
+/**
+ * What Apply is allowed to say. Note what is absent: any plan, any course id.
+ * The server resolves the candidate from its own proposal record, so the client
+ * is structurally incapable of choosing the committed content.
+ */
+export interface ApplyPlanRequest {
+  program_id: string;
+  proposal_id: string;
+  candidate_id: string;
+  expected_board_version: string | null;
+  expected_profile_version: number;
+  idempotency_key: string;
+  academic_status?: unknown;
+}
+
+export interface CommittedBoardState {
+  programId: string;
+  version: string;
+  semesters: Array<{ semesterId: string; courseIds: string[] }>;
+}
+
+export type ApplyPlanResult =
+  | { ok: true; replayed: boolean; board: CommittedBoardState; appliedCandidateId: string }
+  /** A typed, actionable refusal — never a stack trace. */
+  | { ok: false; code: string; messageHe: string; currentBoardVersion?: string | null };
+
+/**
+ * A rejection is a NORMAL outcome here, not an exception: the server answers
+ * 4xx with a typed reason the UI must render. Only a malformed body or a
+ * transport failure is a ContractError, so a caller cannot confuse "the server
+ * said no" with "the call never happened" — they require different UI.
+ */
+export async function applyPlan(deps: ClientDeps, req: ApplyPlanRequest): Promise<ApplyPlanResult> {
+  let res: FetchResponseLike;
+  try {
+    res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/apply-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // Same-origin, so the ownership cookie travels by default; stated
+      // explicitly because it is load-bearing rather than incidental.
+      credentials: 'same-origin',
+      body: JSON.stringify(req),
+    });
+  } catch (e) {
+    throw new ContractError('apply-plan request failed', e);
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch (e) {
+    throw asContractError(e, 'apply-plan');
+  }
+  const parsed = applyPlanResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed apply-plan response', parsed.error);
+  if (parsed.data.ok) {
+    return {
+      ok: true,
+      replayed: parsed.data.replayed,
+      board: parsed.data.board,
+      appliedCandidateId: parsed.data.appliedCandidateId,
+    };
+  }
+  return {
+    ok: false,
+    code: parsed.data.code,
+    messageHe: parsed.data.message_he,
+    currentBoardVersion: parsed.data.currentBoardVersion ?? null,
+  };
+}
+
+/** The session's committed board, or null when it has never applied one. */
+export async function getCommittedBoard(
+  deps: ClientDeps,
+  programId: string,
+): Promise<CommittedBoardState | null> {
+  const res = await deps.fetchImpl(
+    `${deps.baseUrl}/api/ai/apply-plan?program_id=${encodeURIComponent(programId)}`,
+    { credentials: 'same-origin' },
+  );
+  const body = await readJson(res);
+  const parsed = committedBoardResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed committed-board response', parsed.error);
+  return parsed.data.board;
 }

@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
+import { createServerApplyStub } from './serverApplyStub'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
 
 const BOARD = {
@@ -31,17 +32,43 @@ function agentProposal(req: GeneratePlanRequest): GeneratedPlanModel {
     moves: [{ courseId: 'Y-1', from: null, to: 'year_3_semester_a' }],
     warningsHe: [], errors: [], blocked: false,
     agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
+    // S1 — the authoritative receipt. With no comparison to offer, the single
+    // recommendation is still a candidate the server holds and can commit.
+    proposal: {
+      proposalId: PROPOSAL_ID,
+      candidateIds: [SINGLE_CANDIDATE],
+      recommendedCandidateId: SINGLE_CANDIDATE,
+      baseBoardVersion: null,
+      profileVersion: version ?? 0,
+      expiresAt: Date.now() + 3_600_000,
+    },
   }
 }
+
+const PROPOSAL_ID = 'prop_agent'
+const SINGLE_CANDIDATE = 'cand_agent'
+let server: ReturnType<typeof createServerApplyStub>
 
 const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecisionAgent: boolean }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
   generateFn: over.generateFn ?? (async (req: GeneratePlanRequest) => agentProposal(req)),
+  applyFn: server.applyFn,
+  committedBoardFn: server.committedBoardFn,
   useAcademicDecisionAgent: over.useAcademicDecisionAgent ?? false,
 })
 
 async function renderReady(over = {}) {
+  server = createServerApplyStub({
+    proposalId: PROPOSAL_ID,
+    candidates: [{
+      candidateId: SINGLE_CANDIDATE,
+      semesters: [
+        { semesterId: 'year_3_semester_a', courseIds: ['X-1', 'Y-1'] },
+        { semesterId: 'year_3_semester_b', courseIds: [] },
+      ],
+    }],
+  })
   render(<NativePlannerJourney {...deps(over)} />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
 }
@@ -86,6 +113,9 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     fireEvent.click(screen.getByRole('button', { name: /החל/ }))
     // committed board now shows the applied plan (Y-1 added) and the draft closed
     await waitFor(() => expect(screen.getByText('התוכנית הנוכחית')).toBeInTheDocument())
+    // …and it was the SERVER that committed it, exactly once.
+    expect(server.calls).toHaveLength(1)
+    expect(server.committed?.version).toBe('bv_1')
   })
 
   test('editing a preference AFTER a proposal stales it — the real Apply handler rejects it', async () => {
