@@ -1,0 +1,17 @@
+{
+  "institutionId": "tau.ac.il",
+  "courseId": "E1",
+  "academicYear": 2027,
+  "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=topicpreviewE1&year=2027",
+  "contentHash": "sha_topicpreview_E1",
+  "retrievedAt": "2026-08-15T00:00:00.000Z",
+  "labeledFields": {
+    "מספר קורס": [
+      "E1"
+    ],
+    "אופן ההוראה": [
+      "שיעור"
+    ]
+  },
+  "text": "אופן ההוראה שיעור תוכן הקורס ומטרתו תכן הנדסי, וכן תהליכי ייצור ועיבוד שבבי. מטלות הקורס"
+}
