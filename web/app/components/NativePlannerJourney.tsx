@@ -28,6 +28,7 @@ import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import AgentOutcomeDetails from './AgentOutcomeDetails'
 import GroundedExplanation from './GroundedExplanation'
 import PreferenceConversation from './PreferenceConversation'
+import PlanAlternatives from './PlanAlternatives'
 import CompletedCoursesPanel, {
   EMPTY_ACADEMIC_STATUS,
   completedCourseIdsOf,
@@ -183,6 +184,12 @@ export default function NativePlannerJourney({
   // ── generation ─────────────────────────────────────────────────────────────
   const [genPhase, setGenPhase] = useState<GenPhase>('idle')
   const [proposal, setProposal] = useState<GeneratedPlanModel | null>(null)
+  /**
+   * C3 — which validated alternative the student is currently looking at.
+   * Reset on every new response, so a selection can never survive a Rebuild and
+   * silently point at a candidate from a superseded set.
+   */
+  const [selectedAlternativeId, setSelectedAlternativeId] = useState<string | null>(null)
   const [capturedRev, setCapturedRev] = useState<ProposalBaseRevision | null>(null)
   const [capturedStatusVersion, setCapturedStatusVersion] = useState<number | null>(null)
   const [errKind, setErrKind] = useState<'network' | 'contract' | null>(null)
@@ -274,6 +281,9 @@ export default function NativePlannerJourney({
       (result) => {
         if (token !== tokenRef.current) return
         setProposal(result)
+        // The recommended alternative is the initial selection, and it is the
+        // same plan the handler already put in `semesters`.
+        setSelectedAlternativeId(result.alternatives?.find((a) => a.recommended)?.candidateId ?? null)
         setCapturedRev(proposalBaseRevision(revAtRequest as unknown as string))
         setCapturedStatusVersion(statusAtRequest)
         setGenPhase('done')
@@ -314,6 +324,7 @@ export default function NativePlannerJourney({
   const clearProposal = () => {
     tokenRef.current++ // supersede any in-flight generation so it can't re-open the draft
     setProposal(null)
+    setSelectedAlternativeId(null)
     setGenPhase('idle')
     setErrKind(null)
   }
@@ -324,9 +335,26 @@ export default function NativePlannerJourney({
     currentProfileVersion: useAcademicDecisionAgent ? convProfileVersion : undefined,
   })
 
+  /** The exact validated plan Apply will commit — never a UI label or an index. */
+  const applyTargetProposal = (): GeneratedPlanModel | null => {
+    if (!proposal) return null
+    const alt = proposal.alternatives?.find((a) => a.candidateId === selectedAlternativeId)
+    if (!alt) return proposal
+    // The candidate must still describe the plan it claims to.
+    if (!alt.applyable) return null
+    return { ...proposal, semesters: alt.semesters.map((sem) => ({ semesterId: sem.semesterId, courseIds: sem.courseIds })) }
+  }
+
   const apply = () => {
     if (!current || !proposal || !canApply) return // hard guard: blocked/stale/errored/version-mismatch never apply
-    setCurrent(applyGeneratedToBoard(proposal, current))
+    // C4 — commit the plan the student is actually looking at. `applyTarget` is
+    // the exact candidate state from the CURRENT response: an id that is not in
+    // this response's alternative set never resolves, so a fabricated or stale
+    // selection falls back to the recommended proposal rather than committing
+    // something the server never validated.
+    const applyTarget = applyTargetProposal()
+    if (!applyTarget) return
+    setCurrent(applyGeneratedToBoard(applyTarget, current))
     setMessages((m) => [...m, { role: 'system', text: 'התוכנית הוחלה והיא כעת התוכנית הנוכחית.' }])
     clearProposal()
   }
@@ -342,7 +370,23 @@ export default function NativePlannerJourney({
     )
   }
 
-  const removed = proposal ? removedCourseIds(current, proposal) : []
+  /**
+   * C3/C4 — the draft actually shown and applied. Selecting an alternative does
+   * NOT regenerate: it swaps in the exact plan the handler returned for that
+   * candidate. The candidate must belong to the CURRENT response, so a stale or
+   * fabricated id can never become the Apply target.
+   */
+  const selectedAlternative =
+    proposal?.alternatives?.find((a) => a.candidateId === selectedAlternativeId) ?? null
+  const effectiveProposal: GeneratedPlanModel | null = proposal
+    ? (selectedAlternative
+        ? { ...proposal, semesters: selectedAlternative.semesters.map((sem) => ({
+            semesterId: sem.semesterId, courseIds: sem.courseIds,
+          })) }
+        : proposal)
+    : null
+
+  const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -354,8 +398,20 @@ export default function NativePlannerJourney({
             <NativePlannerBoard board={boardModelToVM(current)} />
           </section>
         ) : (
+          <>
+          {(proposal.alternatives?.length ?? 0) >= 2 && (
+            <PlanAlternatives
+              alternatives={proposal.alternatives!}
+              selectedId={selectedAlternativeId ?? ''}
+              onSelect={setSelectedAlternativeId}
+              disabled={stale}
+              courseNameById={Object.fromEntries(
+                Object.entries(current.courseCatalog).map(([id, c]) => [id, c.nameHe ?? id]),
+              )}
+            />
+          )}
           <ProposalView
-            draft={buildDraftVM(proposal, current)}
+            draft={buildDraftVM(effectiveProposal ?? proposal, current)}
             intentOutcome={proposal.intentOutcome}
             removed={removed}
             stale={stale}
@@ -364,6 +420,7 @@ export default function NativePlannerJourney({
             onApply={apply}
             onReject={clearProposal}
           />
+          </>
         )}
       </div>
 
