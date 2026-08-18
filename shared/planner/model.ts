@@ -158,6 +158,22 @@ export interface GeneratedPlanModel {
     hasConflicts: boolean
   }
   /**
+   * M7 — how several confirmed grounded objectives were combined for this
+   * proposal. Lean and typed: what was active, the truthful selection reason,
+   * and whether a real trade-off was retained. Absent when no objective applied.
+   * Raw evidence ids and score internals are deliberately NOT here.
+   */
+  groundedComposition?: {
+    objectiveIds: string[]
+    reason: string
+    nonDominatedCount: number
+    dominatedCount: number
+    /** True when no candidate was best on every confirmed preference. */
+    unresolvedTradeoff: boolean
+    /** Present only when the student genuinely supplied relative importance. */
+    prioritySource?: string
+  }
+  /**
    * W1 — whether asking the course CONTENT/TOPIC question could actually change
    * the selected plan, computed server-side over the retained candidates from
    * the ONE prepared evidence snapshot.

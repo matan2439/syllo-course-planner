@@ -194,3 +194,51 @@ describe('M0 — the defect costs the student a real plan', () => {
     expect(placed(body)).not.toContain('E3');
   });
 });
+
+/**
+ * M7 — a second confirmed preference must remain REACHABLE.
+ *
+ * Composition is worthless if the conversation stops asking once the first
+ * grounded objective is known. Both impact probes are computed independently
+ * over the candidates retained for THIS request, so answering one preference
+ * re-evaluates — rather than silences — the other.
+ */
+describe('M7 — answering one preference does not silence the others', () => {
+  test('with a topic already confirmed, the delivery probe is still computed and truthful', async () => {
+    const body = (await run(request([topicPref()])))._body;
+    const delivery = body.academicDecision.candidates.evidence.groundedQuestionImpact;
+    // The probe is NOT suppressed by the topic answer — it is still emitted and
+    // still describes the candidates retained for THIS request. In this corpus
+    // every retained candidate holds exactly one project course (E2 and E3 are
+    // both project), so delivery genuinely cannot separate them and the probe
+    // truthfully says so. Reporting `false` here is the "do not ask when it
+    // cannot change the outcome" rule working, not the question being silenced.
+    expect(delivery).toBeDefined();
+    expect(delivery.coverageSufficient).toBe(true);
+    expect(delivery.distinguishesCandidates).toBe(false);
+    expect(delivery.distinguishingObjectives).toEqual([]);
+  });
+
+  test('with a delivery preference already confirmed, topics are still probed', async () => {
+    const body = (await run(request([projectPref()])))._body;
+    const topic = body.academicDecision.candidates.evidence.topicQuestionImpact;
+    expect(topic.distinguishingTopics).toContain('robotics');
+  });
+
+  test('both probes rest on the SAME snapshot as the ranking', async () => {
+    const body = (await run(request([projectPref(), topicPref()])))._body;
+    const ev = body.academicDecision.candidates.evidence;
+    expect(ev.topicQuestionImpact.snapshotId).toBe(ev.snapshotId);
+    for (const c of body.academicDecision.candidates.summaries) {
+      expect(c.profileVersion).toBe(5);
+    }
+  });
+
+  test('the composition metadata reaches the wire truthfully', async () => {
+    const body = (await run(request([projectPref(), topicPref()])))._body;
+    const comp = body.academicDecision.candidates.groundedComposition;
+    expect(comp.objectiveIds).toEqual(['prefer_project_courses', 'prefer_topic_alignment']);
+    expect(typeof comp.reason).toBe('string');
+    expect(comp.dominatedCount + comp.nonDominatedCount).toBeGreaterThan(0);
+  });
+})

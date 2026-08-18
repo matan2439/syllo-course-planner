@@ -103,6 +103,19 @@ export const generatePlanResponseSchema = z
                 academicYear: z.union([z.number(), z.string()]),
               }))
               .optional(),
+            // M7 — composition metadata. Declared explicitly so a malformed
+            // payload is rejected rather than reaching the UI.
+            groundedComposition: z
+              .object({
+                objectiveIds: z.array(z.string()),
+                reason: z.string(),
+                nonDominatedCount: z.number(),
+                dominatedCount: z.number(),
+                unresolvedTradeoff: z.boolean(),
+                prioritySource: z.string().optional(),
+              })
+              .nullable()
+              .optional(),
             evidence: z
               .object({
                 // W3 — which grounded objective actually applied, so the UI can

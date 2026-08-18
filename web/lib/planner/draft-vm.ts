@@ -47,6 +47,8 @@ export interface DraftVM {
   groundedQuestionImpact?: GeneratedPlanModel['groundedQuestionImpact']
   /** W1 — gates the course content/topic question; see GeneratedPlanModel. */
   topicQuestionImpact?: GeneratedPlanModel['topicQuestionImpact']
+  /** M7 — how several confirmed objectives were composed; see GeneratedPlanModel. */
+  groundedComposition?: GeneratedPlanModel['groundedComposition']
   groundedExplanationHe?: GeneratedPlanModel['groundedExplanationHe']
   groundedSources?: GeneratedPlanModel['groundedSources']
   groundedCoverage?: GeneratedPlanModel['groundedCoverage']
@@ -137,6 +139,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     // K9C — carried through only when the grounded objective actually applied.
     ...(generated.groundedQuestionImpact ? { groundedQuestionImpact: generated.groundedQuestionImpact } : {}),
     ...(generated.topicQuestionImpact ? { topicQuestionImpact: generated.topicQuestionImpact } : {}),
+    ...(generated.groundedComposition ? { groundedComposition: generated.groundedComposition } : {}),
     ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
     ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
     ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),
