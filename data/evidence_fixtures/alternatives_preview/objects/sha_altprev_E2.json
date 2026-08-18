@@ -1,0 +1,17 @@
+{
+  "institutionId": "tau.ac.il",
+  "courseId": "E2",
+  "academicYear": 2027,
+  "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=altprevE2&year=2027",
+  "contentHash": "sha_altprev_E2",
+  "retrievedAt": "2026-08-15T00:00:00.000Z",
+  "labeledFields": {
+    "מספר קורס": [
+      "E2"
+    ],
+    "אופן ההוראה": [
+      "פרוייקט"
+    ]
+  },
+  "text": "אופן ההוראה פרוייקט תוכן הקורס ומטרתו תכן הנדסי בלבד. מטלות הקורס"
+}

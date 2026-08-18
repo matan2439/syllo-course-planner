@@ -270,3 +270,46 @@ describe('C2 — differences are derived from the plans themselves', () => {
     }
   });
 });
+
+/**
+ * Browser-acceptance defects (C2 labelling), found on a real trade-off fixture.
+ *
+ * 1. The plan that leads on TOPIC was labelled with the neutral ordinal
+ *    "חלופה 2" instead of naming the topic. Root cause: the builder was handed
+ *    the LEGACY single-objective `topicIds`, which is only populated when the
+ *    topic objective happens to sort first — so with project + topic active it
+ *    was undefined and the topic label could never be produced.
+ * 2. Two different cards rendered the SAME label ("יותר קורסים פרויקטליים"),
+ *    because a plan that merely TIES on an objective still counted as leading
+ *    it. A label that does not distinguish is worse than a neutral one.
+ */
+describe('C2 — labels must name the real distinction, and must distinguish', () => {
+  const TRADEOFF_LABELS = [
+    doc('E1', 'שיעור', 'תכן הנדסי בלבד.'),
+    doc('E2', 'פרוייקט', 'תכן הנדסי בלבד.'),
+    doc('E3', 'שיעור', 'תכן הנדסי, הכרת זרוע רובוטית, קינמטיקה ישירה והפוכה.'),
+    doc('E4', 'שיעור', 'תכן הנדסי בלבד.'),
+  ];
+
+  test('the topic-leading alternative NAMES the topic', async () => {
+    MOCK_DOCUMENTS = TRADEOFF_LABELS;
+    const alts = alternativesOf((await run(request([projectPref(), topicPref()])))._body);
+    const topicLeader = alts.find((a) => coursesOf(a).includes('E3'))!;
+    expect(topicLeader.labelHe).toContain('רובוטיקה');
+  });
+
+  test('no two alternatives share a label', async () => {
+    MOCK_DOCUMENTS = TRADEOFF_LABELS;
+    const alts = alternativesOf((await run(request([projectPref(), topicPref()])))._body);
+    const labels = alts.map((a) => a.labelHe);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  test('an alternative that merely TIES on an objective does not claim to lead it', async () => {
+    MOCK_DOCUMENTS = TRADEOFF_LABELS;
+    const alts = alternativesOf((await run(request([projectPref(), topicPref()])))._body);
+    const project = alts.filter((a) => a.labelHe.includes('פרויקטליים'));
+    // Two plans hold the same project course; only one may claim the headline.
+    expect(project.length).toBeLessThanOrEqual(1);
+  });
+})

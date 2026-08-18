@@ -123,18 +123,24 @@ function labelFor(
   scores: number[][],
   objectiveIds: string[],
   topicIds: readonly TopicId[],
+  used: Set<string>,
 ): string {
   const mine = scores[index] ?? [];
   const leads = objectiveIds
     .map((id, k) => ({ id, k }))
-    .filter(({ k }) => mine[k] !== undefined && scores.every((other, j) => j === index || mine[k] >= (other[k] ?? 0)))
-    // Only a STRICT advantage over someone is a distinguishing feature.
-    .filter(({ k }) => scores.some((other, j) => j !== index && mine[k] > (other[k] ?? 0)));
+    // A STRICT advantage over EVERY other offered plan. Merely tying on an
+    // objective is not a distinguishing feature: two plans holding the same
+    // project course would otherwise both claim the project headline, and a
+    // label that does not distinguish is worse than a neutral one.
+    .filter(({ k }) => mine[k] !== undefined && scores.every((other, j) => j === index || mine[k] > (other[k] ?? 0)));
 
   const names = leads.map(({ id }) => objectiveLabelHe(id, topicIds)).filter((n): n is string => !!n);
-  if (names.length === 1) return names[0];
-  if (names.length > 1) return `שילוב: ${names.join(' ו')}`;
-  return `חלופה ${index + 1}`;
+  const label = names.length === 1 ? names[0]
+    : names.length > 1 ? `שילוב: ${names.join(' ו')}`
+    : `חלופה ${index + 1}`;
+  // Last resort: never render the same headline twice. The factual differences
+  // carry the real distinction in that case.
+  return used.has(label) ? `חלופה ${index + 1}` : label;
 }
 
 /** Factual differences against the recommended plan — derived, never authored. */
@@ -243,6 +249,7 @@ export function buildPlanAlternatives(input: BuildAlternativesInput): PlanAltern
   const ordered = chosen.slice().sort((a, b) => a.rank - b.rank);
   const scores = ordered.map(vectorOf);
   const topicIds = input.topicIds ?? [];
+  const usedLabels = new Set<string>();
 
   return ordered.map((c, i) => ({
     candidateId: c.id,
@@ -258,7 +265,11 @@ export function buildPlanAlternatives(input: BuildAlternativesInput): PlanAltern
     objectiveScores: (c.objectiveScores ?? []).map((s) => ({
       objectiveId: s.objectiveId, normalized: s.normalized,
     })),
-    labelHe: labelFor(i, scores, input.objectiveIds, topicIds),
+    labelHe: (() => {
+      const label = labelFor(i, scores, input.objectiveIds, topicIds, usedLabels);
+      usedLabels.add(label);
+      return label;
+    })(),
     differencesHe: differencesHe(c, recommended, input.model),
     workload: workloadOf(c, input.model),
   }));

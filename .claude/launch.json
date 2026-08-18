@@ -37,6 +37,15 @@
         "scripts/dev_api_server_multi_objective_preview.ts"
       ],
       "port": 3002
+    },
+    {
+      "name": "api-alternatives-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "scripts/dev_api_server_alternatives_preview.ts"
+      ],
+      "port": 3002
     }
   ]
 }

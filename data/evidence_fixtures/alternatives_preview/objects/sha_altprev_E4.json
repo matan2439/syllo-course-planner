@@ -1,0 +1,17 @@
+{
+  "institutionId": "tau.ac.il",
+  "courseId": "E4",
+  "academicYear": 2027,
+  "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=altprevE4&year=2027",
+  "contentHash": "sha_altprev_E4",
+  "retrievedAt": "2026-08-15T00:00:00.000Z",
+  "labeledFields": {
+    "מספר קורס": [
+      "E4"
+    ],
+    "אופן ההוראה": [
+      "מעבדה"
+    ]
+  },
+  "text": "אופן ההוראה מעבדה תוכן הקורס ומטרתו תכן הנדסי, מעבר חום וזרימה במחליפי החום. מטלות הקורס"
+}

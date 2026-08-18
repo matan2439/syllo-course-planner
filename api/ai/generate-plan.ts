@@ -1912,7 +1912,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         snapshotId: preparedEvidence.snapshot.snapshotId,
         profileVersion: preference_profile?.version ?? 0,
         objectiveIds: (resolvedGrounded?.objectives ?? []).map((o) => o.id),
-        ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
+        // The topic objective's OWN topics. `resolvedGrounded.topicIds` is the
+        // LEGACY single-objective view and is populated only when the topic
+        // objective happens to sort first, so reading it here made the topic
+        // label unreachable whenever another objective was also active.
+        ...(() => {
+          const topics = (resolvedGrounded?.objectives ?? []).find((o) => o.kind === 'topic')?.topicIds;
+          return topics?.length ? { topicIds: topics } : {};
+        })(),
       }),
       // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
       // to rank and describe alternatives without shipping duplicate full plans.
