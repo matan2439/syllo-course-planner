@@ -73,6 +73,9 @@ import {
   scoreObjective,
   dominates,
   composedUtility,
+  objectiveRankKey,
+  compareObjectiveKeys,
+  RANK_EPS,
   type ResolvedObjective,
   type ObjectiveScoreComponent,
   type ObjectiveSelectionReason,
@@ -319,7 +322,52 @@ export interface GenerateCandidateSetInput {
  * what makes it unable to trade away completion, legality, hard constraints or
  * the user's confirmed distribution policy.
  */
-const HARD_AND_POLICY_PREFIX = 6;
+export const HARD_AND_POLICY_PREFIX = 6;
+
+/**
+ * The minimum a candidate must expose to be RANKED — so the identical ordering
+ * can be replayed under a hypothetical priority without re-planning anything.
+ */
+export interface RankableCandidate {
+  scoreVector: number[];
+  normalizedIdentity: string;
+  /** Normalized per-objective scores, in the active objective set's order. */
+  vector: readonly number[];
+}
+
+/**
+ * THE ranking order, in one place.
+ *
+ * Lexicographic, in the documented priority order:
+ *   a. hard constraints + legality + the confirmed distribution policy
+ *      (the scoreVector's first HARD_AND_POLICY_PREFIX terms);
+ *   b. the confirmed grounded objectives, composed by `objectiveRankKey` —
+ *      the equal-importance mean, or, with an explicit priority, the
+ *      prioritized objective first and the rest as a tie-break;
+ *   c. the remaining existing soft terms (preferences, interest fit, difficulty);
+ *   d. normalized identity — a stable, deterministic final tie-break.
+ *
+ * (a) is compared BEFORE (b), which is why an explicit priority can never trade
+ * away completion, legality, a hard wanted/avoided course, a workload cap or
+ * the confirmed distribution policy. It only ever reorders plans that are
+ * already equal on all of them.
+ *
+ * Returns a negative number when `a` should come FIRST.
+ */
+export function compareRankable(
+  a: RankableCandidate,
+  b: RankableCandidate,
+  priorities?: readonly (number | undefined)[],
+): number {
+  return (
+    compareScore(b.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), a.scoreVector.slice(0, HARD_AND_POLICY_PREFIX)) ||
+    (a.vector.length
+      ? compareObjectiveKeys(objectiveRankKey(b.vector, priorities), objectiveRankKey(a.vector, priorities))
+      : 0) ||
+    compareScore(b.scoreVector, a.scoreVector) ||
+    (a.normalizedIdentity < b.normalizedIdentity ? -1 : a.normalizedIdentity > b.normalizedIdentity ? 1 : 0)
+  );
+}
 
 export function generateCandidateSet(input: GenerateCandidateSetInput): CandidateSet {
   const maxCandidates = Math.max(1, input.maxCandidates ?? DEFAULT_MAX_CANDIDATES);
@@ -425,17 +473,23 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   });
 
   const priorities = objectiveSet.map((o) => o.priority);
-  const utilityOf = (v: readonly number[]) => (v.length ? composedUtility(v, priorities) : 0);
-  /** Ties must be exact, not floating-point noise, so tie-breaks stay deterministic. */
-  const EPS = 1e-9;
+  /**
+   * The exposed `composedUtility` keeps its documented meaning — the
+   * EQUAL-IMPORTANCE composition — even when an explicit priority is ranking
+   * the candidates. The two are genuinely different statements, and reporting
+   * the equal-importance value is what lets an explanation say truthfully that
+   * a plan was chosen on the prioritized objective while another remains
+   * stronger overall on equal terms.
+   */
+  const utilityOf = (v: readonly number[]) => (v.length ? composedUtility(v) : 0);
+  const EPS = RANK_EPS;
 
   const ranked = scored
-    .sort((a, b) =>
-      compareScore(b.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), a.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX)) ||
-      (Math.abs(utilityOf(b.vector) - utilityOf(a.vector)) > EPS ? utilityOf(b.vector) - utilityOf(a.vector) : 0) ||
-      compareScore(b.raw.scoreVector, a.raw.scoreVector) ||
-      (a.raw.identity < b.raw.identity ? -1 : a.raw.identity > b.raw.identity ? 1 : 0),
-    )
+    .sort((a, b) => compareRankable(
+      { scoreVector: a.raw.scoreVector, normalizedIdentity: a.raw.identity, vector: a.vector },
+      { scoreVector: b.raw.scoreVector, normalizedIdentity: b.raw.identity, vector: b.vector },
+      priorities,
+    ))
     .slice(0, maxCandidates)
     .map((x) => ({
       ...x.raw,

@@ -64,6 +64,13 @@ export interface GroundedObjectiveResult {
   excluded?: GroundedObjectiveExclusion[];
   /** Present when the student genuinely supplied relative importance. */
   prioritySource?: 'explicit_preference';
+  /**
+   * C5 — what the student explicitly said about relative importance, if
+   * anything. Carried through unchanged from the objective set; absent means
+   * UNANSWERED, which is deliberately different from explicit equal importance.
+   */
+  priorityChoice?: 'primary' | 'equal_importance';
+  primaryObjectiveId?: GroundedObjectiveId;
 }
 
 /**
@@ -94,5 +101,7 @@ export function resolveGroundedObjective(effective: EffectivePlannerPreferences)
       : {}),
     ...(set.excluded.length ? { excluded: set.excluded } : {}),
     ...(set.prioritySource ? { prioritySource: set.prioritySource } : {}),
+    ...(set.priorityChoice ? { priorityChoice: set.priorityChoice } : {}),
+    ...(set.primaryObjectiveId ? { primaryObjectiveId: set.primaryObjectiveId } : {}),
   };
 }

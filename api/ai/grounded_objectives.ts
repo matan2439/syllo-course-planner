@@ -73,6 +73,27 @@ const TOPIC_LABEL_HE: Record<TopicId, string> = {
 };
 
 /**
+ * C5 — the student-facing NAME of an objective, for a question that asks which
+ * objective matters more. Derived from the supported objective vocabulary and
+ * the confirmed topics, never authored per pair: an objective that is not
+ * implemented has no name here, so it can never be offered as a choice.
+ *
+ * The internal objective id is the machine vocabulary and is never returned.
+ */
+export function objectiveSubjectHe(
+  objectiveId: GroundedObjectiveId,
+  topicIds: readonly TopicId[] = [],
+): string | undefined {
+  if (objectiveId === 'prefer_laboratory_courses') return 'קורסים עם מעבדה';
+  if (objectiveId === 'prefer_project_courses') return 'קורסים מבוססי פרויקט';
+  if (objectiveId === 'prefer_topic_alignment') {
+    const names = [...new Set(topicIds)].sort().map((t) => TOPIC_LABEL_HE[t]).filter(Boolean);
+    return names.length ? `תחום התוכן: ${names.join(', ')}` : undefined;
+  }
+  return undefined;
+}
+
+/**
  * One course's affirmatively-supported topics, with the official document they
  * came from. Provenance travels WITH the fact so an explanation can cite it
  * without re-deriving anything.

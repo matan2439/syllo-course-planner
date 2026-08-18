@@ -221,6 +221,35 @@ export interface GeneratedPlanModel {
     profileVersion: number
   }
   /**
+   * C5 — whether asking WHICH confirmed objective matters more could change the
+   * recommendation, and what each possible answer would recommend.
+   *
+   * The UI gates the question on `eligible` and nothing else. It must never
+   * infer impact from two alternatives existing, from `unresolvedTradeoff`,
+   * from the objective vectors, or from card order — the server owns that
+   * judgment because only the server can replay the ranking.
+   */
+  priorityQuestionImpact?: {
+    category: 'objective_priority'
+    /** Stable ids of the objectives genuinely in the trade-off. */
+    impactedObjectiveIds: string[]
+    /** Localized name per impacted id — an internal id is never a label. */
+    objectiveLabels: Record<string, string>
+    currentRecommendedCandidateId: string
+    /** Every answer, with the recommendation it would produce. */
+    options: Array<{ value: string; labelHe: string; recommendedCandidateId: string }>
+    /** At least two options recommend different candidates. */
+    changesRecommendation: boolean
+    /** The student already answered (a primary objective, or equal importance). */
+    alreadyAnswered: boolean
+    /** All eligibility conditions hold — the only thing the UI gates on. */
+    eligible: boolean
+    profileVersion: number
+    snapshotId: string
+    tradeoffExplanationHe: string
+    equalImportanceLabelHe: string
+  }
+  /**
    * K9C — the factual explanation of a confirmed grounded course-feature
    * preference's effect on selection, plus the official sources it rests on.
    * Absent when no grounded objective applied, so nothing is ever claimed

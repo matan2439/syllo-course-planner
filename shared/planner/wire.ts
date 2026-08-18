@@ -152,6 +152,31 @@ export const generatePlanResponseSchema = z
                     hasConflicts: z.boolean(),
                   })
                   .optional(),
+                /**
+                 * C5 — the priority-clarification impact contract. Declared
+                 * explicitly (never via passthrough) so a malformed contract is
+                 * rejected instead of gating a real question in the browser.
+                 */
+                priorityQuestionImpact: z
+                  .object({
+                    category: z.literal('objective_priority'),
+                    impactedObjectiveIds: z.array(z.string()),
+                    objectiveLabels: z.record(z.string()),
+                    currentRecommendedCandidateId: z.string(),
+                    options: z.array(z.object({
+                      value: z.string(),
+                      labelHe: z.string(),
+                      recommendedCandidateId: z.string(),
+                    })),
+                    changesRecommendation: z.boolean(),
+                    alreadyAnswered: z.boolean(),
+                    eligible: z.boolean(),
+                    profileVersion: z.number(),
+                    snapshotId: z.string(),
+                    tradeoffExplanationHe: z.string(),
+                    equalImportanceLabelHe: z.string(),
+                  })
+                  .optional(),
                 // W1 — the course CONTENT/TOPIC impact probe. Declared
                 // explicitly rather than relying on `.passthrough()`, so a
                 // malformed probe is rejected instead of reaching the UI.

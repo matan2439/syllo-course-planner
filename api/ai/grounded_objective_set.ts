@@ -38,6 +38,17 @@ export const GROUNDED_FEATURE_AFFECTS = 'grounded_course_feature';
 /** Category/affects markers for the content/topic-interest preference. */
 export const GROUNDED_TOPIC_CATEGORY = 'course_topic_interest';
 export const GROUNDED_TOPIC_AFFECTS = 'grounded_topic_interest';
+/**
+ * C5 — category/affects markers for the GENERIC relative-priority preference.
+ * Its value is a stable objective id, or `EQUAL_IMPORTANCE`. There is
+ * deliberately no pair-specific field (`topic_over_project` and friends): a
+ * pairwise vocabulary cannot express three objectives without inventing an
+ * order, and admits cycles that a single primary choice cannot.
+ */
+export const OBJECTIVE_PRIORITY_CATEGORY = 'objective_priority';
+export const OBJECTIVE_PRIORITY_AFFECTS = 'grounded_objective_priority';
+/** The student explicitly said the impacted objectives matter the same. */
+export const EQUAL_IMPORTANCE = 'equal_importance';
 
 export const SUPPORTED_GROUNDED_FEATURES = ['practical_laboratory', 'project_based'] as const;
 export type SupportedGroundedFeature = (typeof SUPPORTED_GROUNDED_FEATURES)[number];
@@ -85,6 +96,16 @@ export interface ResolvedGroundedObjectiveSet {
   profileVersion: number;
   /** Where relative priority came from, when any was supplied. */
   prioritySource?: 'explicit_preference';
+  /**
+   * C5 — what the student explicitly said about relative importance, if
+   * anything. `primary` ⇒ `primaryObjectiveId` names the objective the
+   * recommendation is chosen on; `equal_importance` ⇒ they explicitly asked for
+   * the equal-importance default. Absent ⇒ unanswered, which is NOT the same as
+   * equal importance and is why the question is still worth asking.
+   */
+  priorityChoice?: 'primary' | 'equal_importance';
+  /** Set only with `priorityChoice: 'primary'`, and only for an ACTIVE objective. */
+  primaryObjectiveId?: GroundedObjectiveId;
 }
 
 function isSupportedFeature(value: string): value is SupportedGroundedFeature {
@@ -110,14 +131,6 @@ export function resolveGroundedObjectiveSet(
   const byObjectiveId = new Map<GroundedObjectiveId, ResolvedObjective>();
   const topicIds: TopicId[] = [];
   let topicPreference: (typeof active)[number] | undefined;
-  let prioritySource: 'explicit_preference' | undefined;
-
-  const explicitPriority = (p: (typeof active)[number]): number | undefined => {
-    const raw = (p as unknown as { priority?: unknown }).priority;
-    if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
-    prioritySource = 'explicit_preference';
-    return raw;
-  };
 
   for (const p of active) {
     const value = String(p.normalized);
@@ -134,12 +147,10 @@ export function resolveGroundedObjectiveSet(
       // surviving provenance is chosen by sorted preference id, never by array
       // position, so the result cannot depend on answer order.
       const existing = byObjectiveId.get(id);
-      const priority = explicitPriority(p);
       if (!existing || p.id < existing.preferenceId) {
         byObjectiveId.set(id, {
           id, preferenceId: p.id, kind: 'delivery', target: value,
           source: p.source, profileVersion: effective.profileVersion,
-          ...(priority !== undefined ? { priority } : {}),
         });
       }
       continue;
@@ -153,12 +164,10 @@ export function resolveGroundedObjectiveSet(
       if (!topicIds.includes(value)) topicIds.push(value);
       // Deterministic provenance: lowest preference id, not first answered.
       if (!topicPreference || p.id < topicPreference.id) topicPreference = p;
-      explicitPriority(p);
     }
   }
 
   if (topicIds.length && topicPreference) {
-    const priority = (topicPreference as unknown as { priority?: number }).priority;
     byObjectiveId.set('prefer_topic_alignment', {
       id: 'prefer_topic_alignment',
       preferenceId: topicPreference.id,
@@ -167,15 +176,53 @@ export function resolveGroundedObjectiveSet(
       topicIds: [...topicIds].sort(),
       source: topicPreference.source,
       profileVersion: effective.profileVersion,
-      ...(typeof priority === 'number' && Number.isFinite(priority) ? { priority } : {}),
     });
   }
 
+  const objectives = [...byObjectiveId.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  /**
+   * C5 — the GENERIC explicit relative priority.
+   *
+   * It is read from a preference whose normalized value is a stable objective
+   * id (or `EQUAL_IMPORTANCE`), and it is honoured ONLY when it names an
+   * objective that is genuinely active in THIS request. A priority naming an
+   * objective the student is no longer expressing is inert rather than an
+   * error: it describes a trade-off that no longer exists.
+   *
+   * Nothing here reads preference array order, answer order, option order or
+   * the objective resolver's own order — a priority exists only when the
+   * student explicitly chose one.
+   */
+  const priorityPreference = active
+    .filter((p) => p.affects === OBJECTIVE_PRIORITY_AFFECTS || p.category === OBJECTIVE_PRIORITY_CATEGORY)
+    // Two priority captures can only happen through a malformed profile;
+    // resolve by sorted preference id so it is never answer-order dependent.
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+  const priorityValue = priorityPreference ? String(priorityPreference.normalized) : undefined;
+
+  if (priorityValue === EQUAL_IMPORTANCE) {
+    return {
+      objectives, excluded, profileVersion: effective.profileVersion,
+      priorityChoice: 'equal_importance',
+    };
+  }
+
+  const primary = objectives.find((o) => o.id === priorityValue);
+  if (!primary) {
+    return { objectives, excluded, profileVersion: effective.profileVersion };
+  }
+
   return {
-    objectives: [...byObjectiveId.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+    objectives: objectives.map((o) => ({
+      ...o,
+      priority: o.id === primary.id ? PRIORITY_PRIMARY_WEIGHT : PRIORITY_BASE_WEIGHT,
+    })),
     excluded,
     profileVersion: effective.profileVersion,
-    ...(prioritySource ? { prioritySource } : {}),
+    prioritySource: 'explicit_preference',
+    priorityChoice: 'primary',
+    primaryObjectiveId: primary.id,
   };
 }
 
@@ -311,4 +358,72 @@ export function composedUtility(
   const total = weights.reduce((a, b) => a + b, 0);
   if (total === 0) return 0;
   return vector.reduce((sum, v, i) => sum + v * weights[i], 0) / total;
+}
+
+
+// ── C5: explicit relative priority as a RANKING TIER ─────────────────────────
+
+/**
+ * The weight an explicitly PRIMARY objective carries, and the weight every
+ * other active objective carries. Only the ORDER of these numbers is read —
+ * they select which objectives share a ranking tier, not how much a point on
+ * one objective is worth against a point on another.
+ */
+export const PRIORITY_PRIMARY_WEIGHT = 2;
+export const PRIORITY_BASE_WEIGHT = 1;
+
+/**
+ * The ordered comparison key a candidate is ranked on.
+ *
+ * Objectives are grouped into TIERS by their explicit weight, highest first,
+ * and each tier contributes the equal-importance mean of its own components.
+ * Ranking compares tiers lexicographically, so:
+ *
+ *   - with NO explicit priority every objective shares one tier and the key is
+ *     `[mean(vector)]` — exactly `composedUtility(vector)`, so ranking is
+ *     byte-identical to the equal-importance default;
+ *   - with one objective marked primary the key is
+ *     `[primary, mean(rest)]` — the prioritized objective decides, and the
+ *     remaining objectives only separate candidates that tie on it.
+ *
+ * This is the documented meaning of "this matters more to me": it selects which
+ * objective the recommendation is chosen ON, and leaves the rest as tie-breaks.
+ * It is deliberately NOT a numeric trade rate, because a student picking one
+ * option out of a list has not stated one and we must not invent it.
+ *
+ * Within every tier the value is a mean, which is symmetric — so objective
+ * ORDER cannot change the key, and a Pareto dominator still scores at least as
+ * high in every tier (each tier's mean is monotone in its components).
+ */
+export function objectiveRankKey(
+  vector: readonly number[],
+  priorities?: readonly (number | undefined)[],
+): number[] {
+  if (vector.length === 0) return [0];
+  const weightAt = (i: number) => {
+    const p = priorities?.[i];
+    return typeof p === 'number' && Number.isFinite(p) && p >= 0 ? p : PRIORITY_BASE_WEIGHT;
+  };
+  const tiers = [...new Set(vector.map((_, i) => weightAt(i)))].sort((a, b) => b - a);
+  return tiers.map((w) => {
+    const members = vector.filter((_, i) => weightAt(i) === w);
+    return members.reduce((a, b) => a + b, 0) / members.length;
+  });
+}
+
+/** Ties must be exact, not floating-point noise, so tie-breaks stay deterministic. */
+export const RANK_EPS = 1e-9;
+
+/**
+ * Lexicographic comparison of two rank keys. Positive ⇒ `a` ranks BETTER than
+ * `b`, matching the `utility(b) - utility(a)` convention the candidate sort
+ * already uses. A difference within `RANK_EPS` is not a difference.
+ */
+export function compareObjectiveKeys(a: readonly number[], b: readonly number[]): number {
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (Math.abs(d) > RANK_EPS) return d;
+  }
+  return 0;
 }

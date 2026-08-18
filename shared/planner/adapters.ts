@@ -93,6 +93,11 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(p.academicDecision?.candidates?.groundedComposition
       ? { groundedComposition: p.academicDecision.candidates.groundedComposition }
       : {}),
+    // C5 — carried through verbatim, for the same reason: the browser must not
+    // recompute whether a priority question is worth asking.
+    ...(p.academicDecision?.candidates?.evidence?.priorityQuestionImpact
+      ? { priorityQuestionImpact: p.academicDecision.candidates.evidence.priorityQuestionImpact }
+      : {}),
     // W1 — carried through verbatim. The UI never reconstructs impact from the
     // proposal or the explanation text; this is the only source.
     ...(p.academicDecision?.candidates?.evidence?.topicQuestionImpact

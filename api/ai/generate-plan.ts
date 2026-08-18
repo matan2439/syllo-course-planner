@@ -90,6 +90,7 @@ import { TOPIC_IDS } from './course_topics';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
+import { computePriorityQuestionImpact } from './priority_impact';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1849,6 +1850,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
             snapshotId: preparedEvidence.snapshot.snapshotId,
             profileVersion: preference_profile?.version ?? 0,
           };
+        })(),
+        /**
+         * C5 — whether asking WHICH confirmed objective matters more could
+         * actually change the recommendation, and what each possible answer
+         * would recommend. Computed by replaying the real ranking over the
+         * already-retained candidates, so the prediction is produced by the
+         * same function that will decide the next Rebuild.
+         *
+         * Condition 8 ("no higher-priority clarification blocks planning") is
+         * structural here rather than a flag: a blocking clarification preflight
+         * returns above, long before this block runs, so an optional preference
+         * question can never compete with one.
+         */
+        priorityQuestionImpact: (() => {
+          if (!selected || !resolvedGrounded?.objectives.length) return undefined;
+          return computePriorityQuestionImpact({
+            candidates: candidateSet.candidates,
+            objectives: resolvedGrounded.objectives,
+            recommendedCandidateId: selected.id,
+            snapshotId: preparedEvidence.snapshot.snapshotId,
+            profileVersion: preference_profile?.version ?? 0,
+            alreadyAnswered: resolvedGrounded.priorityChoice !== undefined,
+          });
         })(),
       },
       selectedGroundedScore: selected?.groundedScore ?? null,
