@@ -54,3 +54,8 @@ Gemini_Generated_Image_50vd950vd950vd95.png
 # The acquisition REPORT (metadata, hashes, coverage counts — no body text) is
 # committed; the corpus itself is not.
 data/evidence_cache/
+
+# Local Preview runtime state (S3): a session's committed board, written by
+# api/ai/board_repository_file.ts. Real user data — never committed, and never
+# stored under data/ (which is tracked catalog content).
+.runtime/
