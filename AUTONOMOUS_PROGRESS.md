@@ -4,19 +4,30 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-15 (cont. 2), session on branch `ui/frontend-modernization`
-(**The student can now CHOOSE between validated, non-dominated plans.** A
-bounded comparison of up to 3 legal alternatives built under identical hard
-constraints; selecting one never regenerates, and Apply commits the selected
-alternative. API 161/2197, UI 78/835, web 18/158, both tsc and the production
-build green. **Not merged, not deployed.**)_
+_Last updated: 2026-08-18, session on branch `ui/frontend-modernization`
+(**The student can now say WHICH objective matters more, and it changes the
+recommendation.** C5 closes the comparison epic: an impact-driven priority
+clarification, asked only when the answer would genuinely move the
+recommendation, routed through the real conversation state machine. Browser
+checks 13–15 PASS, so the comparison acceptance is now 19/19. API 164/2237,
+UI 78/835, web 19/174, both tsc and the production build green. **Not merged,
+not deployed.**)_
 
-_Latest entry: 2026-08-15 (cont. 2) — C0 proved only one of several validated
+_Latest entry: 2026-08-18 — C5. P0 reproduced the missing DECISION capability
+behaviourally (walk the real conversation, try every answer it accepts, find no
+reachable profile carrying a relative priority); P1 adds a typed impact contract
+that predicts the recommendation under every possible answer by replaying the
+real ranking; P2 completes the generic `priority` field using stable objective
+ids; P3 routes the question through `DeterministicPreferenceElicitation` +
+`ConversationState`; P4 keeps it a soft policy that hard constraints still beat.
+**The next epic is MANDATORY and recorded below: the Apply-authority decision.**_
+
+_Previous entry: 2026-08-15 (cont. 2) — C0 proved only one of several validated
 non-dominated plans reached the user; C1 exposes a bounded, filtered,
 deterministic alternative set; C2 derives factual labels and differences; C3/C4
 add the comparison UI, selection without regeneration and Apply of the selected
-alternative; C6 covers RTL/keyboard/mobile/reduced-motion. **C5 (the optional
-priority clarification) was NOT implemented — see the gap.**_
+alternative; C6 covers RTL/keyboard/mobile/reduced-motion. C5 was NOT
+implemented then — it is now._
 
 _Previous entry: 2026-08-15 (cont.), session on branch `ui/frontend-modernization`
 (**Grounded objectives now COMPOSE — no precedence.** A confirmed topic AND a
@@ -91,6 +102,223 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-18 — C5: choosing WHAT MATTERS, not just which plan
+
+Two code commits: P1 `ba94fff`, P2–P4 `e2a9b34`, plus this record.
+
+### P0 — the gap, proved as a missing decision rather than a missing export
+
+C1–C4 already told the student the truth: several validated plans exist, they
+trade off, and `unresolvedTradeoff: true`. What they could not do was ACT on it.
+Picking a card showed the other plan but expressed nothing durable — it could
+not survive a Rebuild, because nothing recorded WHY it was picked.
+
+The RED is deliberately behavioural. It drives the real
+`DeterministicPreferenceElicitation` + `ConversationState` with every impact
+signal the handler actually emitted, tries every answer the state machine will
+accept (bounded, 8 questions deep), and asks the PRODUCTION resolver whether any
+reachable profile carries an explicit relative priority. It found none — and so
+no reachable conversation state could move the recommendation onto the
+topic-leading plan. Both assertions failed; both now pass.
+
+### P1 — the impact contract (`ba94fff`)
+
+`computePriorityQuestionImpact` returns the impacted objective ids, their
+localized names, the current recommendation, and — the point of the whole thing
+— **the recommendation under every possible answer**, computed by replaying the
+real ranking (`compareRankable`) over the already-retained candidates. Nothing
+is re-planned and no evidence is re-acquired, so the prediction is made by the
+same function that will decide the next Rebuild. The suite verifies this by
+rebuilding against the real handler for each option and comparing.
+
+**The gate is eight conditions, and the decisive one is that an unresolved
+trade-off is NOT sufficient.** A fixture where a third candidate leads on one
+objective and ties on the other has a genuine trade-off and still produces no
+question, because every possible answer recommends the same plan. Proven again
+in-browser: hard-excluding E3 leaves TWO alternatives and still no question.
+
+The UI is handed `eligible` and gates on that alone — never on two alternatives
+existing, on `unresolvedTradeoff`, on the objective vectors, or on card order.
+
+### P1 ranking mechanics — extracted, not duplicated
+
+`objectiveRankKey` groups objectives into TIERS by explicit weight, each tier
+contributing its own equal-importance mean:
+
+- no priority => one tier => `[mean(vector)]`, exactly the previous
+  `composedUtility` — which is why 591 existing tests were untouched by the
+  refactor;
+- one primary => `[primary, mean(rest)]` — the prioritized objective decides and
+  the rest only break ties among candidates equal on it.
+
+This is a deliberate refusal to invent a numeric trade rate. A student picking
+one option out of a list has not stated how many topic-matches a project course
+is worth, and a weighted mean would have silently fabricated one.
+
+`compareRankable` is now THE ranking order in one place, and the impact contract
+calls it too, so a prediction cannot drift from the ranking. The
+hard/legality/policy prefix is still compared FIRST — which is why a priority
+can never trade away completion, legality, a hard wanted/avoided course, a
+workload cap or the distribution policy.
+
+### P2 — the generic priority (`e2a9b34`)
+
+The `priority` field on `ResolvedObjective` was DEAD: it read a property no
+`Preference` ever carried. It is now completed generically — the answer is a
+preference whose value is a stable objective id, or `equal_importance`. No
+`topic_over_project`, no pairwise vocabulary, and therefore no representable
+cycle; a third objective needs no new field.
+
+It is honoured only when it names an objective active in THIS request. A
+priority left over from a preference the student has since removed describes a
+trade-off that no longer exists, and is inert rather than an error (proven).
+
+**One equal-importance option, no separate "doesn't matter".** Both would
+produce the identical product state — the documented equal-importance
+composition — and two labels for one outcome would misrepresent it as a choice.
+Explicit equal importance is still a real answer: recorded, closes the question,
+and different from silence.
+
+### P3 — the real state machine
+
+The question is an ordinary `DEFAULT_QUESTION_CATALOG` entry (impact 0.55, so
+the existing higher-impact questions are asked first — condition 8 for free).
+Its options come from the server contract; its `relevantWhen` reads `eligible`.
+
+No comparison-card questionnaire and no UI-only priority state. Had the answer
+lived in the cards it could not have survived the Rebuild that gives it its only
+effect — which is precisely the capability P0 proved was missing.
+
+### P4 — what it may and may not change
+
+Proven against the real handler: topic priority recommends the topic-leading
+plan, project priority the project-leading one, laboratory travels the identical
+generic path, equal importance restores the equal-mean policy exactly
+(`equal_confirmed_preferences`, no `prioritySource`), exact ties still fall to
+canonical identity, and **hard-excluding the single course carrying the
+prioritized topic still wins outright**. A workload cap still binds.
+
+The explanation now names the objective the student chose, says THEY chose it,
+names the legal alternative still stronger on the other objective, and states
+that all displayed alternatives meet the same hard requirements. It still never
+claims the recommended plan is objectively better.
+
+### Browser acceptance — checks 13–15
+
+API `scripts/dev_api_server_alternatives_preview.ts` on :3002 (PID 36140) pinned
+to `data/evidence_fixtures/alternatives_preview`; `next dev` on :3001 (PID
+63128). Ports verified free before and after. Snapshot `snap_0efbc0eb`.
+Completed-course status resolved by explicitly saving an empty completed set
+(the fixture's genuine state), exclusions by the explicit "none" control
+(`aria-pressed=true`) — neither left UNKNOWN.
+
+| # | Check | Verdict | Evidence |
+|---|---|---|---|
+| 13 | Priority question gating | PASS | Exactly ONE question (1 fieldset, 1 text occurrence); options `קורסים מבוססי פרויקט` / `תחום התוכן: רובוטיקה` / `שניהם חשובים לי באותה מידה`; 3 alternatives still visible and enabled; no internal id anywhere in the DOM |
+| 13 | No question when it cannot decide | PASS | 1 objective => contract ABSENT; E3 hard-excluded => **2 alternatives and `eligible=false`**; no objectives => ABSENT; builds #1/#2 asked nothing |
+| 13 | Selecting a card is not answering | PASS | Selected alternative 2: Generate 3→3, question still asked, captured preferences unchanged, draft swapped to E1/E3 |
+| 13 | Unanswered priority does not block Apply | PASS | Apply enabled with the question open; arrow-key selection also worked with no Generate |
+| 14 | Answering does not Generate | PASS | Generate count 3 → 3 |
+| 14 | Profile version advances | PASS | 6 → 7, observed in the next Generate payload |
+| 14 | Whole set stales, every Apply inert | PASS | All 3 radios `disabled`, Apply disabled, 3 distinct stale notices |
+| 14 | Stale cards cannot restore Apply | PASS | Forced `click()` + synthetic `MouseEvent` + arrow key on every card: Apply stayed disabled |
+| 14 | Committed board unchanged | PASS | Board still empty; explicit Rebuild required |
+| 15 | Exactly one Generate on Rebuild | PASS | delta = 1 |
+| 15 | Request carries everything | PASS | All 5 earlier confirmed preferences + `objective_priority` = `prefer_topic_alignment`, at version 7 |
+| 15 | Recommendation changes as predicted | PASS | Contract predicted `cand_f49f0d08`; the rebuild recommended `cand_f49f0d08` (`{E1,E3}`), and the rendered draft is E1/E3 |
+| 15 | One constraint fingerprint / snapshot | PASS | `cf_b4054a49bfce8db1`, `snap_0efbc0eb`, profileVersion 7 — single-valued across all alternatives; all non-dominated and applyable |
+| 15 | Explanation cites the priority | PASS | Names רובוטיקה, "ציינת ש… חשוב לך יותר", the project-leading alternative that remains stronger, and the shared requirements |
+| 15 | Valid Apply commits once | PASS | Committed E1+E3, draft cleared, Apply control removed, no Generate |
+| 15 | Equal importance restores equal composition | PASS | Fresh journey: answering equal importance then rebuilding recommended `cand_dfb0ec29` (`{E1,E2}`) with reason `equal_confirmed_preferences` and no `prioritySource` |
+
+**Accessibility.** Real `<button>`s inside a labelled `role="group"` with a
+`<legend>`; focus lands on them and a `focus-visible` ring is declared; RTL
+confirmed; selected state carries the text markers `נבחר`/`לא נבחר`, never
+colour alone; the stale set is announced through the existing
+`role="status" aria-live="polite"` region; at 375px there is **0px** horizontal
+overflow, options wrap onto 3 rows fully inside the viewport, and the cards
+stack to one column; no option animates (`animation-name: none`) and the cards'
+only transition is `motion-safe:`. 0 console errors. Every network origin was
+`http://localhost:3001` — no internet, no provider.
+
+**Two honest limitations of the harness, not the product.**
+
+1. The Browser pane again stopped compositing, so screenshots and the
+   accessibility tree were unavailable; evidence is DOM, network and console —
+   recorded as such, exactly as the previous session did.
+2. Keyboard ACTIVATION of an option could not be exercised. Traced rather than
+   assumed: the keydown is `isTrusted: true` and reaches the focused button with
+   `key: "Enter"`, but no click follows, because the driver's dispatch lacks the
+   metadata Chrome needs to synthesize a button's default activation. That key
+   events DO reach handlers was proved in the same session — `ArrowLeft` moved
+   the radiogroup selection AND focus, RTL-correct. So this is a driver gap; the
+   product side is a native `<button>`, and jsdom covers activation.
+
+## MANDATORY NEXT EPIC — Apply authority (audited, NOT implemented)
+
+Recorded per this session's brief. Nothing here was changed.
+
+**Current ownership.** Apply lives entirely in `NativePlannerJourney`:
+`setCurrent(applyGeneratedToBoard(applyTarget, current))`. It is React state.
+
+**Is there server persistence?** No, and the boundary was traced rather than
+guessed:
+
+- `api/board.ts` is GET-only and hard-rejects every other method (line 108).
+- `api/ai/plan_persistence.ts` exists but provides only `InMemoryPlanRunStore` /
+  `InMemoryPersistenceCapability`, and its ONLY importer is its own test — it is
+  wired to no route.
+- Directly observed this session: after a successful Apply the board showed
+  E1+E3; a page reload restored the server's GET board and the applied plan was
+  gone.
+
+**What is trusted from the client.** The client resolves the selected candidate
+id against the CURRENT response and refuses unknown or non-applyable ids, and
+`isProposalApplyable` gates on blocked/errors/staleness/profile version. All of
+that is client-side. The server never sees an Apply at all.
+
+**Threat / correctness implications, stated precisely.** This is **not** a
+security vulnerability today, and should not be described as one: there is no
+server-side plan state, no user accounts and no cross-user data, so fabricated
+client state can only mislead the tab that fabricated it. `session_token` is a
+client-generated UUID used solely for quota counting against
+`anonymous_sessions`; it authenticates nobody and is never verified. The real
+defect is a PRODUCT one: "החל תוכנית" promises a commitment the system does not
+make, and the plan is lost on reload. The moment any server-side persistence,
+sharing or account exists, the same client-trusted path becomes a genuine
+integrity problem — which is why this decision must precede persistence rather
+than follow it.
+
+**Authentication / user persistence.** Also absent. There is no login, no user
+id, and no per-user storage anywhere in `api/`.
+
+**Required before Production — a decision, then an implementation:** either
+(a) an authoritative server-side Apply contract that re-validates candidate id,
+normalized identity, constraint fingerprint, snapshot and profile version
+against a server-held plan run, and persists per authenticated user; or (b) an
+explicit, documented product decision that the committed board is intentionally
+local-only — in which case the UI must stop implying otherwise.
+
+## Exact next action (current — supersedes the archival block at the end)
+
+1. **The Apply-authority epic is MANDATORY and comes first.** The full audit is
+   in the C5 section above. It is a DECISION before it is an implementation:
+   either an authoritative server-side Apply contract with authentication and
+   per-user persistence, or an explicit product decision that the committed
+   board is intentionally local-only (in which case the UI must stop implying a
+   commitment it does not make). Do not build persistence before that call —
+   doing so would bake the client-trusted Apply path into something that finally
+   does have integrity to lose.
+   - **Smallest ordered first step, once the decision exists:** a RED test
+     asserting that a fabricated candidate id, a mismatched constraint
+     fingerprint and a stale profile version are each rejected by the SERVER,
+     not by the client.
+2. C5 completed the comparison epic — browser acceptance is 19/19 and nothing in
+   C0–C6 remains open. No further comparison work is required.
+3. Deployment remains blocked on the same human decisions recorded in the
+   archival Blockers section (Vercel deploy access, canonical branch
+   reconciliation). Unchanged by this session.
 
 ## Session 2026-08-15 (cont. 2) — C0–C6: choosing between validated alternatives
 
