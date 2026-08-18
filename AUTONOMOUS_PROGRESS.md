@@ -4,11 +4,23 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-15, session on branch `ui/frontend-modernization`
-(**Topic alignment is now EXPOSED to users on the flagged Preview path**, with a
-full eleven-check browser acceptance PASSING. **Not merged, not deployed.**)_
+_Last updated: 2026-08-15 (cont.), session on branch `ui/frontend-modernization`
+(**Grounded objectives now COMPOSE — no precedence.** A confirmed topic AND a
+confirmed project preference both reach ranking, and the candidate satisfying
+both is selected. Sixteen-check multi-objective browser acceptance PASSING.
+API 160/2177, UI 78/835, web 17/142, both tsc and the production build green.
+**Not merged, not deployed.**)_
 
-_Latest entry: 2026-08-15 — W1 wired `topicQuestionImpact` through the real
+_Latest entry: 2026-08-15 (cont.) — M0 reproduced the precedence loss as a lost
+plan; M1 resolves an objective SET; M2 normalizes each objective to a comparable
+[0,1]; M3 evaluates Pareto dominance before aggregation; M4 composes by a
+documented equal-importance default and reports real trade-offs instead of
+hiding them; M5 proves all seven objective combinations generically; M6/M7
+compose the explanation and thread lean metadata to the UI. **Next slice: the
+priority-clarification question — trade-offs are reported but not yet asked
+about.**_
+
+_Previous entry: 2026-08-15 — W1 wired `topicQuestionImpact` through the real
 typed journey; W2 exposed the impact-driven topic question in the real
 conversation; W3 made the explanation state the limitation of the RIGHT
 objective; one browser-found defect fixed (an indifferent answer rendered its
@@ -65,6 +77,155 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-15 (cont.) — M0–M7: composable multi-objective ranking
+
+Six commits: M1 `000e4b2`, M2–M5 `86e1948`, M6/M7 `40311e3`, M7 UI `afa8e51`,
+trade-off + dedupe `c9bb3c5`.
+
+### M0 — the defect, reproduced as lost intent
+
+`resolveGroundedObjective` returned ONE objective: it collected delivery-feature
+and topic preferences, returned on the first supported DELIVERY value, and only
+fell through to topic when none resolved. Downstream, `candidate_set` compared a
+single raw `grounded.score`, so architecturally only one objective could ever
+reach ranking.
+
+Two independent order dependencies followed: delivery always beat topic, and
+inside delivery the winner was decided by preference ARRAY ORDER.
+
+The RED was written to show a lost plan, not a missing type. Fixture: E1 neutral,
+E2 project, E3 project **and** robotics. Both retained candidates tie on project;
+{E1,E3} is strictly better on topic and dominates. A student confirming project
+AND robotics received **{E1, E2}** — E3 was never selected and the robotics
+answer was not even reported as excluded.
+
+### M1 — an objective SET (`000e4b2`)
+
+`grounded_objective_set.ts` resolves every eligible confirmed preference into its
+own objective, each judged independently, so an unsupported delivery value can no
+longer suppress a supported topic. Two preferences naming one objective merge
+with provenance chosen by sorted preference id. Set order is presentation only
+(sorted by id for determinism); nothing in ranking reads it.
+
+Explicit relative priority is carried ONLY when genuinely supplied — never
+inferred from array, question, enum or taxonomy order.
+
+Backward compatible: `resolveGroundedObjective` returns the full set plus the
+legacy single-objective fields describing `objectives[0]`.
+
+### M2 — normalization (`86e1948`)
+
+Each objective is bounded to [0,1] by a denominator derived from the CANDIDATE,
+never from how much evidence exists:
+
+| Objective kind | Denominator |
+|---|---|
+| delivery (laboratory, project) | candidate course count |
+| topic | candidate course count × confirmed topic count |
+
+With one confirmed topic the topic denominator reduces to the delivery one, so
+single-objective ranking stays a monotone transform of the previous raw counts.
+
+Proven consequences: a larger schedule is not rewarded for merely holding more
+courses (raw grows, normalized does not); greater coverage cannot raise a score —
+dividing by "courses with evidence" would have made a LESS covered candidate
+score higher; an unknown course occupies the denominator and adds 0, so it is
+neither reward nor penalty relative to a known negative; duplicate evidence and
+repeated synonyms cannot inflate the raw count.
+
+### M3/M4 — Pareto first, then a documented default
+
+Dominance is decided on the full vector before any aggregation, and only among
+candidates already tied on every hard/legality/distribution component. A
+dominated candidate can never outrank its dominator — a property of the ranking,
+not a second pass, because the composed utility is monotone in every component.
+
+Composition is the arithmetic mean of the normalized vector: an explicitly
+documented EQUAL-IMPORTANCE default, symmetric, so objective order cannot change
+it. Exact ties fall to the existing legacy score vector and then canonical
+identity — never array order. Explicit priority is honoured when supplied,
+including a priority of 0.
+
+Typed selection reasons: `single_objective`, `dominates_all_objectives`,
+`equal_confirmed_preferences`, `explicit_priority`, `canonical_tie_break`,
+`no_distinguishing_evidence`.
+
+### M5 — generic, not pair-specific
+
+One ranking implementation: a legacy single objective is converted to a
+one-element set, so no "if single / else composed" branch exists. All seven
+combinations (topic, project, laboratory, all three pairs, the triple) drive the
+same path and are each proven invariant to preference order, plus
+objective-order invariance and run-to-run determinism.
+
+### M6/M7 — explanation and wire
+
+Each objective is explained with its own already-proven wording, so ONE objective
+yields byte-identical text. With several, one further sentence names how they
+were combined, derived from the vectors. Source disclosure spans every active
+objective and deduplicates a document cited by two objectives.
+
+The lean composition summary travels the existing typed path (declared
+explicitly in the zod contract, not via passthrough) to the draft view model.
+
+Both impact probes are computed independently over the candidates retained for
+THIS request, so answering one preference re-evaluates rather than silences the
+other.
+
+### Browser acceptance — multi-objective, on a committed fixture
+
+API `scripts/dev_api_server_multi_objective_preview.ts` on :3002 (PID 10128)
+pinned to `data/evidence_fixtures/multi_objective_preview`; `next dev` on :3001
+(PID 30996). Snapshot **`snap_06a8c493`**, coverage 4/4. Ports verified free
+before and after. Pixel screenshots unavailable (pane not compositing), so
+evidence is accessibility-tree, DOM, network and console.
+
+| # | Check | Verdict | Evidence |
+|---|---|---|---|
+| 1 | First grounded question impact-driven | PASS | Delivery question rendered after Build; canonical E1/E2 |
+| 2 | A second objective can still be asked | PASS | Topic question appeared after the delivery answer |
+| 3 | Neither answer Generates | PASS | Generate count 1→1 across both answers |
+| 4 | Proposal becomes stale | PASS | "ההעדפות שלך השתנו מאז הבנייה"; Apply disabled |
+| 5 | Rebuild sends BOTH preferences | PASS | `preferenceEligibility.soft` carries both; version 6 |
+| 6 | Both-satisfying candidate outranks | PASS | `E1,E2 → E1,E3`; canonical demoted to rank 1 |
+| 7 | Render matches selected identity | PASS | DOM shows E1/E3 = `selectedNormalizedIdentity` |
+| 8 | Explanation covers both preferences | PASS | Project sentence + topic sentence + composition sentence |
+| 9 | Hard exclusion still wins | PASS | `disallowed:['E3']` → E1/E2, both objectives still active |
+| 10 | Trade-off does not fall back to precedence | PASS (automated) | `unresolvedTradeoff:true`, reason `equal_confirmed_preferences` |
+| 11 | Selection reason truthful | PASS | `dominates_all_objectives`, nonDominated 1, dominated 2 |
+| 12 | Indifferent removes only that bias | PASS | Only `prefer_project_courses` active; E3 still selected |
+| 13 | Valid Apply commits once | PASS | Committed E1/E3; Apply control REMOVED |
+| 14 | Stale Apply blocked | PASS | `disabled:true` while stale |
+| 15 | RTL / a11y / console | PASS | `dir=rtl`, `lang=he`, 2 live regions, 0 unnamed buttons, 0px overflow, 0 console errors |
+| 16 | No internet during planning or Apply | PASS | Only `http://localhost:3001` origins observed |
+
+Check 10 was proven by an automated handler test rather than a second browser
+fixture — recorded as such rather than claimed in-browser.
+
+### Composition policy, as shipped
+
+1. Hard/legality/distribution prefix decides first, unchanged.
+2. Pareto dominance is evaluated on the full normalized vector.
+3. Equal-importance mean composes what dominance leaves open — a system ranking
+   policy, explicitly not a claim the student assigned weights.
+4. Explicit priority overrides the default when genuinely supplied.
+5. Exact ties fall to the legacy score vector, then canonical identity.
+
+### Honest capability statement
+
+**Supported:** any number of confirmed grounded objectives composed without
+precedence; topic + project proven end to end in a real browser; laboratory
+composes through the identical generic path (automated).
+
+**NOT supported, and not claimed:** the priority-clarification QUESTION. When a
+material trade-off exists the system retains and reports `unresolvedTradeoff`
+and ranks by the documented equal-importance default — it does NOT yet ask the
+student which preference matters more. That is the immediate next slice.
+
+**Remaining comparison-UI gap:** the composition metadata reaches the draft view
+model but no candidate-comparison surface renders it; the student sees the
+composed explanation, not the alternatives. Out of scope here by instruction.
 
 ## Session 2026-08-15 — W1–W3: topic alignment reaches real users, and its browser acceptance
 
