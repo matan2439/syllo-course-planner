@@ -142,6 +142,13 @@ export interface PlanCandidate {
   objectiveScores?: ObjectiveScoreComponent[];
   /** M4 — the composed utility this candidate was ranked on. */
   composedUtility?: number;
+  /**
+   * C1 — whether NO other comparable candidate Pareto-dominates this one. Only
+   * non-dominated candidates may be offered to the user as alternatives: a
+   * dominated plan is worse on some confirmed preference and better on none, so
+   * showing it would invite a strictly worse choice.
+   */
+  nonDominated?: boolean;
 }
 
 export interface CandidateSet {
@@ -441,13 +448,16 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   // component. A dominated candidate can never outrank its dominator: the
   // composed utility is monotone in every component, so this is a property of
   // the ranking rather than a second pass over it.
+  const vectors = ranked.map((r) => r.objectiveScores?.map((c) => c.normalized) ?? []);
+  const prefixOf = (i: number) => ranked[i].scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
+  const comparable = (i: number, j: number) => compareScore(prefixOf(i), prefixOf(j)) === 0;
+  /** C1 — retained per candidate, so the exposed alternative set can filter on it. */
+  const isDominated = objectiveSet.length
+    ? vectors.map((v, i) => vectors.some((w, j) => j !== i && comparable(i, j) && dominates(w, v)))
+    : ranked.map(() => false);
+
   const composition: GroundedComposition | undefined = objectiveSet.length
     ? (() => {
-        const vectors = ranked.map((r) => r.objectiveScores?.map((c) => c.normalized) ?? []);
-        const prefixOf = (i: number) => ranked[i].scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
-        const comparable = (i: number, j: number) => compareScore(prefixOf(i), prefixOf(j)) === 0;
-        const isDominated = vectors.map((v, i) =>
-          vectors.some((w, j) => j !== i && comparable(i, j) && dominates(w, v)));
         const nonDominated = isDominated.filter((d) => !d).length;
         const tradesOff = (a: readonly number[], b: readonly number[]) =>
           a.some((x, i) => x > b[i]) && b.some((y, i) => y > a[i]);
@@ -491,6 +501,7 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     ...(r.groundedScore !== undefined ? { groundedScore: r.groundedScore } : {}),
     ...(r.objectiveScores !== undefined ? { objectiveScores: r.objectiveScores } : {}),
     ...(r.composedUtility !== undefined ? { composedUtility: r.composedUtility } : {}),
+    nonDominated: !isDominated[i],
   }));
 
   return {

@@ -89,6 +89,7 @@ import { prepareEvidence } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
+import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1892,6 +1893,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // M3/M4 — how the confirmed objectives were combined. Truthful metadata,
       // never a claim the student assigned weights.
       groundedComposition: candidateSet.composition ?? null,
+      /**
+       * C1 — the bounded set of plans the student may actually choose between.
+       * Empty unless at least TWO validated, distinct, non-dominated plans exist
+       * under the identical hard constraints, profile version and snapshot: one
+       * plan is a proposal, not a comparison.
+       */
+      alternatives: buildPlanAlternatives({
+        candidates: candidateSet.candidates,
+        ...(selected?.id ? { selectedId: selected.id } : {}),
+        model,
+        constraintFingerprint: constraintFingerprint({
+          model,
+          completedCourseIds: [...(model.completedCourseIds ?? [])],
+          ...(distributionPolicy ? { distributionPolicy } : {}),
+          profileVersion: preference_profile?.version ?? 0,
+        }),
+        snapshotId: preparedEvidence.snapshot.snapshotId,
+        profileVersion: preference_profile?.version ?? 0,
+        objectiveIds: (resolvedGrounded?.objectives ?? []).map((o) => o.id),
+        ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
+      }),
       // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
       // to rank and describe alternatives without shipping duplicate full plans.
       summaries: candidateSet.candidates.map((c) => ({

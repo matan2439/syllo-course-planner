@@ -158,6 +158,27 @@ export interface GeneratedPlanModel {
     hasConflicts: boolean
   }
   /**
+   * C1 — the bounded set of validated, non-dominated plans the student may
+   * choose between. Each carries its COMPLETE plan, so the client never
+   * reconstructs one from difference text. Empty unless a real choice exists.
+   */
+  alternatives?: Array<{
+    candidateId: string
+    normalizedIdentity: string
+    recommended: boolean
+    applyable: boolean
+    semesters: Array<{ semesterId: string; courseIds: string[] }>
+    constraintFingerprint: string
+    profileVersion: number
+    snapshotId: string
+    nonDominated: boolean
+    composedUtility: number
+    objectiveScores: Array<{ objectiveId: string; normalized: number }>
+    labelHe: string
+    differencesHe: string[]
+    workload: { peakHours: number; totalHours: number; activePeriods: number }
+  }>
+  /**
    * M7 — how several confirmed grounded objectives were combined for this
    * proposal. Lean and typed: what was active, the truthful selection reason,
    * and whether a real trade-off was retained. Absent when no objective applied.

@@ -49,6 +49,8 @@ export interface DraftVM {
   topicQuestionImpact?: GeneratedPlanModel['topicQuestionImpact']
   /** M7 — how several confirmed objectives were composed; see GeneratedPlanModel. */
   groundedComposition?: GeneratedPlanModel['groundedComposition']
+  /** C1 — selectable validated alternatives; see GeneratedPlanModel. */
+  alternatives?: GeneratedPlanModel['alternatives']
   groundedExplanationHe?: GeneratedPlanModel['groundedExplanationHe']
   groundedSources?: GeneratedPlanModel['groundedSources']
   groundedCoverage?: GeneratedPlanModel['groundedCoverage']
@@ -140,6 +142,7 @@ export function buildDraftVM(generated: GeneratedPlanModel, base: BoardModel): D
     ...(generated.groundedQuestionImpact ? { groundedQuestionImpact: generated.groundedQuestionImpact } : {}),
     ...(generated.topicQuestionImpact ? { topicQuestionImpact: generated.topicQuestionImpact } : {}),
     ...(generated.groundedComposition ? { groundedComposition: generated.groundedComposition } : {}),
+    ...(generated.alternatives?.length ? { alternatives: generated.alternatives } : {}),
     ...(generated.groundedExplanationHe ? { groundedExplanationHe: generated.groundedExplanationHe } : {}),
     ...(generated.groundedSources ? { groundedSources: generated.groundedSources } : {}),
     ...(generated.groundedCoverage ? { groundedCoverage: generated.groundedCoverage } : {}),

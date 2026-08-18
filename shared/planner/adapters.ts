@@ -87,6 +87,9 @@ export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
     ...(p.academicDecision?.candidates?.evidence?.groundedQuestionImpact
       ? { groundedQuestionImpact: p.academicDecision.candidates.evidence.groundedQuestionImpact }
       : {}),
+    ...(p.academicDecision?.candidates?.alternatives?.length
+      ? { alternatives: p.academicDecision.candidates.alternatives }
+      : {}),
     ...(p.academicDecision?.candidates?.groundedComposition
       ? { groundedComposition: p.academicDecision.candidates.groundedComposition }
       : {}),

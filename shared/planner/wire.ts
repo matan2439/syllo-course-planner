@@ -103,6 +103,26 @@ export const generatePlanResponseSchema = z
                 academicYear: z.union([z.number(), z.string()]),
               }))
               .optional(),
+            // C1 — the exposed alternative set. Declared explicitly so a
+            // malformed alternative is rejected rather than reaching the UI.
+            alternatives: z
+              .array(z.object({
+                candidateId: z.string(),
+                normalizedIdentity: z.string(),
+                recommended: z.boolean(),
+                applyable: z.boolean(),
+                semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
+                constraintFingerprint: z.string(),
+                profileVersion: z.number(),
+                snapshotId: z.string(),
+                nonDominated: z.boolean(),
+                composedUtility: z.number(),
+                objectiveScores: z.array(z.object({ objectiveId: z.string(), normalized: z.number() })),
+                labelHe: z.string(),
+                differencesHe: z.array(z.string()),
+                workload: z.object({ peakHours: z.number(), totalHours: z.number(), activePeriods: z.number() }),
+              }))
+              .optional(),
             // M7 — composition metadata. Declared explicitly so a malformed
             // payload is rejected rather than reaching the UI.
             groundedComposition: z
