@@ -4,14 +4,28 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-15 (cont.), session on branch `ui/frontend-modernization`
+_Last updated: 2026-08-15 (cont. 2), session on branch `ui/frontend-modernization`
+(**The student can now CHOOSE between validated, non-dominated plans.** A
+bounded comparison of up to 3 legal alternatives built under identical hard
+constraints; selecting one never regenerates, and Apply commits the selected
+alternative. API 161/2197, UI 78/835, web 18/158, both tsc and the production
+build green. **Not merged, not deployed.**)_
+
+_Latest entry: 2026-08-15 (cont. 2) — C0 proved only one of several validated
+non-dominated plans reached the user; C1 exposes a bounded, filtered,
+deterministic alternative set; C2 derives factual labels and differences; C3/C4
+add the comparison UI, selection without regeneration and Apply of the selected
+alternative; C6 covers RTL/keyboard/mobile/reduced-motion. **C5 (the optional
+priority clarification) was NOT implemented — see the gap.**_
+
+_Previous entry: 2026-08-15 (cont.), session on branch `ui/frontend-modernization`
 (**Grounded objectives now COMPOSE — no precedence.** A confirmed topic AND a
 confirmed project preference both reach ranking, and the candidate satisfying
 both is selected. Sixteen-check multi-objective browser acceptance PASSING.
 API 160/2177, UI 78/835, web 17/142, both tsc and the production build green.
 **Not merged, not deployed.**)_
 
-_Latest entry: 2026-08-15 (cont.) — M0 reproduced the precedence loss as a lost
+_Previous entry: 2026-08-15 (cont.) — M0 reproduced the precedence loss as a lost
 plan; M1 resolves an objective SET; M2 normalizes each objective to a comparable
 [0,1]; M3 evaluates Pareto dominance before aggregation; M4 composes by a
 documented equal-importance default and reports real trade-offs instead of
@@ -77,6 +91,142 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+## Session 2026-08-15 (cont. 2) — C0–C6: choosing between validated alternatives
+
+Four commits: C1/C2 `4229716`, C3/C4/C6 `d29f76c`, label fixes `59b8d85`.
+
+### C0 — the gap, traced then proved
+
+`generateCandidateSet` already retained up to `DEFAULT_MAX_CANDIDATES = 3`
+validated, deduplicated combinations and computed a Pareto verdict for each. The
+response emitted `summaries` — ids, differences and the raw `scoreVector` — but
+**not the plan state**. So several legal, non-dominated plans existed
+internally, exactly one reached the student, and a UI could only "show" another
+by reconstructing it from difference text, which is forbidden.
+
+RED proved it directly: **0 alternatives exposed** against ≥2 non-dominated
+candidates.
+
+### C1 — the exposed contract
+
+Each alternative carries its COMPLETE plan (so nothing is reconstructed
+client-side), plus `candidateId`, `normalizedIdentity`, `recommended`,
+`applyable`, the shared `constraintFingerprint`, `profileVersion`, `snapshotId`,
+`nonDominated`, `composedUtility`, the per-objective vector, `labelHe`,
+`differencesHe` and `workload`. `scoreVector`, provenance and content hashes are
+NOT promoted as client content.
+
+**Filtering, in order:** valid and error-free → Pareto **non-dominated** →
+distinct normalized identity. A dominated plan is worse on some confirmed
+preference and better on none, so offering it would invite a strictly worse
+choice.
+
+**Zero / one / many:** fewer than two survivors returns an EMPTY set — one plan
+is a proposal, not a comparison, and no count is ever manufactured. Verified on
+a real case: forcing a wanted course made `{E2,E3}` dominate both `{E1,E3}`
+placements, leaving ONE non-dominated plan and correctly no comparison.
+
+**Deterministic bound (3):** the recommendation always survives; then the strict
+extreme on each objective; then whichever remaining plan differs most from those
+already chosen. Never array order, never randomness.
+
+### C2 — factual labels and differences
+
+Labels name what a plan **strictly leads on** among the offered set — a tie is
+not a lead — and fall back to a neutral ordinal when no supported distinction
+exists. A label that would repeat another card's is replaced by the ordinal,
+because a label that does not distinguish is worse than a neutral one.
+`balanced` / `compact` are planning INPUTS and never appear as identities.
+Differences are computed from the plans: courses added/removed, courses moved
+between periods, peak-load and active-period deltas.
+
+### C3/C4/C6 — comparing, selecting, applying
+
+Selecting an alternative never Generates, never touches the committed board or
+the profile, and swaps the active draft to the EXACT candidate state the handler
+returned. The selection resets on every response, so it cannot survive a Rebuild
+and point into a superseded set.
+
+Apply resolves the target by candidate id against the CURRENT response — a UI
+label never decides what is applied, and an unknown or non-applyable id aborts
+rather than committing something the server never validated.
+
+A real radiogroup: arrow keys move selection **and** focus (RTL-aware), selected
+state is text + border rather than colour alone, a polite live region announces
+changes, cards stack on mobile, and a stale set stays readable but unselectable.
+
+**Motion.** This is a productivity surface whose purpose is side-by-side
+scanning, so nothing animates layout, size or position — a moving card would
+hurt the comparison it exists to support. Measured in-browser: transitions are
+colour-only (`color, background-color, border-color…`) at **0.15s**, and the
+rule lives inside `@media (prefers-reduced-motion: no-preference)`, so reduced
+motion removes it entirely. Selection itself is instant.
+
+### Browser acceptance
+
+API `scripts/dev_api_server_alternatives_preview.ts` on :3002 (PID 19892) pinned
+to `data/evidence_fixtures/alternatives_preview`; `next dev` on :3001 (PID
+32088). Snapshot `snap_0efbc0eb`, fingerprint `cf_466c6a18d62d862d` identical
+across all three alternatives. Ports verified free before and after.
+
+The Browser pane stopped compositing mid-run, so the accessibility tree and
+screenshots were unavailable; evidence is DOM, network and console, plus a
+`resize_window` call that restored a real 375px viewport for the mobile
+measurements. Recorded as such rather than claimed as a11y-tree evidence.
+
+| # | Check | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Comparison with the right count | PASS | "3 תוכניות חוקיות לבחירתך", 3 radios |
+| 2 | All satisfy the same hard constraints | PASS | One `constraintFingerprint` and one snapshot across all three |
+| 3 | Labels/differences match the plans | PASS | Topic leader reads "יותר קורסים בתחום רובוטיקה"; diffs name E3/E2 |
+| 4 | Recommendation reason truthful | PASS | `equal_confirmed_preferences`, `unresolvedTradeoff: true` |
+| 5 | Keyboard / mobile / RTL | PASS | ArrowLeft moves selection AND focus; 3 cards single-column at 375px, 0px overflow; `dir=rtl` |
+| 6 | Selecting sends no Generate | PASS | Generate count unchanged at 2 (both Builds) |
+| 7 | Draft becomes the exact candidate | PASS | Draft switched to E3, E2 gone |
+| 8 | Committed board unchanged while browsing | PASS | Proposal still present; board only replaced by Apply |
+| 9 | Apply commits the SELECTED alternative | PASS | Committed **E3**, not the recommended E2; Apply control removed |
+| 10 | Preference edit stales the whole set | PASS | Every alternative `disabled`, stale banner shown |
+| 11 | Stale alternatives cannot be applied | PASS | All radios disabled while stale |
+| 12 | Rebuild replaces the set | PASS | New set, staleness cleared, selection reset to recommendation |
+| 16 | Missing evidence creates no fake advantage | PASS | With no confirmed objective, labels fall back to neutral ordinals |
+| 17 | Flag-off unchanged | PASS | `agent=0`: no comparison, no conversation |
+| 18 | Console clean | PASS | 0 console errors |
+| 19 | No internet during any step | PASS | Only `http://localhost:3001` origins |
+
+Checks 13–15 (priority clarification) were NOT exercised — see the gap below.
+
+### Two defects found by the browser, fixed at root (`59b8d85`)
+
+1. The topic-leading plan was labelled "חלופה 2" instead of naming robotics.
+   Root cause: the builder read the LEGACY single-objective `topicIds`, which is
+   populated only when the topic objective sorts first — so with project AND
+   topic active it was undefined and the topic label was unreachable. It now
+   reads the topic objective's own topics from the resolved set.
+2. Two cards rendered the SAME label, because a plan that merely TIED on an
+   objective still counted as leading it.
+
+### Honest capability statement
+
+**Supported:** a bounded set of validated, distinct, non-dominated plans built
+under identical hard constraints, profile version and snapshot; inspect before
+choosing; selection without regeneration; Apply of the selected alternative,
+proven to commit B rather than the recommended A; full staleness/Rebuild
+lifecycle.
+
+**NOT supported — C5 was not implemented.** The optional impact-driven PRIORITY
+clarification is not built. The trade-off is already represented truthfully
+(`unresolvedTradeoff`, `equal_confirmed_preferences`) and the student can simply
+choose an alternative directly, which is the escape hatch the spec allows — but
+the bounded question that would let an explicit priority change the
+recommendation does not exist yet. Browser checks 13–15 are therefore untested,
+not passed.
+
+**Remaining gap:** Apply enforcement lives in the journey (client-side commit),
+which is where this preview's Apply has always lived. There is no server-side
+Apply handler on this path to re-verify candidate id/identity, so the
+"fabricated id" and "identity mismatch" rejections are enforced by the client
+resolving ids against the current response rather than by a server contract.
 
 ## Session 2026-08-15 (cont.) — M0–M7: composable multi-objective ranking
 
