@@ -91,6 +91,9 @@ import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { computePriorityQuestionImpact } from './priority_impact';
+import { resolveOwner } from './session_owner';
+import { academicStatusDigest, getBoardRepository, getProposalStore } from './apply_runtime';
+import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord } from './proposal_store';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1396,6 +1399,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   const { program_id, plan_context, preferences, session_token, clarification_answers, include_interest_evaluation, academic_interest_profile, use_academic_decision_agent, interpret_free_text, preference_profile } = parsed.data;
 
+  /**
+   * S4 — the server-issued session that OWNS anything durable this request
+   * creates. Resolved only on the flagged path, so the legacy/default response
+   * is byte-identical and gains no Set-Cookie it never had.
+   *
+   * Note this is NOT `session_token`: that value is chosen by the client and
+   * exists for quota accounting. An ownership key a caller can pick is not an
+   * ownership key at all.
+   */
+  const owner = use_academic_decision_agent === true
+    ? resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res)
+    : { ownerId: '', issued: false };
+
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
   // Quota gate — unchanged behavior: required unless an explicit dev bypass.
@@ -2207,6 +2223,86 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // non-answerable authoritative conflicts). Distinction preserved per item.
     (responseBody.academicDecision as Record<string, unknown>).structuredClarification =
       agentRun.structuredClarification;
+
+    /**
+     * S1 — retain the AUTHORITATIVE proposal.
+     *
+     * Everything above computed a validated candidate set and was about to
+     * forget it, leaving the browser as the only holder of the plans. From here
+     * the server keeps its own copy, and the client receives only a receipt:
+     * ids and the versions an Apply must still match. Apply resolves the
+     * candidate out of this record, so a plan sent by a client is never the
+     * thing that gets committed.
+     *
+     * Stored only for a real, applyable proposal — there is nothing
+     * authoritative about a blocked or infeasible outcome, and offering a
+     * handle to one would invite an Apply that must fail anyway.
+     */
+    if (outcome === 'proposal' && isApplyEligible(outcome) && candidateOrchestration) {
+      const alternatives = (candidateOrchestration.alternatives ?? []) as Array<{
+        candidateId: string;
+        semesters: Array<{ semesterId: string; courseIds: string[] }>;
+        normalizedIdentity: string;
+        recommended: boolean;
+        applyable: boolean;
+        constraintFingerprint: string;
+        snapshotId: string;
+      }>;
+      const selectedId = candidateOrchestration.selectedCandidateId as string | null;
+
+      /**
+       * The recommendation is ALWAYS storable, even when no comparison was
+       * offered: a single validated plan is still a plan the student may apply.
+       * `alternatives` is empty in that case by design (one plan is a proposal,
+       * not a choice), so the selected candidate is stored on its own.
+       */
+      const storedCandidates = alternatives.length
+        ? alternatives.map((a) => ({
+            candidateId: a.candidateId,
+            semesters: a.semesters.map((sem) => ({ semesterId: sem.semesterId, courseIds: [...sem.courseIds] })),
+            normalizedIdentity: a.normalizedIdentity,
+            valid: true,
+            applyable: a.applyable,
+            recommended: a.recommended,
+          }))
+        : selectedId
+          ? [{
+              candidateId: selectedId,
+              semesters: proposal.semesters.map((sem: { semester_id: string; course_ids: string[] }) => ({
+                semesterId: sem.semester_id, courseIds: [...sem.course_ids],
+              })),
+              normalizedIdentity: String(candidateOrchestration.selectedNormalizedIdentity ?? ''),
+              valid: true,
+              applyable: true,
+              recommended: true,
+            }]
+          : [];
+
+      if (storedCandidates.length) {
+        const now = Date.now();
+        const committed = await getBoardRepository().load(owner.ownerId, program_id);
+        const record: ProposalRecord = {
+          proposalId: newProposalId(),
+          ownerId: owner.ownerId,
+          programId: program_id,
+          createdAt: now,
+          expiresAt: now + PROPOSAL_TTL_MS,
+          baseBoardVersion: committed?.version ?? null,
+          profileVersion: preference_profile?.version ?? 0,
+          academicStatusDigest: academicStatusDigest(effectivePlanContext?.personal_status),
+          constraintFingerprint: alternatives[0]?.constraintFingerprint
+            ?? String((candidateOrchestration.evidence as Record<string, unknown> | undefined)?.snapshotId ?? 'cf_none'),
+          snapshotId: alternatives[0]?.snapshotId
+            ?? String((candidateOrchestration.evidence as Record<string, unknown> | undefined)?.snapshotId ?? ''),
+          candidates: storedCandidates,
+          recommendedCandidateId: selectedId,
+          outcome,
+          applyEligible: true,
+        };
+        await getProposalStore().put(record);
+        (responseBody.academicDecision as Record<string, unknown>).proposal = toReceipt(record);
+      }
+    }
   }
   res.status(200).json(responseBody);
 }
