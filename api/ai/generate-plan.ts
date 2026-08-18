@@ -88,7 +88,7 @@ import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
-import { explainGroundedRanking, scoreCandidateOnObjective } from './grounded_objectives';
+import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
 import { loadPreparedEvidenceDocuments } from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
@@ -1716,10 +1716,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       snapshotId: preparedEvidence.snapshot.snapshotId,
       ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
     });
+    // M1/M2 — EVERY confirmed objective reaches ranking. No precedence: the
+    // set is scored independently per objective against this ONE snapshot and
+    // composed symmetrically (see grounded_objective_set.ts).
     const groundedForRanking =
-      resolvedGrounded?.objective !== undefined
+      resolvedGrounded?.objectives.length
         ? {
-            objective: groundedObjectiveOf(resolvedGrounded.objective),
+            objectives: resolvedGrounded.objectives,
+            snapshotId: preparedEvidence.snapshot.snapshotId,
             features: preparedEvidence.features,
             topics: preparedEvidence.topics,
           }
@@ -1732,7 +1736,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       initialState,
       profileVersion: preference_profile?.version ?? 0,
       pinnedHome,
-      ...(groundedForRanking ? { groundedObjective: groundedForRanking } : {}),
+      ...(groundedForRanking ? { groundedObjectives: groundedForRanking } : {}),
     });
     const selected = selectCandidate(candidateSet);
     // Proposal is built from the primary candidate's exact state; if NOTHING
@@ -1850,21 +1854,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // K9C — the concise, factual explanation of the grounded objective's
       // effect, built only from evidence actually used. Absent when no grounded
       // objective applied, so nothing is ever claimed without support.
-      groundedExplanationHe:
-        resolvedGrounded?.objective && selected?.groundedScore
-          ? explainGroundedRanking({
-              objective: groundedObjectiveOf(resolvedGrounded.objective),
-              selected: selected.groundedScore,
-              ...(candidateSet.candidates.find((c) => c.id !== selected.id)?.groundedScore
-                ? { alternative: candidateSet.candidates.find((c) => c.id !== selected.id)!.groundedScore }
-                : {}),
-            })
-          : null,
+      groundedExplanationHe: (() => {
+        const objectives = resolvedGrounded?.objectives ?? [];
+        const components = selected?.objectiveScores;
+        if (!objectives.length || !components?.length) return null;
+        const asScore = (c: (typeof components)[number]) => ({
+          score: c.raw, contributions: c.contributions,
+          unknownCourseIds: c.unknownCourseIds, variesBySectionCourseIds: c.variesBySectionCourseIds,
+        });
+        const other = candidateSet.candidates.find((c) => c.id !== selected!.id);
+        return explainGroundedComposition({
+          objectives: objectives.map((o) => ({ id: o.id, ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}) })),
+          snapshotId: preparedEvidence.snapshot.snapshotId,
+          selected: components.map(asScore),
+          ...(other?.objectiveScores?.length ? { alternative: other.objectiveScores.map(asScore) } : {}),
+          reason: candidateSet.composition?.reason ?? 'single_objective',
+        });
+      })(),
       // The official sources actually cited by the selected candidate, for the
       // UI's source disclosure. Empty when nothing was grounded.
-      groundedSources: (selected?.groundedScore?.contributions ?? []).map((c) => ({
+      // Sources cited by EVERY active objective on the selected candidate, so a
+      // composed explanation's disclosure is complete rather than first-only.
+      groundedSources: (selected?.objectiveScores?.flatMap((c) => c.contributions)
+        ?? selected?.groundedScore?.contributions ?? []).map((c) => ({
         courseId: c.courseId, sourceRef: c.sourceRef, academicYear: c.academicYear,
       })),
+      // M3/M4 — how the confirmed objectives were combined. Truthful metadata,
+      // never a claim the student assigned weights.
+      groundedComposition: candidateSet.composition ?? null,
       // LEAN summary only (Slice 18B UI scope): enough for a later comparison UI
       // to rank and describe alternatives without shipping duplicate full plans.
       summaries: candidateSet.candidates.map((c) => ({
@@ -2097,8 +2114,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // values surfaced rather than silently dropped.
       (responseBody.academicDecision as Record<string, unknown>).groundedObjective = {
         objective: resolvedGrounded?.objective ?? null,
+        // M1 — the authoritative set. `objective` above stays as the legacy
+        // single view so existing consumers are unchanged.
+        objectives: (resolvedGrounded?.objectives ?? []).map((o) => ({
+          id: o.id, preferenceId: o.preferenceId, kind: o.kind, target: o.target,
+          ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
+          source: o.source, profileVersion: o.profileVersion,
+          ...(typeof o.priority === 'number' ? { priority: o.priority } : {}),
+        })),
         ...(resolvedGrounded?.provenance ? { provenance: resolvedGrounded.provenance } : {}),
         ...(resolvedGrounded?.excluded ? { excluded: resolvedGrounded.excluded } : {}),
+        ...(resolvedGrounded?.prioritySource ? { prioritySource: resolvedGrounded.prioritySource } : {}),
       };
     }
     // Lean candidate-orchestration metadata (the flagged proposal is built from

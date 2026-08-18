@@ -324,3 +324,66 @@ function explainTopicAlignment(input: {
     : ' יש לשים לב שהיעדר אזכור בתוכן הרשמי אינו קביעה שהנושא לא נלמד בקורס.';
   return head + provenance + compare + unknown;
 }
+
+/**
+ * M6 — explain EVERY active objective that influenced the ranking.
+ *
+ * Each objective is described with its own already-proven wording, so nothing
+ * about the single-objective explanation changes. With exactly one active
+ * objective this returns byte-identical text to `explainGroundedRanking`.
+ *
+ * With several, the per-objective sentences are followed by ONE sentence naming
+ * how they were combined. That sentence is derived from the objective vectors,
+ * never asserted: when no candidate is best on everything, the trade-off is
+ * stated plainly rather than hidden behind a precedence rule, and the
+ * equal-importance default is described as this system's ranking policy — not
+ * as something the student said.
+ */
+export function explainGroundedComposition(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId; topicIds?: readonly TopicId[] }>;
+  snapshotId: string;
+  selected: readonly GroundedScore[];
+  alternative?: readonly GroundedScore[];
+  reason:
+    | 'single_objective'
+    | 'dominates_all_objectives'
+    | 'equal_confirmed_preferences'
+    | 'explicit_priority'
+    | 'canonical_tie_break'
+    | 'no_distinguishing_evidence';
+}): string {
+  const { objectives, selected, alternative, snapshotId } = input;
+  if (objectives.length === 0 || selected.length === 0) return '';
+
+  const per = objectives.map((o, i) =>
+    explainGroundedRanking({
+      objective: {
+        id: o.id,
+        confirmed: true,
+        snapshotId,
+        ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
+      },
+      selected: selected[i],
+      ...(alternative?.[i] ? { alternative: alternative[i] } : {}),
+    }),
+  );
+
+  // One objective ⇒ exactly the text this produced before composition existed.
+  if (objectives.length === 1) return per[0];
+
+  const combined: Record<typeof input.reason, string> = {
+    single_objective: '',
+    dominates_all_objectives:
+      ' התוכנית הנבחרת מתאימה לכל ההעדפות שאישרת לפחות כמו כל חלופה חוקית אחרת שנבדקה, ועדיפה על חלקן בלפחות העדפה אחת.',
+    equal_confirmed_preferences:
+      ' אין חלופה חוקית שמצטיינת בכל ההעדפות שאישרת בו-זמנית. לא ציינת מה חשוב יותר, ולכן כל ההעדפות נשקלו במשקל שווה — זו מדיניות הדירוג של המערכת, לא קביעה שלך.',
+    explicit_priority:
+      ' הבחירה נעשתה לפי סדר החשיבות שציינת בין ההעדפות.',
+    canonical_tie_break:
+      ' כל החלופות החוקיות התאימו להעדפות שאישרת באותה מידה, ולכן נשמרה תוכנית ברירת המחדל.',
+    no_distinguishing_evidence:
+      ' לא נמצאה עדות רשמית שמבדילה בין החלופות עבור ההעדפות שאישרת, ולכן הן לא השפיעו על הדירוג.',
+  };
+
+  return per.join(' ') + (combined[input.reason] ?? '');
+}
