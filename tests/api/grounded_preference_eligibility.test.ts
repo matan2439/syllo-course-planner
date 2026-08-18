@@ -176,9 +176,15 @@ describe('resolveGroundedObjective — the single eligibility mapping', () => {
     const r = resolve([labPreference({ classification: 'hard_constraint' })]);
     expect(r.objective).toBe('prefer_laboratory_courses');
     // The result shape itself forbids a legality output: the ONLY keys are the
-    // soft objective, its provenance, and unsupported-value exclusions. (A
-    // `hardConstraint` field does not type-check, which is the real guarantee.)
-    expect(Object.keys(r).sort()).toEqual(['objective', 'provenance']);
+    // resolved objective set, the legacy single-objective view, its provenance,
+    // and unsupported-value exclusions. (A `hardConstraint` field does not
+    // type-check, which is the real guarantee.)
+    //
+    // M1 added `objectives` — the full composable set. A hard_constraint
+    // classification still yields exactly ONE soft objective and no legality
+    // output, which is what this test protects.
+    expect(Object.keys(r).sort()).toEqual(['objective', 'objectives', 'provenance']);
+    expect(r.objectives.map((o) => o.id)).toEqual(['prefer_laboratory_courses']);
   });
 
   test('the profile version travels with the resolution, so mutations stale a proposal', () => {

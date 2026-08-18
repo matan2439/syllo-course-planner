@@ -1,179 +1,98 @@
 /**
- * K9A — the typed GROUNDED COURSE-FEATURE preference, and the SINGLE boundary
- * that maps it to a planner objective.
+ * K9A/M1 — the typed GROUNDED preference boundary.
  *
- * Mirrors `distribution_policy.ts` exactly: one `resolve…(effective)` function
- * sitting on the eligibility boundary, so the conversation, the handler and the
- * planner can never reinterpret the same preference differently. Everything
- * upstream of here speaks about a course FEATURE the student can recognise
- * ('practical_laboratory'); the planner's internal objective id
- * ('prefer_laboratory_courses') appears only on the far side of this mapping and
- * is never a valid input value.
+ * M1 replaced the single-objective resolver with a composable OBJECTIVE SET.
+ * The old behaviour returned exactly one objective chosen by a fixed precedence
+ * (delivery beat topic; array order broke ties inside delivery), so a confirmed
+ * lower-precedence preference was silently discarded — see
+ * `grounded_objective_set.ts` for the replacement and its rationale.
  *
- * Semantics (deliberately conservative, and identical to the distribution
- * policy's):
- *   - confirmed + active + supported feature → the grounded objective;
- *   - indifferent → excluded by `effectivePlannerPreferences`, so no bias — but
- *     still PRESENT in the profile, which is what stops the topic being re-asked;
- *   - uncertain / unconfirmed / rejected → excluded, never influences ranking;
- *   - absent → no objective, no bias;
- *   - supported-but-unrecognised value → a typed `excluded` entry with a stable
- *     reason, never a guess at what the user meant;
- *   - and there is NO output on this path that can change academic legality. A
- *     course-feature preference is a soft ranking signal by construction: even a
- *     `hard_constraint` classification yields only the same soft objective.
+ * This module is now a thin compatibility surface over that set. It keeps the
+ * legacy single-objective fields populated from the FIRST objective in the
+ * deterministic (id-sorted) order, so every existing single-objective caller
+ * and test observes byte-identical behaviour, while `objectives` carries the
+ * complete truth for callers that can compose.
+ *
+ * Semantics are unchanged and still conservative: only confirmed, active,
+ * supported preferences produce an objective; indifferent / uncertain /
+ * unconfirmed entries were already removed by `effectivePlannerPreferences`;
+ * an unrecognised value is reported as `excluded`, never guessed at; and
+ * nothing on this path can change academic legality.
  */
 import type { EffectivePlannerPreferences } from './preference_eligibility';
 import type { GroundedObjectiveId } from './grounded_objectives';
-import { TOPIC_IDS, type TopicId } from './course_topics';
+import type { TopicId } from './course_topics';
+import {
+  resolveGroundedObjectiveSet,
+  GROUNDED_FEATURE_CATEGORY,
+  GROUNDED_FEATURE_AFFECTS,
+  GROUNDED_TOPIC_CATEGORY,
+  GROUNDED_TOPIC_AFFECTS,
+  SUPPORTED_GROUNDED_FEATURES,
+  type SupportedGroundedFeature,
+  type GroundedObjectiveExclusion,
+  type ResolvedObjective,
+  type ResolvedGroundedObjectiveSet,
+} from './grounded_objective_set';
 
-/** The preference category the conversation uses for a course-feature question. */
-export const GROUNDED_FEATURE_CATEGORY = 'course_feature';
-/** The planner knob a course-feature preference influences. */
-export const GROUNDED_FEATURE_AFFECTS = 'grounded_course_feature';
-
-/** T4 — the preference category for a course CONTENT/TOPIC interest. */
-export const GROUNDED_TOPIC_CATEGORY = 'course_topic_interest';
-/** The planner knob a topic-interest preference influences. */
-export const GROUNDED_TOPIC_AFFECTS = 'grounded_topic_interest';
-
-/**
- * Feature targets this build can actually ground in official evidence. A value
- * outside this list is reported as unsupported rather than approximated — the
- * same discipline the extractor applies to an unmapped topic.
- *
- * Generic on purpose: adding `no_final_exam` or `project_based` here is a
- * one-line change once each has its OWN end-to-end ranking proof (see the
- * ledger's K8). Shipping an objective without that proof is forbidden.
- */
-export const SUPPORTED_GROUNDED_FEATURES = ['practical_laboratory', 'project_based'] as const;
-export type SupportedGroundedFeature = (typeof SUPPORTED_GROUNDED_FEATURES)[number];
-
-/** Feature target → planner objective. The only place this translation exists. */
-const FEATURE_TO_OBJECTIVE: Record<SupportedGroundedFeature, GroundedObjectiveId> = {
-  practical_laboratory: 'prefer_laboratory_courses',
-  // K8 — added only after the K8A audit measured its official coverage at 8/8
-  // and proved an end-to-end selection change. No objective ships without that.
-  project_based: 'prefer_project_courses',
+export {
+  GROUNDED_FEATURE_CATEGORY,
+  GROUNDED_FEATURE_AFFECTS,
+  GROUNDED_TOPIC_CATEGORY,
+  GROUNDED_TOPIC_AFFECTS,
+  SUPPORTED_GROUNDED_FEATURES,
 };
-
-export interface GroundedObjectiveExclusion {
-  id: string;
-  value: string;
-  /** Stable machine-readable reason. */
-  reason: 'unsupported_grounded_feature' | 'unsupported_grounded_topic';
-}
+export type { SupportedGroundedFeature, GroundedObjectiveExclusion, ResolvedObjective, ResolvedGroundedObjectiveSet };
 
 export interface GroundedObjectiveResult {
-  /** Present only when a confirmed active preference names a supported feature. */
+  /**
+   * EVERY eligible confirmed objective. This is the authoritative field; the
+   * single-objective fields below are a compatibility view over it.
+   */
+  objectives: ResolvedObjective[];
+  /** Legacy single-objective view — `objectives[0]`, in deterministic id order. */
   objective?: GroundedObjectiveId;
-  /** Present alongside `objective` — explanatory provenance, never a legality input. */
   provenance?: {
     preferenceId: string;
-    /** The user-facing feature target, for explanation text. */
     feature: SupportedGroundedFeature | 'course_topic_interest';
     source: string;
     profileVersion: number;
   };
-  /**
-   * T4 — the confirmed topics, present only with `prefer_topic_alignment`.
-   * Deduplicated and sorted, so the objective is identical for the same answers
-   * regardless of the order they were given in.
-   */
+  /** Confirmed topics, present when a topic objective is the legacy view. */
   topicIds?: TopicId[];
-  /** Eligible preferences naming a feature this build cannot ground. Never silently dropped. */
+  /** Eligible preferences naming a target this build cannot ground. */
   excluded?: GroundedObjectiveExclusion[];
-}
-
-function isSupported(value: string): value is SupportedGroundedFeature {
-  return (SUPPORTED_GROUNDED_FEATURES as readonly string[]).includes(value);
-}
-
-function isSupportedTopic(value: string): value is TopicId {
-  return (TOPIC_IDS as readonly string[]).includes(value);
+  /** Present when the student genuinely supplied relative importance. */
+  prioritySource?: 'explicit_preference';
 }
 
 /**
- * Resolve the grounded objective from the ALREADY-FILTERED effective
- * preferences. Only `hard`/`soft` reach here — `effectivePlannerPreferences` has
- * already removed indifferent, uncertain and unconfirmed entries with their own
- * deterministic reasons, so this function cannot accidentally revive one.
+ * Resolve grounded objectives from ALREADY-FILTERED effective preferences.
+ *
+ * Returns the full set. The legacy fields describe `objectives[0]` so callers
+ * that have not yet been taught to compose keep working unchanged — but they no
+ * longer cause a second confirmed preference to be dropped, because the set is
+ * always present.
  */
 export function resolveGroundedObjective(effective: EffectivePlannerPreferences): GroundedObjectiveResult {
-  const active = [...effective.hard, ...effective.soft];
-  const prefs = active.filter(
-    (p) => p.affects === GROUNDED_FEATURE_AFFECTS || p.category === GROUNDED_FEATURE_CATEGORY,
-  );
-  const topicPrefs = active.filter(
-    (p) => p.affects === GROUNDED_TOPIC_AFFECTS || p.category === GROUNDED_TOPIC_CATEGORY,
-  );
-  if (!prefs.length) return resolveTopicInterest(topicPrefs, effective);
-
-  const excluded: GroundedObjectiveExclusion[] = [];
-  for (const p of prefs) {
-    const value = String(p.normalized);
-    if (isSupported(value)) {
-      return {
-        objective: FEATURE_TO_OBJECTIVE[value],
-        provenance: {
-          preferenceId: p.id,
-          feature: value,
-          source: p.source,
-          profileVersion: effective.profileVersion,
-        },
-        ...(excluded.length ? { excluded } : {}),
-      };
-    }
-    excluded.push({ id: p.id, value, reason: 'unsupported_grounded_feature' });
-  }
-  // No delivery feature could be grounded — fall through to topic interest, so
-  // an unsupported feature answer does not silently suppress a supported topic.
-  const topic = resolveTopicInterest(topicPrefs, effective);
-  return { ...topic, excluded: [...excluded, ...(topic.excluded ?? [])] };
-}
-
-/**
- * T4 — resolve confirmed topic interests into the topic-alignment objective.
- *
- * Deliberately reached only when no DELIVERY-feature objective resolved. The
- * two are not combined: delivery mode rests on a schema-complete enumerated
- * field where `false` is a real finding, while a topic is only ever affirmed or
- * unknown. Ranking them together would silently mix two different evidential
- * strengths, so the precedence is fixed, documented and tested rather than
- * emergent.
- *
- * Nothing here is specific to any particular topic: every id the mapper can
- * ground is accepted, and an id it cannot is reported rather than approximated.
- */
-function resolveTopicInterest(
-  topicPrefs: EffectivePlannerPreferences['soft'],
-  effective: EffectivePlannerPreferences,
-): GroundedObjectiveResult {
-  if (!topicPrefs.length) return {};
-  const excluded: GroundedObjectiveExclusion[] = [];
-  const topicIds: TopicId[] = [];
-  let provenanceOf: (typeof topicPrefs)[number] | undefined;
-
-  for (const p of topicPrefs) {
-    const value = String(p.normalized);
-    if (isSupportedTopic(value)) {
-      if (!topicIds.includes(value)) topicIds.push(value);
-      provenanceOf ??= p;
-      continue;
-    }
-    excluded.push({ id: p.id, value, reason: 'unsupported_grounded_topic' });
-  }
-
-  if (!topicIds.length) return { ...(excluded.length ? { excluded } : {}) };
+  const set = resolveGroundedObjectiveSet(effective);
+  const first = set.objectives[0];
   return {
-    objective: 'prefer_topic_alignment',
-    topicIds: topicIds.sort(),
-    provenance: {
-      preferenceId: provenanceOf!.id,
-      feature: 'course_topic_interest',
-      source: provenanceOf!.source,
-      profileVersion: effective.profileVersion,
-    },
-    ...(excluded.length ? { excluded } : {}),
+    objectives: set.objectives,
+    ...(first
+      ? {
+          objective: first.id,
+          provenance: {
+            preferenceId: first.preferenceId,
+            feature: (first.kind === 'topic' ? 'course_topic_interest' : first.target) as
+              SupportedGroundedFeature | 'course_topic_interest',
+            source: first.source,
+            profileVersion: first.profileVersion,
+          },
+          ...(first.topicIds?.length ? { topicIds: first.topicIds } : {}),
+        }
+      : {}),
+    ...(set.excluded.length ? { excluded: set.excluded } : {}),
+    ...(set.prioritySource ? { prioritySource: set.prioritySource } : {}),
   };
 }
