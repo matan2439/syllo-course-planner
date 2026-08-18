@@ -69,6 +69,14 @@ import {
   type GroundedObjective,
   type GroundedScore,
 } from './grounded_objectives';
+import {
+  scoreObjective,
+  dominates,
+  composedUtility,
+  type ResolvedObjective,
+  type ObjectiveScoreComponent,
+  type ObjectiveSelectionReason,
+} from './grounded_objective_set';
 
 /** Production worker configuration — identical to generate-plan.ts's own. */
 const WORKER_OPTS = { topN: 6, rolloutSteps: 80 } as const;
@@ -126,6 +134,14 @@ export interface PlanCandidate {
    * otherwise, so the legacy ordering is untouched.
    */
   groundedScore?: GroundedScore;
+  /**
+   * M2 — one INDEPENDENT, bounded, comparable score per active objective. The
+   * full vector is retained: nothing is collapsed before Pareto dominance is
+   * evaluated.
+   */
+  objectiveScores?: ObjectiveScoreComponent[];
+  /** M4 — the composed utility this candidate was ranked on. */
+  composedUtility?: number;
 }
 
 export interface CandidateSet {
@@ -142,6 +158,31 @@ export interface CandidateSet {
   legacyState: PlanState;
   /** What the bounded search was actually allowed to do. */
   searchBudget: { maxCandidates: number; maxRuns: number; runsExecuted: number };
+  /** M3/M4 — how the active objective set decided this ranking. */
+  composition?: GroundedComposition;
+}
+
+/**
+ * M3/M4 — a truthful account of how several confirmed objectives were combined.
+ * Every field is derived from the objective vectors and the one evidence
+ * snapshot; none of it is a claim about what the student said beyond the
+ * preferences they confirmed.
+ */
+export interface GroundedComposition {
+  /** Active objective ids, in the same order as every candidate's vector. */
+  objectiveIds: string[];
+  reason: ObjectiveSelectionReason;
+  /** Candidates that no other candidate dominates. */
+  nonDominatedCount: number;
+  dominatedCount: number;
+  /**
+   * True when at least two non-dominated candidates genuinely trade off — each
+   * strictly better on a different objective. Retained and reported rather than
+   * silently resolved by precedence.
+   */
+  unresolvedTradeoff: boolean;
+  /** Present when explicit relative importance was supplied by the student. */
+  prioritySource?: 'explicit_preference';
 }
 
 export type SelectionReason = 'confirmed_balanced' | 'confirmed_compact' | 'legacy_default';
@@ -248,6 +289,18 @@ export interface GenerateCandidateSetInput {
      */
     topics?: TopicIndex;
   };
+  /**
+   * M1/M2 — EVERY confirmed objective, scored independently against the SAME
+   * snapshot. Supersedes `groundedObjective`, which is kept as sugar for a
+   * one-element set so existing callers are untouched. There is no objective
+   * precedence: composition is symmetric (see grounded_objective_set.ts).
+   */
+  groundedObjectives?: {
+    objectives: readonly ResolvedObjective[];
+    snapshotId: string;
+    features: FeatureIndex;
+    topics?: TopicIndex;
+  };
 }
 
 /**
@@ -318,23 +371,108 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   //      d. normalized identity — a stable, deterministic final tie-break.
   //    With no grounded objective, (b) is a constant 0 for every candidate and
   //    the ordering is byte-identical to the legacy comparison.
+  // M1 — one uniform path. A legacy single `groundedObjective` becomes a
+  // one-element set, so there is exactly ONE ranking implementation and no
+  // "if single / else composed" branch anywhere.
   const grounded = input.groundedObjective;
-  const groundedScoreOf = (r: Raw): GroundedScore | undefined =>
-    grounded
-      ? scoreCandidateOnObjective([...new Set(placedCourseIds(r.state))], grounded.objective, grounded.features, grounded.topics)
-      : undefined;
+  const objectiveSet: readonly ResolvedObjective[] = input.groundedObjectives
+    ? input.groundedObjectives.objectives
+    : grounded
+      ? [{
+          id: grounded.objective.id,
+          preferenceId: 'legacy',
+          kind: grounded.objective.id === 'prefer_topic_alignment' ? 'topic' : 'delivery',
+          target: grounded.objective.id,
+          ...(grounded.objective.topicIds?.length ? { topicIds: [...grounded.objective.topicIds] } : {}),
+          source: 'legacy',
+          profileVersion: input.profileVersion,
+        } as ResolvedObjective]
+      : [];
+  const evidence = input.groundedObjectives ?? (grounded
+    ? { snapshotId: grounded.objective.snapshotId, features: grounded.features, topics: grounded.topics }
+    : undefined);
 
-  const withGrounded = [...byIdentity.values()].map((r) => ({ raw: r, grounded: groundedScoreOf(r) }));
+  const componentsOf = (r: Raw): ObjectiveScoreComponent[] =>
+    evidence
+      ? objectiveSet.map((o) =>
+          scoreObjective([...new Set(placedCourseIds(r.state))], o, evidence.snapshotId, evidence.features, evidence.topics))
+      : [];
 
-  const ranked = withGrounded
+  const scored = [...byIdentity.values()].map((r) => {
+    const components = componentsOf(r);
+    return {
+      raw: r,
+      components,
+      vector: components.map((c) => c.normalized),
+      // Legacy view: the first objective's score, so existing consumers and
+      // their proofs observe exactly what they observed before.
+      grounded: components.length
+        ? ({
+            score: components[0].raw,
+            contributions: components[0].contributions,
+            unknownCourseIds: components[0].unknownCourseIds,
+            variesBySectionCourseIds: components[0].variesBySectionCourseIds,
+          } satisfies GroundedScore)
+        : undefined,
+    };
+  });
+
+  const priorities = objectiveSet.map((o) => o.priority);
+  const utilityOf = (v: readonly number[]) => (v.length ? composedUtility(v, priorities) : 0);
+  /** Ties must be exact, not floating-point noise, so tie-breaks stay deterministic. */
+  const EPS = 1e-9;
+
+  const ranked = scored
     .sort((a, b) =>
       compareScore(b.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), a.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX)) ||
-      ((b.grounded?.score ?? 0) - (a.grounded?.score ?? 0)) ||
+      (Math.abs(utilityOf(b.vector) - utilityOf(a.vector)) > EPS ? utilityOf(b.vector) - utilityOf(a.vector) : 0) ||
       compareScore(b.raw.scoreVector, a.raw.scoreVector) ||
       (a.raw.identity < b.raw.identity ? -1 : a.raw.identity > b.raw.identity ? 1 : 0),
     )
     .slice(0, maxCandidates)
-    .map((x) => ({ ...x.raw, groundedScore: x.grounded }));
+    .map((x) => ({
+      ...x.raw,
+      groundedScore: x.grounded,
+      ...(objectiveSet.length ? { objectiveScores: x.components, composedUtility: utilityOf(x.vector) } : {}),
+    }));
+
+  // M3 — dominance is evaluated on the FULL vector, before any aggregation, and
+  // only among candidates that already tie on every hard/legality/distribution
+  // component. A dominated candidate can never outrank its dominator: the
+  // composed utility is monotone in every component, so this is a property of
+  // the ranking rather than a second pass over it.
+  const composition: GroundedComposition | undefined = objectiveSet.length
+    ? (() => {
+        const vectors = ranked.map((r) => r.objectiveScores?.map((c) => c.normalized) ?? []);
+        const prefixOf = (i: number) => ranked[i].scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
+        const comparable = (i: number, j: number) => compareScore(prefixOf(i), prefixOf(j)) === 0;
+        const isDominated = vectors.map((v, i) =>
+          vectors.some((w, j) => j !== i && comparable(i, j) && dominates(w, v)));
+        const nonDominated = isDominated.filter((d) => !d).length;
+        const tradesOff = (a: readonly number[], b: readonly number[]) =>
+          a.some((x, i) => x > b[i]) && b.some((y, i) => y > a[i]);
+        const unresolvedTradeoff = vectors.some((v, i) =>
+          !isDominated[i] && vectors.some((w, j) => j !== i && !isDominated[j] && comparable(i, j) && tradesOff(v, w)));
+        const anyPriority = objectiveSet.some((o) => typeof o.priority === 'number');
+        const best = vectors[0] ?? [];
+        const allEqual = vectors.every((v) => v.every((x, i) => Math.abs(x - best[i]) <= EPS));
+        const reason: ObjectiveSelectionReason =
+          allEqual && best.every((x) => x === 0) ? 'no_distinguishing_evidence'
+            : allEqual ? 'canonical_tie_break'
+            : objectiveSet.length === 1 ? 'single_objective'
+            : anyPriority ? 'explicit_priority'
+            : unresolvedTradeoff ? 'equal_confirmed_preferences'
+            : 'dominates_all_objectives';
+        return {
+          objectiveIds: objectiveSet.map((o) => o.id),
+          reason,
+          nonDominatedCount: nonDominated,
+          dominatedCount: isDominated.length - nonDominated,
+          unresolvedTradeoff,
+          ...(anyPriority ? { prioritySource: 'explicit_preference' as const } : {}),
+        };
+      })()
+    : undefined;
 
   const primary = ranked[0];
   const candidates: PlanCandidate[] = ranked.map((r, i) => ({
@@ -351,6 +489,8 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     profileVersion: input.profileVersion,
     rationaleHe: r.rationaleHe,
     ...(r.groundedScore !== undefined ? { groundedScore: r.groundedScore } : {}),
+    ...(r.objectiveScores !== undefined ? { objectiveScores: r.objectiveScores } : {}),
+    ...(r.composedUtility !== undefined ? { composedUtility: r.composedUtility } : {}),
   }));
 
   return {
@@ -361,6 +501,7 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     legacyIdentity: baseline.identity,
     legacyState: baseline.state,
     searchBudget: { maxCandidates, maxRuns, runsExecuted },
+    ...(composition ? { composition } : {}),
   };
 }
 
