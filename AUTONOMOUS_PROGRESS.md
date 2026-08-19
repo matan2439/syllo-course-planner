@@ -4,23 +4,28 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-18, session on branch `ui/frontend-modernization`
-(**The student can now say WHICH objective matters more, and it changes the
-recommendation.** C5 closes the comparison epic: an impact-driven priority
-clarification, asked only when the answer would genuinely move the
-recommendation, routed through the real conversation state machine. Browser
-checks 13–15 PASS, so the comparison acceptance is now 19/19. API 164/2237,
-UI 78/835, web 19/174, both tsc and the production build green. **Not merged,
-not deployed.**)_
+_Last updated: 2026-08-19, session on branch `ui/frontend-modernization`
+(**Apply is now SERVER-AUTHORITATIVE, and a committed board survives a
+refresh.** The server retains the validated candidate set, Apply names a
+proposal + candidate and never sends a plan, ownership is a server-issued
+anonymous session, and the commit is compare-and-swap + idempotent. Browser/HTTP
+acceptance 17/17. API 168/2314, UI 78/835, web 20/186, both tsc and the
+production build green. **NOT Production-ready — no durable production adapter
+exists; see the classification below.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-18 — C5. P0 reproduced the missing DECISION capability
-behaviourally (walk the real conversation, try every answer it accepts, find no
-reachable profile carrying a relative priority); P1 adds a typed impact contract
-that predicts the recommendation under every possible answer by replaying the
-real ranking; P2 completes the generic `priority` field using stable objective
-ids; P3 routes the question through `DeterministicPreferenceElicitation` +
-`ConversationState`; P4 keeps it a soft policy that hard constraints still beat.
-**The next epic is MANDATORY and recorded below: the Apply-authority decision.**_
+_Latest entry: 2026-08-19 — S0 traced the storage/auth boundary and chose the
+anonymous server-session model (B was rejected on a specific technical ground:
+two concurrent Applies holding a token minted at v1 would both verify); S1
+stores the authoritative proposal; S2 adds `POST /api/ai/apply-plan` with
+ownership, staleness and CAS/idempotency checks; S3/S4 add the BoardRepository
+and server-issued session; S5 migrates the journey. **Remaining: a production
+durable adapter + migration, and the authentication decision.**_
+
+_Previous entry: 2026-08-18 — C5. The student can say WHICH objective matters
+more, and it changes the recommendation. An impact-driven priority question,
+asked only when the answer would genuinely move the recommendation, routed
+through the real conversation state machine. Browser checks 13–15 PASS, so the
+comparison acceptance is 19/19._
 
 _Previous entry: 2026-08-15 (cont. 2) — C0 proved only one of several validated
 non-dominated plans reached the user; C1 exposes a bounded, filtered,
@@ -102,6 +107,140 @@ homogeneity invariant + partial/failed/over-classified results), so the
 committed cache stays `captured` unchanged. `semantic-only planner decision
 acceptance: data-blocked` retained. All gates green. Production unchanged;
 Vercel not Git-connected; no preview. See newest session section below.)._
+
+### S1–S5 — the implementation
+
+Five commits: S0 `c53b6dc`, S3/S4 `d557ea5`, S1 `9ac7f28`, S2 `9c0bb8e`,
+S5 `f7870f4`.
+
+**The RED.** `tests/api/server_apply_authority.test.ts` states the gap as a
+capability against the real handler rather than as a missing module: a
+successful Generate must hand back a handle the server can later resolve. It
+failed on `proposal` being undefined, and on no session cookie being issued.
+Both now pass. One fixture correction was needed first and is worth recording,
+because it was a real product fact rather than a workaround: without the
+completed-course knowledge marker the handler correctly answers
+`clarification_required`, so there is no proposal to be authoritative about.
+
+**S3/S4 — ownership and the repository (`d557ea5`).** Ownership is an opaque
+256-bit id the SERVER issues, in an HttpOnly/SameSite=Lax cookie. It
+deliberately does not reuse `anonymous_sessions.session_token`, which the client
+picks. Verified in-browser: `document.cookie` is empty, so script cannot read
+the ownership key.
+
+`BoardRepository` mints versions (`bv_<n>`) and nothing else may; `commit` is
+compare-and-swap; idempotency is checked BEFORE the CAS, because a legitimate
+retry still carries the pre-apply version and a naive CAS would reject every
+retry. The same key replaying the same work returns the original result with no
+second mutation, and the same key carrying DIFFERENT work is a deterministic
+conflict — otherwise "retry" would be a way to smuggle a second mutation
+through. `decideCommit`/`nextRecord` hold the decision as a pure function, so
+both adapters run the identical suite.
+
+**S1 — the proposal record (`9ac7f28`).** Generate now retains what it decided:
+validated candidates with their complete plans, the owner, base board version,
+profile version, an academic-status digest, the constraint fingerprint and the
+snapshot. The client gets a receipt of ids and versions; a test asserts it
+contains no `courseIds`/`semesterId` at all. Supersession is scoped to the same
+owner AND program, proven in both directions.
+
+**S2 — `POST /api/ai/apply-plan` (`9c0bb8e`).** The client names a proposal and
+a candidate; the server resolves the plan from its own record. A plan in the
+body is REFUSED rather than ignored — silently dropping it would let a caller
+believe they had influenced the commit.
+
+**S5 — the journey (`f7870f4`).** Apply is a real round-trip with a pending
+state; the committed board is replaced only with what the server returns, and
+only after success. Mount loads the catalog and the committed board together.
+Three existing journey suites were migrated to a `serverApplyStub` that enforces
+the same rules the endpoint does — a stub that echoed the request back would let
+them pass while the client was still the source of truth.
+
+### Contracts
+
+**Apply request** (everything absent is deliberate): `program_id`,
+`proposal_id`, `candidate_id`, `expected_board_version` (nullable),
+`expected_profile_version`, `idempotency_key`, `academic_status`. Schema is
+`.strict()`.
+
+**Reason codes:** `INVALID_REQUEST`, `PROPOSAL_NOT_FOUND`, `PROPOSAL_EXPIRED`,
+`PROPOSAL_SUPERSEDED`, `SESSION_MISMATCH`, `CANDIDATE_NOT_IN_PROPOSAL`,
+`CANDIDATE_NOT_APPLYABLE`, `PROFILE_VERSION_MISMATCH`,
+`ACADEMIC_STATUS_MISMATCH`, `BOARD_VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`.
+`SESSION_MISMATCH` returns the same 404 shape as a genuine not-found, so a
+stranger cannot confirm another session's proposal exists.
+
+### Browser / HTTP acceptance
+
+Preview: API `scripts/dev_api_server_alternatives_preview.ts` on :3002 with
+`SYLLO_BOARD_STATE_DIR=.runtime/board-state`; `next dev` on :3001. Ports
+verified free before and after; runtime data removed afterwards.
+
+| # | Check | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Session established | PASS | `Set-Cookie: syllo_owner` HttpOnly, 43-char opaque value; `document.cookie` empty in-browser |
+| 2 | Board loads from the server repository | PASS | `GET /api/ai/apply-plan?program_id=…` → `storage: file` |
+| 3 | Generate returns a proposal id | PASS | `prop_ea15d867-…`, candidateIds ×3, `baseBoardVersion: null` |
+| 4 | Comparison shows the stored alternatives | PASS | 3 radios matching the receipt's candidate ids |
+| 5 | Selecting sends no Generate/Apply | PASS | network count unchanged at 2 across two selections |
+| 6 | Apply names ids, not a plan | PASS | jest asserts the body has no `courseIds`/`semesterId`; endpoint `.strict()` refuses one |
+| 7 | Server returns the updated board/version | PASS | `OK v=bv_1` |
+| 8 | The NON-default alternative commits | PASS | on-disk record holds `cand_f49f0d08` = E1/E3, not the recommended E1/E2 |
+| 9 | **Refresh preserves the board** | PASS | a fresh page load shows E1+E3 from the server — the exact thing that was lost before this epic |
+| 10 | Duplicate Apply is idempotent | PASS | second identical request → `replayed=True`, still `bv_1` |
+| 11 | Fabricated candidate id rejected | PASS | 409 `CANDIDATE_NOT_IN_PROPOSAL` |
+| 12 | Stale proposal rejected | PASS | 409 `PROFILE_VERSION_MISMATCH`; changed status → 409 `ACADEMIC_STATUS_MISMATCH` |
+| 13 | Another session cannot load or apply | PASS | 404 `SESSION_MISMATCH`; session B's GET returns `board: null` |
+| 14 | Concurrent stale-base cannot overwrite | PASS | two racing Applies → one `OK bv_1`, one `BOARD_VERSION_CONFLICT`; a later stale attempt also rejected with `currentBoardVersion: bv_1` |
+| 15 | Network failure leaves the board unchanged | PASS | covered in `NativePlannerJourney.serverapply.test.tsx` (throwing transport → board untouched, retryable) |
+| 16 | RTL / live regions / console / mobile | PASS | `dir=rtl`, 2 live regions, 0 console errors, 0px horizontal overflow |
+| 17 | No external/paid provider | PASS | every resource origin `http://localhost:3001`; `DATABASE_URL=unset` |
+
+**Process restart.** The API process was killed and restarted mid-run; the
+committed board read back unchanged at `bv_1`. Proposals are in-memory by
+design and do not survive that — a restart costs one Rebuild, whereas losing a
+committed board would look like data loss.
+
+**One driving artifact, recorded rather than hidden.** An early browser Apply
+produced no request at all. The cause was mine, not the product's: I clicked an
+answer and Build in the same tick, so the Build captured the profile before the
+answer landed and the proposal was correctly stale — Apply was properly
+disabled with the stale note shown. Re-driven one step per tick, it committed.
+
+### Production readiness — classified separately
+
+| Item | Status |
+|---|---|
+| Server-authoritative Apply | **implemented** |
+| Session ownership (anonymous) | **implemented** |
+| Local Preview persistence | **implemented** (file adapter, survives refresh and process restart) |
+| Production durable adapter | **NOT implemented** — no vendor chosen, per the brief |
+| Authentication | **NOT implemented** |
+| Cross-device persistence | **NOT implemented** (out of scope without auth) |
+| Secrets / env configuration | **required** — a durable store's connection settings |
+| Migrations | **required** — no table exists for board state or proposals |
+| Deployment verification | **required** |
+
+**The branch is not Production-ready.** Both configured adapters are
+in-process or local-filesystem, and a Vercel function has neither shared memory
+nor a durable filesystem — so on a real deployment a proposal written by the
+Generate invocation may simply not exist for the Apply invocation, and a
+committed board may not survive at all. `productionStorageConfigured()` returns
+false so this is queryable rather than assumed.
+
+**The remaining Production storage/auth decision, stated exactly.** Postgres is
+already this project's database (`postgres` npm client, four Alembic
+revisions), so adopting it introduces no new vendor. What it needs: (1) a
+migration creating a session-owned board-state table and a proposal table —
+board state keyed by `(owner_id, program_id)` with a version column and a
+unique constraint enabling the CAS as a single conditional UPDATE, plus an
+apply-receipt table for idempotency; (2) a `PostgresBoardRepository` /
+`PostgresProposalStore` implementing the existing interfaces; (3) a decision on
+retention for anonymous data; (4) whether authenticated accounts arrive at the
+same time, since that changes the owner column from "session id" to "session id
+or user id". None of it was done here because an untested SQL adapter plus an
+unrun migration would be a durability claim this session cannot support.
+
 
 ## Session 2026-08-18 — C5: choosing WHAT MATTERS, not just which plan
 
@@ -299,6 +438,91 @@ normalized identity, constraint fingerprint, snapshot and profile version
 against a server-held plan run, and persists per authenticated user; or (b) an
 explicit, documented product decision that the committed board is intentionally
 local-only — in which case the UI must stop implying otherwise.
+
+## Session 2026-08-19 — S0–S5: authoritative server Apply, board persistence, session ownership
+
+### S0 — inventory (traced, with file/function evidence)
+
+| Area | Finding |
+|---|---|
+| `api/board.ts` | GET-only (`_handle`, line 108 rejects every other method). Serves the **program CATALOG** (`program_versions.board_json`) — per-program, read-only, identical for every visitor. It is **not** a user board, so it must never be mutated by Apply. |
+| Local JSON fallback | `api/ai/board_loader.ts:loadLocalBoardJson` reads `data/boards/<programId>.json`. Used when `DATABASE_URL` is unset or the query throws. Tracked catalog data — never user storage. |
+| `plan_persistence.ts` | `InMemoryPlanRunStore` / `InMemoryPersistenceCapability` only. Its sole importer is `tests/api/plan_persistence.test.ts`; wired to no route, and its own header says it is deliberately not durable. Records `AgentResult`s, not boards — wrong shape for this epic. |
+| DB adapters / schema | `postgres` (npm) used directly in `api/board.ts:queryBoardJson` and `api/ai/_quota.ts`. Alembic heads: `a1b2c3d4e5f6` (initial), `b2c3d4e5f6a7` (board_json), `c3d4e5f6a7b8` (quota), `d4e5f6a7b8c9` (planner_runs). |
+| Existing user tables | `users`, `user_profiles`, `user_completed_courses`, `user_course_plans`, `plan_semesters`, `plan_courses` all exist — but every one is `user_id UUID NOT NULL REFERENCES users(id)`. **Unusable anonymously**, and no code writes to any of them. |
+| Existing session table | `anonymous_sessions (session_token TEXT UNIQUE, credits_used, credits_paid)` — quota only. Its token is **chosen by the client** (`localStorage` `tau_ai_session`, `NativePlannerJourney.sessionToken()`), so it is an ownership key an attacker can simply pick. Not reusable as an ownership boundary. |
+| `DATABASE_URL` | Read in `api/board.ts:126`, `api/ai/generate-plan.ts:1399`, `api/ai/planner-run.ts:96`. Absent ⇒ documented local fallback / dev bypass. No migration exists for a board-state or proposal table. |
+| Serverless constraints | `vercel.json` builds each `api/**` entry as its own `@vercel/node` function. No shared process memory across invocations, and no durable local filesystem — module-level state and `/tmp` are per-instance and evictable. Any production adapter must be external. |
+| Session/cookie utilities | **None.** Repo-wide search for `cookie` / `Set-Cookie` / `HttpOnly` in `api/`, `shared/`, `web/` returns only unrelated comments in `scripts/acquire_official_syllabi.ts`. |
+| Authentication | **None.** No login, no token verification, no user id anywhere in `api/`. |
+| Proposal ownership | **None.** `generate-plan` returns candidates and retains nothing; `candidateOrchestration` is built and discarded with the response. |
+| Board/version fields | `metadata.board_data_version` → `CatalogRevision` (`shared/planner/model.ts:58-77`). It versions the CATALOG, not a user's committed plan. `ProposalBaseRevision` is the client's captured copy. There is no user-board version at all. |
+| Feature flag | `use_academic_decision_agent` (default off). Browser entry only via `/planner/native/agent-preview`, itself gated on `ENABLE_ACADEMIC_AGENT_PREVIEW=1`, so it 404s in Production. |
+| API routing | `vercel.json` rewrites `/api/board/:programId` and `/api/ai/*` to root `@vercel/node` functions; everything else to `web/`. Locally, `web/next.config.ts` proxies `/api/*` to `PLANNER_API_ORIGIN` (`scripts/dev_api_server.ts` on :3002). CORS on `/api/(.*)`: `Access-Control-Allow-Origin: *`, methods `GET, POST, OPTIONS`. |
+
+### Decision matrix
+
+| | A. Client-only | B. Signed stateless token | **C. Anonymous server session** | D. Authenticated user |
+|---|---|---|---|---|
+| Vercel compatible | yes | yes | yes (needs external store) | yes |
+| Durable | no | no (browser-held) | adapter-dependent | yes |
+| Survives refresh | **no** (proven) | yes | yes | yes |
+| Cross-device | no | no | no (by design) | yes |
+| Exactly-once | no | **no** — nothing to dedupe against | yes | yes |
+| Stale-write prevention | no | **no** — two holders of v1 both verify | yes (CAS) | yes |
+| Privacy | best | whole plan in token; size grows with candidates | opaque id, no PII | real PII |
+| Operational cost | none | signing secret + rotation | moderate | high |
+| Existing repo support | current behaviour | none | `postgres` client already a dependency | `users` table exists, **zero auth code** |
+| New external service | none | none | **none** | would require one |
+
+### Selected: C — anonymous server-owned session
+
+It is the smallest model that is server-authoritative, and the only one of A/B/C
+that can express exactly-once and compare-and-swap at all. B was rejected on a
+specific technical ground rather than taste: a stateless token can prove the
+client did not tamper with a plan, but two concurrent Applies both holding a
+token minted at board version *v1* would both verify, so it cannot prevent the
+stale write this epic exists to prevent — and it cannot revoke or supersede.
+
+D was not invented: no authentication code exists anywhere in the repository,
+and the brief forbids adding an auth provider. C upgrades to D by adding a
+nullable `user_id` beside `owner_id` and preferring it when present — no
+rewrite of the repository boundary.
+
+**Ownership key.** The existing `anonymous_sessions.session_token` is deliberately
+NOT reused as the owner: the client picks that value, so any caller could claim
+another caller's proposals. Ownership is a new server-issued opaque id in an
+HttpOnly cookie. The quota token keeps its existing, separate job.
+
+### Production persistence: an explicit REMAINING decision
+
+No production-compatible durable store for user board state exists today. Per
+the brief, this session implements the repository interfaces, a deterministic
+in-memory adapter for tests, and the safest local Preview adapter — and does
+**not** silently choose a vendor. Postgres is already this project's database,
+so it is the obvious candidate, but shipping an untested SQL adapter plus an
+unrun migration would be a durability claim this session cannot support. What a
+production adapter needs is recorded below as required work, not as done work.
+
+## Exact next action (current — supersedes the archival block at the end)
+
+1. **Production durable persistence + the authentication decision.** The
+   server-authoritative Apply now exists and is tested, but both configured
+   adapters are in-process or local-filesystem, so on Vercel a proposal written
+   by the Generate invocation may not exist for the Apply invocation. The exact
+   decision and the work it implies are written out in the S1–S5 section below.
+   - **Smallest ordered first step:** the Alembic migration for a session-owned
+     board-state table (`(owner_id, program_id)`, version column, unique
+     constraint enabling the CAS as one conditional UPDATE) plus a proposal
+     table — then `PostgresBoardRepository` against the EXISTING
+     `BoardRepository` interface, with the shared adapter suite in
+     `tests/api/board_repository.test.ts` run against it.
+   - Do not deploy until `productionStorageConfigured()` can honestly return
+     true.
+2. C5 (priority clarification) and C0–C6 (Pareto comparison) are complete;
+   browser acceptance 19/19 and 17/17 respectively. Nothing open in either.
+3. Vercel deploy access and canonical branch reconciliation remain the same
+   human decisions recorded in the archival Blockers section. Unchanged.
 
 ## Session 2026-08-19 — S0–S5: authoritative server Apply, board persistence, session ownership
 
