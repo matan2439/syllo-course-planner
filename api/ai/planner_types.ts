@@ -6,6 +6,7 @@
  */
 
 import type { CourseProfile } from './course_profile';
+import type { AcademicProgress } from './academic_progress';
 
 /** An elective/requirement category the plan must satisfy. */
 export interface CategoryReq {
@@ -42,7 +43,18 @@ export interface ConstraintModel {
   currentlyPlannedCourseIds?: Set<string>;
   /** Not-completed mandatory course_ids that must appear in the plan. */
   requiredMandatoryCourseIds: string[];
+  /**
+   * Requirement categories with their REMAINING minimum — already reduced by
+   * authoritatively recognized completion (see `academicProgress`).
+   */
   categories: CategoryReq[];
+  /**
+   * The one authoritative recognition of prior completion this model was built
+   * from: which completed courses were recognized, what they credited, which
+   * category each satisfied, and what remains. Every stage reads this rather
+   * than recomputing totals. Optional so hand-built fixtures need not supply it.
+   */
+  academicProgress?: AcademicProgress;
   /** Total degree hours required (e.g. 185). */
   degreeRequiredHours: number;
   /** Hours already accrued (completed + currently-planned) counted toward the degree. */

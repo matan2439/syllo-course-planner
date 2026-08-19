@@ -25,6 +25,7 @@ import { buildCourseProfiles } from './course_profile';
 import { DEGREE_REQUIRED_HOURS } from './completion_analysis';
 import { HARD_LOAD_CAP, DEFAULT_MAX_HOURS_PER_SEMESTER, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import { type ConstraintModel, type CategoryReq, type PlanState, type DistributionPolicy, emptyState } from './planner_types';
+import { computeAcademicProgress, type AcademicProgress } from './academic_progress';
 
 export interface BuildModelOptions {
   /** course_ids the user has completed (merged with board metadata.completed_course_ids). */
@@ -107,14 +108,47 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   const catMeta = boardJson?.metadata?.program_requirements_categories;
   const degreeRequiredHours = Number(catMeta?.total_required_hours) || DEGREE_REQUIRED_HOURS;
 
+  /**
+   * ONE authoritative recognition of what the student already completed,
+   * computed here so every downstream stage — the scorer, the authoritative
+   * validator, the explanation — reads the SAME remaining state instead of
+   * reconstructing its own.
+   *
+   * Category membership comes only from the program's declared `course_ids`
+   * pools, and credits only from the catalog record. A title, a syllabus topic
+   * or an aggregate hours figure can never produce a contribution.
+   */
+  const academicProgress: AcademicProgress = computeAcademicProgress({
+    completedCourseIds: [...completedCourseIds],
+    catalogHours: new Map([...profiles].map(([id, p]) => [id, p.hours ?? null])),
+    requirements: ((catMeta?.categories ?? []) as any[]).map(c => ({
+      categoryId: c.category_id,
+      name: c.name_he ?? c.category_id,
+      minCourses: Number(c.min_courses) || 0,
+      courseIds: (c.course_ids ?? []) as string[],
+    })),
+  });
+
   // Only categories with a positive minimum are hard requirements. (A min_courses
   // of 0, e.g. an "other/by-approval" bucket, is not something the plan must satisfy.)
+  //
+  // `required` is the REMAINING requirement, not the program's original
+  // minimum: a category the student has already satisfied by completing a
+  // course from its pool must not be bought a second time. Mandatory courses
+  // and degree hours were already reduced by completion (see
+  // `requiredMandatoryCourseIds` and `priorHours` below); categories were the
+  // one place that was not, which is the defect this fixes. The original
+  // minimum survives on `academicProgress.categories[].required` for anything
+  // that needs to explain the difference.
+  const remainingByCategory = new Map(
+    academicProgress.categories.map(c => [c.categoryId, c.remainingRequired]),
+  );
   const categories: CategoryReq[] = ((catMeta?.categories ?? []) as any[])
     .filter(c => Number(c.min_courses) > 0)
     .map(c => ({
       id: c.category_id,
       name: c.name_he ?? c.category_id,
-      required: Number(c.min_courses),
+      required: remainingByCategory.get(c.category_id) ?? Number(c.min_courses),
       candidateIds: (c.course_ids ?? []) as string[],
     }));
 
@@ -128,10 +162,10 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     }
   }
 
-  // Prior accrued hours — the remaining-degree-gap baseline.
-  const priorHours = opts.priorHours ?? [...completedCourseIds].reduce(
-    (sum, id) => sum + (profiles.get(id)?.hours ?? 0), 0,
-  );
+  // Prior accrued hours — the remaining-degree-gap baseline. Taken from the
+  // same recognition, so hours and categories can never disagree about which
+  // completed courses were authoritative.
+  const priorHours = opts.priorHours ?? academicProgress.recognizedHours;
 
   return {
     profiles,
@@ -140,6 +174,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     currentlyPlannedCourseIds,
     requiredMandatoryCourseIds,
     categories,
+    academicProgress,
     degreeRequiredHours,
     priorHours,
     maxHoursPerSemester: opts.maxHoursPerSemester ?? DEFAULT_MAX_HOURS_PER_SEMESTER,
