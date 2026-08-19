@@ -243,3 +243,82 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
 export function allCategoriesSatisfiedByCompletion(progress: AcademicProgress): boolean {
   return progress.categories.every((c) => c.remainingRequired === 0);
 }
+
+// ── E4/E6: what remains, and how to say it truthfully ───────────────────────
+
+/**
+ * The lean, user-facing view of prior completion. Deliberately carries no
+ * digest, no rule objects, no pools and no score internals — the UI needs to
+ * know what was recognized and what remains, not how the engine decided it.
+ */
+export interface AcademicProgressDisclosure {
+  recognizedCourseCount: number;
+  recognizedHours: number;
+  /** Completed ids with no authoritative catalog record. */
+  unresolvedCourseIds: string[];
+  /** Recognized, but claimed by two requiring pools with no rule to choose. */
+  ambiguousCourseIds: string[];
+  /** Recognized and credited, but claimed by no requiring category. */
+  creditOnlyCourseIds: string[];
+  /** Per category: what the program asks, and what is still owed. */
+  remainingByCategory: Array<{ name: string; required: number; remaining: number; satisfiedBy: string[] }>;
+  /** Short factual Hebrew, one line per distinguishable outcome. */
+  explanationHe: string[];
+}
+
+/**
+ * Say only what the requirement engine actually proved.
+ *
+ * Each line names a DIFFERENT relationship, because collapsing them would let
+ * "we credited your hours" read as "you finished a requirement":
+ *   - recognized AND satisfied a category;
+ *   - recognized and credited, but no authoritative category claimed it;
+ *   - recognized but claimed by two categories, so no rule decided it;
+ *   - no authoritative record at all, so it changed nothing.
+ */
+export function describeAcademicProgress(progress: AcademicProgress): AcademicProgressDisclosure {
+  const nameOf = new Map(progress.categories.map((c) => [c.categoryId, c.name]));
+  const explanationHe: string[] = [];
+
+  for (const cat of progress.categories) {
+    if (!cat.satisfiedBy.length) continue;
+    const courses = cat.satisfiedBy.join(', ');
+    explanationHe.push(
+      cat.remainingRequired === 0
+        ? `הקורסים שהשלמת (${courses}) הוכרו והשלימו את דרישת "${cat.name}".`
+        : `הקורסים שהשלמת (${courses}) הוכרו בדרישת "${cat.name}"; נותרו ${cat.remainingRequired} קורסים להשלמתה.`,
+    );
+  }
+
+  const creditOnly = progress.perCourse.filter((c) => c.status === 'recognized_no_category');
+  for (const c of creditOnly) {
+    explanationHe.push(
+      c.hours === null
+        ? `הקורס ${c.courseId} הוכר, אך שעותיו אינן ידועות ולכן לא נזקפו נקודות זכות.`
+        : `הקורס ${c.courseId} הוכר ונזקף בשעות התואר, אך לא נמצא שיוך סמכותי לקטגוריית בחירה.`,
+    );
+  }
+
+  for (const c of progress.perCourse.filter((x) => x.status === 'ambiguous_category')) {
+    const names = (c.candidateCategoryIds ?? []).map((id) => nameOf.get(id) ?? id).join(', ');
+    explanationHe.push(
+      `הקורס ${c.courseId} מופיע ביותר מקטגוריית דרישה אחת (${names}), ואין כלל סמכותי שקובע לאיזו הוא נזקף — לכן הוא לא שינה אף דרישה.`,
+    );
+  }
+
+  for (const id of progress.unresolvedCourseIds) {
+    explanationHe.push(`לקורס ${id} לא נמצא רישום סמכותי, ולכן הוא לא שינה את דרישות התואר.`);
+  }
+
+  return {
+    recognizedCourseCount: progress.recognizedCourseIds.length,
+    recognizedHours: progress.recognizedHours,
+    unresolvedCourseIds: progress.unresolvedCourseIds,
+    ambiguousCourseIds: progress.ambiguousCourseIds,
+    creditOnlyCourseIds: creditOnly.map((c) => c.courseId).sort(),
+    remainingByCategory: progress.categories.map((c) => ({
+      name: c.name, required: c.required, remaining: c.remainingRequired, satisfiedBy: c.satisfiedBy,
+    })),
+    explanationHe,
+  };
+}

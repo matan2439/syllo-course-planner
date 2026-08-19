@@ -91,6 +91,7 @@ import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { computePriorityQuestionImpact } from './priority_impact';
+import { describeAcademicProgress } from './academic_progress';
 import { resolveOwner } from './session_owner';
 import { academicStatusDigest, getBoardRepository, getProposalStore } from './apply_runtime';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord } from './proposal_store';
@@ -2177,6 +2178,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // user-resolvable actions, authoritative/non-answerable distinction). Present
     // on every flagged run; `reasons` is empty when the request is satisfiable.
     (responseBody.academicDecision as Record<string, unknown>).hardConstraints = hardConstraintOutcome;
+    /**
+     * What prior completion was authoritatively recognized, and what the degree
+     * therefore still requires. A LEAN disclosure: no digest, no rule objects,
+     * no pools, no score internals — each line says only what the requirement
+     * engine actually proved, and credited hours are never reported as a
+     * satisfied category.
+     */
+    if (model.academicProgress) {
+      (responseBody.academicDecision as Record<string, unknown>).academicProgress =
+        describeAcademicProgress(model.academicProgress);
+    }
     // Slice 14 — record the exact preference-profile version the proposal was
     // built with, plus deterministic eligibility validation (which typed
     // preferences reached the planner boundary as hard/soft, and which were
