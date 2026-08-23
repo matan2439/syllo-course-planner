@@ -4,15 +4,39 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Remaining category work now reserves degree-hour search budget, and
-identified completed-course hours cannot be erased by a missing aggregate.**
-The exact remaining-degree plan wins over filler over-allocation; ambiguous
-overlapping category pools fail safe. API 176/2412, web 20/186, legacy UI
-78/835, both tsc and the production build green.
+_Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
+(**Exact in-progress/off-board planned credit now reaches search, validation
+and explanation through one typed model total.** It prevents filler
+over-allocation without double-counting board-visible courses or pre-crediting
+placeable planned courses. API 177/2423, web 20/186, legacy UI 78/835 (scope
+guard rechecked 12/12), both tsc and the production build green.
 **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont. 6) — B7. A realistic full-handler RED started
+_Latest entry: 2026-08-24 — B8. A full-handler RED started with 5 authoritative
+completed hours, an 8h target, a real 3h off-board `planned` entry and one
+legal 3h filler. Generate reported a valid response but still added the filler:
+the final shortfall gate knew about planned credit, while search did not. GREEN
+adds typed model-level `inProgressHours`, computed once before search. It
+credits an unplaced currently-taking course from authoritative catalog hours
+(or explicit entry hours), an explicit off-board planned course the planner
+cannot place, and only the bounded residual of a compatible aggregate. A
+currently-taking course already visible on the board is counted by placement
+only; an in-catalog planned course receives no advance credit and remains
+placeable; duplicate status ids collapse; aggregate-only credit creates no
+course/category/prerequisite fact; insufficient aggregate credit still causes
+real planning. `degreeHours`, candidate search, validation, shortfall recovery
+and response shaping now consume the same total, removing the old response-only
+arithmetic and its double-count risk. The disclosure separates currently-taking
+hours (used for planning but not claimed completed), off-board planned hours,
+and identity-free aggregate residual. Six real-handler paths prove no filler,
+no re-proposal, no double count, placeable-planned behavior, aggregate honesty
+and insufficient-credit behavior. Focused 324/324, full API 2423/2423, web
+186/186, legacy scope guard 12/12, both tsc and production build are green; the
+immediately preceding parent has full legacy 835/835 and B8 changes no UI.
+No provider, network acquisition, catalog/data mutation, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-23 (cont. 6) — B7. A realistic full-handler RED started
 with 5 authoritative completed hours, an 8h degree target, one still-required
 3h category course, and a legal 4h filler. Generate incorrectly returned both
 courses (12h) instead of the exact category course (8h). Isolation found two
