@@ -128,6 +128,10 @@ test('the course-details/interest UI slice adds no UNRELATED backend/api churn',
     'api/ai/grounded_objectives.ts',
     'api/ai/plan_alternatives.ts',
     'api/ai/planning_intent.ts',
+    // Separate remaining-degree correctness slice: authoritative recognized
+    // hours reach the model and unmet category hours reserve search budget.
+    'api/ai/planner_goals.ts',
+    'api/ai/planner_model.ts',
   ]);
   const diff = execSync('git diff --name-only HEAD -- api', { cwd: ROOT })
     .toString()

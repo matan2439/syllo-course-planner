@@ -1012,6 +1012,55 @@ describe('scorePlan — g5b unwanted_avoidance penalty', () => {
   });
 });
 
+describe('scorePlan — remaining category-hour reservation', () => {
+  function categoryReservationModel(): ConstraintModel {
+    const m = model({
+      degreeRequiredHours: 8,
+      priorHours: 5,
+      categories: [{ id: 'required', name: 'נדרש', required: 1, candidateIds: ['CAT3'] }],
+    });
+    m.profiles.set('CAT3', profile('CAT3', { hours: 3 }));
+    m.profiles.set('FILL4', profile('FILL4', { hours: 4 }));
+    return m;
+  }
+
+  it('the exact category course outranks a larger filler that would force over-allocation', () => {
+    const m = categoryReservationModel();
+    const category = withCourses('year_3_semester_a', ['CAT3']);
+    const filler = withCourses('year_3_semester_a', ['FILL4']);
+    expect(compareScore(scorePlan(category, m), scorePlan(filler, m))).toBeGreaterThan(0);
+  });
+
+  it('is invariant to category and candidate order for disjoint pools', () => {
+    const base = categoryReservationModel();
+    base.profiles.set('CAT2', profile('CAT2', { hours: 2 }));
+    const categories = [
+      { id: 'a', name: 'א', required: 1, candidateIds: ['CAT3', 'e0'] },
+      { id: 'b', name: 'ב', required: 1, candidateIds: ['CAT2', 'e1'] },
+    ];
+    const reversed = categories.slice().reverse().map(c => ({ ...c, candidateIds: c.candidateIds.slice().reverse() }));
+    expect(scorePlan(emptyState(SEMS), { ...base, categories })).toEqual(
+      scorePlan(emptyState(SEMS), { ...base, categories: reversed }),
+    );
+  });
+
+  it('fails safe without reservation when authoritative category pools overlap', () => {
+    const m = categoryReservationModel();
+    m.categories = [
+      { id: 'a', name: 'א', required: 1, candidateIds: ['CAT3'] },
+      { id: 'b', name: 'ב', required: 1, candidateIds: ['CAT3'] },
+    ];
+    // No invented allocation: raw prior hours remain the g1 value.
+    expect(scorePlan(emptyState(SEMS), m)[0]).toBe(5);
+  });
+
+  it('does not reserve an excluded or otherwise unreachable category course', () => {
+    const m = categoryReservationModel();
+    m.disallowedCourseIds.add('CAT3');
+    expect(scorePlan(emptyState(SEMS), m)[0]).toBe(5);
+  });
+});
+
 describe('placedHours — annual course deduplication', () => {
   it('two courses sharing root_course_id with count_hours_once count as one in g1', () => {
     // Annual courses: course_A (semester A) and course_B (semester B) are the same annual

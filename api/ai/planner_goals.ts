@@ -684,6 +684,69 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
   return sum;
 }
 
+/**
+ * Safe lower bound for hours still structurally owed to elective categories.
+ *
+ * The current Mechanical Engineering program's requiring pools are pairwise
+ * disjoint (enforced by academic-progress regressions), so each unmet slot
+ * needs its own course. For an overlapping future program, allocation could
+ * let one course satisfy more than one predicate; until that policy is typed,
+ * return zero rather than double-reserve or invent an allocation.
+ *
+ * This is deliberately a lower bound: it reserves only the cheapest reachable
+ * course hours for each remaining slot. Prerequisite hours are not guessed
+ * here. Courses already reserved as mandatory/hard-included contribute zero
+ * additional hours, preventing double reservation.
+ */
+function remainingCategoryHoursLowerBound(state: PlanState, model: ConstraintModel): number {
+  const requiring = model.categories.filter(cat => cat.required > 0);
+  const claimed = new Set<string>();
+  for (const cat of requiring) {
+    for (const id of cat.candidateIds) {
+      if (claimed.has(id)) return 0; // unresolved allocation policy: fail safe
+      claimed.add(id);
+    }
+  }
+
+  const placed = new Set(placedCourseIds(state));
+  const alreadyReserved = requiredButUnplacedCourseIds(state, model);
+  const chosen: string[] = [];
+  for (const cat of requiring) {
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
+    const remaining = Math.max(0, cat.required - got);
+    if (remaining === 0) continue;
+
+    const options = cat.candidateIds
+      .filter(id => !placed.has(id))
+      .filter(id => !model.completedCourseIds.has(id))
+      .filter(id => !model.currentlyPlannedCourseIds?.has(id))
+      .filter(id => model.profiles.has(id) && isMandatoryCourseReachable(state, model, id))
+      .sort((a, b) => {
+        const ah = alreadyReserved.has(a) ? 0 : (model.profiles.get(a)?.hours ?? 0);
+        const bh = alreadyReserved.has(b) ? 0 : (model.profiles.get(b)?.hours ?? 0);
+        return ah - bh || (a < b ? -1 : a > b ? 1 : 0);
+      });
+    // An impossible category must not reserve the degree budget forever; its
+    // authoritative validator/gate reports the actual incompleteness.
+    if (options.length < remaining) continue;
+    chosen.push(...options.slice(0, remaining));
+  }
+
+  const countedRoots = new Set<string>();
+  let hours = 0;
+  for (const id of chosen) {
+    if (alreadyReserved.has(id)) continue;
+    const profile = model.profiles.get(id);
+    if (!profile) continue;
+    if (profile.count_hours_once && profile.root_course_id) {
+      if (countedRoots.has(profile.root_course_id)) continue;
+      countedRoots.add(profile.root_course_id);
+    }
+    hours += profile.hours ?? 0;
+  }
+  return hours;
+}
+
 // ── HARD inclusion (`must_include_course_ids`) ───────────────────────────────
 
 /**
@@ -812,7 +875,9 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   //    a materially different and riskier change than this reservation
   //    mechanism, and moot for every real caller today.
   const dh = degreeHours(state, model);
-  const budget = model.degreeRequiredHours - remainingMandatoryHours(state, model);
+  const budget = model.degreeRequiredHours
+    - remainingMandatoryHours(state, model)
+    - remainingCategoryHoursLowerBound(state, model);
   const g1 = Math.min(dh, budget);
 
   // 2a. requirements (mandatory + HARD user inclusions) — fraction satisfied.
