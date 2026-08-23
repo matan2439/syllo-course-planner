@@ -5,14 +5,26 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**An explicit free-text academic focus now reaches the same evidence-backed
+(**Structured and free-text academic focus now reach the same evidence-backed
 topic ranking as the typed conversation preference.** The adapter maps only
 stable existing focus ids to stable existing syllabus-topic ids; it never reads
 course titles/ids/categories and leaves unsupported broad areas inert. API
-175/2385, web 20/186, legacy UI 78/835, both tsc and the production build green.
+175/2390, web 20/186, legacy UI 78/835, both tsc and the production build green.
 **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont. 2) — B3. RED through the real Generate handler
+_Latest entry: 2026-08-23 (cont. 3) — B4. RED proved that a normalized
+`academic_interest_profile.focusAreas=[materials]` answer left the selected
+course set at `E1+E2`, while the equivalent free-text and typed-conversation
+answers could select evidence-backed `E3`. GREEN normalizes the untrusted
+structured profile once and merges its positive-weight focus areas through the
+same ontology adapter and composed grounded objective. Structured provenance is
+distinct (`structured_academic_profile`); zero weight and unsupported broad
+areas remain inert; typed provenance remains authoritative on overlap. Real
+handler proofs show the structured answer changes selection, hard exclusion of
+the favored course still wins, and flag-off remains unchanged. No new objective,
+topic id, provider call, network acquisition or catalog/data mutation._
+
+_Previous entry: 2026-08-23 (cont. 2) — B3. RED through the real Generate handler
 proved that “אני רוצה להתמקד בחומרים” was recognized by `PlanningIntent` but
 did not reach grounded ranking: the selected set stayed `E1+E2` despite official
 materials evidence on `E3`. GREEN adds a small ontology adapter from the
