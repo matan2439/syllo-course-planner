@@ -1,0 +1,81 @@
+{
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "note": "READ-ONLY audit. Corpus (data/evidence_cache) is git-ignored and regenerable; this report is the committed artifact.",
+  "programId": "mechanical_engineering_2027",
+  "catalogYear": 2027,
+  "corpus": {
+    "documents": 23,
+    "distinctCourses": 18,
+    "documentYears": [
+      2025
+    ],
+    "groupScopedDocuments": 0,
+    "scopeConclusion": "course-scoped (multi-group courses publish identical content per group)"
+  },
+  "universe": {
+    "programCourses": 56,
+    "requiringCategoryCourses": 17,
+    "requiringCoursesWithAnyDocument": 5,
+    "universeCoursesWithAnyDocument": 13
+  },
+  "applicability": {
+    "atCatalogYear2027": {
+      "covered": 0,
+      "requested": 56,
+      "stale": 13,
+      "missing": 56,
+      "conflicting": 0
+    },
+    "atCorpusYear2025": {
+      "covered": 13,
+      "requested": 56,
+      "stale": 0,
+      "missing": 43,
+      "unknownFeature": 12,
+      "topicUnknown": 5,
+      "conflicting": 0
+    }
+  },
+  "fieldCoverage": {
+    "deliveryMode": "23/23",
+    "laboratory": "23/23",
+    "projectDelivery": "23/23",
+    "assessmentProject": "0/23",
+    "finalExam": "0/23",
+    "coursework": "0/23",
+    "prerequisiteText": "15/23",
+    "contentSectionPresent": "23/23",
+    "topicsMapped": "15/23",
+    "learningOutcomes": "0/23",
+    "skills": "0/23"
+  },
+  "topicHistogram": {
+    "manufacturing": 8,
+    "materials": 5,
+    "programming_electronics": 3,
+    "thermofluids": 5,
+    "engineering_design": 3,
+    "finite_element_analysis": 1,
+    "control": 3,
+    "robotics": 2
+  },
+  "ambiguousPhrasesLeftUnmapped": 18,
+  "sourceLabelsObserved": [
+    "מספר קורס: 23/23",
+    "שם הקורס: 23/23",
+    "יחידה אקדמית: 23/23",
+    "אופן ההוראה: 23/23",
+    "שעות סמסטריאליות: 23/23",
+    "סמסטר: 23/23",
+    "מרצה: 21/23",
+    "צור קשר: 21/23",
+    "שעות קבלה: 21/23",
+    "יום: 20/23",
+    "שעות: 20/23",
+    "בניין: 20/23",
+    "חדר: 20/23",
+    "קורסי קדם נדרשים: 15/23",
+    "קורסים מקבילים: 1/23",
+    "תאריך: 1/23"
+  ]
+}

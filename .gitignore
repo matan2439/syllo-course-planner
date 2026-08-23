@@ -21,6 +21,9 @@ data/import_reports/*
 !data/import_reports/data_audit_mechanical_2027.csv
 !data/import_reports/supabase_normalization_diff_2027.json
 !data/import_reports/supabase_normalization_after_2027.json
+# Coverage/audit REPORTS are committed (counts, field labels and ids only — no
+# third-party body text); the corpus they measure stays git-ignored.
+!data/import_reports/syllabus_coverage_audit_2027.json
 data/backups/*
 data/raw_html/*
 data/parsed_json/*
