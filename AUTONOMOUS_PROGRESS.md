@@ -5,16 +5,29 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Recent official syllabi can now support descriptive recommendations under an
-explicit, fail-closed policy.** Exact year wins; otherwise the newest official
-syllabus at most two academic years earlier may support only topics/delivery
-features. Future, older, conflicting or unversioned evidence stays inert. The
-response labels historical evidence and states that it does not determine
-legality, prerequisites or degree requirements. API 173/2373, focused evidence
-170/170, both tsc and the production build green. **Not Production-ready.** Not
-merged, not deployed.)_
+(**Grounded preferences now search distinct course combinations, not only
+semester permutations of one completed baseline.** The bounded search swaps one
+eligible elective at a time, preserves mandatory/must-include/pinned courses,
+keeps the hard/policy score prefix authoritative, and retains only candidates
+that pass the shared validator. API 174/2380, web 20/186, legacy UI 78/835
+(77/78 and 834/835 in the full run; the sole stale scope-guard failure then
+passed 12/12 after its narrow allow-list was updated), both tsc and the
+production build green. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 — B1. The B0 year gap is now an explicit product
+_Latest entry: 2026-08-23 (cont.) — B2. Real-corpus measurement found the
+retained alternatives had identical course sets, so a descriptive preference
+could not change the recommendation even when valid evidence existed. The
+generic bounded swap search fixes that root cause without bypassing legality.
+On the frozen real Mechanical Engineering 2027 board/cache, a materials
+preference changes the selected plan and adds `0542-4425` using labeled 2025
+materials evidence; `0581-4131` remains a distinct legal alternative. The
+robotics-favored `0542-4624` remains correctly blocked because prerequisite
+`0542-4621` is missing. Reversed catalog/evidence order is invariant, an
+evidence-equivalent heavier distractor loses, and a hard-excluded favored
+course is never reintroduced. No provider or external acquisition was invoked;
+no catalog/source data was changed._
+
+_Previous entry: 2026-08-23 — B1. The B0 year gap is now an explicit product
 policy rather than an accidental exact-year dead end. RED→GREEN proved the
 policy on real TAU course id `0542-3792`, then proved through the real Generate
 handler that 2025 descriptive evidence can change a 2027 topic recommendation.
