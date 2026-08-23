@@ -5,14 +5,39 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**Exact in-progress/off-board planned credit now reaches search, validation
-and explanation through one typed model total.** It prevents filler
-over-allocation without double-counting board-visible courses or pre-crediting
-placeable planned courses. API 177/2423, web 20/186, legacy UI 78/835 (scope
-guard rechecked 12/12), both tsc and the production build green.
-**Not Production-ready.** Not merged, not deployed.)_
+(**B9 combined real-program acceptance added.** One native Mechanical 2027
+request now permanently proves that authoritative completed-category
+recognition, a currently-taking prerequisite, hard wanted/excluded courses,
+grounded preference composition and retained candidates consume one coherent
+academic state. The first run exposed only an invalid test assumption about
+intentionally lean disclosure; after correcting it, existing product behavior
+passed without production changes. **Not Production-ready.** Not merged, not
+deployed.)_
 
-_Latest entry: 2026-08-24 — B8. A full-handler RED started with 5 authoritative
+_Latest entry: 2026-08-24 (cont.) — B9. A full native-handler acceptance uses
+the frozen `mechanical_engineering_2027.json` program, not a synthetic planner
+fixture. It reports four authoritative completed electives — one in each real
+requiring pool — plus `0542-4621` currently taking, whose real catalog record is
+the prerequisite for hard-wanted `0542-4624`; hard-excluded `0542-4425` is also
+a positively grounded materials course. The response recognizes exactly 13
+completed hours and 3 in-progress hours, closes all four category requirements
+with the correct course ids, admits the wanted successor, excludes the grounded
+but prohibited course, and never re-proposes a completed/current course in any
+retained plan. Alternatives, when present, share one constraint fingerprint,
+profile version and evidence snapshot. The test first failed because it asked
+the intentionally lean client disclosure for the private `recognizedCourseIds`
+field; existing E6 contracts explicitly prohibit exposing that server detail.
+The corrected behavioral assertion uses recognized count/hours, category
+contributions and rendered plans. It then passed with no production-code fix,
+providing Phase A realistic-scenario coverage rather than fabricating a RED.
+Focused 1/1 and full API 178/178 suites, 2424/2424 tests are green; root
+TypeScript verification is recorded with the commit below. This slice changes
+no production or UI code, so the parent B8 web/build/legacy evidence remains
+the applicable product baseline.
+No provider, network acquisition, catalog/data mutation, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 — B8. A full-handler RED started with 5 authoritative
 completed hours, an 8h target, a real 3h off-board `planned` entry and one
 legal 3h filler. Generate reported a valid response but still added the filler:
 the final shortfall gate knew about planned credit, while search did not. GREEN
