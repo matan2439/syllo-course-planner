@@ -5,16 +5,31 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Grounded preferences now search distinct course combinations, not only
-semester permutations of one completed baseline.** The bounded search swaps one
-eligible elective at a time, preserves mandatory/must-include/pinned courses,
-keeps the hard/policy score prefix authoritative, and retains only candidates
-that pass the shared validator. API 174/2380, web 20/186, legacy UI 78/835
-(77/78 and 834/835 in the full run; the sole stale scope-guard failure then
-passed 12/12 after its narrow allow-list was updated), both tsc and the
-production build green. **Not Production-ready.** Not merged, not deployed.)_
+(**An explicit free-text academic focus now reaches the same evidence-backed
+topic ranking as the typed conversation preference.** The adapter maps only
+stable existing focus ids to stable existing syllabus-topic ids; it never reads
+course titles/ids/categories and leaves unsupported broad areas inert. API
+175/2385, web 20/186, legacy UI 78/835, both tsc and the production build green.
+**Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont.) — B2. Real-corpus measurement found the
+_Latest entry: 2026-08-23 (cont. 2) — B3. RED through the real Generate handler
+proved that “אני רוצה להתמקד בחומרים” was recognized by `PlanningIntent` but
+did not reach grounded ranking: the selected set stayed `E1+E2` despite official
+materials evidence on `E3`. GREEN adds a small ontology adapter from the
+existing `AcademicFocusArea` vocabulary to the existing `TopicId` vocabulary
+and composes the resulting topic objective with any typed objective already in
+the preference profile. Typed provenance wins on overlap; topic ids are unioned
+canonically; duplicate/input order is inert. The frozen real Mechanical 2027
+board/cache acceptance now changes the recommendation from the free-text
+materials request, selects the evidence-backed materials plan and labels the
+2025 historical source. `intentOutcome` now reuses the selected candidate's
+actual grounded contributions, so it cannot call an honored focus unmet; when
+the normalized topic fact has no stored excerpt it links the official source
+instead of fabricating a quote. Hard exclusions still win. `biomechanics`, `energy` and
+`general` remain unsupported/inert rather than being guessed. No provider,
+network acquisition or catalog/data mutation occurred._
+
+_Previous entry: 2026-08-23 (cont.) — B2. Real-corpus measurement found the
 retained alternatives had identical course sets, so a descriptive preference
 could not change the recommendation even when valid evidence existed. The
 generic bounded swap search fixes that root cause without bypassing legality.
