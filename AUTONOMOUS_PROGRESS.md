@@ -5,15 +5,37 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Supported structured course styles now compose through existing official
-delivery objectives.** `project_based` and `lab_based` can change the
-recommendation; unsupported styles remain inert, typed provenance wins, and
-hard constraints stay absolute. API 175/2405, web 20/186, legacy UI 78/835
-(scope guard rechecked 12/12), root tsc and the previously verified production
-build green.
+(**Remaining category work now reserves degree-hour search budget, and
+identified completed-course hours cannot be erased by a missing aggregate.**
+The exact remaining-degree plan wins over filler over-allocation; ambiguous
+overlapping category pools fail safe. API 176/2412, web 20/186, legacy UI
+78/835, both tsc and the production build green.
 **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont. 5) — B6. RED through the real Generate handler
+_Latest entry: 2026-08-23 (cont. 6) — B7. A realistic full-handler RED started
+with 5 authoritative completed hours, an 8h degree target, one still-required
+3h category course, and a legal 4h filler. Generate incorrectly returned both
+courses (12h) instead of the exact category course (8h). Isolation found two
+independent causes. First, `buildModel` passed an absent coarse aggregate as
+zero and thereby erased the 5 hours already recognized from the completed
+course id. It now uses `max(authoritatively recognized hours, explicit
+aggregate)`: the aggregate may supplement totals, but still creates no course,
+category, prerequisite, or exclusion fact. Second, g1 reserved remaining
+mandatory hours but not remaining category-course hours. It now subtracts a
+safe lower bound: the cheapest reachable course hours for each unmet slot in
+pairwise-disjoint requiring pools, excluding hours already reserved by a
+mandatory/hard-included course. Overlapping pools return zero reservation
+rather than inventing allocation policy; impossible/excluded pools likewise do
+not reserve forever and remain the validator's explicit incompleteness. The
+real Generate path now returns only the 3h category course, recognizes 5+3=8,
+marks the requirement satisfied and is not blocked. Candidate/category order
+is invariant, hard exclusions remain absolute, and all retained paths still use
+the authoritative validator. Focused 141/141 plus 340/340, full API 2412/2412,
+web 186/186, legacy 835/835, both tsc and production build are green. No
+provider, network acquisition, catalog/data mutation, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-23 (cont. 5) — B6. RED through the real Generate handler
 proved that `academic_interest_profile.courseStylePreferences.project_based`
 was collected but left the canonical `E1+E2` recommendation unchanged even
 when a distinct valid project-led `E3` alternative existed. GREEN maps only
