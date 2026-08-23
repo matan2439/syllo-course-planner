@@ -4,21 +4,26 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-19 (cont.), session on branch `ui/frontend-modernization`
-(**A completed elective now actually reduces the degree.** One authoritative
-recognition of prior completion, computed once and consumed by the scorer, the
-authoritative validator and the explanation alike. API 171/2356, UI 78/835,
-web 20/186, both tsc and the production build green. **Not Production-ready** —
-the server Apply still has no durable production adapter. Not merged, not
-deployed.)_
+_Last updated: 2026-08-19 (cont. 2), session on branch `ui/frontend-modernization`
+(**Measured the evidence corpus and found the grounded objectives are inert in
+production.** The acquired syllabi are academic year 2025, the program board is
+2027, and applicability is an exact year match — so coverage on the real program
+is 0/56. Audit only: no capability was implemented, deliberately. API 172/2365,
+UI 78/835, web 20/186, both tsc and the production build green. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-19 (cont.) — A1. E0 found one precise asymmetry in the
+_Latest entry: 2026-08-19 (cont. 2) — B0. A read-only coverage audit through the
+REAL loader/extractor/`prepareEvidence`. Delivery mode is 23/23 and already
+used; assessment is 0/23 (re-rejected on ~3x the corpus K8A rejected it on);
+skills/learning outcomes are 0/23 because the official page has no such field;
+topics map 15/23. Nothing was built: with coverage at 0/56 no parser could
+change a real recommendation, and closing the year gap needs acquisition or an
+explicit freshness decision, not code._
+
+_Previous entry: 2026-08-19 (cont.) — A1. E0 found one precise asymmetry in the
 SHARED requirement accounting: `missingMandatory` filtered on completion,
-`unsatisfiedCategories` did not, so a student who had completed the one course
-their category required was still told to take another. Fixed at the source, in
-one place. Category ALLOCATION was proven unnecessary rather than assumed — the
-real requiring pools are pairwise disjoint — and no clarification question was
-added, because with disjoint pools nothing is genuinely ambiguous._
+`unsatisfiedCategories` did not. Fixed at the source, in one place. Category
+allocation was proven unnecessary and no clarification question was added._
 
 _Previous entry: 2026-08-19 — S0–S5: Apply became server-authoritative, with an
 anonymous server-issued session, a CAS board repository and an idempotent
@@ -441,6 +446,306 @@ normalized identity, constraint fingerprint, snapshot and profile version
 against a server-held plan run, and persists per authenticated user; or (b) an
 explicit, documented product decision that the committed board is intentionally
 local-only — in which case the UI must stop implying otherwise.
+
+## Session 2026-08-19 (cont. 2) — B0: syllabus/evidence coverage audit
+
+One commit: `93ffc5f`. **No capability was implemented, deliberately** — the
+audit's job was to decide what may be built, and it decided "not yet, and not
+this".
+
+### The traced path
+
+`scripts/acquire_official_syllabi.ts` (bounded, out-of-band, allowlisted to
+`ims.tau.ac.il`) → `api/ai/evidence_cache.ts` (content-addressed store under
+git-ignored `data/evidence_cache/`) → `api/ai/evidence_loader.ts`
+(`loadPreparedEvidenceDocuments`, cache-only, **no transport of any kind**, so a
+Generate can never trigger acquisition) → `api/ai/evidence_provider.ts`
+(`prepareEvidence`: relevance → **exact academic-year match** → conflict filter
+→ feature/topic extraction → coverage) → `api/ai/course_features.ts`
+(`RuleBasedFeatureExtractor`) and `api/ai/course_topics.ts`
+(`extractCourseTopics`) → `api/ai/grounded_objectives.ts` (scoring) →
+`grounded_objective_set.ts` (composition) → `candidate_set.ts` (ranking) →
+explanation.
+
+### The measurement (`data/import_reports/syllabus_coverage_audit_2027.json`)
+
+Corpus: 23 documents, 18 distinct courses, **all academic year 2025**, 0
+group-scoped (content is course-scoped — a multi-group course publishes an
+identical content section per group, confirming the earlier
+`topic_coverage_matrix` conclusion).
+
+| | at catalog year **2027** | at corpus year 2025 |
+|---|---|---|
+| covered / requested | **0 / 56** | 13 / 56 |
+| stale | 13 | 0 |
+| conflicting | 0 | 0 |
+| features map | 0 | 13 |
+| topics map | 0 | 13 |
+
+Of the **17** courses in requiring categories, only **5** have any document.
+
+Per field, over 23 documents:
+
+| field | coverage | verdict |
+|---|---|---|
+| `deliveryMode`, `laboratory`, `projectDelivery` | 23/23 | **planning-grade** (already used) |
+| content section present | 23/23 | — |
+| topics mapped | 15/23 (18 phrases left unmapped) | explanation-grade at best |
+| `prerequisiteText` | 15/23 | evidence only — program data stays authoritative |
+| assessment: `project` / `finalExam` / `coursework` | **0/23** | **absent** |
+| learning outcomes / skills | **0/23** | **absent from the source itself** |
+
+Labels the official page actually publishes: `מספר קורס`, `שם הקורס`, `יחידה
+אקדמית`, `אופן ההוראה`, `שעות סמסטריאליות`, `סמסטר`, `מרצה`, `קורסי קדם נדרשים`
+(15/23), `קורסים מקבילים` (1/23), plus contact/room fields. There is **no**
+learning-outcome or skills field — that capability cannot be built at any
+effort from this source.
+
+### Why nothing was implemented
+
+The binding constraint is **year alignment, not parsing**. With coverage at
+0/56 on the real program, no parser improvement, vocabulary entry or new
+objective could change a real recommendation — which is exactly the bar this
+epic set before allowing any of them. Correcting the year gap requires either
+acquisition of 2027 documents (out of scope here, and 2027 syllabi are very
+likely unpublished) or an explicit product decision on whether a 2025 syllabus
+may describe a 2027 offering. Neither is a decision to make silently in code.
+
+The system's behaviour under this gap is already honest: `coverageSufficient`
+is false, so no grounded question is asked and no fact is claimed. The problem
+is not incorrectness — it is that a whole capability family is **dead in the
+field while appearing implemented**, and until now that was not measured
+anywhere.
+
+### Accepted / rejected
+
+- **Accepted, already shipped:** delivery-mode facts (23/23) — the only
+  planning-grade family in this corpus.
+- **Rejected, re-confirmed:** assessment parsing. 0/23, now on nearly 3× the
+  corpus the K8A audit rejected it on (0/8).
+- **Rejected, unbuildable:** skills / learning outcomes. The source has no such
+  field.
+- **Deferred, not rejected:** topic-vocabulary widening (15/23 mapped, 18
+  ambiguous phrases). It is a real gap, but it cannot change a recommendation
+  while coverage is 0/56, and widening a vocabulary against ambiguous Hebrew
+  phrases without that feedback loop risks inventing topics.
+
+### Exact sources used
+
+`data/boards/mechanical_engineering_2027.json` →
+`metadata.program_repository_courses` (universe, 56) and
+`metadata.program_requirements_categories` (requiring pools, 17 courses);
+`data/evidence_cache/` (23 documents, git-ignored, regenerable). Nothing was
+mutated.
+
+### Recorded, not fixed
+
+Planner over-allocation (issue #25 Finding #4) remains live: g1 (degree hours)
+outranks g2b (category satisfaction) lexicographically, so the hours budget can
+be spent on a course that satisfies no remaining requirement. Any fix is a
+GOAL_STACK design decision with its own RED→GREEN proof.
+
+
+## Session 2026-08-19 (cont.) — A1: authoritative completed-elective recognition
+
+Two commits: recognition `cbaaff8`, disclosure + integration `df5a50f`.
+
+### E0 — the traced path, and the one asymmetry in it
+
+| # | Question | Answer at HEAD |
+|---|---|---|
+| 1 | Completed standard courses | `plan_context.personal_status.completed[].course_id` → `buildConstraintModel` → `model.completedCourseIds` (`planner_model.ts:81`). |
+| 2 | Completed electives | The SAME field. There is no separate elective channel; `CompletedCoursesPanel` merges its elective picker into one `completed` list, so dedup only has to happen once. |
+| 3 | `known_completed_hours` | `total_hours_progress.known_completed_hours`, used by `completion_analysis` for the 185 ש"ש narrative only. It creates no course identity and now provably cannot satisfy a category. |
+| 4 | Did completed ids contribute to elective categories? | **No — the defect.** `CategoryReq.required` was the program's full `min_courses`, and `categoriesSatisfied`/`assessCompleteness` counted only courses PLACED in the plan state, which `planContextToState` strips completed courses from. |
+| 5 | One course satisfying multiple categories | Not possible in the real data (pools disjoint — proven). Now explicitly handled as `ambiguous`, contributing to none. |
+| 6 | Requirement unit | `min_courses` — a COUNT of courses. Degree hours are a separate `total_required_hours` (185). Asserted for every requiring category. |
+| 7 | Prerequisites | Already correct: `model.completedCourseIds` is consulted directly by the prerequisite engine (`planner_goals.ts:205, 450, 544, 639`) and by `plan_validation.ts`. Untouched by this epic. |
+| 8 | Exclusion from proposals | Already correct: `planContextToState` drops them, action enumeration skips them (`generate-plan.ts:937, 1038`), and the validator rejects re-scheduling. |
+| 9 | Unknown ids | Already inert for hours; now explicitly typed `unresolved` and reported rather than silently absent. |
+| 10 | Same accounting for validation and scoring? | **Yes** — both go through `policy.assessCompleteness`, which is why fixing it once fixed both. |
+| 11 | Generic or TAU-specific? | Generic. `buildConstraintModel` reads only board metadata; the new engine reads only typed requirements. |
+| 12 | Authoritative data | `data/boards/<program>.json` → `metadata.program_requirements_categories` (`total_required_hours`, and per category `category_id` / `name_he` / `min_courses` / `course_ids`) plus `metadata.program_repository_courses` for catalog hours. Nothing else. |
+
+The precise asymmetry, in one place: `missingMandatory` filtered on
+`completedCourseIds`; `unsatisfiedCategories` did not.
+
+### E1/E2 — one recognition, consumed by everything
+
+`api/ai/academic_progress.ts` computes recognition once.
+`buildConstraintModel` derives BOTH `categories[].required` (now the REMAINING
+minimum) and `priorHours` from it, so the scorer, the authoritative validator
+and the explanation cannot disagree. No parallel accounting model was added.
+
+Rules, each proven: duplicates collapse before anything can count them twice; an
+unknown id credits nothing and satisfies nothing but is still reported (unknown
+is not "not completed"); a recognized course with unknown catalog hours credits
+nothing rather than a guess; a course in no requiring pool credits hours but
+satisfies no category; membership in a `min_courses: 0` bucket is neither a
+contribution nor an ambiguity; an aggregate hours figure never becomes an
+identity.
+
+### E3 — proven unnecessary, and therefore omitted
+
+The categories that actually require something have **pairwise disjoint pools**
+in the real TAU Mechanical data. Membership is FIXED — not exclusive
+allocation, not student-selectable, not optimization-dependent. A deterministic
+allocation layer would have been inventing a rule this program does not have,
+so none was built. The disjointness is now a committed regression test, so a
+catalog update that breaks the assumption surfaces there rather than silently.
+
+For a future program that does overlap: a course claimed by two requiring pools
+is typed `ambiguous` and contributes to NEITHER. Over-crediting could let
+someone believe a requirement is met that the program never said was met;
+under-crediting is recoverable and is surfaced.
+
+### E7 — no clarification added, deliberately
+
+A question is only legitimate when two authoritative interpretations genuinely
+remain. With disjoint pools no course can be ambiguous, so for this program
+there is nothing to ask. Adding a question would have manufactured a decision
+the rules already make. None was added.
+
+### Verification
+
+API **2356/2356** (171 suites), web **186/186**, legacy UI **835/835**, both
+`tsc --noEmit` clean, production build green. Python **1232 passed / 33 failed**
+— identical to baseline and unrelated (missing sqlite fixture; legacy-viewer
+assertions from the known dead-code issue). No catalog, `data/`, alembic,
+script or viewer file changed.
+
+### Found, reported, NOT patched
+
+- **Planner over-allocation (issue #25 Finding #4) is still live and is now
+  easier to see.** In a fixture whose degree total is exactly two courses, a
+  student who completed one still receives a two-course plan: g1 (degree hours)
+  outranks g2b (categories) lexicographically, so the hours budget can be spent
+  on a course satisfying no remaining requirement, and the required category
+  course then lands on top. The existing `remainingMandatoryHours` reservation
+  fixes exactly this class for mandatory courses; the category analogue does not
+  exist. Deliberately NOT changed here — it is a GOAL_STACK design decision with
+  its own tracked issue, and bundling it would have hidden a real behavioural
+  change inside a recognition epic.
+- No missing authoritative category mapping was found: every course id in every
+  requiring pool resolves against the real catalog (asserted).
+
+## Product roadmap (ordered; nothing below is implemented unless stated)
+
+**Phase A — finish the AI product for the current program**
+1. Authoritative completed-elective recognition — **this epic, done**.
+2. Broader and more reliable syllabus extraction.
+3. Evidence-backed mapping of courses to topics, skills and academic progression.
+4. Stronger multi-combination search and diversity.
+5. Better recommendation, trade-off and explanation quality.
+6. Coverage/acceptance over realistic complete student scenarios.
+7. AI product readiness decision.
+
+**Phase B — site and manual planner**
+1. AI journey UI/UX refinement.
+2. Site architecture cleanup.
+3. Full manual planning: add, remove, move and arrange courses without AI.
+4. Shared validation between manual and AI planning.
+5. Mobile, RTL, accessibility and browser acceptance.
+
+**Phase C — next academic program.** TAU Electrical Engineering through a new
+authoritative program model and dataset, without branching the core algorithm.
+
+**Phase D — commercialization.** Authentication and user accounts; cross-device
+persistence; privacy/data-retention decisions; usage metering; payment provider
+and billing; AI-assistant access policy; production observability, support and
+abuse controls.
+
+**Phase E — expansion.** Additional degrees and universities through
+program/source adapters, coverage gates and authoritative validation.
+
+
+## Session 2026-08-19 — S0–S5: authoritative server Apply, board persistence, session ownership
+
+### S0 — inventory (traced, with file/function evidence)
+
+| Area | Finding |
+|---|---|
+| `api/board.ts` | GET-only (`_handle`, line 108 rejects every other method). Serves the **program CATALOG** (`program_versions.board_json`) — per-program, read-only, identical for every visitor. It is **not** a user board, so it must never be mutated by Apply. |
+| Local JSON fallback | `api/ai/board_loader.ts:loadLocalBoardJson` reads `data/boards/<programId>.json`. Used when `DATABASE_URL` is unset or the query throws. Tracked catalog data — never user storage. |
+| `plan_persistence.ts` | `InMemoryPlanRunStore` / `InMemoryPersistenceCapability` only. Its sole importer is `tests/api/plan_persistence.test.ts`; wired to no route, and its own header says it is deliberately not durable. Records `AgentResult`s, not boards — wrong shape for this epic. |
+| DB adapters / schema | `postgres` (npm) used directly in `api/board.ts:queryBoardJson` and `api/ai/_quota.ts`. Alembic heads: `a1b2c3d4e5f6` (initial), `b2c3d4e5f6a7` (board_json), `c3d4e5f6a7b8` (quota), `d4e5f6a7b8c9` (planner_runs). |
+| Existing user tables | `users`, `user_profiles`, `user_completed_courses`, `user_course_plans`, `plan_semesters`, `plan_courses` all exist — but every one is `user_id UUID NOT NULL REFERENCES users(id)`. **Unusable anonymously**, and no code writes to any of them. |
+| Existing session table | `anonymous_sessions (session_token TEXT UNIQUE, credits_used, credits_paid)` — quota only. Its token is **chosen by the client** (`localStorage` `tau_ai_session`, `NativePlannerJourney.sessionToken()`), so it is an ownership key an attacker can simply pick. Not reusable as an ownership boundary. |
+| `DATABASE_URL` | Read in `api/board.ts:126`, `api/ai/generate-plan.ts:1399`, `api/ai/planner-run.ts:96`. Absent ⇒ documented local fallback / dev bypass. No migration exists for a board-state or proposal table. |
+| Serverless constraints | `vercel.json` builds each `api/**` entry as its own `@vercel/node` function. No shared process memory across invocations, and no durable local filesystem — module-level state and `/tmp` are per-instance and evictable. Any production adapter must be external. |
+| Session/cookie utilities | **None.** Repo-wide search for `cookie` / `Set-Cookie` / `HttpOnly` in `api/`, `shared/`, `web/` returns only unrelated comments in `scripts/acquire_official_syllabi.ts`. |
+| Authentication | **None.** No login, no token verification, no user id anywhere in `api/`. |
+| Proposal ownership | **None.** `generate-plan` returns candidates and retains nothing; `candidateOrchestration` is built and discarded with the response. |
+| Board/version fields | `metadata.board_data_version` → `CatalogRevision` (`shared/planner/model.ts:58-77`). It versions the CATALOG, not a user's committed plan. `ProposalBaseRevision` is the client's captured copy. There is no user-board version at all. |
+| Feature flag | `use_academic_decision_agent` (default off). Browser entry only via `/planner/native/agent-preview`, itself gated on `ENABLE_ACADEMIC_AGENT_PREVIEW=1`, so it 404s in Production. |
+| API routing | `vercel.json` rewrites `/api/board/:programId` and `/api/ai/*` to root `@vercel/node` functions; everything else to `web/`. Locally, `web/next.config.ts` proxies `/api/*` to `PLANNER_API_ORIGIN` (`scripts/dev_api_server.ts` on :3002). CORS on `/api/(.*)`: `Access-Control-Allow-Origin: *`, methods `GET, POST, OPTIONS`. |
+
+### Decision matrix
+
+| | A. Client-only | B. Signed stateless token | **C. Anonymous server session** | D. Authenticated user |
+|---|---|---|---|---|
+| Vercel compatible | yes | yes | yes (needs external store) | yes |
+| Durable | no | no (browser-held) | adapter-dependent | yes |
+| Survives refresh | **no** (proven) | yes | yes | yes |
+| Cross-device | no | no | no (by design) | yes |
+| Exactly-once | no | **no** — nothing to dedupe against | yes | yes |
+| Stale-write prevention | no | **no** — two holders of v1 both verify | yes (CAS) | yes |
+| Privacy | best | whole plan in token; size grows with candidates | opaque id, no PII | real PII |
+| Operational cost | none | signing secret + rotation | moderate | high |
+| Existing repo support | current behaviour | none | `postgres` client already a dependency | `users` table exists, **zero auth code** |
+| New external service | none | none | **none** | would require one |
+
+### Selected: C — anonymous server-owned session
+
+It is the smallest model that is server-authoritative, and the only one of A/B/C
+that can express exactly-once and compare-and-swap at all. B was rejected on a
+specific technical ground rather than taste: a stateless token can prove the
+client did not tamper with a plan, but two concurrent Applies both holding a
+token minted at board version *v1* would both verify, so it cannot prevent the
+stale write this epic exists to prevent — and it cannot revoke or supersede.
+
+D was not invented: no authentication code exists anywhere in the repository,
+and the brief forbids adding an auth provider. C upgrades to D by adding a
+nullable `user_id` beside `owner_id` and preferring it when present — no
+rewrite of the repository boundary.
+
+**Ownership key.** The existing `anonymous_sessions.session_token` is deliberately
+NOT reused as the owner: the client picks that value, so any caller could claim
+another caller's proposals. Ownership is a new server-issued opaque id in an
+HttpOnly cookie. The quota token keeps its existing, separate job.
+
+### Production persistence: an explicit REMAINING decision
+
+No production-compatible durable store for user board state exists today. Per
+the brief, this session implements the repository interfaces, a deterministic
+in-memory adapter for tests, and the safest local Preview adapter — and does
+**not** silently choose a vendor. Postgres is already this project's database,
+so it is the obvious candidate, but shipping an untested SQL adapter plus an
+unrun migration would be a durability claim this session cannot support. What a
+production adapter needs is recorded below as required work, not as done work.
+
+## Exact next action (current — supersedes the archival block at the end)
+
+1. **The next AI-quality step is a DECISION, not code: does a syllabus from an
+   earlier academic year describe a later offering?** The B0 audit below shows
+   the whole grounded-evidence family is inert in production (0/56) purely
+   because the corpus is year 2025 and the board is 2027. Two legitimate ways
+   forward, and both need a human call:
+   - acquire 2027 documents (bounded, allowlisted, out-of-band — the existing
+     `scripts/acquire_official_syllabi.ts` path), if TAU has published them; or
+   - decide explicitly that a recent-but-earlier syllabus may ground a
+     descriptive (never legality-bearing) fact, and implement that as a typed
+     freshness policy with its own RED→GREEN proof.
+   - **Smallest ordered first step once decided:** a RED asserting the intended
+     applicability for one real course, then the policy, then a real
+     selection-change proof.
+2. Do NOT widen the topic vocabulary first. It is a genuine gap (15/23 mapped,
+   18 ambiguous phrases) but it cannot change a recommendation while coverage
+   is 0/56, and widening it without that feedback risks inventing topics.
+3. Planner over-allocation (issue #25 Finding #4) still needs a GOAL_STACK
+   design decision — see the A1 section.
+4. Production durable persistence + authentication remain the blockers for
+   shipping the server Apply. Unchanged.
 
 ## Session 2026-08-19 (cont.) — A1: authoritative completed-elective recognition
 
