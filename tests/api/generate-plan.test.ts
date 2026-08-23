@@ -134,6 +134,37 @@ describe('priorHoursFromContext — formula spec', () => {
   });
 });
 
+describe('buildModel — authoritative completed-course hours', () => {
+  const board = {
+    semesters: [{ semester_id: 'year_4_semester_a', courses: [] }],
+    metadata: {
+      program_requirements_categories: { total_required_hours: 8, categories: [] },
+      program_repository_courses: [{
+        course_id: 'DONE_5H', name_he: 'הושלם', weekly_hours: 5,
+        is_mandatory: false, course_type: 'elective', placement_policy: 'elective',
+        offered_semesters: ['year_4_semester_a'], prerequisites: [],
+      }],
+    },
+  };
+
+  it('course identity contributes its catalog hours even when the aggregate is absent', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [{ course_id: 'DONE_5H' }] },
+    }, {} as any);
+    expect(model.academicProgress?.recognizedHours).toBe(5);
+    expect(model.priorHours).toBe(5);
+  });
+
+  it('a larger explicit aggregate may supplement totals but creates no course fact', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [{ course_id: 'DONE_5H' }] },
+      total_hours_progress: { known_completed_hours: 7 },
+    }, {} as any);
+    expect(model.priorHours).toBe(7);
+    expect(model.academicProgress?.completedCourseIds).toEqual(['DONE_5H']);
+  });
+});
+
 describe('buildModel — overload-override threading', () => {
   it('threads preferences.overload_accepted/overload_confirmed_at into the model', () => {
     const confirmedAt = Date.now();

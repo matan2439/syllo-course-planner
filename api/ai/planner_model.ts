@@ -165,7 +165,12 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   // Prior accrued hours — the remaining-degree-gap baseline. Taken from the
   // same recognition, so hours and categories can never disagree about which
   // completed courses were authoritative.
-  const priorHours = opts.priorHours ?? academicProgress.recognizedHours;
+  // A coarse aggregate may prove additional completed degree hours, but it
+  // must never erase hours derived from identified authoritative courses.
+  // Taking the maximum avoids double-counting (the aggregate normally already
+  // includes identified courses) while preserving course identity as the
+  // source of category/prerequisite/exclusion consequences.
+  const priorHours = Math.max(opts.priorHours ?? 0, academicProgress.recognizedHours);
 
   return {
     profiles,
