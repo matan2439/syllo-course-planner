@@ -51,6 +51,14 @@ function doc(courseId: string, delivery: string, academicYear: number = YEAR): S
   };
 }
 
+function topicDoc(courseId: string, content: string, academicYear: number = YEAR): SyllabusDocument {
+  return {
+    ...doc(courseId, 'שיעור', academicYear),
+    contentHash: `sha_${courseId}_topic_${academicYear}`,
+    text: `תוכן הקורס ומטרתו ${content} מטלות הקורס`,
+  };
+}
+
 // Mutable so each test can choose the evidence the request will be given.
 let MOCK_DOCUMENTS: SyllabusDocument[] = [];
 
@@ -339,6 +347,29 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(placed(withProject._body)).toContain('E3');
     expect(candidates(withProject._body).evidence.groundedObjective).toBe('prefer_project_courses');
     expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
+  });
+
+  test('an explicitly interpreted focus request reaches the same evidence-backed topic ranking and outcome', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'מבוא כללי.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.'),
+    ];
+
+    const without = await run(body({ interpret_free_text: true }));
+    const withFocus = await run(body({
+      interpret_free_text: true,
+      preferences: { disallowed_course_ids: [], extra_request_he: 'אני רוצה להתמקד בחומרים' },
+    }));
+
+    expect(placed(withFocus._body)).not.toEqual(placed(without._body));
+    expect(placed(withFocus._body)).toContain('E3');
+    expect(candidates(withFocus._body).evidence.groundedObjective).toBe('prefer_topic_alignment');
+    expect(candidates(withFocus._body).selectedGroundedScore.contributions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ courseId: 'E3', topicId: 'materials' })]),
+    );
+    expect(withFocus._body.intentOutcome.honored.join(' ')).toContain('חומרים');
+    expect(withFocus._body.intentOutcome.unmet.join(' ')).not.toContain('חומרים');
   });
 
   test('the explanation names the PROJECT feature, not laboratory', async () => {

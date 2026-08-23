@@ -120,6 +120,11 @@ test('the course-details/interest UI slice adds no UNRELATED backend/api churn',
     // Separate grounded-candidate diversification slice: the legacy UI still
     // must not pull in any other backend churn.
     'api/ai/candidate_set.ts',
+    // Separate explicit-focus grounding slice. These are the only additional
+    // backend files it deliberately owns.
+    'api/ai/focus_topic_objective.ts',
+    'api/ai/generate-plan.ts',
+    'api/ai/planning_intent.ts',
   ]);
   const diff = execSync('git diff --name-only HEAD -- api', { cwd: ROOT })
     .toString()

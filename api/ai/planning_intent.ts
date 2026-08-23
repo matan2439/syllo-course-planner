@@ -335,7 +335,10 @@ export function buildIntentOutcome(
         // Cite the OFFICIAL-SYLLABUS evidence per aligned course (course-knowledge layer).
         const cite = (id: string) => {
           const e = ctx.focusEvidenceByCourseId?.get(id);
-          if (!e || !e.extractedEvidence) return label(id);
+          if (!e) return label(id);
+          if (!e.extractedEvidence) {
+            return e.sourceUrl ? `${label(id)} (עדות מפורשת מהסילבוס הרשמי: ${e.sourceUrl})` : label(id);
+          }
           const lvl = e.inferenceLevel === 'explicit' ? 'עדות מפורשת' : e.inferenceLevel === 'derived' ? 'עדות נגזרת' : 'עדות חלשה';
           return `${label(id)} (${lvl} מהסילבוס הרשמי: «${e.extractedEvidence}»)`;
         };

@@ -24,13 +24,6 @@ const planContext = () => ({
   total_hours_progress: { known_completed_hours: 92 },
 });
 
-const materialsPreference = {
-  id: 'course_topic_materials', category: 'course_topic_interest',
-  normalized: 'materials', value: 'materials', classification: 'soft_preference',
-  confidence: 0.9, source: 'explicit_answer', confirmationStatus: 'confirmed',
-  affects: 'course_selection', mayAffectPlanningBeforeConfirmation: true,
-};
-
 const makeRes = () => ({
   statusCode: 0, setHeader: jest.fn().mockReturnThis(),
   status: jest.fn(function (this: any, code: number) { this.statusCode = code; return this; }),
@@ -38,28 +31,31 @@ const makeRes = () => ({
   write: jest.fn(), end: jest.fn(),
 } as any);
 
-test('recent official materials evidence creates real course-set diversity and changes the recommendation', async () => {
+test('an explicit free-text materials focus uses recent official evidence and changes the real recommendation', async () => {
   if (!existsSync(CACHE)) return;
   process.env.AI_DEV_MODE = 'true';
   process.env.AI_DEV_BYPASS_QUOTA = 'true';
   try {
-    const generate = async (preferences: any[]) => {
+    const generate = async (focus = false) => {
       const res = makeRes();
       await handler({ method: 'POST', body: {
       program_id: PROGRAM,
       plan_context: planContext(),
-      preferences: { disallowed_course_ids: [] },
+      preferences: {
+        disallowed_course_ids: [],
+        ...(focus ? { extra_request_he: 'אני רוצה להתמקד בחומרים' } : {}),
+      },
       session_token: randomUUID(),
       use_academic_decision_agent: true,
-        preference_profile: { version: 1, preferences },
+      interpret_free_text: true,
       } } as any, res);
       expect(res.statusCode).toBe(200);
       expect(res._body.blocked).toBe(false);
       return res._body.academicDecision.candidates;
     };
 
-    const control = await generate([]);
-    const candidates = await generate([materialsPreference]);
+    const control = await generate(false);
+    const candidates = await generate(true);
     const courseSets = candidates.summaries.map((s: any) => [...s.courseIds].sort().join('|'));
     expect(new Set(courseSets).size).toBeGreaterThan(1);
     expect(candidates.selectedCandidateId).not.toBe(control.selectedCandidateId);

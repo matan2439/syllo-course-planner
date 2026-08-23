@@ -87,8 +87,9 @@ import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_con
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
+import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective } from './focus_topic_objective';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
-import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
+import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective, type ObjectiveContribution } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { computePriorityQuestionImpact } from './priority_impact';
 import { describeAcademicProgress } from './academic_progress';
@@ -1586,7 +1587,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // K9A — the grounded course-feature objective, resolved at the SAME eligibility
   // boundary as the distribution policy so the two can never disagree about what
   // a confirmed preference means. Soft ranking only; it has no path to legality.
-  const resolvedGrounded = effectivePrefs ? resolveGroundedObjective(effectivePrefs) : undefined;
+  const resolvedGrounded = mergeExplicitFocusObjective(
+    effectivePrefs ? resolveGroundedObjective(effectivePrefs) : undefined,
+    interpretedIntent?.focusAreas ?? [],
+    preference_profile?.version ?? 0,
+  );
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
   const distributionPolicy: DistributionPolicy | undefined =
     resolvedPolicy && resolvedPolicy.policy !== 'neutral' ? resolvedPolicy.policy : undefined;
@@ -1694,6 +1699,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // Lean candidate metadata (flagged path only) — populated by the candidate
   // orchestration branch, surfaced under academicDecision.candidates below.
   let candidateOrchestration: Record<string, unknown> | undefined;
+  // Evidence actually used by the selected candidate. Reused later by the
+  // intent outcome so ranking and explanation cannot disagree.
+  let selectedGroundedContributions: ObjectiveContribution[] = [];
   // Slice 18A — deterministic hard-constraint analysis (flagged path only).
   let hardConstraintOutcome: ReturnType<typeof analyzeHardConstraints> | undefined;
 
@@ -1762,6 +1770,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ...(groundedForRanking ? { groundedObjectives: groundedForRanking } : {}),
     });
     const selected = selectCandidate(candidateSet);
+    selectedGroundedContributions = selected?.objectiveScores?.flatMap((c) => c.contributions) ?? [];
     // Proposal is built from the primary candidate's exact state; if NOTHING
     // validated, fall back to the plain greedy state so the existing blocking
     // gates below produce the deterministic non-applyable outcome — never a
@@ -2090,20 +2099,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Aligned-placed set derived from the FINAL proposal ∩ the same fit evidence
     // the planner scored — so the focus outcome reflects real placements only.
     const placedNow = new Set(proposal.semesters.flatMap((s: any) => s.course_ids));
-    const fitAlignedPlacedCourseIds = courseFitById
-      ? new Set([...courseFitById.keys()].filter((id) => placedNow.has(id)))
-      : undefined;
+    const requestedGroundedTopics = new Set(groundedTopicsForFocusAreas(interpretedIntent.focusAreas ?? []));
+    const groundedFocusContributions = selectedGroundedContributions.filter(
+      (c) => c.feature === 'topic' && c.topicId !== undefined && requestedGroundedTopics.has(c.topicId),
+    );
+    const fitAlignedPlacedCourseIds = new Set([
+      ...(courseFitById ? [...courseFitById.keys()].filter((id) => placedNow.has(id)) : []),
+      ...groundedFocusContributions.map((c) => c.courseId).filter((id) => placedNow.has(id)),
+    ]);
     // Evidence chain for the explanation: official-syllabus course evidence for each
     // aligned placed course, plus the authoritative external-context (goal→capability)
     // relationships for the requested focus areas. Kept as two distinct layers.
-    const focusEvidenceByCourseId = courseFit
-      ? new Map(
-          [...(fitAlignedPlacedCourseIds ?? [])]
+    const focusEvidenceByCourseId = new Map(
+      courseFit
+        ? [...fitAlignedPlacedCourseIds]
             .map((id) => [id, courseFit.evidenceById.get(id)] as const)
             .filter(([, e]) => e)
-            .map(([id, e]) => [id, { inferenceLevel: e!.inferenceLevel, extractedEvidence: e!.extractedEvidence, sourceUrl: e!.sourceUrl, confidence: e!.confidence }]),
-        )
-      : undefined;
+            .map(([id, e]) => [id, { inferenceLevel: e!.inferenceLevel, extractedEvidence: e!.extractedEvidence, sourceUrl: e!.sourceUrl, confidence: e!.confidence }] as const)
+        : [],
+    );
+    for (const contribution of groundedFocusContributions) {
+      if (focusEvidenceByCourseId.has(contribution.courseId)) continue;
+      focusEvidenceByCourseId.set(contribution.courseId, {
+        inferenceLevel: 'explicit',
+        extractedEvidence: contribution.excerpt ?? null,
+        sourceUrl: contribution.sourceRef || null,
+        confidence: 0.9,
+      });
+    }
     const focusExternalContext = (interpretedIntent.focusAreas ?? []).some((f) => f.area === 'mechanical_design')
       ? getExternalContextEvidence('engineering_design').map((r) => ({ capability: r.capability, publisher: r.publisher, sourceUrl: r.sourceUrl, extractedEvidence: r.extractedEvidence }))
       : undefined;
