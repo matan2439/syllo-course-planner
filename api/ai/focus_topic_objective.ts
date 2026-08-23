@@ -23,6 +23,40 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
   robotics: 'robotics',
 };
 
+function finalize(
+  base: GroundedObjectiveResult | undefined,
+  objectives: ResolvedObjective[],
+): GroundedObjectiveResult | undefined {
+  if (!objectives.length && !base?.excluded?.length) return undefined;
+  const sorted = [...objectives].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const first = sorted[0];
+  if (!first) {
+    if (!base) return undefined;
+    const {
+      objective: _objective,
+      provenance: _provenance,
+      topicIds: _topicIds,
+      primaryObjectiveId: _primaryObjectiveId,
+      prioritySource: _prioritySource,
+      priorityChoice: _priorityChoice,
+      ...rest
+    } = base;
+    return { ...rest, objectives: [] };
+  }
+  return {
+    ...(base ?? { objectives: [] }),
+    objectives: sorted,
+    objective: first.id,
+    provenance: {
+      preferenceId: first.preferenceId,
+      feature: first.kind === 'topic' ? 'course_topic_interest' : first.target as 'practical_laboratory' | 'project_based',
+      source: first.source,
+      profileVersion: first.profileVersion,
+    },
+    ...(first.kind === 'topic' && first.topicIds?.length ? { topicIds: first.topicIds } : { topicIds: undefined }),
+  };
+}
+
 export function groundedTopicsForFocusAreas(
   focusAreas: ReadonlyArray<{ area: AcademicFocusArea; weight?: number }>,
 ): TopicId[] {
@@ -63,22 +97,59 @@ export function mergeExplicitFocusObjective(
         profileVersion,
       };
 
-  const objectives = [
+  return finalize(base, [
     ...(base?.objectives.filter((o) => o.id !== 'prefer_topic_alignment') ?? []),
     topicObjective,
-  ].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const first = objectives[0];
+  ]);
+}
 
-  return {
-    ...(base ?? { objectives: [] }),
-    objectives,
-    objective: first.id,
-    provenance: {
-      preferenceId: first.preferenceId,
-      feature: first.kind === 'topic' ? 'course_topic_interest' : first.target as 'practical_laboratory' | 'project_based',
-      source: first.source,
-      profileVersion: first.profileVersion,
-    },
-    ...(first.kind === 'topic' && first.topicIds?.length ? { topicIds: first.topicIds } : { topicIds: undefined }),
-  };
+/**
+ * Add structured topic avoidance as a SOFT minimization objective. A topic
+ * simultaneously requested and avoided is removed from BOTH objectives and
+ * disclosed as conflicting; no array/source order gets to resolve it.
+ */
+export function mergeStructuredAvoidObjective(
+  base: GroundedObjectiveResult | undefined,
+  avoidAreas: ReadonlyArray<{ area: AcademicFocusArea; weight?: number }>,
+  profileVersion: number,
+): GroundedObjectiveResult | undefined {
+  const requestedAvoid = groundedTopicsForFocusAreas(avoidAreas);
+  if (!requestedAvoid.length) return base;
+
+  const positive = base?.objectives.find((o) => o.id === 'prefer_topic_alignment');
+  const positiveTopics = new Set(positive?.topicIds ?? []);
+  const conflicts = requestedAvoid.filter((t) => positiveTopics.has(t));
+  const conflictSet = new Set(conflicts);
+  const avoidTopics = requestedAvoid.filter((t) => !conflictSet.has(t));
+  const keptPositiveTopics = [...positiveTopics].filter((t) => !conflictSet.has(t)).sort();
+
+  const objectives = (base?.objectives ?? [])
+    .filter((o) => o.id !== 'prefer_topic_alignment' && o.id !== 'avoid_topic_exposure');
+  if (positive && keptPositiveTopics.length) objectives.push({ ...positive, topicIds: keptPositiveTopics });
+  if (avoidTopics.length) {
+    objectives.push({
+      id: 'avoid_topic_exposure',
+      preferenceId: `structured_academic_profile:avoid:${avoidTopics.join('+')}`,
+      kind: 'topic',
+      target: 'course_topic_avoidance',
+      topicIds: avoidTopics,
+      source: 'structured_academic_profile',
+      profileVersion,
+    });
+  }
+
+  const withConflict = conflicts.length
+    ? {
+        ...(base ?? { objectives: [] }),
+        excluded: [
+          ...(base?.excluded ?? []),
+          ...conflicts.map((topic) => ({
+            id: `conflicting_topic:${topic}`,
+            value: topic,
+            reason: 'conflicting_grounded_topic' as const,
+          })),
+        ],
+      }
+    : base;
+  return finalize(withConflict, objectives);
 }

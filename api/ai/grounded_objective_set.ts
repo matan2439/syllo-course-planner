@@ -62,7 +62,7 @@ const FEATURE_TO_OBJECTIVE: Record<SupportedGroundedFeature, GroundedObjectiveId
 export interface GroundedObjectiveExclusion {
   id: string;
   value: string;
-  reason: 'unsupported_grounded_feature' | 'unsupported_grounded_topic';
+  reason: 'unsupported_grounded_feature' | 'unsupported_grounded_topic' | 'conflicting_grounded_topic';
 }
 
 /** One confirmed preference, resolved into an independently rankable objective. */
@@ -285,11 +285,16 @@ export function scoreObjective(
   );
   const perCourse = objective.kind === 'topic' ? Math.max(1, objective.topicIds?.length ?? 0) : 1;
   const denominator = distinct.length * perCourse;
+  const normalized = denominator > 0 ? score.score / denominator : 0;
   return {
     objectiveId: objective.id,
     raw: score.score,
     denominator,
-    normalized: denominator > 0 ? score.score / denominator : 0,
+    // Avoidance is a minimization objective represented in the shared
+    // higher-is-better [0,1] vector: no PROVEN exposure is neutral-best (1),
+    // and each affirmative avoided-topic match lowers it. Missing evidence and
+    // known non-matches therefore tie; coverage absence is never rewarded.
+    normalized: objective.id === 'avoid_topic_exposure' ? 1 - normalized : normalized,
     contributions: score.contributions,
     unknownCourseIds: score.unknownCourseIds,
     variesBySectionCourseIds: score.variesBySectionCourseIds,

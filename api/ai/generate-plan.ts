@@ -88,7 +88,7 @@ import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_con
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
-import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective } from './focus_topic_objective';
+import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective, mergeStructuredAvoidObjective } from './focus_topic_objective';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective, type ObjectiveContribution } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
@@ -1596,11 +1596,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     interpretedIntent?.focusAreas ?? [],
     preference_profile?.version ?? 0,
   );
-  const resolvedGrounded = mergeExplicitFocusObjective(
+  const groundedWithStructuredFocus = mergeExplicitFocusObjective(
     groundedWithFreeTextFocus,
     normalizedAcademicInterestProfile.focusAreas,
     preference_profile?.version ?? 0,
     'structured_academic_profile',
+  );
+  const resolvedGrounded = mergeStructuredAvoidObjective(
+    groundedWithStructuredFocus,
+    normalizedAcademicInterestProfile.avoidAreas,
+    preference_profile?.version ?? 0,
   );
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
   const distributionPolicy: DistributionPolicy | undefined =
@@ -2249,24 +2254,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // Slice 17A — the resolved semester-distribution policy the planner actually
       // consumed, with provenance (preference id, source, profile version).
       (responseBody.academicDecision as Record<string, unknown>).distributionPolicy = resolvedPolicy;
-      // K9A — the resolved grounded course-feature objective (or an explicit
-      // null when none applies), with provenance and any unsupported feature
-      // values surfaced rather than silently dropped.
-      (responseBody.academicDecision as Record<string, unknown>).groundedObjective = {
-        objective: resolvedGrounded?.objective ?? null,
-        // M1 — the authoritative set. `objective` above stays as the legacy
-        // single view so existing consumers are unchanged.
-        objectives: (resolvedGrounded?.objectives ?? []).map((o) => ({
-          id: o.id, preferenceId: o.preferenceId, kind: o.kind, target: o.target,
-          ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
-          source: o.source, profileVersion: o.profileVersion,
-          ...(typeof o.priority === 'number' ? { priority: o.priority } : {}),
-        })),
-        ...(resolvedGrounded?.provenance ? { provenance: resolvedGrounded.provenance } : {}),
-        ...(resolvedGrounded?.excluded ? { excluded: resolvedGrounded.excluded } : {}),
-        ...(resolvedGrounded?.prioritySource ? { prioritySource: resolvedGrounded.prioritySource } : {}),
-      };
     }
+    // K9A/B3–B5 — every grounded source is disclosed, including structured
+    // academic focus/avoidance that does not require a PreferenceProfile.
+    // Conflicts are surfaced here rather than silently resolved by source order.
+    (responseBody.academicDecision as Record<string, unknown>).groundedObjective = {
+      objective: resolvedGrounded?.objective ?? null,
+      objectives: (resolvedGrounded?.objectives ?? []).map((o) => ({
+        id: o.id, preferenceId: o.preferenceId, kind: o.kind, target: o.target,
+        ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
+        source: o.source, profileVersion: o.profileVersion,
+        ...(typeof o.priority === 'number' ? { priority: o.priority } : {}),
+      })),
+      ...(resolvedGrounded?.provenance ? { provenance: resolvedGrounded.provenance } : {}),
+      ...(resolvedGrounded?.excluded ? { excluded: resolvedGrounded.excluded } : {}),
+      ...(resolvedGrounded?.prioritySource ? { prioritySource: resolvedGrounded.prioritySource } : {}),
+    };
     // Lean candidate-orchestration metadata (the flagged proposal is built from
     // the selected validated candidate). Present on every flagged run.
     if (candidateOrchestration) {

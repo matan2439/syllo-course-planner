@@ -124,6 +124,9 @@ test('the course-details/interest UI slice adds no UNRELATED backend/api churn',
     // backend files it deliberately owns.
     'api/ai/focus_topic_objective.ts',
     'api/ai/generate-plan.ts',
+    'api/ai/grounded_objective_set.ts',
+    'api/ai/grounded_objectives.ts',
+    'api/ai/plan_alternatives.ts',
     'api/ai/planning_intent.ts',
   ]);
   const diff = execSync('git diff --name-only HEAD -- api', { cwd: ROOT })

@@ -1,7 +1,19 @@
 import {
   groundedTopicsForFocusAreas,
   mergeExplicitFocusObjective,
+  mergeStructuredAvoidObjective,
 } from '../../api/ai/focus_topic_objective';
+import { scoreObjective, type ResolvedObjective } from '../../api/ai/grounded_objective_set';
+
+const avoidMaterials: ResolvedObjective = {
+  id: 'avoid_topic_exposure',
+  preferenceId: 'avoid-materials',
+  kind: 'topic',
+  target: 'course_topic_avoidance',
+  topicIds: ['materials'],
+  source: 'structured_academic_profile',
+  profileVersion: 1,
+};
 
 describe('explicit academic focus → evidence-backed topic objective', () => {
   test('maps only semantically supported existing focus areas', () => {
@@ -45,6 +57,53 @@ describe('explicit academic focus → evidence-backed topic objective', () => {
       preferenceId: 'structured_academic_profile:materials',
       profileVersion: 3,
     });
+  });
+
+  test('structured avoidance is canonical and carries distinct provenance', () => {
+    const a = mergeStructuredAvoidObjective(undefined, [
+      { area: 'materials', weight: 1 }, { area: 'robotics', weight: 1 },
+    ], 4)!;
+    const b = mergeStructuredAvoidObjective(undefined, [
+      { area: 'robotics', weight: 1 }, { area: 'materials', weight: 1 },
+    ], 4)!;
+    expect(a.objectives).toEqual(b.objectives);
+    expect(a.objectives[0]).toMatchObject({
+      id: 'avoid_topic_exposure',
+      topicIds: ['materials', 'robotics'],
+      source: 'structured_academic_profile',
+    });
+  });
+
+  test('the same topic in focus and avoid is removed from both and disclosed', () => {
+    const focused = mergeExplicitFocusObjective(undefined, [{ area: 'materials' }], 2)!;
+    const conflicted = mergeStructuredAvoidObjective(focused, [{ area: 'materials' }], 2)!;
+    expect(conflicted.objectives).toEqual([]);
+    expect(conflicted.excluded).toContainEqual({
+      id: 'conflicting_topic:materials',
+      value: 'materials',
+      reason: 'conflicting_grounded_topic',
+    });
+  });
+
+  test('unknown evidence and an evidenced non-match are equally neutral', () => {
+    const topics = new Map([
+      ['KNOWN_OTHER', { topicIds: new Set(['robotics' as const]), sourceRef: 'official:other', academicYear: 2027 }],
+    ]);
+    const unknown = scoreObjective(['UNKNOWN'], avoidMaterials, 'snapshot', new Map(), topics);
+    const knownOther = scoreObjective(['KNOWN_OTHER'], avoidMaterials, 'snapshot', new Map(), topics);
+    expect(unknown.normalized).toBe(1);
+    expect(knownOther.normalized).toBe(1);
+  });
+
+  test('only affirmative avoided-topic evidence lowers the objective', () => {
+    const topics = new Map([
+      ['EXPOSED', { topicIds: new Set(['materials' as const]), sourceRef: 'official:materials', academicYear: 2027 }],
+    ]);
+    const exposed = scoreObjective(['EXPOSED', 'EXPOSED'], avoidMaterials, 'snapshot', new Map(), topics);
+    expect(exposed.raw).toBe(1);
+    expect(exposed.denominator).toBe(1);
+    expect(exposed.normalized).toBe(0);
+    expect(exposed.contributions).toHaveLength(1);
   });
 
   test('merges with a typed topic objective without replacing its provenance', () => {

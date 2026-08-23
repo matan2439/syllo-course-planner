@@ -410,6 +410,63 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(focused._body.academicDecision).toBeUndefined();
   });
 
+  test('a structured avoid area removes evidenced exposure through soft grounded ranking', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'חומרים הנדסיים ותכונות החומר.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'מבוא כללי.'),
+    ];
+    const control = await run(body());
+    const avoiding = await run(body({
+      academic_interest_profile: { avoidAreas: [{ area: 'materials', weight: 1 }] },
+    }));
+
+    expect(placed(control._body)).toContain('E1');
+    expect(placed(avoiding._body)).not.toContain('E1');
+    expect(candidates(avoiding._body).evidence.groundedObjective).toBe('avoid_topic_exposure');
+    expect(candidates(avoiding._body).groundedExplanationHe).toContain('חומרים');
+  });
+
+  test('structured avoidance stays soft: hard wanted inclusion still wins', async () => {
+    MOCK_DOCUMENTS = [topicDoc('E1', 'חומרים הנדסיים ותכונות החומר.')];
+    const res = await run(body({
+      preferences: { disallowed_course_ids: [], wanted_course_ids: ['E1'] },
+      academic_interest_profile: { avoidAreas: [{ area: 'materials', weight: 1 }] },
+    }));
+    expect(placed(res._body)).toContain('E1');
+  });
+
+  test('flag-off ignores structured avoidance for ranking', async () => {
+    MOCK_DOCUMENTS = [topicDoc('E1', 'חומרים הנדסיים ותכונות החומר.')];
+    const control = await run({ ...body(), use_academic_decision_agent: undefined });
+    const avoiding = await run({
+      ...body({ academic_interest_profile: { avoidAreas: [{ area: 'materials', weight: 1 }] } }),
+      use_academic_decision_agent: undefined,
+    });
+    expect(placed(avoiding._body)).toEqual(placed(control._body));
+    expect(avoiding._body.academicDecision).toBeUndefined();
+  });
+
+  test('conflicting structured focus and avoidance fail safe and are disclosed', async () => {
+    MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
+    const control = await run(body());
+    const conflict = await run(body({
+      academic_interest_profile: {
+        focusAreas: [{ area: 'materials', weight: 1 }],
+        avoidAreas: [{ area: 'materials', weight: 1 }],
+      },
+    }));
+    expect(placed(conflict._body)).toEqual(placed(control._body));
+    expect(candidates(conflict._body).evidence.groundedObjective).toBeNull();
+    expect(conflict._body.academicDecision.groundedObjective).toMatchObject({
+      objective: null,
+      objectives: [],
+      excluded: [expect.objectContaining({
+        value: 'materials', reason: 'conflicting_grounded_topic',
+      })],
+    });
+  });
+
   test('the explanation names the PROJECT feature, not laboratory', async () => {
     MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
     const res = await run(withPref([projectPref()]));

@@ -42,7 +42,8 @@ export type GroundedObjectiveId =
    * whose semantics are weaker: a topic is affirmed or unknown, never false,
    * because prose that omits a subject does not establish its absence.
    */
-  | 'prefer_topic_alignment';
+  | 'prefer_topic_alignment'
+  | 'avoid_topic_exposure';
 
 /**
  * Which extracted feature each objective reads, and how it is described. Both
@@ -89,6 +90,10 @@ export function objectiveSubjectHe(
   if (objectiveId === 'prefer_topic_alignment') {
     const names = [...new Set(topicIds)].sort().map((t) => TOPIC_LABEL_HE[t]).filter(Boolean);
     return names.length ? `תחום התוכן: ${names.join(', ')}` : undefined;
+  }
+  if (objectiveId === 'avoid_topic_exposure') {
+    const names = [...new Set(topicIds)].sort().map((t) => TOPIC_LABEL_HE[t]).filter(Boolean);
+    return names.length ? `הימנעות מתוכן בתחום ${names.join(', ')}` : undefined;
   }
   return undefined;
 }
@@ -179,7 +184,7 @@ export function scoreCandidateOnObjective(
   const unknownCourseIds: string[] = [];
   const variesBySectionCourseIds: string[] = [];
 
-  if (objective.id === 'prefer_topic_alignment') {
+  if (objective.id === 'prefer_topic_alignment' || objective.id === 'avoid_topic_exposure') {
     return scoreTopicAlignment(courseIds, objective, features, topics);
   }
 
@@ -274,6 +279,7 @@ export function explainGroundedRanking(input: {
 }): string {
   const { selected, alternative } = input;
   if (input.objective.id === 'prefer_topic_alignment') return explainTopicAlignment(input);
+  if (input.objective.id === 'avoid_topic_exposure') return explainAvoidedTopicExposure(input);
   const label = OBJECTIVE_FEATURE[input.objective.id].labelHe;
   if (selected.contributions.length === 0 && (!alternative || alternative.contributions.length === 0)) {
     const varying = selected.variesBySectionCourseIds?.length
@@ -344,6 +350,25 @@ function explainTopicAlignment(input: {
     ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא פורסם תוכן רשמי שניתן להשוות, ולכן הם לא נספרו לכאן ולא לכאן.`
     : ' יש לשים לב שהיעדר אזכור בתוכן הרשמי אינו קביעה שהנושא לא נלמד בקורס.';
   return head + provenance + compare + unknown;
+}
+
+/** Explain only PROVEN exposure; silence remains explicitly unknown/neutral. */
+function explainAvoidedTopicExposure(input: {
+  objective: GroundedObjective;
+  selected: GroundedScore;
+  alternative?: GroundedScore;
+}): string {
+  const avoided = [...new Set(input.objective.topicIds ?? [])].sort();
+  const names = avoided.map((t) => TOPIC_LABEL_HE[t]).join(', ');
+  const exposedCourses = [...new Set(input.selected.contributions.map((c) => c.courseId))];
+  const head = exposedCourses.length
+    ? `בתוכנית הנבחרת נותרו ${exposedCourses.length} קורס/ים עם אזכור רשמי לתחומים שביקשת להימנע מהם (${names}): ${exposedCourses.join(', ')}.`
+    : `לא נמצאה בתוכנית הנבחרת עדות רשמית לתחומים שביקשת להימנע מהם (${names}).`;
+  const compare = input.alternative
+    ? ` בחלופה חוקית אחרת נמצאו ${input.alternative.contributions.length} התאמות מוכחות לתחומים האלה.`
+    : '';
+  const limit = ' היעדר אזכור בסילבוס אינו הוכחה שהנושא אינו נלמד; קורסים ללא ראיה נשארו ניטרליים ולא סומנו כבטוחים.';
+  return head + compare + limit;
 }
 
 /**
@@ -443,7 +468,14 @@ function explicitPrioritySentence(input: {
   const strongerElsewhere = alternative
     ? objectives
         .map((o, i) => ({ o, i }))
-        .find(({ i }) => i !== k && (alternative[i]?.score ?? 0) > (selected[i]?.score ?? 0))
+        .find(({ o, i }) => {
+          if (i === k) return false;
+          const a = alternative[i]?.score ?? 0;
+          const s = selected[i]?.score ?? 0;
+          // For avoidance, fewer proven matches is stronger; every other
+          // objective remains higher-is-better on its raw score.
+          return o.id === 'avoid_topic_exposure' ? a < s : a > s;
+        })
     : undefined;
   const tradeoff = strongerElsewhere
     ? ` חלופה חוקית אחרת עדיין מתאימה יותר ל${objectiveSubjectHe(strongerElsewhere.o.id, strongerElsewhere.o.topicIds ?? [])}, והיא נשארת זמינה לבחירה.`

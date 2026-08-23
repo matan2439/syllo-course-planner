@@ -107,6 +107,10 @@ function objectiveLabelHe(objectiveId: string, topicIds: readonly TopicId[]): st
     const names = topicIds.map((t) => TOPIC_INTEREST_LABELS_HE[t]).filter(Boolean);
     return names.length ? `יותר קורסים בתחום ${names.join(', ')}` : undefined;
   }
+  if (objectiveId === 'avoid_topic_exposure') {
+    const names = topicIds.map((t) => TOPIC_INTEREST_LABELS_HE[t]).filter(Boolean);
+    return names.length ? `פחות חשיפה מוכחת לתחום ${names.join(', ')}` : undefined;
+  }
   return undefined;
 }
 
