@@ -20,6 +20,7 @@ import {
 } from '../../api/ai/candidate_set';
 import { buildConstraintModel } from '../../api/ai/planner_model';
 import { validateCandidate } from '../../api/ai/planner_validate';
+import type { TopicId } from '../../api/ai/course_topics';
 import type { ConstraintModel, DistributionPolicy, PlanState } from '../../api/ai/planner_types';
 
 const SEM_A = 'year_3_semester_a';
@@ -119,6 +120,128 @@ describe('one confirmed profile → one fixed planning policy for every candidat
 // ── multi-combination search ─────────────────────────────────────────────────
 
 describe('real multi-combination candidate generation under ONE fixed policy', () => {
+  test('a completed baseline still yields a legal course-set alternative when grounded evidence favors an unplaced elective', () => {
+    const model = () => mk(
+      [{ id: 'E1', hours: 4 }, { id: 'E2', hours: 4 }, { id: 'E3', hours: 4 }],
+      { totalHours: 8 },
+    );
+    const set = generateCandidateSet({
+      buildModel: model,
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['E1', 'E2'], [SEM_B]: [] } },
+      profileVersion: 3,
+      groundedObjectives: {
+        objectives: [{
+          id: 'prefer_topic_alignment', preferenceId: 'course_topic_robotics',
+          kind: 'topic', target: 'robotics', topicIds: ['robotics'],
+          source: 'explicit_answer', profileVersion: 3,
+        }],
+        snapshotId: 'snap_real',
+        features: new Map(),
+        topics: new Map([
+          ['E1', { topicIds: new Set(), sourceRef: 'official:E1', academicYear: 2025 }],
+          ['E2', { topicIds: new Set(), sourceRef: 'official:E2', academicYear: 2025 }],
+          ['E3', { topicIds: new Set(['robotics']), sourceRef: 'official:E3', academicYear: 2025 }],
+        ]),
+      },
+    });
+
+    const courseSets = set.candidates.map((c) => [...new Set(Object.values(c.state.semesters).flat())].sort());
+    expect(courseSets).toContainEqual(['E1', 'E2']);
+    expect(courseSets.some((ids) => ids.includes('E3'))).toBe(true);
+    expect(courseSets[0]).toContain('E3');
+    for (const candidate of set.candidates) expect(validateCandidate(candidate.state, model()).valid).toBe(true);
+  });
+
+  test('grounded discovery prefers a load-preserving swap over an earlier evidence-equivalent distractor', () => {
+    const model = () => mk(
+      [
+        { id: 'E1', hours: 4 }, { id: 'E2', hours: 4 },
+        { id: 'A_HEAVY', hours: 6 }, { id: 'Z_EQUAL', hours: 4 },
+      ],
+      { totalHours: 8 },
+    );
+    const topicFact = (id: string, matched: boolean) => [id, {
+      topicIds: new Set<TopicId>(matched ? ['robotics'] : []),
+      sourceRef: `official:${id}`, academicYear: 2025,
+    }] as const;
+    const set = generateCandidateSet({
+      buildModel: model,
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      profileVersion: 3,
+      maxCandidates: 3,
+      groundedObjectives: {
+        objectives: [{
+          id: 'prefer_topic_alignment', preferenceId: 'course_topic_robotics',
+          kind: 'topic', target: 'robotics', topicIds: ['robotics'],
+          source: 'explicit_answer', profileVersion: 3,
+        }],
+        snapshotId: 'snap_order', features: new Map(),
+        topics: new Map([
+          topicFact('E1', false), topicFact('E2', false),
+          topicFact('A_HEAVY', true), topicFact('Z_EQUAL', true),
+        ]),
+      },
+    });
+
+    const selected = Object.values(selectCandidate(set)!.state.semesters).flat();
+    expect(selected).toContain('Z_EQUAL');
+    expect(selected).not.toContain('A_HEAVY');
+  });
+
+  test('grounded evidence never reintroduces a hard-excluded course', () => {
+    const model = () => mk(
+      [{ id: 'E1', hours: 4 }, { id: 'E2', hours: 4 }, { id: 'E3', hours: 4 }],
+      { totalHours: 8, disallowedCourseIds: ['E3'] },
+    );
+    const set = generateCandidateSet({
+      buildModel: model, policy: 'neutral', profileVersion: 3,
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      groundedObjectives: {
+        objectives: [{
+          id: 'prefer_topic_alignment', preferenceId: 'course_topic_robotics',
+          kind: 'topic', target: 'robotics', topicIds: ['robotics'],
+          source: 'explicit_answer', profileVersion: 3,
+        }],
+        snapshotId: 'snap_hard', features: new Map(),
+        topics: new Map([['E3', {
+          topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:E3', academicYear: 2025,
+        }]]),
+      },
+    });
+
+    for (const candidate of set.candidates) {
+      expect(Object.values(candidate.state.semesters).flat()).not.toContain('E3');
+      expect(validateCandidate(candidate.state, model()).valid).toBe(true);
+    }
+  });
+
+  test('grounded swap discovery is invariant to catalog and evidence-map order', () => {
+    const courses = [
+      { id: 'E1', hours: 4 }, { id: 'E2', hours: 4 },
+      { id: 'A_HEAVY', hours: 6 }, { id: 'Z_EQUAL', hours: 4 },
+    ];
+    const run = (reverse: boolean) => generateCandidateSet({
+      buildModel: () => mk(reverse ? [...courses].reverse() : courses, { totalHours: 8 }),
+      policy: 'neutral', profileVersion: 3,
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      groundedObjectives: {
+        objectives: [{
+          id: 'prefer_topic_alignment', preferenceId: 'course_topic_robotics',
+          kind: 'topic', target: 'robotics', topicIds: ['robotics'],
+          source: 'explicit_answer', profileVersion: 3,
+        }],
+        snapshotId: 'snap_order', features: new Map(),
+        topics: new Map((reverse ? ['Z_EQUAL', 'A_HEAVY'] : ['A_HEAVY', 'Z_EQUAL']).map((id) => [id, {
+          topicIds: new Set<TopicId>(['robotics']), sourceRef: `official:${id}`, academicYear: 2025,
+        }])),
+      },
+    });
+
+    expect(run(false).candidates.map((c) => c.id)).toEqual(run(true).candidates.map((c) => c.id));
+  });
+
   test('a fixture with several legal elective combinations retains at least two DISTINCT candidates', () => {
     const set = gen(manyCombinations);
     expect(set.candidates.length).toBeGreaterThanOrEqual(2);

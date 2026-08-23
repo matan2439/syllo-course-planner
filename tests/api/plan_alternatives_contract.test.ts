@@ -36,9 +36,10 @@ const BOARD = {
     completed_course_ids: [],
     program_requirements_categories: { total_required_hours: 8, categories: [] },
     program_repository_courses: ELECTIVES.map((id) => ({
-      course_id: id, name_he: `קורס ${id}`, weekly_hours: 4, is_mandatory: false,
-      course_type: 'elective', placement_policy: 'elective',
-      offered_semesters: [SEM_A, SEM_B], prerequisites: [],
+      course_id: id, name_he: `קורס ${id}`, weekly_hours: 4, is_mandatory: id === 'E1',
+      course_type: id === 'E1' ? 'mandatory' : 'elective',
+      placement_policy: id === 'E1' ? 'mandatory' : 'elective',
+      offered_semesters: id === 'E1' ? [SEM_A] : [SEM_B], prerequisites: [],
     })),
   },
 };
@@ -54,9 +55,9 @@ function doc(courseId: string, delivery: string, content: string): SyllabusDocum
 }
 
 /**
- * A genuine TRADE-OFF corpus: E2 is a project course with no distinguishing
- * topic, E3 covers robotics but is a lecture. Neither candidate dominates, so
- * both belong on the Pareto front and both deserve to be shown.
+ * A genuine TRADE-OFF corpus: mandatory E1 is shared by every legal plan; the
+ * remaining degree slot can be E2 (project, no distinguishing topic) or E3
+ * (robotics, lecture). Neither legal candidate dominates the other.
  */
 const TRADEOFF = [
   doc('E1', 'שיעור', 'תכן הנדסי בלבד.'),

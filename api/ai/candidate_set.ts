@@ -59,8 +59,9 @@
  * bounded deterministic search, not a proof.
  */
 import { PlannerWorker } from './planner_worker';
-import { scorePlan, compareScore } from './planner_goals';
+import { scorePlan, compareScore, applyMutation } from './planner_goals';
 import { validateCandidate } from './planner_validate';
+import { legalSemestersFor } from './planner_actions';
 import { placedCourseIds, type ConstraintModel, type PlanState, type DistributionPolicy } from './planner_types';
 import {
   scoreCandidateOnObjective,
@@ -374,6 +375,47 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   const maxRuns = Math.max(1, input.maxRuns ?? DEFAULT_MAX_RUNS);
   const pinnedHome = input.pinnedHome ?? {};
 
+  // Resolve the objective set before generation as well as ranking: it may
+  // guide a bounded set of post-completion elective swaps. This is the same
+  // evidence and the same objective definition ranking uses below.
+  const grounded = input.groundedObjective;
+  const objectiveSet: readonly ResolvedObjective[] = input.groundedObjectives
+    ? input.groundedObjectives.objectives
+    : grounded
+      ? [{
+          id: grounded.objective.id,
+          preferenceId: 'legacy',
+          kind: grounded.objective.id === 'prefer_topic_alignment' ? 'topic' : 'delivery',
+          target: grounded.objective.id,
+          ...(grounded.objective.topicIds?.length ? { topicIds: [...grounded.objective.topicIds] } : {}),
+          source: 'legacy',
+          profileVersion: input.profileVersion,
+        } as ResolvedObjective]
+      : [];
+  const evidence = input.groundedObjectives ?? (grounded
+    ? { snapshotId: grounded.objective.snapshotId, features: grounded.features, topics: grounded.topics }
+    : undefined);
+
+  type Raw = {
+    model: ConstraintModel;
+    state: PlanState;
+    report: ReturnType<typeof validateCandidate>;
+    identity: string;
+    scoreVector: number[];
+    rationaleHe: string;
+    provenance: string;
+  };
+
+  const evaluate = (model: ConstraintModel, state: PlanState, provenance: string, rationaleHe: string): Raw => ({
+    model,
+    state,
+    report: validateCandidate(state, model, pinnedHome),
+    identity: normalizeIdentity(state),
+    scoreVector: scorePlan(state, model),
+    rationaleHe,
+    provenance,
+  });
+
   const run = (deviation?: { atStep: number; rank: number }) => {
     const model = input.buildModel(input.policy);
     const worker = new PlannerWorker(model, structuredClone(input.initialState), {
@@ -382,18 +424,12 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     });
     worker.run(500, 'greedy');
     const state = worker.getPlan();
-    return {
+    return evaluate(
       model,
       state,
-      // The AUTHORITATIVE gate: completion + legality + mandatory + categories +
-      // must_exclude + must_include. A candidate that fails is never retained —
-      // a degraded plan is not an alternative.
-      report: validateCandidate(state, model, pinnedHome),
-      identity: normalizeIdentity(state),
-      scoreVector: scorePlan(state, model),
-      rationaleHe: worker.explain().summary_he,
-      provenance: deviation ? `deviation:${deviation.atStep}:${deviation.rank}` : 'greedy_baseline',
-    };
+      deviation ? `deviation:${deviation.atStep}:${deviation.rank}` : 'greedy_baseline',
+      worker.explain().summary_he,
+    );
   };
 
   // 1. The plain greedy run under the resolved policy — the legacy single-plan
@@ -401,9 +437,106 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   const baseline = run();
   let runsExecuted = 1;
 
-  type Raw = ReturnType<typeof run>;
   const byIdentity = new Map<string, Raw>();
   if (baseline.report.valid) byIdentity.set(baseline.identity, baseline);
+
+  // A completed worker has no advancing action, so deviations can vary only
+  // earlier choices (and on a mature real board often converge to the same
+  // course set). When a confirmed grounded objective exists, try a bounded,
+  // deterministic ONE-elective swap from the valid baseline. This is candidate
+  // discovery, not a validation shortcut: every result passes the exact same
+  // authoritative validator before retention, and all attempts consume the
+  // existing maxRuns budget.
+  if (baseline.report.valid && objectiveSet.length && evidence && maxCandidates > 1) {
+    const placed = new Set(placedCourseIds(baseline.state));
+    const potential = (courseId: string) => composedUtility(
+      objectiveSet.map((o) => scoreObjective([courseId], o, evidence.snapshotId, evidence.features, evidence.topics).normalized),
+    );
+    const incoming = [...baseline.model.profiles.keys()]
+      .filter((id) => !placed.has(id) && !baseline.model.completedCourseIds.has(id)
+        && !baseline.model.currentlyPlannedCourseIds?.has(id) && !baseline.model.disallowedCourseIds.has(id))
+      .sort((a, b) => potential(b) - potential(a) || (a < b ? -1 : a > b ? 1 : 0));
+    const outgoing = [...placed]
+      .filter((id) => !baseline.model.profiles.get(id)?.is_mandatory
+        && !baseline.model.mustIncludeCourseIds?.has(id) && pinnedHome[id] === undefined)
+      .sort((a, b) => potential(a) - potential(b) || (a < b ? -1 : a > b ? 1 : 0));
+
+    type SwapOption = {
+      inId: string;
+      outId: string;
+      semesterId: string;
+      gain: number;
+      sameHome: boolean;
+      sameHours: boolean;
+      sameCategory: boolean;
+    };
+    const homeSemesters = (courseId: string) => Object.entries(baseline.state.semesters)
+      .filter(([, ids]) => ids.includes(courseId))
+      .map(([semesterId]) => semesterId);
+    const swapOptions: SwapOption[] = [];
+    for (const inId of incoming) {
+      // A zero-potential course cannot make the active objective more
+      // expressive than the baseline; leave generic non-objective diversity to
+      // the existing deviation mechanism.
+      if (potential(inId) <= 0) break;
+      for (const outId of outgoing) {
+        const gain = potential(inId) - potential(outId);
+        if (gain <= 0) continue;
+        const inProfile = baseline.model.profiles.get(inId);
+        const outProfile = baseline.model.profiles.get(outId);
+        const homes = homeSemesters(outId);
+        for (const semesterId of legalSemestersFor(baseline.model, inId)) {
+          swapOptions.push({
+            inId,
+            outId,
+            semesterId,
+            gain,
+            sameHome: homes.includes(semesterId),
+            sameHours: inProfile?.hours != null && inProfile.hours === outProfile?.hours,
+            sameCategory: inProfile?.category_id != null && inProfile.category_id === outProfile?.category_id,
+          });
+        }
+      }
+    }
+    // Discovery order is an admissible-search heuristic, never a relaxation:
+    // try swaps most likely to preserve the higher-priority score prefix before
+    // spending the bounded validation budget. Every option is still evaluated
+    // and authoritatively validated. Canonical ids make this independent of
+    // catalog/object iteration order.
+    swapOptions.sort((a, b) =>
+      Number(b.sameHome) - Number(a.sameHome)
+      || Number(b.sameHours) - Number(a.sameHours)
+      || Number(b.sameCategory) - Number(a.sameCategory)
+      || b.gain - a.gain
+      || (a.inId < b.inId ? -1 : a.inId > b.inId ? 1 : 0)
+      || (a.outId < b.outId ? -1 : a.outId > b.outId ? 1 : 0)
+      || (a.semesterId < b.semesterId ? -1 : a.semesterId > b.semesterId ? 1 : 0));
+
+    const retainedSwapCourseSets = new Set<string>();
+    for (const { inId, outId, semesterId } of swapOptions) {
+      if (runsExecuted >= maxRuns || byIdentity.size >= maxCandidates) break;
+      const courseSetKey = [...placed].filter((id) => id !== outId).concat(inId).sort().join('|');
+      // This slice discovers COURSE-SET alternatives. Once the best-priority
+      // legal placement for a set has survived, later semester permutations of
+      // that exact set add no grounded choice and can manufacture duplicate
+      // comparison cards. Generic deviation search remains responsible for
+      // genuinely useful placement alternatives.
+      if (retainedSwapCourseSets.has(courseSetKey)) continue;
+      runsExecuted++;
+      const state = applyMutation(baseline.state, { type: 'REPLACE_COURSE', outId, inId, semesterId });
+      if (!state) continue;
+      const candidate = evaluate(
+        baseline.model,
+        state,
+        `grounded_swap:${outId}:${inId}:${semesterId}`,
+        baseline.rationaleHe,
+      );
+      if (candidate.report.valid && !byIdentity.has(candidate.identity)) {
+        byIdentity.set(candidate.identity, candidate);
+        retainedSwapCourseSets.add(courseSetKey);
+      }
+    }
+  }
 
   // 2. Bounded deterministic deviations. Deviating EARLY changes which course
   //    enters the plan first and so reshapes the whole combination; deviating at
@@ -429,24 +562,6 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   // M1 — one uniform path. A legacy single `groundedObjective` becomes a
   // one-element set, so there is exactly ONE ranking implementation and no
   // "if single / else composed" branch anywhere.
-  const grounded = input.groundedObjective;
-  const objectiveSet: readonly ResolvedObjective[] = input.groundedObjectives
-    ? input.groundedObjectives.objectives
-    : grounded
-      ? [{
-          id: grounded.objective.id,
-          preferenceId: 'legacy',
-          kind: grounded.objective.id === 'prefer_topic_alignment' ? 'topic' : 'delivery',
-          target: grounded.objective.id,
-          ...(grounded.objective.topicIds?.length ? { topicIds: [...grounded.objective.topicIds] } : {}),
-          source: 'legacy',
-          profileVersion: input.profileVersion,
-        } as ResolvedObjective]
-      : [];
-  const evidence = input.groundedObjectives ?? (grounded
-    ? { snapshotId: grounded.objective.snapshotId, features: grounded.features, topics: grounded.topics }
-    : undefined);
-
   const componentsOf = (r: Raw): ObjectiveScoreComponent[] =>
     evidence
       ? objectiveSet.map((o) =>

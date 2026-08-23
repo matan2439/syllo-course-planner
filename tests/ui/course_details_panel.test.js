@@ -115,7 +115,12 @@ test('the course-details/interest UI slice adds no UNRELATED backend/api churn',
   // a name-less course is never placed into an applicable proposal) is a
   // separate, deliberate backend change on this branch, so it is allow-listed
   // here; anything else touching api/ still trips this guard.
-  const ALLOWED = new Set(['api/ai/course_profile.ts']);
+  const ALLOWED = new Set([
+    'api/ai/course_profile.ts',
+    // Separate grounded-candidate diversification slice: the legacy UI still
+    // must not pull in any other backend churn.
+    'api/ai/candidate_set.ts',
+  ]);
   const diff = execSync('git diff --name-only HEAD -- api', { cwd: ROOT })
     .toString()
     .split('\n')
