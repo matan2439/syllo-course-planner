@@ -24,9 +24,14 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
 };
 
 export function groundedTopicsForFocusAreas(
-  focusAreas: ReadonlyArray<{ area: AcademicFocusArea }>,
+  focusAreas: ReadonlyArray<{ area: AcademicFocusArea; weight?: number }>,
 ): TopicId[] {
-  return [...new Set(focusAreas.map((f) => FOCUS_TO_TOPIC[f.area]).filter((t): t is TopicId => t !== undefined))].sort();
+  return [...new Set(
+    focusAreas
+      .filter((f) => f.weight === undefined || f.weight > 0)
+      .map((f) => FOCUS_TO_TOPIC[f.area])
+      .filter((t): t is TopicId => t !== undefined),
+  )].sort();
 }
 
 /**
@@ -38,8 +43,9 @@ export function groundedTopicsForFocusAreas(
  */
 export function mergeExplicitFocusObjective(
   base: GroundedObjectiveResult | undefined,
-  focusAreas: ReadonlyArray<{ area: AcademicFocusArea }>,
+  focusAreas: ReadonlyArray<{ area: AcademicFocusArea; weight?: number }>,
   profileVersion: number,
+  source: 'explicit_free_text' | 'structured_academic_profile' = 'explicit_free_text',
 ): GroundedObjectiveResult | undefined {
   const topics = groundedTopicsForFocusAreas(focusAreas);
   if (!topics.length) return base;
@@ -49,11 +55,11 @@ export function mergeExplicitFocusObjective(
     ? { ...existing, topicIds: [...new Set([...(existing.topicIds ?? []), ...topics])].sort() }
     : {
         id: 'prefer_topic_alignment',
-        preferenceId: `explicit_focus:${topics.join('+')}`,
+        preferenceId: `${source}:${topics.join('+')}`,
         kind: 'topic',
         target: 'course_topic_interest',
         topicIds: topics,
-        source: 'explicit_free_text',
+        source,
         profileVersion,
       };
 

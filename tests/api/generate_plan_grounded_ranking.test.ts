@@ -372,6 +372,44 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(withFocus._body.intentOutcome.unmet.join(' ')).not.toContain('חומרים');
   });
 
+  test('a structured academic focus reaches the same evidence-backed topic ranking', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'מבוא כללי.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.'),
+    ];
+
+    const without = await run(body());
+    const withFocus = await run(body({
+      academic_interest_profile: { focusAreas: [{ area: 'materials', weight: 1 }] },
+    }));
+
+    expect(placed(withFocus._body)).not.toEqual(placed(without._body));
+    expect(placed(withFocus._body)).toContain('E3');
+    expect(candidates(withFocus._body).evidence.groundedObjective).toBe('prefer_topic_alignment');
+  });
+
+  test('a structured focus stays soft: hard exclusion of its evidence-backed course wins', async () => {
+    MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
+    const res = await run(body({
+      preferences: { disallowed_course_ids: ['E3'] },
+      academic_interest_profile: { focusAreas: [{ area: 'materials', weight: 1 }] },
+    }));
+    expect(placed(res._body)).not.toContain('E3');
+    expect(candidates(res._body).selectedGroundedScore.score).toBe(0);
+  });
+
+  test('flag-off ignores structured focus for ranking', async () => {
+    MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
+    const control = await run({ ...body(), use_academic_decision_agent: undefined });
+    const focused = await run({
+      ...body({ academic_interest_profile: { focusAreas: [{ area: 'materials', weight: 1 }] } }),
+      use_academic_decision_agent: undefined,
+    });
+    expect(placed(focused._body)).toEqual(placed(control._body));
+    expect(focused._body.academicDecision).toBeUndefined();
+  });
+
   test('the explanation names the PROJECT feature, not laboratory', async () => {
     MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
     const res = await run(withPref([projectPref()]));

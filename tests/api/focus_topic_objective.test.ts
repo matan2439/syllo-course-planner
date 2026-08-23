@@ -29,6 +29,24 @@ describe('explicit academic focus → evidence-backed topic objective', () => {
       .toBeUndefined();
   });
 
+  test('a normalized zero-weight focus stays inert', () => {
+    expect(groundedTopicsForFocusAreas([{ area: 'materials', weight: 0 }])).toEqual([]);
+  });
+
+  test('structured focus provenance is explicit and distinct from free text', () => {
+    const result = mergeExplicitFocusObjective(
+      undefined,
+      [{ area: 'materials', weight: 1 }],
+      3,
+      'structured_academic_profile',
+    )!;
+    expect(result.objectives[0]).toMatchObject({
+      source: 'structured_academic_profile',
+      preferenceId: 'structured_academic_profile:materials',
+      profileVersion: 3,
+    });
+  });
+
   test('merges with a typed topic objective without replacing its provenance', () => {
     const base = {
       objectives: [{

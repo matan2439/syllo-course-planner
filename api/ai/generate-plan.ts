@@ -71,6 +71,7 @@ import type { ConstraintModel, PlanState, PlannerMutation, DistributionPolicy } 
 import { placedCourseIds, semesterOf, emptyState } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
+import { normalizeAcademicInterestProfile, type RawAcademicInterestProfile } from './academic_interest_profile';
 import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
 import {
   extractClarificationContext,
@@ -1587,10 +1588,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // K9A — the grounded course-feature objective, resolved at the SAME eligibility
   // boundary as the distribution policy so the two can never disagree about what
   // a confirmed preference means. Soft ranking only; it has no path to legality.
-  const resolvedGrounded = mergeExplicitFocusObjective(
+  const normalizedAcademicInterestProfile = normalizeAcademicInterestProfile(
+    (academic_interest_profile ?? {}) as RawAcademicInterestProfile,
+  );
+  const groundedWithFreeTextFocus = mergeExplicitFocusObjective(
     effectivePrefs ? resolveGroundedObjective(effectivePrefs) : undefined,
     interpretedIntent?.focusAreas ?? [],
     preference_profile?.version ?? 0,
+  );
+  const resolvedGrounded = mergeExplicitFocusObjective(
+    groundedWithFreeTextFocus,
+    normalizedAcademicInterestProfile.focusAreas,
+    preference_profile?.version ?? 0,
+    'structured_academic_profile',
   );
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
   const distributionPolicy: DistributionPolicy | undefined =
