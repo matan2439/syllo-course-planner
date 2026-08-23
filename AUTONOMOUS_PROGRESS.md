@@ -5,14 +5,30 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Structured and free-text academic focus now reach the same evidence-backed
-topic ranking as the typed conversation preference.** The adapter maps only
-stable existing focus ids to stable existing syllabus-topic ids; it never reads
-course titles/ids/categories and leaves unsupported broad areas inert. API
-175/2390, web 20/186, legacy UI 78/835, both tsc and the production build green.
+(**Structured topic avoidance now changes recommendation only from affirmative
+official evidence.** Unknown and evidenced non-match remain equally neutral;
+hard constraints stay absolute; focus/avoid conflicts fail safe and are
+disclosed. API 175/2398, web 20/186, legacy UI 78/835 (scope guard rechecked
+12/12), root tsc and the previously verified production build green.
 **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont. 3) — B4. RED proved that a normalized
+_Latest entry: 2026-08-23 (cont. 4) — B5. RED proved that the product collected
+`academic_interest_profile.avoidAreas=[materials]` but kept the canonical plan
+containing a course with affirmative official materials evidence. GREEN adds
+the generic `avoid_topic_exposure` soft objective. Its utility is `1 - proven
+exposure / candidate-topic slots`: an affirmative avoided-topic match lowers
+the score, while missing evidence and an evidenced non-match tie at neutral 1,
+so sparse coverage is never rewarded. It composes through the existing Pareto,
+equal-importance and explicit-priority machinery and only affects candidates
+that already tie on legality/hard/policy terms. Hard wanted inclusion still
+wins; flag-off is unchanged; duplicate course/evidence cannot multiply the
+penalty. A topic present in both focus and avoid is removed from both and
+surfaced as `conflicting_grounded_topic`, including clearing legacy objective
+metadata. The explanation says only that no official exposure was found and
+explicitly warns that syllabus silence is not proof of absence. No provider,
+network acquisition or catalog/data mutation._
+
+_Previous entry: 2026-08-23 (cont. 3) — B4. RED proved that a normalized
 `academic_interest_profile.focusAreas=[materials]` answer left the selected
 course set at `E1+E2`, while the equivalent free-text and typed-conversation
 answers could select evidence-backed `E3`. GREEN normalizes the untrusted
