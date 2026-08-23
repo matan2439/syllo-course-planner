@@ -349,6 +349,60 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
   });
 
+  test('a structured project-based style reaches the existing evidence-backed objective', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט')];
+    const control = await run(body());
+    const styled = await run(body({
+      academic_interest_profile: {
+        courseStylePreferences: [{ style: 'project_based', weight: 1 }],
+      },
+    }));
+    expect(placed(styled._body)).not.toEqual(placed(control._body));
+    expect(placed(styled._body)).toContain('E3');
+    expect(candidates(styled._body).evidence.groundedObjective).toBe('prefer_project_courses');
+  });
+
+  test('a structured lab-based style reaches the existing laboratory objective', async () => {
+    MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'מעבדה')];
+    const styled = await run(body({
+      academic_interest_profile: {
+        courseStylePreferences: [{ style: 'lab_based', weight: 1 }],
+      },
+    }));
+    expect(placed(styled._body)).toContain('E3');
+    expect(candidates(styled._body).evidence.groundedObjective).toBe('prefer_laboratory_courses');
+  });
+
+  test('unsupported structured styles remain inert rather than guessed', async () => {
+    MOCK_DOCUMENTS = [doc('E3', 'פרוייקט')];
+    const control = await run(body());
+    const unsupported = await run(body({
+      academic_interest_profile: {
+        courseStylePreferences: [{ style: 'industry_relevant', weight: 1 }],
+      },
+    }));
+    expect(placed(unsupported._body)).toEqual(placed(control._body));
+    expect(candidates(unsupported._body).evidence.groundedObjective).toBeNull();
+  });
+
+  test('structured style remains soft and flag-gated', async () => {
+    MOCK_DOCUMENTS = [doc('E3', 'פרוייקט')];
+    const excluded = await run(body({
+      preferences: { disallowed_course_ids: ['E3'] },
+      academic_interest_profile: {
+        courseStylePreferences: [{ style: 'project_based', weight: 1 }],
+      },
+    }));
+    expect(placed(excluded._body)).not.toContain('E3');
+
+    const control = await run({ ...body(), use_academic_decision_agent: undefined });
+    const flagOff = await run({
+      ...body({ academic_interest_profile: { courseStylePreferences: [{ style: 'project_based', weight: 1 }] } }),
+      use_academic_decision_agent: undefined,
+    });
+    expect(placed(flagOff._body)).toEqual(placed(control._body));
+  });
+
   test('an explicitly interpreted focus request reaches the same evidence-backed topic ranking and outcome', async () => {
     MOCK_DOCUMENTS = [
       topicDoc('E1', 'מבוא כללי.'),

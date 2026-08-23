@@ -88,7 +88,7 @@ import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_con
 import { resolveGroundedObjective } from './grounded_preference';
 import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
-import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective, mergeStructuredAvoidObjective } from './focus_topic_objective';
+import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective, mergeStructuredAvoidObjective, mergeStructuredStyleObjectives } from './focus_topic_objective';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective, type ObjectiveContribution } from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
@@ -1602,9 +1602,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     preference_profile?.version ?? 0,
     'structured_academic_profile',
   );
-  const resolvedGrounded = mergeStructuredAvoidObjective(
+  const groundedWithAvoidance = mergeStructuredAvoidObjective(
     groundedWithStructuredFocus,
     normalizedAcademicInterestProfile.avoidAreas,
+    preference_profile?.version ?? 0,
+  );
+  const resolvedGrounded = mergeStructuredStyleObjectives(
+    groundedWithAvoidance,
+    normalizedAcademicInterestProfile.courseStylePreferences,
     preference_profile?.version ?? 0,
   );
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.

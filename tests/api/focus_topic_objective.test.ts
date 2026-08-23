@@ -2,6 +2,7 @@ import {
   groundedTopicsForFocusAreas,
   mergeExplicitFocusObjective,
   mergeStructuredAvoidObjective,
+  mergeStructuredStyleObjectives,
 } from '../../api/ai/focus_topic_objective';
 import { scoreObjective, type ResolvedObjective } from '../../api/ai/grounded_objective_set';
 
@@ -104,6 +105,40 @@ describe('explicit academic focus → evidence-backed topic objective', () => {
     expect(exposed.denominator).toBe(1);
     expect(exposed.normalized).toBe(0);
     expect(exposed.contributions).toHaveLength(1);
+  });
+
+  test('only officially supported structured styles become objectives', () => {
+    const result = mergeStructuredStyleObjectives(undefined, [
+      { style: 'project_based', weight: 1 },
+      { style: 'lab_based', weight: 1 },
+      { style: 'exam_light', weight: 1 },
+      { style: 'theoretical', weight: 1 },
+      { style: 'industry_relevant', weight: 1 },
+    ], 5)!;
+    expect(result.objectives.map((o) => o.id)).toEqual([
+      'prefer_laboratory_courses', 'prefer_project_courses',
+    ]);
+    expect(result.objectives.every((o) => o.source === 'structured_academic_profile')).toBe(true);
+  });
+
+  test('unsupported and zero-weight styles are inert', () => {
+    expect(mergeStructuredStyleObjectives(undefined, [
+      { style: 'practical', weight: 1 },
+      { style: 'project_based', weight: 0 },
+    ], 1)).toBeUndefined();
+  });
+
+  test('typed delivery provenance wins over an equivalent structured style', () => {
+    const base = {
+      objectives: [{
+        id: 'prefer_project_courses' as const,
+        preferenceId: 'typed-project', kind: 'delivery' as const,
+        target: 'project_based', source: 'explicit_answer', profileVersion: 8,
+      }],
+      objective: 'prefer_project_courses' as const,
+    };
+    const result = mergeStructuredStyleObjectives(base, [{ style: 'project_based', weight: 1 }], 8)!;
+    expect(result.objectives).toEqual(base.objectives);
   });
 
   test('merges with a typed topic objective without replacing its provenance', () => {

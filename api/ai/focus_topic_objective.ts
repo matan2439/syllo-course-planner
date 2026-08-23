@@ -6,7 +6,7 @@
  * category or free-form syllabus prose. Unsupported/broader focus areas stay
  * inert instead of being coerced into the nearest topic.
  */
-import type { AcademicFocusArea } from './academic_interest_profile';
+import type { AcademicFocusArea, CourseStyle } from './academic_interest_profile';
 import type { TopicId } from './course_topics';
 import type { GroundedObjectiveResult, ResolvedObjective } from './grounded_preference';
 
@@ -21,6 +21,14 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
   manufacturing: 'manufacturing',
   materials: 'materials',
   robotics: 'robotics',
+};
+
+const STYLE_TO_OBJECTIVE: Partial<Record<CourseStyle, {
+  id: 'prefer_project_courses' | 'prefer_laboratory_courses';
+  target: 'project_based' | 'practical_laboratory';
+}>> = {
+  project_based: { id: 'prefer_project_courses', target: 'project_based' },
+  lab_based: { id: 'prefer_laboratory_courses', target: 'practical_laboratory' },
 };
 
 function finalize(
@@ -152,4 +160,42 @@ export function mergeStructuredAvoidObjective(
       }
     : base;
   return finalize(withConflict, objectives);
+}
+
+/** Map only course styles backed by the official schema-complete delivery field. */
+export function mergeStructuredStyleObjectives(
+  base: GroundedObjectiveResult | undefined,
+  styles: ReadonlyArray<{ style: CourseStyle; weight?: number }>,
+  profileVersion: number,
+): GroundedObjectiveResult | undefined {
+  const supported = [...new Set(
+    styles
+      .filter((s) => s.weight === undefined || s.weight > 0)
+      .map((s) => STYLE_TO_OBJECTIVE[s.style])
+      .filter((x): x is NonNullable<typeof x> => x !== undefined)
+      .map((x) => `${x.id}|${x.target}`),
+  )]
+    .map((encoded) => {
+      const [id, target] = encoded.split('|') as [
+        'prefer_project_courses' | 'prefer_laboratory_courses',
+        'project_based' | 'practical_laboratory',
+      ];
+      return { id, target };
+    })
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (!supported.length) return base;
+
+  const objectives = [...(base?.objectives ?? [])];
+  for (const style of supported) {
+    if (objectives.some((o) => o.id === style.id)) continue; // typed provenance wins
+    objectives.push({
+      id: style.id,
+      preferenceId: `structured_academic_profile:style:${style.target}`,
+      kind: 'delivery',
+      target: style.target,
+      source: 'structured_academic_profile',
+      profileVersion,
+    });
+  }
+  return finalize(base, objectives);
 }
