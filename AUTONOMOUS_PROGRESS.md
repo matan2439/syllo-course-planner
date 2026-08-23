@@ -5,14 +5,31 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
-(**Structured topic avoidance now changes recommendation only from affirmative
-official evidence.** Unknown and evidenced non-match remain equally neutral;
-hard constraints stay absolute; focus/avoid conflicts fail safe and are
-disclosed. API 175/2398, web 20/186, legacy UI 78/835 (scope guard rechecked
-12/12), root tsc and the previously verified production build green.
+(**Supported structured course styles now compose through existing official
+delivery objectives.** `project_based` and `lab_based` can change the
+recommendation; unsupported styles remain inert, typed provenance wins, and
+hard constraints stay absolute. API 175/2405, web 20/186, legacy UI 78/835
+(scope guard rechecked 12/12), root tsc and the previously verified production
+build green.
 **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-23 (cont. 4) — B5. RED proved that the product collected
+_Latest entry: 2026-08-23 (cont. 5) — B6. RED through the real Generate handler
+proved that `academic_interest_profile.courseStylePreferences.project_based`
+was collected but left the canonical `E1+E2` recommendation unchanged even
+when a distinct valid project-led `E3` alternative existed. GREEN maps only
+the already-supported official delivery modes: `project_based` composes as
+`prefer_project_courses`, and `lab_based` as `prefer_laboratory_courses`.
+Positive structured weights participate through the existing generic Pareto
+composition; an existing typed delivery objective keeps its authoritative
+provenance. Zero-weight and unsupported `practical`, `exam_light`,
+`math_heavy`, `theoretical`, and `industry_relevant` styles remain inert rather
+than creating guessed objectives. Real-handler tests prove project and lab
+selection changes, unsupported inputs do not, hard course exclusion still
+wins, and flag-off remains unchanged. Focused 192/192, full API 2405/2405,
+full web 186/186, and legacy scope guard 12/12 are green. No provider, network
+acquisition or catalog/data mutation._
+
+_Previous entry: 2026-08-23 (cont. 4) — B5. RED proved that the product collected
 `academic_interest_profile.avoidAreas=[materials]` but kept the canonical plan
 containing a course with affirmative official materials evidence. GREEN adds
 the generic `avoid_topic_exposure` soft objective. Its utility is `1 - proven
