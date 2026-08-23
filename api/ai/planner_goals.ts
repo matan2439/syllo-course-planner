@@ -75,7 +75,7 @@ export function placedHours(state: PlanState, model: ConstraintModel): number {
 
 /** Degree hours achieved: prior progress + placed hours. */
 export function degreeHours(state: PlanState, model: ConstraintModel): number {
-  return model.priorHours + placedHours(state, model);
+  return model.priorHours + (model.inProgressHours ?? 0) + placedHours(state, model);
 }
 
 function semesterLoads(state: PlanState, model: ConstraintModel): number[] {

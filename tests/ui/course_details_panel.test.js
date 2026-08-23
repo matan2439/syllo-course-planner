@@ -132,6 +132,7 @@ test('the course-details/interest UI slice adds no UNRELATED backend/api churn',
     // hours reach the model and unmet category hours reserve search budget.
     'api/ai/planner_goals.ts',
     'api/ai/planner_model.ts',
+    'api/ai/planner_types.ts',
   ]);
   const diff = execSync('git diff --name-only HEAD -- api', { cwd: ROOT })
     .toString()

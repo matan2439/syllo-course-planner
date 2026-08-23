@@ -139,11 +139,17 @@ describe('buildModel — authoritative completed-course hours', () => {
     semesters: [{ semester_id: 'year_4_semester_a', courses: [] }],
     metadata: {
       program_requirements_categories: { total_required_hours: 8, categories: [] },
-      program_repository_courses: [{
-        course_id: 'DONE_5H', name_he: 'הושלם', weekly_hours: 5,
-        is_mandatory: false, course_type: 'elective', placement_policy: 'elective',
-        offered_semesters: ['year_4_semester_a'], prerequisites: [],
-      }],
+      program_repository_courses: [
+        { course_id: 'DONE_5H', name_he: 'הושלם', weekly_hours: 5,
+          is_mandatory: false, course_type: 'elective', placement_policy: 'elective',
+          offered_semesters: ['year_4_semester_a'], prerequisites: [] },
+        { course_id: 'CURRENT_3H', name_he: 'בתהליך', weekly_hours: 3,
+          is_mandatory: false, course_type: 'elective', placement_policy: 'elective',
+          offered_semesters: ['year_4_semester_a'], prerequisites: [] },
+        { course_id: 'PLANNED_3H', name_he: 'מתוכנן', weekly_hours: 3,
+          is_mandatory: false, course_type: 'elective', placement_policy: 'elective',
+          offered_semesters: ['year_4_semester_a'], prerequisites: [] },
+      ],
     },
   };
 
@@ -162,6 +168,59 @@ describe('buildModel — authoritative completed-course hours', () => {
     }, {} as any);
     expect(model.priorHours).toBe(7);
     expect(model.academicProgress?.completedCourseIds).toEqual(['DONE_5H']);
+  });
+
+  it('credits an unplaced currently-taking catalog course once and excludes it from re-add', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [{ course_id: 'DONE_5H' }], currently_taking: [{ course_id: 'CURRENT_3H' }] },
+      semesters: [{ id: 'year_4_semester_a', courses: [] }],
+    }, {} as any);
+    expect(model.inProgressHours).toBe(3);
+    expect(model.unearnedInProgressHours).toBe(3);
+    expect(model.currentlyPlannedCourseIds).toEqual(new Set(['CURRENT_3H']));
+  });
+
+  it('does not double-credit a currently-taking course already visible on the board', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [], currently_taking: [{ course_id: 'CURRENT_3H' }] },
+      semesters: [{ id: 'year_4_semester_a', courses: [{ course_id: 'CURRENT_3H' }] }],
+      total_hours_progress: { currently_planned_hours: 0 },
+    }, {} as any);
+    expect(model.inProgressHours).toBe(0);
+  });
+
+  it('credits only OFF-board planned entries; an in-catalog planned course remains placeable', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [], planned: [
+        { course_id: 'PLANNED_3H', hours: 3 },
+        { course_id: 'OFFBOARD_2H', hours: 2 },
+      ] },
+      semesters: [{ id: 'year_4_semester_a', courses: [] }],
+      total_hours_progress: { currently_planned_hours: 5 },
+    }, {} as any);
+    expect(model.inProgressHours).toBe(2);
+    expect(model.unearnedInProgressHours).toBe(0);
+  });
+
+  it('uses only the bounded residual of an aggregate with unknown entries and creates no id', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [], planned: [{ course_id: 'UNKNOWN_NO_HOURS' }] },
+      semesters: [{ id: 'year_4_semester_a', courses: [] }],
+      total_hours_progress: { currently_planned_hours: 3 },
+    }, {} as any);
+    expect(model.inProgressHours).toBe(3);
+    expect(model.impliedInProgressHours).toBe(3);
+    expect(model.profiles.has('UNKNOWN_NO_HOURS')).toBe(false);
+  });
+
+  it('collapses duplicate status ids before crediting hours', () => {
+    const model = buildModel(board as any, {
+      personal_status: { completed: [], currently_taking: [
+        { course_id: 'CURRENT_3H' }, { course_id: 'CURRENT_3H' },
+      ] },
+      semesters: [{ id: 'year_4_semester_a', courses: [] }],
+    }, {} as any);
+    expect(model.inProgressHours).toBe(3);
   });
 });
 

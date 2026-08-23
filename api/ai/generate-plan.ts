@@ -266,9 +266,13 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
   // already used above to route the board_json lookup, reused here for the
   // model's programId/catalogYear. No institutionId source exists yet.
   const pv = program_id ? parseProgramVersionId(program_id) : null;
-  return buildConstraintModel(board, {
+  const effectiveCurrentlyTakingIds = currentlyPlannedCourseIds ??
+    (ctx?.personal_status?.currently_taking ?? [])
+      .map((c: any) => c?.course_id)
+      .filter((id: unknown): id is string => typeof id === 'string');
+  const model = buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
-    currentlyPlannedCourseIds,
+    currentlyPlannedCourseIds: effectiveCurrentlyTakingIds,
     // Slice 18A — current product policy: the user-facing "wanted" picker is a
     // HARD `must_include` constraint, and the "avoided" picker a HARD
     // `must_exclude` one (already resolveHardExcludedCourseIds, below). The two
@@ -291,6 +295,81 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     catalogYear: pv?.year,
     ...(distributionPolicy ? { distributionPolicy } : {}),
   });
+  const initialState = planContextToState(ctx, model);
+  const inProgress = deriveInProgressCredit(ctx, model, initialState);
+  model.inProgressHours = inProgress.totalHours;
+  model.unearnedInProgressHours = inProgress.currentlyTakingHours;
+  model.impliedInProgressHours = inProgress.impliedHours;
+  return model;
+}
+
+export interface InProgressCredit {
+  /** Exact known + bounded aggregate residual used by search/validation. */
+  totalHours: number;
+  /** Exact, unplaced currently-taking subset (not yet earned; disclosure only). */
+  currentlyTakingHours: number;
+  /** Aggregate-only residual after every known entry has been accounted for. */
+  impliedHours: number;
+}
+
+/**
+ * Derive non-board progress once, deterministically, without manufacturing a
+ * course identity from an aggregate.
+ *
+ * - unplaced currently-taking: credit authoritative catalog hours, else the
+ *   entry's explicit hours; the planner already excludes the id from re-add;
+ * - off-board planned: credit explicit hours because the planner cannot place
+ *   a course absent from its universe;
+ * - on-board planned: no advance credit — search can and should place it;
+ * - already-placed entries: no advance credit — placedHours counts them;
+ * - aggregate residual: bounded to the amount left after known unplaced
+ *   entries, and carries no identity/category/prerequisite consequence.
+ */
+export function deriveInProgressCredit(
+  ctx: any,
+  model: ConstraintModel,
+  initialState: PlanState,
+): InProgressCredit {
+  const placed = new Set(placedCourseIds(initialState));
+  const asHours = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+
+  const currentlyTaking = new Map<string, any>();
+  for (const entry of ctx?.personal_status?.currently_taking ?? []) {
+    if (typeof entry?.course_id === 'string') currentlyTaking.set(entry.course_id, entry);
+  }
+  const planned = new Map<string, any>();
+  for (const entry of ctx?.personal_status?.planned ?? []) {
+    if (typeof entry?.course_id === 'string' && !currentlyTaking.has(entry.course_id)) {
+      planned.set(entry.course_id, entry);
+    }
+  }
+
+  let currentlyTakingHours = 0;
+  for (const [id, entry] of currentlyTaking) {
+    if (placed.has(id)) continue;
+    currentlyTakingHours += asHours(model.profiles.get(id)?.hours) ?? asHours(entry?.hours) ?? 0;
+  }
+
+  let offBoardPlannedHours = 0;
+  for (const [id, entry] of planned) {
+    if (placed.has(id) || model.profiles.has(id)) continue;
+    offBoardPlannedHours += asHours(entry?.hours) ?? 0;
+  }
+
+  const aggregate = asHours(ctx?.total_hours_progress?.currently_planned_hours) ?? 0;
+  let knownAggregateHours = 0;
+  for (const [id, entry] of [...currentlyTaking, ...planned]) {
+    if (placed.has(id)) continue;
+    knownAggregateHours += asHours(model.profiles.get(id)?.hours) ?? asHours(entry?.hours) ?? 0;
+  }
+  const impliedHours = Math.max(0, aggregate - knownAggregateHours);
+
+  return {
+    totalHours: currentlyTakingHours + offBoardPlannedHours + impliedHours,
+    currentlyTakingHours,
+    impliedHours,
+  };
 }
 
 /** Same overload gate as before: block above the hard cap / absolute max. */
@@ -527,25 +606,14 @@ function missingMandatoryGate(
  * must still suppress this gate, to avoid double-counting or misattributing
  * an already-differently-gated blocker.
  *
- * Codex review finding (PR #62, round 2): when that same benign
- * currently-taking course is kept visible in its placed board slot (as the
- * comment above says the real frontend deliberately does), report.degreeHours
- * (model.priorHours + placedHours(state)) ALREADY counts its hours once, via
- * placement — crediting it a second time from model.currentlyPlannedCourseIds
- * below would double-count it and could push creditedHours to (falsely) meet
- * or exceed model.degreeRequiredHours, silently suppressing this gate for a
- * plan that is genuinely still short. Only credits a currently-taking id's
- * hours here when it is NOT already placed in state — the off-board case
- * (test 8/8b in generate_plan_structural_degree_gap_warning.test.ts) this
- * credit exists for in the first place.
+ * In-progress/off-board progress is already represented in the model's
+ * degreeHours. The context adapter excludes entries already visible in the
+ * board, so this gate must not reconstruct or add those hours a second time.
  */
 function degreeHoursGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
   model: ConstraintModel,
   pinnedHome: Record<string, string>,
-  currentlyTakingHoursFromContext?: Map<string, number>,
-  plannedHoursFromContext?: Map<string, number>,
-  impliedUnknownOffBoardHours = 0,
 ): string[] {
   // Codex review finding (PR #62, round 4): unlike every other gate above
   // (which only ever READ the reconstructed state — assessCompleteness,
@@ -565,43 +633,11 @@ function degreeHoursGate(
   const state: PlanState = emptyState(model.knownSemesterIds);
   for (const s of semesters) state.semesters[s.semester_id] = s.course_ids;
   const report = validateCandidate(state, model, pinnedHome);
-  const placedNow = new Set(placedCourseIds(state));
-  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
-    .filter(id => !placedNow.has(id))
-    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
-  // Codex review finding (PR #62, round 10): personal_status.planned courses
-  // that predate this board's catalog window (off-board — model.profiles has
-  // no entry) are real, uncounted credit, symmetric to currentlyPlannedHours'
-  // own off-board currently_taking case above. Guarded on !model.profiles.has
-  // (never credit an ON-board planned course — the search can and should
-  // place it itself, see this function's own doc comment for why crediting
-  // that would double-count or mask a real search gap) and !placedNow.has
-  // (defensive; an off-board id can never actually be placed, but mirrors
-  // currentlyPlannedHours' own guard for consistency).
-  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
-    .filter(([id]) => !model.profiles.has(id) && !placedNow.has(id))
-    .reduce((sum, [, hours]) => sum + hours, 0);
-  // Codex review finding (PR #62, round 12): round 11's fix disabled this
-  // whole gate whenever ANY off-board course lacked per-course hours and an
-  // aggregate was present — even a trivially small aggregate (e.g. 4h)
-  // against a massive, genuinely unrecoverable gap (e.g. 169h short) wrongly
-  // reported blocked:false, the exact "incomplete presented as complete" bug
-  // this whole gate exists to prevent. impliedUnknownOffBoardHours (computed
-  // by the caller — see its own doc comment) is a BOUNDED credit: it can
-  // never exceed what total_hours_progress.currently_planned_hours itself
-  // proves, after subtracting every hour already accounted for elsewhere, so
-  // adding it here can only ever close a gap the aggregate genuinely
-  // justifies — never an unconditional escape hatch.
-  const creditedHours = report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
-  // The computeDegreeHours() value a recovery candidate must actually reach
-  // to close the gap — currentlyPlannedHours/offBoardPlannedHours/
-  // impliedUnknownOffBoardHours are constant credits no recovery mutation can
-  // change (recoveryCandidateActions never touches a currently-taking
-  // course's placement, and an off-board course can never be placed at all),
-  // so they carry over unchanged from creditedHours' own derivation (Codex
-  // review finding, PR #62, round 7, extended rounds 10/12).
-  const recoveryTargetHours =
-    model.degreeRequiredHours - currentlyPlannedHours - offBoardPlannedHours - impliedUnknownOffBoardHours;
+  // Exact/bounded non-board progress is already part of degreeHours through
+  // the authoritative model. Search, validation and this gate therefore read
+  // one number; adding request-derived maps again here would double-count.
+  const creditedHours = report.degreeHours;
+  const recoveryTargetHours = model.degreeRequiredHours;
   // Codex review finding (PR #62, round 9): a single unified rollout
   // (includeUnwantedElectives:true) that can mix soft-avoided and ordinary
   // courses in the same search subsumes the separate canRecoverViaUnwanted
@@ -1171,9 +1207,6 @@ export function toProposal(
   initialState: PlanState,
   pinnedHome: Record<string, string>,
   rationale_he: string,
-  currentlyTakingHoursFromContext?: Map<string, number>,
-  plannedHoursFromContext?: Map<string, number>,
-  impliedUnknownOffBoardHours = 0,
 ) {
   const semesters = model.knownSemesterIds
     .filter(id => (finalState.semesters[id] ?? []).length > 0)
@@ -1220,42 +1253,11 @@ export function toProposal(
     requirements_status.push({ name: cat.name, required: cat.required, placed: Math.min(p, cat.required), satisfied: p >= cat.required });
   }
 
-  // Codex review (round 6, refined by rounds 10-11) caught that
-  // report.degreeHours (model.priorHours + placedHours(finalState)) never
-  // includes hours from off-board personal_status.currently_taking courses —
-  // priorHoursFromContext deliberately excludes total_hours_progress.
-  // currently_planned_hours (see its own comment above), and a
-  // currently-taking course is never placed on the board either, so its
-  // hours are invisible to both terms. Credited by reading each
-  // model.currentlyPlannedCourseIds entry's OWN hours — model.profiles when
-  // the course is in the board catalog, else the client-resolved hours in
-  // personal_status.currently_taking itself (round 10's fix: some
-  // currently-taking courses predate the program's board window and have no
-  // model.profiles entry at all). Deliberately reads ONLY
-  // personal_status.currently_taking (round 11's fix), never the mixed
-  // total_hours_progress.currently_planned_hours aggregate (which also
-  // includes personal_status.planned — a course the planner can legitimately
-  // place and credit itself via report.degreeHours; adding the aggregate on
-  // top would double-count it).
-  //
-  // Codex review finding (PR #62, round 10): the same reasoning applies to an
-  // OFF-board personal_status.planned course (model.profiles has no entry) —
-  // the planner has nothing in its catalog to place, so report.degreeHours
-  // can never include it either, and it's real, uncounted credit.
-  // offBoardPlannedHours reads personal_status.planned directly (never the
-  // coarse aggregate) and keeps only the off-board subset, so it can never
-  // double-count an on-board planned course.
-  const currentlyPlannedHours = [...(model.currentlyPlannedCourseIds ?? [])]
-    .reduce((sum, id) => sum + (model.profiles.get(id)?.hours ?? currentlyTakingHoursFromContext?.get(id) ?? 0), 0);
-  const offBoardPlannedHours = [...(plannedHoursFromContext ?? [])]
-    .filter(([id]) => !model.profiles.has(id))
-    .reduce((sum, [, hours]) => sum + hours, 0);
-  // Codex review finding (PR #62, round 11, bounded per round 12): same
-  // impliedUnknownOffBoardHours credit as degreeHoursGate's own — see that
-  // gate's/the caller's doc comments for why it's a bounded, mathematically
-  // derived credit rather than an unconditional skip.
-  const creditedDegreeHours = report.degreeHours + currentlyPlannedHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
-  const degreeMetCredited = report.degreeMet || creditedDegreeHours >= model.degreeRequiredHours;
+  // Search, validation and response shaping now consume the same model-level
+  // degree total. Context-derived in-progress credit is computed once before
+  // planning; no response-only arithmetic is allowed to disagree with search.
+  const creditedDegreeHours = report.degreeHours;
+  const degreeMetCredited = report.degreeMet;
   // Codex review finding (PR #62, round 13): this generic degree-completion
   // warning (and, via risksAndTradeoffs, the academic-decision rationale
   // that surfaces warnings_he verbatim) previously used raw
@@ -1266,21 +1268,15 @@ export function toProposal(
   // blocked:false-but-"incomplete" self-contradiction this whole PR exists
   // to close.
   //
-  // Deliberately excludes currentlyPlannedHours here, unlike creditedDegreeHours
-  // above — tests 8/11 (rounds 6/10) established that an in-progress
-  // personal_status.currently_taking course must NOT silence this specific
-  // message: the student hasn't actually earned those hours yet, so it
-  // remains accurate (not contradictory) to report the board+known-completed
-  // total as still short, even though CUR finishing would close the gap —
-  // that stronger "nothing else can help" claim is exactly what the
-  // separate מיצית branch below (gated on the full creditedDegreeHours,
-  // unchanged) exists to distinguish. offBoardPlannedHours/
-  // impliedUnknownOffBoardHours are different in kind — the same aggregate/
-  // planned credit the frontend has ALREADY verified and reported as prior
-  // progress, not an in-progress enrollment — so crediting them here doesn't
-  // carry the same "not actually earned yet" caveat.
-  const genericCompletionCreditedHours = report.degreeHours + offBoardPlannedHours + impliedUnknownOffBoardHours;
-  const degreeMetForGenericWarning = report.degreeMet || genericCompletionCreditedHours >= model.degreeRequiredHours;
+  // Preserve the existing disclosure distinction: currently-taking hours can
+  // stop unnecessary future scheduling but are not described as already
+  // earned. Off-board planned/aggregate residual credit keeps the established
+  // prior-progress semantics.
+  const genericCompletionCreditedHours = Math.max(
+    0,
+    report.degreeHours - (model.unearnedInProgressHours ?? 0),
+  );
+  const degreeMetForGenericWarning = genericCompletionCreditedHours >= model.degreeRequiredHours;
 
   const warnings_he: string[] = [];
   if (!degreeMetForGenericWarning) {
@@ -1311,10 +1307,8 @@ export function toProposal(
   // above) is delegated entirely to those two functions instead of the prior
   // four hand-rolled combinatorial scans.
   //
-  // currentlyPlannedHours/offBoardPlannedHours/creditedDegreeHours/
-  // degreeMetCredited are computed once, above, before warnings_he is even
-  // declared — see that block's own doc comment for the off-board credit
-  // reasoning (rounds 6, 10-12) and why round 13 moved it here.
+  // creditedDegreeHours/degreeMetCredited come from the same model-level total
+  // search and validation used, so this warning cannot contradict the plan.
   if (
     !degreeMetCredited &&
     report.missingMandatory.length === 0 &&
@@ -1508,31 +1502,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // and ignoring it let a currently-taken course be re-proposed by the planner.
   const currentlyPlannedCourseIds: string[] =
     (effectivePlanContext?.personal_status?.currently_taking ?? []).map((c: any) => c.course_id);
-  // Per-course hours for the same currently_taking array, straight from the
-  // client (covers ids model.profiles can't, e.g. YEAR_1_2 fallback courses
-  // — see toProposal's structural-gap-warning comment for the full history).
-  const currentlyTakingHoursFromContext = new Map<string, number>(
-    (effectivePlanContext?.personal_status?.currently_taking ?? [])
-      .filter((c: any) => typeof c?.hours === 'number')
-      .map((c: any) => [c.course_id, c.hours]),
-  );
-  // Codex review finding (PR #62, round 10): personal_status.planned is a
-  // real, distinct field (not currently_taking) for a course the student has
-  // already registered/planned but not yet started — when such a course
-  // predates this board's catalog window entirely (the same "off-board" case
-  // round 6/10/11 already handle for currently_taking), its hours are real
-  // credit toward the degree total that report.degreeHours can never include
-  // (the planner has nothing in its catalog to place). Deliberately kept
-  // SEPARATE from currentlyPlannedCourseIds/currentlyTakingHoursFromContext —
-  // not merged in — since that set also drives prerequisite-satisfaction and
-  // re-add-prevention semantics elsewhere (planner_goals.ts, this file's own
-  // recovery rollouts) that only make sense for a course actually IN
-  // PROGRESS, not one merely planned for later.
-  const plannedHoursFromContext = new Map<string, number>(
-    (effectivePlanContext?.personal_status?.planned ?? [])
-      .filter((c: any) => typeof c?.hours === 'number')
-      .map((c: any) => [c.course_id, c.hours]),
-  );
 
   // Board — always plan over the full course universe.
   let board: any = null;
@@ -1620,93 +1589,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const initialState = planContextToState(effectivePlanContext, model);
   const pinnedHome = buildPinnedHome(model, initialState);
   const modelCfg = resolveModel();
-
-  // Codex review finding (PR #62, round 11): currentlyTakingHoursFromContext/
-  // plannedHoursFromContext above only credit an off-board currently_taking/
-  // planned course when the client supplied that course's OWN `hours` field.
-  // A compatible caller relying instead on the coarse
-  // total_hours_progress.currently_planned_hours aggregate (real, accepted
-  // input — plan_context is z.any(), per-course hours were always optional)
-  // without per-course hours gets 0 credit for that course from either map,
-  // even though the aggregate proves real, uncounted credit exists.
-  //
-  // Codex review finding (PR #62, round 12): an earlier version of this fix
-  // responded by unconditionally skipping the blocking gate whenever the
-  // aggregate was present and any off-board course lacked per-course hours —
-  // regardless of magnitude, so even a trivially small aggregate (4h) against
-  // a massive, genuinely unrecoverable gap (169h) wrongly went unblocked.
-  // impliedUnknownOffBoardHours instead derives a mathematically BOUNDED
-  // credit: onBoardKnownHours (exact — model.profiles, doesn't need
-  // client-supplied hours) and offBoardKnownHours (the same per-course
-  // amounts currentlyPlannedHours/offBoardPlannedHours already credit) are
-  // subtracted from the aggregate first; whatever remains (clamped at 0) is
-  // the hours the aggregate proves exist among ONLY the courses with unknown
-  // individual hours — never more than the aggregate itself justifies, so it
-  // can only close a gap the client's own numbers genuinely support, never an
-  // unconditional escape hatch.
-  // Codex review finding (PR #62, round 15): the live buildPlanContext
-  // (semester_board_viewer.html) computes total_hours_progress.
-  // currently_planned_hours by summing currently_taking + planned entries
-  // AFTER filtering out any course already PLACED on the submitted board
-  // (`!placedIds.has(...)`) — the real, canonical caller's aggregate NEVER
-  // includes a placed course's hours to begin with. The previous
-  // model.profiles.has(id)-based "onBoardKnownHours" subtraction assumed
-  // the opposite (that the aggregate might double-count an in-catalog
-  // course) and applied that assumption uniformly to BOTH statuses,
-  // silently erasing real off-board credit whenever a genuinely PLACED
-  // currently_taking course happened to coexist with an unrelated,
-  // genuinely off-board one lacking per-course hours (Codex's repro: a 4h
-  // board-visible course + a 4h aggregate-only off-board one wrongly
-  // produced impliedUnknownOffBoardHours:0 instead of 4).
-  //
-  // The two statuses need DIFFERENT exclusion criteria, matching the two
-  // different credit paths each already has elsewhere in this function —
-  // collapsing them into one shared model.profiles.has(id) test (as before)
-  // is what caused this bug:
-  //  - currently_taking: rule 2a means the search can NEVER place one
-  //    itself, so "in catalog" and "actually placed" are genuinely
-  //    different states here. A PLACED one was never part of the frontend's
-  //    aggregate (exclude, subtract nothing). A NOT-placed one is already
-  //    credited via currentlyPlannedHours above (which also doesn't care
-  //    whether it's in-catalog, using currentlyTakingHoursFromContext as a
-  //    fallback) whenever either its catalog OR context hours are known —
-  //    subtract that same amount. Only a not-placed entry with NEITHER is
-  //    genuinely unclaimed.
-  //  - planned: the search CAN legitimately place an in-catalog, NOT-YET-
-  //    placed one later (e.g. to satisfy a category, like SOL in test 15b)
-  //    — its hours will be counted via report.degreeHours once the search
-  //    does, an entirely separate computation from anything here, so — per
-  //    round 10's own existing offBoardPlannedHours design — any in-catalog
-  //    NOT-YET-placed planned course stays excluded, to avoid eventually
-  //    double-counting once the search places it.
-  //
-  //    Codex review finding (PR #62, round 16): that in-catalog exclusion
-  //    is right for a not-yet-placed one, but the frontend's own placed-id
-  //    filter applies identically to BOTH personal_status arrays (see round
-  //    15's own comment above) — a planned course the client already
-  //    placed itself was ALSO never part of the aggregate, exactly like the
-  //    currently_taking case. Treating every in-catalog planned course the
-  //    same regardless of placement (as round 15 still did) double-
-  //    discounted an already-placed one the identical way round 15 fixed
-  //    for currently_taking. Guarded the same way: !initiallyPlacedIds.has
-  //    first, then the in-catalog-or-known-hours test.
-  const totalCurrentlyPlannedHoursAggregate = effectivePlanContext?.total_hours_progress?.currently_planned_hours;
-  let impliedUnknownOffBoardHours = 0;
-  if (typeof totalCurrentlyPlannedHoursAggregate === 'number') {
-    const initiallyPlacedIds = new Set(placedCourseIds(initialState));
-    const currentlyTakingEntries = new Map<string, any>();
-    for (const c of effectivePlanContext?.personal_status?.currently_taking ?? []) {
-      if (c?.course_id != null) currentlyTakingEntries.set(c.course_id, c);
-    }
-    const plannedEntries = new Map<string, any>();
-    for (const c of effectivePlanContext?.personal_status?.planned ?? []) {
-      if (c?.course_id != null && !currentlyTakingEntries.has(c.course_id)) plannedEntries.set(c.course_id, c);
-    }
-    const knownHours = [...currentlyTakingEntries.values(), ...plannedEntries.values()]
-      .filter((c: any) => !initiallyPlacedIds.has(c.course_id) && (model.profiles.has(c.course_id) || typeof c?.hours === 'number'))
-      .reduce((sum: number, c: any) => sum + (model.profiles.get(c.course_id)?.hours ?? c.hours), 0);
-    impliedUnknownOffBoardHours = Math.max(0, totalCurrentlyPlannedHoursAggregate - knownHours);
-  }
 
   let proposal: ReturnType<typeof toProposal>;
   let traceForResponse: unknown[];
@@ -1800,10 +1682,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // Use the selected candidate's own stable-planner explanation so the proposal
     // is byte-identical to the default single-run path (same state → same rationale).
     const selectedRationale = selected ? selected.rationaleHe : deterministicRationale(selectedState, model);
-    proposal = toProposal(
-      selectedState, model, initialState, pinnedHome, selectedRationale,
-      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
-    );
+    proposal = toProposal(selectedState, model, initialState, pinnedHome, selectedRationale);
     traceForResponse = [];
     hitMaxSteps = false;
     useLlm = false;
@@ -2047,10 +1926,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     const rationale_he = agentResult.rationale_he ?? deterministicRationale(agentResult.finalState, model);
-    proposal = toProposal(
-      agentResult.finalState, model, initialState, pinnedHome, rationale_he,
-      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
-    );
+    proposal = toProposal(agentResult.finalState, model, initialState, pinnedHome, rationale_he);
     traceForResponse = agentResult.trace;
     hitMaxSteps = agentResult.meta != null && agentResult.meta.terminationReason === 'max_steps';
     stableFinalState = agentResult.finalState;
@@ -2067,10 +1943,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       worker.run(500, 'greedy');
     }
 
-    proposal = toProposal(
-      worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he,
-      currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours,
-    );
+    proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
     traceForResponse = worker.getTrace();
     hitMaxSteps = worker.getTrace().some(a => a.action === 'STOP' && a.reason?.includes('maxSteps'));
     stableFinalState = worker.getPlan();
@@ -2083,7 +1956,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...legalityGate(proposal.semesters, model, pinnedHome),
     ...missingMandatoryGate(proposal.semesters, model),
     ...mustIncludeGate(proposal.semesters, model),
-    ...degreeHoursGate(proposal.semesters, model, pinnedHome, currentlyTakingHoursFromContext, plannedHoursFromContext, impliedUnknownOffBoardHours),
+    ...degreeHoursGate(proposal.semesters, model, pinnedHome),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via
@@ -2240,8 +2113,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
      * satisfied category.
      */
     if (model.academicProgress) {
-      (responseBody.academicDecision as Record<string, unknown>).academicProgress =
-        describeAcademicProgress(model.academicProgress);
+      const disclosure = describeAcademicProgress(model.academicProgress);
+      const inProgressHours = model.inProgressHours ?? 0;
+      const currentlyTakingHours = model.unearnedInProgressHours ?? 0;
+      const aggregateOnlyHours = model.impliedInProgressHours ?? 0;
+      const offBoardPlannedHours = Math.max(
+        0,
+        inProgressHours - currentlyTakingHours - aggregateOnlyHours,
+      );
+      const explanationHe = [...disclosure.explanationHe];
+      if (currentlyTakingHours > 0) {
+        explanationHe.push(
+          `${currentlyTakingHours} ש"ש של קורסים הנלמדים כעת נלקחו בחשבון בתכנון ההמשך; הן טרם הושלמו.`,
+        );
+      }
+      if (offBoardPlannedHours > 0) {
+        explanationHe.push(
+          `${offBoardPlannedHours} ש"ש מתוכננות מחוץ לחלון הלוח נלקחו בחשבון, בלי לשבץ אותן מחדש.`,
+        );
+      }
+      if (aggregateOnlyHours > 0) {
+        explanationHe.push(
+          `הדיווח המצטבר הוסיף ${aggregateOnlyHours} ש"ש ללא זהות קורס; לכן הן משפיעות רק על הסכום ולא על קטגוריות או דרישות קדם.`,
+        );
+      }
+      (responseBody.academicDecision as Record<string, unknown>).academicProgress = {
+        ...disclosure,
+        inProgressHours,
+        currentlyTakingHours,
+        offBoardPlannedHours,
+        aggregateOnlyHours,
+        explanationHe,
+      };
     }
     // Slice 14 — record the exact preference-profile version the proposal was
     // built with, plus deterministic eligibility validation (which typed

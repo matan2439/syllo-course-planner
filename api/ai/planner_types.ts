@@ -57,8 +57,19 @@ export interface ConstraintModel {
   academicProgress?: AcademicProgress;
   /** Total degree hours required (e.g. 185). */
   degreeRequiredHours: number;
-  /** Hours already accrued (completed + currently-planned) counted toward the degree. */
+  /** Completed/earned hours already accrued before the mutable board. */
   priorHours: number;
+  /**
+   * Exact/proven hours outside the mutable board that the search must treat as
+   * already committed progress (unplaced currently-taking courses, off-board
+   * planned courses, and bounded residual aggregate credit). Optional for old
+   * fixtures; Generate computes it once from the typed status/context.
+   */
+  inProgressHours?: number;
+  /** Subset of inProgressHours that is currently being taken, not yet earned. */
+  unearnedInProgressHours?: number;
+  /** Aggregate-only residual included in inProgressHours (audit/provenance). */
+  impliedInProgressHours?: number;
   /** User's per-semester weekly-hour preference cap. */
   maxHoursPerSemester: number;
   /** Absolute per-semester blocking cap (HARD_LOAD_CAP). */
