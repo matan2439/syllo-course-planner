@@ -25,7 +25,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { parseProgramVersionId } from '../../api/board';
-import { prepareEvidence } from '../../api/ai/evidence_provider';
+import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from '../../api/ai/evidence_provider';
 import { RuleBasedFeatureExtractor } from '../../api/ai/course_features';
 import { loadDocuments } from '../../api/ai/evidence_cache';
 import type { SyllabusDocument } from '../../api/ai/syllabus_source';
@@ -39,6 +39,12 @@ const board = JSON.parse(
 const universe: string[] = (board.metadata.program_repository_courses ?? []).map(
   (c: any) => c.course_id,
 );
+const handlerUniverse: string[] = [
+  ...new Set<string>([
+    ...universe,
+    ...(board.semesters ?? []).flatMap((s: any) => (s.courses ?? []).map((c: any) => c.course_id)),
+  ]),
+];
 const requiringPool = [
   ...new Set<string>(
     (board.metadata.program_requirements_categories?.categories ?? [])
@@ -172,5 +178,26 @@ describe('B0 — the live corpus, when present', () => {
       covered: audit.applicability.atCatalogYear2027.covered,
       years: audit.corpus.documentYears,
     });
+  });
+
+  test('B1 policy activates the audited recent corpus descriptively, without changing the frozen source', () => {
+    if (!present) return;
+    const { documents } = loadDocuments(cacheRoot);
+    if (documents.length === 0) return;
+
+    const prepared = prepareEvidence({
+      courseIds: handlerUniverse,
+      academicYear: 2027,
+      documents,
+      descriptiveFreshnessPolicy: RECENT_OFFICIAL_SYLLABUS_POLICY,
+    });
+    const auditedDistinctCourses = new Set(documents.map((d) => d.courseId).filter((id) => handlerUniverse.includes(id))).size;
+    const relevantDocuments = documents.filter((d) => handlerUniverse.includes(d.courseId));
+
+    expect(prepared.coverage.coveredCourseCount).toBe(auditedDistinctCourses);
+    expect(prepared.coverage.historicalCourseIds).toHaveLength(auditedDistinctCourses);
+    expect(prepared.coverage.academicYears).toEqual([2025]);
+    expect(prepared.coverage.conflictingCourseIds).toEqual([]);
+    expect(prepared.snapshot.documents).toHaveLength(relevantDocuments.length);
   });
 });

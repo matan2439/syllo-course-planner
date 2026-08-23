@@ -492,6 +492,17 @@ candidates and questions become decision-relevant under B1. Then improve only
 the evidenced extraction/mapping gaps that can change that real result; do not
 widen vocabulary speculatively.
 
+**B2 acceptance follow-up (2026-08-23).** The frozen local cache contains 23
+documents / 18 distinct courses, all year 2025. A regression now loads that
+cache through B1 against the real handler universe (repository courses **plus**
+courses already present in board semesters) and proves every relevant document
+is retained, every distinct course is marked historical, source year remains
+2025, and no conflict is fabricated. This caught an audit/handler boundary
+difference: the B0 report's repository-only universe excluded five cached
+course ids that the handler's `model.profiles` can include. No production code
+changed in this follow-up. The next proof is candidate/question impact through
+the real handler, not another coverage count.
+
 ## Session 2026-08-19 (cont. 2) — B0: syllabus/evidence coverage audit
 
 One commit: `93ffc5f`. **No capability was implemented, deliberately** — the
