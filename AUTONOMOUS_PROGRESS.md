@@ -4,15 +4,23 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-19 (cont. 2), session on branch `ui/frontend-modernization`
-(**Measured the evidence corpus and found the grounded objectives are inert in
-production.** The acquired syllabi are academic year 2025, the program board is
-2027, and applicability is an exact year match — so coverage on the real program
-is 0/56. Audit only: no capability was implemented, deliberately. API 172/2365,
-UI 78/835, web 20/186, both tsc and the production build green. **Not
-Production-ready.** Not merged, not deployed.)_
+_Last updated: 2026-08-23, session on branch `ui/frontend-modernization`
+(**Recent official syllabi can now support descriptive recommendations under an
+explicit, fail-closed policy.** Exact year wins; otherwise the newest official
+syllabus at most two academic years earlier may support only topics/delivery
+features. Future, older, conflicting or unversioned evidence stays inert. The
+response labels historical evidence and states that it does not determine
+legality, prerequisites or degree requirements. API 173/2373, focused evidence
+170/170, both tsc and the production build green. **Not Production-ready.** Not
+merged, not deployed.)_
 
-_Latest entry: 2026-08-19 (cont. 2) — B0. A read-only coverage audit through the
+_Latest entry: 2026-08-23 — B1. The B0 year gap is now an explicit product
+policy rather than an accidental exact-year dead end. RED→GREEN proved the
+policy on real TAU course id `0542-3792`, then proved through the real Generate
+handler that 2025 descriptive evidence can change a 2027 topic recommendation.
+Flag-off and callers that do not opt in remain exact-year and inert._
+
+_Previous entry: 2026-08-19 (cont. 2) — B0. A read-only coverage audit through the
 REAL loader/extractor/`prepareEvidence`. Delivery mode is 23/23 and already
 used; assessment is 0/23 (re-rejected on ~3x the corpus K8A rejected it on);
 skills/learning outcomes are 0/23 because the official page has no such field;
@@ -446,6 +454,43 @@ normalized identity, constraint fingerprint, snapshot and profile version
 against a server-held plan run, and persists per authenticated user; or (b) an
 explicit, documented product decision that the committed board is intentionally
 local-only — in which case the UI must stop implying otherwise.
+
+## Session 2026-08-23 — B1: typed descriptive-syllabus freshness policy
+
+**Decision.** An official syllabus may describe a later catalog offering only
+when it is exact-year or no more than two academic years earlier. Exact-year
+evidence always wins. A prior-year document is usable only inside
+`prepareEvidence`, which owns descriptive topic/delivery evidence; it cannot
+alter the board/model facts that own legality, prerequisites, credits, category
+membership, mandatory status or offering availability.
+
+**Fail-closed cases.** Future year, more than two years old, invalid/missing
+year, unresolved authoritative conflict, and absence of the explicit policy all
+remain inert. When several prior years are eligible, the newest is selected
+independently of document order. Every historical course id and source year is
+disclosed; the handler adds a concise Hebrew notice naming source year, target
+catalog year, and the administrative limitation.
+
+**RED→GREEN.** `descriptive_evidence_freshness_policy.test.ts` first failed
+because no typed policy existed, then failed behaviorally because a 2025
+official syllabus produced no feature for target 2027. The handler RED in
+`topic_impact_wire.test.ts` retained 10 passing controls and failed only because
+the 2025 corpus could not distinguish 2027 candidates. GREEN wires the named
+two-year policy into the flagged Generate evidence boundary. Unit coverage uses
+the real TAU course id `0542-3792`; the handler fixture proves recommendation
+impact but is not represented as the complete real board.
+
+**Verification.** Focused evidence/ranking/composition: 170/170. Full API:
+173 suites / 2,373 tests. Root `tsc --noEmit`, web `tsc --noEmit`, and Next
+production build all exit 0. No catalog/data file changed; no acquisition,
+runtime planning-provider call, Production, `main`, Vercel, Supabase or stash
+mutation occurred.
+
+**Next smallest ordered step.** Run a deterministic acceptance over the frozen
+local 2025 corpus and the real 2027 Mechanical board, measuring which retained
+candidates and questions become decision-relevant under B1. Then improve only
+the evidenced extraction/mapping gaps that can change that real result; do not
+widen vocabulary speculatively.
 
 ## Session 2026-08-19 (cont. 2) — B0: syllabus/evidence coverage audit
 
