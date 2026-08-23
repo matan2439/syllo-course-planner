@@ -32,6 +32,12 @@ import { RuleBasedFeatureExtractor, FEATURE_EXTRACTION_VERSION, type CourseFeatu
 import { extractCourseTopics, supportedTopics, type TopicId } from './course_topics';
 import type { CourseTopicSupport } from './grounded_objectives';
 
+/**
+ * Product-owned policy for DESCRIPTIVE official-syllabus evidence only.
+ * Administrative program facts never flow through this provider.
+ */
+export const RECENT_OFFICIAL_SYLLABUS_POLICY = Object.freeze({ maxPriorAcademicYears: 2 });
+
 /** Truthful, disclosure-only summary of what the snapshot does and does not cover. */
 export interface EvidenceCoverage {
   snapshotId: string;
@@ -48,6 +54,8 @@ export interface EvidenceCoverage {
   unknownFeatureCourseIds: string[];
   /** Course ids whose evidence is stale for the requested year. */
   staleCourseIds: string[];
+  /** Descriptive evidence intentionally sourced from an allowed prior year. */
+  historicalCourseIds: string[];
   /** Course ids with an unresolved authoritative conflict. */
   conflictingCourseIds: string[];
   /**
@@ -95,6 +103,8 @@ export interface PrepareEvidenceInput {
   courseIds: string[];
   /** The academic year the plan is for — evidence for another year is stale. */
   academicYear: number | string;
+  /** Explicit opt-in for descriptive-only use of recent prior-year syllabi. */
+  descriptiveFreshnessPolicy?: { maxPriorAcademicYears: number };
   /**
    * Already-acquired official documents. Supplied by the durable cache (K6) or
    * by a test. This function performs NO acquisition of its own.
@@ -139,12 +149,34 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
   const requestedSet = new Set(requested);
   const all = input.documents ?? [];
 
-  // Only documents for a REQUESTED course are relevant; only documents for the
-  // REQUESTED YEAR are applicable. The rest are recorded, never applied.
+  // Only documents for a REQUESTED course are relevant. Exact-year evidence is
+  // preferred. A caller may explicitly permit recent PRIOR-year syllabi for
+  // this descriptive evidence boundary; future years and invalid years never
+  // apply, and no administrative fact is read in this module.
   const relevant = all.filter((d) => requestedSet.has(d.courseId));
-  const applicable = relevant.filter((d) => String(d.academicYear) === String(input.academicYear));
+  const targetYear = Number(input.academicYear);
+  const maxPriorYears = input.descriptiveFreshnessPolicy?.maxPriorAcademicYears;
+  const applicable: SyllabusDocument[] = [];
+  const historicalCourseIds: string[] = [];
+  for (const courseId of requested) {
+    const docs = relevant.filter((d) => d.courseId === courseId);
+    const exact = docs.filter((d) => String(d.academicYear) === String(input.academicYear));
+    if (exact.length) {
+      applicable.push(...exact);
+      continue;
+    }
+    if (!Number.isFinite(targetYear) || !Number.isInteger(maxPriorYears) || maxPriorYears! < 0) continue;
+    const eligibleYears = docs
+      .map((d) => Number(d.academicYear))
+      .filter((year) => Number.isFinite(year) && year < targetYear && targetYear - year <= maxPriorYears!);
+    if (!eligibleYears.length) continue;
+    const selectedYear = Math.max(...eligibleYears);
+    applicable.push(...docs.filter((d) => Number(d.academicYear) === selectedYear));
+    historicalCourseIds.push(courseId);
+  }
+  const applicableSet = new Set(applicable);
   const staleCourseIds = [
-    ...new Set(relevant.filter((d) => String(d.academicYear) !== String(input.academicYear)).map((d) => d.courseId)),
+    ...new Set(relevant.filter((d) => !applicableSet.has(d)).map((d) => d.courseId)),
   ].sort();
 
   const conflicting = [...new Set(input.conflictingCourseIds ?? [])].sort();
@@ -234,7 +266,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
   // come from different snapshots.
   const topics = new Map<string, CourseTopicSupport>();
   for (const [courseId, docs] of byCourse) {
-    const extractions = docs.map((d) => extractCourseTopics(d, { academicYear: input.academicYear }));
+    const extractions = docs.map((d) => extractCourseTopics(d, { academicYear: d.academicYear }));
     const ids: ReadonlySet<TopicId> = supportedTopics(extractions);
     const anchor = docs.find((d) => extractions[docs.indexOf(d)].contentAvailable) ?? docs[0];
     topics.set(courseId, { topicIds: ids, sourceRef: anchor.sourceUrl, academicYear: anchor.academicYear });
@@ -263,6 +295,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
       missingCourseIds,
       unknownFeatureCourseIds,
       staleCourseIds,
+      historicalCourseIds: historicalCourseIds.sort(),
       conflictingCourseIds: conflicting,
       variesBySectionCourseIds: variesBySectionCourseIds.sort(),
       topicUnknownCourseIds,

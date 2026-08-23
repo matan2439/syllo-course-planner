@@ -160,6 +160,20 @@ describe('W1 — the handler emits a truthful topic-impact probe', () => {
     expect(impact.distinguishingTopics).toEqual([]);
   });
 
+  test('an official syllabus two years earlier is usable only through the explicit descriptive freshness policy', async () => {
+    MOCK_DOCUMENTS = TOPIC_CORPUS.map((d) => ({ ...d, academicYear: 2025, contentHash: `${d.contentHash}_2025` }));
+    const body = (await run(request()))._body;
+    const impact = impactOf(body);
+
+    expect(impact.distinguishesCandidates).toBe(true);
+    expect(impact.distinguishingTopics).toEqual(['robotics', 'control']);
+    expect(body.academicDecision.candidates.evidence.historicalCourseIds).toEqual(ELECTIVES);
+    expect(body.academicDecision.candidates.evidence.academicYears).toEqual([2025]);
+    expect(body.academicDecision.candidates.evidence.historicalEvidenceNoticeHe).toContain('2025');
+    expect(body.academicDecision.candidates.evidence.historicalEvidenceNoticeHe).toContain('2027');
+    expect(body.academicDecision.candidates.evidence.historicalEvidenceNoticeHe).toContain('תיאורי');
+  });
+
   test('AMBIGUOUS wording alone never becomes a distinguishing topic', async () => {
     // Real 0542-4391 wording: "בקרה" here means control of the solution process.
     MOCK_DOCUMENTS = [doc('E3', 'כלים לבקרה על מהלך הפתרון, בדיקת התכנסות.')];

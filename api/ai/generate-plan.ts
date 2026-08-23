@@ -85,7 +85,7 @@ import { resolveDistributionPolicy } from './distribution_policy';
 import { generateCandidateSet, selectCandidate, selectionReason, candidateCourseIds } from './candidate_set';
 import { analyzeHardConstraints, hardWantedConstraintsEnabled } from './hard_constraints';
 import { resolveGroundedObjective } from './grounded_preference';
-import { prepareEvidence } from './evidence_provider';
+import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from './evidence_provider';
 import { TOPIC_IDS } from './course_topics';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective } from './grounded_objectives';
@@ -1721,6 +1721,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const preparedEvidence = prepareEvidence({
       courseIds: [...model.profiles.keys()],
       academicYear: model.catalogYear ?? new Date(0).getFullYear(),
+      // B1 — explicit product policy: recent official syllabi may support only
+      // the descriptive feature/topic layer assembled here. Legality, credits,
+      // prerequisites, categories and offerings remain owned by the board/model.
+      descriptiveFreshnessPolicy: RECENT_OFFICIAL_SYLLABUS_POLICY,
       documents: loadPreparedEvidenceDocuments(program_id),
     });
     /**
@@ -1794,6 +1798,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // candidate higher.
       evidence: {
         ...preparedEvidence.coverage,
+        ...(preparedEvidence.coverage.historicalCourseIds.length
+          ? {
+              historicalEvidenceNoticeHe:
+                `ההתאמה התיאורית מבוססת על סילבוס רשמי משנת ${preparedEvidence.coverage.academicYears.join(', ')} ` +
+                `עבור קטלוג ${String(model.catalogYear ?? '')}; היא אינה קובעת חוקיות, תנאי קדם או דרישות תואר.`,
+            }
+          : {}),
         groundedObjective: resolvedGrounded?.objective ?? null,
         preferenceProfileVersion: preference_profile?.version ?? null,
         // K9C — the impact signal the conversation needs to decide whether asking
