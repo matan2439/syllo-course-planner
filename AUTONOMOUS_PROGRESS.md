@@ -5,14 +5,41 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B12 bounded two-course grounded combination discovery added.** A completed
-baseline can now discover a legal plan that improves two confirmed objectives
-only when two elective replacements are made together. Pair construction and
-validation remain bounded by the existing search budget. Full API 179/179
-suites, 2434/2434 tests and root tsc green. **Not Production-ready.** Not
-merged, not deployed.)_
+(**B13 informative trade-off explanation selection added.** An explicit-
+priority explanation now searches every available legal non-dominated
+alternative for the strongest surviving non-primary objective advantage,
+instead of inspecting only the first card. Full API 179/179 suites, 2435/2435
+tests and root tsc green. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 4) — B12. A behavioral RED started from a
+_Latest entry: 2026-08-24 (cont. 5) — B13. Audit found that Generate passed only
+the first non-selected candidate into `explainGroundedComposition`. With three
+legal alternatives, that card can tie the recommendation on every relevant
+secondary objective while a later available card is genuinely stronger on one;
+the explanation then truthfully named the explicit primary priority but hid the
+surviving trade-off. A provenance-complete RED supplies a recommended topic
+leader, a first legal topic tie and a later project leader. It failed because
+the later alternative was ignored.
+
+The explanation contract now accepts all available legal non-dominated
+objective-score sets. For explicit priority it chooses the candidate with the
+largest positive advantage on any non-primary objective (reversing the
+direction for the existing avoid-topic objective), using input order only as a
+deterministic exact-tie fallback. Generate supplies only other validated,
+non-dominated candidate-set members; dominated or unavailable plans cannot be
+described as remaining selectable. The chosen comparison is reused by every
+per-objective sentence and the explicit-priority trade-off sentence. Ranking,
+candidate retention, recommendation, cards and Apply are unchanged. Reversing
+alternative order yields byte-identical explanation text when one alternative
+has the stronger material trade-off.
+
+RED failed 1/14 with the later project trade-off omitted; GREEN passes 14/14.
+Focused composition/priority/alternative coverage passes 96/96. Full API passes
+179/179 suites and 2435/2435 tests in 514 seconds; root `tsc --noEmit` passes.
+No UI code changed, so the B8 web/build/legacy baseline remains applicable. No
+paid/provider call, network acquisition, catalog/data mutation, Production,
+Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 4) — B12. A behavioral RED started from a
 valid, already-complete two-course baseline. One authoritative robotics course
 and one authoritative materials course could replace the two neutral courses;
 either one-course swap improved one confirmed objective, but only the legal
