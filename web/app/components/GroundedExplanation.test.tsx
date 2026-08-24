@@ -41,7 +41,22 @@ test('the disclosure names the official source and the applicable academic year'
   render(<GroundedExplanation {...props} />)
   fireEvent.click(screen.getByRole('button', { name: 'הצג מקורות' }))
   expect(screen.getByText(/סילבוס רשמי, שנת 2025/)).toBeInTheDocument()
-  expect(screen.getByText(new RegExp('ims\\.tau\\.ac\\.il'))).toBeInTheDocument()
+  const source = screen.getByRole('link', { name: /פתיחת הסילבוס הרשמי.*E3/ })
+  expect(source).toHaveAttribute('href', SOURCE)
+  expect(source).toHaveAttribute('target', '_blank')
+  expect(source).toHaveAttribute('rel', expect.stringContaining('noopener'))
+  expect(source).toHaveAttribute('rel', expect.stringContaining('noreferrer'))
+  expect(source).toHaveTextContent('ims.tau.ac.il')
+})
+
+test('a non-http source reference is disclosed as text and never made clickable', () => {
+  render(<GroundedExplanation {...props} sources={[
+    { courseId: 'E3', sourceRef: 'javascript:alert(1)', academicYear: 2025 },
+  ]} />)
+  fireEvent.click(screen.getByRole('button', { name: 'הצג מקורות' }))
+
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  expect(screen.getByText('מקור רשמי שנשמר במערכת')).toBeInTheDocument()
 })
 
 test('coverage limits are disclosed, and missing data is never read as "no laboratory"', () => {

@@ -5,13 +5,38 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B32 assessment extraction respects non-exhaustive source semantics.** An
-explicit assessment term still proves presence, but an absent term or official
-“other” value no longer fabricates evidence of absence. API is 180/180 suites,
-2463/2463 tests; web is 20/20 suites, 186/186 tests. **Not Production-ready.**
-Not merged, not deployed.)_
+(**B33 official evidence sources are safely openable.** The existing source
+disclosure now provides a concise, keyboard-accessible official-syllabus link
+instead of inert raw URL text, and unsafe schemes fail closed. API remains
+180/180 suites, 2463/2463 tests; web is 20/20 suites, 187/187 tests. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 24) — B32. The post-B31 Phase A.2 audit found
+_Latest entry: 2026-08-24 (cont. 25) — B33. Tracing B30's readable rationale
+through the existing `GroundedExplanation` disclosure found that the exact
+official URL was preserved correctly but rendered as a plain LTR span. A
+student could see a long technical address but had no native keyboard/click
+action to inspect the evidence behind the recommendation._
+
+_The component RED opened the disclosure and required a link whose accessible
+name identifies the official syllabus and course, whose href is the exact
+server-provided source, and whose new-tab behavior carries `noopener noreferrer`.
+A second RED supplied `javascript:` and required no actionable link. GREEN adds
+a narrow HTTP/HTTPS URL parser at the rendering boundary. Valid sources display
+one clear Hebrew action plus the official hostname, use the existing purple and
+focus tokens, and open natively; malformed or non-web references remain an
+inert “official source saved in the system” status. No motion or card redesign
+was introduced._
+
+_Focused explanation coverage passes 2/2 suites and 14/14 tests. Full web
+passes 20/20 suites, 187/187 tests; existing expected failure-path
+`fetch is not defined` console output remains. Root/web `tsc --noEmit` and the
+Next.js production build pass. API files were untouched; the immediately prior
+B32 full API run remains 180/180 suites and 2463/2463 tests and was not
+misreported as rerun for this React-only slice. No tracked data,
+provider/network acquisition, Production, Vercel, Supabase, `main`, or stash
+change._
+
+_Previous entry: 2026-08-24 (cont. 24) — B32. The post-B31 Phase A.2 audit found
 that `RuleBasedFeatureExtractor` treated the official `מטלות הקורס` value
 as an exhaustive assessment inventory. The same official page explicitly warns
 that additional assignments may exist and that the complete list is in the

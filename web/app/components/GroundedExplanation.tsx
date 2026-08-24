@@ -21,6 +21,15 @@
  */
 import { useId, useState } from 'react'
 
+function officialSourceHost(sourceRef: string): string | null {
+  try {
+    const url = new URL(sourceRef)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.hostname : null
+  } catch {
+    return null
+  }
+}
+
 export default function GroundedExplanation({
   explanationHe,
   sources = [],
@@ -63,12 +72,27 @@ export default function GroundedExplanation({
 
           {open && (
             <div id={regionId} role="region" aria-label="מקורות רשמיים" className="mt-2 flex flex-col gap-2">
-              {sources.map((s) => (
-                <p key={`${s.courseId}-${s.sourceRef}`} className="text-xs text-[var(--text-muted)]">
-                  {`קורס ${s.courseId} — סילבוס רשמי, שנת ${s.academicYear}: `}
-                  <span dir="ltr">{s.sourceRef}</span>
-                </p>
-              ))}
+              {sources.map((s) => {
+                const host = officialSourceHost(s.sourceRef)
+                return (
+                  <p key={`${s.courseId}-${s.sourceRef}`} className="text-xs text-[var(--text-muted)]">
+                    {`קורס ${s.courseId} — סילבוס רשמי, שנת ${s.academicYear}: `}
+                    {host ? (
+                      <a
+                        href={s.sourceRef}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`פתיחת הסילבוס הרשמי של קורס ${s.courseId} בלשונית חדשה`}
+                        className="rounded-sm text-[var(--purple-strong)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+                      >
+                        פתיחת הסילבוס הרשמי (<span dir="ltr">{host}</span>)
+                      </a>
+                    ) : (
+                      <span>מקור רשמי שנשמר במערכת</span>
+                    )}
+                  </p>
+                )
+              })}
               {coverage && (
                 <p className="text-xs text-[var(--text-muted)]">
                   {`נמצאה עדות רשמית עבור ${coverage.coveredCourseCount} מתוך ${coverage.requestedCourseCount} קורסים אפשריים.`}
