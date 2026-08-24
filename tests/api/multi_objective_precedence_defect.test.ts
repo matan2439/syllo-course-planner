@@ -278,6 +278,11 @@ describe('M4 — trade-offs are reported, not decided by objective order', () =>
     const text: string = body.academicDecision.candidates.groundedExplanationHe ?? '';
     expect(text).toMatch(/אין חלופה חוקית שמצטיינת בכל ההעדפות/);
     expect(text).toMatch(/זו מדיניות הדירוג של המערכת, לא קביעה שלך/);
+    // The comparison uses E2's project evidence and E3's robotics evidence;
+    // both official documents must be disclosed whichever plan won the
+    // equal-importance canonical tie-break.
+    expect(body.academicDecision.candidates.groundedSources.map((source: any) => source.courseId).sort())
+      .toEqual(['E2', 'E3']);
   });
 
   test('reversing the preference order does not change the selected plan', async () => {

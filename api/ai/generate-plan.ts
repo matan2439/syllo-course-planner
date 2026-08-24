@@ -1863,14 +1863,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           .filter((candidate) => candidate.id !== selected?.id && candidate.nonDominated !== false)
           .filter((candidate) => candidate.objectiveScores?.length)
           .map((candidate) => candidate.objectiveScores!.map(asScore));
-        const comparison = selectedComponents.length && objectives.length
-          && candidateSet.composition?.reason === 'explicit_priority'
-          ? selectGroundedExplanationAlternative({
-              objectives,
-              selected: selectedComponents.map(asScore),
-              alternatives,
-              primaryObjectiveId: resolvedGrounded?.primaryObjectiveId,
-            })
+        const comparison = selectedComponents.length && objectives.length && alternatives.length
+          ? candidateSet.composition?.reason === 'explicit_priority'
+            ? selectGroundedExplanationAlternative({
+                objectives,
+                selected: selectedComponents.map(asScore),
+                alternatives,
+                primaryObjectiveId: resolvedGrounded?.primaryObjectiveId,
+              })
+            : alternatives[0]
           : undefined;
         const all = [
           ...(selectedComponents.length
