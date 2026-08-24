@@ -5,14 +5,43 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B11 bounded Pareto discovery and evidence-diverse retention added.** The
-three-card product bound no longer lets a dominated early discovery hide a
-reachable non-dominated plan, and equally legal/frontier plans with distinct
-grounded contributions are retained before redundant variants. Full API
-179/179 suites, 2433/2433 tests and root tsc green. **Not Production-ready.**
-Not merged, not deployed.)_
+(**B12 bounded two-course grounded combination discovery added.** A completed
+baseline can now discover a legal plan that improves two confirmed objectives
+only when two elective replacements are made together. Pair construction and
+validation remain bounded by the existing search budget. Full API 179/179
+suites, 2434/2434 tests and root tsc green. **Not Production-ready.** Not
+merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 3) — B11. An exhaustive four-course audit
+_Latest entry: 2026-08-24 (cont. 4) — B12. A behavioral RED started from a
+valid, already-complete two-course baseline. One authoritative robotics course
+and one authoritative materials course could replace the two neutral courses;
+either one-course swap improved one confirmed objective, but only the legal
+two-course combination improved both. The existing completed-baseline path
+explored one elective replacement at a time and generic worker deviations
+could not advance a plan whose degree target was already met, so the dominating
+combined plan was absent.
+
+Grounded discovery now builds deterministic one- and two-replacement proposals
+when at least two grounded objectives participate. Both use the same pure
+mutations, hard/policy model, authoritative validator and existing `maxRuns`
+budget; no candidate bypasses validation and the product retention bound stays
+unchanged. Pair construction is itself bounded to the first canonical
+placement of at most `2 × maxRuns` unique single-swap course sets, preventing a
+catalog-sized Cartesian expansion that validation could never consume. Course,
+evidence-map and objective order reversal returns the same candidate identities
+and order. Three independently grounded courses competing for two slots prove
+that all three materially distinct pair combinations remain Pareto alternatives
+rather than collapsing into pairwise cycles or dominated filler.
+
+RED failed 1/26 with the combined plan absent; GREEN passes 26/26. Eight direct
+composition/priority/proposal/Apply suites pass 147/147. The frozen real-corpus
+materials regression passes and still retains the authoritative alternative
+`0581-4131`. Full API passes 179/179 suites and 2434/2434 tests in 996 seconds;
+root `tsc --noEmit` passes. No UI code changed, so the B8 web/build/legacy
+baseline remains applicable. No paid/provider call, network acquisition,
+catalog/data mutation, Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 3) — B11. An exhaustive four-course audit
 found a deterministic counterexample at the real product bound: two topic
 objectives had four reachable legal Pareto plans, but discovery stopped after
 the first three valid identities and retained one dominated plan, exposing
