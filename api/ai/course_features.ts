@@ -70,8 +70,9 @@ export interface CourseFeatures {
   /**
    * K8 — project/design-based delivery, read from the SAME schema-complete
    * official `אופן ההוראה` field. Distinct from `project` below, which comes
-   * from the assessment field: the K8A audit measured assessment at 0/8 across
-   * the live corpus, while delivery mode is 8/8, so only this one is usable.
+   * from the assessment field. K8A historically measured assessment at 0/8
+   * because the old source parser dropped direct text-node values; B22/B23
+   * repaired new acquisition and legacy-cache recovery respectively.
    */
   projectDelivery: FeatureValue<Ternary>;
   /** Project component. */

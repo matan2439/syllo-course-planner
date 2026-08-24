@@ -234,8 +234,13 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
 
     const aggregated = aggregateOf((f) => f.laboratory);
     const aggregatedProject = aggregateOf((f) => f.projectDelivery);
+    const aggregatedAssessmentProject = aggregateOf((f) => f.project);
 
-    if (aggregated.value === 'varies_by_section' || aggregatedProject.value === 'varies_by_section') {
+    if (
+      aggregated.value === 'varies_by_section'
+      || aggregatedProject.value === 'varies_by_section'
+      || aggregatedAssessmentProject.value === 'varies_by_section'
+    ) {
       variesBySectionCourseIds.push(courseId);
     }
 
@@ -259,6 +264,7 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
       ...base,
       laboratory: applied(base.laboratory, aggregated),
       projectDelivery: applied(base.projectDelivery, aggregatedProject),
+      project: applied(base.project, aggregatedAssessmentProject),
     });
   }
 

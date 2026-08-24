@@ -1,10 +1,10 @@
 /**
  * K8B/K8C — the SECOND grounded objective: `prefer_project_courses`.
  *
- * Selected by the K8A coverage audit, not by convenience: topic alignment
- * (1/7 courses) and assessment (0/8) both failed the evidence threshold, while
- * the official `אופן ההוראה` delivery-mode field is schema-complete (8/8) and
- * publishes "פרוייקט" as a real enumerated value.
+ * Selected originally by the K8A coverage audit because the official
+ * `אופן ההוראה` field was schema-complete. B22/B23 later recovered explicit
+ * project values from the official assignments field; both sources now ground
+ * the same project-based preference without creating another objective.
  *
  * The objective must carry its OWN end-to-end ranking proof — a score-only unit
  * test would not qualify. These assertions are about which plan the system
@@ -64,6 +64,12 @@ function doc(courseId: string, delivery: string, over: Partial<SyllabusDocument>
 
 /** E3 is the only PROJECT course; the rest are lectures. */
 const PROJECT_CORPUS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
+const ASSESSMENT_PROJECT_CORPUS = [
+  doc('E1', 'שיעור', { labeledFields: { 'מספר קורס': ['0542-3001'], 'אופן ההוראה': ['שיעור'], 'מטלות הקורס': ['אחר'] } }),
+  doc('E2', 'שיעור', { labeledFields: { 'מספר קורס': ['0542-3002'], 'אופן ההוראה': ['שיעור'], 'מטלות הקורס': ['אחר'] } }),
+  doc('E3', 'שיעור', { labeledFields: { 'מספר קורס': ['0542-3003'], 'אופן ההוראה': ['שיעור'], 'מטלות הקורס': ['פרוייקט'] } }),
+  doc('E4', 'שיעור', { labeledFields: { 'מספר קורס': ['0542-3004'], 'אופן ההוראה': ['שיעור'], 'מטלות הקורס': ['אחר'] } }),
+];
 
 const projectObjective = (snapshotId: string): GroundedObjective => ({
   id: 'prefer_project_courses', confirmed: true, snapshotId,
@@ -185,13 +191,58 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
   test('5+6. WITH the confirmed preference the SELECTED plan becomes the project one', () => {
     const p = prepared();
     const before = selectCandidate(generate())!;
-    const after = selectCandidate(generate({
+    const set = generate({
       grounded: { objective: projectObjective(p.snapshot.snapshotId), features: p.features },
-    }))!;
+    });
+    const after = selectCandidate(set)!;
     expect(after.normalizedIdentity).not.toBe(before.normalizedIdentity);
     expect(courseIdsOf(before.state)).not.toContain('E3');
     expect(courseIdsOf(after.state)).toContain('E3');
     expect(after.groundedScore!.contributions[0].courseId).toBe('E3');
+  });
+
+  test('5b. an explicit project in the official assignments field changes selection through the same objective', () => {
+    const p = prepared(ASSESSMENT_PROJECT_CORPUS);
+    expect(p.features.get('E3')!.projectDelivery.value).toBe(false);
+    expect(p.features.get('E3')!.project.value).toBe(true);
+
+    const before = selectCandidate(generate())!;
+    const set = generate({
+      grounded: { objective: projectObjective(p.snapshot.snapshotId), features: p.features },
+    });
+    const after = selectCandidate(set)!;
+
+    expect(after.normalizedIdentity).not.toBe(before.normalizedIdentity);
+    expect(courseIdsOf(before.state)).not.toContain('E3');
+    expect(courseIdsOf(after.state)).toContain('E3');
+    expect(after.groundedScore!.contributions).toContainEqual(expect.objectContaining({
+      courseId: 'E3', feature: 'project',
+    }));
+    const explanation = explainGroundedRanking({
+      objective: projectObjective(p.snapshot.snapshotId),
+      selected: after.groundedScore!,
+      alternative: set.candidates.find((candidate) => candidate.id !== after.id)?.groundedScore,
+    });
+    expect(explanation).toContain('מטלות הקורס');
+    expect(explanation).not.toContain('המקור: אופן ההוראה');
+  });
+
+  test('5c. delivery and assessment evidence for the same course count once', () => {
+    const both = prepared([
+      doc('E3', 'פרוייקט', {
+        labeledFields: {
+          'מספר קורס': ['0542-3003'],
+          'אופן ההוראה': ['פרוייקט'],
+          'מטלות הקורס': ['פרוייקט'],
+        },
+      }),
+    ]);
+    const score = scoreCandidateOnObjective(
+      ['E3'], projectObjective(both.snapshot.snapshotId), both.features,
+    );
+
+    expect(score.score).toBe(1);
+    expect(score.contributions).toHaveLength(1);
   });
 
   test('7. the explanation cites the project feature, official source and year', () => {
@@ -224,6 +275,11 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
     }))!;
     expect(withNothing.normalizedIdentity).toBe(baseline.normalizedIdentity);
     expect(withNothing.groundedScore!.score).toBe(0);
+    const explanation = explainGroundedRanking({
+      objective: projectObjective(noEvidence.snapshot.snapshotId),
+      selected: withNothing.groundedScore!,
+    });
+    expect(explanation).toContain('אופן ההוראה או במטלות הקורס');
   });
 
   test('9b. section-VARYING project evidence is inert (K7.5 applicability holds)', () => {
@@ -241,6 +297,29 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
     expect(withMixed.normalizedIdentity).toBe(baseline.normalizedIdentity);
     expect(withMixed.groundedScore!.score).toBe(0);
     expect(mixed.coverage.variesBySectionCourseIds).toEqual(['E3']);
+  });
+
+  test('9c. a project assessment in only one section cannot label the whole course', () => {
+    const section = (group: string, assignment: string) => doc('E3', 'שיעור', {
+      contentHash: `assessment_${group}_${assignment}`,
+      labeledFields: {
+        'מספר קורס': [`0542-3003-${group}`],
+        'אופן ההוראה': ['שיעור'],
+        'מטלות הקורס': [assignment],
+      },
+    });
+    const mixed = prepareEvidence({
+      courseIds: ['E3'], academicYear: YEAR,
+      documents: [section('01', 'פרוייקט'), section('05', 'אחר')],
+      groupUniverse: { E3: ['01', '05'] },
+    });
+    const score = scoreCandidateOnObjective(
+      ['E3'], projectObjective(mixed.snapshot.snapshotId), mixed.features,
+    );
+
+    expect(mixed.features.get('E3')!.project.value).toBe('varies_by_section');
+    expect(score.score).toBe(0);
+    expect(score.variesBySectionCourseIds).toEqual(['E3']);
   });
 
   test('10. hard exclusion of the favoured project course still wins', () => {

@@ -46,10 +46,10 @@ export type GroundedObjectiveId =
   | 'avoid_topic_exposure';
 
 /**
- * Which extracted feature each objective reads, and how it is described. Both
- * come from the SAME schema-complete official delivery-mode field, which the K8A
- * audit measured at 8/8 coverage — topic alignment (1/7) and assessment (0/8)
- * did not meet the threshold and are not implemented.
+ * The primary extracted feature each delivery objective reads. The project
+ * objective also accepts an explicit project from the official assignments
+ * field; this is the same student preference, not a separate objective, and a
+ * course supported by both fields still contributes once.
  */
 const OBJECTIVE_FEATURE: Record<'prefer_laboratory_courses' | 'prefer_project_courses', { key: 'laboratory' | 'projectDelivery'; labelHe: string }> = {
   prefer_laboratory_courses: { key: 'laboratory', labelHe: 'מעבדה' },
@@ -133,7 +133,7 @@ export interface GroundedObjective {
 /** One course's evidence-backed contribution to the objective. */
 export interface ObjectiveContribution {
   courseId: string;
-  feature: 'laboratory' | 'projectDelivery' | 'topic';
+  feature: 'laboratory' | 'projectDelivery' | 'project' | 'topic';
   /** Present for `feature: 'topic'` — which confirmed topic this course supports. */
   topicId?: TopicId;
   /** Official source the claim rests on. */
@@ -162,17 +162,17 @@ export interface GroundedScore {
 /** A course's extracted features, keyed by course id — one snapshot's worth. */
 export type FeatureIndex = ReadonlyMap<string, CourseFeatures>;
 
-function firstEvidence(features: CourseFeatures, key: 'laboratory' | 'projectDelivery'): AcademicEvidence | undefined {
+function firstEvidence(features: CourseFeatures, key: 'laboratory' | 'projectDelivery' | 'project'): AcademicEvidence | undefined {
   return features[key].evidence[0];
 }
 
 /**
  * Score ONE candidate's course set on the objective.
  *
- * Counts only courses whose `laboratory` feature is confirmed `true` by official
- * evidence. `false` and `'unknown'` both contribute zero, and a course with no
- * features at all contributes zero — so a candidate can never be advantaged or
- * disadvantaged by the mere absence of data.
+ * Counts only courses whose relevant feature is confirmed `true` by official
+ * evidence. The project objective accepts either project delivery or an
+ * explicit project assessment, once per course. `false` and `'unknown'` both
+ * contribute zero, and missing evidence is neutral.
  */
 export function scoreCandidateOnObjective(
   courseIds: readonly string[],
@@ -188,23 +188,26 @@ export function scoreCandidateOnObjective(
     return scoreTopicAlignment(courseIds, objective, features, topics);
   }
 
-  const { key } = OBJECTIVE_FEATURE[objective.id];
-
   for (const courseId of [...courseIds].sort()) {
     const f = features.get(courseId);
     if (!f) continue; // no evidence at all — no bias in either direction
+    const keys: Array<'laboratory' | 'projectDelivery' | 'project'> = objective.id === 'prefer_project_courses'
+      ? ['projectDelivery', 'project']
+      : ['laboratory'];
+    const key = keys.find((candidate) => f[candidate].value === true) ?? keys[0];
     const feature = f[key];
+    const values = keys.map((candidate) => f[candidate].value as unknown);
     // K7.5 — the sections disagree. Neither true nor false applies to a
     // course-level candidate, so this is disclosed and contributes nothing.
-    if ((feature.value as unknown) === 'varies_by_section') {
+    if (!values.includes(true) && values.includes('varies_by_section')) {
       variesBySectionCourseIds.push(courseId);
       continue;
     }
-    if (feature.value === 'unknown') {
+    if (!values.includes(true) && values.includes('unknown')) {
       unknownCourseIds.push(courseId);
       continue; // disclosed, never counted
     }
-    if (feature.value !== true) continue; // genuinely false — a preference FOR, not a penalty
+    if (!values.includes(true)) continue; // genuinely false — a preference FOR, not a penalty
     const e = firstEvidence(f, key);
     contributions.push({
       courseId,
@@ -281,11 +284,14 @@ export function explainGroundedRanking(input: {
   if (input.objective.id === 'prefer_topic_alignment') return explainTopicAlignment(input);
   if (input.objective.id === 'avoid_topic_exposure') return explainAvoidedTopicExposure(input);
   const label = OBJECTIVE_FEATURE[input.objective.id].labelHe;
+  const evidenceFields = input.objective.id === 'prefer_project_courses'
+    ? 'אופן ההוראה או במטלות הקורס'
+    : 'אופן ההוראה';
   if (selected.contributions.length === 0 && (!alternative || alternative.contributions.length === 0)) {
     const varying = selected.variesBySectionCourseIds?.length
-      ? ' עבור חלק מהקורסים אופן ההוראה משתנה בין קבוצות, ולכן לא ניתן לייחס אותו לקורס כולו.'
+      ? ` עבור חלק מהקורסים המידע הרשמי על ${evidenceFields} משתנה בין קבוצות, ולכן לא ניתן לייחס אותו לקורס כולו.`
       : '';
-    return 'לא נמצאה עדות רשמית שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.' + varying;
+    return `לא נמצאה עדות רשמית ב${evidenceFields} שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.` + varying;
   }
   const names = selected.contributions.map((c) => c.courseId).join(', ');
   const src = selected.contributions[0];
@@ -293,18 +299,18 @@ export function explainGroundedRanking(input: {
     ? `לפי ההעדפה שאישרת (קורסים עם ${label}), התוכנית הנבחרת כוללת ${selected.contributions.length} קורס/ים עם רכיב ${label}: ${names}.`
     : `ההעדפה שאישרת (קורסים עם ${label}) לא נתמכה בעדות רשמית עבור התוכנית הנבחרת.`;
   const provenance = src
-    ? ` המקור: אופן ההוראה בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).`
+    ? ` המקור: ${src.feature === 'project' ? 'מטלות הקורס' : 'אופן ההוראה'} בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).`
     : '';
   const compare = alternative
     ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} קורס/ים עם ${label}), ולא מסיבה אקדמית אחרת.`
     : '';
   const unknown = selected.unknownCourseIds.length
-    ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא קיימת עדות רשמית על אופן ההוראה, ולכן הם לא נספרו לכאן ולא לכאן.`
+    ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא קיימת עדות רשמית ב${evidenceFields}, ולכן הם לא נספרו לכאן ולא לכאן.`
     : '';
   // K7.5 — a course whose sections disagree is described AS varying. It is never
   // called a laboratory course on the strength of one group.
   const varies = selected.variesBySectionCourseIds?.length
-    ? ` עבור ${selected.variesBySectionCourseIds.length} קורס/ים אופן ההוראה משתנה בין קבוצות, ולכן הם לא השפיעו על הדירוג.`
+    ? ` עבור ${selected.variesBySectionCourseIds.length} קורס/ים המידע הרשמי על ${evidenceFields} משתנה בין קבוצות, ולכן הם לא השפיעו על הדירוג.`
     : '';
   return head + provenance + compare + unknown + varies;
 }

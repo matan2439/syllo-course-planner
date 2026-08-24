@@ -5,14 +5,48 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B23 frozen-cache assignment evidence recovered safely.** Legacy cached
-documents now recover only the explicitly bounded official assignments section;
-a same-wording mention in course prose cannot become evidence. The local frozen
-corpus improves from 0 to 21/23 documents with known assessment shape. Full API
-is 179/179 suites, 2445/2445 tests. **Not Production-ready.** Not merged, not
-deployed.)_
+(**B24 project assessment participates in the existing grounded objective.** An
+explicit official project assignment can now ground `prefer_project_courses`
+alongside project delivery, once per course, with section-safe applicability
+and truthful provenance. Full API is 179/179 suites, 2448/2448 tests. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 15) — B23. B22 repaired future acquisition,
+_Latest entry: 2026-08-24 (cont. 16) — B24. B23 recovered official assessment
+facts, but tracing showed they stopped at `CourseFeatures.project`:
+`prefer_project_courses` read only `projectDelivery`, so a lecture course whose
+official `מטלות הקורס` explicitly required a project still scored zero. This
+is another evidence source for the existing confirmed project-based preference,
+not a new academic objective or question.
+
+The end-to-end RED used multiple valid candidate plans under identical hard
+constraints, made E3 a lecture with an explicit official project assignment,
+and observed the canonical E1+E2 recommendation remain unchanged. GREEN lets
+either project delivery or an explicit project assignment contribute exactly
+once per course. It remains a soft composition feature behind legality,
+completion, hard wanted/avoided constraints, caps, and confirmed distribution.
+The existing hard-exclusion proof remains GREEN.
+
+A separate section-applicability RED temporarily removed assessment aggregation
+and exposed the first-document defect (`true` from one section instead of
+`varies_by_section`). Assessment projects now use the same complete-universe
+aggregation as laboratory/project delivery: mixed sections are inert, missing
+universes do not become course facts, and input order cannot select a winner.
+Dual delivery+assessment evidence contributes once. Explanation REDs prove an
+assessment contribution cites `מטלות הקורס`, delivery cites `אופן ההוראה`, and
+unknown disclosure names both possible evidence fields.
+
+Focused project GREEN passes 25/25; composition/priority/Generate/real-corpus
+regressions pass 12/12 suites and 241/241 tests. Full API passes 179/179 suites
+and 2448/2448 tests in 210 seconds. A temporary local full-handler probe
+(removed) honestly found no recommendation change in the current real scenario:
+all three alternatives contain the same course-id set, and the section-scoped
+corpus lacks a connected complete group universe, so safe aggregation leaves
+project score zero. The objective was active and coverage was disclosed; no
+fixture, catalog, or safety rule was changed to force impact. Root tsc and final
+diff gates pass. No UI/data change, provider call,
+Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 15) — B23. B22 repaired future acquisition,
 but the immutable local evidence objects had already been parsed under the old
 rule: their `labeledFields` lacked `מטלות הקורס`, even though their normalized
 visible text still retained the official heading, value, disclaimer, and next
