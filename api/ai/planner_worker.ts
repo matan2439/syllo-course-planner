@@ -196,7 +196,7 @@ export class PlannerWorker {
     const key = `${this.opts.rolloutSteps}:${JSON.stringify(placement)}`;
     const cached = this._lookaheadCache.get(key);
     if (cached) return cached;
-    const score = estimateFinalScore(state, this.model, this.opts.rolloutSteps);
+    const score = estimateFinalScore(state, this.model, this.opts.rolloutSteps, this._validationCtx);
     this._lookaheadCache.set(key, score);
     return score;
   }

@@ -20,6 +20,8 @@ import {
   emptyState,
 } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
+import { buildValidationContext } from '../../api/ai/planner_validate';
+import * as completionAnalysis from '../../api/ai/completion_analysis';
 
 const SEMS = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
 
@@ -129,6 +131,21 @@ describe('estimateFinalScore — non-myopic choice (b)', () => {
     const total = Object.values(completed.semesters).flat()
       .reduce((s, id) => s + (m.profiles.get(id)?.hours ?? 0), 0);
     expect(total).toBeGreaterThanOrEqual(28);
+  });
+
+  it('reuses a caller-supplied authoritative validation context throughout the rollout', () => {
+    const m = abModel();
+    const ctx = buildValidationContext(m);
+    const spy = jest.spyOn(completionAnalysis, 'getLegalSemesters');
+
+    estimateFinalScore(emptyState(SEMS), m, 80, ctx);
+
+    // Six calls come from enumerating the two courses' legal placements. A
+    // context rebuild inside each candidate validation adds eight more calls
+    // for this fixture (the RED observed 14), so the rollout must stay at the
+    // action-enumeration budget only.
+    expect(spy).toHaveBeenCalledTimes(6);
+    spy.mockRestore();
   });
 
   it('greedyComplete is bounded (returns promptly on a larger pool)', () => {

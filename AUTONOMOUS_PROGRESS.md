@@ -5,15 +5,44 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B19 candidate-search latency reduced without reducing search.** Pure
-lookahead rollout scores are now memoized across deterministic deviation
-workers inside one immutable request/model policy. The real three-scenario
-matrix fell from ~128s to ~42s and the full API suite from ~580s to ~322s while
-all candidate/recommendation invariants stayed green. Full API 179/179 suites,
-2440/2440 tests and root tsc green. **Not Production-ready.** Not merged, not
+(**B20 lookahead validation-context rebuilds removed.** Every rollout still
+validates every candidate through the authoritative validator, but reuses the
+immutable context the worker already built instead of rebuilding all course
+legality facts per action. The real three-scenario matrix fell again from ~42s
+to ~27s and the full API suite from ~322s to ~211s. Full API 179/179 suites,
+2441/2441 tests and root tsc green. **Not Production-ready.** Not merged, not
 deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 11) — B19. Phase A quality profiling found a
+_Latest entry: 2026-08-24 (cont. 12) — B20. Profiling after B19 showed the
+remaining deterministic hotspot was not validation itself but repeated setup:
+`PlannerWorker` already builds one authoritative `PlanValidationContext`, yet
+`greedyComplete` called `validatePlanState` without it for every candidate in
+every lookahead step. Each call rebuilt legal-semester, prerequisite, load-cap,
+completed/current and pinned-course facts from the same immutable model.
+
+A call-budget RED builds the real context first, spies on the authoritative
+offering resolver, and runs one non-myopic estimate. The two-course fixture
+requires six legal-placement resolver calls; before the fix it made fourteen,
+with eight additional calls caused solely by repeated context construction.
+`greedyComplete` and `estimateFinalScore` now accept an optional typed context,
+and `PlannerWorker` passes its existing `_validationCtx`. Direct callers remain
+backward-compatible and still build a context when they do not own one. No
+validation result is cached or skipped: every generated next state still runs
+`validatePlanState` and `validatePlanProposal`; only their immutable input
+context is reused.
+
+RED observed 14 resolver calls; GREEN observes the six action-enumeration calls
+only. Focused lookahead/worker/validator/candidate/real-handler coverage passes
+7/7 suites and 130/130 tests. The real mid-degree handler fell from ~20s to
+~11.5s and the complete three-scenario matrix from ~42s to ~27s. Full API
+passes 179/179 suites and 2441/2441 tests in 211 seconds versus 322 seconds at
+B19 and 580 seconds before the two performance slices (about 64% less overall);
+root `tsc --noEmit` and `git diff --check` pass. No UI code changed, so the B8
+web/build/legacy baseline remains applicable. No paid/provider call, network
+acquisition, catalog/data mutation, Production, Vercel, Supabase, `main`, or
+stash change._
+
+_Previous entry: 2026-08-24 (cont. 11) — B19. Phase A quality profiling found a
 user-visible deterministic latency problem rather than an external-provider
 delay: the real mid-degree handler required six bounded candidate runs and took
 ~75 seconds. Each deviation worker starts from the same state and shares a long
