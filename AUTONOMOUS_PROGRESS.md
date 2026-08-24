@@ -5,13 +5,38 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B13 informative trade-off explanation selection added.** An explicit-
-priority explanation now searches every available legal non-dominated
-alternative for the strongest surviving non-primary objective advantage,
-instead of inspecting only the first card. Full API 179/179 suites, 2435/2435
-tests and root tsc green. **Not Production-ready.** Not merged, not deployed.)_
+(**B14 comparative-explanation provenance completed.** When an explicit-
+priority explanation cites an available alternative's stronger secondary
+objective, `groundedSources` now includes the authoritative document that
+proves that comparative claim. Full API 179/179 suites, 2435/2435 tests and
+root tsc green. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 5) — B13. Audit found that Generate passed only
+_Latest entry: 2026-08-24 (cont. 6) — B14. A real-handler RED exposed a split
+truth after B13: the Hebrew explanation correctly said that another legal plan
+was stronger on the project objective, but `groundedSources` contained only
+the selected robotics course `E3`. It omitted `E2`, whose official delivery
+evidence was the sole basis for the comparative project claim. Selected-plan
+provenance alone cannot support a statement about another plan.
+
+The informative-alternative selector is now a shared deterministic function
+used by both explanation text and source disclosure. Generate still passes
+only valid non-dominated candidate-set members. For an explicit priority,
+`groundedSources` contains the selected candidate's cited documents plus the
+chosen comparison candidate's actual contributing documents, deduplicated by
+course/source/year. It does not add all candidate sources, dominated-plan
+sources, unknown evidence or unrelated catalog records. Existing one-document-
+used-by-two-objectives deduplication remains green. No wire shape changed; the
+existing lean source array is more complete. Ranking, recommendation, cards,
+snapshot, candidate identity and Apply remain unchanged.
+
+RED failed because the project comparison named `E2` in meaning but disclosed
+only source course `E3`; GREEN includes `E2`. Focused explanation/provenance
+coverage passes 32/32. Full API passes 179/179 suites and 2435/2435 tests in 489
+seconds; root `tsc --noEmit` passes. No UI code changed, so the B8 web/build/
+legacy baseline remains applicable. No paid/provider call, network acquisition,
+catalog/data mutation, Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 5) — B13. Audit found that Generate passed only
 the first non-selected candidate into `explainGroundedComposition`. With three
 legal alternatives, that card can tie the recommendation on every relevant
 secondary objective while a later available card is genuinely stronger on one;
