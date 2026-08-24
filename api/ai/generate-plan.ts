@@ -365,11 +365,20 @@ export function deriveInProgressCredit(
 
   const aggregate = asHours(ctx?.total_hours_progress?.currently_planned_hours) ?? 0;
   let knownAggregateHours = 0;
+  let hasOffBoardStatusEntry = false;
   for (const [id, entry] of [...currentlyTaking, ...planned]) {
     if (placed.has(id)) continue;
+    hasOffBoardStatusEntry = true;
     knownAggregateHours += asHours(model.profiles.get(id)?.hours) ?? asHours(entry?.hours) ?? 0;
   }
-  const impliedHours = Math.max(0, aggregate - knownAggregateHours);
+  // The aggregate is contractually the total for off-board status entries.
+  // With none present, a stale/fabricated non-zero value has no eligible
+  // provenance and must not become anonymous degree credit. When at least one
+  // off-board entry exists, preserve the aggregate residual: it may belong to
+  // another entry whose per-course hours are legitimately absent.
+  const impliedHours = hasOffBoardStatusEntry
+    ? Math.max(0, aggregate - knownAggregateHours)
+    : 0;
 
   return {
     totalHours: currentlyTakingHours + offBoardPlannedHours + impliedHours,

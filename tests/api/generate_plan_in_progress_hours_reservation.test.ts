@@ -115,6 +115,27 @@ test('a currently-taking course already visible on the board is counted once', a
   expect(res._body.blocked).toBe(false);
 });
 
+test('a stale aggregate cannot count an identified on-board current course a second time', async () => {
+  const res = await run(
+    baseStatus({ currently_taking: [{ course_id: 'CURRENT_3H' }] }),
+    // The typed contract says this aggregate is off-board only, but an older
+    // or fabricated client can still send a contradictory value. The server
+    // knows the identity is already placed and must fail safe against a second
+    // identity-free credit.
+    { known_completed_hours: 5, currently_planned_hours: 3 },
+    [{ id: SEMESTER, courses: [{ course_id: 'CURRENT_3H' }] }],
+  );
+
+  expect(res.statusCode).toBe(200);
+  expect(res._body.semesters.flatMap((s: any) => s.course_ids)).toEqual(['CURRENT_3H']);
+  expect(res._body.academicDecision.academicProgress).toMatchObject({
+    inProgressHours: 0,
+    currentlyTakingHours: 0,
+    aggregateOnlyHours: 0,
+  });
+  expect(res._body.academicDecision.academicProgress.explanationHe.join(' ')).not.toContain('ללא זהות קורס');
+});
+
 test('an in-catalog planned course is not pre-credited and must still be placed', async () => {
   const res = await run(
     baseStatus({ planned: [{ course_id: 'PLANNED_3H', hours: 3 }] }),

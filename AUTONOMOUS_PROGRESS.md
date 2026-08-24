@@ -5,14 +5,44 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B17 mid-degree real-program acceptance added.** A third native-handler
-scenario proves completed mandatory identities reduce the real remaining plan,
-current study is not proposed again, all still-required mandatory courses stay
-in every retained alternative, and untouched elective pools remain open. Full
-API 179/179 suites, 2437/2437 tests and root tsc green. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B18 stale in-progress aggregate double-credit fixed.** A contradictory
+aggregate with no off-board status entry can no longer manufacture anonymous
+degree credit on top of an identified course already placed on the board;
+legitimate aggregate-only off-board credit remains intact. Full API 179/179
+suites, 2438/2438 tests and root tsc green. **Not Production-ready.** Not
+merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 9) — B17. Phase A.6 realistic-scenario
+_Latest entry: 2026-08-24 (cont. 10) — B18. B17's rejected fixture assumption
+exposed a real defensive-accounting gap worth isolating. The typed
+`currently_planned_hours` contract says the aggregate represents only
+currently-taking/planned entries absent from the submitted board. An
+older/fabricated client can nevertheless send a non-zero aggregate while its
+only status course is already visibly placed. Generate previously counted the
+course once through `placedHours` and again as identity-free
+`aggregateOnlyHours`, letting stale input close the degree gap early and
+producing a false explanation that anonymous hours had been added.
+
+A handler RED places `CURRENT_3H`, also reports it as currently taking, and
+sends a stale 3h aggregate. It failed with `inProgressHours:3` and
+`aggregateOnlyHours:3`. The first GREEN attempt subtracted every placed status
+course from the aggregate, but the broader shortfall suite correctly failed
+two existing cases where the aggregate belonged to a different off-board entry
+whose per-course hours were absent. The final bounded rule follows the actual
+contract: the aggregate residual is eligible only when at least one status
+entry is off-board; known hours of those off-board entries are subtracted as
+before. If every status entry is already placed, the aggregate has no eligible
+provenance and contributes zero. This neither invents a course identity nor
+erases compatible off-board credit.
+
+RED failed 1/7 with duplicate anonymous credit; focused GREEN passes 7/7. The
+combined in-progress/degree-gap boundary passes 31/31, including both unrelated
+off-board aggregate controls. Full API passes 179/179 suites and 2438/2438
+tests in 580 seconds; root `tsc --noEmit` and `git diff --check` pass. No UI
+code changed, so the B8 web/build/legacy baseline remains applicable. No paid/
+provider call, network acquisition, catalog/data mutation, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 9) — B17. Phase A.6 realistic-scenario
 coverage now includes a mid-degree student against the frozen Mechanical
 Engineering 2027 program. The request authoritatively reports mandatory
 courses `0512-1204` and `0542-2400` completed (7.5 catalog hours), real
