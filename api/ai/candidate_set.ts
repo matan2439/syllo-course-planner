@@ -512,28 +512,90 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
       || (a.outId < b.outId ? -1 : a.outId > b.outId ? 1 : 0)
       || (a.semesterId < b.semesterId ? -1 : a.semesterId > b.semesterId ? 1 : 0));
 
+    type SwapProposal = {
+      swaps: SwapOption[];
+      courseSetKey: string;
+      gain: number;
+      allSameHome: boolean;
+      allSameHours: boolean;
+      allSameCategory: boolean;
+      canonicalKey: string;
+    };
+    const proposalOf = (swaps: SwapOption[]): SwapProposal => ({
+      swaps,
+      courseSetKey: [...placed]
+        .filter((id) => !swaps.some((swap) => swap.outId === id))
+        .concat(swaps.map((swap) => swap.inId))
+        .sort()
+        .join('|'),
+      gain: swaps.reduce((sum, swap) => sum + swap.gain, 0),
+      allSameHome: swaps.every((swap) => swap.sameHome),
+      allSameHours: swaps.every((swap) => swap.sameHours),
+      allSameCategory: swaps.every((swap) => swap.sameCategory),
+      canonicalKey: swaps
+        .map((swap) => `${swap.inId}:${swap.outId}:${swap.semesterId}`)
+        .sort()
+        .join('+'),
+    });
+    const proposals = swapOptions.map((swap) => proposalOf([swap]));
+    // A completed baseline may need more than one course-set change for a real
+    // multi-objective improvement. Explore pairs only when multiple grounded
+    // objectives exist, and keep them inside the SAME maxRuns budget and
+    // authoritative validation path as single swaps. Pair construction itself
+    // is bounded too: use the first canonical placement for at most 2×maxRuns
+    // unique single-swap course sets, rather than materializing a catalog-sized
+    // Cartesian square that the validation budget could never consume.
+    if (objectiveSet.length > 1) {
+      const seenSingleCourseSets = new Set<string>();
+      const pairSource: SwapOption[] = [];
+      for (const swap of swapOptions) {
+        const key = proposalOf([swap]).courseSetKey;
+        if (seenSingleCourseSets.has(key)) continue;
+        seenSingleCourseSets.add(key);
+        pairSource.push(swap);
+        if (pairSource.length >= maxRuns * 2) break;
+      }
+      for (let i = 0; i < pairSource.length; i++) {
+        for (let j = i + 1; j < pairSource.length; j++) {
+          const a = pairSource[i];
+          const b = pairSource[j];
+          if (a.inId === b.inId || a.outId === b.outId) continue;
+          proposals.push(proposalOf([a, b]));
+        }
+      }
+    }
+    proposals.sort((a, b) =>
+      Number(b.allSameHome) - Number(a.allSameHome)
+      || Number(b.allSameHours) - Number(a.allSameHours)
+      || Number(b.allSameCategory) - Number(a.allSameCategory)
+      || b.gain - a.gain
+      || (a.canonicalKey < b.canonicalKey ? -1 : a.canonicalKey > b.canonicalKey ? 1 : 0));
+
     const retainedSwapCourseSets = new Set<string>();
-    for (const { inId, outId, semesterId } of swapOptions) {
+    for (const proposal of proposals) {
       if (runsExecuted >= maxRuns) break;
-      const courseSetKey = [...placed].filter((id) => id !== outId).concat(inId).sort().join('|');
       // This slice discovers COURSE-SET alternatives. Once the best-priority
       // legal placement for a set has survived, later semester permutations of
       // that exact set add no grounded choice and can manufacture duplicate
       // comparison cards. Generic deviation search remains responsible for
       // genuinely useful placement alternatives.
-      if (retainedSwapCourseSets.has(courseSetKey)) continue;
+      if (retainedSwapCourseSets.has(proposal.courseSetKey)) continue;
       runsExecuted++;
-      const state = applyMutation(baseline.state, { type: 'REPLACE_COURSE', outId, inId, semesterId });
+      let state: PlanState | null = baseline.state;
+      for (const { inId, outId, semesterId } of proposal.swaps) {
+        state = applyMutation(state, { type: 'REPLACE_COURSE', outId, inId, semesterId });
+        if (!state) break;
+      }
       if (!state) continue;
       const candidate = evaluate(
         baseline.model,
         state,
-        `grounded_swap:${outId}:${inId}:${semesterId}`,
+        `grounded_swap:${proposal.canonicalKey}`,
         baseline.rationaleHe,
       );
       if (candidate.report.valid && !byIdentity.has(candidate.identity)) {
         byIdentity.set(candidate.identity, candidate);
-        retainedSwapCourseSets.add(courseSetKey);
+        retainedSwapCourseSets.add(proposal.courseSetKey);
       }
     }
   }

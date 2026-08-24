@@ -121,8 +121,68 @@ describe('one confirmed profile → one fixed planning policy for every candidat
 // ── multi-combination search ─────────────────────────────────────────────────
 
 describe('real multi-combination candidate generation under ONE fixed policy', () => {
+  test('a completed baseline can discover a two-course combination that improves two grounded objectives together', () => {
+    const courses = ['BASE_A', 'BASE_B', 'ROBOTICS', 'MATERIALS'];
+    const model = () => mk(courses.map((id) => ({ id, hours: 4 })), { totalHours: 8 });
+    const objectives: ResolvedObjective[] = [
+      {
+        id: 'prefer_topic_alignment', preferenceId: 'topic_robotics', kind: 'topic',
+        target: 'robotics', topicIds: ['robotics'], source: 'explicit_answer', profileVersion: 3,
+      },
+      {
+        id: 'prefer_topic_alignment', preferenceId: 'topic_materials', kind: 'topic',
+        target: 'materials', topicIds: ['materials'], source: 'explicit_answer', profileVersion: 3,
+      },
+    ];
+    const topics = new Map([
+      ['BASE_A', { topicIds: new Set<TopicId>(), sourceRef: 'official:BASE_A', academicYear: 2025 }],
+      ['BASE_B', { topicIds: new Set<TopicId>(), sourceRef: 'official:BASE_B', academicYear: 2025 }],
+      ['ROBOTICS', { topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:ROBOTICS', academicYear: 2025 }],
+      ['MATERIALS', { topicIds: new Set<TopicId>(['materials']), sourceRef: 'official:MATERIALS', academicYear: 2025 }],
+    ]);
+    const set = generateCandidateSet({
+      buildModel: model,
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['BASE_A'], [SEM_B]: ['BASE_B'] } },
+      profileVersion: 3,
+      maxCandidates: 3,
+      maxRuns: 8,
+      groundedObjectives: {
+        objectives,
+        snapshotId: 'snap_two_swap',
+        features: new Map(),
+        topics,
+      },
+    });
+
+    const combined = set.candidates.find((candidate) => {
+      const ids = new Set(Object.values(candidate.state.semesters).flat());
+      return ids.has('ROBOTICS') && ids.has('MATERIALS');
+    });
+    expect(combined).toBeDefined();
+    expect(combined?.objectiveScores?.map((score) => score.normalized)).toEqual([0.5, 0.5]);
+    expect(validateCandidate(combined!.state, model()).valid).toBe(true);
+
+    const reversed = generateCandidateSet({
+      buildModel: () => mk([...courses].reverse().map((id) => ({ id, hours: 4 })), { totalHours: 8 }),
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['BASE_A'], [SEM_B]: ['BASE_B'] } },
+      profileVersion: 3,
+      maxCandidates: 3,
+      maxRuns: 8,
+      groundedObjectives: {
+        objectives: [...objectives].reverse(),
+        snapshotId: 'snap_two_swap',
+        features: new Map(),
+        topics: new Map([...topics].reverse()),
+      },
+    });
+    expect(reversed.candidates.map((candidate) => candidate.normalizedIdentity))
+      .toEqual(set.candidates.map((candidate) => candidate.normalizedIdentity));
+  });
+
   test('the product retention bound does not let dominated discoveries hide a reachable Pareto alternative', () => {
-    const courses = ['E1', 'E2', 'E3', 'E4'];
+    const courses = ['E1', 'E2', 'E3', 'E4', 'E5'];
     const model = () => mk(courses.map((id) => ({ id, hours: 4 })), { totalHours: 8 });
     const objectives: ResolvedObjective[] = [
       {
@@ -133,17 +193,21 @@ describe('real multi-combination candidate generation under ONE fixed policy', (
         id: 'prefer_topic_alignment', preferenceId: 'topic_b', kind: 'topic',
         target: 'materials', topicIds: ['materials'], source: 'explicit_answer', profileVersion: 3,
       },
+      {
+        id: 'prefer_topic_alignment', preferenceId: 'topic_c', kind: 'topic',
+        target: 'control', topicIds: ['control'], source: 'explicit_answer', profileVersion: 3,
+      },
     ];
 
-    // Canonical counterexample found by an exhaustive four-course audit:
-    // E3 leads only on materials; E4 leads only on robotics. Four distinct
-    // legal plans lie on the reachable frontier, so the three-card product
-    // bound can be filled without retaining a dominated discovery.
+    // Three independently grounded courses compete for two legal slots. The
+    // three two-course combinations are all Pareto-optimal: each remains
+    // stronger than the other two on one confirmed objective.
     const topics = new Map([
       ['E1', { topicIds: new Set<TopicId>(), sourceRef: 'official:E1', academicYear: 2025 }],
       ['E2', { topicIds: new Set<TopicId>(), sourceRef: 'official:E2', academicYear: 2025 }],
       ['E3', { topicIds: new Set<TopicId>(['materials']), sourceRef: 'official:E3', academicYear: 2025 }],
       ['E4', { topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:E4', academicYear: 2025 }],
+      ['E5', { topicIds: new Set<TopicId>(['control']), sourceRef: 'official:E5', academicYear: 2025 }],
     ]);
     const set = generateCandidateSet({
       buildModel: model,
@@ -163,8 +227,8 @@ describe('real multi-combination candidate generation under ONE fixed policy', (
     expect(set.candidates).toHaveLength(3);
     expect(set.candidates.filter((c) => c.nonDominated)).toHaveLength(3);
     expect(new Set(set.candidates.map((c) => c.normalizedIdentity)).size).toBe(3);
-    expect(set.candidates.some((c) => c.objectiveScores?.map((s) => s.normalized).join(',') === '0.5,0')).toBe(true);
-    expect(set.candidates.some((c) => c.objectiveScores?.map((s) => s.normalized).join(',') === '0,0.5')).toBe(true);
+    expect(new Set(set.candidates.map((c) => c.objectiveScores?.map((s) => s.normalized).join(','))))
+      .toEqual(new Set(['0.5,0.5,0', '0.5,0,0.5', '0,0.5,0.5']));
   });
 
   test('a completed baseline still yields a legal course-set alternative when grounded evidence favors an unplaced elective', () => {
