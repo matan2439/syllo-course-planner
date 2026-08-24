@@ -31,7 +31,7 @@
 import { syllabusToEvidence, type SyllabusDocument } from './syllabus_source';
 import type { AcademicEvidence } from './academic_evidence';
 
-export const FEATURE_EXTRACTION_VERSION = '1.0.0';
+export const FEATURE_EXTRACTION_VERSION = '1.1.0';
 export const TOPIC_VOCABULARY_VERSION = '1.0.0';
 
 /** Ternary: a feature is true, false, or genuinely not known. Never defaulted. */

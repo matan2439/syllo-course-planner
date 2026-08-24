@@ -5,14 +5,37 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B21 completed-real-degree acceptance gate.** The frozen real Mechanical
-Engineering 2027 handler path now proves that a student with every mandatory
-course and one authoritative completion in each requiring elective pool has
-no phantom future courses or reopened requirements. The complete realistic
-matrix is 4/4 and full API is 179/179 suites, 2442/2442 tests. **Not
+(**B22 official assignment-field extraction repaired.** TAU assignment values
+rendered as direct text nodes are now retained while their generic disclaimer
+is excluded, so explicit project/exam/coursework evidence no longer collapses
+to unknown. Full API is 179/179 suites, 2443/2443 tests. **Not
 Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 13) — B21. Phase A.6 realistic-scenario
+_Latest entry: 2026-08-24 (cont. 14) — B22. Phase A.2 reliability tracing found
+a concrete parser defect behind the prior acquisition report's 0-known
+assessment result. TAU's official syllabus cells wrap ordinary values in
+`span`, but render `מטלות הקורס` values such as `פרוייקט`, `בחינה סופית`, and
+`דוח מעבדה` as direct text nodes before a generic disclaimer paragraph.
+`extractLabeledFields` retained spans only, so the authoritative field was
+absent from `SyllabusDocument` and `RuleBasedFeatureExtractor` correctly but
+unhelpfully returned unknown.
+
+The RED exercises the real acquisition→document→feature-extractor path using
+that official DOM shape. It failed with `project: unknown` instead of true.
+The parser now uses direct cell text only when no span value exists, removes a
+marked disclaimer block before normalization, and otherwise preserves the
+same unknown/absence semantics. It does not mine course prose, infer a topic,
+or affect planning legality. `FEATURE_EXTRACTION_VERSION` advanced from 1.0.0
+to 1.1.0 so derived evidence/snapshots cannot masquerade as old extraction.
+
+Focused GREEN passes 19/19; source/applicability/project-ranking/composition
+coverage passes 7/7 suites and 142/142 tests. Full API passes 179/179 suites
+and 2443/2443 tests in 199 seconds; root `tsc --noEmit` and final diff gates
+pass. No UI or catalog/data file changed. No
+paid/provider call, network acquisition, Production, Vercel, Supabase, `main`,
+or stash change._
+
+_Previous entry: 2026-08-24 (cont. 13) — B21. Phase A.6 realistic-scenario
 coverage now includes the degree-completion boundary against the frozen real
 Mechanical Engineering 2027 program. The full native handler request reports
 all twelve unique mandatory identities plus four real authoritative elective

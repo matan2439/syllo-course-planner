@@ -124,6 +124,26 @@ describe('contrasting course shapes', () => {
     expect(f.coursework.value).toBe(true);
   });
 
+  test('an official assignments value rendered as a text node is preserved before its disclaimer', async () => {
+    const html = `<div class="data-table">
+      <div class="data-table-cell">
+        <small class="data-table-cell-label">מספר קורס</small><span>0542-2223-01</span>
+      </div>
+      <div class="data-table-cell">
+        <small class="data-table-cell-label">מטלות הקורס</small>
+        פרוייקט
+        <p class="disclaimer">ייתכנו מטלות נוספות<br>רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.</p>
+      </div>
+    </div>`;
+
+    const f = await extract(html, '0542-2223');
+
+    expect(f.project.value).toBe(true);
+    expect(f.project.evidence[0]?.locator).toBe('field:מטלות הקורס');
+    expect(f.project.evidence[0]?.excerpt).toContain('פרוייקט');
+    expect(f.project.evidence[0]?.excerpt).not.toContain('ייתכנו מטלות נוספות');
+  });
+
   test('a laboratory course is detected from the official delivery mode alone', async () => {
     const f = await extract(stub({ courseNumber: '0542-3333-01', delivery: 'מעבדה' }), '0542-3333');
     expect(f.laboratory.value).toBe(true);

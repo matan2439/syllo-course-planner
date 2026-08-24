@@ -193,6 +193,17 @@ function extractLabeledFields(html: string): Record<string, string[]> {
       const v = stripTags(s[1]).trim();
       if (v) values.push(v);
     }
+    // Some official cells render their value as a direct text node followed by
+    // a generic disclaimer instead of wrapping it in a <span>. Preserve that
+    // stated value, but never promote the disclaimer itself into evidence.
+    if (!values.length) {
+      const withoutDisclaimer = m[2].replace(
+        /<(p|div)[^>]*class="[^"]*disclaimer[^"]*"[^>]*>[\s\S]*?<\/\1>/gi,
+        ' ',
+      );
+      const v = stripTags(withoutDisclaimer).trim();
+      if (v) values.push(v);
+    }
     if (!values.length) continue;
     (out[label] ??= []).push(...values);
   }
