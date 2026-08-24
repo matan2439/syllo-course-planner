@@ -107,6 +107,12 @@ export interface CourseTopicSupport {
   topicIds: ReadonlySet<TopicId>;
   sourceRef: string;
   academicYear: number | string;
+  /** Exact source fact for each asserted topic; absent on legacy/test adapters. */
+  evidenceByTopic?: ReadonlyMap<TopicId, {
+    sourceRef: string;
+    academicYear: number | string;
+    rawWording: string;
+  }>;
 }
 
 /** Courses' supported topics, keyed by course id — one snapshot's worth. */
@@ -253,12 +259,14 @@ function scoreTopicAlignment(
     }
     for (const topicId of wanted) {
       if (!support.topicIds.has(topicId)) continue;
+      const evidence = support.evidenceByTopic?.get(topicId);
       contributions.push({
         courseId,
         feature: 'topic',
         topicId,
-        sourceRef: support.sourceRef,
-        academicYear: support.academicYear,
+        sourceRef: evidence?.sourceRef ?? support.sourceRef,
+        academicYear: evidence?.academicYear ?? support.academicYear,
+        ...(evidence?.rawWording ? { excerpt: evidence.rawWording } : {}),
       });
     }
   }
@@ -346,7 +354,8 @@ function explainTopicAlignment(input: {
   const src = selected.contributions[0];
 
   const head = `לפי תחומי התוכן שאישרת (${names}), התוכנית הנבחרת כוללת ${byCourse.size} קורס/ים שהתוכן הרשמי שלהם מציין אותם: ${perCourse}.`;
-  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).`;
+  const wording = src.excerpt ? ` הניסוח הרשמי: "${src.excerpt}".` : '';
+  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).${wording}`;
   const compare = alternative
     ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} התאמות תוכן), ולא מסיבה אקדמית אחרת.`
     : '';

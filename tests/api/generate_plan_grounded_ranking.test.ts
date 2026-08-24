@@ -457,6 +457,32 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(withFocus._body.intentOutcome.unmet.join(' ')).not.toContain('חומרים');
   });
 
+  test('topic contribution cites the exact official document and wording that proves it', async () => {
+    const generic = {
+      ...topicDoc('E3', 'מבוא כללי.'),
+      sourceUrl: 'https://official.example/E3-generic',
+      contentHash: 'sha_E3_generic',
+    };
+    const materials = {
+      ...topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.'),
+      sourceUrl: 'https://official.example/E3-materials',
+      contentHash: 'sha_E3_materials',
+    };
+    MOCK_DOCUMENTS = [generic, materials, topicDoc('E1', 'מבוא כללי.'), topicDoc('E2', 'מבוא כללי.')];
+
+    const focused = await run(body({
+      academic_interest_profile: { focusAreas: [{ area: 'materials', weight: 1 }] },
+    }));
+    const contribution = candidates(focused._body).selectedGroundedScore.contributions
+      .find((c: any) => c.courseId === 'E3' && c.topicId === 'materials');
+
+    expect(contribution).toMatchObject({
+      sourceRef: 'https://official.example/E3-materials',
+      excerpt: 'חומרים הנדסיים',
+    });
+    expect(candidates(focused._body).groundedExplanationHe).toContain('חומרים הנדסיים');
+  });
+
   test('a structured academic focus reaches the same evidence-backed topic ranking', async () => {
     MOCK_DOCUMENTS = [
       topicDoc('E1', 'מבוא כללי.'),

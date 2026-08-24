@@ -275,7 +275,33 @@ export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
     const extractions = docs.map((d) => extractCourseTopics(d, { academicYear: d.academicYear }));
     const ids: ReadonlySet<TopicId> = supportedTopics(extractions);
     const anchor = docs.find((d) => extractions[docs.indexOf(d)].contentAvailable) ?? docs[0];
-    topics.set(courseId, { topicIds: ids, sourceRef: anchor.sourceUrl, academicYear: anchor.academicYear });
+    const evidenceByTopic = new Map<TopicId, { sourceRef: string; academicYear: number | string; rawWording: string }>();
+    const assertions = docs.flatMap((doc, index) =>
+      extractions[index].assertions
+        .filter((assertion) => assertion.status === 'current' && !assertion.ambiguous)
+        .map((assertion) => ({ assertion, doc })),
+    ).sort((a, b) =>
+      a.assertion.topicId < b.assertion.topicId ? -1
+        : a.assertion.topicId > b.assertion.topicId ? 1
+          : a.doc.sourceUrl < b.doc.sourceUrl ? -1
+            : a.doc.sourceUrl > b.doc.sourceUrl ? 1
+              : a.assertion.rawWording < b.assertion.rawWording ? -1
+                : a.assertion.rawWording > b.assertion.rawWording ? 1 : 0,
+    );
+    for (const { assertion, doc } of assertions) {
+      if (evidenceByTopic.has(assertion.topicId)) continue;
+      evidenceByTopic.set(assertion.topicId, {
+        sourceRef: doc.sourceUrl,
+        academicYear: doc.academicYear,
+        rawWording: assertion.rawWording,
+      });
+    }
+    topics.set(courseId, {
+      topicIds: ids,
+      sourceRef: anchor.sourceUrl,
+      academicYear: anchor.academicYear,
+      evidenceByTopic,
+    });
   }
   const topicUnknownCourseIds = [...topics.entries()].filter(([, t]) => t.topicIds.size === 0).map(([id]) => id).sort();
 

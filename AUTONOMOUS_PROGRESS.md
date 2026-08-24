@@ -5,14 +5,39 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B25 authoritative group universes now reach Generate.** The frozen official
-group-universe report is loaded fail-closed and passed into the one immutable
-evidence preparation boundary, so section-scoped delivery/assessment facts can
-affect ranking only when the complete matching offering is authoritative. Full
-API is 180/180 suites, 2453/2453 tests. **Not Production-ready.** Not merged,
-not deployed.)_
+(**B26 exact topic evidence reaches ranking and explanation.** Each supported
+topic now retains the precise official document and wording that established
+it, rather than borrowing an arbitrary first document's provenance. Full API
+is 180/180 suites, 2454/2454 tests. **Not Production-ready.** Not merged, not
+deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 17) — B25. B24 deliberately left the real
+_Latest entry: 2026-08-24 (cont. 18) — B26. The Phase A evidence audit found a
+source-truth defect in the already-implemented topic mapper. For a course with
+multiple official syllabus documents, `prepareEvidence` correctly unioned the
+supported topics but stored only one course-level source URL chosen from the
+first content-bearing document. `scoreTopicAlignment` then attributed every
+topic to that URL, even when the proving phrase existed only in another
+document, and the Hebrew explanation carried no exact wording.
+
+The real-handler RED supplied two E3 documents: the first contained only
+generic content, while the second alone stated `חומרים הנדסיים`. The selected
+materials contribution incorrectly cited the generic document and had no
+excerpt. GREEN retains a deterministic per-topic evidence fact inside the one
+prepared snapshot. It selects a canonical assertion independent of input order,
+passes that assertion's source/year/wording into the ranking contribution, and
+quotes the short official phrase in the existing explanation. Legacy/test
+topic adapters without the richer map keep their prior source/year behavior;
+ranking values, hard constraints, candidate identities and topic ontology are
+unchanged.
+
+The handler now cites the materials document and `חומרים הנדסיים` exactly.
+Focused topic/handler GREEN passes 99/99; composition, priority, alternatives,
+multi-combination and frozen-real-corpus regressions pass 137/137. Full API
+passes 180/180 suites, 2454/2454 tests in 223 seconds; root `tsc --noEmit` and
+diff gates pass. No UI/data/provider/network acquisition, Production, Vercel,
+Supabase, `main`, catalog, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 17) — B25. B24 deliberately left the real
 section-scoped corpus inert because `prepareEvidence` had no connected complete
 group universe. Tracing found the missing link rather than missing data:
 `data/import_reports/group_universe_report.json` is a tracked, frozen,
