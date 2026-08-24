@@ -514,7 +514,7 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
 
     const retainedSwapCourseSets = new Set<string>();
     for (const { inId, outId, semesterId } of swapOptions) {
-      if (runsExecuted >= maxRuns || byIdentity.size >= maxCandidates) break;
+      if (runsExecuted >= maxRuns) break;
       const courseSetKey = [...placed].filter((id) => id !== outId).concat(inId).sort().join('|');
       // This slice discovers COURSE-SET alternatives. Once the best-priority
       // legal placement for a set has survived, later semester permutations of
@@ -542,7 +542,9 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   //    enters the plan first and so reshapes the whole combination; deviating at
   //    increasing depths reaches progressively more of the space. Fixed order ⇒
   //    identical candidates, ids and ranking on every run.
-  for (let atStep = 0; runsExecuted < maxRuns && byIdentity.size < maxCandidates; atStep++) {
+  for (let atStep = 0;
+    runsExecuted < maxRuns && (objectiveSet.length > 0 || byIdentity.size < maxCandidates);
+    atStep++) {
     const r = run({ atStep, rank: 1 });
     runsExecuted++;
     if (r.report.valid && !byIdentity.has(r.identity)) byIdentity.set(r.identity, r);
@@ -599,12 +601,54 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
   const utilityOf = (v: readonly number[]) => (v.length ? composedUtility(v) : 0);
   const EPS = RANK_EPS;
 
-  const ranked = scored
-    .sort((a, b) => compareRankable(
+  const sorted = scored.sort((a, b) => compareRankable(
       { scoreVector: a.raw.scoreVector, normalizedIdentity: a.raw.identity, vector: a.vector },
       { scoreVector: b.raw.scoreVector, normalizedIdentity: b.raw.identity, vector: b.vector },
       priorities,
-    ))
+    ));
+
+  /**
+   * Discovery is bounded by maxRuns, not by the number of first-found valid
+   * identities: Pareto status is unknowable until candidates have objective
+   * vectors. Otherwise a dominated early discovery can consume one of the
+   * product's three slots and hide a later reachable frontier plan.
+   *
+   * Retention remains lexicographic across hard/policy prefixes. Only WITHIN an
+   * identical prefix group do non-dominated plans move ahead of dominated ones;
+   * no soft diversity can leapfrog legality, completion, hard constraints or a
+   * confirmed distribution policy.
+   */
+  const allVectors = sorted.map((x) => x.vector);
+  const allPrefixes = sorted.map((x) => x.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX));
+  const globallyDominated = objectiveSet.length
+    ? allVectors.map((v, i) => allVectors.some((w, j) =>
+        j !== i && compareScore(allPrefixes[i], allPrefixes[j]) === 0 && dominates(w, v)))
+    : sorted.map(() => false);
+  const originalRank = new Map(sorted.map((x, i) => [x.raw.identity, i]));
+  const contributionSignature = (x: (typeof sorted)[number]) => x.components
+    .flatMap((component) => component.contributions.map((contribution) =>
+      `${component.objectiveId}:${contribution.courseId}:${contribution.feature}:${contribution.topicId ?? ''}`))
+    .sort()
+    .join('|');
+  const contributionGroupKey = (index: number, candidate: (typeof sorted)[number]) =>
+    `${allPrefixes[index].join(',')}::${contributionSignature(candidate)}`;
+  const firstContributionRank = new Map<string, number>();
+  for (let i = 0; i < sorted.length; i++) {
+    const groupKey = contributionGroupKey(i, sorted[i]);
+    if (!firstContributionRank.has(groupKey)) firstContributionRank.set(groupKey, i);
+  }
+  const frontierOrdered = sorted.slice().sort((a, b) => {
+    const ai = originalRank.get(a.raw.identity)!;
+    const bi = originalRank.get(b.raw.identity)!;
+    if (compareScore(allPrefixes[ai], allPrefixes[bi]) !== 0) return ai - bi;
+    if (globallyDominated[ai] !== globallyDominated[bi]) return globallyDominated[ai] ? 1 : -1;
+    const aFirstContribution = firstContributionRank.get(contributionGroupKey(ai, a)) === ai;
+    const bFirstContribution = firstContributionRank.get(contributionGroupKey(bi, b)) === bi;
+    if (aFirstContribution !== bFirstContribution) return aFirstContribution ? -1 : 1;
+    return ai - bi;
+  });
+
+  const ranked = frontierOrdered
     .slice(0, maxCandidates)
     .map((x) => ({
       ...x.raw,
