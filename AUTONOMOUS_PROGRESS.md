@@ -5,13 +5,47 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B24 project assessment participates in the existing grounded objective.** An
-explicit official project assignment can now ground `prefer_project_courses`
-alongside project delivery, once per course, with section-safe applicability
-and truthful provenance. Full API is 179/179 suites, 2448/2448 tests. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B25 authoritative group universes now reach Generate.** The frozen official
+group-universe report is loaded fail-closed and passed into the one immutable
+evidence preparation boundary, so section-scoped delivery/assessment facts can
+affect ranking only when the complete matching offering is authoritative. Full
+API is 180/180 suites, 2453/2453 tests. **Not Production-ready.** Not merged,
+not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 16) — B24. B23 recovered official assessment
+_Latest entry: 2026-08-24 (cont. 17) — B25. B24 deliberately left the real
+section-scoped corpus inert because `prepareEvidence` had no connected complete
+group universe. Tracing found the missing link rather than missing data:
+`data/import_reports/group_universe_report.json` is a tracked, frozen,
+metadata-only artifact produced offline from recorded official TAU
+course-details pages, and `api/ai/group_universe.ts` already owned complete/
+applicable normalization, but the Generate handler loaded syllabus documents
+alone and never passed the report to `prepareEvidence`.
+
+The behavioral RED supplied one section-addressed official project assignment
+plus a complete authoritative universe through the real Generate handler. The
+confirmed project preference still selected canonical E1+E2 instead of E3,
+proving the report stopped before ranking. GREEN adds a cache-only report loader
+and passes its index into the existing immutable evidence boundary before any
+candidate generation. E3 is then selected as predicted; no new objective,
+ranking stage, acquisition path, or section-selecting planner was introduced.
+
+The loader accepts only the current `group-universe/1.0.0` format, complete and
+applicable rows with non-empty content-hash/source provenance, a non-empty
+canonical group set, and exactly one matching syllabus year for the course.
+Malformed JSON, version mismatch, incomplete/unidentified rows, ambiguous
+years, missing provenance, and contradictory records all yield no universe and
+therefore no ranking claim. Duplicate group ids collapse and ordering is
+canonical. The tracked report/catalog/cache were not regenerated or modified.
+
+RED observed the real handler retain E1+E2 and project score zero. GREEN passes
+43/43 focused loader/handler tests, 135/135 evidence/group/project regressions,
+and full API 180/180 suites, 2453/2453 tests in 214 seconds. Root typecheck and
+final diff/protected-state gates pass. One optional read-only `tsx` probe failed
+before module load with Windows/Node `uv_os_get_passwd` ENOMEM and is not cited
+as product evidence. No UI/data/provider/network acquisition, Production,
+Vercel, Supabase, `main`, catalog, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 16) — B24. B23 recovered official assessment
 facts, but tracing showed they stopped at `CourseFeatures.project`:
 `prefer_project_courses` read only `projectDelivery`, so a lecture course whose
 official `מטלות הקורס` explicitly required a project still scored zero. This

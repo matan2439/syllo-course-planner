@@ -13,6 +13,7 @@
 jest.mock('../../api/ai/board_loader', () => ({ loadLocalBoardJson: jest.fn(() => BOARD) }));
 jest.mock('../../api/ai/evidence_loader', () => ({
   loadPreparedEvidenceDocuments: jest.fn(() => MOCK_DOCUMENTS),
+  loadPreparedGroupUniverse: jest.fn(() => MOCK_GROUP_UNIVERSE),
 }));
 
 import handler from '../../api/ai/generate-plan';
@@ -61,6 +62,7 @@ function topicDoc(courseId: string, content: string, academicYear: number = YEAR
 
 // Mutable so each test can choose the evidence the request will be given.
 let MOCK_DOCUMENTS: SyllabusDocument[] = [];
+let MOCK_GROUP_UNIVERSE: Record<string, string[]> = {};
 
 function makeRes() {
   const res: any = {
@@ -106,6 +108,7 @@ const candidates = (b: any) => b.academicDecision.candidates;
 describe('K9B — grounded ranking through the real Generate handler', () => {
   beforeEach(() => {
     process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true';
+    MOCK_GROUP_UNIVERSE = {};
     // E3 is the only course with an official LABORATORY delivery mode.
     MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'מעבדה')];
   });
@@ -331,7 +334,10 @@ describe('grounded question impact is published so the UI can gate the question'
 // ── K8 — the project objective through the REAL handler ──────────────────────
 
 describe('K8 — prefer_project_courses changes real selection through Generate', () => {
-  beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
+  beforeEach(() => {
+    process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true';
+    MOCK_GROUP_UNIVERSE = {};
+  });
   afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
 
   const projectPref = () => labPref({ normalized: 'project_based', value: 'project_based' });
@@ -346,6 +352,31 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(placed(legacy._body)).not.toContain('E3');
     expect(placed(withProject._body)).toContain('E3');
     expect(candidates(withProject._body).evidence.groundedObjective).toBe('prefer_project_courses');
+    expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
+  });
+
+  test('an authoritative complete group universe makes section-scoped project assessment affect real selection', async () => {
+    MOCK_DOCUMENTS = [
+      doc('E1', 'שיעור'),
+      doc('E2', 'שיעור'),
+      {
+        ...doc('E3', 'שיעור'),
+        contentHash: 'sha_E3_group_01_assignment_project',
+        labeledFields: {
+          'מספר קורס': ['0542-3003-01'],
+          'אופן ההוראה': ['שיעור'],
+          'מטלות הקורס': ['פרוייקט'],
+        },
+      },
+      doc('E4', 'שיעור'),
+    ];
+    MOCK_GROUP_UNIVERSE = { E3: ['01'] };
+
+    const legacy = await run(body());
+    const withProject = await run(withPref([projectPref()]));
+
+    expect(placed(legacy._body)).not.toContain('E3');
+    expect(placed(withProject._body)).toContain('E3');
     expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
   });
 

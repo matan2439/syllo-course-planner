@@ -103,7 +103,7 @@ import { describeAcademicProgress } from './academic_progress';
 import { resolveOwner } from './session_owner';
 import { academicStatusDigest, getBoardRepository, getProposalStore } from './apply_runtime';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord } from './proposal_store';
-import { loadPreparedEvidenceDocuments } from './evidence_loader';
+import * as evidenceLoader from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
 import {
   extractCatalog,
@@ -1643,6 +1643,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // the same snapshotId and no acquisition can occur inside the planner loop,
     // a rollout, ranking, or Apply. With no prepared documents the snapshot is
     // empty and completely inert (default-off).
+    const preparedDocuments = evidenceLoader.loadPreparedEvidenceDocuments(program_id);
     const preparedEvidence = prepareEvidence({
       courseIds: [...model.profiles.keys()],
       academicYear: model.catalogYear ?? new Date(0).getFullYear(),
@@ -1650,7 +1651,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // the descriptive feature/topic layer assembled here. Legality, credits,
       // prerequisites, categories and offerings remain owned by the board/model.
       descriptiveFreshnessPolicy: RECENT_OFFICIAL_SYLLABUS_POLICY,
-      documents: loadPreparedEvidenceDocuments(program_id),
+      documents: preparedDocuments,
+      // Optional chaining preserves older injected test adapters that provide
+      // only the document seam; absent universe data is intentionally inert.
+      groupUniverse: evidenceLoader.loadPreparedGroupUniverse?.(preparedDocuments) ?? {},
     });
     /**
      * The one confirmed objective, built once so ranking, the explanation and
