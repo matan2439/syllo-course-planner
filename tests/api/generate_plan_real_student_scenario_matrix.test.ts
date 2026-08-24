@@ -19,6 +19,7 @@ const COMPLETED_BY_CATEGORY = ['0542-4120', '0542-4220', '0542-4420', '0581-4131
 const CURRENT_PREREQUISITE = '0542-4621';
 const WANTED_SUCCESSOR = '0542-4624';
 const EXCLUDED_MATERIALS_COURSE = '0542-4425';
+const ADVANCED_LABS = ['0542-4391', '0542-4624', '0581-4131', '0542-4093', '0542-4094'];
 
 const makeRes = () => ({
   statusCode: 0,
@@ -117,5 +118,54 @@ test('one native request composes authoritative progress, current prerequisites,
     expect(new Set(alternatives.map((a: any) => a.constraintFingerprint)).size).toBe(1);
     expect(new Set(alternatives.map((a: any) => a.profileVersion)).size).toBe(1);
     expect(new Set(alternatives.map((a: any) => a.snapshotId)).size).toBe(1);
+  }
+});
+
+test('a near-graduation request fills the one remaining real category without using an excluded lab', async () => {
+  const completedCore = COMPLETED_BY_CATEGORY.slice(0, 3);
+  const excludedLab = '0581-4131';
+  const res = makeRes();
+  await handler({
+    method: 'POST',
+    headers: { cookie: `${SESSION_COOKIE}=${'8'.repeat(48)}` },
+    body: {
+      program_id: 'mechanical_engineering_2027',
+      plan_context: {
+        semesters: BOARD.semesters.map((semester: any) => ({
+          id: semester.semester_id,
+          courses: (semester.courses ?? []).map((course: any) => ({ course_id: course.course_id })),
+        })),
+        personal_status: {
+          completed: completedCore.map((course_id) => ({ course_id })),
+          currently_taking: [{ course_id: CURRENT_PREREQUISITE }],
+          planned: [],
+          completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+        },
+        // The aggregate closes only the identity-free hour total. It cannot
+        // manufacture the still-missing advanced-lab category fact.
+        total_hours_progress: { known_completed_hours: 181, currently_planned_hours: 3 },
+      },
+      preferences: { wanted_course_ids: [], disallowed_course_ids: [excludedLab] },
+      use_academic_decision_agent: true,
+      preference_profile: { version: 2, preferences: [] },
+      session_token: '88888888-8888-4888-8888-888888888888',
+    },
+  } as any, res);
+
+  expect(res.statusCode).toBe(200);
+  expect(res._body.blocked).toBe(false);
+  expect(res._body.errors).toEqual([]);
+  const labGap = res._body.academicDecision.academicProgress.remainingByCategory
+    .find((category: any) => category.name === 'מעבדות מתקדמות');
+  expect(labGap).toMatchObject({ remaining: 1, satisfiedBy: [] });
+
+  const plans = candidatePlans(res._body);
+  expect(plans.length).toBeGreaterThan(0);
+  for (const plan of plans) {
+    const ids = plannedIds(plan);
+    expect(ids).not.toContain(excludedLab);
+    expect(ids).not.toContain(CURRENT_PREREQUISITE);
+    for (const completedId of completedCore) expect(ids).not.toContain(completedId);
+    expect(ids.some((id) => ADVANCED_LABS.includes(id) && id !== excludedLab)).toBe(true);
   }
 });
