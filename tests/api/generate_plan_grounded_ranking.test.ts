@@ -480,7 +480,12 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
       sourceRef: 'https://official.example/E3-materials',
       excerpt: 'חומרים הנדסיים',
     });
-    expect(candidates(focused._body).groundedExplanationHe).toContain('חומרים הנדסיים');
+    const explanation = candidates(focused._body).groundedExplanationHe ?? '';
+    expect(explanation).toContain('חומרים הנדסיים');
+    expect(explanation).not.toContain('https://');
+    expect(candidates(focused._body).groundedSources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceRef: 'https://official.example/E3-materials' }),
+    ]));
   });
 
   test('a structured academic focus reaches the same evidence-backed topic ranking', async () => {
@@ -633,8 +638,15 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     const text = candidates(res._body).groundedExplanationHe ?? '';
     expect(text).toMatch(/פרויקט/);
     expect(text).not.toMatch(/מעבדה/);
-    expect(text).toContain('ims.tau.ac.il');
+    expect(text).not.toContain('https://');
+    expect(text).not.toContain('ims.tau.ac.il');
     expect(text).toContain('קורס E3 (E3)');
+    expect(candidates(res._body).groundedSources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        courseId: 'E3',
+        sourceRef: expect.stringContaining('ims.tau.ac.il'),
+      }),
+    ]));
   });
 
   test('a laboratory corpus gives the project preference nothing to work with — no bias', async () => {

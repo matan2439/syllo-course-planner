@@ -178,7 +178,8 @@ describe('T5 — official topics change the selected candidate through the real 
       alternative: set.candidates.find((c) => c.id !== sel.id)?.groundedScore,
     });
     expect(text).toContain(MATERIALS);
-    expect(text).toContain('ims.tau.ac.il');
+    expect(text).toContain('בסילבוס הרשמי');
+    expect(text).not.toContain('https://');
     expect(text).toContain(String(YEAR));
     expect(text).toContain('חומרים');
     expect(text).toContain('תוכן הקורס ומטרתו');

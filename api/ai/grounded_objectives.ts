@@ -316,7 +316,7 @@ export function explainGroundedRanking(input: {
     ? `לפי ההעדפה שאישרת (קורסים עם ${label}), התוכנית הנבחרת כוללת ${selected.contributions.length} קורס/ים עם רכיב ${label}: ${names}.`
     : `ההעדפה שאישרת (קורסים עם ${label}) לא נתמכה בעדות רשמית עבור התוכנית הנבחרת.`;
   const provenance = src
-    ? ` המקור: ${src.feature === 'project' ? 'מטלות הקורס' : 'אופן ההוראה'} בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).`
+    ? ` המקור: ${src.feature === 'project' ? 'מטלות הקורס' : 'אופן ההוראה'} בסילבוס הרשמי משנת ${src.academicYear}.`
     : '';
   const compare = alternative
     ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} קורס/ים עם ${label}), ולא מסיבה אקדמית אחרת.`
@@ -365,7 +365,7 @@ function explainTopicAlignment(input: {
 
   const head = `לפי תחומי התוכן שאישרת (${names}), התוכנית הנבחרת כוללת ${byCourse.size} קורס/ים שהתוכן הרשמי שלהם מציין אותם: ${perCourse}.`;
   const wording = src.excerpt ? ` הניסוח הרשמי: "${src.excerpt}".` : '';
-  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי (${src.sourceRef}, שנת ${src.academicYear}).${wording}`;
+  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי משנת ${src.academicYear}.${wording}`;
   const compare = alternative
     ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} התאמות תוכן), ולא מסיבה אקדמית אחרת.`
     : '';

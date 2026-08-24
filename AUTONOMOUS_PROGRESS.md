@@ -5,13 +5,39 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B29 grounded explanations use authoritative course names.** User-facing
-ranking explanations now identify courses by catalog name plus stable id,
-instead of exposing bare technical ids; missing names still fail honestly to
-the id. API is 180/180 suites, 2457/2457 tests; web is 20/20 suites, 186/186
-tests. **Not Production-ready.** Not merged, not deployed.)_
+(**B30 grounded explanations separate readable rationale from source URLs.**
+User-facing ranking text now names the official syllabus field and evidence
+year without embedding a long raw URL; the exact URL remains available through
+the existing `groundedSources` disclosure. API is 180/180 suites, 2457/2457
+tests; web is 20/20 suites, 186/186 tests. **Not Production-ready.** Not merged,
+not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 21) — B29. Tracing the rendered native journey
+_Latest entry: 2026-08-24 (cont. 22) — B30. Tracing the handler through the
+native renderer showed that `groundedExplanationHe` embedded each official
+syllabus URL directly in the recommendation sentence even though the same
+authoritative document was already returned in `groundedSources` and rendered
+behind the keyboard-accessible “show sources” disclosure. This duplicated
+provenance and made the primary Hebrew rationale unnecessarily difficult to
+scan._
+
+_The real-handler RED required project and topic explanations to contain no
+raw URL while their exact source references remained in `groundedSources`.
+Before GREEN the project explanation exposed `ims.tau.ac.il` inline. GREEN
+changes only the two explanation provenance formatters: they retain the
+official field/source type, academic year, exact supporting wording and
+readable course label, while the existing disclosure remains the sole surface
+for the full URL. Ranking, evidence facts, score vectors, candidate identities,
+hard gates and recommendation are unchanged._
+
+_Focused grounded explanation/ranking GREEN passes 128/128. Full API passes
+180/180 suites, 2457/2457 tests in 207 seconds. Full web passes 20/20 suites,
+186/186 tests; existing expected failure-path console output still includes
+`fetch is not defined` where tests intentionally omit a committed-board loader.
+Root and web `tsc --noEmit` and the Next.js production build pass. No catalog
+or generated tracked data changed; no provider/network acquisition,
+Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 21) — B29. Tracing the rendered native journey
 showed `groundedExplanationHe` is displayed verbatim, while every grounded
 explanation formatter named contributing courses only by technical ids such as
 `0542-4425`. The authoritative planner model already carried `name_he`; the

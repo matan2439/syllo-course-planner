@@ -256,7 +256,8 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
     });
     expect(text).toMatch(/פרוי/);           // the project feature, not laboratory
     expect(text).not.toMatch(/מעבדה/);
-    expect(text).toContain('ims.tau.ac.il');
+    expect(text).toContain('בסילבוס הרשמי');
+    expect(text).not.toContain('https://');
     expect(text).toContain(String(YEAR));
     expect(text).not.toMatch(/טוב יותר|קל יותר|מומלץ יותר/);
   });

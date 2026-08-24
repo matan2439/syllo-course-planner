@@ -185,7 +185,8 @@ describe('T4 — the explanation is factual and cites the official source', () =
       selected: scoreCandidateOnObjective(['E1', 'E3'], o, prep.features, prep.topics),
     });
     expect(text).toContain('E1');
-    expect(text).toContain('ims.tau.ac.il');
+    expect(text).toContain('בסילבוס הרשמי');
+    expect(text).not.toContain('https://');
     expect(text).toContain(String(YEAR));
   });
 

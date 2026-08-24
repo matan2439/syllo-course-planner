@@ -213,7 +213,8 @@ describe('K4 — a confirmed grounded objective changes real candidate selection
       alternative: alternative?.groundedScore,
     });
     expect(text).toContain('מעבדה');                 // which feature
-    expect(text).toContain('ims.tau.ac.il');         // official source
+    expect(text).toContain('בסילבוס הרשמי');        // official source type
+    expect(text).not.toContain('https://');          // URL belongs in groundedSources
     expect(text).toContain(String(YEAR));            // source year
     expect(text).toContain('E3');                    // the supporting course
     // Never claims the course is objectively better.

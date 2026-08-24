@@ -144,7 +144,8 @@ describe('K9C — the explanation is factual and makes no unsupported claim', ()
   test('states the confirmed preference, the supporting feature, the source and the year', () => {
     const text = explainGroundedRanking({ objective, selected });
     expect(text).toMatch(/מעבדה/);
-    expect(text).toContain('ims.tau.ac.il');
+    expect(text).toContain('בסילבוס הרשמי');
+    expect(text).not.toContain('https://');
     expect(text).toContain('2025');
     expect(text).toContain('E3');
   });
