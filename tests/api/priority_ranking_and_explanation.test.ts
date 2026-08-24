@@ -26,6 +26,7 @@ import {
   PRIORITY_PRIMARY_WEIGHT,
   objectiveRankKey,
 } from '../../api/ai/grounded_objective_set';
+import { explainGroundedComposition, type GroundedScore } from '../../api/ai/grounded_objectives';
 import type { Preference, PreferenceProfile } from '../../api/ai/preference_model';
 import type { SyllabusDocument } from '../../api/ai/syllabus_source';
 
@@ -225,6 +226,40 @@ describe('C5/P4 — a priority can never outrank a hard constraint', () => {
 // ── the explanation ─────────────────────────────────────────────────────────
 
 describe('C5/P4 — the explanation states what the priority actually did', () => {
+  test('it searches all legal alternatives for the secondary trade-off, not only the first tie', () => {
+    const score = (courseId?: string, feature: 'topic' | 'projectDelivery' = 'topic'): GroundedScore => ({
+      score: courseId ? 1 : 0,
+      contributions: courseId ? [{
+        courseId, feature, ...(feature === 'topic' ? { topicId: 'robotics' as const } : {}),
+        sourceRef: `official:${courseId}`, academicYear: 2027,
+      }] : [],
+      unknownCourseIds: [], variesBySectionCourseIds: [],
+    });
+    const alternatives = [
+      [score('TOPIC_TIE'), score()],
+      [score(), score('PROJECT', 'projectDelivery')],
+    ];
+    const input = {
+      objectives: [
+        { id: 'prefer_topic_alignment', topicIds: ['robotics'] },
+        { id: 'prefer_project_courses' },
+      ],
+      snapshotId: 'snap_explanation_choice',
+      selected: [score('TOPIC'), score()],
+      // The first legal alternative only ties. A later legal alternative is
+      // genuinely stronger on the non-primary project objective.
+      alternatives,
+      reason: 'explicit_priority',
+      primaryObjectiveId: 'prefer_topic_alignment',
+    };
+    const text = (explainGroundedComposition as any)(input);
+
+    expect(text).toContain('חלופה חוקית אחרת עדיין מתאימה יותר');
+    expect(text).toContain('פרויקט');
+    expect((explainGroundedComposition as any)({ ...input, alternatives: [...alternatives].reverse() }))
+      .toBe(text);
+  });
+
   test('it names the chosen priority, the surviving trade-off, and the shared requirements', async () => {
     const body = (await run(request(profile([PROJECT, TOPIC, priorityPref('prefer_topic_alignment')], 7))))._body;
     const text: string = candidatesOf(body).groundedExplanationHe;

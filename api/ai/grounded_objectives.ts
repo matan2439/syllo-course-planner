@@ -390,6 +390,8 @@ export function explainGroundedComposition(input: {
   snapshotId: string;
   selected: readonly GroundedScore[];
   alternative?: readonly GroundedScore[];
+  /** Every other legal, non-dominated alternative still available to choose. */
+  alternatives?: readonly (readonly GroundedScore[])[];
   reason:
     | 'single_objective'
     | 'dominates_all_objectives'
@@ -408,6 +410,33 @@ export function explainGroundedComposition(input: {
   const { objectives, selected, alternative, snapshotId } = input;
   if (objectives.length === 0 || selected.length === 0) return '';
 
+  const available = input.alternatives?.length
+    ? input.alternatives
+    : alternative ? [alternative] : [];
+  const primaryIndex = input.primaryObjectiveId
+    ? objectives.findIndex((objective) => objective.id === input.primaryObjectiveId)
+    : -1;
+  const advantage = (candidate: readonly GroundedScore[], index: number) => {
+    const candidateScore = candidate[index]?.score ?? 0;
+    const selectedScore = selected[index]?.score ?? 0;
+    return objectives[index]?.id === 'avoid_topic_exposure'
+      ? selectedScore - candidateScore
+      : candidateScore - selectedScore;
+  };
+  // For an explicit priority, compare against the available plan that most
+  // clearly exposes the surviving cost on a NON-primary objective. Array order
+  // is only the stable tie-break; it never decides whether a trade-off exists.
+  const comparison = input.reason === 'explicit_priority' && primaryIndex >= 0
+    ? available
+        .map((candidate, order) => ({
+          candidate,
+          order,
+          gain: Math.max(0, ...objectives.map((_, index) =>
+            index === primaryIndex ? 0 : advantage(candidate, index))),
+        }))
+        .sort((a, b) => b.gain - a.gain || a.order - b.order)[0]?.candidate
+    : available[0];
+
   const per = objectives.map((o, i) =>
     explainGroundedRanking({
       objective: {
@@ -417,7 +446,7 @@ export function explainGroundedComposition(input: {
         ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
       },
       selected: selected[i],
-      ...(alternative?.[i] ? { alternative: alternative[i] } : {}),
+      ...(comparison?.[i] ? { alternative: comparison[i] } : {}),
     }),
   );
 
@@ -430,7 +459,7 @@ export function explainGroundedComposition(input: {
       ' התוכנית הנבחרת מתאימה לכל ההעדפות שאישרת לפחות כמו כל חלופה חוקית אחרת שנבדקה, ועדיפה על חלקן בלפחות העדפה אחת.',
     equal_confirmed_preferences:
       ' אין חלופה חוקית שמצטיינת בכל ההעדפות שאישרת בו-זמנית. לא ציינת מה חשוב יותר, ולכן כל ההעדפות נשקלו במשקל שווה — זו מדיניות הדירוג של המערכת, לא קביעה שלך.',
-    explicit_priority: explicitPrioritySentence(input),
+    explicit_priority: explicitPrioritySentence({ ...input, alternative: comparison }),
     canonical_tie_break:
       ' כל החלופות החוקיות התאימו להעדפות שאישרת באותה מידה, ולכן נשמרה תוכנית ברירת המחדל.',
     no_distinguishing_evidence:

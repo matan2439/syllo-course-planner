@@ -1823,12 +1823,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           score: c.raw, contributions: c.contributions,
           unknownCourseIds: c.unknownCourseIds, variesBySectionCourseIds: c.variesBySectionCourseIds,
         });
-        const other = candidateSet.candidates.find((c) => c.id !== selected!.id);
+        const others = candidateSet.candidates
+          .filter((candidate) => candidate.id !== selected!.id && candidate.nonDominated !== false)
+          .filter((candidate) => candidate.objectiveScores?.length)
+          .map((candidate) => candidate.objectiveScores!.map(asScore));
         return explainGroundedComposition({
           objectives: objectives.map((o) => ({ id: o.id, ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}) })),
           snapshotId: preparedEvidence.snapshot.snapshotId,
           selected: components.map(asScore),
-          ...(other?.objectiveScores?.length ? { alternative: other.objectiveScores.map(asScore) } : {}),
+          ...(others.length ? { alternatives: others } : {}),
           reason: candidateSet.composition?.reason ?? 'single_objective',
           // C5 — named only when the student genuinely chose it, so the
           // explanation can never attribute a priority they did not express.
