@@ -31,7 +31,7 @@
 import { syllabusToEvidence, type SyllabusDocument } from './syllabus_source';
 import type { AcademicEvidence } from './academic_evidence';
 
-export const FEATURE_EXTRACTION_VERSION = '1.1.0';
+export const FEATURE_EXTRACTION_VERSION = '1.2.0';
 export const TOPIC_VOCABULARY_VERSION = '1.0.0';
 
 /** Ternary: a feature is true, false, or genuinely not known. Never defaulted. */
@@ -154,11 +154,19 @@ const PROJECT_TERMS = /פרויקט|פרוייקט|project/i;
 const EXAM_TERMS = /בחינה|מבחן|exam/i;
 const COURSEWORK_TERMS = /תרגיל|מטלה|מטלות|דו"?ח|דוח|הגש|assignment|homework/i;
 
+function legacyAssignmentsSection(text: string): string | undefined {
+  const match = text.match(
+    /(?:^|\r?\n)[ \t]*מטלות[ \t]+הקורס[ \t]*(?:\r?\n)+([\s\S]*?)(?=ייתכנו\s+מטלות\s+נוספות|רשימת\s+המטלות|קורסי\s+קדם\s+נדרשים|$)/,
+  );
+  const value = match?.[1]?.trim();
+  return value || undefined;
+}
+
 export class RuleBasedFeatureExtractor implements FeatureExtractor {
   extract(doc: SyllabusDocument): CourseFeatures {
     const fields = doc.labeledFields;
     const delivery = fields[DELIVERY_LABEL]?.join(' ; ');
-    const assignments = fields[ASSIGNMENTS_LABEL]?.join(' ; ');
+    const assignments = fields[ASSIGNMENTS_LABEL]?.join(' ; ') ?? legacyAssignmentsSection(doc.text);
     const prereq = fields[PREREQ_LABEL]?.join(' ; ');
 
     const evidenceFor = (

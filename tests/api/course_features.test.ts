@@ -144,6 +144,39 @@ describe('contrasting course shapes', () => {
     expect(f.project.evidence[0]?.excerpt).not.toContain('ייתכנו מטלות נוספות');
   });
 
+  test('a legacy cached document recovers only the explicitly bounded assignments section', async () => {
+    const acquired = await docFrom(stub({
+      courseNumber: '0542-2224-01',
+      delivery: 'שיעור',
+    }), '0542-2224');
+    const legacy = {
+      ...acquired,
+      text: `${acquired.text}\nמטלות הקורס\nפרוייקט\nייתכנו מטלות נוספות\nרשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.\nקורסי קדם נדרשים`,
+    };
+
+    const f = extractor.extract(legacy);
+
+    expect(f.project.value).toBe(true);
+    expect(f.project.evidence[0]?.locator).toBe('field:מטלות הקורס');
+    expect(f.project.evidence[0]?.excerpt).toContain('פרוייקט');
+    expect(f.project.evidence[0]?.excerpt).not.toContain('ייתכנו מטלות נוספות');
+  });
+
+  test('a prose mention of the assignments label cannot override the later official section', async () => {
+    const acquired = await docFrom(stub({
+      courseNumber: '0542-2225-01',
+      delivery: 'שיעור',
+    }), '0542-2225');
+    const legacy = {
+      ...acquired,
+      text: `${acquired.text}\nתיאור הקורס מסביר כי מטלות הקורס כוללות פרויקט לדוגמה.\nמטלות הקורס\nאחר\nייתכנו מטלות נוספות`,
+    };
+
+    const f = extractor.extract(legacy);
+
+    expect(f.project.value).toBe(false);
+  });
+
   test('a laboratory course is detected from the official delivery mode alone', async () => {
     const f = await extract(stub({ courseNumber: '0542-3333-01', delivery: 'מעבדה' }), '0542-3333');
     expect(f.laboratory.value).toBe(true);

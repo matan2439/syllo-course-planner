@@ -5,13 +5,41 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B22 official assignment-field extraction repaired.** TAU assignment values
-rendered as direct text nodes are now retained while their generic disclaimer
-is excluded, so explicit project/exam/coursework evidence no longer collapses
-to unknown. Full API is 179/179 suites, 2443/2443 tests. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B23 frozen-cache assignment evidence recovered safely.** Legacy cached
+documents now recover only the explicitly bounded official assignments section;
+a same-wording mention in course prose cannot become evidence. The local frozen
+corpus improves from 0 to 21/23 documents with known assessment shape. Full API
+is 179/179 suites, 2445/2445 tests. **Not Production-ready.** Not merged, not
+deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 14) — B22. Phase A.2 reliability tracing found
+_Latest entry: 2026-08-24 (cont. 15) — B23. B22 repaired future acquisition,
+but the immutable local evidence objects had already been parsed under the old
+rule: their `labeledFields` lacked `מטלות הקורס`, even though their normalized
+visible text still retained the official heading, value, disclaimer, and next
+field boundary. Without a read-time compatibility path, the product's frozen
+snapshot would remain at the historical 0-known assessment result until a
+network reacquisition.
+
+The first RED passes a legacy-shaped `SyllabusDocument` through the real
+extractor and failed with `project: unknown`. A narrow fallback now runs only
+when the structured field is absent and reads only a standalone official
+`מטלות הקורס` heading through the disclaimer/next-field boundary. A second RED
+placed the same wording in course prose before the real section and caught an
+initial overclaim (`true` instead of the official section's false); anchoring
+the heading to its own line made that case GREEN. No content-description prose
+is mined and all ordinary absence semantics remain unknown.
+
+`FEATURE_EXTRACTION_VERSION` is now 1.2.0. A temporary read-only probe (removed
+immediately afterward) measured the actual ignored local corpus at 21/23
+documents with known project/exam/coursework state across all 18 distinct
+courses, versus the historical report's 0. It made no network call and wrote no
+cache/catalog data. Focused extractor GREEN passes 21/21; the evidence/source/
+ranking/real-corpus boundary passes 9/9 suites and 160/160 tests. Full API
+passes 179/179 suites and 2445/2445 tests in 229 seconds. Root tsc and final
+diff gates pass. No UI or data file changed. No paid/
+provider call, Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 14) — B22. Phase A.2 reliability tracing found
 a concrete parser defect behind the prior acquisition report's 0-known
 assessment result. TAU's official syllabus cells wrap ordinary values in
 `span`, but render `מטלות הקורס` values such as `פרוייקט`, `בחינה סופית`, and
