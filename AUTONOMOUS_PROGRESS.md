@@ -5,15 +5,34 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B20 lookahead validation-context rebuilds removed.** Every rollout still
-validates every candidate through the authoritative validator, but reuses the
-immutable context the worker already built instead of rebuilding all course
-legality facts per action. The real three-scenario matrix fell again from ~42s
-to ~27s and the full API suite from ~322s to ~211s. Full API 179/179 suites,
-2441/2441 tests and root tsc green. **Not Production-ready.** Not merged, not
-deployed.)_
+(**B21 completed-real-degree acceptance gate.** The frozen real Mechanical
+Engineering 2027 handler path now proves that a student with every mandatory
+course and one authoritative completion in each requiring elective pool has
+no phantom future courses or reopened requirements. The complete realistic
+matrix is 4/4 and full API is 179/179 suites, 2442/2442 tests. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 12) — B20. Profiling after B19 showed the
+_Latest entry: 2026-08-24 (cont. 13) — B21. Phase A.6 realistic-scenario
+coverage now includes the degree-completion boundary against the frozen real
+Mechanical Engineering 2027 program. The full native handler request reports
+all twelve unique mandatory identities plus four real authoritative elective
+category representatives as completed. AcademicProgress recognizes all
+sixteen identities once, keeps identity-free aggregate completion from
+creating course-specific consequences, closes every real requiring category,
+and leaves no future planned course in any retained or fallback candidate.
+
+The acceptance test passed on first execution in 111ms. This is meaningful
+evidence that the shared academic-progress, remaining-requirement, validator,
+and candidate paths already handle the boundary correctly; no production
+defect was manufactured and no product code was changed. The realistic
+handler matrix passes 4/4 scenarios in ~26s, including advanced combined,
+near-graduation, mid-degree, and fully-completed students. Full API passes
+179/179 suites and 2442/2442 tests in 196 seconds; root `tsc --noEmit` and
+`git diff --check` pass. No UI code changed, so the B8 web/build/legacy
+baseline remains applicable. No paid/provider call, network acquisition,
+catalog/data mutation, Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 12) — B20. Profiling after B19 showed the
 remaining deterministic hotspot was not validation itself but repeated setup:
 `PlannerWorker` already builds one authoritative `PlanValidationContext`, yet
 `greedyComplete` called `validatePlanState` without it for every candidate in

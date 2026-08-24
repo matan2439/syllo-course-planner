@@ -33,6 +33,7 @@ const REMAINING_MANDATORY = [
   '0542-4091',
   '0542-4092',
 ];
+const ALL_MANDATORY = [...COMPLETED_MID_DEGREE_MANDATORY, ...REMAINING_MANDATORY];
 
 const makeRes = () => ({
   statusCode: 0,
@@ -237,4 +238,51 @@ test('a mid-degree request plans every remaining real mandatory course without r
     expect(ids).not.toContain(CURRENT_PREREQUISITE);
     for (const mandatoryId of REMAINING_MANDATORY) expect(ids).toContain(mandatoryId);
   }
+});
+
+test('a fully completed real degree produces no phantom future courses or reopened requirements', async () => {
+  const completed = [...ALL_MANDATORY, ...COMPLETED_BY_CATEGORY];
+  const res = makeRes();
+  await handler({
+    method: 'POST',
+    headers: { cookie: `${SESSION_COOKIE}=${'6'.repeat(48)}` },
+    body: {
+      program_id: 'mechanical_engineering_2027',
+      plan_context: {
+        semesters: BOARD.semesters.map((semester: any) => ({
+          id: semester.semester_id,
+          courses: (semester.courses ?? []).map((course: any) => ({ course_id: course.course_id })),
+        })),
+        personal_status: {
+          completed: completed.map((course_id) => ({ course_id })),
+          currently_taking: [],
+          planned: [],
+          completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+        },
+        total_hours_progress: { known_completed_hours: 185, currently_planned_hours: 0 },
+      },
+      preferences: { wanted_course_ids: [], disallowed_course_ids: [] },
+      use_academic_decision_agent: true,
+      preference_profile: { version: 4, preferences: [] },
+      session_token: '66666666-6666-4666-8666-666666666666',
+    },
+  } as any, res);
+
+  expect(res.statusCode).toBe(200);
+  expect(res._body.blocked).toBe(false);
+  expect(res._body.errors).toEqual([]);
+  expect(res._body.requirements_status.every((requirement: any) => requirement.satisfied)).toBe(true);
+  expect(res._body.academicDecision.academicProgress).toMatchObject({
+    recognizedCourseCount: 16,
+    inProgressHours: 0,
+    currentlyTakingHours: 0,
+    aggregateOnlyHours: 0,
+  });
+  expect(res._body.academicDecision.academicProgress.remainingByCategory.every(
+    (category: any) => category.remaining === 0,
+  )).toBe(true);
+
+  const plans = candidatePlans(res._body);
+  expect(plans.length).toBeGreaterThan(0);
+  for (const plan of plans) expect(plannedIds(plan)).toEqual([]);
 });
