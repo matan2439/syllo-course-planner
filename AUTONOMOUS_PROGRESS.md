@@ -5,13 +5,44 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B16 near-graduation real-program acceptance added.** A second native-handler
-scenario proves identity-free aggregate hours cannot close the one remaining
-advanced-lab category and hard exclusion forces another authoritative lab in
-every retained plan. Full API 179/179 suites, 2436/2436 tests and root tsc
-green. **Not Production-ready.** Not merged, not deployed.)_
+(**B17 mid-degree real-program acceptance added.** A third native-handler
+scenario proves completed mandatory identities reduce the real remaining plan,
+current study is not proposed again, all still-required mandatory courses stay
+in every retained alternative, and untouched elective pools remain open. Full
+API 179/179 suites, 2437/2437 tests and root tsc green. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 8) — B16. Phase A.6 coverage audit found only
+_Latest entry: 2026-08-24 (cont. 9) — B17. Phase A.6 realistic-scenario
+coverage now includes a mid-degree student against the frozen Mechanical
+Engineering 2027 program. The request authoritatively reports mandatory
+courses `0512-1204` and `0542-2400` completed (7.5 catalog hours), real
+prerequisite course `0542-4621` currently taking (3 hours), 90 aggregate
+completed hours, and no elective-category completion. AcademicProgress keeps
+all four requiring pools open and derives course-specific consequences only
+from the two recognized completed identities and the recognized current-study
+identity.
+
+The first test draft intentionally exercised the harder on-board/current-study
+case and failed because its expectation treated a course already visible in
+the board as a new future proposal. Tracing the validator established the real
+contract: an unchanged currently-taking placement remains visible and cannot
+be moved or re-added; it is not advance-credited a second time. The fixture was
+therefore corrected rather than changing production semantics. In the valid
+mid-degree flow, every retained candidate excludes both completed mandatory
+courses and the off-board currently-taking prerequisite, and includes each of
+the ten remaining unique mandatory course identities (with the annual course
+deduplicated by identity). This is a full handler/real-program acceptance gate;
+existing shared progress, remaining-requirement and authoritative validation
+paths already satisfy it, so no production code changed.
+
+The focused academic-progress matrix passes 4/4 suites and 53/53 tests; the
+real-student matrix passes 3/3. Full API passes 179/179 suites and 2437/2437
+tests in 590 seconds; root `tsc --noEmit` and `git diff --check` pass. No UI
+code changed, so the B8 web/build/legacy baseline remains applicable. No
+paid/provider call, network acquisition, catalog/data mutation, Production,
+Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 8) — B16. Phase A.6 coverage audit found only
 one complete-student acceptance against the frozen Mechanical Engineering 2027
 program: B9's advanced student had already closed all four requiring pools. A
 second real native-handler scenario now represents a near-graduation student

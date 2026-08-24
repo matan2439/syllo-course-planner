@@ -20,6 +20,19 @@ const CURRENT_PREREQUISITE = '0542-4621';
 const WANTED_SUCCESSOR = '0542-4624';
 const EXCLUDED_MATERIALS_COURSE = '0542-4425';
 const ADVANCED_LABS = ['0542-4391', '0542-4624', '0581-4131', '0542-4093', '0542-4094'];
+const COMPLETED_MID_DEGREE_MANDATORY = ['0512-1204', '0542-2400'];
+const REMAINING_MANDATORY = [
+  '0542-2500',
+  '0542-3243',
+  '0542-3620',
+  '0542-3780',
+  '0542-3791',
+  '0542-3792',
+  '0542-4010',
+  '0542-4020',
+  '0542-4091',
+  '0542-4092',
+];
 
 const makeRes = () => ({
   statusCode: 0,
@@ -167,5 +180,61 @@ test('a near-graduation request fills the one remaining real category without us
     expect(ids).not.toContain(CURRENT_PREREQUISITE);
     for (const completedId of completedCore) expect(ids).not.toContain(completedId);
     expect(ids.some((id) => ADVANCED_LABS.includes(id) && id !== excludedLab)).toBe(true);
+  }
+});
+
+test('a mid-degree request plans every remaining real mandatory course without rescheduling completed or current study', async () => {
+  const res = makeRes();
+  await handler({
+    method: 'POST',
+    headers: { cookie: `${SESSION_COOKIE}=${'7'.repeat(48)}` },
+    body: {
+      program_id: 'mechanical_engineering_2027',
+      plan_context: {
+        semesters: BOARD.semesters.map((semester: any) => ({
+          id: semester.semester_id,
+          courses: (semester.courses ?? []).map((course: any) => ({ course_id: course.course_id })),
+        })),
+        personal_status: {
+          completed: COMPLETED_MID_DEGREE_MANDATORY.map((course_id) => ({ course_id })),
+          currently_taking: [{ course_id: CURRENT_PREREQUISITE }],
+          planned: [],
+          completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+        },
+        total_hours_progress: { known_completed_hours: 90, currently_planned_hours: 3 },
+      },
+      preferences: { wanted_course_ids: [], disallowed_course_ids: [] },
+      use_academic_decision_agent: true,
+      preference_profile: { version: 3, preferences: [] },
+      session_token: '77777777-7777-4777-8777-777777777777',
+    },
+  } as any, res);
+
+  expect(res.statusCode).toBe(200);
+  expect(res._body.blocked).toBe(false);
+  expect(res._body.errors).toEqual([]);
+  expect(res._body.academicDecision.academicProgress).toMatchObject({
+    recognizedCourseCount: 2,
+    recognizedHours: 7.5,
+    currentlyTakingHours: 3,
+    inProgressHours: 3,
+  });
+  expect(res._body.academicDecision.academicProgress.remainingByCategory.map((category: any) => ({
+    name: category.name,
+    remaining: category.remaining,
+  }))).toEqual([
+    { name: 'מעבדות מתקדמות', remaining: 1 },
+    { name: 'קורסי ליבה — זורמים', remaining: 1 },
+    { name: 'קורסי ליבה — מוצקים', remaining: 1 },
+    { name: 'קורסי ליבה — מערכות', remaining: 1 },
+  ]);
+
+  const plans = candidatePlans(res._body);
+  expect(plans.length).toBeGreaterThan(0);
+  for (const plan of plans) {
+    const ids = plannedIds(plan);
+    for (const completedId of COMPLETED_MID_DEGREE_MANDATORY) expect(ids).not.toContain(completedId);
+    expect(ids).not.toContain(CURRENT_PREREQUISITE);
+    for (const mandatoryId of REMAINING_MANDATORY) expect(ids).toContain(mandatoryId);
   }
 });
