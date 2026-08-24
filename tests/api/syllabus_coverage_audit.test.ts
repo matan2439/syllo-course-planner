@@ -198,6 +198,7 @@ describe('B0 — the live corpus, when present', () => {
     expect(prepared.coverage.historicalCourseIds).toHaveLength(auditedDistinctCourses);
     expect(prepared.coverage.academicYears).toEqual([2025]);
     expect(prepared.coverage.conflictingCourseIds).toEqual([]);
+    expect(prepared.coverage.topicUnknownCourseIds).toHaveLength(audit.applicability.atCorpusYear2025.topicUnknown);
     expect(prepared.snapshot.documents).toHaveLength(relevantDocuments.length);
   });
 });

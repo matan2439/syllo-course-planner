@@ -525,6 +525,30 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     );
   });
 
+  test('a mechanical-design focus recognizes an official requirement to design a solution', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'מבוא כללי.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'בהינתן תיאור בעיה כללי, נדרש לפתח דרישות ולתכן פתרון שעונה עליהן.'),
+      topicDoc('E4', 'מבוא כללי.'),
+    ];
+
+    const control = await run(body());
+    const focused = await run(body({
+      academic_interest_profile: { focusAreas: [{ area: 'mechanical_design', weight: 1 }] },
+    }));
+
+    expect(placed(control._body)).not.toContain('E3');
+    expect(placed(focused._body)).toContain('E3');
+    expect(candidates(focused._body).selectedGroundedScore.contributions).toEqual(
+      expect.arrayContaining([expect.objectContaining({
+        courseId: 'E3',
+        topicId: 'engineering_design',
+        excerpt: 'לתכן פתרון',
+      })]),
+    );
+  });
+
   test('a structured focus stays soft: hard exclusion of its evidence-backed course wins', async () => {
     MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
     const res = await run(body({

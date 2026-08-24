@@ -5,13 +5,39 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B27 official energy-systems evidence reaches the generic topic objective.**
-An explicit energy focus can now use narrow refrigeration/heat-pump wording
-from the frozen official syllabus; generic conservation-of-energy prose stays
-unmapped. Full API is 180/180 suites, 2456/2456 tests. **Not Production-ready.**
-Not merged, not deployed.)_
+(**B28 explicit design-solution wording reaches topic alignment.** The official
+requirement to design a solution now grounds mechanical-design focus without
+promoting bare ambiguous `תכן` or generic project prose. Full API is 180/180
+suites, 2457/2457 tests. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 19) — B27. The next Phase A evidence audit
+_Latest entry: 2026-08-24 (cont. 20) — B28. A read-only audit over the actual
+ignored frozen evidence cache enumerated all topic-unknown courses and was
+removed immediately afterward. Generic project, research, space outreach,
+environmental innovation and ethics prose remained outside the current focus
+ontology rather than being forced into a nearby topic. Two real project courses
+(`0542-4010`, `0542-4020`) did contain a direct design statement in the official
+content section: students must develop requirements and `לתכן פתרון` that
+answers them. The mapper previously disclosed bare `תכן` as ambiguous and did
+not recognize this complete, unambiguous phrase.
+
+The handler RED gave E3 that exact official statement and requested the
+existing `mechanical_design` focus. Before GREEN the recommendation remained
+E1+E2 with no design contribution. GREEN adds only the full phrase `לתכן
+פתרון` to the existing `engineering_design` topic vocabulary. It does not map
+bare `תכן`, course titles, generic project participation, or research activity,
+and it introduces no objective: the result uses the existing generic
+`prefer_topic_alignment` path.
+
+The recommendation now changes to E3 and cites the exact proving phrase. The
+live-cache regression confirms the real snapshot's topic-unknown count is now
+the documented five (the two design-project courses moved from unknown on
+official evidence). Focused handler/topic/audit GREEN passes 79/79. Full API
+passes 180/180 suites, 2457/2457 tests in 205 seconds; root `tsc --noEmit` and
+diff gates pass. The temporary audit file is absent. No UI/data/provider/
+network acquisition, Production, Vercel, Supabase, `main`, catalog, or stash
+change._
+
+_Previous entry: 2026-08-24 (cont. 19) — B27. The next Phase A evidence audit
 compared focus areas that were still unsupported against the frozen official
 2025 snapshot. It found no substantive biomechanics statement: the only
 biomedical hit was an academic-unit label on an ethics course, outside the

@@ -144,7 +144,7 @@ const VOCABULARY: VocabularyEntry[] = [
   {
     topicId: 'engineering_design',
     phrases: ['תכן (עיצוב) הנדסי', 'תכן הנדסי', 'עיצוב הנדסי', 'העיצוב ההנדסי', 'שיטות תכן', 'תכן מכני',
-      'תכנון ראשוני', 'תכנון מפורט', 'עיצוב מוצר', 'product design', 'engineering design'],
+      'תכנון ראשוני', 'תכנון מפורט', 'לתכן פתרון', 'עיצוב מוצר', 'product design', 'engineering design'],
     confidence: 0.9,
   },
   {
