@@ -90,7 +90,13 @@ import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from './evidence_pro
 import { TOPIC_IDS } from './course_topics';
 import { groundedTopicsForFocusAreas, mergeExplicitFocusObjective, mergeStructuredAvoidObjective, mergeStructuredStyleObjectives } from './focus_topic_objective';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
-import { explainGroundedRanking, explainGroundedComposition, scoreCandidateOnObjective, type ObjectiveContribution } from './grounded_objectives';
+import {
+  explainGroundedRanking,
+  explainGroundedComposition,
+  selectGroundedExplanationAlternative,
+  scoreCandidateOnObjective,
+  type ObjectiveContribution,
+} from './grounded_objectives';
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { computePriorityQuestionImpact } from './priority_impact';
 import { describeAcademicProgress } from './academic_progress';
@@ -1845,8 +1851,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       // Sources cited by EVERY active objective on the selected candidate, so a
       // composed explanation's disclosure is complete rather than first-only.
       groundedSources: (() => {
-        const all = (selected?.objectiveScores?.flatMap((c) => c.contributions)
-          ?? selected?.groundedScore?.contributions ?? [])
+        const selectedComponents = selected?.objectiveScores ?? [];
+        const objectives = resolvedGrounded?.objectives ?? [];
+        const asScore = (component: (typeof selectedComponents)[number]) => ({
+          score: component.raw,
+          contributions: component.contributions,
+          unknownCourseIds: component.unknownCourseIds,
+          variesBySectionCourseIds: component.variesBySectionCourseIds,
+        });
+        const alternatives = candidateSet.candidates
+          .filter((candidate) => candidate.id !== selected?.id && candidate.nonDominated !== false)
+          .filter((candidate) => candidate.objectiveScores?.length)
+          .map((candidate) => candidate.objectiveScores!.map(asScore));
+        const comparison = selectedComponents.length && objectives.length
+          && candidateSet.composition?.reason === 'explicit_priority'
+          ? selectGroundedExplanationAlternative({
+              objectives,
+              selected: selectedComponents.map(asScore),
+              alternatives,
+              primaryObjectiveId: resolvedGrounded?.primaryObjectiveId,
+            })
+          : undefined;
+        const all = [
+          ...(selectedComponents.length
+            ? selectedComponents.flatMap((component) => component.contributions)
+            : selected?.groundedScore?.contributions ?? []),
+          ...(comparison?.flatMap((component) => component.contributions) ?? []),
+        ]
           .map((c) => ({ courseId: c.courseId, sourceRef: c.sourceRef, academicYear: c.academicYear }));
         // Two objectives citing the SAME official document is one source, not
         // two: the disclosure lists documents, not score contributions.

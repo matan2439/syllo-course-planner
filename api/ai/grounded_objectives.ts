@@ -413,28 +413,13 @@ export function explainGroundedComposition(input: {
   const available = input.alternatives?.length
     ? input.alternatives
     : alternative ? [alternative] : [];
-  const primaryIndex = input.primaryObjectiveId
-    ? objectives.findIndex((objective) => objective.id === input.primaryObjectiveId)
-    : -1;
-  const advantage = (candidate: readonly GroundedScore[], index: number) => {
-    const candidateScore = candidate[index]?.score ?? 0;
-    const selectedScore = selected[index]?.score ?? 0;
-    return objectives[index]?.id === 'avoid_topic_exposure'
-      ? selectedScore - candidateScore
-      : candidateScore - selectedScore;
-  };
-  // For an explicit priority, compare against the available plan that most
-  // clearly exposes the surviving cost on a NON-primary objective. Array order
-  // is only the stable tie-break; it never decides whether a trade-off exists.
-  const comparison = input.reason === 'explicit_priority' && primaryIndex >= 0
-    ? available
-        .map((candidate, order) => ({
-          candidate,
-          order,
-          gain: Math.max(0, ...objectives.map((_, index) =>
-            index === primaryIndex ? 0 : advantage(candidate, index))),
-        }))
-        .sort((a, b) => b.gain - a.gain || a.order - b.order)[0]?.candidate
+  const comparison = input.reason === 'explicit_priority'
+    ? selectGroundedExplanationAlternative({
+        objectives,
+        selected,
+        alternatives: available,
+        primaryObjectiveId: input.primaryObjectiveId,
+      })
     : available[0];
 
   const per = objectives.map((o, i) =>
@@ -467,6 +452,38 @@ export function explainGroundedComposition(input: {
   };
 
   return per.join(' ') + (combined[input.reason] ?? '');
+}
+
+/**
+ * Select the available plan whose evidence most clearly demonstrates the cost
+ * of the student's explicit priority. Shared by explanation text and source
+ * disclosure so a comparative sentence can never cite only the selected plan.
+ */
+export function selectGroundedExplanationAlternative(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId }>;
+  selected: readonly GroundedScore[];
+  alternatives: readonly (readonly GroundedScore[])[];
+  primaryObjectiveId?: GroundedObjectiveId;
+}): readonly GroundedScore[] | undefined {
+  const primaryIndex = input.primaryObjectiveId
+    ? input.objectives.findIndex((objective) => objective.id === input.primaryObjectiveId)
+    : -1;
+  if (primaryIndex < 0) return input.alternatives[0];
+  const advantage = (candidate: readonly GroundedScore[], index: number) => {
+    const candidateScore = candidate[index]?.score ?? 0;
+    const selectedScore = input.selected[index]?.score ?? 0;
+    return input.objectives[index]?.id === 'avoid_topic_exposure'
+      ? selectedScore - candidateScore
+      : candidateScore - selectedScore;
+  };
+  return input.alternatives
+    .map((candidate, order) => ({
+      candidate,
+      order,
+      gain: Math.max(0, ...input.objectives.map((_, index) =>
+        index === primaryIndex ? 0 : advantage(candidate, index))),
+    }))
+    .sort((a, b) => b.gain - a.gain || a.order - b.order)[0]?.candidate;
 }
 
 /**

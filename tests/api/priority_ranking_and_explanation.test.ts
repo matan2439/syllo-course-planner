@@ -271,6 +271,11 @@ describe('C5/P4 — the explanation states what the priority actually did', () =
     // rather than the trade-off quietly disappearing once it was resolved.
     expect(text).toContain('חלופה חוקית אחרת');
     expect(text).toContain('פרויקט');
+    // The explanation's claim about the alternative must disclose the official
+    // source that proves that alternative's project delivery — selected-plan
+    // evidence alone cannot support a comparative statement.
+    expect(candidatesOf(body).groundedSources.map((source: any) => source.courseId))
+      .toContain('E2');
     // It never claims the recommended plan is objectively better.
     expect(text).not.toMatch(/הטובה ביותר|האופטימלי|הכי טוב/);
   });
