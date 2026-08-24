@@ -5,16 +5,46 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B9 combined real-program acceptance added.** One native Mechanical 2027
-request now permanently proves that authoritative completed-category
-recognition, a currently-taking prerequisite, hard wanted/excluded courses,
-grounded preference composition and retained candidates consume one coherent
-academic state. The first run exposed only an invalid test assumption about
-intentionally lean disclosure; after correcting it, existing product behavior
-passed without production changes. **Not Production-ready.** Not merged, not
-deployed.)_
+(**B10 authoritative academic-progression facts added.** Completed courses now
+truthfully disclose which later courses their complete catalog prerequisite set
+unlocks. Unknown completed/current ids can still contribute explicit aggregate
+hours, but can no longer manufacture prerequisite eligibility or mandatory
+completion. Full API 179/179 suites, 2432/2432 tests and root tsc green. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont.) — B9. A full native-handler acceptance uses
+_Latest entry: 2026-08-24 (cont. 2) — B10. Read-only syllabus audit reconfirmed
+that the frozen official corpus has delivery mode 23/23 and substantive content
+23/23, but assessment/learning-outcome/skills fields remain 0/23. Topic mapping
+already uses every unambiguous phrase in the corpus; the seven topic-empty
+courses have no source wording that supports a new topic, and the remaining 18
+ambiguous tokens are deliberately not promoted. No regex, objective or catalog
+fact was invented to inflate coverage.
+
+The next authoritative Phase A.3 source is the catalog prerequisite graph. A
+real-handler RED proved a split truth: completing `PRE` legally admitted `ADV`,
+but AcademicProgress exposed no prerequisite contribution or explanation. The
+typed result now carries canonical `completedCourseId → unlockedCourseIds`
+facts only when the completed identity is recognized and the dependent's entire
+authoritative prerequisite set is satisfied. The fact enters the academic-
+progress digest and lean disclosure; Hebrew explanation uses authoritative
+catalog names. Duplicate/input order is inert, partial prerequisite sets unlock
+nothing, and conflicting mappings produce a typed conflict and no inference.
+The real Mechanical regression proves `0542-4621` unlocks only `0542-4624`.
+
+A second handler RED found a more serious existing defect: reporting an unknown
+`GHOST` id as completed made a hard-wanted dependent with prerequisite `GHOST`
+legal. A third RED proved the same through `currently_taking`. The model now
+keeps raw unknown completed ids in the academic disclosure/audit, but gives
+course-specific hard consequences only to ids resolved in the server catalog.
+Unknown currently-taking entries may retain explicit/aggregate hour credit but
+cannot satisfy prerequisites or mandatory requirements. Existing recognized
+currently-taking and completed flows remain green. Focused progression/hard-
+constraint suites and full API 179/179 suites, 2432/2432 tests pass; root
+`tsc --noEmit` passes. No UI code changed, so the B8 web/build/legacy baseline
+remains applicable. No provider, network acquisition, catalog/data mutation,
+Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont.) — B9. A full native-handler acceptance uses
 the frozen `mechanical_engineering_2027.json` program, not a synthetic planner
 fixture. It reports four authoritative completed electives — one in each real
 requiring pool — plus `0542-4621` currently taking, whose real catalog record is
