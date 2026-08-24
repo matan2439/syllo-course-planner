@@ -20,6 +20,7 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
   control_systems: 'control',
   manufacturing: 'manufacturing',
   materials: 'materials',
+  energy: 'energy_systems',
   robotics: 'robotics',
 };
 

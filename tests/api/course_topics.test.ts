@@ -80,7 +80,7 @@ describe('T3 — controlled mappings over official wording', () => {
     ['robotics + control lab', 'הכרת זרוע רובוטית, קינמטיקה ישירה והפוכה, תכנון תנועה לרובוט נייד בעזרת RRT, משוב כוח.', ['control', 'robotics']],
     ['engineering design', 'תכן (עיצוב) הנדסי הוא אוסף של רעיונות, שיטות, כלים ודרכי חשיבה.', ['engineering_design']],
     ['materials lab', 'ניסויים בהבנת עולם החומר, בדיקת המבנה המטלוגרפי של נתכי נחושת-אבץ, טיפולים תרמיים.', ['materials']],
-    ['thermofluids lab', 'מערכות קירור ומיזוג אוויר, זרימה בנחיר, נדגים את תופעת גל הלם, מחליפי החום.', ['thermofluids']],
+    ['thermofluids + energy systems lab', 'מערכות קירור ומיזוג אוויר, זרימה בנחיר, נדגים את תופעת גל הלם, מחליפי החום.', ['energy_systems', 'thermofluids']],
     ['3D printing + FEA + materials', 'לימוד הטכנולוגיות להדפסה תלת-מימדית, לימוד פולימרים, שימוש בכלי האנליזה (FEA) לתכן מתקדם.', ['finite_element_analysis', 'manufacturing', 'materials']],
     ['mechatronics', 'תכן מכני, תכנות בקרים, ותכן מעגל חשמלי בשילוב חיישנים ומפעילים, מיקרו-בקר.', ['control', 'engineering_design', 'programming_electronics']],
     ['manufacturing from design', 'נלמדים סוגים שונים של תהליכי ייצור, הקורס עוסק בתהליכי עיבוד שבבי.', ['manufacturing']],
@@ -98,7 +98,7 @@ describe('T3 — controlled mappings over official wording', () => {
     // Guards against adding an id because a USER asked for it rather than
     // because an official document says it.
     expect([...TOPIC_IDS].sort()).toEqual([
-      'control', 'engineering_design', 'finite_element_analysis', 'manufacturing',
+      'control', 'energy_systems', 'engineering_design', 'finite_element_analysis', 'manufacturing',
       'materials', 'programming_electronics', 'robotics', 'solid_mechanics', 'thermofluids',
     ]);
   });
@@ -107,6 +107,10 @@ describe('T3 — controlled mappings over official wording', () => {
 // ── what must NOT be mapped ──────────────────────────────────────────────────
 
 describe('T3 — inference is refused', () => {
+  test('bare conservation-of-energy wording does not become an energy-systems claim', () => {
+    expect(topicsOf(doc('0542-0003', 'יישום משוואת שימור אנרגיה בבעיה מכנית.'))).not.toContain('energy_systems');
+  });
+
   test('a PREREQUISITE clause never becomes a topic of this course', () => {
     // Real 0542-3792 wording: these are prerequisites, not what the course covers.
     const content = 'דרישות קדם: מבוא להסתברות וסטטיסטיקה;מכניקת המוצקים (1) ו-מכניקת הזורמים (1). נושאי לימוד: כיולים.';

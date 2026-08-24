@@ -49,6 +49,7 @@ export const TOPIC_IDS = [
   'manufacturing',
   'materials',
   'thermofluids',
+  'energy_systems',
   'programming_electronics',
 ] as const;
 export type TopicId = (typeof TOPIC_IDS)[number];
@@ -181,6 +182,15 @@ const VOCABULARY: VocabularyEntry[] = [
     topicId: 'thermofluids',
     phrases: ['מעבר חום', 'מכניקת הזורמים', 'תרמודינמיקה', 'זרימה', 'מחליפי החום', 'מחליפי חום',
       'מיזוג אוויר', 'נוויה-סטוקס', 'אווירודינמיים', 'גל הלם'],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'energy_systems',
+    // Specific energy-system equipment/process wording from the official
+    // corpus. Bare "energy"/"אנרגיה" is deliberately excluded: conservation
+    // of energy in an unrelated mechanics equation is not evidence that the
+    // course teaches energy systems.
+    phrases: ['מערכות קירור ומיזוג אוויר', 'משאבת חום', 'refrigeration system', 'heat pump'],
     confidence: 0.9,
   },
   {

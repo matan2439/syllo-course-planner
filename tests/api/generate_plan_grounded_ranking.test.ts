@@ -500,6 +500,31 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(candidates(withFocus._body).evidence.groundedObjective).toBe('prefer_topic_alignment');
   });
 
+  test('an explicit energy-systems focus selects the course with official refrigeration and heat-pump evidence', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'מבוא כללי.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'מערכות קירור ומיזוג אוויר. הפעלת המערכת כמשאבת חום.'),
+      topicDoc('E4', 'מבוא כללי.'),
+    ];
+
+    const control = await run(body());
+    const focused = await run(body({
+      academic_interest_profile: { focusAreas: [{ area: 'energy', weight: 1 }] },
+    }));
+
+    expect(placed(control._body)).not.toContain('E3');
+    expect(placed(focused._body)).toContain('E3');
+    expect(candidates(focused._body).evidence.groundedObjective).toBe('prefer_topic_alignment');
+    expect(candidates(focused._body).selectedGroundedScore.contributions).toEqual(
+      expect.arrayContaining([expect.objectContaining({
+        courseId: 'E3',
+        topicId: 'energy_systems',
+        excerpt: 'מערכות קירור ומיזוג אוויר',
+      })]),
+    );
+  });
+
   test('a structured focus stays soft: hard exclusion of its evidence-backed course wins', async () => {
     MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
     const res = await run(body({

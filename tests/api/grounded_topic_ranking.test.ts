@@ -133,7 +133,7 @@ describe('T5 — official topics change the selected candidate through the real 
     const p = prepared();
     expect([...p.topics.get(ROBOTICS)!.topicIds].sort()).toEqual(['control', 'robotics']);
     expect([...p.topics.get(MATERIALS)!.topicIds].sort()).toEqual(['materials']);
-    expect([...p.topics.get(THERMO)!.topicIds].sort()).toEqual(['thermofluids']);
+    expect([...p.topics.get(THERMO)!.topicIds].sort()).toEqual(['energy_systems', 'thermofluids']);
     expect(p.topics.get(ETHICS)!.topicIds.size).toBe(0);
   });
 

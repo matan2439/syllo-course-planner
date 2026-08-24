@@ -70,6 +70,7 @@ const TOPIC_LABEL_HE: Record<TopicId, string> = {
   manufacturing: 'ייצור ועיבוד',
   materials: 'חומרים',
   thermofluids: 'זרימה ומעבר חום',
+  energy_systems: 'מערכות אנרגיה',
   programming_electronics: 'תכנות ואלקטרוניקה',
 };
 

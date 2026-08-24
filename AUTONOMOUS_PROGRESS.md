@@ -5,13 +5,43 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B26 exact topic evidence reaches ranking and explanation.** Each supported
-topic now retains the precise official document and wording that established
-it, rather than borrowing an arbitrary first document's provenance. Full API
-is 180/180 suites, 2454/2454 tests. **Not Production-ready.** Not merged, not
-deployed.)_
+(**B27 official energy-systems evidence reaches the generic topic objective.**
+An explicit energy focus can now use narrow refrigeration/heat-pump wording
+from the frozen official syllabus; generic conservation-of-energy prose stays
+unmapped. Full API is 180/180 suites, 2456/2456 tests. **Not Production-ready.**
+Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 18) — B26. The Phase A evidence audit found a
+_Latest entry: 2026-08-24 (cont. 19) — B27. The next Phase A evidence audit
+compared focus areas that were still unsupported against the frozen official
+2025 snapshot. It found no substantive biomechanics statement: the only
+biomedical hit was an academic-unit label on an ethics course, outside the
+official course-content semantics, so biomechanics remains deliberately inert.
+It did find direct energy-system content for real course `0542-4094`: the
+official content section describes refrigeration/air-conditioning systems and
+operation as a heat pump. Bare `אנרגיה` also appears in conservation equations,
+which is not enough to establish energy-systems coverage and was explicitly
+rejected as a mapping rule.
+
+The handler-level RED requested structured `energy` focus with two canonical
+lecture alternatives and E3 alone carrying the exact refrigeration/heat-pump
+content. Before GREEN the focus produced no grounded objective and retained
+E1+E2. GREEN adds `energy_systems` to the existing generic topic vocabulary,
+maps the existing `energy` focus area to it, and adds its supported Hebrew
+label. This is not a new ranking objective: it flows through the same
+`prefer_topic_alignment`, evidence snapshot, soft composition, hard gates and
+explanation contract as every other topic.
+
+Only the specific phrases `מערכות קירור ומיזוג אוויר` and `משאבת חום` (plus
+their direct English equivalents) assert the topic. A regression proves bare
+`שימור אנרגיה` is insufficient. The RED recommendation changes to E3 and its
+contribution cites the exact official phrase. Focused topic/handler GREEN
+passes 97/97; composition, priority, alternatives, audit and frozen-real-corpus
+regressions pass 147/147. Full API passes 180/180 suites, 2456/2456 tests in
+205 seconds; root `tsc --noEmit` and diff gates pass. No UI/data/provider/
+network acquisition, Production, Vercel, Supabase, `main`, catalog, or stash
+change._
+
+_Previous entry: 2026-08-24 (cont. 18) — B26. The Phase A evidence audit found a
 source-truth defect in the already-implemented topic mapper. For a course with
 multiple official syllabus documents, `prepareEvidence` correctly unioned the
 supported topics but stored only one course-level source URL chosen from the
