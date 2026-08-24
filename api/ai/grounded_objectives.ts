@@ -119,6 +119,13 @@ export interface CourseTopicSupport {
 /** Courses' supported topics, keyed by course id — one snapshot's worth. */
 export type TopicIndex = ReadonlyMap<string, CourseTopicSupport>;
 
+type CourseLabels = ReadonlyMap<string, string>;
+
+function displayCourse(courseId: string, labels?: CourseLabels): string {
+  const name = labels?.get(courseId)?.trim();
+  return name && name !== courseId ? `${name} (${courseId})` : courseId;
+}
+
 /**
  * A confirmed, active grounded preference. Constructing one is the ONLY way to
  * make the objective contribute; an unanswered, indifferent or merely-inferred
@@ -288,6 +295,7 @@ export function explainGroundedRanking(input: {
   objective: GroundedObjective;
   selected: GroundedScore;
   alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
 }): string {
   const { selected, alternative } = input;
   if (input.objective.id === 'prefer_topic_alignment') return explainTopicAlignment(input);
@@ -302,7 +310,7 @@ export function explainGroundedRanking(input: {
       : '';
     return `לא נמצאה עדות רשמית ב${evidenceFields} שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.` + varying;
   }
-  const names = selected.contributions.map((c) => c.courseId).join(', ');
+  const names = selected.contributions.map((c) => displayCourse(c.courseId, input.courseLabels)).join(', ');
   const src = selected.contributions[0];
   const head = selected.contributions.length
     ? `לפי ההעדפה שאישרת (קורסים עם ${label}), התוכנית הנבחרת כוללת ${selected.contributions.length} קורס/ים עם רכיב ${label}: ${names}.`
@@ -336,6 +344,7 @@ function explainTopicAlignment(input: {
   objective: GroundedObjective;
   selected: GroundedScore;
   alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
 }): string {
   const { objective, selected, alternative } = input;
   const wanted = [...new Set(objective.topicIds ?? [])].sort();
@@ -350,7 +359,7 @@ function explainTopicAlignment(input: {
     byCourse.set(c.courseId, [...(byCourse.get(c.courseId) ?? []), c.topicId!]);
   }
   const perCourse = [...byCourse.entries()]
-    .map(([courseId, ts]) => `${courseId} (${[...new Set(ts)].map((t) => TOPIC_LABEL_HE[t]).join(', ')})`)
+    .map(([courseId, ts]) => `${displayCourse(courseId, input.courseLabels)} (${[...new Set(ts)].map((t) => TOPIC_LABEL_HE[t]).join(', ')})`)
     .join('; ');
   const src = selected.contributions[0];
 
@@ -373,12 +382,13 @@ function explainAvoidedTopicExposure(input: {
   objective: GroundedObjective;
   selected: GroundedScore;
   alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
 }): string {
   const avoided = [...new Set(input.objective.topicIds ?? [])].sort();
   const names = avoided.map((t) => TOPIC_LABEL_HE[t]).join(', ');
   const exposedCourses = [...new Set(input.selected.contributions.map((c) => c.courseId))];
   const head = exposedCourses.length
-    ? `בתוכנית הנבחרת נותרו ${exposedCourses.length} קורס/ים עם אזכור רשמי לתחומים שביקשת להימנע מהם (${names}): ${exposedCourses.join(', ')}.`
+    ? `בתוכנית הנבחרת נותרו ${exposedCourses.length} קורס/ים עם אזכור רשמי לתחומים שביקשת להימנע מהם (${names}): ${exposedCourses.map((id) => displayCourse(id, input.courseLabels)).join(', ')}.`
     : `לא נמצאה בתוכנית הנבחרת עדות רשמית לתחומים שביקשת להימנע מהם (${names}).`;
   const compare = input.alternative
     ? ` בחלופה חוקית אחרת נמצאו ${input.alternative.contributions.length} התאמות מוכחות לתחומים האלה.`
@@ -422,6 +432,8 @@ export function explainGroundedComposition(input: {
    * student's statement.
    */
   primaryObjectiveId?: GroundedObjectiveId;
+  /** Authoritative catalog labels for user-readable course references. */
+  courseLabels?: CourseLabels;
 }): string {
   const { objectives, selected, alternative, snapshotId } = input;
   if (objectives.length === 0 || selected.length === 0) return '';
@@ -448,6 +460,7 @@ export function explainGroundedComposition(input: {
       },
       selected: selected[i],
       ...(comparison?.[i] ? { alternative: comparison[i] } : {}),
+      ...(input.courseLabels ? { courseLabels: input.courseLabels } : {}),
     }),
   );
 

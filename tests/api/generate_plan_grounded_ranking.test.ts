@@ -634,6 +634,7 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(text).toMatch(/פרויקט/);
     expect(text).not.toMatch(/מעבדה/);
     expect(text).toContain('ims.tau.ac.il');
+    expect(text).toContain('קורס E3 (E3)');
   });
 
   test('a laboratory corpus gives the project preference nothing to work with — no bias', async () => {

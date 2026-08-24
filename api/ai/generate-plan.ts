@@ -1846,12 +1846,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           .filter((candidate) => candidate.id !== selected!.id && candidate.nonDominated !== false)
           .filter((candidate) => candidate.objectiveScores?.length)
           .map((candidate) => candidate.objectiveScores!.map(asScore));
+        const courseLabels = new Map<string, string>();
+        for (const [courseId, profile] of model.profiles) {
+          if (typeof profile.name_he === 'string' && profile.name_he.trim()) {
+            courseLabels.set(courseId, profile.name_he.trim());
+          }
+        }
         return explainGroundedComposition({
           objectives: objectives.map((o) => ({ id: o.id, ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}) })),
           snapshotId: preparedEvidence.snapshot.snapshotId,
           selected: components.map(asScore),
           ...(others.length ? { alternatives: others } : {}),
           reason: candidateSet.composition?.reason ?? 'single_objective',
+          courseLabels,
           // C5 — named only when the student genuinely chose it, so the
           // explanation can never attribute a priority they did not express.
           ...(resolvedGrounded?.primaryObjectiveId

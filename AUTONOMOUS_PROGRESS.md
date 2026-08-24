@@ -5,12 +5,38 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B28 explicit design-solution wording reaches topic alignment.** The official
-requirement to design a solution now grounds mechanical-design focus without
-promoting bare ambiguous `תכן` or generic project prose. Full API is 180/180
-suites, 2457/2457 tests. **Not Production-ready.** Not merged, not deployed.)_
+(**B29 grounded explanations use authoritative course names.** User-facing
+ranking explanations now identify courses by catalog name plus stable id,
+instead of exposing bare technical ids; missing names still fail honestly to
+the id. API is 180/180 suites, 2457/2457 tests; web is 20/20 suites, 186/186
+tests. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 20) — B28. A read-only audit over the actual
+_Latest entry: 2026-08-24 (cont. 21) — B29. Tracing the rendered native journey
+showed `groundedExplanationHe` is displayed verbatim, while every grounded
+explanation formatter named contributing courses only by technical ids such as
+`0542-4425`. The authoritative planner model already carried `name_he`; the
+information was lost only at the explanation boundary. Cards had readable
+names, but the rationale a student was expected to understand did not.
+
+The real-handler RED selected project-backed E3 whose model label is `קורס E3`
+and expected `קורס E3 (E3)`. Before GREEN the explanation contained only `E3`.
+GREEN builds a request-local label map from the same authoritative model and
+threads it through the existing composition/ranking explanation functions.
+Project/laboratory, topic-alignment and topic-avoidance course references now
+use `name (id)`; blank, missing, or id-identical names retain the stable id and
+nothing is invented. Labels affect text only: scores, objective vectors,
+candidate identities, hard gates, recommendation and source evidence are
+unchanged.
+
+Focused handler/composition/priority GREEN passes 135/135. Full API passes
+180/180 suites, 2457/2457 tests in 209 seconds. Full web passes 20/20 suites,
+186/186 tests; its existing expected error-path console output includes
+`fetch is not defined` in tests that do not inject the committed-board loader,
+but no test fails and this slice did not change that boundary. Root and web
+`tsc --noEmit` pass; diff gates pass. No UI/data/provider/network acquisition,
+Production, Vercel, Supabase, `main`, catalog, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 20) — B28. A read-only audit over the actual
 ignored frozen evidence cache enumerated all topic-unknown courses and was
 removed immediately afterward. Generic project, research, space outreach,
 environmental innovation and ethics prose remained outside the current focus
