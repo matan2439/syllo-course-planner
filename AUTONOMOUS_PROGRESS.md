@@ -5,14 +5,47 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B18 stale in-progress aggregate double-credit fixed.** A contradictory
-aggregate with no off-board status entry can no longer manufacture anonymous
-degree credit on top of an identified course already placed on the board;
-legitimate aggregate-only off-board credit remains intact. Full API 179/179
-suites, 2438/2438 tests and root tsc green. **Not Production-ready.** Not
-merged, not deployed.)_
+(**B19 candidate-search latency reduced without reducing search.** Pure
+lookahead rollout scores are now memoized across deterministic deviation
+workers inside one immutable request/model policy. The real three-scenario
+matrix fell from ~128s to ~42s and the full API suite from ~580s to ~322s while
+all candidate/recommendation invariants stayed green. Full API 179/179 suites,
+2440/2440 tests and root tsc green. **Not Production-ready.** Not merged, not
+deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 10) — B18. B17's rejected fixture assumption
+_Latest entry: 2026-08-24 (cont. 11) — B19. Phase A quality profiling found a
+user-visible deterministic latency problem rather than an external-provider
+delay: the real mid-degree handler required six bounded candidate runs and took
+~75 seconds. Each deviation worker starts from the same state and shares a long
+greedy prefix, but every worker recomputed `estimateFinalScore` for identical
+placement states. The search budget, validator, maxRuns, alternatives and
+ranking were all legitimate; reducing them would have traded recommendation
+quality for speed.
+
+A call-budget RED creates two workers over the same immutable model/state with
+a request-scoped memo. Both choose the same real action, but before the fix the
+second worker repeated all seven pure lookahead rollouts (14 calls total). The
+worker now canonicalizes the academic placement (sorted semester ids and
+course ids, plus rollout depth), caches the deterministic score, and accepts a
+shared cache explicitly scoped to one request/model. Candidate generation owns
+one such cache and passes it to every baseline/deviation worker; it is never
+global, never shared across requests or policies, and stores no user data after
+the call returns. A candidate-set regression proves every placement state is
+rolled out at most once across all deviations. No search branch, validator,
+score vector, candidate identity or ordering rule changed.
+
+RED observed 14 calls where 7 were sufficient; GREEN performs no new calls in
+the second worker and selects the byte-identical action. Focused worker,
+candidate, multi-combination and real-handler coverage passes 65/65. The real
+mid-degree scenario fell from ~75s to ~20s; the complete three-scenario matrix
+from ~128s to ~42s. Full API passes 179/179 suites and 2440/2440 tests in 322
+seconds versus 580 seconds immediately before this slice (about 44% less wall
+time); root `tsc --noEmit` and `git diff --check` pass. No UI code changed, so
+the B8 web/build/legacy baseline remains applicable. No paid/provider call,
+network acquisition, catalog/data mutation, Production, Vercel, Supabase,
+`main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 10) — B18. B17's rejected fixture assumption
 exposed a real defensive-accounting gap worth isolating. The typed
 `currently_planned_hours` contract says the aggregate represents only
 currently-taking/planned entries absent from the submitted board. An

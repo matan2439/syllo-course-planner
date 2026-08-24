@@ -582,4 +582,23 @@ describe('PlannerWorker — STOP trace on maxSteps limit', () => {
     expect(spy.mock.calls.length).toBeLessThanOrEqual(9);
     spy.mockRestore();
   });
+
+  it('reuses deterministic lookahead results across candidate workers that revisit the same state', () => {
+    const model = buildModel();
+    const initial = emptyState(SEMS);
+    const sharedLookaheadCache = new Map<string, number[]>();
+    const spy = jest.spyOn(plannerLookahead, 'estimateFinalScore');
+
+    const first = new PlannerWorker(model, initial, { topN: 6, rolloutSteps: 80, sharedLookaheadCache });
+    const firstAction = first.step('greedy');
+    const callsAfterFirst = spy.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+
+    const second = new PlannerWorker(model, initial, { topN: 6, rolloutSteps: 80, sharedLookaheadCache });
+    const secondAction = second.step('greedy');
+
+    expect(secondAction).toEqual(firstAction);
+    expect(spy.mock.calls.length).toBe(callsAfterFirst);
+    spy.mockRestore();
+  });
 });

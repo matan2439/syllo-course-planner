@@ -416,10 +416,17 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     provenance,
   });
 
+  // All deviation workers use the same immutable request/model policy and
+  // revisit a large common prefix of states. Rollout scoring is pure, so one
+  // request-scoped memo preserves exact decisions while avoiding duplicate
+  // greedy completions across runs.
+  const sharedLookaheadCache = new Map<string, number[]>();
+
   const run = (deviation?: { atStep: number; rank: number }) => {
     const model = input.buildModel(input.policy);
     const worker = new PlannerWorker(model, structuredClone(input.initialState), {
       ...WORKER_OPTS,
+      sharedLookaheadCache,
       ...(deviation ? { deviation } : {}),
     });
     worker.run(500, 'greedy');

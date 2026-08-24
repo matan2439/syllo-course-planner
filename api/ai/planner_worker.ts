@@ -87,6 +87,13 @@ export interface WorkerOptions {
   /** Rollout depth bound. */
   rolloutSteps?: number;
   /**
+   * Request-scoped memo for deterministic rollout scores. Candidate deviation
+   * workers revisit many identical states under the same immutable model;
+   * sharing this map avoids recomputing those pure rollouts. Never share it
+   * across different models or requests.
+   */
+  sharedLookaheadCache?: Map<string, number[]>;
+  /**
    * Slice 18B — deterministic BOUNDED DEVIATION, the whole mechanism behind
    * multi-combination candidate generation. At scored-search step `atStep`, take
    * the action ranked `rank` places below the one the greedy loop would pick,
@@ -127,11 +134,12 @@ export class PlannerWorker {
   private tracer = new PlannerTracer();
   /** Committed positions of pinned courses (must not move). */
   private pinnedHome: Record<string, string> = {};
-  private opts: Required<Omit<WorkerOptions, 'deviation'>> & Pick<WorkerOptions, 'deviation'>;
+  private opts: Required<Omit<WorkerOptions, 'deviation' | 'sharedLookaheadCache'>> & Pick<WorkerOptions, 'deviation'>;
   /** How many scored-search decisions step() has made — the deviation index. */
   private searchStepIndex = 0;
   /** Cached validation context — pure function of (model, pinnedHome), built once. */
   private readonly _validationCtx: PlanValidationContext;
+  private readonly _lookaheadCache: Map<string, number[]>;
 
   constructor(private model: ConstraintModel, initial?: PlanState, opts: WorkerOptions = {}) {
     this.state = initial ? cloneState(initial) : emptyState(model.knownSemesterIds);
@@ -141,6 +149,7 @@ export class PlannerWorker {
       rolloutSteps: opts.rolloutSteps ?? 200,
       ...(opts.deviation ? { deviation: opts.deviation } : {}),
     };
+    this._lookaheadCache = opts.sharedLookaheadCache ?? new Map<string, number[]>();
     for (const cid of model.pinnedCourseIds) {
       const sem = this.semesterOfLocal(cid);
       if (sem) this.pinnedHome[cid] = sem;
@@ -177,6 +186,19 @@ export class PlannerWorker {
    */
   private findIncompleteAnnualCourse(state: PlanState = this.state): string | undefined {
     return incompleteAnnualCourseIds(state, this.model)[0];
+  }
+
+  /** Pure rollout score, memoized by canonical academic placement identity. */
+  private estimate(state: PlanState): number[] {
+    const placement = Object.keys(state.semesters)
+      .sort()
+      .map((semesterId) => [semesterId, [...(state.semesters[semesterId] ?? [])].sort()] as const);
+    const key = `${this.opts.rolloutSteps}:${JSON.stringify(placement)}`;
+    const cached = this._lookaheadCache.get(key);
+    if (cached) return cached;
+    const score = estimateFinalScore(state, this.model, this.opts.rolloutSteps);
+    this._lookaheadCache.set(key, score);
+    return score;
   }
 
   /**
@@ -378,7 +400,7 @@ export class PlannerWorker {
     }
 
     const current = scorePlan(this.state, this.model);
-    const curFinal = this.opts.lookahead ? estimateFinalScore(this.state, this.model, this.opts.rolloutSteps) : current;
+    const curFinal = this.opts.lookahead ? this.estimate(this.state) : current;
 
     // Reason — only LEGAL resulting states are candidates.
     const legal = this.enumerateActions(this.state)
@@ -448,7 +470,7 @@ export class PlannerWorker {
     const evaluated = top
       .map(x => ({
         ...x,
-        fin: this.opts.lookahead ? estimateFinalScore(x.next, this.model, this.opts.rolloutSteps) : x.imm,
+        fin: this.opts.lookahead ? this.estimate(x.next) : x.imm,
       }))
       .sort((a, b) => {
         if (a.hasRealBlocker !== b.hasRealBlocker) return a.hasRealBlocker ? 1 : -1;
@@ -581,9 +603,9 @@ export class PlannerWorker {
     if (legal.some(x => compareScore(x.imm, current) > 0)) return true;
     if (!this.opts.lookahead) return false;
 
-    const curFinal = estimateFinalScore(this.state, this.model, this.opts.rolloutSteps);
+    const curFinal = this.estimate(this.state);
     return legal.slice(0, this.opts.topN).some(x => {
-      const fin = estimateFinalScore(x.next, this.model, this.opts.rolloutSteps);
+      const fin = this.estimate(x.next);
       return compareScore(fin, curFinal) > 0;
     });
   }

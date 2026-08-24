@@ -16,6 +16,7 @@
 import { generateCandidateSet, selectCandidate, selectionReason } from '../../api/ai/candidate_set';
 import { buildConstraintModel } from '../../api/ai/planner_model';
 import type { ConstraintModel, DistributionPolicy } from '../../api/ai/planner_types';
+import * as plannerLookahead from '../../api/ai/planner_lookahead';
 
 const SEM_A = 'year_3_semester_a';
 const SEM_B = 'year_3_semester_b';
@@ -90,6 +91,22 @@ describe('generateCandidateSet', () => {
     const set = gen(singleModel);
     expect(set.candidates).toHaveLength(1);
     expect(set.candidates[0].differences).toEqual([]);
+  });
+
+  test('candidate deviations never recompute a lookahead rollout for the same placement state', () => {
+    const spy = jest.spyOn(plannerLookahead, 'estimateFinalScore');
+    const set = gen(multiModel);
+    expect(set.candidates.length).toBeGreaterThanOrEqual(2);
+
+    const placementKeys = spy.mock.calls.map(([state, , maxSteps]) => JSON.stringify({
+      maxSteps,
+      semesters: Object.keys(state.semesters).sort().map((semesterId) => [
+        semesterId,
+        [...(state.semesters[semesterId] ?? [])].sort(),
+      ]),
+    }));
+    expect(new Set(placementKeys).size).toBe(placementKeys.length);
+    spy.mockRestore();
   });
 });
 
