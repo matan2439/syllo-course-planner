@@ -5,14 +5,42 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B10 authoritative academic-progression facts added.** Completed courses now
-truthfully disclose which later courses their complete catalog prerequisite set
-unlocks. Unknown completed/current ids can still contribute explicit aggregate
-hours, but can no longer manufacture prerequisite eligibility or mandatory
-completion. Full API 179/179 suites, 2432/2432 tests and root tsc green. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B11 bounded Pareto discovery and evidence-diverse retention added.** The
+three-card product bound no longer lets a dominated early discovery hide a
+reachable non-dominated plan, and equally legal/frontier plans with distinct
+grounded contributions are retained before redundant variants. Full API
+179/179 suites, 2433/2433 tests and root tsc green. **Not Production-ready.**
+Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 2) — B10. Read-only syllabus audit reconfirmed
+_Latest entry: 2026-08-24 (cont. 3) — B11. An exhaustive four-course audit
+found a deterministic counterexample at the real product bound: two topic
+objectives had four reachable legal Pareto plans, but discovery stopped after
+the first three valid identities and retained one dominated plan, exposing
+only two frontier cards. The behavioral RED uses one materials-leading and one
+robotics-leading course and proves that all three retained cards can be
+non-dominated without changing the hard constraints or the three-card limit.
+
+Grounded-objective discovery is now bounded by `maxRuns`, not by the first
+`maxCandidates` identities. After authoritative validation and normal scoring,
+retention computes dominance only among candidates with the same hard/policy
+prefix. Within that prefix, non-dominated plans precede dominated plans and the
+first plan for each canonical grounded-contribution signature precedes
+redundant variants; legality, completion, mandatory/category requirements, hard
+wanted/avoided constraints and confirmed distribution policy remain ahead of
+all soft diversity. Generic/no-objective discovery preserves its previous
+early stop. Ordering is deterministic by normalized identity and canonicalized
+objective/course/feature/topic contributions.
+
+The focused RED is GREEN at 25/25. The existing real-corpus regression initially
+caught an over-broad frontier-first draft because all three retained variants
+used the same selected materials course and hid authoritative alternative
+`0581-4131`; contribution-diverse retention restored it, and the real handler
+test passes 1/1. Root `tsc --noEmit` passes. Full API passes 179/179 suites and
+2433/2433 tests. No UI code changed, so the B8 web/build/legacy baseline remains
+applicable. No paid/provider call, network acquisition, catalog/data mutation,
+Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 2) — B10. Read-only syllabus audit reconfirmed
 that the frozen official corpus has delivery mode 23/23 and substantive content
 23/23, but assessment/learning-outcome/skills fields remain 0/23. Topic mapping
 already uses every unambiguous phrase in the corpus; the seven topic-empty
