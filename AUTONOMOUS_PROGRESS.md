@@ -5,13 +5,38 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B15 equal-importance trade-off provenance completed.** Every comparative
-grounded explanation now discloses the selected plan's evidence and the exact
-available comparison plan's evidence, including unresolved equal-weight
-trade-offs. Full API 179/179 suites, 2435/2435 tests and root tsc green. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B16 near-graduation real-program acceptance added.** A second native-handler
+scenario proves identity-free aggregate hours cannot close the one remaining
+advanced-lab category and hard exclusion forces another authoritative lab in
+every retained plan. Full API 179/179 suites, 2436/2436 tests and root tsc
+green. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 7) — B15. A real-handler equal-importance RED
+_Latest entry: 2026-08-24 (cont. 8) — B16. Phase A.6 coverage audit found only
+one complete-student acceptance against the frozen Mechanical Engineering 2027
+program: B9's advanced student had already closed all four requiring pools. A
+second real native-handler scenario now represents a near-graduation student
+with the fluids, solids and systems core pools authoritatively completed, 181
+known aggregate completed hours, three currently-taking hours, and the real
+advanced-laboratory pool still open. The aggregate closes only the degree-hour
+total; it creates no lab-course identity or category contribution.
+
+The user hard-excludes real lab `0581-4131`. AcademicProgress truthfully reports
+`מעבדות מתקדמות` remaining 1 with no satisfying completion. Every retained
+plan excludes `0581-4131`, all three completed core ids and currently-taking
+`0542-4621`, while including another course from the frozen authoritative lab
+membership (`0542-4391`, `0542-4624`, `0542-4093`, or `0542-4094`). The request
+is legal, complete and unblocked. This is an acceptance gate, not a manufactured
+production RED: current shared academic-progress, category reservation, hard-
+constraint and validator paths already satisfy it, so no production code was
+changed.
+
+The focused real scenario matrix passes 2/2. Full API passes 179/179 suites and
+2436/2436 tests in 532 seconds; root `tsc --noEmit` passes. No UI code changed,
+so the B8 web/build/legacy baseline remains applicable. No paid/provider call,
+network acquisition, catalog/data mutation, Production, Vercel, Supabase,
+`main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 7) — B15. A real-handler equal-importance RED
 used the existing two-plan project-versus-robotics trade-off. The Hebrew text
 correctly said no legal alternative excelled on every confirmed preference and
 that the system used equal weights, but source disclosure contained only the
