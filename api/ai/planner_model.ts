@@ -79,7 +79,7 @@ function uniq<T>(xs: T[]): T[] {
 }
 
 export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {}): ConstraintModel {
-  const completedCourseIds = new Set<string>([
+  const reportedCompletedCourseIds = new Set<string>([
     ...(opts.completedCourseIds ?? []),
     ...((boardJson?.metadata?.completed_course_ids ?? []) as string[]),
   ]);
@@ -87,10 +87,10 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   const wantedCourseIds = new Set<string>(opts.wantedCourseIds ?? []);
   const mustIncludeCourseIds = new Set<string>(opts.mustIncludeCourseIds ?? []);
   const pinnedCourseIds = new Set<string>(opts.pinnedCourseIds ?? []);
-  const currentlyPlannedCourseIds = new Set<string>(opts.currentlyPlannedCourseIds ?? []);
+  const reportedCurrentlyPlannedCourseIds = new Set<string>(opts.currentlyPlannedCourseIds ?? []);
 
   const profiles = buildCourseProfiles(boardJson, {
-    completedCourseIds,
+    completedCourseIds: reportedCompletedCourseIds,
     // `is_wanted` is a descriptive/UI + REPLACE-ranking label, so it covers both
     // channels; the hard/soft distinction that actually drives planning lives in
     // mustIncludeCourseIds vs wantedCourseIds below, never in this flag.
@@ -98,6 +98,13 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     unwantedCourseIds: opts.unwantedCourseIds,
     disallowedCourseIds: opts.disallowedCourseIds,
   });
+  // As with completed ids, a currently-taking identity has course-specific
+  // consequences only when it resolves in the authoritative catalog. Explicit
+  // off-board hours may still contribute through deriveInProgressCredit, but
+  // the unknown id cannot satisfy prerequisites or mandatory requirements.
+  const currentlyPlannedCourseIds = new Set(
+    [...reportedCurrentlyPlannedCourseIds].filter((id) => profiles.has(id)),
+  );
 
   // Semester availability — the board's own canonical semester ids, in order.
   const knownSemesterIds = uniq(
@@ -119,7 +126,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
    * or an aggregate hours figure can never produce a contribution.
    */
   const academicProgress: AcademicProgress = computeAcademicProgress({
-    completedCourseIds: [...completedCourseIds],
+    completedCourseIds: [...reportedCompletedCourseIds],
     catalogHours: new Map([...profiles].map(([id, p]) => [id, p.hours ?? null])),
     requirements: ((catMeta?.categories ?? []) as any[]).map(c => ({
       categoryId: c.category_id,
@@ -127,7 +134,18 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
       minCourses: Number(c.min_courses) || 0,
       courseIds: (c.course_ids ?? []) as string[],
     })),
+    prerequisiteFacts: [...profiles.values()].map(profile => ({
+      courseId: profile.course_id,
+      name: profile.name_he ?? profile.course_id,
+      prerequisiteCourseIds: profile.prerequisites,
+    })),
   });
+  // Only server-recognized catalog identities may carry course-specific hard
+  // consequences (prerequisites, mandatory completion, or exclusion from a
+  // future proposal). Unknown reported ids remain in AcademicProgress for
+  // disclosure/audit, but cannot manufacture eligibility merely by matching a
+  // prerequisite string.
+  const completedCourseIds = new Set(academicProgress.recognizedCourseIds);
 
   // Only categories with a positive minimum are hard requirements. (A min_courses
   // of 0, e.g. an "other/by-approval" bucket, is not something the plan must satisfy.)

@@ -89,6 +89,20 @@ export interface CategoryProgress {
   remainingRequired: number;
 }
 
+/** A completed course's proven contribution to prerequisite eligibility. */
+export interface PrerequisiteContribution {
+  completedCourseId: string;
+  /** Courses whose complete authoritative prerequisite set is now satisfied. */
+  unlockedCourseIds: string[];
+}
+
+/** The prerequisite facts supplied by the authoritative program catalog. */
+export interface ProgramCoursePrerequisiteFact {
+  courseId: string;
+  name: string;
+  prerequisiteCourseIds: readonly string[];
+}
+
 export interface AcademicProgress {
   /** Deduplicated and sorted — the same id reported twice is one course. */
   completedCourseIds: string[];
@@ -107,6 +121,11 @@ export interface AcademicProgress {
   unknownHoursCourseIds: string[];
   categories: CategoryProgress[];
   perCourse: CompletedCourseRecognition[];
+  prerequisiteContributions: PrerequisiteContribution[];
+  /** Dependents with incompatible authoritative prerequisite definitions. */
+  conflictingPrerequisiteCourseIds: string[];
+  /** Internal display labels for factual explanations; never category evidence. */
+  courseNames: Record<string, string>;
   /**
    * A stable digest of the RECOGNITION RESULT, for audit and for proving every
    * alternative in one response was planned against the same progress.
@@ -126,6 +145,8 @@ export interface ComputeAcademicProgressInput {
   catalogHours: ReadonlyMap<string, number | null | undefined>;
   /** The program's declared requirements. */
   requirements: readonly ProgramCategoryRequirement[];
+  /** Optional for generic accounting callers; planner models always supply it. */
+  prerequisiteFacts?: readonly ProgramCoursePrerequisiteFact[];
 }
 
 const sha16 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
@@ -215,6 +236,43 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
   const byStatus = (s: RecognitionStatus) =>
     perCourse.filter((c) => c.status === s).map((c) => c.courseId).sort();
 
+  const recognizedSet = new Set(
+    perCourse.filter((c) => c.status !== 'unresolved').map((c) => c.courseId),
+  );
+  const courseNames: Record<string, string> = {};
+  const unlockedByCompleted = new Map<string, Set<string>>();
+  const factsByCourse = new Map<string, ProgramCoursePrerequisiteFact[]>();
+  for (const fact of input.prerequisiteFacts ?? []) {
+    factsByCourse.set(fact.courseId, [...(factsByCourse.get(fact.courseId) ?? []), fact]);
+  }
+  const conflictingPrerequisiteCourseIds: string[] = [];
+  for (const courseId of [...factsByCourse.keys()].sort()) {
+    const facts = factsByCourse.get(courseId)!;
+    courseNames[courseId] = facts.map((f) => f.name).sort()[0] ?? courseId;
+    const definitions = new Map<string, string[]>();
+    for (const fact of facts) {
+      const prerequisites = [...new Set(fact.prerequisiteCourseIds.map(String))].sort();
+      definitions.set(JSON.stringify(prerequisites), prerequisites);
+    }
+    if (definitions.size > 1) {
+      conflictingPrerequisiteCourseIds.push(courseId);
+      continue;
+    }
+    const prerequisites = [...definitions.values()][0] ?? [];
+    if (!prerequisites.length || !prerequisites.every((id) => recognizedSet.has(id))) continue;
+    for (const completedCourseId of prerequisites) {
+      const unlocked = unlockedByCompleted.get(completedCourseId) ?? new Set<string>();
+      unlocked.add(courseId);
+      unlockedByCompleted.set(completedCourseId, unlocked);
+    }
+  }
+  const prerequisiteContributions: PrerequisiteContribution[] = [...unlockedByCompleted]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([completedCourseId, unlocked]) => ({
+      completedCourseId,
+      unlockedCourseIds: [...unlocked].sort(),
+    }));
+
   const progress: Omit<AcademicProgress, 'digest'> = {
     completedCourseIds,
     recognizedCourseIds: perCourse.filter((c) => c.status !== 'unresolved').map((c) => c.courseId).sort(),
@@ -224,6 +282,9 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
     unknownHoursCourseIds: unknownHoursCourseIds.slice().sort(),
     categories,
     perCourse,
+    prerequisiteContributions,
+    conflictingPrerequisiteCourseIds,
+    courseNames,
   };
 
   // Digest the DECISIONS, not the inputs: two different inputs that were
@@ -234,6 +295,8 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
     ambiguous: progress.ambiguousCourseIds,
     hours: progress.recognizedHours,
     categories: progress.categories.map((c) => [c.categoryId, c.required, c.remainingRequired, c.satisfiedBy]),
+    prerequisiteContributions: progress.prerequisiteContributions,
+    conflictingPrerequisiteCourseIds: progress.conflictingPrerequisiteCourseIds,
   });
 
   return { ...progress, digest: `ap_${sha16(digestSource)}` };
@@ -262,6 +325,10 @@ export interface AcademicProgressDisclosure {
   creditOnlyCourseIds: string[];
   /** Per category: what the program asks, and what is still owed. */
   remainingByCategory: Array<{ name: string; required: number; remaining: number; satisfiedBy: string[] }>;
+  /** Lean factual prerequisite contribution; names are carried only in prose. */
+  prerequisiteContributions: PrerequisiteContribution[];
+  /** Conflicting catalog mappings were not used to infer eligibility. */
+  conflictingPrerequisiteCourseIds: string[];
   /** Short factual Hebrew, one line per distinguishable outcome. */
   explanationHe: string[];
 }
@@ -310,6 +377,23 @@ export function describeAcademicProgress(progress: AcademicProgress): AcademicPr
     explanationHe.push(`לקורס ${id} לא נמצא רישום סמכותי, ולכן הוא לא שינה את דרישות התואר.`);
   }
 
+  for (const contribution of progress.prerequisiteContributions) {
+    const completedName = progress.courseNames[contribution.completedCourseId] ?? contribution.completedCourseId;
+    const unlockedNames = contribution.unlockedCourseIds
+      .map((id) => progress.courseNames[id] ?? id)
+      .join(', ');
+    explanationHe.push(
+      `השלמת "${completedName}" סיפקה תנאי קדם מלא ופתחה את האפשרות ללמוד: ${unlockedNames}.`,
+    );
+  }
+
+  for (const id of progress.conflictingPrerequisiteCourseIds) {
+    const name = progress.courseNames[id] ?? id;
+    explanationHe.push(
+      `נמצאו הגדרות סותרות של תנאי הקדם עבור "${name}", ולכן לא הוסקה פתיחת קורס על בסיסן.`,
+    );
+  }
+
   return {
     recognizedCourseCount: progress.recognizedCourseIds.length,
     recognizedHours: progress.recognizedHours,
@@ -319,6 +403,8 @@ export function describeAcademicProgress(progress: AcademicProgress): AcademicPr
     remainingByCategory: progress.categories.map((c) => ({
       name: c.name, required: c.required, remaining: c.remainingRequired, satisfiedBy: c.satisfiedBy,
     })),
+    prerequisiteContributions: progress.prerequisiteContributions,
+    conflictingPrerequisiteCourseIds: progress.conflictingPrerequisiteCourseIds,
     explanationHe,
   };
 }

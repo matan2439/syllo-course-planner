@@ -136,6 +136,60 @@ describe('A2 — nothing about the result may depend on order', () => {
   });
 });
 
+describe('Phase A.3 — authoritative prerequisite contributions', () => {
+  const progression = (facts: Array<{ courseId: string; name: string; prerequisiteCourseIds: string[] }>) =>
+    computeAcademicProgress({
+      completedCourseIds: ['PRE'],
+      catalogHours: catalog({ PRE: 2, OTHER: 2, ADV: 2 }),
+      requirements: [],
+      prerequisiteFacts: facts,
+    });
+
+  test('conflicting authoritative prerequisite mappings fail safe instead of accepting the weaker mapping', () => {
+    const p = progression([
+      { courseId: 'PRE', name: 'יסוד', prerequisiteCourseIds: [] },
+      { courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['PRE'] },
+      { courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['PRE', 'OTHER'] },
+    ]);
+
+    expect(p.prerequisiteContributions).toEqual([]);
+    expect(p.conflictingPrerequisiteCourseIds).toEqual(['ADV']);
+  });
+
+  test('a partial prerequisite set never claims that the dependent is unlocked', () => {
+    const p = progression([
+      { courseId: 'PRE', name: 'יסוד', prerequisiteCourseIds: [] },
+      { courseId: 'OTHER', name: 'יסוד נוסף', prerequisiteCourseIds: [] },
+      { courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['PRE', 'OTHER'] },
+    ]);
+    expect(p.prerequisiteContributions).toEqual([]);
+  });
+
+  test('an unknown completed id creates no prerequisite contribution', () => {
+    const p = computeAcademicProgress({
+      completedCourseIds: ['GHOST'],
+      catalogHours: catalog({ ADV: 2 }),
+      requirements: [],
+      prerequisiteFacts: [{ courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['GHOST'] }],
+    });
+    expect(p.unresolvedCourseIds).toEqual(['GHOST']);
+    expect(p.prerequisiteContributions).toEqual([]);
+  });
+
+  test('fact and prerequisite order are irrelevant', () => {
+    const forward = progression([
+      { courseId: 'PRE', name: 'יסוד', prerequisiteCourseIds: [] },
+      { courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['PRE'] },
+    ]);
+    const reverse = progression([
+      { courseId: 'ADV', name: 'המשך', prerequisiteCourseIds: ['PRE', 'PRE'] },
+      { courseId: 'PRE', name: 'יסוד', prerequisiteCourseIds: [] },
+    ]);
+    expect(reverse.prerequisiteContributions).toEqual(forward.prerequisiteContributions);
+    expect(reverse.digest).toBe(forward.digest);
+  });
+});
+
 // ── the real program ────────────────────────────────────────────────────────
 
 describe('A2 — regression against the REAL TAU Mechanical program data', () => {
@@ -203,5 +257,23 @@ describe('A2 — regression against the REAL TAU Mechanical program data', () =>
       for (const id of r.courseIds) if (!hours.has(id)) missing.push(`${r.categoryId}:${id}`);
     }
     expect(missing).toEqual([]);
+  });
+
+  test('the real robotics introduction authoritatively unlocks the robotics laboratory', () => {
+    const facts = (board.metadata.program_repository_courses ?? []).map((c: any) => ({
+      courseId: c.course_id,
+      name: c.name_he ?? c.course_id,
+      prerequisiteCourseIds: c.prerequisites ?? [],
+    }));
+    const p = computeAcademicProgress({
+      completedCourseIds: ['0542-4621'],
+      catalogHours: hours,
+      requirements,
+      prerequisiteFacts: facts,
+    });
+    expect(p.prerequisiteContributions).toEqual([{
+      completedCourseId: '0542-4621',
+      unlockedCourseIds: ['0542-4624'],
+    }]);
   });
 });
