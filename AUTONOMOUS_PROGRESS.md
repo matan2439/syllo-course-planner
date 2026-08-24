@@ -5,13 +5,43 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B31 syllabus paragraph boundaries preserve real course content.** A
-line-delimited prerequisite without a full stop no longer erases the following
-official content paragraph, so evidenced design content can affect the real
-recommendation. API is 180/180 suites, 2460/2460 tests; web is 20/20 suites,
-186/186 tests. **Not Production-ready.** Not merged, not deployed.)_
+(**B32 assessment extraction respects non-exhaustive source semantics.** An
+explicit assessment term still proves presence, but an absent term or official
+“other” value no longer fabricates evidence of absence. API is 180/180 suites,
+2463/2463 tests; web is 20/20 suites, 186/186 tests. **Not Production-ready.**
+Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 23) — B31. The next read-only Phase A.2 audit
+_Latest entry: 2026-08-24 (cont. 24) — B32. The post-B31 Phase A.2 audit found
+that `RuleBasedFeatureExtractor` treated the official `מטלות הקורס` value
+as an exhaustive assessment inventory. The same official page explicitly warns
+that additional assignments may exist and that the complete list is in the
+detailed syllabus. Nevertheless, value `אחר` became project=false,
+exam=false and coursework=false, and `פרוייקט` became project=true plus
+unsupported exam=false/coursework=false._
+
+_The extractor RED required `אחר` to remain unknown for every unmatched
+component and required an explicit project to prove only project presence. The
+Generate-handler RED pinned E3 through a hard wanted constraint and showed its
+project score incorrectly treated the non-exhaustive value as known-negative
+instead of disclosing E3 as unknown. GREEN makes assessment extraction
+one-directional: an explicit bounded term yields true with the original source
+evidence; absence yields typed unknown with no fabricated negative evidence.
+`FEATURE_EXTRACTION_VERSION` is now `1.3.0`._
+
+_Section aggregation was corrected consistently: one section stating project
+and another stating `אחר` is unknown course-wide, not
+`varies_by_section`, because the second source does not establish a
+contradiction. Frozen-corpus evidence proves real `0542-3112` (`אחר`) remains
+unknown and real `0555-4000` (`פרוייקט`) remains project=true while
+exam stays unknown. Explicit project ranking and hard constraints remain green.
+Focused evidence/aggregation/ranking coverage passes 8/8 suites and 155/155
+tests. Full API passes 180/180 suites, 2463/2463 tests in 239 seconds. Full web
+passes 20/20 suites, 186/186 tests with the existing expected failure-path
+`fetch is not defined` console output. Root/web `tsc --noEmit` and the Next.js
+production build pass. No tracked catalog/data, provider/network acquisition,
+Production, Vercel, Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 23) — B31. The next read-only Phase A.2 audit
 found a real extraction defect rather than a missing ontology entry. Official
 TAU syllabus `0542-4422` states `דרישות קדם: אלגברה לינארית` on
 an unpunctuated line and begins its authoritative engineering-design prose in

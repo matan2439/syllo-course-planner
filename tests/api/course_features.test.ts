@@ -162,7 +162,7 @@ describe('contrasting course shapes', () => {
     expect(f.project.evidence[0]?.excerpt).not.toContain('ייתכנו מטלות נוספות');
   });
 
-  test('a prose mention of the assignments label cannot override the later official section', async () => {
+  test('a prose mention cannot override the official non-exhaustive assignments section', async () => {
     const acquired = await docFrom(stub({
       courseNumber: '0542-2225-01',
       delivery: 'שיעור',
@@ -174,7 +174,21 @@ describe('contrasting course shapes', () => {
 
     const f = extractor.extract(legacy);
 
-    expect(f.project.value).toBe(false);
+    expect(f.project.value).toBe('unknown');
+    expect(f.finalExam.value).toBe('unknown');
+    expect(f.coursework.value).toBe('unknown');
+  });
+
+  test('an explicit project proves only project presence, not absence of other assessments', async () => {
+    const f = await extract(stub({
+      courseNumber: '0542-2226-01',
+      delivery: 'שיעור',
+      assignments: 'פרוייקט',
+    }), '0542-2226');
+
+    expect(f.project.value).toBe(true);
+    expect(f.finalExam.value).toBe('unknown');
+    expect(f.coursework.value).toBe('unknown');
   });
 
   test('a laboratory course is detected from the official delivery mode alone', async () => {

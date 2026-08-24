@@ -300,7 +300,7 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
     expect(mixed.coverage.variesBySectionCourseIds).toEqual(['E3']);
   });
 
-  test('9c. a project assessment in only one section cannot label the whole course', () => {
+  test('9c. one explicit project plus one non-exhaustive section stays unknown course-wide', () => {
     const section = (group: string, assignment: string) => doc('E3', 'שיעור', {
       contentHash: `assessment_${group}_${assignment}`,
       labeledFields: {
@@ -318,9 +318,12 @@ describe('K8C — the project objective changes REAL candidate selection', () =>
       ['E3'], projectObjective(mixed.snapshot.snapshotId), mixed.features,
     );
 
-    expect(mixed.features.get('E3')!.project.value).toBe('varies_by_section');
+    // "אחר" does not prove that section has no project, so the two
+    // sections do not establish a real contradiction.
+    expect(mixed.features.get('E3')!.project.value).toBe('unknown');
     expect(score.score).toBe(0);
-    expect(score.variesBySectionCourseIds).toEqual(['E3']);
+    expect(score.unknownCourseIds).toEqual(['E3']);
+    expect(score.variesBySectionCourseIds).toEqual([]);
   });
 
   test('10. hard exclusion of the favoured project course still wins', () => {

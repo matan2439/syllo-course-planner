@@ -380,6 +380,30 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     expect(candidates(withProject._body).selectedGroundedScore.score).toBeGreaterThan(0);
   });
 
+  test('the official non-exhaustive "other" assessment stays unknown through Generate', async () => {
+    MOCK_DOCUMENTS = [
+      doc('E1', 'שיעור'),
+      doc('E2', 'שיעור'),
+      {
+        ...doc('E3', 'שיעור'),
+        labeledFields: {
+          'מספר קורס': ['E3-01'],
+          'אופן ההוראה': ['שיעור'],
+          'מטלות הקורס': ['אחר'],
+        },
+      },
+    ];
+
+    const res = await run(withPref([projectPref()], 4, {
+      preferences: { disallowed_course_ids: [], wanted_course_ids: ['E3'] },
+    }));
+    const score = candidates(res._body).selectedGroundedScore;
+
+    expect(placed(res._body)).toContain('E3');
+    expect(score.contributions).toEqual([]);
+    expect(score.unknownCourseIds).toContain('E3');
+  });
+
   test('a structured project-based style reaches the existing evidence-backed objective', async () => {
     MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט')];
     const control = await run(body());

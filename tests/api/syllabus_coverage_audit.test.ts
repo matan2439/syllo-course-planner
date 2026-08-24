@@ -217,4 +217,17 @@ describe('B0 — the live corpus, when present', () => {
       }),
     ]));
   });
+
+  test('real "other" assessment evidence remains unknown while an explicit project is affirmative', () => {
+    if (!present) return;
+    const { documents } = loadDocuments(cacheRoot);
+    const other = documents.find((d) => d.courseId === '0542-3112');
+    const explicitProject = documents.find((d) => d.courseId === '0555-4000');
+    if (!other || !explicitProject) return;
+    const extractor = new RuleBasedFeatureExtractor();
+
+    expect(extractor.extract(other).project.value).toBe('unknown');
+    expect(extractor.extract(explicitProject).project.value).toBe(true);
+    expect(extractor.extract(explicitProject).finalExam.value).toBe('unknown');
+  });
 });

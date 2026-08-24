@@ -31,7 +31,7 @@
 import { syllabusToEvidence, type SyllabusDocument } from './syllabus_source';
 import type { AcademicEvidence } from './academic_evidence';
 
-export const FEATURE_EXTRACTION_VERSION = '1.2.0';
+export const FEATURE_EXTRACTION_VERSION = '1.3.0';
 export const TOPIC_VOCABULARY_VERSION = '1.0.0';
 
 /** Ternary: a feature is true, false, or genuinely not known. Never defaulted. */
@@ -218,20 +218,21 @@ export class RuleBasedFeatureExtractor implements FeatureExtractor {
     const projectDelivery = fromDeliveryMode(PROJECT_MODE, 'rule:delivery_mode.project');
 
     // ── assessment components (official assignments field) ───────────────────
-    // This field is populated when the institution publishes assessment detail.
-    // Present ⇒ a term's absence is meaningful within it. Absent ⇒ unknown for
-    // ALL of exam/project/coursework: prose elsewhere cannot falsify them.
+    // This field can affirm a published assessment component, but the official
+    // page explicitly warns that additional assignments may exist in the
+    // detailed syllabus. It is therefore NON-EXHAUSTIVE: a matching term proves
+    // true, while an absent term remains unknown and can never prove false.
     const fromAssignments = (
       re: RegExp,
       rule: string,
     ): FeatureValue<Ternary> => {
       if (!assignments) return UNKNOWN_TERNARY(rule);
-      const present = re.test(assignments);
       const m = assignments.match(re);
+      if (!m) return UNKNOWN_TERNARY(`${rule}.non_exhaustive`);
       return {
-        value: present,
+        value: true,
         confidence: 0.9,
-        evidence: evidenceFor(present, 0.9, rule, excerptAround(assignments, m?.[0] ?? assignments), `field:${ASSIGNMENTS_LABEL}`),
+        evidence: evidenceFor(true, 0.9, rule, excerptAround(assignments, m[0]), `field:${ASSIGNMENTS_LABEL}`),
         rule,
       };
     };
