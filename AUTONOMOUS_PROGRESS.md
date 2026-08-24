@@ -5,13 +5,39 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B14 comparative-explanation provenance completed.** When an explicit-
-priority explanation cites an available alternative's stronger secondary
-objective, `groundedSources` now includes the authoritative document that
-proves that comparative claim. Full API 179/179 suites, 2435/2435 tests and
-root tsc green. **Not Production-ready.** Not merged, not deployed.)_
+(**B15 equal-importance trade-off provenance completed.** Every comparative
+grounded explanation now discloses the selected plan's evidence and the exact
+available comparison plan's evidence, including unresolved equal-weight
+trade-offs. Full API 179/179 suites, 2435/2435 tests and root tsc green. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 6) — B14. A real-handler RED exposed a split
+_Latest entry: 2026-08-24 (cont. 7) — B15. A real-handler equal-importance RED
+used the existing two-plan project-versus-robotics trade-off. The Hebrew text
+correctly said no legal alternative excelled on every confirmed preference and
+that the system used equal weights, but source disclosure contained only the
+selected project course `E2`. It omitted the official robotics document for
+comparison course `E3`, even though the per-objective explanation used that
+plan to establish the trade-off.
+
+Generate now uses the same comparison selection as the text for every
+composition reason. Explicit priority still uses B13's informative
+non-primary-advantage selector. Equal importance, single objective, canonical
+tie and other non-priority reasons use the same first available legal
+non-dominated comparison already consumed by `explainGroundedComposition`.
+`groundedSources` combines only selected and actually compared contributions,
+then applies the existing course/source/year deduplication. In the real RED it
+now exposes exactly `E2` and `E3`; no unrelated `E1`/`E4`, unknown evidence,
+dominated candidate or full candidate-set source dump is added. Ranking,
+recommendation, alternatives, priority policy and Apply remain unchanged.
+
+RED failed with only `E2`; GREEN discloses exactly `E2`,`E3`. Focused equal-
+importance/priority explanation coverage passes 32/32. Full API passes 179/179
+suites and 2435/2435 tests in 514 seconds; root `tsc --noEmit` passes. No UI
+code changed, so the B8 web/build/legacy baseline remains applicable. No paid/
+provider call, network acquisition, catalog/data mutation, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Previous entry: 2026-08-24 (cont. 6) — B14. A real-handler RED exposed a split
 truth after B13: the Hebrew explanation correctly said that another legal plan
 was stronger on the project objective, but `groundedSources` contained only
 the selected robotics course `E3`. It omitted `E2`, whose official delivery
