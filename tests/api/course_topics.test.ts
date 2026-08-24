@@ -129,6 +129,13 @@ describe('T3 — inference is refused', () => {
     expect(topicsOf(doc('0542-4391', only))).toEqual([]);
   });
 
+  test('a line-delimited prerequisite without punctuation does not erase the next content paragraph', () => {
+    // Real 0542-4422 shape: the prerequisite line has no full stop, while the
+    // next paragraph begins the authoritative course content.
+    const content = 'דרישות קדם: אלגברה לינארית\n\nתכן הנדסי הוא אוסף של רעיונות ושיטות.';
+    expect(topicsOf(doc('0542-4422', content))).toContain('engineering_design');
+  });
+
   test('the course TITLE is never used as content evidence', () => {
     const titled = doc('0542-4624', 'הקורס יתקיים במעבדה.', {
       labeledFields: { 'מספר קורס': ['0542-4624-01'], 'שם הקורס': ['מעבדה ברובוטיקה ובקרה של מערכות'] },

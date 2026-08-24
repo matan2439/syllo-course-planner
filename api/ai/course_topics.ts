@@ -34,7 +34,7 @@
  */
 import type { SyllabusDocument } from './syllabus_source';
 
-export const TOPIC_MAPPER_VERSION = 'topic-map/1.0.0';
+export const TOPIC_MAPPER_VERSION = 'topic-map/1.1.0';
 
 /**
  * Only domains actually evidenced by official wording in the acquired corpus.
@@ -107,7 +107,16 @@ export function officialContentSection(doc: SyllabusDocument): string | undefine
   if (!start) return undefined;
   const rest = text.slice(start.index + start[0].length);
   const end = CONTENT_END.exec(rest);
-  const section = (end ? rest.slice(0, end.index) : rest).replace(/\s+/g, ' ').trim();
+  // Preserve paragraph boundaries: prerequisite/recommendation blocks in the
+  // official template are sometimes terminated by a blank line rather than a
+  // full stop. Flattening all whitespace first makes that authoritative
+  // boundary unrecoverable and can erase the following course-content prose.
+  const section = (end ? rest.slice(0, end.index) : rest)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ *\n{2,} */g, '\n\n')
+    .replace(/ *\n */g, '\n')
+    .trim();
   return section.length > 0 ? section : undefined;
 }
 
@@ -120,9 +129,13 @@ export function contentWithoutForeignClauses(section: string): string {
     if (!m) return `${out}${rest}`;
     out += rest.slice(0, m.index);
     const after = rest.slice(m.index);
-    const stop = SENTENCE_END.exec(after);
-    if (!stop) return out; // the clause runs to the end of the section
-    rest = after.slice(stop.index + 1);
+    const sentenceStop = SENTENCE_END.exec(after);
+    const paragraphStop = /\n\s*\n/.exec(after);
+    const sentenceAt = sentenceStop?.index ?? Number.POSITIVE_INFINITY;
+    const paragraphAt = paragraphStop?.index ?? Number.POSITIVE_INFINITY;
+    const stopAt = Math.min(sentenceAt, paragraphAt);
+    if (!Number.isFinite(stopAt)) return out; // the clause runs to the end
+    rest = after.slice(stopAt + (paragraphAt < sentenceAt ? paragraphStop![0].length : 1));
   }
 }
 

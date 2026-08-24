@@ -28,6 +28,7 @@ import { parseProgramVersionId } from '../../api/board';
 import { prepareEvidence, RECENT_OFFICIAL_SYLLABUS_POLICY } from '../../api/ai/evidence_provider';
 import { RuleBasedFeatureExtractor } from '../../api/ai/course_features';
 import { loadDocuments } from '../../api/ai/evidence_cache';
+import { extractCourseTopics } from '../../api/ai/course_topics';
 import type { SyllabusDocument } from '../../api/ai/syllabus_source';
 
 const ROOT = process.cwd();
@@ -200,5 +201,20 @@ describe('B0 — the live corpus, when present', () => {
     expect(prepared.coverage.conflictingCourseIds).toEqual([]);
     expect(prepared.coverage.topicUnknownCourseIds).toHaveLength(audit.applicability.atCorpusYear2025.topicUnknown);
     expect(prepared.snapshot.documents).toHaveLength(relevantDocuments.length);
+  });
+
+  test('the real unpunctuated 0542-4422 prerequisite does not erase its design content', () => {
+    if (!present) return;
+    const { documents } = loadDocuments(cacheRoot);
+    const design = documents.find((d) => d.courseId === '0542-4422');
+    if (!design) return;
+
+    const extraction = extractCourseTopics(design, { academicYear: 2025 });
+    expect(extraction.assertions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        topicId: 'engineering_design',
+        rawWording: expect.stringMatching(/תכן.*הנדסי|עיצוב.*הנדסי/),
+      }),
+    ]));
   });
 });

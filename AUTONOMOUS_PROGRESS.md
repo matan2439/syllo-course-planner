@@ -5,14 +5,42 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B30 grounded explanations separate readable rationale from source URLs.**
-User-facing ranking text now names the official syllabus field and evidence
-year without embedding a long raw URL; the exact URL remains available through
-the existing `groundedSources` disclosure. API is 180/180 suites, 2457/2457
-tests; web is 20/20 suites, 186/186 tests. **Not Production-ready.** Not merged,
-not deployed.)_
+(**B31 syllabus paragraph boundaries preserve real course content.** A
+line-delimited prerequisite without a full stop no longer erases the following
+official content paragraph, so evidenced design content can affect the real
+recommendation. API is 180/180 suites, 2460/2460 tests; web is 20/20 suites,
+186/186 tests. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 22) — B30. Tracing the handler through the
+_Latest entry: 2026-08-24 (cont. 23) — B31. The next read-only Phase A.2 audit
+found a real extraction defect rather than a missing ontology entry. Official
+TAU syllabus `0542-4422` states `דרישות קדם: אלגברה לינארית` on
+an unpunctuated line and begins its authoritative engineering-design prose in
+the next paragraph. `officialContentSection` flattened every newline before
+`contentWithoutForeignClauses` ran; the exclusion rule therefore deleted the
+prerequisite and all subsequent text through the next full stop._
+
+_The unit RED reproduced that exact paragraph shape and lost
+`engineering_design`. The real Generate-handler RED used two canonical
+alternatives plus E3 carrying the same source shape; an explicit mechanical-
+design focus incorrectly retained E1+E2. GREEN preserves normalized paragraph
+boundaries in the official content section and ends a foreign prerequisite or
+recommendation clause at the first sentence or paragraph boundary. It still
+removes the authoritative prerequisite text itself and never reads course
+titles, user prose, or syllabus silence as topic evidence. `TOPIC_MAPPER_VERSION`
+is now `topic-map/1.1.0` so derived facts disclose the changed extraction
+semantics._
+
+_After GREEN the handler recommends E3 and cites its official design evidence.
+A frozen-corpus regression directly proves real `0542-4422` retains an
+auditable engineering-design assertion. Focused topic/evidence/ranking coverage
+passes 9/9 suites and 161/161 tests. Full API passes 180/180 suites, 2460/2460
+tests in 213 seconds. Full web passes 20/20 suites, 186/186 tests; existing
+expected failure-path `fetch is not defined` console output remains. Root/web
+`tsc --noEmit` and the Next.js production build pass. No tracked catalog/data,
+provider/network acquisition, Production, Vercel, Supabase, `main`, or stash
+change._
+
+_Previous entry: 2026-08-24 (cont. 22) — B30. Tracing the handler through the
 native renderer showed that `groundedExplanationHe` embedded each official
 syllabus URL directly in the recommendation sentence even though the same
 authoritative document was already returned in `groundedSources` and rendered

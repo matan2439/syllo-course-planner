@@ -554,6 +554,26 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     );
   });
 
+  test('a paragraph after an unpunctuated prerequisite changes the real recommendation', async () => {
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'מבוא כללי.'),
+      topicDoc('E2', 'מבוא כללי.'),
+      topicDoc('E3', 'דרישות קדם: אלגברה לינארית\n\nתכן הנדסי הוא אוסף של רעיונות ושיטות.'),
+      topicDoc('E4', 'מבוא כללי.'),
+    ];
+
+    const control = await run(body());
+    const focused = await run(body({
+      academic_interest_profile: { focusAreas: [{ area: 'mechanical_design', weight: 1 }] },
+    }));
+
+    expect(placed(control._body)).not.toContain('E3');
+    expect(placed(focused._body)).toContain('E3');
+    expect(candidates(focused._body).selectedGroundedScore.contributions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ courseId: 'E3', topicId: 'engineering_design' })]),
+    );
+  });
+
   test('a structured focus stays soft: hard exclusion of its evidence-backed course wins', async () => {
     MOCK_DOCUMENTS = [topicDoc('E3', 'חומרים הנדסיים ותכונות החומר.')];
     const res = await run(body({
