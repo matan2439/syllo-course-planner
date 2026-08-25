@@ -5,13 +5,62 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-25, session on branch `ui/frontend-modernization`
-(**B35 generic pre-plan interest questions are removed.** Academic preferences
-are now elicited only by the post-Generate state machine when the authoritative
-impact contract proves they distinguish retained alternatives. API is 180/180
-suites, 2458/2458 tests; web is 20/20 suites, 187/187 tests. **Not
+(**B36 meaningful neutral course-set alternatives is verified.**
+The frozen real corpus now retains academically distinct course sets before
+duplicate timetable permutations, while the greedy primary and complete
+hard/policy prefix remain unchanged. Full API is 180/180 suites and 2462/2462
+tests; web is 20/20 and 187/187; legacy UI is 78/78 and 835/835. **Not
 Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-25 (cont. 27) — B35. The follow-up audit found that B34
+_Latest entry: 2026-08-25 (cont. 28) — B36. The frozen-corpus audit exercised a
+real neutral Mechanical Engineering request and found three valid alternatives
+but only one canonical course set: every comparison card contained the same 26
+courses and differed only by semester placement. Consequently the post-Generate
+topic-impact contract truthfully returned `distinguishesCandidates:false`, so
+the richer real evidence could not support an actionable academic choice._
+
+_RED asserted more than one canonical course set on the real handler path and
+failed with exactly one. GREEN spends the existing bounded planner-run budget
+on deterministic one-elective replacement probes when no grounded objective is
+confirmed. Incoming and outgoing courses come only from the authoritative model;
+mandatory, completed, currently planned, disallowed, hard-wanted and pinned
+courses are protected. Each probe is run through the existing authoritative
+validator and retained only when every hard/policy score term equals the greedy
+baseline. Frozen feature/topic evidence is used solely as an order-independent
+tie-break among equally admissible probes; it cannot score or replace the greedy
+primary._
+
+_Alternative retention now exposes the first distinct canonical course set
+before a second timetable permutation within the same hard/policy prefix. New
+proof covers real-corpus course-set diversity and truthful topic impact, legacy
+primary identity, hard-prefix equality, hard exclusion, authoritative validity,
+and invariance to model/evidence insertion order. The first full API run exposed
+that neutral probes consumed the deviation budget before the established
+canonical choice; 8 tests failed. The corrected order preserves the established
+planner recommendation, reserves at most `maxCandidates - 1` runs from the same
+hard bound for neutral enrichment, and cannot promote an enrichment probe into
+the primary recommendation. The formerly red family then passed 5/5 suites and
+65/65 tests. Final verification passes API 180/180 and 2462/2462, web 20/20 and
+187/187, legacy UI 78/78 and 835/835, root/web `tsc --noEmit`, and the Next.js
+production build. No catalog/data or Production surface was changed._
+
+_Next smallest ordered step after B36: continue Phase A with a realistic
+recommendation/trade-off/explanation audit over the now meaningfully distinct
+alternatives, then expand complete-student acceptance scenarios. Do not add a
+question unless its server impact contract proves it can change the decision._
+
+_Product-priority update (2026-08-25): preserve the full ordered roadmap below,
+but insert one bounded milestone immediately after B36: a private beta for the
+owner covering both TAU Mechanical Engineering and TAU Electrical Engineering,
+with the AI journey and the essential manual add/remove/move planning journey
+working against the same authoritative validation. This reorders work; it does
+not delete the remaining Phase A quality audits, broader Phase B UI/site work,
+or later commercialization/expansion. Electrical Engineering must enter through
+a separate authoritative program model/dataset, never course-id conditionals in
+the core algorithm. Production deployment, accounts, payments and cross-device
+persistence remain separate gates and require explicit approval/configuration._
+
+_Previous entry: 2026-08-25 (cont. 27) — B35. The follow-up audit found that B34
 correctly removed unsupported question options but retained a deeper defect:
 `DeterministicClarificationCapability` runs before candidates exist, yet still
 asked three generic interest questions. It therefore could not establish that

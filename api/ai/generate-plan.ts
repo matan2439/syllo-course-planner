@@ -1688,6 +1688,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       initialState,
       profileVersion: preference_profile?.version ?? 0,
       pinnedHome,
+      diversityEvidence: {
+        features: preparedEvidence.features,
+        topics: preparedEvidence.topics,
+      },
       ...(groundedForRanking ? { groundedObjectives: groundedForRanking } : {}),
     });
     const selected = selectCandidate(candidateSet);

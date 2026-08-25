@@ -56,6 +56,10 @@ test('an explicit free-text materials focus uses recent official evidence and ch
 
     const control = await generate(false);
     const candidates = await generate(true);
+    const neutralCourseSets = control.summaries.map((summary: any) => [...summary.courseIds].sort().join('|'));
+    expect(new Set(neutralCourseSets).size).toBeGreaterThan(1);
+    expect(control.evidence.topicQuestionImpact).toEqual(expect.objectContaining({ distinguishesCandidates: true }));
+    expect(control.evidence.topicQuestionImpact.distinguishingTopics.length).toBeGreaterThan(0);
     const courseSets = candidates.summaries.map((s: any) => [...s.courseIds].sort().join('|'));
     expect(new Set(courseSets).size).toBeGreaterThan(1);
     expect(candidates.selectedCandidateId).not.toBe(control.selectedCandidateId);

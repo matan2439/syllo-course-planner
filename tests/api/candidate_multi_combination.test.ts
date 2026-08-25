@@ -121,6 +121,88 @@ describe('one confirmed profile → one fixed planning policy for every candidat
 // ── multi-combination search ─────────────────────────────────────────────────
 
 describe('real multi-combination candidate generation under ONE fixed policy', () => {
+  test('neutral discovery uses evidence only to expose a semantically distinct alternative', () => {
+    const model = () => mk([
+      { id: 'E1', hours: 4 }, { id: 'E2', hours: 4 },
+      { id: 'A_PLAIN', hours: 4 }, { id: 'Z_ROBOTICS', hours: 4 },
+    ], { totalHours: 8 });
+    const set = generateCandidateSet({
+      buildModel: model,
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      profileVersion: 3,
+      maxCandidates: 2,
+      maxRuns: 3,
+      diversityEvidence: {
+        features: new Map(),
+        topics: new Map([
+          ['E1', { topicIds: new Set<TopicId>(), sourceRef: 'official:E1', academicYear: 2025 }],
+          ['E2', { topicIds: new Set<TopicId>(), sourceRef: 'official:E2', academicYear: 2025 }],
+          ['A_PLAIN', { topicIds: new Set<TopicId>(), sourceRef: 'official:A', academicYear: 2025 }],
+          ['Z_ROBOTICS', { topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:Z', academicYear: 2025 }],
+        ]),
+      },
+    });
+
+    expect(set.candidates[0].normalizedIdentity).toBe(set.legacyIdentity);
+    expect(Object.values(set.candidates[1].state.semesters).flat()).toContain('Z_ROBOTICS');
+    expect(set.candidates[1].provenance).toMatch(/^neutral_swap:/);
+    expect(validateCandidate(set.candidates[1].state, model()).valid).toBe(true);
+  });
+
+  test('neutral diversity evidence cannot reintroduce a hard-excluded course', () => {
+    const model = () => mk(
+      [{ id: 'E1', hours: 4 }, { id: 'E2', hours: 4 }, { id: 'EXCLUDED', hours: 4 }, { id: 'SAFE', hours: 4 }],
+      { totalHours: 8, disallowedCourseIds: ['EXCLUDED'] },
+    );
+    const set = generateCandidateSet({
+      buildModel: model, policy: 'neutral', profileVersion: 3,
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      diversityEvidence: {
+        features: new Map(),
+        topics: new Map([['EXCLUDED', {
+          topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:excluded', academicYear: 2025,
+        }]]),
+      },
+    });
+    for (const candidate of set.candidates) {
+      expect(Object.values(candidate.state.semesters).flat()).not.toContain('EXCLUDED');
+      expect(validateCandidate(candidate.state, model()).valid).toBe(true);
+    }
+  });
+
+  test('neutral semantic diversity is invariant to model and evidence insertion order', () => {
+    const courses = [
+      { id: 'E1', hours: 4 }, { id: 'E2', hours: 4 },
+      { id: 'A_PLAIN', hours: 4 }, { id: 'Z_ROBOTICS', hours: 4 },
+    ];
+    const topicEntries: Array<[string, { topicIds: Set<TopicId>; sourceRef: string; academicYear: number }]> = [
+      ['E1', { topicIds: new Set<TopicId>(), sourceRef: 'official:E1', academicYear: 2025 }],
+      ['E2', { topicIds: new Set<TopicId>(), sourceRef: 'official:E2', academicYear: 2025 }],
+      ['A_PLAIN', { topicIds: new Set<TopicId>(), sourceRef: 'official:A', academicYear: 2025 }],
+      ['Z_ROBOTICS', { topicIds: new Set<TopicId>(['robotics']), sourceRef: 'official:Z', academicYear: 2025 }],
+    ];
+    const run = (reversed: boolean) => generateCandidateSet({
+      buildModel: () => mk(reversed ? [...courses].reverse() : courses, { totalHours: 8 }),
+      policy: 'neutral',
+      initialState: { semesters: { [SEM_A]: ['E1'], [SEM_B]: ['E2'] } },
+      profileVersion: 3,
+      maxCandidates: 2,
+      maxRuns: 3,
+      diversityEvidence: {
+        features: new Map(),
+        topics: new Map(reversed ? [...topicEntries].reverse() : topicEntries),
+      },
+    });
+
+    const forward = run(false);
+    const reversed = run(true);
+    expect(reversed.candidates.map((candidate) => candidate.id))
+      .toEqual(forward.candidates.map((candidate) => candidate.id));
+    expect(reversed.candidates.map((candidate) => candidate.normalizedIdentity))
+      .toEqual(forward.candidates.map((candidate) => candidate.normalizedIdentity));
+  });
+
   test('a completed baseline can discover a two-course combination that improves two grounded objectives together', () => {
     const courses = ['BASE_A', 'BASE_B', 'ROBOTICS', 'MATERIALS'];
     const model = () => mk(courses.map((id) => ({ id, hours: 4 })), { totalHours: 8 });
@@ -358,6 +440,17 @@ describe('real multi-combination candidate generation under ONE fixed policy', (
     expect(set.candidates.length).toBeGreaterThanOrEqual(2);
     const identities = new Set(set.candidates.map((c) => c.normalizedIdentity));
     expect(identities.size).toBe(set.candidates.length); // no duplicate academic identities
+    const courseSets = new Set(set.candidates.map((candidate) =>
+      Object.values(candidate.state.semesters).flat().sort().join('|')));
+    expect(courseSets.size).toBeGreaterThan(1); // not merely semester permutations
+  });
+
+  test('neutral diversity preserves the greedy primary and every hard/policy score term', () => {
+    const set = gen(manyCombinations);
+    expect(set.candidates[0].normalizedIdentity).toBe(set.legacyIdentity);
+    const prefix = set.candidates[0].scoreVector.slice(0, 6);
+    expect(set.candidates.every((candidate) =>
+      candidate.scoreVector.slice(0, 6).every((value, index) => value === prefix[index]))).toBe(true);
   });
 
   test('every retained candidate passes the SAME authoritative validator', () => {
@@ -442,7 +535,7 @@ describe('real multi-combination candidate generation under ONE fixed policy', (
     const set = gen(manyCombinations, { profileVersion: 7 });
     expect(set.candidates.every((c) => c.profileVersion === 7)).toBe(true);
     expect(set.candidates[0].provenance).toBe('greedy_baseline');
-    expect(set.candidates.slice(1).every((c) => c.provenance.startsWith('deviation:'))).toBe(true);
+    expect(set.candidates.slice(1).every((c) => /^(deviation|neutral_swap):/.test(c.provenance))).toBe(true);
   });
 
   test('the flag-off legacy single-plan path is preserved: maxCandidates 1 == the plain greedy result', () => {

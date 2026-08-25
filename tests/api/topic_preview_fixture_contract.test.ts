@@ -81,11 +81,15 @@ describe('the committed topic-preview fixture is loadable and complete', () => {
 });
 
 describe('the fixture produces exactly the signal the browser run asserts', () => {
-  test('robotics and control distinguish; nothing else does', async () => {
+  test('robotics, control and manufacturing distinguish the retained course sets', async () => {
     const impact = (await run(request()))._body.academicDecision.candidates.evidence.topicQuestionImpact;
     expect(impact.distinguishesCandidates).toBe(true);
-    expect(impact.distinguishingTopics).toEqual(['robotics', 'control']);
-    expect(impact.topicLabels).toEqual({ robotics: 'רובוטיקה', control: 'בקרה ומערכות' });
+    expect(impact.distinguishingTopics).toEqual(['robotics', 'control', 'manufacturing']);
+    expect(impact.topicLabels).toEqual({
+      robotics: 'רובוטיקה',
+      control: 'בקרה ומערכות',
+      manufacturing: 'ייצור ותהליכי עיבוד',
+    });
     expect(impact.coverageSufficient).toBe(true);
     expect(impact.hasConflicts).toBe(false);
   });

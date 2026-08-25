@@ -113,16 +113,16 @@ describe('W1 — the handler emits a truthful topic-impact probe', () => {
     const impact = impactOf(res._body);
     expect(impact).toBeDefined();
     expect(impact.distinguishesCandidates).toBe(true);
-    // The retained candidates are {E1,E2} and {E1,E3}. Only a topic unique to
-    // E3 can change the outcome, and BOTH of E3's topics do.
+    // Neutral semantic diversity retains a real course-set swap as well as the
+    // robotics/control alternative, so manufacturing can separate one too.
     // Vocabulary declaration order — deterministic, and a more meaningful
     // option ordering for a reader than alphabetical internal ids would be.
-    expect(impact.distinguishingTopics).toEqual(['robotics', 'control']);
+    expect(impact.distinguishingTopics).toEqual(['robotics', 'control', 'manufacturing']);
     // Present in official evidence, but on EVERY course — every candidate
     // scores the same, so it cannot separate anything.
     expect(impact.distinguishingTopics).not.toContain('engineering_design');
-    // Present in evidence (E1), but E1 is in BOTH candidates — no difference.
-    expect(impact.distinguishingTopics).not.toContain('manufacturing');
+    // Present in evidence (E1), and E1 is absent from one retained course set.
+    expect(impact.distinguishingTopics).toContain('manufacturing');
     // Present in evidence (E4), but E4 is in NEITHER retained candidate.
     expect(impact.distinguishingTopics).not.toContain('thermofluids');
     // In the vocabulary, but in no document at all.
@@ -166,7 +166,7 @@ describe('W1 — the handler emits a truthful topic-impact probe', () => {
     const impact = impactOf(body);
 
     expect(impact.distinguishesCandidates).toBe(true);
-    expect(impact.distinguishingTopics).toEqual(['robotics', 'control']);
+    expect(impact.distinguishingTopics).toEqual(['robotics', 'control', 'manufacturing']);
     expect(body.academicDecision.candidates.evidence.historicalCourseIds).toEqual(ELECTIVES);
     expect(body.academicDecision.candidates.evidence.academicYears).toEqual([2025]);
     expect(body.academicDecision.candidates.evidence.historicalEvidenceNoticeHe).toContain('2025');

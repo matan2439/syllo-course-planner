@@ -286,6 +286,16 @@ export interface GenerateCandidateSetInput {
   /** Hard bound on planner runs (runtime guard). Default DEFAULT_MAX_RUNS. */
   maxRuns?: number;
   /**
+   * Optional snapshot used only to diversify neutral alternative discovery.
+   * It never scores or changes the primary recommendation; it breaks ties
+   * between equally admissible swap probes so retained alternatives can expose
+   * a real evidence-backed choice to the impact state machine.
+   */
+  diversityEvidence?: {
+    features: FeatureIndex;
+    topics?: TopicIndex;
+  };
+  /**
    * K4 — a CONFIRMED grounded soft objective, plus the ONE evidence snapshot
    * every candidate is scored against. Omitted (the default) ⇒ ranking is
    * byte-identical to before this feature existed.
@@ -607,12 +617,113 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     }
   }
 
+  // With no confirmed grounded objective, early worker deviations on a mature
+  // board commonly discover only semester permutations of the same completed
+  // course set. Use the same bounded run budget to probe canonical one-elective
+  // replacements as genuine academic alternatives. Every proposal is still
+  // resolved from the authoritative model, validated normally, and retained
+  // only when it ties the baseline on the complete hard/policy prefix.
+  const discoverNeutralAlternatives = () => {
+    if (!(baseline.report.valid && objectiveSet.length === 0 && maxCandidates > 1)) return;
+    const placed = new Set(placedCourseIds(baseline.state));
+    const homesOf = (courseId: string) => Object.entries(baseline.state.semesters)
+      .filter(([, ids]) => ids.includes(courseId))
+      .map(([semesterId]) => semesterId);
+    const incoming = [...baseline.model.profiles.keys()]
+      .filter((id) => {
+        const profile = baseline.model.profiles.get(id);
+        return !placed.has(id) && !profile?.is_mandatory
+          && !baseline.model.completedCourseIds.has(id)
+          && !baseline.model.currentlyPlannedCourseIds?.has(id)
+          && !baseline.model.disallowedCourseIds.has(id);
+      })
+      .sort();
+    const outgoing = [...placed]
+      .filter((id) => !baseline.model.profiles.get(id)?.is_mandatory
+        && !baseline.model.mustIncludeCourseIds?.has(id)
+        && pinnedHome[id] === undefined
+        && homesOf(id).length === 1)
+      .sort();
+    const semanticSignature = (courseId: string): Set<string> => {
+      const signature = new Set<string>();
+      const features = input.diversityEvidence?.features.get(courseId);
+      if (features?.laboratory.value === true) signature.add('delivery:laboratory');
+      if (features?.projectDelivery.value === true || features?.project.value === true) {
+        signature.add('delivery:project');
+      }
+      for (const topic of input.diversityEvidence?.topics?.get(courseId)?.topicIds ?? []) {
+        signature.add(`topic:${topic}`);
+      }
+      return signature;
+    };
+    const semanticDistance = (a: string, b: string): number => {
+      const left = semanticSignature(a);
+      const right = semanticSignature(b);
+      return [...left].filter((value) => !right.has(value)).length
+        + [...right].filter((value) => !left.has(value)).length;
+    };
+    const options = incoming.flatMap((inId) => outgoing.flatMap((outId) => {
+      const inProfile = baseline.model.profiles.get(inId);
+      const outProfile = baseline.model.profiles.get(outId);
+      const outHome = homesOf(outId)[0];
+      return legalSemestersFor(baseline.model, inId).map((semesterId) => ({
+        inId,
+        outId,
+        semesterId,
+        sameHome: semesterId === outHome,
+        sameHours: inProfile?.hours != null && inProfile.hours === outProfile?.hours,
+        sameCategory: inProfile?.category_id != null && inProfile.category_id === outProfile?.category_id,
+        semanticDistance: semanticDistance(inId, outId),
+      }));
+    }));
+    options.sort((a, b) =>
+      Number(b.sameHome) - Number(a.sameHome)
+      || Number(b.sameHours) - Number(a.sameHours)
+      || Number(b.sameCategory) - Number(a.sameCategory)
+      || b.semanticDistance - a.semanticDistance
+      || (a.inId < b.inId ? -1 : a.inId > b.inId ? 1 : 0)
+      || (a.outId < b.outId ? -1 : a.outId > b.outId ? 1 : 0)
+      || (a.semesterId < b.semesterId ? -1 : a.semesterId > b.semesterId ? 1 : 0));
+
+    const baselinePrefix = baseline.scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
+    const retainedCourseSets = new Set<string>();
+    for (const option of options) {
+      if (runsExecuted >= maxRuns || retainedCourseSets.size >= maxCandidates - 1) break;
+      const state = applyMutation(baseline.state, {
+        type: 'REPLACE_COURSE',
+        outId: option.outId,
+        inId: option.inId,
+        semesterId: option.semesterId,
+      });
+      if (!state) continue;
+      runsExecuted++;
+      const candidate = evaluate(
+        baseline.model,
+        state,
+        `neutral_swap:${option.inId}:${option.outId}:${option.semesterId}`,
+        baseline.rationaleHe,
+      );
+      const courseSet = [...new Set(placedCourseIds(candidate.state))].sort().join('|');
+      if (candidate.report.valid
+        && compareScore(candidate.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), baselinePrefix) === 0
+        && !byIdentity.has(candidate.identity)
+        && !retainedCourseSets.has(courseSet)) {
+        byIdentity.set(candidate.identity, candidate);
+        retainedCourseSets.add(courseSet);
+      }
+    }
+  };
+
   // 2. Bounded deterministic deviations. Deviating EARLY changes which course
   //    enters the plan first and so reshapes the whole combination; deviating at
   //    increasing depths reaches progressively more of the space. Fixed order ⇒
   //    identical candidates, ids and ranking on every run.
+  const neutralRunReserve = objectiveSet.length === 0 && maxCandidates > 1
+    ? Math.min(maxCandidates - 1, Math.max(0, maxRuns - runsExecuted))
+    : 0;
   for (let atStep = 0;
-    runsExecuted < maxRuns && (objectiveSet.length > 0 || byIdentity.size < maxCandidates);
+    runsExecuted < maxRuns - neutralRunReserve
+      && (objectiveSet.length > 0 || byIdentity.size < maxCandidates);
     atStep++) {
     const r = run({ atStep, rank: 1 });
     runsExecuted++;
@@ -620,6 +731,17 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     // ponytail: no early-exit heuristic — maxRuns already bounds this, and a
     // deviation that reproduces the baseline is simply collapsed by identity.
   }
+
+  // Keep the established planner recommendation authoritative. Neutral probes
+  // enrich the comparison set from the remaining budget; discovering one must
+  // not silently replace the recommendation that existed before enrichment.
+  const preservedNeutralPrimaryIdentity = objectiveSet.length === 0
+    ? [...byIdentity.values()].sort((a, b) => compareRankable(
+        { scoreVector: a.scoreVector, normalizedIdentity: a.identity, vector: [] },
+        { scoreVector: b.scoreVector, normalizedIdentity: b.identity, vector: [] },
+      ))[0]?.identity
+    : undefined;
+  discoverNeutralAlternatives();
 
   // 3. Rank. Lexicographic, in the documented priority order:
   //      a. hard constraints + legality + the confirmed distribution policy
@@ -706,14 +828,34 @@ export function generateCandidateSet(input: GenerateCandidateSetInput): Candidat
     const groupKey = contributionGroupKey(i, sorted[i]);
     if (!firstContributionRank.has(groupKey)) firstContributionRank.set(groupKey, i);
   }
+  const courseSetKey = (candidate: (typeof sorted)[number]) =>
+    [...new Set(placedCourseIds(candidate.raw.state))].sort().join('|');
+  const courseSetGroupKey = (index: number, candidate: (typeof sorted)[number]) =>
+    `${allPrefixes[index].join(',')}::${courseSetKey(candidate)}`;
+  const firstCourseSetRank = new Map<string, number>();
+  for (let i = 0; i < sorted.length; i++) {
+    const groupKey = courseSetGroupKey(i, sorted[i]);
+    if (!firstCourseSetRank.has(groupKey)) firstCourseSetRank.set(groupKey, i);
+  }
   const frontierOrdered = sorted.slice().sort((a, b) => {
     const ai = originalRank.get(a.raw.identity)!;
     const bi = originalRank.get(b.raw.identity)!;
     if (compareScore(allPrefixes[ai], allPrefixes[bi]) !== 0) return ai - bi;
+    const aPreservedPrimary = a.raw.identity === preservedNeutralPrimaryIdentity;
+    const bPreservedPrimary = b.raw.identity === preservedNeutralPrimaryIdentity;
+    if (aPreservedPrimary !== bPreservedPrimary) return aPreservedPrimary ? -1 : 1;
     if (globallyDominated[ai] !== globallyDominated[bi]) return globallyDominated[ai] ? 1 : -1;
     const aFirstContribution = firstContributionRank.get(contributionGroupKey(ai, a)) === ai;
     const bFirstContribution = firstContributionRank.get(contributionGroupKey(bi, b)) === bi;
     if (aFirstContribution !== bFirstContribution) return aFirstContribution ? -1 : 1;
+    // Comparison cards should expose a different academic choice before a
+    // second timetable permutation of a course set already represented. This
+    // only reorders alternatives within an identical hard/policy prefix; rank
+    // zero remains the lexicographic recommendation and no weaker hard result
+    // can leapfrog a stronger one.
+    const aFirstCourseSet = firstCourseSetRank.get(courseSetGroupKey(ai, a)) === ai;
+    const bFirstCourseSet = firstCourseSetRank.get(courseSetGroupKey(bi, b)) === bi;
+    if (aFirstCourseSet !== bFirstCourseSet) return aFirstCourseSet ? -1 : 1;
     return ai - bi;
   });
 
