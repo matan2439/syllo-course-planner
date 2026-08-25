@@ -218,6 +218,11 @@ describe('integration: clarification -> interest answers -> clarification', () =
     'optimization_priorities',
     'career_goals',
   ];
+  const ACTIONABLE_INTEREST_IDS = [
+    'academic_focus_areas',
+    'academic_avoid_areas',
+    'course_style_preferences',
+  ];
 
   const OTHER_FIELDS_ANSWERED: ClarificationPlanningContext = {
     completedCourseIds: ['c1'],
@@ -227,13 +232,13 @@ describe('integration: clarification -> interest answers -> clarification', () =
     track: 'systems',
   };
 
-  test('an explicit empty academicInterestProfile makes clarification produce all 5 interest questions', async () => {
+  test('an explicit empty profile produces only interest questions with a planning consumer', async () => {
     const result = await cap.clarify({
       gaps: [],
       context: { ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() },
     });
     const interestIds = result.questions.map((q) => q.id).filter((id) => ALL_INTEREST_IDS.includes(id));
-    expect(interestIds).toEqual(ALL_INTEREST_IDS);
+    expect(interestIds).toEqual(ACTIONABLE_INTEREST_IDS);
   });
 
   test(
@@ -248,12 +253,9 @@ describe('integration: clarification -> interest answers -> clarification', () =
         context: { ...OTHER_FIELDS_ANSWERED, academicInterestProfile: profile },
       });
       const interestIds = result.questions.map((q) => q.id).filter((id) => ALL_INTEREST_IDS.includes(id));
-      // hasMeaningfulAcademicInterests (academic_interest_profile.ts) treats ANY structured
-      // preference as sufficient — the existing, deliberately-unchanged gate from the
-      // Interest Clarification Questions epic. This is a known, documented limitation:
-      // interest questions are an opt-in profile BOOTSTRAP ("has the user told us anything
-      // at all?"), not a per-field completeness checklist ("did the user specifically answer
-      // avoid_areas?"). Not changed in this epic per its own explicit instruction.
+      // A grounded focus preference is sufficient for this opt-in bootstrap.
+      // This remains intentionally all-or-none rather than a per-field
+      // completeness checklist for avoid areas and course styles.
       expect(interestIds).toEqual([]);
     },
   );

@@ -24,6 +24,21 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
   robotics: 'robotics',
 };
 
+/** Focus choices that have a real evidence-backed planning consumer today. */
+export const GROUNDED_FOCUS_AREAS = Object.freeze([
+  'strength_analysis',
+  'finite_elements',
+  'mechanical_design',
+  'heat_transfer',
+  'thermal_systems',
+  'fluids',
+  'control_systems',
+  'manufacturing',
+  'materials',
+  'energy',
+  'robotics',
+] satisfies AcademicFocusArea[]);
+
 const STYLE_TO_OBJECTIVE: Partial<Record<CourseStyle, {
   id: 'prefer_project_courses' | 'prefer_laboratory_courses';
   target: 'project_based' | 'practical_laboratory';
@@ -31,6 +46,12 @@ const STYLE_TO_OBJECTIVE: Partial<Record<CourseStyle, {
   project_based: { id: 'prefer_project_courses', target: 'project_based' },
   lab_based: { id: 'prefer_laboratory_courses', target: 'practical_laboratory' },
 };
+
+/** Style choices that reach an existing grounded objective today. */
+export const GROUNDED_COURSE_STYLES = Object.freeze([
+  'project_based',
+  'lab_based',
+] satisfies CourseStyle[]);
 
 function finalize(
   base: GroundedObjectiveResult | undefined,

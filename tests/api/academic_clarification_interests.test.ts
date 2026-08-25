@@ -3,8 +3,8 @@
  * Tests for the academic-interest extension to api/ai/academic_clarification.ts.
  *
  * These questions are OPT-IN: they only appear when the caller explicitly
- * supplies `context.academicInterestProfile` (even an empty one) and it is
- * not yet "meaningful" (hasMeaningfulAcademicInterests, academic_interest_profile.ts).
+ * supplies `context.academicInterestProfile` (even an empty one) and no
+ * evidence-backed interest currently reaches the planner.
  * When the field is entirely absent — the case for every pre-existing caller,
  * since none of them know about it — behavior is byte-identical to before
  * this epic. This is required for backward compatibility: the pre-existing
@@ -17,9 +17,6 @@
 import { DeterministicClarificationCapability } from '../../api/ai/academic_clarification';
 import type { ClarificationRequest, ClarificationPlanningContext } from '../../api/ai/academic_decision_types';
 import {
-  ACADEMIC_FOCUS_AREAS,
-  COURSE_STYLES,
-  OPTIMIZATION_PRIORITIES,
   emptyAcademicInterestProfile,
   normalizeAcademicInterestProfile,
 } from '../../api/ai/academic_interest_profile';
@@ -44,6 +41,17 @@ const ALL_INTEREST_IDS = [
   'optimization_priorities',
   'career_goals',
 ];
+const ACTIONABLE_INTEREST_IDS = [
+  'academic_focus_areas',
+  'academic_avoid_areas',
+  'course_style_preferences',
+];
+const GROUNDED_FOCUS_AREAS = [
+  'strength_analysis', 'finite_elements', 'mechanical_design', 'heat_transfer',
+  'thermal_systems', 'fluids', 'control_systems', 'manufacturing', 'materials',
+  'energy', 'robotics',
+];
+const GROUNDED_STYLES = ['project_based', 'lab_based'];
 
 const MEANINGFUL_PROFILE = normalizeAcademicInterestProfile({
   focusAreas: [{ area: 'fluids', weight: 0.8 }],
@@ -79,30 +87,26 @@ describe('DeterministicClarificationCapability — interest clarification questi
     );
   });
 
-  test('an empty academicInterestProfile produces an optimization_priorities question', async () => {
+  test('an empty profile does not ask optimization priorities without a planning consumer', async () => {
     const result = await cap.clarify(
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() }),
     );
-    expect(result.questions).toContainEqual(
-      expect.objectContaining({ id: 'optimization_priorities', answerType: 'multi_choice', critical: false }),
-    );
+    expect(result.questions).not.toContainEqual(expect.objectContaining({ id: 'optimization_priorities' }));
   });
 
-  test('an empty academicInterestProfile produces a career_goals optional text question', async () => {
+  test('an empty profile does not ask career goals without evidence-backed mapping', async () => {
     const result = await cap.clarify(
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() }),
     );
-    expect(result.questions).toContainEqual(
-      expect.objectContaining({ id: 'career_goals', answerType: 'text', critical: false, required: false }),
-    );
+    expect(result.questions).not.toContainEqual(expect.objectContaining({ id: 'career_goals' }));
   });
 
-  test('all five interest questions are non-critical by default', async () => {
+  test('only the three actionable interest questions are emitted, all non-critical', async () => {
     const result = await cap.clarify(
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() }),
     );
     const interestQuestions = result.questions.filter((q) => ALL_INTEREST_IDS.includes(q.id));
-    expect(interestQuestions).toHaveLength(5);
+    expect(interestQuestions.map((q) => q.id)).toEqual(ACTIONABLE_INTEREST_IDS);
     expect(interestQuestions.every((q) => q.critical === false)).toBe(true);
   });
 
@@ -125,24 +129,42 @@ describe('DeterministicClarificationCapability — interest clarification questi
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() }),
     );
     const interestIds = result.questions.map((q) => q.id).filter((id) => ALL_INTEREST_IDS.includes(id));
-    expect(interestIds).toEqual(ALL_INTEREST_IDS);
+    expect(interestIds).toEqual(ACTIONABLE_INTEREST_IDS);
   });
 
-  test('question options use stable machine-readable IDs from AcademicInterestProfile enums', async () => {
+  test('question options expose only focus areas and styles with a grounded consumer', async () => {
     const result = await cap.clarify(
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() }),
     );
     const focus = result.questions.find((q) => q.id === 'academic_focus_areas')!;
     const avoid = result.questions.find((q) => q.id === 'academic_avoid_areas')!;
     const style = result.questions.find((q) => q.id === 'course_style_preferences')!;
-    const priority = result.questions.find((q) => q.id === 'optimization_priorities')!;
-    expect(focus.options?.map((o) => o.value)).toEqual([...ACADEMIC_FOCUS_AREAS]);
-    expect(avoid.options?.map((o) => o.value)).toEqual([...ACADEMIC_FOCUS_AREAS]);
-    expect(style.options?.map((o) => o.value)).toEqual([...COURSE_STYLES]);
-    expect(priority.options?.map((o) => o.value)).toEqual([...OPTIMIZATION_PRIORITIES]);
+    expect(focus.options?.map((o) => o.value)).toEqual(GROUNDED_FOCUS_AREAS);
+    expect(avoid.options?.map((o) => o.value)).toEqual(GROUNDED_FOCUS_AREAS);
+    expect(style.options?.map((o) => o.value)).toEqual(GROUNDED_STYLES);
   });
 
-  test('no interest questions are produced when a meaningful AcademicInterestProfile is present', async () => {
+  test('a career-goal-only profile cannot suppress actionable clarification', async () => {
+    const result = await cap.clarify(makeRequest({
+      ...OTHER_FIELDS_ANSWERED,
+      academicInterestProfile: normalizeAcademicInterestProfile({ careerGoals: ['robotics research'] }),
+    }));
+    expect(result.questions.map((q) => q.id)).toEqual(ACTIONABLE_INTEREST_IDS);
+  });
+
+  test('unsupported selections cannot suppress actionable clarification', async () => {
+    const result = await cap.clarify(makeRequest({
+      ...OTHER_FIELDS_ANSWERED,
+      academicInterestProfile: normalizeAcademicInterestProfile({
+        focusAreas: [{ area: 'biomechanics', weight: 1 }],
+        courseStylePreferences: [{ style: 'exam_light', weight: 1 }],
+        optimizationPriorities: [{ priority: 'career_relevance', weight: 1 }],
+      }),
+    }));
+    expect(result.questions.map((q) => q.id)).toEqual(ACTIONABLE_INTEREST_IDS);
+  });
+
+  test('no interest questions are produced when a grounded AcademicInterestProfile is present', async () => {
     const result = await cap.clarify(
       makeRequest({ ...OTHER_FIELDS_ANSWERED, academicInterestProfile: MEANINGFUL_PROFILE }),
     );

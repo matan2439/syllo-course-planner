@@ -183,6 +183,28 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
     expect(res._body.academicDecision.evaluation.missingDataNotes.length).toBeGreaterThan(0);
   });
 
+  test('10a. the real handler asks only interest questions backed by a planning consumer', async () => {
+    const res = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      academic_interest_profile: { careerGoals: ['robotics research'] },
+    }));
+    expect(res.statusCode).toBe(200);
+    const interestQuestionIds = res._body.academicDecision.clarification.questions
+      .map((question: any) => question.id)
+      .filter((id: string) => [
+        'academic_focus_areas',
+        'academic_avoid_areas',
+        'course_style_preferences',
+        'optimization_priorities',
+        'career_goals',
+      ].includes(id));
+    expect(interestQuestionIds).toEqual([
+      'academic_focus_areas',
+      'academic_avoid_areas',
+      'course_style_preferences',
+    ]);
+  });
+
   test('11. includes a decision rationale', async () => {
     const res = await run(sufficientBody({ use_academic_decision_agent: true }));
     expect(typeof res._body.academicDecision.decision.rationale).toBe('string');

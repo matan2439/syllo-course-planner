@@ -26,11 +26,13 @@ import type {
   MissingInputField,
 } from './academic_decision_types';
 import {
-  ACADEMIC_FOCUS_AREAS,
-  COURSE_STYLES,
   OPTIMIZATION_PRIORITIES,
-  hasMeaningfulAcademicInterests,
 } from './academic_interest_profile';
+import {
+  GROUNDED_COURSE_STYLES,
+  GROUNDED_FOCUS_AREAS,
+  groundedTopicsForFocusAreas,
+} from './focus_topic_objective';
 
 /** Title-case a snake_case enum value for use as a ClarificationQuestion option label. */
 function toOptionLabel(value: string): string {
@@ -102,8 +104,8 @@ const QUESTION_SPECS: Record<MissingInputField, QuestionSpec> = {
     required: false,
     answerType: 'multi_choice',
     question: 'Which academic areas are you most interested in focusing on?',
-    rationale: 'Helps align course selection with your interests once interest-based scoring is available.',
-    options: toOptions(ACADEMIC_FOCUS_AREAS),
+    rationale: 'Helps align course selection with grounded topic evidence.',
+    options: toOptions(GROUNDED_FOCUS_AREAS),
   },
   academicAvoidAreas: {
     id: 'academic_avoid_areas',
@@ -111,15 +113,15 @@ const QUESTION_SPECS: Record<MissingInputField, QuestionSpec> = {
     required: false,
     answerType: 'multi_choice',
     question: 'Are there any academic areas you would prefer to avoid?',
-    options: toOptions(ACADEMIC_FOCUS_AREAS),
+    options: toOptions(GROUNDED_FOCUS_AREAS),
   },
   courseStylePreferences: {
     id: 'course_style_preferences',
     inputKey: 'academicInterestProfile.courseStylePreferences',
     required: false,
     answerType: 'multi_choice',
-    question: 'What course styles do you prefer (e.g. project-based, exam-light)?',
-    options: toOptions(COURSE_STYLES),
+    question: 'What evidence-backed course styles do you prefer?',
+    options: toOptions(GROUNDED_COURSE_STYLES),
   },
   optimizationPriorities: {
     id: 'optimization_priorities',
@@ -188,11 +190,18 @@ export class DeterministicClarificationCapability implements ClarificationCapabi
       });
     }
 
-    // Opt-in: only ask about academic interests when the caller explicitly supplies
-    // a profile (even an empty one) and it isn't meaningful yet. Absent entirely —
-    // the case for every caller predating this field — asks nothing, unchanged.
+    // Opt-in: ask only when the caller explicitly supplies a profile and no
+    // evidence-backed preference reaches the current planner. Merely typed but
+    // unsupported values must not suppress a question that can change planning.
+    // An absent profile keeps every pre-interest caller unchanged.
     const interestProfile = context.academicInterestProfile;
-    if (interestProfile !== undefined && !hasMeaningfulAcademicInterests(interestProfile)) {
+    const hasActionableInterest = interestProfile !== undefined && (
+      groundedTopicsForFocusAreas(interestProfile.focusAreas).length > 0
+      || groundedTopicsForFocusAreas(interestProfile.avoidAreas).length > 0
+      || interestProfile.courseStylePreferences.some((entry) =>
+        entry.weight > 0 && GROUNDED_COURSE_STYLES.includes(entry.style as (typeof GROUNDED_COURSE_STYLES)[number]))
+    );
+    if (interestProfile !== undefined && !hasActionableInterest) {
       missingInputs.push(
         { field: 'academicFocusAreas', critical: false, message: QUESTION_SPECS.academicFocusAreas.question },
         { field: 'academicAvoidAreas', critical: false, message: QUESTION_SPECS.academicAvoidAreas.question },
@@ -201,12 +210,6 @@ export class DeterministicClarificationCapability implements ClarificationCapabi
           critical: false,
           message: QUESTION_SPECS.courseStylePreferences.question,
         },
-        {
-          field: 'optimizationPriorities',
-          critical: false,
-          message: QUESTION_SPECS.optimizationPriorities.question,
-        },
-        { field: 'careerGoals', critical: false, message: QUESTION_SPECS.careerGoals.question },
       );
     }
 

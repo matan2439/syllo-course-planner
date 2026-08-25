@@ -4,14 +4,50 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-24, session on branch `ui/frontend-modernization`
-(**B33 official evidence sources are safely openable.** The existing source
-disclosure now provides a concise, keyboard-accessible official-syllabus link
-instead of inert raw URL text, and unsafe schemes fail closed. API remains
-180/180 suites, 2463/2463 tests; web is 20/20 suites, 187/187 tests. **Not
-Production-ready.** Not merged, not deployed.)_
+_Last updated: 2026-08-25, session on branch `ui/frontend-modernization`
+(**B34 interest clarification is now impact-gated.** The agent asks only about
+focus/avoid topics and course styles that have a real grounded planning
+consumer; unsupported selections and career-goal-only profiles cannot suppress
+those useful questions. API is 180/180 suites, 2466/2466 tests; web is 20/20
+suites, 187/187 tests. **Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-24 (cont. 25) — B33. Tracing B30's readable rationale
+_Latest entry: 2026-08-25 (cont. 26) — B34. A realistic clarification audit
+traced every academic-interest field from elicitation through composition and
+found that `careerGoals` and `optimizationPriorities` have no ranking/planning
+consumer. It also found that the UI offered unsupported `biomechanics`,
+`general`, `exam_light`, `math_heavy`, `practical`, `theoretical`, and
+`industry_relevant` choices. Because the old gate used generic profile
+“meaningfulness”, any such unsupported choice could suppress the questions
+that actually affect planning._
+
+_The RED failed in seven exact places: two unsupported question families were
+still emitted; five questions appeared instead of three; unsupported focus and
+style options were exposed; and career-only/unsupported-only profiles silenced
+the actionable bootstrap. GREEN centralizes current capability beside the
+grounded adapter: 11 focus ids map to supported topic ids, while only
+`project_based` and `lab_based` map to grounded style objectives. Clarification
+now gates on those mappings rather than generic typed presence. The broader
+typed profile and answer contracts remain backward compatible, but fields with
+no consumer are not elicited._
+
+_The focused state-machine suite passes 15/15 and the real Generate-handler
+suite passes 22/22, including a career-goal-only end-to-end request. Related
+clarification/profile/composition coverage passes 10/10 suites and 168/168
+tests. Full API passes 180/180 suites and 2466/2466 tests; full web passes 20/20
+suites and 187/187 tests. Root/web `tsc --noEmit` and the Next.js production
+build pass. The full legacy UI run passes 834/835 behavior checks before commit;
+its sole Git-diff guard intentionally rejects any uncommitted API file. That
+guard passes 12/12 from the committed tree, completing all 835 checks without a
+product failure. No tracked catalog/data, provider call, Production, Vercel,
+Supabase, `main`, or stash change._
+
+_Next smallest ordered step after B34: continue Phase A.2 with a read-only
+audit of the frozen real syllabus corpus for the next concrete extraction or
+evidence-applicability defect; begin with a realistic handler RED only when an
+actual recommendation/explanation impact is reproduced. Do not widen the
+ontology or add a question without a demonstrated consumer._
+
+_Previous entry: 2026-08-24 (cont. 25) — B33. Tracing B30's readable rationale
 through the existing `GroundedExplanation` disclosure found that the exact
 official URL was preserved correctly but rendered as a plain LTR span. A
 student could see a long technical address but had no native keyboard/click
