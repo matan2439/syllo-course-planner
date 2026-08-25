@@ -183,7 +183,7 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
     expect(res._body.academicDecision.evaluation.missingDataNotes.length).toBeGreaterThan(0);
   });
 
-  test('10a. the real handler asks only interest questions backed by a planning consumer', async () => {
+  test('10a. career goals do not trigger generic pre-plan interest questions', async () => {
     const res = await run(sufficientBody({
       use_academic_decision_agent: true,
       academic_interest_profile: { careerGoals: ['robotics research'] },
@@ -198,11 +198,33 @@ describe('generate-plan — opt-in agent path (flag=true)', () => {
         'optimization_priorities',
         'career_goals',
       ].includes(id));
-    expect(interestQuestionIds).toEqual([
-      'academic_focus_areas',
-      'academic_avoid_areas',
-      'course_style_preferences',
-    ]);
+    expect(interestQuestionIds).toEqual([]);
+  });
+
+  test('10b. topic-converged alternatives do not produce generic pre-plan interest questions', async () => {
+    const res = await run(sufficientBody({
+      use_academic_decision_agent: true,
+      academic_interest_profile: {},
+      plan_context: {
+        ...PLAN_CONTEXT,
+        category_requirements: [],
+        personal_status: { completed: [{ course_id: 'PRIOR' }], currently_taking: [] },
+      },
+    }));
+    expect(res.statusCode).toBe(200);
+    expect(res._body.academicDecision.candidates.evidence.topicQuestionImpact).toEqual(
+      expect.objectContaining({ distinguishesCandidates: false, distinguishingTopics: [] }),
+    );
+    const interestQuestionIds = res._body.academicDecision.clarification.questions
+      .map((question: any) => question.id)
+      .filter((id: string) => [
+        'academic_focus_areas',
+        'academic_avoid_areas',
+        'course_style_preferences',
+        'optimization_priorities',
+        'career_goals',
+      ].includes(id));
+    expect(interestQuestionIds).toEqual([]);
   });
 
   test('11. includes a decision rationale', async () => {

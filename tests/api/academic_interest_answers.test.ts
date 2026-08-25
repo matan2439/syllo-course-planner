@@ -218,11 +218,6 @@ describe('integration: clarification -> interest answers -> clarification', () =
     'optimization_priorities',
     'career_goals',
   ];
-  const ACTIONABLE_INTEREST_IDS = [
-    'academic_focus_areas',
-    'academic_avoid_areas',
-    'course_style_preferences',
-  ];
 
   const OTHER_FIELDS_ANSWERED: ClarificationPlanningContext = {
     completedCourseIds: ['c1'],
@@ -232,13 +227,13 @@ describe('integration: clarification -> interest answers -> clarification', () =
     track: 'systems',
   };
 
-  test('an explicit empty profile produces only interest questions with a planning consumer', async () => {
+  test('pre-plan clarification never emits interest questions without an impact contract', async () => {
     const result = await cap.clarify({
       gaps: [],
       context: { ...OTHER_FIELDS_ANSWERED, academicInterestProfile: emptyAcademicInterestProfile() },
     });
     const interestIds = result.questions.map((q) => q.id).filter((id) => ALL_INTEREST_IDS.includes(id));
-    expect(interestIds).toEqual(ACTIONABLE_INTEREST_IDS);
+    expect(interestIds).toEqual([]);
   });
 
   test(

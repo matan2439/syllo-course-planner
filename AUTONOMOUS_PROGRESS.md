@@ -5,13 +5,47 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-25, session on branch `ui/frontend-modernization`
-(**B34 interest clarification is now impact-gated.** The agent asks only about
-focus/avoid topics and course styles that have a real grounded planning
-consumer; unsupported selections and career-goal-only profiles cannot suppress
-those useful questions. API is 180/180 suites, 2466/2466 tests; web is 20/20
-suites, 187/187 tests. **Not Production-ready.** Not merged, not deployed.)_
+(**B35 generic pre-plan interest questions are removed.** Academic preferences
+are now elicited only by the post-Generate state machine when the authoritative
+impact contract proves they distinguish retained alternatives. API is 180/180
+suites, 2458/2458 tests; web is 20/20 suites, 187/187 tests. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-25 (cont. 26) — B34. A realistic clarification audit
+_Latest entry: 2026-08-25 (cont. 27) — B35. The follow-up audit found that B34
+correctly removed unsupported question options but retained a deeper defect:
+`DeterministicClarificationCapability` runs before candidates exist, yet still
+asked three generic interest questions. It therefore could not establish that
+an answer changed a recommendation. The real handler RED built topic-converged
+alternatives, proved `topicQuestionImpact.distinguishesCandidates:false` with
+no distinguishing topics, and still received focus, avoid and style questions._
+
+_GREEN removes academic-interest elicitation from the pre-plan capability. The
+typed `AcademicInterestProfile` and answer application contracts remain intact,
+so explicit preferences still compose normally. New questions now come only
+from `DeterministicPreferenceElicitation`, after Generate, using the existing
+server-authored topic/delivery/priority impact contracts. This preserves the
+important positive path: when applicable evidence genuinely separates retained
+alternatives, the real state machine still asks one bounded question and routes
+the answer into composition; converged, missing, stale or conflicting evidence
+asks nothing._
+
+_RED failed exactly on the three fabricated question ids. Focused preflight,
+handler, impact-wire and elicitation coverage passes 5/5 suites and 76/76 tests;
+the broader clarification family passes 7/7 suites and 77/77 tests; native
+topic/priority interaction passes 4/4 suites and 42/42 tests; the legacy answer
+form passes 14/14. Full API passes 180/180 suites and 2458/2458 tests. Full web
+passes 20/20 suites and 187/187 tests; expected jsdom failure-path console output
+remains. Full legacy UI passes 78/78 suites and 835/835 tests from the committed
+tree. Root/web `tsc --noEmit` and the Next.js production build pass. No tracked
+catalog/data, provider call, Production, Vercel, Supabase, `main`, or stash
+change._
+
+_Next smallest ordered step after B35: resume the frozen-corpus Phase A.2 audit
+for a concrete extraction or applicability defect with demonstrated handler
+impact. Do not restore a generic preference questionnaire; every optional
+question must continue to be justified by its own server impact contract._
+
+_Previous entry: 2026-08-25 (cont. 26) — B34. A realistic clarification audit
 traced every academic-interest field from elicitation through composition and
 found that `careerGoals` and `optimizationPriorities` have no ranking/planning
 consumer. It also found that the UI offered unsupported `biomechanics`,

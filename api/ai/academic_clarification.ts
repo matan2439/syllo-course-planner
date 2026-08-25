@@ -26,13 +26,10 @@ import type {
   MissingInputField,
 } from './academic_decision_types';
 import {
+  ACADEMIC_FOCUS_AREAS,
+  COURSE_STYLES,
   OPTIMIZATION_PRIORITIES,
 } from './academic_interest_profile';
-import {
-  GROUNDED_COURSE_STYLES,
-  GROUNDED_FOCUS_AREAS,
-  groundedTopicsForFocusAreas,
-} from './focus_topic_objective';
 
 /** Title-case a snake_case enum value for use as a ClarificationQuestion option label. */
 function toOptionLabel(value: string): string {
@@ -105,7 +102,7 @@ const QUESTION_SPECS: Record<MissingInputField, QuestionSpec> = {
     answerType: 'multi_choice',
     question: 'Which academic areas are you most interested in focusing on?',
     rationale: 'Helps align course selection with grounded topic evidence.',
-    options: toOptions(GROUNDED_FOCUS_AREAS),
+    options: toOptions(ACADEMIC_FOCUS_AREAS),
   },
   academicAvoidAreas: {
     id: 'academic_avoid_areas',
@@ -113,7 +110,7 @@ const QUESTION_SPECS: Record<MissingInputField, QuestionSpec> = {
     required: false,
     answerType: 'multi_choice',
     question: 'Are there any academic areas you would prefer to avoid?',
-    options: toOptions(GROUNDED_FOCUS_AREAS),
+    options: toOptions(ACADEMIC_FOCUS_AREAS),
   },
   courseStylePreferences: {
     id: 'course_style_preferences',
@@ -121,7 +118,7 @@ const QUESTION_SPECS: Record<MissingInputField, QuestionSpec> = {
     required: false,
     answerType: 'multi_choice',
     question: 'What evidence-backed course styles do you prefer?',
-    options: toOptions(GROUNDED_COURSE_STYLES),
+    options: toOptions(COURSE_STYLES),
   },
   optimizationPriorities: {
     id: 'optimization_priorities',
@@ -190,28 +187,10 @@ export class DeterministicClarificationCapability implements ClarificationCapabi
       });
     }
 
-    // Opt-in: ask only when the caller explicitly supplies a profile and no
-    // evidence-backed preference reaches the current planner. Merely typed but
-    // unsupported values must not suppress a question that can change planning.
-    // An absent profile keeps every pre-interest caller unchanged.
-    const interestProfile = context.academicInterestProfile;
-    const hasActionableInterest = interestProfile !== undefined && (
-      groundedTopicsForFocusAreas(interestProfile.focusAreas).length > 0
-      || groundedTopicsForFocusAreas(interestProfile.avoidAreas).length > 0
-      || interestProfile.courseStylePreferences.some((entry) =>
-        entry.weight > 0 && GROUNDED_COURSE_STYLES.includes(entry.style as (typeof GROUNDED_COURSE_STYLES)[number]))
-    );
-    if (interestProfile !== undefined && !hasActionableInterest) {
-      missingInputs.push(
-        { field: 'academicFocusAreas', critical: false, message: QUESTION_SPECS.academicFocusAreas.question },
-        { field: 'academicAvoidAreas', critical: false, message: QUESTION_SPECS.academicAvoidAreas.question },
-        {
-          field: 'courseStylePreferences',
-          critical: false,
-          message: QUESTION_SPECS.courseStylePreferences.question,
-        },
-      );
-    }
+    // Academic interests are deliberately not elicited in this pre-planning
+    // capability. It cannot know whether an answer changes a retained
+    // candidate. DeterministicPreferenceElicitation asks the corresponding
+    // topic/style question only after the server emits an impact contract.
 
     const questions: ClarificationQuestion[] = missingInputs.map((missingInput) => {
       const spec = QUESTION_SPECS[missingInput.field];
