@@ -4,15 +4,49 @@ Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
-_Last updated: 2026-08-25, session on branch `ui/frontend-modernization`
-(**B36 meaningful neutral course-set alternatives is verified.**
+_Last updated: 2026-08-26, session on branch `ui/frontend-modernization`
+(**B37 authoritative TAU program identity discovery is verified.**
+The data-acquisition boundary can now query TAU's official `getPrograms` index
+and select a program only by one exact normalized title, degree and school
+match; missing, ambiguous, malformed and unavailable results fail closed.
+No program or catalog data was generated. **Not Production-ready.** Not merged,
+not deployed.)_
+
+_Latest entry: 2026-08-26 (cont. 29) — B37. The private-beta inventory proved
+that the repository has no Electrical Engineering program model, board or
+frontend registration; the generic planner cannot honestly support that degree
+until a separate authoritative dataset exists. It also proved that the essential
+manual add/remove/move journey already exists in the legacy planner mounted at
+`/planner`, while the newer native board is intentionally read-only. The beta's
+largest functional gap is therefore authoritative Electrical program data, not
+a second planning algorithm._
+
+_The first acquisition audit exposed a dangerous identity gap: the existing
+TAU scraper required a caller-supplied `tcid`, and an apparently relevant search
+URL resolved to an unrelated biomedical double degree. RED therefore required
+the official `getPrograms` GraphQL request, a lean typed program identity, exact
+normalized title/degree/school selection, and fail-closed behavior for zero,
+multiple, transport-failed or malformed results. GREEN adds that discovery
+boundary without changing frozen data. Focused index/parser verification passes
+2/2 suites and 72/72 tests._
+
+_An official TAU Electrical Engineering curriculum PDF was identified for
+program code `0512-11-01-0000` (B.Sc., bulletin תשפ"ה). It states 179 total
+hours and contains mandatory years, specialization tracks, laboratories and
+prerequisites. The repository has no PDF-to-program ingestion implementation;
+the existing Mechanical `*_from_pdf.json` is already materialized input, not
+parser output. The next slice must therefore define and test a generic,
+source-provenanced program ingestion contract before any Electrical board is
+registered. Do not hand-author or infer missing course/category facts._
+
+_Previous entry: 2026-08-25 (cont. 28) — B36. (**B36 meaningful neutral course-set alternatives is verified.**
 The frozen real corpus now retains academically distinct course sets before
 duplicate timetable permutations, while the greedy primary and complete
 hard/policy prefix remain unchanged. Full API is 180/180 suites and 2462/2462
 tests; web is 20/20 and 187/187; legacy UI is 78/78 and 835/835. **Not
 Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-25 (cont. 28) — B36. The frozen-corpus audit exercised a
+The frozen-corpus audit exercised a
 real neutral Mechanical Engineering request and found three valid alternatives
 but only one canonical course set: every comparison card contained the same 26
 courses and differed only by semester placement. Consequently the post-Generate
