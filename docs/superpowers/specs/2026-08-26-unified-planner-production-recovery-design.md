@@ -1,6 +1,6 @@
 # Unified Planner Production Recovery Design
 
-**Status:** Approved direction; pending final written-spec review
+**Status:** Approved for implementation
 **Date:** 2026-08-26
 **Canonical branch:** `ui/frontend-modernization`
 
