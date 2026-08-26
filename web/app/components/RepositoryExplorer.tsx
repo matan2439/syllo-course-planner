@@ -8,6 +8,37 @@ import RepositoryCourseCard from './RepositoryCourseCard'
 import { EmptyState } from './ui'
 import { rankCourseMatches, scoreCourseMatch } from '../../../shared/search/course-name-match'
 
+export function filterRepository(repo: RepositoryVM, rawQuery: string): RepoCategoryVM[] {
+  const query = rawQuery.trim()
+  if (!query) return repo.categories
+  return repo.categories
+    .map((category) => {
+      const titleHit = scoreCourseMatch(query, category.title) > 0
+      const ranked = rankCourseMatches(
+        query,
+        category.courses,
+        (course) => course.name,
+        (course) => course.id,
+      )
+      return {
+        ...category,
+        courses: titleHit ? category.courses : ranked.map((match) => match.item),
+      }
+    })
+    .filter((category) => category.courses.length > 0)
+}
+
+export function repositoryStatus(
+  repo: RepositoryVM,
+  filtered: readonly RepoCategoryVM[],
+  rawQuery: string,
+): string {
+  const shown = filtered.reduce((count, category) => count + category.courses.length, 0)
+  return rawQuery.trim()
+    ? `נמצאו ${shown} מתוך ${repo.totalCourses} קורסים`
+    : `${repo.totalCourses} קורסים ב־${repo.categories.length} קטגוריות`
+}
+
 function RepositorySearch({
   query,
   onChange,
@@ -80,23 +111,10 @@ export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
   const [selected, setSelected] = useState<CourseDetailsVM | null>(null)
 
   const filtered = useMemo(() => {
-    const q = query.trim()
-    if (!q) return repo.categories
-    return repo.categories
-      .map((cat) => {
-        // Category-title hit keeps the whole category (search by category name);
-        // otherwise show courses fuzzy-ranked by approximate Hebrew name/id match.
-        const titleHit = scoreCourseMatch(q, cat.title) > 0
-        const ranked = rankCourseMatches(q, cat.courses, (c) => c.name, (c) => c.id)
-        return { ...cat, courses: titleHit ? cat.courses : ranked.map((m) => m.item) }
-      })
-      .filter((cat) => cat.courses.length > 0)
+    return filterRepository(repo, query)
   }, [query, repo])
 
-  const shown = filtered.reduce((n, c) => n + c.courses.length, 0)
-  const status = query
-    ? `נמצאו ${shown} מתוך ${repo.totalCourses} קורסים`
-    : `${repo.totalCourses} קורסים ב־${repo.categories.length} קטגוריות`
+  const status = repositoryStatus(repo, filtered, query)
 
   return (
     <div className="flex flex-col gap-8">
