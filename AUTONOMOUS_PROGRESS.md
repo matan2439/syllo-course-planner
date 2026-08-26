@@ -5,14 +5,48 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-26, session on branch `ui/frontend-modernization`
-(**B37 authoritative TAU program identity discovery is verified.**
-The data-acquisition boundary can now query TAU's official `getPrograms` index
-and select a program only by one exact normalized title, degree and school
-match; missing, ambiguous, malformed and unavailable results fail closed.
-No program or catalog data was generated. **Not Production-ready.** Not merged,
-not deployed.)_
+(**B38 source-provenanced TAU curriculum ingestion is verified.**
+Official curriculum text can now become typed identity, degree structure and
+mandatory-course facts without title/category inference. Conflicts fail to an
+explicit unresolved result. No program or catalog data was generated. **Not
+Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-26 (cont. 29) — B37. The private-beta inventory proved
+_Latest entry: 2026-08-26 (cont. 30) — B38. RED used exact excerpts from TAU's
+official 294-page Electrical Engineering bulletin for program
+`0512-11-01-0000` and required a fail-closed source adapter: exact title, code,
+academic year and print-date identity; the 179-hour degree total; seven
+authoritative structure components; mandatory course identity, year, semester,
+weekly/credit hours, prerequisites and concurrent requirements; and page-level
+provenance._
+
+_GREEN introduces a pure typed curriculum-document parser. It stops at the
+later timetable copy rather than counting courses twice, carries course blocks
+across PDF page boundaries, canonicalizes prerequisite ids, is invariant to
+input page order, and removes a course from accepted facts when two
+authoritative blocks disagree. The disagreement is retained as
+`conflicting_authoritative_course_facts` with its source pages. The adapter does
+not classify a course from its Hebrew title and contains no planner ranking or
+degree-specific course-id conditionals._
+
+_Focused RED became 10/10 GREEN. The curriculum/index/GraphQL parser,
+Mechanical PDF-program and generic program-requirement regression family passes
+5/5 suites and 182/182 tests. The first regression invocation produced 11
+environment setup errors because Windows denied pytest's default temp root;
+rerunning against an isolated workspace temp directory passed all tests, and
+that runtime directory was removed. No tracked data changed._
+
+_The Electrical dataset is not yet complete or registered. The source adapter
+still needs full-document extraction plus typed specialization-track and
+advanced-laboratory rules from the same official bulletin. Only after those
+facts are complete and validated may it materialize a program model and board.
+Do not expose Electrical Engineering in the UI from this partial parse._
+
+_Previous entry: 2026-08-26 (cont. 29) — B37. (**B37 authoritative TAU program identity discovery is verified.**
+The data-acquisition boundary can query TAU's official `getPrograms` index and
+select a program only by one exact normalized title, degree and school match;
+missing, ambiguous, malformed and unavailable results fail closed.)_
+
+The private-beta inventory proved
 that the repository has no Electrical Engineering program model, board or
 frontend registration; the generic planner cannot honestly support that degree
 until a separate authoritative dataset exists. It also proved that the essential
