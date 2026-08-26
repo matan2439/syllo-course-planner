@@ -1,5 +1,28 @@
 # Autonomous Progress
 
+## Current priority — Unified Planner Production Recovery (R0/R1)
+
+The user explicitly paused further Electrical Engineering implementation until
+the fragmented live planner is recovered into one canonical React/Next product.
+The approved design is
+`docs/superpowers/specs/2026-08-26-unified-planner-production-recovery-design.md`
+and the active foundation plan is
+`docs/superpowers/plans/2026-08-26-unified-planner-foundation.md`.
+
+R0 establishes `docs/architecture/planner-surface-inventory.md`: the public
+`/planner` still embeds the legacy HTML; the full native Agent remains behind a
+Preview-only route; React already owns repository search/details, completed
+status, conversation, alternatives, priority and authoritative Agent Apply, but
+manual add/remove/drag/move have no React or server mutation owner. Production
+durability also remains unresolved because proposals are process-memory state
+and only local Preview has a file-backed board adapter.
+
+Do not resume the preserved Electrical RED in
+`tests/test_tau_curriculum_document.py` until R0-R5 complete. Do not stage or
+discard it while implementing planner Recovery. Production and public routing
+remain unchanged through R1-R3; promotion requires exact-commit Preview parity,
+durable storage approval and rollback evidence.
+
 Durable handoff for the autonomous Syllo product-engineering routine. Read this
 first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
