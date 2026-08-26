@@ -73,10 +73,63 @@ class UnresolvedCurriculumFact:
 
 
 @dataclass(frozen=True)
+class SelectionRuleResolution:
+    resolved_rule: CurriculumSelectionRule | None
+    reason: str | None
+    source_urls: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CurriculumSelectionRule:
+    """Generic cross-category minima stated by an authoritative program source."""
+
+    total_track_courses: int
+    minimum_core_courses: int
+    minimum_distinct_core_tracks: int
+    advanced_labs_required: int
+    minimum_distinct_lab_tracks: int
+    labs_require_prerequisites: bool
+    source_pages: tuple[int, ...] = ()
+    source_url: str = ""
+
+    def _semantic_identity(self) -> tuple[int, int, int, int, int, bool]:
+        return (
+            self.total_track_courses,
+            self.minimum_core_courses,
+            self.minimum_distinct_core_tracks,
+            self.advanced_labs_required,
+            self.minimum_distinct_lab_tracks,
+            self.labs_require_prerequisites,
+        )
+
+    def reconcile(
+        self,
+        other: CurriculumSelectionRule,
+        *,
+        other_source_url: str | None = None,
+    ) -> SelectionRuleResolution:
+        source_urls = tuple(
+            url for url in (self.source_url, other_source_url or other.source_url) if url
+        )
+        if self._semantic_identity() != other._semantic_identity():
+            return SelectionRuleResolution(
+                resolved_rule=None,
+                reason="conflicting_authoritative_selection_rules",
+                source_urls=source_urls,
+            )
+        return SelectionRuleResolution(
+            resolved_rule=self,
+            reason=None,
+            source_urls=source_urls,
+        )
+
+
+@dataclass(frozen=True)
 class ParsedCurriculumDocument:
     identity: CurriculumIdentity
     total_required_hours: float
     structure: tuple[CurriculumStructurePart, ...]
+    selection_rule: CurriculumSelectionRule
     mandatory_courses: tuple[CurriculumCourse, ...]
     unresolved: tuple[UnresolvedCurriculumFact, ...]
 
@@ -307,6 +360,72 @@ def _mandatory_courses(
     return tuple(accepted), tuple(unresolved)
 
 
+_HEBREW_COUNT = {
+    "אחד": 1,
+    "אחת": 1,
+    "שני": 2,
+    "שתי": 2,
+    "שניים": 2,
+    "שתיים": 2,
+    "שלושה": 3,
+    "שלוש": 3,
+    "ארבעה": 4,
+    "ארבע": 4,
+}
+
+
+def _count(raw: str) -> int:
+    normalized = raw.strip()
+    if normalized.isdigit():
+        return int(normalized)
+    if normalized not in _HEBREW_COUNT:
+        raise CurriculumSourceMismatch(f"Unsupported authoritative count: {raw!r}")
+    return _HEBREW_COUNT[normalized]
+
+
+def _selection_rule(
+    pages: list[CurriculumTextPage],
+    source: CurriculumSource,
+) -> CurriculumSelectionRule:
+    claims: list[CurriculumSelectionRule] = []
+    number = r"(\d+|אחד|אחת|שני|שתי|שניים|שתיים|שלושה|שלוש|ארבעה|ארבע)"
+    for page in pages:
+        text = re.sub(r"\s+", " ", page.text).replace("״", '"')
+        total = re.search(rf"סה[\"']כ\s+{number}\s+קורסים\s+\)?לא כולל מעבדות", text)
+        core = re.search(rf"לפחות\s+{number}\s+קורסים\s+מוגדרים\s+[\"']קורס ליבה[\"']", text)
+        core_tracks = re.search(rf"מ{number}\s+מסלולים\s+שונים", text)
+        labs = re.search(rf"יש\s+להשלים\s+{number}\s+מעבדות\s+מתקדמות", text)
+        lab_tracks = re.search(rf"ב{number}\s+מסלולים\s+שונים", text)
+        if not any((total, core, core_tracks, labs, lab_tracks)):
+            continue
+        if not all((total, core, core_tracks, labs, lab_tracks)):
+            raise CurriculumSourceMismatch("Selection rule is incomplete in the authoritative source")
+        claims.append(
+            CurriculumSelectionRule(
+                total_track_courses=_count(total.group(1)),
+                minimum_core_courses=_count(core.group(1)),
+                minimum_distinct_core_tracks=_count(core_tracks.group(1)),
+                advanced_labs_required=_count(labs.group(1)),
+                minimum_distinct_lab_tracks=_count(lab_tracks.group(1)),
+                labs_require_prerequisites="דרישות הקדם למעבדה" in text,
+                source_pages=(page.page_number,),
+                source_url=source.source_url,
+            )
+        )
+    if not claims:
+        raise CurriculumSourceMismatch("Authoritative selection rule is missing")
+    semantic_claims = {claim._semantic_identity() for claim in claims}
+    if len(semantic_claims) != 1:
+        raise CurriculumSourceMismatch("Authoritative document contains conflicting selection rules")
+    claim = claims[0]
+    return CurriculumSelectionRule(
+        **{
+            **claim.__dict__,
+            "source_pages": tuple(sorted({page for item in claims for page in item.source_pages})),
+        }
+    )
+
+
 def parse_curriculum_document(
     pages: Iterable[CurriculumTextPage],
     source: CurriculumSource,
@@ -317,11 +436,13 @@ def parse_curriculum_document(
         raise CurriculumSourceMismatch("Curriculum document has no pages")
     identity = _document_identity(ordered_pages, source)
     structure, total_required_hours = _structure(ordered_pages)
+    selection_rule = _selection_rule(ordered_pages, source)
     mandatory_courses, unresolved = _mandatory_courses(ordered_pages)
     return ParsedCurriculumDocument(
         identity=identity,
         total_required_hours=total_required_hours,
         structure=structure,
+        selection_rule=selection_rule,
         mandatory_courses=mandatory_courses,
         unresolved=unresolved,
     )

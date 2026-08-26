@@ -5,13 +5,44 @@ first; `.remember/current.md` is the detailed narrative log this summarizes
 (read it for full root-cause writeups and prior-session detail).
 
 _Last updated: 2026-08-26, session on branch `ui/frontend-modernization`
-(**B38 source-provenanced TAU curriculum ingestion is verified.**
-Official curriculum text can now become typed identity, degree structure and
-mandatory-course facts without title/category inference. Conflicts fail to an
-explicit unresolved result. No program or catalog data was generated. **Not
-Production-ready.** Not merged, not deployed.)_
+(**B39 authoritative cross-track selection rules are verified.**
+The source adapter now retains total electives, core-course/distinct-track and
+advanced-lab/distinct-track minima with provenance, while conflicting official
+sources remain explicitly unresolved. No program or catalog data was generated.
+**Not Production-ready.** Not merged, not deployed.)_
 
-_Latest entry: 2026-08-26 (cont. 30) — B38. RED used exact excerpts from TAU's
+_Latest entry: 2026-08-26 (cont. 31) — B39. The official Electrical bulletin
+states 12 track courses excluding laboratories, at least three core courses
+from three distinct tracks, and two advanced laboratories from two distinct
+tracks with prerequisites. RED required all six semantics plus the exact source
+page and URL. GREEN adds a typed cross-category selection rule parsed from the
+official text; the planner still does not infer these constraints from category
+names or course titles._
+
+_A second official TAU School of Electrical Engineering page currently states
+four core courses from four distinct tracks while retaining the same 12-course
+and two-laboratory requirements. This conflicts with the תשפ"ה PDF's three/three
+rule. The new reconciliation contract deliberately returns
+`conflicting_authoritative_selection_rules` with both source URLs and no
+resolved rule. Neither value has been silently promoted into an Electrical
+program model. Resolving the applicable academic-year authority is mandatory
+before beta registration._
+
+_Focused selection-rule coverage passes 11/11. The complete curriculum/index/
+GraphQL parser, Mechanical PDF-program and generic requirements regression
+family passes 5/5 suites and 183/183 tests. No tracked data, Production surface,
+provider, deployment or catalog output changed._
+
+_Next: acquire or identify the current academic-year Electrical bulletin from
+an official source, then parse complete track/core/laboratory membership. If
+the current source cannot resolve the 3-versus-4 conflict, retain the typed
+unresolved gate and do not expose Electrical planning as authoritative._
+
+_Previous entry: 2026-08-26 (cont. 30) — B38. (**B38 source-provenanced TAU curriculum ingestion is verified.**
+Official curriculum text can become typed identity, degree structure and
+mandatory-course facts without title/category inference.)_
+
+RED used exact excerpts from TAU's
 official 294-page Electrical Engineering bulletin for program
 `0512-11-01-0000` and required a fail-closed source adapter: exact title, code,
 academic year and print-date identity; the 179-hour degree total; seven

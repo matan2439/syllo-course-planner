@@ -93,6 +93,16 @@ Sc.B. בהנדסת חשמל
 כלים מתמטיים לפיזיקה שיעור 2 ש"ס
 ''',
         ),
+        CurriculumTextPage(
+            page_number=58,
+            text='''
+2.4.5 קורסי מסלול
+במסלולי הבחירה יש לצבור סה"כ 12 קורסים )לא כולל מעבדות( שמתוכם לפחות שלושה קורסים מוגדרים "קורס ליבה" -
+משלושה מסלולים שונים.
+יש להשלים 2 מעבדות מתקדמות בשני מסלולים שונים, ובתנאי שיש לתלמיד.ה את דרישות הקדם למעבדה.
+לצורך מילוי מכסת השעות לתואר )179 שעות( רשאי.ת התלמיד.ה לבחור קורסים מרשימת קורסי המסלול.
+''',
+        ),
     ]
 
 
@@ -115,6 +125,13 @@ def test_parses_authoritative_identity_and_degree_structure() -> None:
         ("advanced_labs", 6.0, 8.0),
         ("humanities", 6.0, 6.0),
     ]
+    assert result.selection_rule.total_track_courses == 12
+    assert result.selection_rule.minimum_core_courses == 3
+    assert result.selection_rule.minimum_distinct_core_tracks == 3
+    assert result.selection_rule.advanced_labs_required == 2
+    assert result.selection_rule.minimum_distinct_lab_tracks == 2
+    assert result.selection_rule.labs_require_prerequisites is True
+    assert result.selection_rule.source_pages == (58,)
 
 
 def test_parses_mandatory_courses_with_source_provenance_and_prerequisites() -> None:
@@ -222,6 +239,7 @@ def test_course_block_can_continue_across_a_pdf_page_boundary() -> None:
             ),
         ]
     )
+    pages.append(_official_excerpt_pages()[-1])
 
     result = parse_curriculum_document(pages, SOURCE)
     course = next(course for course in result.mandatory_courses if course.course_id == "0509-1745")
@@ -229,3 +247,28 @@ def test_course_block_can_continue_across_a_pdf_page_boundary() -> None:
     assert course.prerequisite_course_ids == ("0509-1724", "0509-1824")
     assert course.concurrent_course_ids == ("0509-1747",)
     assert course.source_pages == (11, 12)
+
+
+def test_conflicting_official_selection_rules_remain_unresolved() -> None:
+    pdf_rule = parse_curriculum_document(_official_excerpt_pages(), SOURCE).selection_rule
+    current_school_page_rule = pdf_rule.__class__(
+        total_track_courses=12,
+        minimum_core_courses=4,
+        minimum_distinct_core_tracks=4,
+        advanced_labs_required=2,
+        minimum_distinct_lab_tracks=2,
+        labs_require_prerequisites=True,
+        source_pages=(),
+    )
+
+    resolution = pdf_rule.reconcile(
+        current_school_page_rule,
+        other_source_url="https://engineering.tau.ac.il/frontpage?page=73&tab=0",
+    )
+
+    assert resolution.resolved_rule is None
+    assert resolution.reason == "conflicting_authoritative_selection_rules"
+    assert resolution.source_urls == (
+        SOURCE.source_url,
+        "https://engineering.tau.ac.il/frontpage?page=73&tab=0",
+    )
