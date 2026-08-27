@@ -101,7 +101,7 @@ import { buildPlanAlternatives, constraintFingerprint } from './plan_alternative
 import { computePriorityQuestionImpact } from './priority_impact';
 import { describeAcademicProgress } from './academic_progress';
 import { resolveOwner } from './session_owner';
-import { academicStatusDigest, getBoardRepository, getProposalStore } from './apply_runtime';
+import { academicStatusDigest, getAcademicContextStore, getBoardRepository, getProposalStore } from './apply_runtime';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord } from './proposal_store';
 import * as evidenceLoader from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
@@ -2325,6 +2325,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           outcome,
           applyEligible: true,
         };
+        await getAcademicContextStore().put({
+          ownerId: owner.ownerId,
+          programId: program_id,
+          digest: record.academicStatusDigest,
+          personalStatus: effectivePlanContext?.personal_status ?? {},
+        });
         await getProposalStore().put(record);
         (responseBody.academicDecision as Record<string, unknown>).proposal = toReceipt(record);
       }

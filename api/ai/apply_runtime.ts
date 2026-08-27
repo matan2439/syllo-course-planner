@@ -22,6 +22,7 @@ import {
 } from './board_repository';
 import { FileBoardRepository } from './board_repository_file';
 import { InMemoryProposalStore, type ProposalStore } from './proposal_store';
+import { InMemoryAcademicContextStore, type AcademicContextStore } from './academic_context_store';
 
 /** The env var that switches on the local Preview file adapter. */
 export const BOARD_STATE_DIR_ENV = 'SYLLO_BOARD_STATE_DIR';
@@ -30,6 +31,7 @@ export type StorageKind = 'memory' | 'file';
 
 let boardRepo: BoardRepository | undefined;
 let proposalStore: ProposalStore | undefined;
+let academicContextStore: AcademicContextStore | undefined;
 let activeKind: StorageKind | undefined;
 
 function selectedKind(): StorageKind {
@@ -61,6 +63,7 @@ export function getBoardRepository(): BoardRepository {
     // A proposal is meaningless without the board it was planned against, so
     // the two are rebuilt together and never straddle a switch.
     proposalStore = new InMemoryProposalStore();
+    academicContextStore = new InMemoryAcademicContextStore();
   }
   return boardRepo;
 }
@@ -75,10 +78,16 @@ export function getProposalStore(): ProposalStore {
   return proposalStore!;
 }
 
+export function getAcademicContextStore(): AcademicContextStore {
+  if (!academicContextStore) getBoardRepository();
+  return academicContextStore!;
+}
+
 /** Test-only: drop both stores so suites cannot leak state into each other. */
 export function resetApplyRuntime(): void {
   boardRepo = undefined;
   proposalStore = undefined;
+  academicContextStore = undefined;
   activeKind = undefined;
 }
 

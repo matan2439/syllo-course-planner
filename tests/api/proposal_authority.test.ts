@@ -13,7 +13,7 @@ jest.mock('../../api/ai/evidence_loader', () => ({
 
 import handler from '../../api/ai/generate-plan';
 import { randomUUID } from 'crypto';
-import { getProposalStore, resetApplyRuntime, academicStatusDigest } from '../../api/ai/apply_runtime';
+import { getAcademicContextStore, getProposalStore, resetApplyRuntime, academicStatusDigest } from '../../api/ai/apply_runtime';
 import { checkProposalAccess, PROPOSAL_TTL_MS } from '../../api/ai/proposal_store';
 import { SESSION_COOKIE } from '../../api/ai/session_owner';
 import type { SyllabusDocument } from '../../api/ai/syllabus_source';
@@ -99,6 +99,21 @@ afterAll(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPAS
 beforeEach(() => { MOCK_DOCUMENTS = ELECTIVES.map(doc); resetApplyRuntime(); });
 
 describe('S1 — Generate retains the exact validated candidate set', () => {
+  test('stores the session-owned academic facts alongside a successful proposal', async () => {
+    const personalStatus = {
+      completed: [{ course_id: 'E1' }], currently_taking: [],
+      completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+    };
+    const res = await generate({ plan_context: { personal_status: personalStatus } }, OWNER);
+    expect(receiptOf(res)).toBeDefined();
+    expect(await getAcademicContextStore().load(OWNER, 'test_program_grounded_preview_2027'))
+      .toEqual(expect.objectContaining({
+        ownerId: OWNER,
+        digest: academicStatusDigest(personalStatus),
+        personalStatus,
+      }));
+  });
+
   test('the stored record holds the SAME plans the response showed', async () => {
     const res = await generate({}, OWNER);
     const receipt = receiptOf(res);
