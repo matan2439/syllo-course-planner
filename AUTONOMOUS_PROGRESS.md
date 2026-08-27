@@ -1,6 +1,29 @@
 # Autonomous Progress
 
-## Current priority — Unified Planner Production Recovery (R4 verified; R5 next)
+## Current priority — Unified Planner Production Recovery (R4 verified; R5 Preview acceptance in progress)
+
+R5 recovered remote parity on 2026-08-27: local and
+`origin/ui/frontend-modernization` reached `8db52b5`. An immutable Vercel
+Preview was built from a clean `git archive` of that commit, with `target:null`;
+Production was not promoted or modified. The Preview proved the canonical
+`/planner` renders the unified RTL React workspace without an iframe, loads the
+authoritative board plus 56-course repository, redirects `/plan`, `/ai-plan`
+and `/planner/native`, and has no horizontal overflow at 390x844. Browser
+network requests for the page and board were 2xx/304; the only console warning
+remained the known Three.js `Clock` deprecation.
+
+The first real manual add correctly exposed a deployment-boundary defect and
+failed without mutating the board: `POST /api/ai/planning-context` returned 404.
+Root cause is exact and local: `api/ai/planning-context.ts` exists and its
+handler tests pass, but `vercel.json` omitted both its `@vercel/node` build and
+rewrite. A RED deployment-contract test now proves the omission; the minimal
+build/rewrite correction is GREEN together with the endpoint and API-client
+tests (3 suites, 6 tests). Fresh full verification after the correction passes
+187/187 API suites (2495/2495 tests), 27/27 web suites (223/223 tests), both
+root and web typechecks, and the optimized Next build. The next action is to
+commit/push this deployment fix, create a new immutable Preview, and repeat the
+manual add/refresh and Agent symbiosis acceptance. No external AI provider was
+invoked.
 
 R4 route consolidation is verified on the development branch. Public
 `/planner` now owns the canonical purple React workspace directly, with no
