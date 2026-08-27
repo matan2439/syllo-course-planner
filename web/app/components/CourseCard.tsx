@@ -21,6 +21,14 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   mutationPending?: boolean
 }) {
   return (
+    <div
+      draggable={Boolean(onMove) && !mutationPending}
+      onDragStart={(event) => {
+        if (!onMove || mutationPending) return
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData('application/x-syllo-course-id', course.id)
+      }}
+    >
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
@@ -95,5 +103,6 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         </details>
       )}
     </Card>
+    </div>
   )
 }

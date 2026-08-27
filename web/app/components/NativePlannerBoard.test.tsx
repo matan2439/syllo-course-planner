@@ -3,7 +3,7 @@
  * the canonical path: board payload → shared/planner adapter → BoardModel →
  * boardModelToVM → NativePlannerBoard. No hand-built BoardVM data fixtures.
  */
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import NativePlannerBoard from './NativePlannerBoard'
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
@@ -57,4 +57,23 @@ test('uses the responsive grid (no forced horizontal overflow)', () => {
   expect(grid.className).toMatch(/grid-cols-1/)
   expect(grid.className).toMatch(/sm:grid-cols-2/)
   expect(grid.className).toMatch(/xl:grid-cols-4/)
+})
+
+test('dragging a course onto another semester invokes the same authoritative move intent', () => {
+  const onMoveCourse = jest.fn()
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  const card = screen.getByText('קורס לדוגמה').closest('[draggable="true"]') as HTMLElement
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+  const transfer = {
+    value: '',
+    setData(_type: string, value: string) { this.value = value },
+    getData() { return this.value },
+    effectAllowed: '', dropEffect: '',
+  }
+  expect(card).not.toBeNull()
+  fireEvent.dragStart(card, { dataTransfer: transfer })
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+  fireEvent.drop(target, { dataTransfer: transfer })
+  expect(onMoveCourse).toHaveBeenCalledWith('C-1', 'year_3_semester_b')
+  expect(container.querySelector('details')).toBeInTheDocument() // non-drag keyboard alternative remains
 })

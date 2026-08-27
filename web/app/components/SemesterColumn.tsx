@@ -20,6 +20,17 @@ export default function SemesterColumn({
   return (
     <section
       aria-label={semester.title}
+      onDragOver={(event) => {
+        if (!onMoveCourse || mutationPending) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      }}
+      onDrop={(event) => {
+        if (!onMoveCourse || mutationPending) return
+        event.preventDefault()
+        const courseId = event.dataTransfer.getData('application/x-syllo-course-id')
+        if (courseId) onMoveCourse(courseId, semester.id)
+      }}
       className={`rise flex min-w-0 flex-col gap-2.5 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
