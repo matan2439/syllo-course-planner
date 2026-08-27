@@ -12,11 +12,32 @@ jest.mock('../../../components/ProductShell', () => ({
 
 jest.mock('../../../components/UnifiedPlannerWorkspace', () => ({
   __esModule: true,
-  default: ({ programId }: { programId: string }) => <div data-testid="unified-workspace">{programId}</div>,
+  default: ({ programId, repo }: { programId: string; repo: unknown }) => (
+    <div data-testid="unified-workspace">{programId}:{JSON.stringify(repo)}</div>
+  ),
 }))
 
+const readBoardForProgramId = jest.fn(async (_programId: string) => ({
+  metadata: {
+    program_repository_courses: [
+      { course_id: 'E1', name_he: 'קורס fixture', weekly_hours: 4, is_mandatory: false },
+    ],
+  },
+  semesters: [
+    { semester_id: 'year_3_semester_a', courses: [] },
+    { semester_id: 'year_3_semester_b', courses: [] },
+  ],
+}))
 jest.mock('../../../../lib/board-data', () => ({
-  readBoardForProgram: jest.fn(async () => ({ metadata: { program_repository_courses: [] } })),
+  readBoardForProgram: jest.fn(async () => ({
+    metadata: {
+      program_repository_courses: [
+        { course_id: 'MECH', name_he: 'קורס מתוכנית ברירת המחדל', weekly_hours: 4, is_mandatory: false },
+      ],
+    },
+    semesters: [],
+  })),
+  readBoardForProgramId: (programId: string) => readBoardForProgramId(programId),
 }))
 
 import AgentPreviewPage from './page'
@@ -42,5 +63,16 @@ describe('unified Agent Preview route', () => {
 
     expect(screen.getByTestId('product-shell')).toHaveAttribute('data-lightweight', 'false')
     expect(screen.getByTestId('unified-workspace')).toHaveTextContent('mechanical_engineering_2027')
+  })
+
+  test('a fixture program renders the repository from the same authoritative snapshot', async () => {
+    process.env.ENABLE_ACADEMIC_AGENT_PREVIEW = '1'
+    render(await AgentPreviewPage({
+      searchParams: Promise.resolve({ program: 'test_program_grounded_preview_2027' }),
+    }))
+
+    expect(readBoardForProgramId).toHaveBeenCalledWith('test_program_grounded_preview_2027')
+    expect(screen.getByTestId('unified-workspace')).toHaveTextContent('E1')
+    expect(screen.getByTestId('unified-workspace')).not.toHaveTextContent('MECH')
   })
 })

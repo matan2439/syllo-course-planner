@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { readBoardForProgram } from '../../../../lib/board-data'
+import { readBoardForProgramId } from '../../../../lib/board-data'
 import { getProgram } from '../../../../lib/programs'
 import { adaptRepository } from '../../../../lib/repository'
 import ProductShell from '../../../components/ProductShell'
@@ -20,9 +20,10 @@ export const dynamic = 'force-dynamic'
  * never leak. The canonical `/planner/native` page stays byte-identical and
  * flag-off.
  *
- * The `program` query param may still address deterministic board fixtures for
- * Agent acceptance. Repository presentation is loaded from the registered
- * program until fixtures gain their own complete repository projection.
+ * The `program` query param may address deterministic board fixtures for Agent
+ * acceptance. The repository MUST come from that exact snapshot: displaying a
+ * default-program course while the API validates a fixture would make a course
+ * look addable and then reject it as unknown.
  */
 export default async function AgentPreviewPage({
   searchParams,
@@ -34,7 +35,7 @@ export default async function AgentPreviewPage({
   const { program: programParam } = await searchParams
   const program = getProgram(programParam)
   const programId = programParam?.trim() || program.id
-  const raw = await readBoardForProgram(program)
+  const raw = await readBoardForProgramId(programId)
   const repo = raw ? adaptRepository(raw) : { categories: [], totalCourses: 0 }
 
   return (
