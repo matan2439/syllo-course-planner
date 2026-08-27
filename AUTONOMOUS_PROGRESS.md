@@ -25,6 +25,27 @@ commit/push this deployment fix, create a new immutable Preview, and repeat the
 manual add/refresh and Agent symbiosis acceptance. No external AI provider was
 invoked.
 
+That corrected Preview (`62c9176`, deployment
+`dpl_E5zxu8uTERQBQpzUZFEmXRqSUjwS`, `target:null`) proved the route fix:
+`POST /api/ai/planning-context` changed from HTTP 404 to HTTP 200. The next
+authoritative boundary then failed closed: `POST /api/ai/edit-board` executed
+but returned the typed business result `ACADEMIC_CONTEXT_NOT_FOUND`; the board
+did not mutate. Both requests carried the same opaque `syllo_owner` cookie.
+The cause is the current process-memory `academic_context_store`: Vercel builds
+planning-context and edit-board as separate serverless functions, so context
+written in one function is not a reliable shared source of truth for the
+other. Rewrites, warm-instance assumptions, or another global map cannot make
+this durable or authoritative.
+
+R5 is therefore blocked at the real persistence boundary, not at UI routing.
+The mandatory next decision is a production-compatible shared durable adapter
+for anonymous session ownership, academic context, boards, proposals,
+idempotency and compare-and-swap versions. No vendor may be selected silently;
+Supabase remains explicitly out of scope. Until the user approves a storage
+architecture/provider and required environment/migration work, do not promote
+this Preview, claim Production readiness, or delete the legacy rollback route.
+The current public Production remains unchanged.
+
 R4 route consolidation is verified on the development branch. Public
 `/planner` now owns the canonical purple React workspace directly, with no
 iframe. `/plan`, `/ai-plan` and `/planner/native` redirect to `/planner` and
