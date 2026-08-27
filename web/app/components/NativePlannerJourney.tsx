@@ -625,6 +625,45 @@ export default function NativePlannerJourney({
     }
   }
 
+  const commitManualMove = async (courseId: string, semesterId: string) => {
+    if (manualEditPhase === 'saving') return
+    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
+    manualEditKeyRef.current = operationId
+    setManualEditPhase('saving')
+    setManualEditError(null)
+    try {
+      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      if (!academicStatusDigest) {
+        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
+        academicStatusDigest = (await establishPlanningContextFn({
+          program_id: programId,
+          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
+          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
+        })).academicStatusDigest
+      }
+      const result = await editBoardFn({
+        operation: 'move_course', program_id: programId,
+        expected_board_version: boardVersion, operation_id: operationId,
+        course_id: courseId, semester_id: semesterId,
+        academic_status_digest: academicStatusDigest,
+      })
+      setManualEditPhase('idle')
+      if (!result.ok) {
+        setManualEditError(result.messageHe)
+        if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
+        return
+      }
+      setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+      setBoardVersion(result.board.version)
+      setManualRevision((value) => value + 1)
+      manualEditKeyRef.current = null
+      onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
+    } catch {
+      setManualEditPhase('idle')
+      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
@@ -650,6 +689,7 @@ export default function NativePlannerJourney({
           <NativePlannerBoard
             board={boardModelToVM(current)}
             onRemoveCourse={commitManualRemove}
+            onMoveCourse={commitManualMove}
             mutationPending={manualEditPhase === 'saving'}
           />
         </section>

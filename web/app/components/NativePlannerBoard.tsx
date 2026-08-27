@@ -9,9 +9,10 @@ import type { BoardVM } from '../../lib/board'
  * no mutation, no draft/apply — those arrive in later slices. Not wired to any
  * route or navigation yet.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, mutationPending = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onMoveCourse, mutationPending = false }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
+  onMoveCourse?: (courseId: string, semesterId: string) => void
   mutationPending?: boolean
 }) {
   if (board.semesters.length === 0) {
@@ -25,7 +26,13 @@ export default function NativePlannerBoard({ board, onRemoveCourse, mutationPend
     >
       {board.semesters.map((s, i) => (
         <div role="listitem" key={s.id} className="min-w-0">
-          <SemesterColumn semester={s} index={i} onRemoveCourse={onRemoveCourse} mutationPending={mutationPending} />
+          <SemesterColumn
+            semester={s} index={i} onRemoveCourse={onRemoveCourse} onMoveCourse={onMoveCourse}
+            moveDestinations={board.semesters
+              .filter((destination) => destination.id !== s.id)
+              .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
+            mutationPending={mutationPending}
+          />
         </div>
       ))}
     </div>

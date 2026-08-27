@@ -6,11 +6,15 @@ export default function SemesterColumn({
   semester,
   index,
   onRemoveCourse,
+  onMoveCourse,
+  moveDestinations,
   mutationPending,
 }: {
   semester: SemesterVM
   index: number
   onRemoveCourse?: (courseId: string) => void
+  onMoveCourse?: (courseId: string, semesterId: string) => void
+  moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
   return (
@@ -40,7 +44,10 @@ export default function SemesterColumn({
       {semester.courses.length === 0 ? (
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
-        semester.courses.map((c) => <CourseCard key={c.id} course={c} onRemove={onRemoveCourse} mutationPending={mutationPending} />)
+        semester.courses.map((c) => <CourseCard
+          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse}
+          moveDestinations={moveDestinations} mutationPending={mutationPending}
+        />)
       )}
     </section>
   )

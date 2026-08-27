@@ -186,6 +186,38 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(applyBtn()).toBeDisabled()
   })
 
+  test('keyboard move alternative commits one server move without Generate', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true, replayed: false, operationId: 'move_test',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_2', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] },
+      ] },
+    }))
+    await renderReady({
+      committedBoardFn: async () => ({
+        programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+          { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+        ],
+      }),
+      editBoardFn, generateFn,
+    })
+    await build()
+
+    fireEvent.click(screen.getByText('אפשרויות העברה עבור קורס Y'))
+    fireEvent.click(screen.getByRole('button', { name: 'העבר קורס Y אל שנה ג׳ — סמסטר ב׳' }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(generateFn).toHaveBeenCalledTimes(1)
+    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
+      operation: 'move_course', course_id: 'Y-1', semester_id: SEM_B,
+      expected_board_version: 'bv_1', academic_status_digest: 'as_test',
+    }))
+    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    const currentBoard = screen.getByLabelText('התוכנית הנוכחית')
+    expect(currentBoard.querySelector('[aria-label="שנה ג׳ — סמסטר ב׳"]')).toHaveTextContent('קורס Y')
+    expect(applyBtn()).toBeDisabled()
+  })
+
   test('the request names a candidate and carries NO plan', async () => {
     const server = await renderReady()
     await build()

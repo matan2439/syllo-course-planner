@@ -13,9 +13,11 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
-export default function CourseCard({ course, onRemove, mutationPending = false }: {
+export default function CourseCard({ course, onRemove, onMove, moveDestinations, mutationPending = false }: {
   course: CourseVM
   onRemove?: (courseId: string) => void
+  onMove?: (courseId: string, semesterId: string) => void
+  moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
   return (
@@ -70,6 +72,27 @@ export default function CourseCard({ course, onRemove, mutationPending = false }
         >
           הסר מהלוח
         </button>
+      )}
+      {onMove && moveDestinations && moveDestinations.length > 0 && (
+        <details className="mt-2 text-xs">
+          <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
+            אפשרויות העברה עבור {course.name}
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {moveDestinations.map((destination) => (
+              <button
+                key={destination.semesterId}
+                type="button"
+                disabled={mutationPending}
+                aria-label={`העבר ${course.name} אל ${destination.label}`}
+                onClick={() => onMove(course.id, destination.semesterId)}
+                className="rounded-full border border-[var(--border)] px-2.5 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
+              >
+                {destination.label}
+              </button>
+            ))}
+          </div>
+        </details>
       )}
     </Card>
   )
