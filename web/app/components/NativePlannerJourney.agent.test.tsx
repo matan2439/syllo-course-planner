@@ -131,7 +131,9 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(applyBtn).toBeDisabled()
     // real handler enforces it too: clicking does not change the committed board
     fireEvent.click(applyBtn)
-    expect(screen.queryByText('התוכנית הנוכחית')).toBeNull() // still showing the (now stale) draft, not committed
+    expect(server.calls).toHaveLength(0)
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
   })
 
   test('a profile-version-stale proposal is VISIBLY marked stale, not just disabled', async () => {

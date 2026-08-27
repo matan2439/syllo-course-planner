@@ -211,7 +211,10 @@ describe('C4 — selecting an alternative, and applying the one selected', () =>
     fireEvent.click(screen.getAllByRole('radio')[1])
     // The committed board is only replaced by Apply.
     expect(screen.queryByText('הצעת תוכנית')).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'התוכנית הנוכחית' })).toBeNull()
+    expect(committedText()).toContain('קורס בסיס X')
+    expect(committedText()).not.toContain('קורס Y')
+    expect(committedText()).not.toContain('קורס Z')
+    expect(server.calls).toHaveLength(0)
   })
 
   test('applying after selecting B commits B — not the recommended A', async () => {
