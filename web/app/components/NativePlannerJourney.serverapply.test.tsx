@@ -69,6 +69,7 @@ async function renderReady(over: {
   committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
   manualAddIntent?: { courseId: string; semesterIds: string[] } | null
   editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
+  establishPlanningContextFn?: (request: any) => Promise<{ academicStatusDigest: string }>
   generateFn?: (request: GeneratePlanRequest) => Promise<GeneratedPlanModel>
 } = {}) {
   const server = over.stub ?? createServerApplyStub({
@@ -88,6 +89,7 @@ async function renderReady(over: {
       useAcademicDecisionAgent
       manualAddIntent={over.manualAddIntent}
       editBoardFn={over.editBoardFn}
+      establishPlanningContextFn={over.establishPlanningContextFn}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
@@ -102,6 +104,28 @@ const applyBtn = () => screen.getByRole('button', { name: /החל/ })
 const committed = () => screen.queryByLabelText('התוכנית הנוכחית')?.textContent ?? ''
 
 describe('S5 — Apply goes to the server, and only the server commits', () => {
+  test('manual add before the first Build syncs context but never Generates', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const establishPlanningContextFn = jest.fn(async () => ({ academicStatusDigest: 'as_synced' }))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true, replayed: false, operationId: 'edit_prebuild',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    }))
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      generateFn, establishPlanningContextFn, editBoardFn,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(establishPlanningContextFn).toHaveBeenCalledTimes(1)
+    expect(generateFn).not.toHaveBeenCalled()
+    expect(editBoardFn.mock.calls[0][0].academic_status_digest).toBe('as_synced')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+  })
+
   test('manual add commits the server board, sends no Generate, and stales the visible proposal', async () => {
     const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
     const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({

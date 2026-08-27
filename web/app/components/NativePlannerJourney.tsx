@@ -21,7 +21,7 @@ import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/mod
 import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
 import {
-  applyPlan, editBoard, generatePlan, getBoard, getCommittedBoard,
+  applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard,
   type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type ManualBoardEditResult,
 } from '../../../shared/planner/api-client'
 import { boardModelToVM, semesterTitleHe } from '../../lib/planner/board-vm'
@@ -83,6 +83,8 @@ const defaultCommittedBoard = (programId: string) =>
   getCommittedBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
 const defaultEditBoard = (req: Parameters<typeof editBoard>[1]) =>
   editBoard({ fetchImpl: browserFetch, baseUrl: '' }, req)
+const defaultEstablishPlanningContext = (req: Parameters<typeof establishPlanningContext>[1]) =>
+  establishPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, req)
 
 export interface ManualAddIntent {
   courseId: string
@@ -124,6 +126,7 @@ export default function NativePlannerJourney({
   useAcademicDecisionAgent = false,
   manualAddIntent = null,
   editBoardFn = defaultEditBoard,
+  establishPlanningContextFn = defaultEstablishPlanningContext,
   onManualAddSettled,
   onCommittedCourseIdsChange,
 }: {
@@ -136,6 +139,7 @@ export default function NativePlannerJourney({
   committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
   manualAddIntent?: ManualAddIntent | null
   editBoardFn?: (req: Parameters<typeof editBoard>[1]) => Promise<ManualBoardEditResult>
+  establishPlanningContextFn?: typeof defaultEstablishPlanningContext
   onManualAddSettled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   /**
@@ -542,22 +546,27 @@ export default function NativePlannerJourney({
 
   const commitManualAdd = async (semesterId: string) => {
     if (!manualAddIntent || manualEditPhase === 'saving') return
-    const receipt = proposal?.proposal
-    if (!receipt) {
-      setManualEditError('יש לבנות תוכנית פעם אחת כדי לסנכרן את המצב האקדמי לפני עריכה ידנית.')
-      return
-    }
     const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
     manualEditKeyRef.current = operationId
     setManualEditPhase('saving')
     setManualEditError(null)
     let result: ManualBoardEditResult
     try {
+      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      if (!academicStatusDigest) {
+        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
+        const synced = await establishPlanningContextFn({
+          program_id: programId,
+          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
+          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
+        })
+        academicStatusDigest = synced.academicStatusDigest
+      }
       result = await editBoardFn({
         operation: 'add_course', program_id: programId,
         expected_board_version: boardVersion, operation_id: operationId,
         course_id: manualAddIntent.courseId, semester_id: semesterId,
-        academic_status_digest: receipt.academicStatusDigest,
+        academic_status_digest: academicStatusDigest,
       })
     } catch {
       setManualEditPhase('idle')
