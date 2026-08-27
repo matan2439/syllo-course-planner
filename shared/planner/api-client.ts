@@ -8,7 +8,7 @@
 import { boardResponseToModel, generatePlanResponseToModel } from './adapters';
 import {
   applyPlanResponseSchema, committedBoardResponseSchema, manualBoardEditResponseSchema,
-  type ManualBoardEditRequest,
+  planningContextResponseSchema, type ManualBoardEditRequest, type PlanningContextRequest,
 } from './wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
@@ -161,6 +161,27 @@ export async function getCommittedBoard(
 }
 
 // ── R2: authoritative manual board edit ────────────────────────────────────
+export async function establishPlanningContext(
+  deps: ClientDeps,
+  req: PlanningContextRequest,
+): Promise<{ academicStatusDigest: string }> {
+  let res: FetchResponseLike;
+  try {
+    res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/planning-context`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(req),
+    });
+  } catch (error) {
+    throw new ContractError('planning-context request failed', error);
+  }
+  const body = await readJson(res);
+  const parsed = planningContextResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed planning-context response', parsed.error);
+  return { academicStatusDigest: parsed.data.academic_status_digest };
+}
+
 export type ManualBoardEditResult =
   | { ok: true; replayed: boolean; operationId: string; board: CommittedBoardState }
   | { ok: false; code: string; messageHe: string; currentBoardVersion?: string | null };

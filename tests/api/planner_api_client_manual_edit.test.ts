@@ -1,4 +1,4 @@
-import { editBoard } from '../../shared/planner/api-client';
+import { editBoard, establishPlanningContext } from '../../shared/planner/api-client';
 
 const request = {
   operation: 'add_course' as const,
@@ -8,6 +8,24 @@ const request = {
 };
 
 describe('R2 — manual edit API client', () => {
+  test('establishes context with same-origin credentials and accepts only the server digest', async () => {
+    const fetchImpl = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({
+      ok: true, academic_status_digest: 'as_1234567890abcdef',
+    }) }));
+    const context = {
+      program_id: request.program_id,
+      plan_context: { personal_status: { completed: [] }, semesters: [] },
+      preferences: { disallowed_course_ids: [] },
+    };
+    await expect(establishPlanningContext({ fetchImpl, baseUrl: '' }, context))
+      .resolves.toEqual({ academicStatusDigest: 'as_1234567890abcdef' });
+    const [url, init] = fetchImpl.mock.calls[0] as any;
+    expect(url).toBe('/api/ai/planning-context');
+    expect(init.credentials).toBe('same-origin');
+    expect(JSON.parse(init.body)).toEqual(context);
+    expect(init.body).not.toMatch(/owner_id|academic_status_digest|authoritative_plan/);
+  });
+
   test('sends one minimal same-origin intent and parses the authoritative board', async () => {
     const fetchImpl = jest.fn(async (_url, _init) => ({ ok: true, status: 200, json: async () => ({
       ok: true, replayed: false, operation_id: request.operation_id,
