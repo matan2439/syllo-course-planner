@@ -1,4 +1,6 @@
-import { prepareManualCourseAdd, prepareManualCourseRemove } from '../../api/ai/manual_board_edit_service';
+import {
+  prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove,
+} from '../../api/ai/manual_board_edit_service';
 import type { AcademicContextRecord } from '../../api/ai/academic_context_store';
 
 const A = 'year_3_semester_a';
@@ -117,5 +119,41 @@ describe('R2 — authoritative manual remove preparation', () => {
     const withMandatory = { ...currentBoard, semesters: [{ semesterId: A, courseIds: ['MANDATORY'] }, { semesterId: B, courseIds: [] }] };
     expect(prepareManualCourseRemove({ boardJson: mandatoryBoard, context, currentBoard: withMandatory, request: remove('MANDATORY') }))
       .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_REQUIRED' }));
+  });
+});
+
+describe('R2 — authoritative manual move preparation', () => {
+  const currentBoard = {
+    ownerId: context.ownerId, programId: PROGRAM, version: 'bv_1', updatedAt: 1,
+    semesters: [{ semesterId: A, courseIds: ['BASE'] }, { semesterId: B, courseIds: [] }],
+  };
+  const move = (course_id: string, semester_id = B) => ({
+    operation: 'move_course' as const, program_id: PROGRAM,
+    expected_board_version: 'bv_1', operation_id: 'move_0123456789abcdef',
+    course_id, semester_id, academic_status_digest: 'as_current',
+  });
+
+  test('moves a present elective to one authoritative destination', () => {
+    expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard, request: move('BASE') }))
+      .toEqual({ ok: true, semesters: [
+        { semesterId: A, courseIds: [] }, { semesterId: B, courseIds: ['BASE'] },
+      ] });
+  });
+
+  test('rejects absent courses and a no-op destination', () => {
+    expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard, request: move('NEEDS_BASE') }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_NOT_PRESENT' }));
+    expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard, request: move('BASE', A) }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_ALREADY_PRESENT' }));
+  });
+
+  test('uses the authoritative offering validator at the destination', () => {
+    expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard, request: move('ONLY_B', A) }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_NOT_PRESENT' }));
+    expect(prepareManualCourseMove({
+      boardJson: BOARD, context,
+      currentBoard: { ...currentBoard, semesters: [{ semesterId: A, courseIds: [] }, { semesterId: B, courseIds: ['ONLY_B'] }] },
+      request: move('ONLY_B', A),
+    })).toEqual(expect.objectContaining({ ok: false, code: 'PLAN_INVALID' }));
   });
 });

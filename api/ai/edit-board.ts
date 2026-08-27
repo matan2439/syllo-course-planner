@@ -5,7 +5,7 @@ import { getAcademicContextStore, getBoardRepository } from './apply_runtime';
 import { loadLocalBoardJson } from './board_loader';
 import type { CommittedBoard } from './board_repository';
 import {
-  prepareManualCourseAdd, prepareManualCourseRemove,
+  prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove,
   type ManualAddFailureCode, type ManualRemoveFailureCode,
 } from './manual_board_edit_service';
 import { resolveOwner } from './session_owner';
@@ -66,7 +66,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const currentBoard = await repo.load(owner.ownerId, request.program_id);
     const candidateId = request.operation === 'add_course'
       ? `add:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
-      : `remove:${request.course_id}:${request.academic_status_digest}`;
+      : request.operation === 'move_course'
+        ? `move:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
+        : `remove:${request.course_id}:${request.academic_status_digest}`;
 
     // A retry legitimately carries the old version. Ask the repository first;
     // only its history can distinguish that replay from a stale new mutation.
@@ -90,9 +92,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!boardJson) { reject(res, 'PROGRAM_NOT_FOUND'); return; }
     const prepared = request.operation === 'add_course'
       ? prepareManualCourseAdd({ boardJson, context, currentBoard, request })
-      : currentBoard
-        ? prepareManualCourseRemove({ boardJson, context, currentBoard, request })
-        : { ok: false as const, code: 'COURSE_NOT_PRESENT' as const };
+      : !currentBoard
+        ? { ok: false as const, code: 'COURSE_NOT_PRESENT' as const }
+        : request.operation === 'move_course'
+          ? prepareManualCourseMove({ boardJson, context, currentBoard, request })
+          : prepareManualCourseRemove({ boardJson, context, currentBoard, request });
     if (!prepared.ok) { reject(res, prepared.code); return; }
 
     const commit = await repo.commit({

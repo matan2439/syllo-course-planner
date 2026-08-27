@@ -295,6 +295,10 @@ export const manualBoardEditRequestSchema = z.discriminatedUnion('operation', [
   manualBoardEditBaseSchema.extend({
     operation: z.literal('remove_course'),
   }).strict(),
+  manualBoardEditBaseSchema.extend({
+    operation: z.literal('move_course'),
+    semester_id: z.string().min(1),
+  }).strict(),
 ]);
 export type ManualBoardEditRequest = z.infer<typeof manualBoardEditRequestSchema>;
 

@@ -8,15 +8,16 @@ const OWNER = 'o'.repeat(43);
 const OTHER = 'x'.repeat(43);
 const PROGRAM = 'test_program_2027';
 const A = 'year_3_semester_a';
+const B = 'year_3_semester_b';
 const BOARD = {
-  semesters: [{ semester_id: A, courses: [] }],
+  semesters: [{ semester_id: A, courses: [] }, { semester_id: B, courses: [] }],
   metadata: {
     completed_course_ids: [],
     program_requirements_categories: { total_required_hours: 3, categories: [] },
     program_repository_courses: [{
       course_id: 'C1', name_he: 'קורס', weekly_hours: 3, is_mandatory: false,
       course_type: 'elective', placement_policy: 'elective',
-      offered_semesters: [A], prerequisites: [],
+      offered_semesters: [A, B], prerequisites: [],
     }],
   },
 };
@@ -97,5 +98,20 @@ describe('R2 — POST /api/ai/edit-board', () => {
       expected_board_version: 'bv_2', operation_id: 'remove_absent_123456789',
     }));
     expect(absent._body.code).toBe('COURSE_NOT_PRESENT');
+  });
+
+  test('moves a present course while the server resolves its source semester', async () => {
+    await call(OWNER, body());
+    const moved = await call(OWNER, {
+      operation: 'move_course', program_id: PROGRAM, expected_board_version: 'bv_1',
+      operation_id: 'move_0123456789abcdef', course_id: 'C1',
+      semester_id: B, academic_status_digest: 'as_current',
+    });
+    expect(moved.statusCode).toBe(200);
+    expect(moved._body.board.version).toBe('bv_2');
+    expect(moved._body.board.semesters).toEqual(expect.arrayContaining([
+      { semesterId: A, courseIds: [] },
+      { semesterId: B, courseIds: ['C1'] },
+    ]));
   });
 });
