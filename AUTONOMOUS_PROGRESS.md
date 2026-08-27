@@ -42,6 +42,8 @@ contract over the same board version/session boundary. It must reject unknown,
 duplicate, completed, prerequisite-invalid and stale requests; only after that
 may the repository add intent update the committed board. Remove/drag/move
 follow as separate verified slices, not as UI-only state.
+The executable R2 plan is
+`docs/superpowers/plans/2026-08-27-unified-planner-manual-add.md`.
 
 Do not resume the preserved Electrical RED in
 `tests/test_tau_curriculum_document.py` until R0-R5 complete. Do not stage or
