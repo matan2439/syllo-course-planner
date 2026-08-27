@@ -82,7 +82,7 @@ export default function UnifiedPlannerWorkspace({
             }}
             className={`rounded-full px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] ${
               activeView === view.id
-                ? 'bg-[var(--purple-strong)] text-white'
+                ? 'bg-[#7c3aed] text-white'
                 : 'border border-[var(--border)] bg-[var(--surface)]'
             }`}
           >

@@ -219,7 +219,7 @@ export default function PreferenceConversation({
 
       <div>
         <button type="button" onClick={build}
-          className="rounded-full bg-[var(--purple-strong)] px-6 py-2 text-sm font-semibold text-white">
+          className="rounded-full bg-[#7c3aed] px-6 py-2 text-sm font-semibold text-white">
           בנה תוכנית
         </button>
       </div>
