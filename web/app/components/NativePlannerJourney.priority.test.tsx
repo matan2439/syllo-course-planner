@@ -167,7 +167,8 @@ function answerHigherImpactQuestions() {
   fireEvent.click(screen.getByRole('button', { name: 'עדיף להימנע מבוקר' }))
 }
 
-const buildButton = () => screen.getByRole('button', { name: /^בנה תוכנית$/ })
+const buildButton = () =>
+  screen.getByRole('button', { name: /^(בנה תוכנית|בנה מחדש)$/ })
 async function build() {
   fireEvent.click(buildButton())
   await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'בחירת חלופת תוכנית' })).toBeInTheDocument())
