@@ -1,6 +1,35 @@
 # Autonomous Progress
 
-## Current priority — Unified Planner Production Recovery (R3 verified; R4 next)
+## Current priority — Unified Planner Production Recovery (R4 verified; R5 next)
+
+R4 route consolidation is verified on the development branch. Public
+`/planner` now owns the canonical purple React workspace directly, with no
+iframe. `/plan`, `/ai-plan` and `/planner/native` redirect to `/planner` and
+preserve a supported program selection. `/planner/legacy` remains intact as a
+diagnostic rollback reference; no legacy HTML was deleted. The deterministic
+Agent Preview route remains only for fixture-based acceptance compatibility and
+is still gated off by default.
+
+Route acceptance on 2026-08-27 proved the default Mechanical 2027 workspace
+loads the authoritative board and a 56-course/5-category repository at the
+public `/planner` URL. Mobile 390x844 remained RTL and free of horizontal
+overflow, with no iframe and no browser console errors. The only warning is the
+pre-existing Three.js `Clock` deprecation. No Generate action or external AI
+provider was invoked. The three historical entry URLs converged on `/planner`.
+
+Browser acceptance also exposed a fail-closed archive boundary:
+`mechanical_engineering_2025` is still registered for historical navigation,
+but this checkout contains neither its declared parsed board file nor an
+authoritative `data/boards` snapshot. The canonical page now stops before
+mounting the planner instead of issuing client API calls, substituting 2027, or
+guessing academic data. Restoring that archive requires separately approved
+authoritative source data; no catalog file was changed here.
+
+R4 RED->GREEN coverage adds public-route ownership, iframe absence, route
+convergence/query preservation and missing-snapshot fail-closed behavior. Full
+web verification passes 27/27 suites and 223/223 tests; root/web typechecks and
+the optimized Next build pass. Preview servers were stopped. Production remains
+unchanged.
 
 R2 is now complete on the canonical purple React/Next Preview workspace. Manual
 add, remove and keyboard-accessible move operations commit through the
@@ -40,13 +69,12 @@ and move). Focused integration coverage passes 19/19. Full web verification is
 build pass. Public `/planner`, Production, providers and deployment state remain
 unchanged.
 
-Exact next slice is R4: consolidate planning entry routes onto the verified
-unified implementation and close the legacy-retirement gate. First write RED
-route/parity tests proving every public planning entry reaches the unified
-React page while the legacy implementation remains recoverable for rollback.
-Delete legacy files only in a separate reversible commit after the full parity
-matrix is green. Do not promote Production until R4/R5 Preview parity, rollback
-evidence and the approved promotion gate are complete.
+Exact next slice is R5: recover remote push parity, create an immutable Preview
+from the verified commit, and run the same manual+Agent route acceptance there.
+Before any Production promotion, resolve/configure a real production-compatible
+durable board/proposal repository and record rollback metadata. Do not claim
+Production readiness or delete the legacy fallback while durable storage is
+absent or unconfigured.
 
 The user explicitly paused further Electrical Engineering implementation until
 the fragmented live planner is recovered into one canonical React/Next product.
