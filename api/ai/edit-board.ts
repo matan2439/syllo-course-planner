@@ -4,10 +4,13 @@ import { manualBoardEditRequestSchema, type ManualBoardEditResponse } from '../.
 import { getAcademicContextStore, getBoardRepository } from './apply_runtime';
 import { loadLocalBoardJson } from './board_loader';
 import type { CommittedBoard } from './board_repository';
-import { prepareManualCourseAdd, type ManualAddFailureCode } from './manual_board_edit_service';
+import {
+  prepareManualCourseAdd, prepareManualCourseRemove,
+  type ManualAddFailureCode, type ManualRemoveFailureCode,
+} from './manual_board_edit_service';
 import { resolveOwner } from './session_owner';
 
-type FailureCode = ManualAddFailureCode
+type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode
   | 'INVALID_REQUEST' | 'METHOD_NOT_ALLOWED' | 'ACADEMIC_CONTEXT_NOT_FOUND'
   | 'PROGRAM_NOT_FOUND' | 'BOARD_VERSION_CONFLICT' | 'IDEMPOTENCY_CONFLICT' | 'INTERNAL_ERROR';
 
@@ -20,6 +23,8 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   UNKNOWN_COURSE: 'הקורס אינו מוכר בקטלוג התוכנית.',
   UNKNOWN_SEMESTER: 'הסמסטר אינו מוכר בתוכנית.',
   COURSE_ALREADY_PRESENT: 'הקורס כבר נמצא בלוח.',
+  COURSE_NOT_PRESENT: 'הקורס אינו נמצא בלוח.',
+  COURSE_REQUIRED: 'לא ניתן להסיר קורס חובה.',
   COURSE_COMPLETED: 'קורס שהושלם אינו ניתן להוספה מחדש.',
   COURSE_CURRENTLY_TAKING: 'הקורס כבר נלמד כעת.',
   COURSE_HARD_EXCLUDED: 'הקורס מוחרג לפי אילוץ מאושר.',
@@ -59,7 +64,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const owner = resolveOwner(req as any, res);
     const repo = getBoardRepository();
     const currentBoard = await repo.load(owner.ownerId, request.program_id);
-    const candidateId = `add:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`;
+    const candidateId = request.operation === 'add_course'
+      ? `add:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
+      : `remove:${request.course_id}:${request.academic_status_digest}`;
 
     // A retry legitimately carries the old version. Ask the repository first;
     // only its history can distinguish that replay from a stale new mutation.
@@ -81,7 +88,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!context) { reject(res, 'ACADEMIC_CONTEXT_NOT_FOUND'); return; }
     const boardJson = loadLocalBoardJson(request.program_id);
     if (!boardJson) { reject(res, 'PROGRAM_NOT_FOUND'); return; }
-    const prepared = prepareManualCourseAdd({ boardJson, context, currentBoard, request });
+    const prepared = request.operation === 'add_course'
+      ? prepareManualCourseAdd({ boardJson, context, currentBoard, request })
+      : currentBoard
+        ? prepareManualCourseRemove({ boardJson, context, currentBoard, request })
+        : { ok: false as const, code: 'COURSE_NOT_PRESENT' as const };
     if (!prepared.ok) { reject(res, prepared.code); return; }
 
     const commit = await repo.commit({

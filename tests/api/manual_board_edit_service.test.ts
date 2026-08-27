@@ -1,4 +1,4 @@
-import { prepareManualCourseAdd } from '../../api/ai/manual_board_edit_service';
+import { prepareManualCourseAdd, prepareManualCourseRemove } from '../../api/ai/manual_board_edit_service';
 import type { AcademicContextRecord } from '../../api/ai/academic_context_store';
 
 const A = 'year_3_semester_a';
@@ -81,5 +81,41 @@ describe('R2 — authoritative manual add preparation', () => {
     };
     expect(prepareManualCourseAdd({ boardJson: BOARD, context, currentBoard, request: { ...request('BASE'), expected_board_version: 'bv_1' } }))
       .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_ALREADY_PRESENT' }));
+  });
+});
+
+describe('R2 — authoritative manual remove preparation', () => {
+  const currentBoard = {
+    ownerId: context.ownerId, programId: PROGRAM, version: 'bv_1', updatedAt: 1,
+    semesters: [{ semesterId: A, courseIds: ['BASE'] }, { semesterId: B, courseIds: [] }],
+  };
+  const remove = (course_id: string) => ({
+    operation: 'remove_course' as const, program_id: PROGRAM,
+    expected_board_version: 'bv_1', operation_id: 'remove_0123456789abcdef',
+    course_id, academic_status_digest: 'as_current',
+  });
+
+  test('removes one present elective from the authoritative board', () => {
+    expect(prepareManualCourseRemove({ boardJson: BOARD, context, currentBoard, request: remove('BASE') }))
+      .toEqual({ ok: true, semesters: [
+        { semesterId: A, courseIds: [] }, { semesterId: B, courseIds: [] },
+      ] });
+  });
+
+  test('rejects a course that is absent instead of silently succeeding', () => {
+    expect(prepareManualCourseRemove({ boardJson: BOARD, context, currentBoard, request: remove('ONLY_B') }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_NOT_PRESENT' }));
+  });
+
+  test('rejects removal of an authoritative mandatory course', () => {
+    const mandatoryBoard = {
+      ...BOARD,
+      metadata: { ...BOARD.metadata, program_repository_courses: [
+        ...BOARD.metadata.program_repository_courses, course('MANDATORY', { is_mandatory: true, course_type: 'mandatory' }),
+      ] },
+    };
+    const withMandatory = { ...currentBoard, semesters: [{ semesterId: A, courseIds: ['MANDATORY'] }, { semesterId: B, courseIds: [] }] };
+    expect(prepareManualCourseRemove({ boardJson: mandatoryBoard, context, currentBoard: withMandatory, request: remove('MANDATORY') }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_REQUIRED' }));
   });
 });

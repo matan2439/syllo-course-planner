@@ -14,6 +14,7 @@ export type ManualAddFailureCode =
   | 'COURSE_CURRENTLY_TAKING'
   | 'COURSE_HARD_EXCLUDED'
   | 'PLAN_INVALID';
+export type ManualRemoveFailureCode = ManualAddFailureCode | 'COURSE_NOT_PRESENT' | 'COURSE_REQUIRED';
 
 export type ManualAddResult =
   | { ok: true; semesters: BoardSemesterState[] }
@@ -23,7 +24,14 @@ export interface PrepareManualCourseAddInput {
   boardJson: unknown;
   context: AcademicContextRecord;
   currentBoard: CommittedBoard | null;
-  request: ManualBoardEditRequest;
+  request: Extract<ManualBoardEditRequest, { operation: 'add_course' }>;
+}
+
+export interface PrepareManualCourseRemoveInput {
+  boardJson: unknown;
+  context: AcademicContextRecord;
+  currentBoard: CommittedBoard;
+  request: Extract<ManualBoardEditRequest, { operation: 'remove_course' }>;
 }
 
 const statusIds = (status: unknown, field: 'completed' | 'currently_taking'): Set<string> => {
@@ -91,6 +99,36 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
     semesters: model.knownSemesterIds.map((semesterId) => ({
       semesterId,
       courseIds: [...new Set(state.semesters[semesterId] ?? [])].sort(),
+    })),
+  };
+}
+
+export function prepareManualCourseRemove(input: PrepareManualCourseRemoveInput):
+  | { ok: true; semesters: BoardSemesterState[] }
+  | { ok: false; code: ManualRemoveFailureCode; details?: string[] } {
+  const { boardJson, context, currentBoard, request } = input;
+  if (context.digest !== request.academic_status_digest) {
+    return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
+  }
+  const model = buildModel(boardJson, context.planContext, context.preferences as any, request.program_id);
+  const profile = model.profiles.get(request.course_id);
+  if (!profile) return { ok: false, code: 'UNKNOWN_COURSE' };
+  if (profile.is_mandatory) return { ok: false, code: 'COURSE_REQUIRED' };
+  if (!currentBoard.semesters.some((semester) => semester.courseIds.includes(request.course_id))) {
+    return { ok: false, code: 'COURSE_NOT_PRESENT' };
+  }
+
+  const state = { semesters: Object.fromEntries(model.knownSemesterIds.map((semesterId) => [
+    semesterId,
+    (currentBoard.semesters.find((semester) => semester.semesterId === semesterId)?.courseIds ?? [])
+      .filter((courseId) => courseId !== request.course_id),
+  ])) };
+  const validation = validatePlanState(state, model);
+  if (!validation.valid) return { ok: false, code: 'PLAN_INVALID', details: validation.errors };
+  return {
+    ok: true,
+    semesters: model.knownSemesterIds.map((semesterId) => ({
+      semesterId, courseIds: [...new Set(state.semesters[semesterId] ?? [])].sort(),
     })),
   };
 }

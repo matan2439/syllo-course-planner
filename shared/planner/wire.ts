@@ -280,15 +280,22 @@ export const committedBoardResponseSchema = z
 export type CommittedBoardResponse = z.infer<typeof committedBoardResponseSchema>;
 
 // The browser sends a manual edit intent, never a replacement plan or owner id.
-export const manualBoardEditRequestSchema = z.object({
-  operation: z.literal('add_course'),
+const manualBoardEditBaseSchema = z.object({
   program_id: z.string().min(1),
   expected_board_version: z.string().regex(/^bv_\d+$/).nullable(),
   operation_id: z.string().min(16).max(128),
   course_id: z.string().min(1),
-  semester_id: z.string().min(1),
   academic_status_digest: z.string().min(1),
-}).strict();
+});
+export const manualBoardEditRequestSchema = z.discriminatedUnion('operation', [
+  manualBoardEditBaseSchema.extend({
+    operation: z.literal('add_course'),
+    semester_id: z.string().min(1),
+  }).strict(),
+  manualBoardEditBaseSchema.extend({
+    operation: z.literal('remove_course'),
+  }).strict(),
+]);
 export type ManualBoardEditRequest = z.infer<typeof manualBoardEditRequestSchema>;
 
 export const manualBoardEditResponseSchema = z.discriminatedUnion('ok', [

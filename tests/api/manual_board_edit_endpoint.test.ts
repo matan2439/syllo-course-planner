@@ -33,6 +33,11 @@ const body = (over: Record<string, unknown> = {}) => ({
   operation_id: 'edit_0123456789abcdef', course_id: 'C1', semester_id: A,
   academic_status_digest: 'as_current', ...over,
 });
+const removeBody = (over: Record<string, unknown> = {}) => ({
+  operation: 'remove_course', program_id: PROGRAM, expected_board_version: 'bv_1',
+  operation_id: 'remove_0123456789abcdef', course_id: 'C1',
+  academic_status_digest: 'as_current', ...over,
+});
 const call = async (owner: string, requestBody: Record<string, unknown>) => {
   const res: any = makeRes();
   await handler({ method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${owner}` }, body: requestBody } as any, res);
@@ -79,5 +84,18 @@ describe('R2 — POST /api/ai/edit-board', () => {
     const res: any = makeRes();
     await handler({ method: 'DELETE', headers: {} } as any, res);
     expect(res.statusCode).toBe(405);
+  });
+
+  test('removes a present course with CAS and rejects an absent one', async () => {
+    await call(OWNER, body());
+    const removed = await call(OWNER, removeBody());
+    expect(removed.statusCode).toBe(200);
+    expect(removed._body.board).toEqual(expect.objectContaining({ version: 'bv_2' }));
+    expect(removed._body.board.semesters[0].courseIds).toEqual([]);
+
+    const absent = await call(OWNER, removeBody({
+      expected_board_version: 'bv_2', operation_id: 'remove_absent_123456789',
+    }));
+    expect(absent._body.code).toBe('COURSE_NOT_PRESENT');
   });
 });
