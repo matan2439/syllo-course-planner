@@ -1,6 +1,52 @@
 # Autonomous Progress
 
-## Current priority — Unified Planner Production Recovery (R1 verified; R2 next)
+## Current priority — Unified Planner Production Recovery (R3 verified; R4 next)
+
+R2 is now complete on the canonical purple React/Next Preview workspace. Manual
+add, remove and keyboard-accessible move operations commit through the
+authoritative server board/session/version boundary; the UI never mutates the
+committed board before success. Every successful manual edit stales the entire
+AI alternative set, disables Apply across all cards and requires explicit
+Rebuild. Rebuild sends the complete updated board and active preference profile
+to Generate. A selected non-default server proposal applies once and the
+authoritative board survives refresh through the local Preview adapter.
+
+R3 human/Agent symbiosis is also verified on that same board. Generate reads
+the current committed manual board; alternatives remain drafts; selecting a
+different card sends no mutation; every accepted manual edit invalidates the
+whole proposal; stale cards cannot restore Apply; and explicit Rebuild sends
+the updated board plus all active typed preferences. A non-default alternative
+was selected and server-applied, replacing the committed board only after the
+authoritative response. That result then survived refresh and is the board a
+subsequent Agent request will read.
+
+R2 browser acceptance on 2026-08-27 used the frozen
+`test_program_grounded_preview_2027` fixture. The repository and API were proved
+to use the same exact four-course snapshot; E1 was added, moved and removed with
+server-confirmed live announcements. After an AI proposal, manually adding E3
+staled every alternative and blocked Apply; one Rebuild request then contained
+E3 in semester A and E1 in semester B. Selecting the non-default E2/E1
+alternative did not mutate the current board until Apply succeeded; refresh
+returned E2/E1 from the server repository. Desktop and 390x844 mobile checks
+were RTL, keyboard-operable and free of horizontal overflow. Browser console
+had no errors; only the pre-existing Three.js `Clock` deprecation warning was
+present. Preview servers were stopped and ports 3001/3002 were released.
+
+RED->GREEN corrections discovered by browser acceptance are commits `6f118ec`
+(strict exact-program repository projection; no fallback to an unrelated
+program) and `ee72a05` (truthful live announcements for authoritative remove
+and move). Focused integration coverage passes 19/19. Full web verification is
+25/25 suites and 215/215 tests; root/web `tsc --noEmit` and the optimized Next
+build pass. Public `/planner`, Production, providers and deployment state remain
+unchanged.
+
+Exact next slice is R4: consolidate planning entry routes onto the verified
+unified implementation and close the legacy-retirement gate. First write RED
+route/parity tests proving every public planning entry reaches the unified
+React page while the legacy implementation remains recoverable for rollback.
+Delete legacy files only in a separate reversible commit after the full parity
+matrix is green. Do not promote Production until R4/R5 Preview parity, rollback
+evidence and the approved promotion gate are complete.
 
 The user explicitly paused further Electrical Engineering implementation until
 the fragmented live planner is recovered into one canonical React/Next product.
