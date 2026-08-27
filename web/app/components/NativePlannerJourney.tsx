@@ -21,10 +21,10 @@ import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/mod
 import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
 import {
-  applyPlan, generatePlan, getBoard, getCommittedBoard,
-  type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest,
+  applyPlan, editBoard, generatePlan, getBoard, getCommittedBoard,
+  type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type ManualBoardEditResult,
 } from '../../../shared/planner/api-client'
-import { boardModelToVM } from '../../lib/planner/board-vm'
+import { boardModelToVM, semesterTitleHe } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
@@ -54,11 +54,12 @@ const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
 }
 
 /** WHY a proposal is stale — the note must name the real cause, never guess. */
-type StaleReason = 'catalog' | 'status' | 'preferences'
+type StaleReason = 'catalog' | 'status' | 'preferences' | 'manual'
 const STALE_MESSAGE_HE: Record<StaleReason, string> = {
   catalog: 'הקטלוג השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
   status: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
   preferences: 'ההעדפות שלך השתנו מאז הבנייה — יש לבנות מחדש לפני החלה.',
+  manual: 'הלוח השתנה בעריכה ידנית — יש לבנות מחדש לפני החלה.',
 }
 
 type BoardPhase = 'loading' | 'ready' | 'error'
@@ -80,6 +81,13 @@ const defaultApply = (req: Parameters<typeof applyPlan>[1]) =>
   applyPlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
 const defaultCommittedBoard = (programId: string) =>
   getCommittedBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
+const defaultEditBoard = (req: Parameters<typeof editBoard>[1]) =>
+  editBoard({ fetchImpl: browserFetch, baseUrl: '' }, req)
+
+export interface ManualAddIntent {
+  courseId: string
+  semesterIds: string[]
+}
 
 /** RFC-4122 v4 UUID with graceful fallback (older/embedded runtimes lack crypto.randomUUID). */
 function uuidv4(): string {
@@ -114,6 +122,10 @@ export default function NativePlannerJourney({
   applyFn = defaultApply,
   committedBoardFn = defaultCommittedBoard,
   useAcademicDecisionAgent = false,
+  manualAddIntent = null,
+  editBoardFn = defaultEditBoard,
+  onManualAddSettled,
+  onCommittedCourseIdsChange,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -122,6 +134,10 @@ export default function NativePlannerJourney({
   applyFn?: (req: Parameters<typeof applyPlan>[1]) => Promise<ApplyPlanResult>
   /** S5 — the session's committed board, read on mount and after Apply. */
   committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
+  manualAddIntent?: ManualAddIntent | null
+  editBoardFn?: (req: Parameters<typeof editBoard>[1]) => Promise<ManualBoardEditResult>
+  onManualAddSettled?: () => void
+  onCommittedCourseIdsChange?: (courseIds: string[]) => void
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -139,6 +155,11 @@ export default function NativePlannerJourney({
    * Apply rather than a missing field.
    */
   const [boardVersion, setBoardVersion] = useState<string | null>(null)
+  const [manualRevision, setManualRevision] = useState(0)
+  const [capturedManualRevision, setCapturedManualRevision] = useState<number | null>(null)
+  const [manualEditPhase, setManualEditPhase] = useState<'idle' | 'saving'>('idle')
+  const [manualEditError, setManualEditError] = useState<string | null>(null)
+  const manualEditKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     let live = true
@@ -165,6 +186,12 @@ export default function NativePlannerJourney({
     )
     return () => { live = false }
   }, [programId, getBoardFn, committedBoardFn, useAcademicDecisionAgent])
+
+  useEffect(() => {
+    if (!current) return
+    onCommittedCourseIdsChange?.([...new Set(current.semesters.flatMap((semester) =>
+      semester.courses.map((course) => course.courseId)))])
+  }, [current, onCommittedCourseIdsChange])
 
   // ── conversation + preferences (recorded; never auto-generate) ─────────────
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -346,6 +373,7 @@ export default function NativePlannerJourney({
         setSelectedAlternativeId(result.alternatives?.find((a) => a.recommended)?.candidateId ?? null)
         setCapturedRev(proposalBaseRevision(revAtRequest as unknown as string))
         setCapturedStatusVersion(statusAtRequest)
+        setCapturedManualRevision(manualRevision)
         setGenPhase('done')
       },
       (e) => {
@@ -354,7 +382,7 @@ export default function NativePlannerJourney({
         setGenPhase('error')
       },
     )
-  }, [current, buildRequest, generateFn, statusVersion])
+  }, [current, buildRequest, generateFn, statusVersion, manualRevision])
 
   // WHY the proposal is stale, not merely THAT it is — the note must name the
   // real cause. Browser acceptance (check 4B) found the profile-version case
@@ -376,6 +404,8 @@ export default function NativePlannerJourney({
           : useAcademicDecisionAgent && proposal?.profileVersion != null &&
             proposal.profileVersion !== convProfileVersion
             ? 'preferences'
+            : capturedManualRevision != null && capturedManualRevision !== manualRevision
+              ? 'manual'
             : null
   const stale = staleReason !== null
 
@@ -510,10 +540,66 @@ export default function NativePlannerJourney({
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
 
+  const commitManualAdd = async (semesterId: string) => {
+    if (!manualAddIntent || manualEditPhase === 'saving') return
+    const receipt = proposal?.proposal
+    if (!receipt) {
+      setManualEditError('יש לבנות תוכנית פעם אחת כדי לסנכרן את המצב האקדמי לפני עריכה ידנית.')
+      return
+    }
+    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
+    manualEditKeyRef.current = operationId
+    setManualEditPhase('saving')
+    setManualEditError(null)
+    let result: ManualBoardEditResult
+    try {
+      result = await editBoardFn({
+        operation: 'add_course', program_id: programId,
+        expected_board_version: boardVersion, operation_id: operationId,
+        course_id: manualAddIntent.courseId, semester_id: semesterId,
+        academic_status_digest: receipt.academicStatusDigest,
+      })
+    } catch {
+      setManualEditPhase('idle')
+      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
+      return
+    }
+    setManualEditPhase('idle')
+    if (!result.ok) {
+      setManualEditError(result.messageHe)
+      if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
+      return
+    }
+    setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+    setBoardVersion(result.board.version)
+    setManualRevision((value) => value + 1)
+    manualEditKeyRef.current = null
+    setMessages((items) => [...items, { role: 'system', text: 'הקורס נוסף ללוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
+    onManualAddSettled?.()
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
       <div className="order-2 flex flex-col gap-4 lg:order-1">
+        {manualAddIntent && (
+          <Card className="flex flex-col gap-3 p-4" aria-live="polite">
+            <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
+            {manualAddIntent.semesterIds.length ? (
+              <div className="flex flex-wrap gap-2">
+                {manualAddIntent.semesterIds.map((semesterId) => (
+                  <button key={semesterId} type="button" disabled={manualEditPhase === 'saving'}
+                    onClick={() => commitManualAdd(semesterId)}
+                    className="rounded-full border border-[var(--border)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
+                    הוסף אל {semesterTitleHe(semesterId)}
+                  </button>
+                ))}
+              </div>
+            ) : <p className="text-sm text-[var(--text-muted)]">לא נמצא סמסטר מוצע סמכותי לקורס זה.</p>}
+            {manualEditError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{manualEditError}</p>}
+            {manualEditPhase === 'saving' && <p role="status" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
+          </Card>
+        )}
         {genPhase !== 'done' || !proposal ? (
           <section aria-label="התוכנית הנוכחית">
             <h2 className="mb-3 text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>

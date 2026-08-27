@@ -4,8 +4,9 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent }: { programId: string; useAcademicDecisionAgent: boolean }) => (
-    <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}>
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent }: any) => (
+    <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
+      data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
       לוח ועוזר פעילים
     </div>
   ),
@@ -13,10 +14,17 @@ jest.mock('./NativePlannerJourney', () => ({
 
 jest.mock('./UnifiedCourseRepository', () => ({
   __esModule: true,
-  default: () => <div data-testid="course-repository">מאגר פעיל</div>,
+  default: ({ onRequestAdd }: any) => <div data-testid="course-repository">מאגר פעיל
+    <button type="button" onClick={() => onRequestAdd('C1')}>בקש הוספה</button>
+  </div>,
 }))
 
 const repo: RepositoryVM = { categories: [], totalCourses: 0 }
+const repoWithCourse: RepositoryVM = { totalCourses: 1, categories: [{
+  id: 'choice', title: 'בחירה', courses: [{
+    id: 'C1', name: 'קורס', weeklyHours: 3, offered: ['A'], difficulty: null, syllabusUrl: null,
+  }],
+}] }
 
 describe('UnifiedPlannerWorkspace', () => {
   test('renders one Agent and one repository in one iframe-free RTL workspace', () => {
@@ -48,5 +56,12 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.keyDown(repoTab, { key: 'ArrowRight' })
     expect(boardTab).toHaveFocus()
     expect(boardTab).toHaveAttribute('aria-selected', 'true')
+  })
+
+  test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה' }))
+    expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
+    expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
   })
 })

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
-import NativePlannerJourney from './NativePlannerJourney'
+import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository from './UnifiedCourseRepository'
 
 type WorkspaceView = 'planner' | 'repository'
@@ -24,6 +24,8 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd?: (courseId: string) => void
 }) {
   const [activeView, setActiveView] = useState<WorkspaceView>('planner')
+  const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
+  const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   const selectView = (view: WorkspaceView, focus = false) => {
@@ -42,6 +44,16 @@ export default function UnifiedPlannerWorkspace({
     else if (key === 'ArrowRight') next = (index - 1 + VIEWS.length) % VIEWS.length
     else next = (index + 1) % VIEWS.length
     selectView(VIEWS[next].id, true)
+  }
+
+  const requestAdd = (courseId: string) => {
+    const course = repo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
+    const offered = new Set((course?.offered ?? []).map((value) => value.toLowerCase()))
+    const semesterIds = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+      .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
+    setManualAddIntent({ courseId, semesterIds })
+    onRequestAdd(courseId)
+    selectView('planner')
   }
 
   return (
@@ -98,7 +110,13 @@ export default function UnifiedPlannerWorkspace({
           aria-labelledby="workspace-tab-planner"
           className={activeView === 'planner' ? 'min-w-0' : 'hidden min-w-0 lg:block'}
         >
-          <NativePlannerJourney programId={programId} useAcademicDecisionAgent />
+          <NativePlannerJourney
+            programId={programId}
+            useAcademicDecisionAgent
+            manualAddIntent={manualAddIntent}
+            onManualAddSettled={() => setManualAddIntent(null)}
+            onCommittedCourseIdsChange={setCommittedCourseIds}
+          />
         </div>
         <aside
           id="workspace-panel-repository"
@@ -108,8 +126,8 @@ export default function UnifiedPlannerWorkspace({
         >
           <UnifiedCourseRepository
             repo={repo}
-            selectedCourseIds={selectedCourseIds}
-            onRequestAdd={onRequestAdd}
+            selectedCourseIds={committedCourseIds}
+            onRequestAdd={requestAdd}
           />
         </aside>
       </div>

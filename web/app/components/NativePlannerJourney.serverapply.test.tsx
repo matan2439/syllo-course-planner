@@ -10,7 +10,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import { createServerApplyStub } from './serverApplyStub'
-import type { GeneratePlanRequest, CommittedBoardState } from '../../../shared/planner/api-client'
+import type { GeneratePlanRequest, CommittedBoardState, ManualBoardEditResult } from '../../../shared/planner/api-client'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
 
 const SEM_A = 'year_3_semester_a'
@@ -67,6 +67,9 @@ type Stub = ReturnType<typeof createServerApplyStub>
 async function renderReady(over: {
   stub?: Stub
   committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
+  manualAddIntent?: { courseId: string; semesterIds: string[] } | null
+  editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
+  generateFn?: (request: GeneratePlanRequest) => Promise<GeneratedPlanModel>
 } = {}) {
   const server = over.stub ?? createServerApplyStub({
     proposalId: PROPOSAL_ID,
@@ -79,10 +82,12 @@ async function renderReady(over: {
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
-      generateFn={async (req: GeneratePlanRequest) => proposal(req)}
+      generateFn={over.generateFn ?? (async (req: GeneratePlanRequest) => proposal(req))}
       applyFn={server.applyFn}
       committedBoardFn={over.committedBoardFn ?? server.committedBoardFn}
       useAcademicDecisionAgent
+      manualAddIntent={over.manualAddIntent}
+      editBoardFn={over.editBoardFn}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
@@ -97,6 +102,30 @@ const applyBtn = () => screen.getByRole('button', { name: /החל/ })
 const committed = () => screen.queryByLabelText('התוכנית הנוכחית')?.textContent ?? ''
 
 describe('S5 — Apply goes to the server, and only the server commits', () => {
+  test('manual add commits the server board, sends no Generate, and stales the visible proposal', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true as const, replayed: false, operationId: 'edit_test',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    }))
+    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] }, editBoardFn, generateFn })
+    await build()
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(generateFn).toHaveBeenCalledTimes(1)
+    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
+      course_id: 'Y-1', semester_id: SEM_A, academic_status_digest: 'as_test',
+      expected_board_version: null,
+    }))
+    expect(JSON.stringify(editBoardFn.mock.calls[0][0])).not.toMatch(/semesters|owner/)
+    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    expect(applyBtn()).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'דחה' }))
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+  })
+
   test('the request names a candidate and carries NO plan', async () => {
     const server = await renderReady()
     await build()
