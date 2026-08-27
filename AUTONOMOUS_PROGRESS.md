@@ -1,6 +1,6 @@
 # Autonomous Progress
 
-## Current priority — Unified Planner Production Recovery (R0/R1)
+## Current priority — Unified Planner Production Recovery (R1 verified; R2 next)
 
 The user explicitly paused further Electrical Engineering implementation until
 the fragmented live planner is recovered into one canonical React/Next product.
@@ -16,6 +16,32 @@ status, conversation, alternatives, priority and authoritative Agent Apply, but
 manual add/remove/drag/move have no React or server mutation owner. Production
 durability also remains unresolved because proposals are process-memory state
 and only local Preview has a file-backed board adapter.
+
+R1 now provides one canonical purple React/Next Preview workspace at
+`/planner/native/agent-preview`: the real board, Academic Decision Agent and
+course repository render together without an iframe. The shared deterministic
+workspace state proves that alternative selection is draft-local, manual board
+commits stale the complete AI proposal, stale card switching cannot restore
+Apply, and successful Apply clears the draft once. Repository search, details
+and add intent use the real repository projection; the add control is
+deliberately non-mutating until R2 introduces authoritative server validation.
+
+R1 verification on 2026-08-27: all 25 web suites / 208 tests pass, web
+`tsc --noEmit` passes, and the optimized Next production build succeeds.
+Browser Preview acceptance passed desktop and 390x844 mobile layouts, RTL,
+keyboard tab switching, named form controls, and no iframe. Mobile Lighthouse
+snapshot scores are 100 Accessibility / 100 Best Practices / 100 SEO / 100
+Agentic Browsing with 34 audits passed and 0 failed. The only browser warning
+is the existing Three.js `Clock` deprecation emitted by the animated background
+dependency; no application error, Generate request, Apply mutation or external
+provider call occurred during this acceptance pass. Public `/planner` and
+Production remain unchanged.
+
+Exact next slice is R2: RED tests and one authoritative manual-add mutation
+contract over the same board version/session boundary. It must reject unknown,
+duplicate, completed, prerequisite-invalid and stale requests; only after that
+may the repository add intent update the committed board. Remove/drag/move
+follow as separate verified slices, not as UI-only state.
 
 Do not resume the preserved Electrical RED in
 `tests/test_tau_curriculum_document.py` until R0-R5 complete. Do not stage or
