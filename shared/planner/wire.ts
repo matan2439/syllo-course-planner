@@ -278,6 +278,38 @@ export const committedBoardResponseSchema = z
   .passthrough();
 export type CommittedBoardResponse = z.infer<typeof committedBoardResponseSchema>;
 
+// The browser sends a manual edit intent, never a replacement plan or owner id.
+export const manualBoardEditRequestSchema = z.object({
+  operation: z.literal('add_course'),
+  program_id: z.string().min(1),
+  expected_board_version: z.string().regex(/^bv_\d+$/).nullable(),
+  operation_id: z.string().min(16).max(128),
+  course_id: z.string().min(1),
+  semester_id: z.string().min(1),
+  academic_status_digest: z.string().min(1),
+}).strict();
+export type ManualBoardEditRequest = z.infer<typeof manualBoardEditRequestSchema>;
+
+export const manualBoardEditResponseSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    replayed: z.boolean(),
+    operation_id: z.string().min(1),
+    board: z.object({
+      programId: z.string().min(1),
+      version: z.string().regex(/^bv_\d+$/),
+      semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
+    }),
+  }).strict(),
+  z.object({
+    ok: z.literal(false),
+    code: z.string().min(1),
+    message_he: z.string().min(1),
+    currentBoardVersion: z.string().regex(/^bv_\d+$/).nullable().optional(),
+  }).strict(),
+]);
+export type ManualBoardEditResponse = z.infer<typeof manualBoardEditResponseSchema>;
+
 // ── Local workspace (persisted client-side; versioned, program-scoped) ───────
 export const workspaceSchema = z
   .object({
