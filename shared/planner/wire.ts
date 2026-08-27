@@ -311,6 +311,25 @@ export const manualBoardEditResponseSchema = z.discriminatedUnion('ok', [
 ]);
 export type ManualBoardEditResponse = z.infer<typeof manualBoardEditResponseSchema>;
 
+// Establishes the server-owned academic context used by manual validation.
+// Academic facts are user claims, but their digest and session owner are
+// minted by the server; this route never accepts a replacement board.
+export const planningContextRequestSchema = z.object({
+  program_id: z.string().min(1),
+  plan_context: z.object({
+    personal_status: z.unknown(),
+    semesters: z.array(z.unknown()),
+  }).passthrough(),
+  preferences: z.record(z.unknown()),
+}).strict();
+export type PlanningContextRequest = z.infer<typeof planningContextRequestSchema>;
+
+export const planningContextResponseSchema = z.object({
+  ok: z.literal(true),
+  academic_status_digest: z.string().regex(/^as_[a-f0-9]{16}$/),
+}).strict();
+export type PlanningContextResponse = z.infer<typeof planningContextResponseSchema>;
+
 // ── Local workspace (persisted client-side; versioned, program-scoped) ───────
 export const workspaceSchema = z
   .object({
