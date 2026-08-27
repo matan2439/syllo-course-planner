@@ -618,6 +618,7 @@ export default function NativePlannerJourney({
       setBoardVersion(result.board.version)
       setManualRevision((value) => value + 1)
       manualEditKeyRef.current = null
+      setMessages((items) => [...items, { role: 'system', text: 'הקורס הוסר מהלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
       onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
     } catch {
       setManualEditPhase('idle')
@@ -657,6 +658,7 @@ export default function NativePlannerJourney({
       setBoardVersion(result.board.version)
       setManualRevision((value) => value + 1)
       manualEditKeyRef.current = null
+      setMessages((items) => [...items, { role: 'system', text: 'הקורס הועבר בלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
       onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
     } catch {
       setManualEditPhase('idle')

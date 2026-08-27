@@ -182,6 +182,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     }))
     expect(editBoardFn.mock.calls[0][0]).not.toHaveProperty('semester_id')
     await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    expect(screen.getByText('הקורס הוסר מהלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')).toBeInTheDocument()
     expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
     expect(applyBtn()).toBeDisabled()
   })
@@ -213,6 +214,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
       expected_board_version: 'bv_1', academic_status_digest: 'as_test',
     }))
     await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    expect(screen.getByText('הקורס הועבר בלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')).toBeInTheDocument()
     const currentBoard = screen.getByLabelText('התוכנית הנוכחית')
     expect(currentBoard.querySelector('[aria-label="שנה ג׳ — סמסטר ב׳"]')).toHaveTextContent('קורס Y')
     expect(applyBtn()).toBeDisabled()
