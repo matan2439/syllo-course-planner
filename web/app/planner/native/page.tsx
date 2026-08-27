@@ -1,18 +1,8 @@
-import { getProgram } from '../../../lib/programs'
-import ProductShell from '../../components/ProductShell'
-import NativePlannerJourney from '../../components/NativePlannerJourney'
+import { redirect } from 'next/navigation'
+import { getProgram, programQuery } from '../../../lib/programs'
 
-export const metadata = { title: 'מתכנן חכם (Beta) — מתכנן לימודים' }
-export const dynamic = 'force-dynamic'
-
-/**
- * The native planner journey — browser-reachable MVP. Additive alongside the
- * canonical embedded planner at /planner (which stays the working fallback):
- * current plan loads client-side from the real GET /api/board, the assistant
- * captures preferences, and "בנה תוכנית" calls the real POST /api/ai/generate-plan.
- * The whole flow lives in the client container so board load / generation /
- * apply-reject errors surface truthfully in the browser.
- */
+// Compatibility entry retained for bookmarks and tests during route
+// consolidation. There is one product destination: /planner.
 export default async function NativePlannerPage({
   searchParams,
 }: {
@@ -20,15 +10,5 @@ export default async function NativePlannerPage({
 }) {
   const { program: programParam } = await searchParams
   const program = getProgram(programParam)
-
-  return (
-    <ProductShell
-      active="plan"
-      programId={program.id}
-      title="מתכנן חכם"
-      subtitle="בטא — טעינת התוכנית הנוכחית, שיחה והעדפות, ובנייה מפורשת של הצעה דרך מנוע התכנון האמיתי."
-    >
-      <NativePlannerJourney programId={program.id} />
-    </ProductShell>
-  )
+  redirect(`/planner${programQuery(program.id)}`)
 }

@@ -1,14 +1,16 @@
-import { programSubtitle } from '../../lib/board-data'
-import { getProgram, programQuery } from '../../lib/programs'
-import LegacyPlannerFrame from '../components/LegacyPlannerFrame'
+import { notFound } from 'next/navigation'
+import { readBoardForProgramId } from '../../lib/board-data'
+import { getProgram } from '../../lib/programs'
+import { adaptRepository } from '../../lib/repository'
 import ProductShell from '../components/ProductShell'
+import UnifiedPlannerWorkspace from '../components/UnifiedPlannerWorkspace'
 
 export const metadata = { title: 'המתכנן המלא — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
 
-// The main planner, now inside the product experience: gradient + brand +
-// cross-navigation frame the canonical planner, which runs unchanged in the
-// embedded legacy frame. Raw fallback stays at /planner/legacy.
+// Canonical public planner: one React workspace owns the board, repository and
+// Academic Decision Agent. The raw legacy document remains available only at
+// /planner/legacy as a rollback reference until the separate retirement gate.
 export default async function PlannerPage({
   searchParams,
 }: {
@@ -16,13 +18,17 @@ export default async function PlannerPage({
 }) {
   const { program: programParam } = await searchParams
   const program = getProgram(programParam)
+  const raw = await readBoardForProgramId(program.id)
+  if (!raw) notFound()
+  const repo = adaptRepository(raw)
 
   return (
-    <ProductShell fullBleed programId={program.id}>
-      <LegacyPlannerFrame
-        programQuerySuffix={programQuery(program.id)}
-        programLabel={programSubtitle(program)}
-      />
+    <ProductShell
+      active="plan"
+      programId={program.id}
+      preferLightweightBackground={false}
+    >
+      <UnifiedPlannerWorkspace programId={program.id} repo={repo} />
     </ProductShell>
   )
 }
