@@ -155,6 +155,37 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })
 
+  test('manual remove commits the server board, sends no Generate, and stales the proposal', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true, replayed: false, operationId: 'remove_test',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_2', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    }))
+    await renderReady({
+      committedBoardFn: async () => ({
+        programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+          { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] },
+        ],
+      }),
+      editBoardFn, generateFn,
+    })
+    await build()
+
+    fireEvent.click(screen.getByRole('button', { name: 'הסר קורס Y מהלוח' }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(generateFn).toHaveBeenCalledTimes(1)
+    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
+      operation: 'remove_course', course_id: 'Y-1', expected_board_version: 'bv_1',
+      academic_status_digest: 'as_test',
+    }))
+    expect(editBoardFn.mock.calls[0][0]).not.toHaveProperty('semester_id')
+    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+    expect(applyBtn()).toBeDisabled()
+  })
+
   test('the request names a candidate and carries NO plan', async () => {
     const server = await renderReady()
     await build()
@@ -247,7 +278,8 @@ describe('S5 — a refusal leaves the committed board alone', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('נבנתה הצעה חדשה יותר'))
     // The board was never optimistically replaced.
-    expect(screen.queryByLabelText('התוכנית הנוכחית')).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
     expect(screen.getByLabelText('טיוטת תוכנית')).toBeInTheDocument() // still inspectable
     expect(server.committed).toBeNull()
   })
@@ -263,7 +295,8 @@ describe('S5 — a refusal leaves the committed board alone', () => {
     fireEvent.click(applyBtn())
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/שגיאת רשת/))
-    expect(screen.queryByLabelText('התוכנית הנוכחית')).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
     expect(server.committed).toBeNull()
     // …and it can be retried, because nothing was consumed.
     expect(applyBtn()).not.toBeDisabled()

@@ -5,9 +5,13 @@ import { Badge, EmptyState } from './ui'
 export default function SemesterColumn({
   semester,
   index,
+  onRemoveCourse,
+  mutationPending,
 }: {
   semester: SemesterVM
   index: number
+  onRemoveCourse?: (courseId: string) => void
+  mutationPending?: boolean
 }) {
   return (
     <section
@@ -36,7 +40,7 @@ export default function SemesterColumn({
       {semester.courses.length === 0 ? (
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
-        semester.courses.map((c) => <CourseCard key={c.id} course={c} />)
+        semester.courses.map((c) => <CourseCard key={c.id} course={c} onRemove={onRemoveCourse} mutationPending={mutationPending} />)
       )}
     </section>
   )

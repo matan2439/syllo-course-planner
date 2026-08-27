@@ -13,7 +13,11 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
-export default function CourseCard({ course }: { course: CourseVM }) {
+export default function CourseCard({ course, onRemove, mutationPending = false }: {
+  course: CourseVM
+  onRemove?: (courseId: string) => void
+  mutationPending?: boolean
+}) {
   return (
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
       <div className="flex items-start justify-between gap-2">
@@ -56,6 +60,17 @@ export default function CourseCard({ course }: { course: CourseVM }) {
           </a>
         )}
       </div>
+      {onRemove && course.type !== 'mandatory' && (
+        <button
+          type="button"
+          disabled={mutationPending}
+          aria-label={`הסר ${course.name} מהלוח`}
+          onClick={() => onRemove(course.id)}
+          className="mt-2 rounded-full border border-[var(--border)] px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
+        >
+          הסר מהלוח
+        </button>
+      )}
     </Card>
   )
 }

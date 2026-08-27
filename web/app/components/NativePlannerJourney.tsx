@@ -587,6 +587,44 @@ export default function NativePlannerJourney({
     onManualAddSettled?.()
   }
 
+  const commitManualRemove = async (courseId: string) => {
+    if (manualEditPhase === 'saving') return
+    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
+    manualEditKeyRef.current = operationId
+    setManualEditPhase('saving')
+    setManualEditError(null)
+    try {
+      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      if (!academicStatusDigest) {
+        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
+        academicStatusDigest = (await establishPlanningContextFn({
+          program_id: programId,
+          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
+          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
+        })).academicStatusDigest
+      }
+      const result = await editBoardFn({
+        operation: 'remove_course', program_id: programId,
+        expected_board_version: boardVersion, operation_id: operationId,
+        course_id: courseId, academic_status_digest: academicStatusDigest,
+      })
+      setManualEditPhase('idle')
+      if (!result.ok) {
+        setManualEditError(result.messageHe)
+        if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
+        return
+      }
+      setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+      setBoardVersion(result.board.version)
+      setManualRevision((value) => value + 1)
+      manualEditKeyRef.current = null
+      onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
+    } catch {
+      setManualEditPhase('idle')
+      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
@@ -605,16 +643,19 @@ export default function NativePlannerJourney({
                 ))}
               </div>
             ) : <p className="text-sm text-[var(--text-muted)]">לא נמצא סמסטר מוצע סמכותי לקורס זה.</p>}
-            {manualEditError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{manualEditError}</p>}
-            {manualEditPhase === 'saving' && <p role="status" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
           </Card>
         )}
-        {genPhase !== 'done' || !proposal ? (
-          <section aria-label="התוכנית הנוכחית">
-            <h2 className="mb-3 text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
-            <NativePlannerBoard board={boardModelToVM(current)} />
-          </section>
-        ) : (
+        <section aria-label="התוכנית הנוכחית">
+          <h2 className="mb-3 text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+          <NativePlannerBoard
+            board={boardModelToVM(current)}
+            onRemoveCourse={commitManualRemove}
+            mutationPending={manualEditPhase === 'saving'}
+          />
+        </section>
+        {manualEditError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{manualEditError}</p>}
+        {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
+        {genPhase === 'done' && proposal && (
           <>
           {(proposal.alternatives?.length ?? 0) >= 2 && (
             <PlanAlternatives
