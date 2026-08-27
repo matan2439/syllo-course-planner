@@ -8,6 +8,9 @@ export interface AcademicContextRecord {
   programId: string;
   digest: string;
   personalStatus: unknown;
+  /** Exact effective inputs used to build the last successful proposal. */
+  planContext: unknown;
+  preferences: unknown;
   updatedAt: number;
 }
 
@@ -16,6 +19,8 @@ export interface PutAcademicContext {
   programId: string;
   digest: string;
   personalStatus: unknown;
+  planContext: unknown;
+  preferences: unknown;
 }
 
 export interface AcademicContextStore {

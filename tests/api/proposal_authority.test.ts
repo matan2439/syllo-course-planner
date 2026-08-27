@@ -111,6 +111,8 @@ describe('S1 — Generate retains the exact validated candidate set', () => {
         ownerId: OWNER,
         digest: academicStatusDigest(personalStatus),
         personalStatus,
+        planContext: { personal_status: personalStatus },
+        preferences: { disallowed_course_ids: [] },
       }));
   });
 

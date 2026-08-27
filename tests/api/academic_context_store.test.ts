@@ -10,16 +10,18 @@ describe('R2 — session-owned academic context store', () => {
     await store.put({
       ownerId: OWNER, programId: PROGRAM, digest: 'as_first',
       personalStatus: { completed: [{ course_id: 'A' }] },
+      planContext: { semesters: [] }, preferences: { disallowed_course_ids: ['X'] },
     });
     expect(await store.load(OWNER, PROGRAM)).toEqual({
       ownerId: OWNER, programId: PROGRAM, digest: 'as_first',
       personalStatus: { completed: [{ course_id: 'A' }] }, updatedAt: 100,
+      planContext: { semesters: [] }, preferences: { disallowed_course_ids: ['X'] },
     });
   });
 
   test('isolates sessions and programs', async () => {
     const store = new InMemoryAcademicContextStore();
-    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_a', personalStatus: {} });
+    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_a', personalStatus: {}, planContext: {}, preferences: {} });
     expect(await store.load(OTHER, PROGRAM)).toBeNull();
     expect(await store.load(OWNER, 'electrical_engineering_2027')).toBeNull();
   });
@@ -27,14 +29,14 @@ describe('R2 — session-owned academic context store', () => {
   test('newer Generate replaces the current context without mutating returned values', async () => {
     const store = new InMemoryAcademicContextStore();
     const status: any = { completed: [{ course_id: 'A' }] };
-    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_1', personalStatus: status });
+    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_1', personalStatus: status, planContext: {}, preferences: {} });
     status.completed.push({ course_id: 'ATTACK' });
     const first: any = await store.load(OWNER, PROGRAM);
     expect(first.personalStatus.completed).toEqual([{ course_id: 'A' }]);
     first.personalStatus.completed.push({ course_id: 'MUTATE' });
     expect((await store.load(OWNER, PROGRAM) as any).personalStatus.completed).toEqual([{ course_id: 'A' }]);
 
-    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_2', personalStatus: {} });
+    await store.put({ ownerId: OWNER, programId: PROGRAM, digest: 'as_2', personalStatus: {}, planContext: {}, preferences: {} });
     expect((await store.load(OWNER, PROGRAM))?.digest).toBe('as_2');
   });
 });

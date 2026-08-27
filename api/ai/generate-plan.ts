@@ -2330,6 +2330,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           programId: program_id,
           digest: record.academicStatusDigest,
           personalStatus: effectivePlanContext?.personal_status ?? {},
+          planContext: effectivePlanContext ?? {},
+          preferences: effectivePreferences ?? {},
         });
         await getProposalStore().put(record);
         (responseBody.academicDecision as Record<string, unknown>).proposal = toReceipt(record);
