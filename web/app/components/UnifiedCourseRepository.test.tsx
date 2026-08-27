@@ -27,6 +27,7 @@ describe('UnifiedCourseRepository', () => {
   test('searches by Hebrew name, id and category using the real repository projection', () => {
     render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
     const search = screen.getByRole('searchbox', { name: 'חיפוש קורס' })
+    expect(search).toHaveAttribute('name', 'course-repository-search')
 
     fireEvent.change(search, { target: { value: 'למידת מכונה' } })
     expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית')).toBeInTheDocument()

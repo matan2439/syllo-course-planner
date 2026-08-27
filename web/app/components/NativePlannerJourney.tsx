@@ -566,6 +566,7 @@ export default function NativePlannerJourney({
           </div>
           <div className="flex gap-2">
             <input
+              name="planner-message"
               aria-label="הודעה / בקשה / העדפה"
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
@@ -647,19 +648,19 @@ export default function NativePlannerJourney({
           <h2 className="text-sm font-bold tracking-tight">העדפות</h2>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             מגבלת שעות שבועיות לסמסטר
-            <input aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
+            <input name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
               onChange={(e) => setMaxHours(e.target.value)}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             שעות שהושלמו (שנים א׳–ב׳, מחוץ ללוח)
-            <input aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
+            <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
               onChange={(e) => setPriorHours(e.target.value)}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
-          <CourseNamePicker label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
+          <CourseNamePicker inputName="wanted-course-search" label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
             courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
-          <CourseNamePicker label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
+          <CourseNamePicker inputName="excluded-course-search" label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
             courses={pickerCourses} selectedIds={excludeIds}
             onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
           {/* An empty selection is only an ANSWER once the student says so —

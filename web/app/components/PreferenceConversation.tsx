@@ -154,7 +154,7 @@ export default function PreferenceConversation({
           </div>
           {q.allowFreeText && (
             <div className="mt-3 flex gap-2">
-              <input aria-label="תשובה חופשית" value={draft} onChange={(e) => setDraft(e.target.value)}
+              <input name="preference-free-answer" aria-label="תשובה חופשית" value={draft} onChange={(e) => setDraft(e.target.value)}
                 placeholder="אפשר גם לכתוב בחופשיות…"
                 className="flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-1.5 text-[var(--text)]" />
               <button type="button" disabled={!draft.trim()}

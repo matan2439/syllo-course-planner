@@ -16,12 +16,14 @@ export interface PickerCourse {
 
 export default function CourseNamePicker({
   label,
+  inputName,
   placeholder,
   courses,
   selectedIds,
   onChange,
 }: {
   label: string
+  inputName: string
   placeholder?: string
   courses: PickerCourse[]
   selectedIds: string[]
@@ -44,6 +46,7 @@ export default function CourseNamePicker({
       {label}
       <div className="relative">
         <input
+          name={inputName}
           aria-label={label}
           value={q}
           onChange={(e) => setQ(e.target.value)}

@@ -211,6 +211,7 @@ export default function CompletedCoursesPanel({
               a course, its credits, or its category. */}
           <div className="flex flex-col gap-1.5">
             <CourseNamePicker
+              inputName="completed-elective-search"
               label="קורסי בחירה שכבר השלמתי (חיפוש לפי שם)"
               placeholder="הקלידו שם קורס בחירה שהושלם…"
               courses={catalogCourses}

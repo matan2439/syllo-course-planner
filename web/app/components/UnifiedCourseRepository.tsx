@@ -34,6 +34,7 @@ export default function UnifiedCourseRepository({
     <section aria-label="מאגר קורסים" dir="rtl" className="flex flex-col gap-5">
       <div>
         <input
+          name="course-repository-search"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
