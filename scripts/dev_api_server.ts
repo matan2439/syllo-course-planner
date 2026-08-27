@@ -16,6 +16,7 @@
 import { createServer, type ServerResponse } from 'node:http'
 import generatePlanHandler from '../api/ai/generate-plan'
 import applyPlanHandler from '../api/ai/apply-plan'
+import editBoardHandler from '../api/ai/edit-board'
 import { loadLocalBoardJson } from '../api/ai/board_loader'
 
 const PORT = Number(process.env.DEV_API_PORT ?? 3002)
@@ -53,6 +54,15 @@ const server = createServer(async (req, res) => {
       const url = new URL(req.url ?? '/', 'http://localhost')
       ;(req as unknown as { query: unknown }).query = Object.fromEntries(url.searchParams)
       await applyPlanHandler(req as never, r as never)
+      return
+    }
+    if (path === '/api/ai/edit-board') {
+      const chunks: Buffer[] = []
+      for await (const c of req) chunks.push(c as Buffer)
+      const raw = Buffer.concat(chunks).toString('utf8')
+      ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
+      ;(req as unknown as { query: unknown }).query = {}
+      await editBoardHandler(req as never, r as never)
       return
     }
     if (path === '/api/ai/generate-plan') {

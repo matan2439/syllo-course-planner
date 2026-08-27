@@ -23,6 +23,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/ai/edit-board.ts",
+      "use": "@vercel/node"
+    },
+    {
       "src": "api/board.ts",
       "use": "@vercel/node"
     },
@@ -59,6 +63,10 @@
     {
       "source": "/api/ai/apply-plan",
       "destination": "/api/ai/apply-plan.ts"
+    },
+    {
+      "source": "/api/ai/edit-board",
+      "destination": "/api/ai/edit-board.ts"
     },
     {
       "source": "/",
