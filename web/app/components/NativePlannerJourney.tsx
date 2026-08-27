@@ -685,6 +685,7 @@ export default function NativePlannerJourney({
             <PreferenceConversation
               onBuild={(profile) => build(profile)}
               onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+              buildLabel={proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
               // Impact-driven: after a Generate whose candidates showed no material
               // balanced/compact difference, don't ask the semester_balance question
               // (it can't change the selected plan). Before any Generate, or when

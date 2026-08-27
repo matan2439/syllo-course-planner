@@ -122,6 +122,11 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(JSON.stringify(editBoardFn.mock.calls[0][0])).not.toMatch(/semesters|owner/)
     await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
     expect(applyBtn()).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'בנה מחדש' }))
+    await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(2))
+    const rebuiltContext = generateFn.mock.calls[1][0].plan_context as any
+    expect(rebuiltContext.semesters.find((semester: any) => semester.id === SEM_A).courses)
+      .toEqual(expect.arrayContaining([{ course_id: 'Y-1' }]))
     fireEvent.click(screen.getByRole('button', { name: 'דחה' }))
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })

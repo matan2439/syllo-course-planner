@@ -57,9 +57,11 @@ export default function PreferenceConversation({
   onBuild,
   onProfileChange,
   elicitationContext,
+  buildLabel = 'בנה תוכנית',
 }: {
   onBuild: (profile: PreferenceProfile) => void
   onProfileChange?: (profile: PreferenceProfile) => void
+  buildLabel?: string
   /**
    * Impact-driven gating context. e.g. after a Generate whose candidates
    * converge, pass { irrelevantTopicIds: ['semester_balance'] } so the balance
@@ -220,7 +222,7 @@ export default function PreferenceConversation({
       <div>
         <button type="button" onClick={build}
           className="rounded-full bg-[#7c3aed] px-6 py-2 text-sm font-semibold text-white">
-          בנה תוכנית
+          {buildLabel}
         </button>
       </div>
     </div>
