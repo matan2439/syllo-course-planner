@@ -6,7 +6,10 @@
  * missing identifiers/flags are never silently coerced.
  */
 import { boardResponseToModel, generatePlanResponseToModel } from './adapters';
-import { applyPlanResponseSchema, committedBoardResponseSchema } from './wire';
+import {
+  applyPlanResponseSchema, committedBoardResponseSchema, manualBoardEditResponseSchema,
+  type ManualBoardEditRequest,
+} from './wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
 
@@ -155,4 +158,44 @@ export async function getCommittedBoard(
   const parsed = committedBoardResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed committed-board response', parsed.error);
   return parsed.data.board;
+}
+
+// ── R2: authoritative manual board edit ────────────────────────────────────
+export type ManualBoardEditResult =
+  | { ok: true; replayed: boolean; operationId: string; board: CommittedBoardState }
+  | { ok: false; code: string; messageHe: string; currentBoardVersion?: string | null };
+
+export async function editBoard(
+  deps: ClientDeps,
+  req: ManualBoardEditRequest,
+): Promise<ManualBoardEditResult> {
+  let res: FetchResponseLike;
+  try {
+    res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/edit-board`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(req),
+    });
+  } catch (error) {
+    throw new ContractError('edit-board request failed', error);
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch (error) {
+    throw asContractError(error, 'edit-board');
+  }
+  const parsed = manualBoardEditResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed edit-board response', parsed.error);
+  if (parsed.data.ok) {
+    return {
+      ok: true, replayed: parsed.data.replayed,
+      operationId: parsed.data.operation_id, board: parsed.data.board,
+    };
+  }
+  return {
+    ok: false, code: parsed.data.code, messageHe: parsed.data.message_he,
+    currentBoardVersion: parsed.data.currentBoardVersion ?? null,
+  };
 }
