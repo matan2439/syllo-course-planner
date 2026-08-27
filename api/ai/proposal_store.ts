@@ -63,6 +63,7 @@ export interface ProposalReceipt {
   recommendedCandidateId: string | null;
   baseBoardVersion: string | null;
   profileVersion: number;
+  academicStatusDigest: string;
   expiresAt: number;
 }
 
@@ -73,6 +74,7 @@ export function toReceipt(record: ProposalRecord): ProposalReceipt {
     recommendedCandidateId: record.recommendedCandidateId,
     baseBoardVersion: record.baseBoardVersion,
     profileVersion: record.profileVersion,
+    academicStatusDigest: record.academicStatusDigest,
     expiresAt: record.expiresAt,
   };
 }

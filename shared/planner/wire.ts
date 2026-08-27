@@ -101,6 +101,7 @@ export const generatePlanResponseSchema = z
             recommendedCandidateId: z.string().nullable(),
             baseBoardVersion: z.string().nullable(),
             profileVersion: z.number(),
+            academicStatusDigest: z.string().min(1),
             expiresAt: z.number(),
           })
           .optional(),

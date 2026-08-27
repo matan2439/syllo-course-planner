@@ -145,6 +145,7 @@ function proposal(req: GeneratePlanRequest): GeneratedPlanModel {
       recommendedCandidateId: A.candidateId,
       baseBoardVersion: null,
       profileVersion: version ?? 0,
+      academicStatusDigest: 'as_test',
       expiresAt: Date.now() + 3_600_000,
     },
   }

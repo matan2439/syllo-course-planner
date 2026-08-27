@@ -107,6 +107,7 @@ function proposalFor(req: GeneratePlanRequest, opts: { impact?: boolean } = {}):
       recommendedCandidateId: recommended.candidateId,
       baseBoardVersion: null,
       profileVersion: profile?.version ?? 0,
+      academicStatusDigest: 'as_test',
       expiresAt: Date.now() + 3_600_000,
     },
     semesters: recommended.semesters,

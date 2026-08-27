@@ -40,6 +40,7 @@ function agentProposal(req: GeneratePlanRequest): GeneratedPlanModel {
       recommendedCandidateId: SINGLE_CANDIDATE,
       baseBoardVersion: null,
       profileVersion: version ?? 0,
+      academicStatusDigest: 'as_test',
       expiresAt: Date.now() + 3_600_000,
     },
   }

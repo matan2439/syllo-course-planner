@@ -150,6 +150,7 @@ export interface GeneratedPlanModel {
     /** The committed board version this was planned on top of; null ⇒ none. */
     baseBoardVersion: string | null
     profileVersion: number
+    academicStatusDigest: string
     expiresAt: number
   }
   /**

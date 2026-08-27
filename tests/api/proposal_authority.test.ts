@@ -148,6 +148,7 @@ describe('S1 — Generate retains the exact validated candidate set', () => {
     expect(receipt.candidateIds.sort()).toEqual(stored!.candidates.map((c) => c.candidateId).sort());
     expect(receipt.recommendedCandidateId).toBe(stored!.recommendedCandidateId);
     expect(receipt.profileVersion).toBe(3);
+    expect(receipt.academicStatusDigest).toBe(stored!.academicStatusDigest);
     // Nothing in the receipt is a plan the server would have to trust back.
     expect(JSON.stringify(receipt)).not.toMatch(/courseIds|semesterId/);
   });
