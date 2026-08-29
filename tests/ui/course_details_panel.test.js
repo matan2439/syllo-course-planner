@@ -7,7 +7,7 @@
  *  - it renders course fields and degrades gracefully when they are absent;
  *  - it is DECOUPLED from the legacy iframe: closing it cannot touch the
  *    canonical planner (it holds no iframe / contentWindow / board handles);
- *  - /planner keeps embedding the untouched legacy iframe;
+ *  - /planner keeps the course-details surface inside the unified React workspace;
  *  - the canonical legacy HTML and all backend/api files are untouched.
  */
 const fs = require('fs');
@@ -87,11 +87,11 @@ test('the repository explorer wires the details panel to a selected course', () 
   expect(card).toContain('onSelect'); // card is the read-only opener
 });
 
-test('/planner still embeds the untouched legacy iframe', () => {
+test('/planner keeps course details inside the unified iframe-free workspace', () => {
   const page = read('web/app/planner/page.tsx');
-  expect(page).toContain('LegacyPlannerFrame');
-  const frame = read('web/app/components/LegacyPlannerFrame.tsx');
-  expect(frame).toContain('/planner/legacy');
+  expect(page).toContain('UnifiedPlannerWorkspace');
+  expect(page).not.toContain('LegacyPlannerFrame');
+  expect(read('web/app/components/UnifiedCourseRepository.tsx')).toContain('CourseDetailsPanel');
 });
 
 test('the course-details slice itself stays Next-native (legacy HTML edits are additive-only)', () => {

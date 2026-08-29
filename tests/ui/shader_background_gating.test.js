@@ -2,9 +2,9 @@
  * Route gating for the real WebGL ShaderGradient background.
  *
  * The shader renders on the visible app-shell/content routes, but the
- * fullBleed embedded planner (/planner) must stay lightweight — the iframe
- * covers the background there, so running three.js behind it wastes GPU and
- * could hurt planner smoothness. /planner/legacy has no ProductShell at all.
+ * fullBleed legacy embeds stay lightweight, while the canonical unified
+ * planner explicitly keeps the visible product background. /planner/legacy
+ * has no ProductShell at all.
  *
  * These are source-level wiring assertions (no board fixture needed), matching
  * the style of web_next_wiring / shader_background_viewport_safety.
@@ -32,8 +32,10 @@ test('ShaderGradientBackground gates the WebGL scene on the lightweight prop', (
   expect(bg).toContain('className="syllo-bg"');
 });
 
-test('/planner is fullBleed, so it receives the lightweight background', () => {
-  expect(read('web/app/planner/page.tsx')).toContain('fullBleed');
+test('/planner explicitly keeps the product background for the unified workspace', () => {
+  const page = read('web/app/planner/page.tsx');
+  expect(page).toContain('preferLightweightBackground={false}');
+  expect(page).toContain('UnifiedPlannerWorkspace');
 });
 
 test('the shader scene never intercepts input and uses the documented waterPlane config', () => {

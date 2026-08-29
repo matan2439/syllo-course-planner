@@ -1,5 +1,6 @@
 /**
- * Guards the "two headers" seam fix: cross-cutting legacy planner actions
+ * Guards the retired iframe bridge as a rollback surface while the public
+ * planner remains the unified React workspace. Cross-cutting legacy actions
  * (my courses / change degree / reset) are surfaced in the outer ProductShell
  * frame on /planner and wired to the legacy iframe via a same-origin bridge,
  * rather than living only inside the legacy in-frame toolbar.
@@ -15,11 +16,11 @@ const { execSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
-test('/planner still renders the ProductShell full-bleed frame', () => {
+test('/planner renders the unified workspace in the ProductShell', () => {
   const page = read('web/app/planner/page.tsx');
   expect(page).toContain('ProductShell');
-  expect(page).toContain('fullBleed');
-  expect(page).toContain('LegacyPlannerFrame');
+  expect(page).toContain('UnifiedPlannerWorkspace');
+  expect(page).not.toContain('LegacyPlannerFrame');
 });
 
 test('the iframe still points at /planner/legacy and preserves ?program=', () => {
@@ -61,9 +62,10 @@ test('the outer frame labels the embedded workspace as the full interface', () =
   expect(frame).toContain('הממשק המלא');
 });
 
-test('the planner page feeds the current program label into the outer toolbar', () => {
+test('the planner page feeds the stable program id into the unified workspace', () => {
   const page = read('web/app/planner/page.tsx');
-  expect(page).toContain('programLabel');
+  expect(page).toContain('programId={program.id}');
+  expect(page).toContain('UnifiedPlannerWorkspace');
 });
 
 test('the outer toolbar renders a current-program label (mirrors #hdr-prog-name)', () => {

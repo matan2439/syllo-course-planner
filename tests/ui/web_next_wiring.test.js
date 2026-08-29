@@ -1,6 +1,6 @@
 /**
- * Guards the Next.js (web/) wrap of the static planner:
- *  - /planner route must keep pointing at the canonical static HTML file
+ * Guards the canonical Next.js planner and its legacy rollback route:
+ *  - /planner must render the unified React workspace
  *  - landing page must link into the planner
  *  - theme-aware brand assets must exist where BrandLogo expects them
  * Catches the real failure mode: someone moves/renames the HTML or brand
@@ -21,10 +21,11 @@ test('/planner/legacy route serves the canonical HTML file', () => {
   expect(route).toMatch(/app[/\\'",\s]+web[/\\'",\s]+semester_board_viewer\.html/);
 });
 
-test('/planner is a product-shell surface wrapping the legacy planner frame', () => {
+test('/planner is the product-shell surface for the unified React workspace', () => {
   const page = read('web/app/planner/page.tsx');
   expect(page).toContain('ProductShell');
-  expect(page).toContain('LegacyPlannerFrame');
+  expect(page).toContain('UnifiedPlannerWorkspace');
+  expect(page).not.toContain('LegacyPlannerFrame');
 });
 
 test('the legacy planner frame embeds the raw /planner/legacy route', () => {
@@ -61,14 +62,13 @@ test('/repository page renders through the repository adapter', () => {
   expect(page).toContain('adaptRepository');
 });
 
-test('/plan hub renders the data-shipped overview inside the shell', () => {
+test('/plan redirects the historical hub to the canonical planner', () => {
   const page = read('web/app/plan/page.tsx');
-  expect(page).toContain('planOverview');
-  expect(page).toContain('ProductShell');
+  expect(page).toContain('redirect');
+  expect(page).toContain('/planner');
 });
 
-test('/plan renders the requirements progress panel from shipped metadata', () => {
-  expect(read('web/app/plan/page.tsx')).toContain('adaptRequirements');
+test('the retained requirements panel remains available to native consumers', () => {
   expect(read('web/app/components/RequirementsProgressPanel.tsx')).toContain('RequirementCategoryCard');
 });
 
@@ -95,7 +95,7 @@ test('/ai-plan is retired — it redirects to the canonical /planner assistant, 
 });
 
 test('/plan AI section and the shell CTA route to the working /planner assistant', () => {
-  expect(read('web/app/plan/page.tsx')).toContain("'/planner'");
+  expect(read('web/app/plan/page.tsx')).toContain('`/planner');
   expect(read('web/app/plan/page.tsx')).not.toContain("'/ai-plan'");
   expect(read('web/app/components/ProductShell.tsx')).toContain('/planner');
   expect(read('web/app/components/ProductShell.tsx')).not.toContain('/ai-plan');
@@ -112,7 +112,7 @@ test('the shared shell navigates to all planner surfaces including the assistant
   const shell = read('web/app/components/ProductShell.tsx');
   expect(shell).toContain('/repository');
   expect(shell).toContain('/board');
-  expect(shell).toContain('/planner'); // the working AI assistant (embedded legacy planner)
+  expect(shell).toContain('/planner'); // the working unified AI assistant
   expect(shell).toContain('/plan');
 });
 
