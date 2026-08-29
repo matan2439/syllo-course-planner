@@ -70,6 +70,7 @@ async function renderReady(over: {
   manualAddIntent?: { courseId: string; semesterIds: string[] } | null
   editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
   establishPlanningContextFn?: (request: any) => Promise<{ academicStatusDigest: string }>
+  planningContextFn?: (programId: string) => Promise<any>
   generateFn?: (request: GeneratePlanRequest) => Promise<GeneratedPlanModel>
 } = {}) {
   const server = over.stub ?? createServerApplyStub({
@@ -90,6 +91,7 @@ async function renderReady(over: {
       manualAddIntent={over.manualAddIntent}
       editBoardFn={over.editBoardFn}
       establishPlanningContextFn={over.establishPlanningContextFn}
+      planningContextFn={over.planningContextFn ?? (async () => null)}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())

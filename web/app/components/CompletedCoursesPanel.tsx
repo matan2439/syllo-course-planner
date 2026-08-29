@@ -57,6 +57,29 @@ export function completedCourseIdsOf(draft: AcademicStatusDraft): string[] {
   return [...new Set([...ids, ...draft.electiveIds])]
 }
 
+/** Rebuilds the editable view from the server-owned academic status after refresh. */
+export function academicStatusDraftFromPersonalStatus(
+  personalStatus: unknown,
+  programId: string,
+): AcademicStatusDraft {
+  const status = (personalStatus ?? {}) as {
+    completed?: unknown
+    completed_knowledge?: { status?: unknown }
+  }
+  const completed = Array.isArray(status.completed)
+    ? [...new Set(status.completed.flatMap((entry) => {
+        const id = (entry as { course_id?: unknown })?.course_id
+        return typeof id === 'string' && id.trim() ? [id] : []
+      }))]
+    : []
+  const standardIds = new Set(earlyYearCoursesFor(programId).map((course) => course.courseId))
+  return {
+    statuses: Object.fromEntries(completed.filter((id) => standardIds.has(id)).map((id) => [id, 'completed'])),
+    electiveIds: completed.filter((id) => !standardIds.has(id)),
+    confirmed: status.completed_knowledge?.status === 'known',
+  }
+}
+
 export default function CompletedCoursesPanel({
   programId,
   catalogCourses,

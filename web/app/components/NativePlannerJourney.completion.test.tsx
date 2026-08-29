@@ -50,12 +50,54 @@ async function setup(useAgent = true) {
       programId="mechanical_engineering_2027"
       getBoardFn={async () => board()}
       generateFn={async (req) => { sent.push(req); return proposal(req) }}
+      committedBoardFn={async () => null}
+      planningContextFn={async () => null}
       useAcademicDecisionAgent={useAgent}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
   return { sent }
 }
+
+test('refresh hydrates server-owned completed courses before the next explicit Build', async () => {
+  const sent: GeneratePlanRequest[] = []
+  let release!: (value: any) => void
+  const stored = new Promise<any>((resolve) => { release = resolve })
+  render(
+    <NativePlannerJourney
+      programId="mechanical_engineering_2027"
+      getBoardFn={async () => board()}
+      generateFn={async (req) => { sent.push(req); return proposal(req) }}
+      useAcademicDecisionAgent
+      committedBoardFn={async () => null}
+      planningContextFn={async () => stored}
+    />,
+  )
+  const buildButton = await screen.findByRole('button', { name: 'בנה תוכנית' })
+  expect(buildButton).toBeDisabled()
+  fireEvent.click(buildButton)
+  expect(sent).toHaveLength(0)
+  release({
+        academicStatusDigest: 'as_0123456789abcdef',
+        personalStatus: {
+          completed: [{ course_id: '0509-1510' }, { course_id: 'ELEC-1' }],
+          currently_taking: [],
+          completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+        },
+        preferences: {},
+      })
+  await waitFor(() => expect(screen.getByText(/נשמר: 2 קורסים שהושלמו/)).toBeInTheDocument())
+  expect(buildButton).toBeEnabled()
+  build()
+  await waitFor(() => expect(sent).toHaveLength(1))
+  expect(personalStatus(sent[0]).completed).toEqual([
+    { course_id: '0509-1510' },
+    { course_id: 'ELEC-1' },
+  ])
+  expect(personalStatus(sent[0]).completed_knowledge).toEqual({
+    status: 'known', provenance: 'explicit_user',
+  })
+})
 
 const openPanel = () => {
   const panel = screen.getByRole('button', { name: 'פתח' })

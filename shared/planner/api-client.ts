@@ -8,7 +8,8 @@
 import { boardResponseToModel, generatePlanResponseToModel } from './adapters';
 import {
   applyPlanResponseSchema, committedBoardResponseSchema, manualBoardEditResponseSchema,
-  planningContextResponseSchema, type ManualBoardEditRequest, type PlanningContextRequest,
+  loadedPlanningContextResponseSchema, planningContextResponseSchema,
+  type ManualBoardEditRequest, type PlanningContextRequest,
 } from './wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
@@ -180,6 +181,31 @@ export async function establishPlanningContext(
   const parsed = planningContextResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed planning-context response', parsed.error);
   return { academicStatusDigest: parsed.data.academic_status_digest };
+}
+
+export interface LoadedPlanningContext {
+  academicStatusDigest: string;
+  personalStatus: unknown;
+  preferences: Record<string, unknown>;
+}
+
+export async function getPlanningContext(
+  deps: ClientDeps,
+  programId: string,
+): Promise<LoadedPlanningContext | null> {
+  const res = await deps.fetchImpl(
+    `${deps.baseUrl}/api/ai/planning-context?program_id=${encodeURIComponent(programId)}`,
+    { credentials: 'same-origin' },
+  );
+  const body = await readJson(res);
+  const parsed = loadedPlanningContextResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed planning-context response', parsed.error);
+  if (!parsed.data.context) return null;
+  return {
+    academicStatusDigest: parsed.data.context.academic_status_digest,
+    personalStatus: parsed.data.context.personal_status,
+    preferences: parsed.data.context.preferences,
+  };
 }
 
 export type ManualBoardEditResult =

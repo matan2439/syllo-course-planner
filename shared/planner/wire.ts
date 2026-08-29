@@ -341,6 +341,16 @@ export const planningContextResponseSchema = z.object({
 }).strict();
 export type PlanningContextResponse = z.infer<typeof planningContextResponseSchema>;
 
+export const loadedPlanningContextResponseSchema = z.object({
+  ok: z.literal(true),
+  context: z.object({
+    academic_status_digest: z.string().regex(/^as_[a-f0-9]{16}$/),
+    personal_status: z.unknown(),
+    preferences: z.record(z.unknown()),
+  }).strict().nullable(),
+}).strict();
+export type LoadedPlanningContextResponse = z.infer<typeof loadedPlanningContextResponseSchema>;
+
 // ── Local workspace (persisted client-side; versioned, program-scoped) ───────
 export const workspaceSchema = z
   .object({

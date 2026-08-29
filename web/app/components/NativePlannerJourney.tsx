@@ -21,8 +21,9 @@ import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/mod
 import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
 import {
-  applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard,
-  type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type ManualBoardEditResult,
+  applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard, getPlanningContext,
+  type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type LoadedPlanningContext,
+  type ManualBoardEditResult,
 } from '../../../shared/planner/api-client'
 import { boardModelToVM, semesterTitleHe } from '../../lib/planner/board-vm'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
@@ -34,6 +35,7 @@ import PreferenceConversation from './PreferenceConversation'
 import PlanAlternatives from './PlanAlternatives'
 import CompletedCoursesPanel, {
   EMPTY_ACADEMIC_STATUS,
+  academicStatusDraftFromPersonalStatus,
   completedCourseIdsOf,
   type AcademicStatusDraft,
 } from './CompletedCoursesPanel'
@@ -85,6 +87,8 @@ const defaultEditBoard = (req: Parameters<typeof editBoard>[1]) =>
   editBoard({ fetchImpl: browserFetch, baseUrl: '' }, req)
 const defaultEstablishPlanningContext = (req: Parameters<typeof establishPlanningContext>[1]) =>
   establishPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, req)
+const defaultPlanningContext = (programId: string) =>
+  getPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, programId)
 
 export interface ManualAddIntent {
   courseId: string
@@ -127,6 +131,7 @@ export default function NativePlannerJourney({
   manualAddIntent = null,
   editBoardFn = defaultEditBoard,
   establishPlanningContextFn = defaultEstablishPlanningContext,
+  planningContextFn = defaultPlanningContext,
   onManualAddSettled,
   onCommittedCourseIdsChange,
 }: {
@@ -140,6 +145,7 @@ export default function NativePlannerJourney({
   manualAddIntent?: ManualAddIntent | null
   editBoardFn?: (req: Parameters<typeof editBoard>[1]) => Promise<ManualBoardEditResult>
   establishPlanningContextFn?: typeof defaultEstablishPlanningContext
+  planningContextFn?: (programId: string) => Promise<LoadedPlanningContext | null>
   onManualAddSettled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   /**
@@ -226,11 +232,32 @@ export default function NativePlannerJourney({
   // generates. `confirmed` is what makes the completed set KNOWN — an empty list
   // is otherwise UNKNOWN, never an implicit "none" (academic_status_knowledge.ts).
   const [academicStatus, setAcademicStatus] = useState<AcademicStatusDraft>(EMPTY_ACADEMIC_STATUS)
+  const [academicContextPhase, setAcademicContextPhase] = useState<'loading' | 'ready' | 'error'>(
+    useAcademicDecisionAgent ? 'loading' : 'ready',
+  )
   const [statusVersion, setStatusVersion] = useState(0)
   const updateAcademicStatus = useCallback((next: AcademicStatusDraft) => {
     setAcademicStatus(next)
     setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
   }, [])
+  useEffect(() => {
+    if (!useAcademicDecisionAgent) return
+    let live = true
+    setAcademicContextPhase('loading')
+    planningContextFn(programId).then(
+      (stored) => {
+        if (!live) return
+        if (stored) setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+        setAcademicContextPhase('ready')
+      },
+      (error) => {
+        if (!live) return
+        console.error('[NativePlannerJourney] academic context load failed:', error)
+        setAcademicContextPhase('error')
+      },
+    )
+    return () => { live = false }
+  }, [programId, planningContextFn, useAcademicDecisionAgent])
   // Exclusions: a non-empty selection is inherently explicit; an empty one is
   // only an answer once the student says so. Untouched stays UNKNOWN.
   const [exclusionsNoneConfirmed, setExclusionsNoneConfirmed] = useState(false)
@@ -778,6 +805,7 @@ export default function NativePlannerJourney({
               onBuild={(profile) => build(profile)}
               onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
               buildLabel={proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
+              buildDisabled={academicContextPhase !== 'ready' || genPhase === 'generating'}
               // Impact-driven: after a Generate whose candidates showed no material
               // balanced/compact difference, don't ask the semester_balance question
               // (it can't change the selected plan). Before any Generate, or when
@@ -821,6 +849,17 @@ export default function NativePlannerJourney({
               }}
             />
           </Card>
+        )}
+
+        {useAcademicDecisionAgent && academicContextPhase === 'loading' && (
+          <p role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
+            טוען את הסטטוס האקדמי השמור…
+          </p>
+        )}
+        {useAcademicDecisionAgent && academicContextPhase === 'error' && (
+          <p role="alert" className="text-xs text-red-600">
+            לא ניתן לטעון את הסטטוס האקדמי השמור. הבנייה חסומה כדי לא לדרוס אותו.
+          </p>
         )}
 
         <Card className="flex flex-col gap-3 p-4">

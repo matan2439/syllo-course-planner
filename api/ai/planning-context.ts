@@ -10,12 +10,12 @@ import {
 import { resolveOwner } from './session_owner';
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'GET') {
     res.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED', message_he: 'שיטה לא נתמכת.' });
     return;
   }
-  const parsed = planningContextRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
+  const parsed = req.method === 'POST' ? planningContextRequestSchema.safeParse(req.body) : null;
+  if (parsed && !parsed.success) {
     res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message_he: 'בקשת ההקשר אינה תקינה.' });
     return;
   }
@@ -23,6 +23,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     await ensurePlannerStorageReady();
     const owner = resolveOwner(req as any, res);
+    if (req.method === 'GET') {
+      const rawProgramId = req.query?.program_id;
+      const programId = typeof rawProgramId === 'string' ? rawProgramId.trim() : '';
+      if (!programId) {
+        res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message_he: 'בקשת ההקשר אינה תקינה.' });
+        return;
+      }
+      const stored = await getAcademicContextStore().load(owner.ownerId, programId);
+      res.status(200).json({
+        ok: true,
+        context: stored ? {
+          academic_status_digest: stored.digest,
+          personal_status: stored.personalStatus,
+          preferences: stored.preferences,
+        } : null,
+      });
+      return;
+    }
+    if (!parsed || !parsed.success) return;
     const { program_id, plan_context, preferences } = parsed.data;
     const digest = academicStatusDigest(plan_context.personal_status);
     await getAcademicContextStore().put({

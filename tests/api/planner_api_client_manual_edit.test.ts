@@ -1,4 +1,4 @@
-import { editBoard, establishPlanningContext } from '../../shared/planner/api-client';
+import { editBoard, establishPlanningContext, getPlanningContext } from '../../shared/planner/api-client';
 
 const request = {
   operation: 'add_course' as const,
@@ -8,6 +8,25 @@ const request = {
 };
 
 describe('R2 — manual edit API client', () => {
+  test('loads only the same-origin server context receipt for one program', async () => {
+    const fetchImpl = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({
+      ok: true,
+      context: {
+        academic_status_digest: 'as_1234567890abcdef',
+        personal_status: { completed: [{ course_id: '0509-1510' }] },
+        preferences: {},
+      },
+    }) }));
+    await expect(getPlanningContext({ fetchImpl, baseUrl: '' }, request.program_id)).resolves.toEqual({
+      academicStatusDigest: 'as_1234567890abcdef',
+      personalStatus: { completed: [{ course_id: '0509-1510' }] },
+      preferences: {},
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      `/api/ai/planning-context?program_id=${request.program_id}`,
+      { credentials: 'same-origin' },
+    );
+  });
   test('establishes context with same-origin credentials and accepts only the server digest', async () => {
     const fetchImpl = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({
       ok: true, academic_status_digest: 'as_1234567890abcdef',

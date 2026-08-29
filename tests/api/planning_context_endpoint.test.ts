@@ -59,3 +59,44 @@ test('does not accept an owner id, authoritative plan, or browser-selected diges
     expect(res._body.code).toBe('INVALID_REQUEST');
   }
 });
+
+test('loads the same session academic context after refresh without exposing another owner', async () => {
+  const personalStatus = {
+    completed: [{ course_id: '0509-1510' }, { course_id: 'ELEC-1' }],
+    currently_taking: [],
+    completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+  };
+  const writeRes: any = makeRes();
+  await handler({
+    method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${OWNER}` },
+    body: {
+      program_id: PROGRAM,
+      plan_context: { personal_status: personalStatus, semesters: [] },
+      preferences: { disallowed_course_ids: [] },
+    },
+  } as any, writeRes);
+
+  const readRes: any = makeRes();
+  await handler({
+    method: 'GET', headers: { cookie: `${SESSION_COOKIE}=${OWNER}` },
+    query: { program_id: PROGRAM },
+  } as any, readRes);
+
+  expect(readRes.statusCode).toBe(200);
+  expect(readRes._body).toEqual({
+    ok: true,
+    context: {
+      academic_status_digest: writeRes._body.academic_status_digest,
+      personal_status: personalStatus,
+      preferences: { disallowed_course_ids: [] },
+    },
+  });
+
+  const otherRes: any = makeRes();
+  await handler({
+    method: 'GET', headers: { cookie: `${SESSION_COOKIE}=${'q'.repeat(43)}` },
+    query: { program_id: PROGRAM },
+  } as any, otherRes);
+  expect(otherRes.statusCode).toBe(200);
+  expect(otherRes._body).toEqual({ ok: true, context: null });
+});
