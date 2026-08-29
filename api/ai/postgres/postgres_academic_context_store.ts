@@ -51,7 +51,7 @@ export class PostgresAcademicContextStore implements AcademicContextStore {
       `INSERT INTO planner_academic_contexts (
          owner_hash, program_id, digest, personal_status_json,
          plan_context_json, preferences_json, updated_at
-       ) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, now())
+       ) VALUES ($1, $2, $3, $4::text::jsonb, $5::text::jsonb, $6::text::jsonb, now())
        ON CONFLICT (owner_hash, program_id) DO UPDATE SET
          digest = EXCLUDED.digest,
          personal_status_json = EXCLUDED.personal_status_json,

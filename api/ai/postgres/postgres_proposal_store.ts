@@ -100,7 +100,7 @@ export class PostgresProposalStore implements ProposalStore {
           `INSERT INTO planner_proposal_candidates (
              proposal_id, candidate_id, semesters_json, normalized_identity,
              valid, applyable, recommended
-           ) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+           ) VALUES ($1, $2, $3::text::jsonb, $4, $5, $6, $7)`,
           [
             record.proposalId,
             candidate.candidateId,

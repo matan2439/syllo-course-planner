@@ -129,7 +129,7 @@ export class PostgresBoardRepository implements BoardRepository {
         `INSERT INTO planner_boards (
            owner_hash, program_id, version_number, semesters_json, updated_at,
            last_proposal_id, last_candidate_id, last_idempotency_key, last_applied_at
-         ) VALUES ($1, $2, $3, $4::jsonb, to_timestamp($8 / 1000.0), $5, $6, $7,
+         ) VALUES ($1, $2, $3, $4::text::jsonb, to_timestamp($8 / 1000.0), $5, $6, $7,
                    to_timestamp($8 / 1000.0))
          ON CONFLICT (owner_hash, program_id) DO UPDATE SET
            version_number = EXCLUDED.version_number,
@@ -149,7 +149,7 @@ export class PostgresBoardRepository implements BoardRepository {
         `INSERT INTO planner_apply_receipts (
            owner_hash, program_id, idempotency_key, proposal_id, candidate_id,
            produced_version_number, committed_board_json, applied_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, to_timestamp($8 / 1000.0))`,
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7::text::jsonb, to_timestamp($8 / 1000.0))`,
         [
           ownerHash, input.programId, input.idempotencyKey, input.proposalId,
           input.candidateId, versionNumber, JSON.stringify(boardForReceipt(board)), now,
