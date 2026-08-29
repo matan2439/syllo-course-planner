@@ -1,5 +1,43 @@
 # Autonomous Progress
 
+## Latest session — durable Preview manual-edit recovery (`812d248`)
+
+The first immutable durable-storage Preview exposed a real first-edit defect:
+the React board displayed the authoritative `plan_context`, while
+`POST /api/ai/edit-board` required an already-persisted `planner_boards` row
+for move/remove and therefore returned `COURSE_NOT_PRESENT`. Strict RED→GREEN
+coverage now proves that move/remove seed their initial state from the same
+authoritative planning context when no committed board row exists. The focused
+service/endpoint suites pass 21/21, and the complete post-fix gate passes:
+199/200 API suites (2546 passed, 1 intentionally skipped), 78/78 legacy UI
+suites (835/835), 27/27 web suites (223/223), both TypeScript checks, and the
+optimized Next build. The web suite remains honest about expected test-console
+noise from missing `fetch` in fallback cases; it has no failing test.
+
+Commit `812d248` is pushed to `origin/ui/frontend-modernization`. Immutable
+Preview deployment `dpl_73EphR4E1tgMgNU2HTgHcqzDeNDx`
+(`https://tau-course-planner-5t2aebhws-matanyaron-1633s-projects.vercel.app`,
+`target:null`) was built from a clean `git archive` of that exact commit.
+Production was not promoted or modified.
+
+Browser acceptance on the new Preview established the anonymous session and
+loaded the server board plus the 56-course repository. After explicitly
+recording all 24 first/second-year courses as completed (92.5 authoritative
+hours), manual add placed `0542-4120` in year 4 semester A, server-authoritative
+move placed it in year 3 semester A, and reload returned it from durable
+storage in year 3 semester A. The success announcements were visible and the
+browser console had no errors; only the known Three.js `Clock` deprecation
+warning remained. No external AI/LLM provider was invoked.
+
+One truthful UI finding remains: course cards currently render generic move
+destinations for mandatory courses even when the authoritative validator will
+reject every displayed destination. The server correctly kept those hard
+requirements absolute and returned `PLAN_INVALID`; do not weaken validation.
+The smallest next slice is an impact/eligibility contract that hides or
+disables destinations the server cannot authorize, followed by the remaining
+durable Preview Generate/proposal/Apply/idempotency/session-isolation browser
+matrix. This Preview is not a Production recommendation.
+
 ## Current priority — Unified Planner Production Recovery (R4 verified; R5 Preview acceptance in progress)
 
 R5 recovered remote parity on 2026-08-27: local and
