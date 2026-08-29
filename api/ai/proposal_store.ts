@@ -82,7 +82,7 @@ export function toReceipt(record: ProposalRecord): ProposalReceipt {
 export interface ProposalStore {
   /** Persist a new record and supersede this owner+program's older ones. */
   put(record: ProposalRecord): Promise<ProposalRecord>;
-  get(proposalId: string): Promise<ProposalRecord | null>;
+  get(proposalId: string, ownerId?: string): Promise<ProposalRecord | null>;
 }
 
 /** Two hours: long enough for a real deliberation, short enough to bound staleness. */
