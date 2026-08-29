@@ -101,7 +101,14 @@ import { buildPlanAlternatives, constraintFingerprint } from './plan_alternative
 import { computePriorityQuestionImpact } from './priority_impact';
 import { describeAcademicProgress } from './academic_progress';
 import { resolveOwner } from './session_owner';
-import { academicStatusDigest, getAcademicContextStore, getBoardRepository, getProposalStore } from './apply_runtime';
+import {
+  academicStatusDigest,
+  ensurePlannerStorageReady,
+  getAcademicContextStore,
+  getBoardRepository,
+  getProposalStore,
+  plannerStorageErrorCode,
+} from './apply_runtime';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord } from './proposal_store';
 import * as evidenceLoader from './evidence_loader';
 import type { ClarificationResult } from './academic_decision_types';
@@ -116,6 +123,7 @@ import { type CourseCapabilityEvidence } from './course_capability_evidence';
 import { getExternalContextEvidence } from './external_context_evidence';
 import { buildSyllabusSnapshot } from './syllabus_snapshot';
 import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache';
+import { preferencesWithPlannerPolicy } from './planner_policy_context';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -1424,6 +1432,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ? resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res)
     : { ownerId: '', issued: false };
 
+  if (use_academic_decision_agent === true) {
+    try {
+      await ensurePlannerStorageReady();
+    } catch (error) {
+      const code = plannerStorageErrorCode(error);
+      if (code) {
+        sendError(res, 503, 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.', code);
+        return;
+      }
+      throw error;
+    }
+  }
+
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
 
   // Quota gate — unchanged behavior: required unless an explicit dev bypass.
@@ -2331,7 +2352,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           digest: record.academicStatusDigest,
           personalStatus: effectivePlanContext?.personal_status ?? {},
           planContext: effectivePlanContext ?? {},
-          preferences: effectivePreferences ?? {},
+          preferences: preferencesWithPlannerPolicy(effectivePreferences ?? {}, distributionPolicy),
         });
         await getProposalStore().put(record);
         (responseBody.academicDecision as Record<string, unknown>).proposal = toReceipt(record);

@@ -1,7 +1,12 @@
 /** POST /api/ai/planning-context — bind user academic claims to a server session. */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { planningContextRequestSchema } from '../../shared/planner/wire';
-import { academicStatusDigest, getAcademicContextStore } from './apply_runtime';
+import {
+  academicStatusDigest,
+  ensurePlannerStorageReady,
+  getAcademicContextStore,
+  plannerStorageErrorCode,
+} from './apply_runtime';
 import { resolveOwner } from './session_owner';
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -15,16 +20,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const owner = resolveOwner(req as any, res);
-  const { program_id, plan_context, preferences } = parsed.data;
-  const digest = academicStatusDigest(plan_context.personal_status);
-  await getAcademicContextStore().put({
-    ownerId: owner.ownerId,
-    programId: program_id,
-    digest,
-    personalStatus: plan_context.personal_status,
-    planContext: plan_context,
-    preferences,
-  });
-  res.status(200).json({ ok: true, academic_status_digest: digest });
+  try {
+    await ensurePlannerStorageReady();
+    const owner = resolveOwner(req as any, res);
+    const { program_id, plan_context, preferences } = parsed.data;
+    const digest = academicStatusDigest(plan_context.personal_status);
+    await getAcademicContextStore().put({
+      ownerId: owner.ownerId,
+      programId: program_id,
+      digest,
+      personalStatus: plan_context.personal_status,
+      planContext: plan_context,
+      preferences,
+    });
+    res.status(200).json({ ok: true, academic_status_digest: digest });
+  } catch (error) {
+    const code = plannerStorageErrorCode(error);
+    if (code) {
+      res.status(503).json({
+        ok: false, code, message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
+      });
+      return;
+    }
+    console.error('[ai/planning-context] unexpected error');
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+  }
 }

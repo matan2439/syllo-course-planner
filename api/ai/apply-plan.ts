@@ -16,9 +16,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { resolveOwner } from './session_owner';
-import { academicStatusDigest, getBoardRepository, getProposalStore, storageKind } from './apply_runtime';
+import {
+  academicStatusDigest,
+  ensurePlannerStorageReady,
+  getAuthoritativeApplyStore,
+  getBoardRepository,
+  getProposalStore,
+  plannerStorageErrorCode,
+  storageKind,
+} from './apply_runtime';
 import { checkProposalAccess, type ProposalRecord } from './proposal_store';
 import type { CommittedBoard } from './board_repository';
+import { validateAuthoritativeCandidate } from './authoritative_candidate_validation';
 
 /** Stable, deterministic rejection codes. Additive only — never renumbered. */
 export type ApplyRejectionCode =
@@ -29,6 +38,8 @@ export type ApplyRejectionCode =
   | 'SESSION_MISMATCH'
   | 'CANDIDATE_NOT_IN_PROPOSAL'
   | 'CANDIDATE_NOT_APPLYABLE'
+  | 'CANDIDATE_IDENTITY_MISMATCH'
+  | 'CONSTRAINT_FINGERPRINT_MISMATCH'
   | 'PROFILE_VERSION_MISMATCH'
   | 'ACADEMIC_STATUS_MISMATCH'
   | 'BOARD_VERSION_CONFLICT'
@@ -43,6 +54,8 @@ const REASON_HE: Record<ApplyRejectionCode, string> = {
   SESSION_MISMATCH: 'ההצעה כבר אינה זמינה. יש לבנות תוכנית מחדש.',
   CANDIDATE_NOT_IN_PROPOSAL: 'החלופה שנבחרה אינה חלק מההצעה הזו.',
   CANDIDATE_NOT_APPLYABLE: 'לא ניתן להחיל את החלופה הזו.',
+  CANDIDATE_IDENTITY_MISMATCH: 'החלופה השמורה אינה תואמת להצעה. יש לבנות מחדש.',
+  CONSTRAINT_FINGERPRINT_MISMATCH: 'כללי התכנון השתנו מאז הבנייה. יש לבנות מחדש.',
   PROFILE_VERSION_MISMATCH: 'ההעדפות שלך השתנו מאז הבנייה — יש לבנות מחדש לפני החלה.',
   ACADEMIC_STATUS_MISMATCH: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
   BOARD_VERSION_CONFLICT: 'התוכנית הנוכחית התעדכנה בינתיים. יש לרענן ולנסות שוב.',
@@ -58,6 +71,8 @@ const STATUS: Record<ApplyRejectionCode, number> = {
   PROPOSAL_SUPERSEDED: 409,
   CANDIDATE_NOT_IN_PROPOSAL: 409,
   CANDIDATE_NOT_APPLYABLE: 409,
+  CANDIDATE_IDENTITY_MISMATCH: 409,
+  CONSTRAINT_FINGERPRINT_MISMATCH: 409,
   PROFILE_VERSION_MISMATCH: 409,
   ACADEMIC_STATUS_MISMATCH: 409,
   BOARD_VERSION_CONFLICT: 409,
@@ -177,6 +192,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   try {
     await handle(req, res);
   } catch (err) {
+    const storageCode = plannerStorageErrorCode(err);
+    if (storageCode && !res.headersSent) {
+      res.status(503).json({
+        ok: false,
+        code: storageCode,
+        message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
+      });
+      return;
+    }
     // Never surface an internal message: a stack trace is not something a
     // student can act on, and it is not something a stranger should see.
     console.error('[ai/apply-plan] unexpected error:', err instanceof Error ? err.message : String(err));
@@ -190,14 +214,14 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   // The session is resolved for every method: a GET is how a fresh page learns
   // whether this browser already owns a committed board.
   const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
-  const repo = getBoardRepository();
+  await ensurePlannerStorageReady();
 
   if (req.method === 'GET') {
     const programId = String(
       (Array.isArray(req.query?.program_id) ? req.query.program_id[0] : req.query?.program_id) ?? '',
     ).trim();
     if (!programId) { reject(res, 'INVALID_REQUEST'); return; }
-    const board = await repo.load(owner.ownerId, programId);
+    const board = await getBoardRepository().load(owner.ownerId, programId);
     res.status(200).json({
       ok: true,
       board: board ? boardView(board) : null,
@@ -216,6 +240,44 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (!parsed.success) { reject(res, 'INVALID_REQUEST'); return; }
   const request = parsed.data;
 
+  const atomicStore = getAuthoritativeApplyStore();
+  if (atomicStore) {
+    const result = await atomicStore.apply({
+      ownerId: owner.ownerId,
+      programId: request.program_id,
+      proposalId: request.proposal_id,
+      candidateId: request.candidate_id,
+      expectedBoardVersion: request.expected_board_version,
+      expectedProfileVersion: request.expected_profile_version,
+      expectedAcademicStatusDigest: academicStatusDigest(request.academic_status),
+      idempotencyKey: request.idempotency_key,
+      now: Date.now(),
+      validateStoredCandidate: (semesters) => validateAuthoritativeCandidate({
+        ownerId: owner.ownerId,
+        programId: request.program_id,
+        profileVersion: request.expected_profile_version,
+        semesters,
+      }),
+    });
+    if (!result.ok) {
+      reject(res, result.reason, {
+        ...(result.reason === 'BOARD_VERSION_CONFLICT'
+          ? { currentBoardVersion: result.board?.version ?? null }
+          : {}),
+      });
+      return;
+    }
+    res.status(200).json({
+      ok: true,
+      replayed: result.replayed,
+      board: boardView(result.board),
+      appliedCandidateId: result.candidateId,
+      appliedProposalId: result.proposalId,
+    } satisfies ApplyPlanSuccess);
+    return;
+  }
+
+  const repo = getBoardRepository();
   const record = await getProposalStore().get(request.proposal_id);
   const currentBoard = await repo.load(owner.ownerId, request.program_id);
   const verdict = validateApply(record, request, owner.ownerId, Date.now(), currentBoard);

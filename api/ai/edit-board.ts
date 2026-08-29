@@ -1,7 +1,12 @@
 /** POST /api/ai/edit-board — authoritative manual board mutation. */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { manualBoardEditRequestSchema, type ManualBoardEditResponse } from '../../shared/planner/wire';
-import { getAcademicContextStore, getBoardRepository } from './apply_runtime';
+import {
+  ensurePlannerStorageReady,
+  getAcademicContextStore,
+  getBoardRepository,
+  plannerStorageErrorCode,
+} from './apply_runtime';
 import { loadLocalBoardJson } from './board_loader';
 import type { CommittedBoard } from './board_repository';
 import {
@@ -12,7 +17,8 @@ import { resolveOwner } from './session_owner';
 
 type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode
   | 'INVALID_REQUEST' | 'METHOD_NOT_ALLOWED' | 'ACADEMIC_CONTEXT_NOT_FOUND'
-  | 'PROGRAM_NOT_FOUND' | 'BOARD_VERSION_CONFLICT' | 'IDEMPOTENCY_CONFLICT' | 'INTERNAL_ERROR';
+  | 'PROGRAM_NOT_FOUND' | 'BOARD_VERSION_CONFLICT' | 'IDEMPOTENCY_CONFLICT'
+  | 'PLANNER_STORAGE_UNAVAILABLE' | 'PLANNER_SCHEMA_MISMATCH' | 'INTERNAL_ERROR';
 
 const MESSAGE_HE: Record<FailureCode, string> = {
   INVALID_REQUEST: 'בקשת העריכה אינה תקינה.',
@@ -31,6 +37,8 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   PLAN_INVALID: 'ההוספה אינה חוקית לפי דרישות התוכנית.',
   BOARD_VERSION_CONFLICT: 'הלוח השתנה. יש לרענן ולנסות שוב.',
   IDEMPOTENCY_CONFLICT: 'מזהה העריכה כבר שימש לפעולה אחרת.',
+  PLANNER_STORAGE_UNAVAILABLE: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
+  PLANNER_SCHEMA_MISMATCH: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
   INTERNAL_ERROR: 'אירעה שגיאה פנימית.',
 };
 
@@ -51,7 +59,8 @@ function reject(res: VercelResponse, code: FailureCode, currentBoardVersion?: st
     : code === 'INVALID_REQUEST' ? 400
       : code === 'ACADEMIC_CONTEXT_NOT_FOUND' || code === 'PROGRAM_NOT_FOUND' ? 404
         : code === 'BOARD_VERSION_CONFLICT' || code === 'IDEMPOTENCY_CONFLICT' ? 409
-          : code === 'INTERNAL_ERROR' ? 500 : 422;
+          : code === 'PLANNER_STORAGE_UNAVAILABLE' || code === 'PLANNER_SCHEMA_MISMATCH' ? 503
+            : code === 'INTERNAL_ERROR' ? 500 : 422;
   res.status(status).json(body);
 }
 
@@ -60,6 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (req.method !== 'POST') { reject(res, 'METHOD_NOT_ALLOWED'); return; }
     const parsed = manualBoardEditRequestSchema.safeParse(req.body);
     if (!parsed.success) { reject(res, 'INVALID_REQUEST'); return; }
+    await ensurePlannerStorageReady();
     const request = parsed.data;
     const owner = resolveOwner(req as any, res);
     const repo = getBoardRepository();
@@ -111,6 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       board: boardView(commit.board),
     });
   } catch (error) {
+    const storageCode = plannerStorageErrorCode(error);
+    if (storageCode) { reject(res, storageCode); return; }
     console.error('[ai/edit-board] unexpected error:', error instanceof Error ? error.message : String(error));
     if (!res.headersSent) reject(res, 'INTERNAL_ERROR');
   }

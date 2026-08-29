@@ -16,6 +16,7 @@
  * assumed by a reader.
  */
 import { createHash } from 'crypto';
+import postgres from 'postgres';
 import {
   InMemoryBoardRepository,
   type BoardRepository,
@@ -23,6 +24,12 @@ import {
 import { FileBoardRepository } from './board_repository_file';
 import { InMemoryProposalStore, type ProposalStore } from './proposal_store';
 import { InMemoryAcademicContextStore, type AcademicContextStore } from './academic_context_store';
+import type { AuthoritativeApplyStore } from './authoritative_apply_store';
+import {
+  createPostgresPlannerState,
+  type PlannerPostgresSql,
+  type PostgresPlannerState,
+} from './postgres/postgres_planner_state';
 
 /** The env var that switches on the local Preview file adapter. */
 export const BOARD_STATE_DIR_ENV = 'SYLLO_BOARD_STATE_DIR';
@@ -41,10 +48,45 @@ export class PlannerStorageError extends Error {
   }
 }
 
+export function plannerStorageErrorCode(error: unknown): PlannerStorageErrorCode | null {
+  const code = error && typeof error === 'object'
+    ? (error as { code?: unknown }).code
+    : undefined;
+  return code === 'PLANNER_STORAGE_UNAVAILABLE' || code === 'PLANNER_SCHEMA_MISMATCH'
+    ? code
+    : null;
+}
+
 let boardRepo: BoardRepository | undefined;
 let proposalStore: ProposalStore | undefined;
 let academicContextStore: AcademicContextStore | undefined;
+let authoritativeApplyStore: AuthoritativeApplyStore | undefined;
+let postgresState: PostgresPlannerState | undefined;
 let activeKind: StorageKind | undefined;
+let postgresSchemaVerified = false;
+
+type PostgresPlannerStateFactory = (url: string) => PostgresPlannerState;
+
+const defaultPostgresStateFactory: PostgresPlannerStateFactory = (url) => {
+  const sql = postgres(url, { max: 5 }) as unknown as PlannerPostgresSql;
+  return createPostgresPlannerState(sql);
+};
+
+let postgresStateFactory: PostgresPlannerStateFactory = defaultPostgresStateFactory;
+
+/** Test-only dependency injection; runtime generation and credentials are unchanged. */
+export function installPostgresPlannerStateFactoryForTests(
+  factory: PostgresPlannerStateFactory,
+): void {
+  postgresStateFactory = factory;
+  postgresState = undefined;
+  boardRepo = undefined;
+  proposalStore = undefined;
+  academicContextStore = undefined;
+  authoritativeApplyStore = undefined;
+  activeKind = undefined;
+  postgresSchemaVerified = false;
+}
 
 export function plannerDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean((env[PLANNER_DATABASE_URL_ENV] ?? '').trim());
@@ -73,14 +115,35 @@ export function storageKind(): StorageKind {
  * durability claim nothing in this repository supports.
  */
 export function productionStorageConfigured(): boolean {
-  return false;
+  return activeKind === 'postgres' && postgresSchemaVerified;
+}
+
+function initializePostgresState(): PostgresPlannerState {
+  if (!postgresState) {
+    const url = process.env[PLANNER_DATABASE_URL_ENV]?.trim();
+    if (!url) throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE');
+    postgresState = postgresStateFactory(url);
+  }
+  activeKind = 'postgres';
+  boardRepo = postgresState.boardRepository;
+  proposalStore = postgresState.proposalStore;
+  academicContextStore = postgresState.academicContextStore;
+  authoritativeApplyStore = postgresState.authoritativeApplyStore;
+  return postgresState;
+}
+
+export async function ensurePlannerStorageReady(): Promise<void> {
+  if (selectedKind() !== 'postgres') return;
+  const state = initializePostgresState();
+  await state.ensureSchemaCurrent();
+  postgresSchemaVerified = true;
 }
 
 export function getBoardRepository(): BoardRepository {
   const kind = selectedKind();
   if (!boardRepo || activeKind !== kind) {
     if (kind === 'postgres') {
-      throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE');
+      return initializePostgresState().boardRepository;
     }
     activeKind = kind;
     boardRepo = kind === 'file'
@@ -90,6 +153,9 @@ export function getBoardRepository(): BoardRepository {
     // the two are rebuilt together and never straddle a switch.
     proposalStore = new InMemoryProposalStore();
     academicContextStore = new InMemoryAcademicContextStore();
+    authoritativeApplyStore = undefined;
+    postgresState = undefined;
+    postgresSchemaVerified = false;
   }
   return boardRepo;
 }
@@ -109,12 +175,21 @@ export function getAcademicContextStore(): AcademicContextStore {
   return academicContextStore!;
 }
 
+export function getAuthoritativeApplyStore(): AuthoritativeApplyStore | null {
+  if (selectedKind() !== 'postgres') return null;
+  return initializePostgresState().authoritativeApplyStore;
+}
+
 /** Test-only: drop both stores so suites cannot leak state into each other. */
 export function resetApplyRuntime(): void {
   boardRepo = undefined;
   proposalStore = undefined;
   academicContextStore = undefined;
+  authoritativeApplyStore = undefined;
+  postgresState = undefined;
   activeKind = undefined;
+  postgresSchemaVerified = false;
+  postgresStateFactory = defaultPostgresStateFactory;
 }
 
 // ── digests the Apply contract compares ─────────────────────────────────────
