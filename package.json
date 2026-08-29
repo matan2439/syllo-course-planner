@@ -11,7 +11,8 @@
     "sync:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --audit --sync",
     "verify:live": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --verify-live",
     "import:shaar-ruach": "tsx scripts/import_shaar_ruach_courses.ts",
-    "audit:shaar-ruach": "tsx scripts/audit_shaar_ruach.ts"
+    "audit:shaar-ruach": "tsx scripts/audit_shaar_ruach.ts",
+    "migrate:planner-state": "tsx scripts/migrate_planner_state.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.7",
