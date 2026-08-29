@@ -114,4 +114,26 @@ describe('R2 — POST /api/ai/edit-board', () => {
       { semesterId: B, courseIds: ['C1'] },
     ]));
   });
+
+  test('moves a course from the visible initial board before the first committed version exists', async () => {
+    await getAcademicContextStore().put({
+      ownerId: OWNER, programId: PROGRAM, digest: 'as_current', personalStatus: {},
+      planContext: {
+        semesters: [{ id: A, courses: [{ course_id: 'C1' }] }, { id: B, courses: [] }],
+        personal_status: {},
+      },
+      preferences: { disallowed_course_ids: [] },
+    });
+    const moved = await call(OWNER, {
+      operation: 'move_course', program_id: PROGRAM, expected_board_version: null,
+      operation_id: 'move_initial_123456789', course_id: 'C1',
+      semester_id: B, academic_status_digest: 'as_current',
+    });
+    expect(moved.statusCode).toBe(200);
+    expect(moved._body.board).toEqual(expect.objectContaining({ version: 'bv_1' }));
+    expect(moved._body.board.semesters).toEqual(expect.arrayContaining([
+      { semesterId: A, courseIds: [] },
+      { semesterId: B, courseIds: ['C1'] },
+    ]));
+  });
 });

@@ -140,6 +140,24 @@ describe('R2 — authoritative manual move preparation', () => {
       ] });
   });
 
+  test('moves a course from the authoritative planning context before a committed board exists', () => {
+    const initialContext = {
+      ...context,
+      planContext: {
+        semesters: [{ id: A, courses: [{ course_id: 'BASE' }] }, { id: B, courses: [] }],
+        personal_status: context.personalStatus,
+      },
+    };
+    expect(prepareManualCourseMove({
+      boardJson: BOARD,
+      context: initialContext,
+      currentBoard: null,
+      request: { ...move('BASE'), expected_board_version: null },
+    })).toEqual({ ok: true, semesters: [
+      { semesterId: A, courseIds: [] }, { semesterId: B, courseIds: ['BASE'] },
+    ] });
+  });
+
   test('rejects absent courses and a no-op destination', () => {
     expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard, request: move('NEEDS_BASE') }))
       .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_NOT_PRESENT' }));

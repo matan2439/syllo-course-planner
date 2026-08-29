@@ -30,13 +30,13 @@ export interface PrepareManualCourseAddInput {
 export interface PrepareManualCourseRemoveInput {
   boardJson: unknown;
   context: AcademicContextRecord;
-  currentBoard: CommittedBoard;
+  currentBoard: CommittedBoard | null;
   request: Extract<ManualBoardEditRequest, { operation: 'remove_course' }>;
 }
 export interface PrepareManualCourseMoveInput {
   boardJson: unknown;
   context: AcademicContextRecord;
-  currentBoard: CommittedBoard;
+  currentBoard: CommittedBoard | null;
   request: Extract<ManualBoardEditRequest, { operation: 'move_course' }>;
 }
 
@@ -45,6 +45,17 @@ const statusIds = (status: unknown, field: 'completed' | 'currently_taking'): Se
   const entries = Array.isArray(source[field]) ? source[field] as Array<{ course_id?: unknown }> : [];
   return new Set(entries.map((entry) => String(entry?.course_id ?? '')).filter(Boolean));
 };
+
+const boardState = (
+  currentBoard: CommittedBoard | null,
+  context: AcademicContextRecord,
+  model: ReturnType<typeof buildModel>,
+) => currentBoard
+  ? { semesters: Object.fromEntries(model.knownSemesterIds.map((semesterId) => [
+      semesterId,
+      [...(currentBoard.semesters.find((semester) => semester.semesterId === semesterId)?.courseIds ?? [])],
+    ])) }
+  : planContextToState(context.planContext as any, model);
 
 /**
  * Build and validate the exact board the repository may commit. This function
@@ -76,12 +87,7 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
     return { ok: false, code: 'COURSE_HARD_EXCLUDED' };
   }
 
-  const state = currentBoard
-    ? { semesters: Object.fromEntries(model.knownSemesterIds.map((semesterId) => [
-        semesterId,
-        [...(currentBoard.semesters.find((semester) => semester.semesterId === semesterId)?.courseIds ?? [])],
-      ])) }
-    : planContextToState(context.planContext as any, model);
+  const state = boardState(currentBoard, context, model);
 
   if (Object.values(state.semesters).some((ids) => ids.includes(request.course_id))) {
     return { ok: false, code: 'COURSE_ALREADY_PRESENT' };
@@ -120,14 +126,14 @@ export function prepareManualCourseRemove(input: PrepareManualCourseRemoveInput)
   const profile = model.profiles.get(request.course_id);
   if (!profile) return { ok: false, code: 'UNKNOWN_COURSE' };
   if (profile.is_mandatory) return { ok: false, code: 'COURSE_REQUIRED' };
-  if (!currentBoard.semesters.some((semester) => semester.courseIds.includes(request.course_id))) {
+  const initialState = boardState(currentBoard, context, model);
+  if (!Object.values(initialState.semesters).some((courseIds) => courseIds.includes(request.course_id))) {
     return { ok: false, code: 'COURSE_NOT_PRESENT' };
   }
 
   const state = { semesters: Object.fromEntries(model.knownSemesterIds.map((semesterId) => [
     semesterId,
-    (currentBoard.semesters.find((semester) => semester.semesterId === semesterId)?.courseIds ?? [])
-      .filter((courseId) => courseId !== request.course_id),
+    (initialState.semesters[semesterId] ?? []).filter((courseId) => courseId !== request.course_id),
   ])) };
   const validation = validatePlanState(state, model);
   if (!validation.valid) return { ok: false, code: 'PLAN_INVALID', details: validation.errors };
@@ -152,9 +158,9 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
   }
   const profile = model.profiles.get(request.course_id);
   if (!profile) return { ok: false, code: 'UNKNOWN_COURSE' };
-  const sourceSemesterIds = currentBoard.semesters
-    .filter((semester) => semester.courseIds.includes(request.course_id))
-    .map((semester) => semester.semesterId);
+  const initialState = boardState(currentBoard, context, model);
+  const sourceSemesterIds = model.knownSemesterIds
+    .filter((semesterId) => initialState.semesters[semesterId]?.includes(request.course_id));
   if (!sourceSemesterIds.length) return { ok: false, code: 'COURSE_NOT_PRESENT' };
   if (sourceSemesterIds.includes(request.semester_id)) {
     return { ok: false, code: 'COURSE_ALREADY_PRESENT' };
@@ -162,8 +168,7 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
 
   const state = { semesters: Object.fromEntries(model.knownSemesterIds.map((semesterId) => [
     semesterId,
-    (currentBoard.semesters.find((semester) => semester.semesterId === semesterId)?.courseIds ?? [])
-      .filter((courseId) => courseId !== request.course_id),
+    (initialState.semesters[semesterId] ?? []).filter((courseId) => courseId !== request.course_id),
   ])) };
   const destinations = profile.is_annual && profile.spans_semesters?.length
     ? [...profile.spans_semesters]

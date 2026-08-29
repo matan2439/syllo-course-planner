@@ -102,9 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!boardJson) { reject(res, 'PROGRAM_NOT_FOUND'); return; }
     const prepared = request.operation === 'add_course'
       ? prepareManualCourseAdd({ boardJson, context, currentBoard, request })
-      : !currentBoard
-        ? { ok: false as const, code: 'COURSE_NOT_PRESENT' as const }
-        : request.operation === 'move_course'
+      : request.operation === 'move_course'
           ? prepareManualCourseMove({ boardJson, context, currentBoard, request })
           : prepareManualCourseRemove({ boardJson, context, currentBoard, request });
     if (!prepared.ok) { reject(res, prepared.code); return; }
