@@ -26,16 +26,39 @@ import { InMemoryAcademicContextStore, type AcademicContextStore } from './acade
 
 /** The env var that switches on the local Preview file adapter. */
 export const BOARD_STATE_DIR_ENV = 'SYLLO_BOARD_STATE_DIR';
+export const PLANNER_DATABASE_URL_ENV = 'SYLLO_PLANNER_DATABASE_URL';
 
-export type StorageKind = 'memory' | 'file';
+export type StorageKind = 'memory' | 'file' | 'postgres';
+
+export type PlannerStorageErrorCode =
+  | 'PLANNER_STORAGE_UNAVAILABLE'
+  | 'PLANNER_SCHEMA_MISMATCH';
+
+export class PlannerStorageError extends Error {
+  constructor(readonly code: PlannerStorageErrorCode) {
+    super(code);
+    this.name = 'PlannerStorageError';
+  }
+}
 
 let boardRepo: BoardRepository | undefined;
 let proposalStore: ProposalStore | undefined;
 let academicContextStore: AcademicContextStore | undefined;
 let activeKind: StorageKind | undefined;
 
+export function plannerDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean((env[PLANNER_DATABASE_URL_ENV] ?? '').trim());
+}
+
+export function storageKindFor(env: NodeJS.ProcessEnv): StorageKind {
+  if (plannerDatabaseConfigured(env)) return 'postgres';
+  if ((env[BOARD_STATE_DIR_ENV] ?? '').trim()) return 'file';
+  if (env.VERCEL === '1') throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE');
+  return 'memory';
+}
+
 function selectedKind(): StorageKind {
-  return (process.env[BOARD_STATE_DIR_ENV] ?? '').trim() ? 'file' : 'memory';
+  return storageKindFor(process.env);
 }
 
 /** Which adapter this process is running on — for truthful diagnostics. */
@@ -56,6 +79,9 @@ export function productionStorageConfigured(): boolean {
 export function getBoardRepository(): BoardRepository {
   const kind = selectedKind();
   if (!boardRepo || activeKind !== kind) {
+    if (kind === 'postgres') {
+      throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE');
+    }
     activeKind = kind;
     boardRepo = kind === 'file'
       ? new FileBoardRepository({ dir: process.env[BOARD_STATE_DIR_ENV]!.trim() })
