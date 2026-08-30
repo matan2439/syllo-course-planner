@@ -29,6 +29,7 @@
 import type { ConstraintModel, PlanState } from './planner_types';
 import { placedCourseIds } from './planner_types';
 import type { CourseProfile } from './course_profile';
+import { mapOfferedToKnownSemesters } from './semester_availability';
 
 /** Below this aggregate data_confidence, a fully-specified fact is treated as inferred, not known. */
 const CONFIDENT_THRESHOLD = 0.5;
@@ -108,7 +109,8 @@ function detectConflicts(
   const offered = p.offered_semesters;
   const effective = p.effective_allowed_semesters;
   if (offered && offered.length > 0 && effective && effective.length > 0) {
-    const overlap = offered.some((s) => effective.includes(s));
+    const normalizedOffered = mapOfferedToKnownSemesters(offered, effective);
+    const overlap = normalizedOffered.some((s) => effective.includes(s));
     if (!overlap) {
       conflicts.push({
         courseId,

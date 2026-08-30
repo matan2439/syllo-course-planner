@@ -23,6 +23,7 @@ import {
   type PreferenceTerms,
   type CourseLike,
 } from './relevance';
+import { mapOfferedToKnownSemesters } from './semester_availability';
 
 /**
  * Issue 4 — estimate a bounded 0–5 difficulty/workload value for a course when
@@ -1889,20 +1890,6 @@ export interface LegalSemestersResult {
  * to every known id whose trailing _-segment is that letter; anything else is
  * kept verbatim (vocabularies that don't use term letters behave as before).
  */
-function mapOfferedToKnownSemesters(offered: string[], knownSemesterIds: string[]): string[] {
-  if (!knownSemesterIds.length) return offered;
-  const out: string[] = [];
-  for (const o of offered) {
-    if (knownSemesterIds.includes(o)) { out.push(o); continue; }
-    // Hebrew half-letters appear in real board data (see the viewer's
-    // normalizeLegalSemesterIdsLocal, which handles the same vocabulary).
-    const term = o.trim().toLowerCase().replace(/^א$/, 'a').replace(/^ב$/, 'b');
-    const matches = knownSemesterIds.filter(k => k.toLowerCase().split('_').pop() === term);
-    out.push(...(matches.length ? matches : [o]));
-  }
-  return [...new Set(out)];
-}
-
 export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: string[] = []): LegalSemestersResult {
   const effective = course.effective_allowed_semesters?.length ? course.effective_allowed_semesters : null;
   const program = course.program_allowed_semesters?.length

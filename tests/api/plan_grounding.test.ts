@@ -78,6 +78,20 @@ describe('groundPlan', () => {
     );
   });
 
+  test.each([
+    [['A'], ['year_3_semester_a']],
+    [['B'], ['year_4_semester_b']],
+    [['A', 'B'], ['year_3_semester_a', 'year_3_semester_b']],
+  ])('term-only catalog availability %j agrees with normalized semester ids %j', (offered, effective) => {
+    const g = groundPlan(
+      model([profile('EQUIVALENT', { offered_semesters: offered, effective_allowed_semesters: effective })]),
+      plan({ s1: ['EQUIVALENT'] }),
+    );
+
+    expect(g.facts.find((x) => x.courseId === 'EQUIVALENT')!.status).toBe('known');
+    expect(g.conflicts).toEqual([]);
+  });
+
   test('a user-asserted-completed course that is also placed is a conflict', () => {
     const g = groundPlan(
       model([profile('D')], { completedCourseIds: new Set(['D']) }),
