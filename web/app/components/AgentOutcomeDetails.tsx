@@ -35,6 +35,20 @@ const ANSWER_TYPE_HE: Record<string, string> = {
   boolean: 'כן / לא',
 }
 
+const CLARIFICATION_HE: Record<string, string> = {
+  completed_courses: 'אילו קורסים כבר השלמת?',
+  current_courses: 'אילו קורסים את/ה לומד/ת כעת?',
+  excluded_courses: 'האם יש קורסים שברצונך להחריג מהתוכנית?',
+  max_weekly_hours: 'מהי מגבלת שעות הלימוד השבועיות שלך?',
+  track_or_focus: 'באיזה מסלול או תחום התמקדות בחרת?',
+}
+
+const CLARIFICATION_ACTION: Record<string, { href: string; label: string }> = {
+  completed_courses: { href: '#completed-courses-control', label: 'עדכון קורסים שהושלמו' },
+  excluded_courses: { href: '#excluded-courses-control', label: 'עדכון קורסים להחרגה' },
+  max_weekly_hours: { href: '#max-weekly-hours-control', label: 'עדכון מגבלת שעות' },
+}
+
 export default function AgentOutcomeDetails({
   outcome,
   clarificationItems = [],
@@ -71,12 +85,25 @@ export default function AgentOutcomeDetails({
         <div id={regionId} role="region" aria-label="פרטי מצב ההצעה" className="mt-2 flex flex-col gap-3">
           {hasClarification && clarificationItems.map((item) => (
             <div key={item.reasonCode} className="rounded-lg border border-[var(--border)] p-3">
-              <p className="font-medium text-[var(--text)]">{item.messageHe}</p>
+              <p className="font-medium text-[var(--text)]">{CLARIFICATION_HE[item.reasonCode] ?? item.messageHe}</p>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 {item.answerable
                   ? `ניתן לענות${item.answerType ? ` · סוג תשובה: ${ANSWER_TYPE_HE[item.answerType] ?? item.answerType}` : ''}`
                   : 'דרושה הכרעה סמכותית — לא ניתן לפתור זאת כהעדפת סטודנט'}
               </p>
+              {item.answerable && item.applyBlocked && (
+                <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                  התשובה נדרשת לפני החלת התוכנית.
+                </p>
+              )}
+              {item.answerable && CLARIFICATION_ACTION[item.reasonCode] && (
+                <a
+                  href={CLARIFICATION_ACTION[item.reasonCode].href}
+                  className="mt-2 inline-flex rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--purple-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
+                >
+                  {CLARIFICATION_ACTION[item.reasonCode].label}
+                </a>
+              )}
               {item.courseIds && item.courseIds.length > 0 && (
                 <p className="mt-1 text-xs text-[var(--text-muted)]">קורסים מושפעים: <span dir="ltr">{item.courseIds.join(', ')}</span></p>
               )}

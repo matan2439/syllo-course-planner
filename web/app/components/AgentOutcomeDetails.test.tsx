@@ -36,6 +36,20 @@ test('clarification_required: details are collapsed, then open to show an answer
   expect(screen.getByText(/ניתן לענות/)).toBeInTheDocument()
 })
 
+test('localizes server clarification text and links the required answer to its real control', () => {
+  render(<AgentOutcomeDetails outcome="clarification_required" clarificationItems={[{
+    reasonCode: 'excluded_courses', kind: 'answerable_preference',
+    messageHe: 'Are there any courses you want to exclude from your plan?',
+    answerable: true, applyBlocked: true, answerType: 'course_id_list',
+  }]} />)
+  fireEvent.click(screen.getByRole('button', { name: 'הצג פרטים' }))
+  expect(screen.getByText('האם יש קורסים שברצונך להחריג מהתוכנית?')).toBeInTheDocument()
+  expect(screen.queryByText(/Are there any courses/)).toBeNull()
+  expect(screen.getByRole('link', { name: 'עדכון קורסים להחרגה' }))
+    .toHaveAttribute('href', '#excluded-courses-control')
+  expect(screen.getByText('התשובה נדרשת לפני החלת התוכנית.')).toBeInTheDocument()
+})
+
 test('clarification with an authoritative conflict item is marked NON-answerable', () => {
   render(<AgentOutcomeDetails outcome="clarification_required" clarificationItems={[conflictItem]} />)
   fireEvent.click(screen.getByRole('button'))

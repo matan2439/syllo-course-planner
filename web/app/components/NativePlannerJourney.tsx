@@ -799,13 +799,15 @@ export default function NativePlannerJourney({
         </Card>
 
         {useAcademicDecisionAgent && (
-          <CompletedCoursesPanel
-            programId={programId}
-            catalogCourses={pickerCourses}
-            catalogHoursById={catalogHoursById}
-            value={academicStatus}
-            onChange={updateAcademicStatus}
-          />
+          <div id="completed-courses-control">
+            <CompletedCoursesPanel
+              programId={programId}
+              catalogCourses={pickerCourses}
+              catalogHoursById={catalogHoursById}
+              value={academicStatus}
+              onChange={updateAcademicStatus}
+            />
+          </div>
         )}
 
         {useAcademicDecisionAgent && (
@@ -879,7 +881,7 @@ export default function NativePlannerJourney({
           <h2 className="text-sm font-bold tracking-tight">העדפות</h2>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             מגבלת שעות שבועיות לסמסטר
-            <input name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
+            <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
               onChange={(e) => setMaxHours(e.target.value)}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
@@ -891,25 +893,27 @@ export default function NativePlannerJourney({
           </label>
           <CourseNamePicker inputName="wanted-course-search" label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
             courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
-          <CourseNamePicker inputName="excluded-course-search" label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
-            courses={pickerCourses} selectedIds={excludeIds}
-            onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
-          {/* An empty selection is only an ANSWER once the student says so —
-              untouched stays unknown, so it is never silently read as "none". */}
-          {useAcademicDecisionAgent && excludeIds.length === 0 && (
-            <button
-              type="button"
-              aria-pressed={exclusionsNoneConfirmed}
-              onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
-              className={`self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
-                exclusionsNoneConfirmed
-                  ? 'border-emerald-600 bg-emerald-600 text-white'
-                  : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
-              }`}
-            >
-              אין קורסים שאני רוצה להימנע מהם
-            </button>
-          )}
+          <div id="excluded-courses-control">
+            <CourseNamePicker inputName="excluded-course-search" label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
+              courses={pickerCourses} selectedIds={excludeIds}
+              onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
+            {/* An empty selection is only an ANSWER once the student says so —
+                untouched stays unknown, so it is never silently read as "none". */}
+            {useAcademicDecisionAgent && excludeIds.length === 0 && (
+              <button
+                type="button"
+                aria-pressed={exclusionsNoneConfirmed}
+                onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
+                className={`self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
+                  exclusionsNoneConfirmed
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
+                }`}
+              >
+                אין קורסים שאני רוצה להימנע מהם
+              </button>
+            )}
+          </div>
         </Card>
 
         <div className="flex items-center gap-3">
