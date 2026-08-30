@@ -154,6 +154,7 @@ async function renderReady(generateFn?: unknown) {
       generateFn={(generateFn as never) ?? (async (req: GeneratePlanRequest) => proposalFor(req))}
       applyFn={server.applyFn}
       committedBoardFn={server.committedBoardFn}
+      planningContextFn={async () => null}
       useAcademicDecisionAgent
     />,
   )

@@ -58,6 +58,7 @@ async function renderReady(over: Partial<{ generateFn: unknown; useAcademicDecis
       programId="mechanical_engineering_2027"
       getBoardFn={async () => board()}
       generateFn={(over.generateFn as never) ?? (async (req: GeneratePlanRequest) => proposal(req, TOPIC_IMPACT))}
+      planningContextFn={async () => null}
       useAcademicDecisionAgent={over.useAcademicDecisionAgent ?? true}
     />,
   )

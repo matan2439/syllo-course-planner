@@ -171,10 +171,12 @@ async function renderReady(over: Partial<{ generateFn: unknown }> = {}) {
       generateFn={(over.generateFn as never) ?? (async (req: GeneratePlanRequest) => proposal(req))}
       applyFn={server.applyFn}
       committedBoardFn={server.committedBoardFn}
+      planningContextFn={async () => null}
       useAcademicDecisionAgent
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('button', { name: /בנה|בניית|בנייה/ })).toBeEnabled())
 }
 const buildPlan = async () => {
   fireEvent.click(screen.getByRole('button', { name: /בנה|בניית|בנייה/ }))

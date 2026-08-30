@@ -56,6 +56,7 @@ const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecis
   generateFn: over.generateFn ?? (async (req: GeneratePlanRequest) => agentProposal(req)),
   applyFn: server.applyFn,
   committedBoardFn: server.committedBoardFn,
+  planningContextFn: async () => null,
   useAcademicDecisionAgent: over.useAcademicDecisionAgent ?? false,
 })
 
@@ -72,6 +73,9 @@ async function renderReady(over = {}) {
   })
   render(<NativePlannerJourney {...deps(over)} />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+  if ((over as { useAcademicDecisionAgent?: boolean }).useAcademicDecisionAgent) {
+    await waitFor(() => expect(screen.getByRole('button', { name: 'בנה תוכנית' })).toBeEnabled())
+  }
 }
 
 describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {

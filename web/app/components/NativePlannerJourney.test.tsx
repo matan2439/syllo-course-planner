@@ -44,6 +44,7 @@ const deps = (over: Partial<{ getBoardFn: any; generateFn: any }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
   generateFn: over.generateFn ?? (async () => PROPOSAL()),
+  planningContextFn: async () => null,
 })
 
 async function renderReady(over = {}) {
