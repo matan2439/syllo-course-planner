@@ -40,6 +40,7 @@ import CompletedCoursesPanel, {
   type AcademicStatusDraft,
 } from './CompletedCoursesPanel'
 import type { PreferenceProfile } from '../../../api/ai/preference_model'
+import { earlyYearHoursById } from '../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import { Badge, Card, EmptyState } from './ui'
@@ -350,9 +351,20 @@ export default function NativePlannerJourney({
       })),
       personal_status: personalStatus,
     }
-    const prior = Number(priorHours)
-    if (priorHours.trim() && Number.isFinite(prior)) {
-      planContext.total_hours_progress = { known_completed_hours: prior }
+    const completedIds = completedCourseIdsOf(academicStatus)
+    const earlyYearHours = earlyYearHoursById(programId)
+    const identifiedCompletedHours = completedIds.reduce((sum, id) => {
+      const hours = earlyYearHours[id] ?? catalogHoursById[id]
+      return sum + (typeof hours === 'number' && Number.isFinite(hours) ? hours : 0)
+    }, 0)
+    const enteredPriorHours = Number(priorHours)
+    if (completedIds.length > 0 || (priorHours.trim() && Number.isFinite(enteredPriorHours))) {
+      planContext.total_hours_progress = {
+        known_completed_hours: Math.max(
+          identifiedCompletedHours,
+          priorHours.trim() && Number.isFinite(enteredPriorHours) ? enteredPriorHours : 0,
+        ),
+      }
     }
     return {
       program_id: programId,
@@ -382,6 +394,7 @@ export default function NativePlannerJourney({
         : {}),
     }
   }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent,
+    academicStatus, catalogHoursById,
       applyAcademicStatus, exclusionsNoneConfirmed])
 
   const build = useCallback((profile?: PreferenceProfile) => {

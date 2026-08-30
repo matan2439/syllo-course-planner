@@ -155,6 +155,19 @@ describe('completed-course academic status (flag on)', () => {
     expect(personalStatus(sent[0]).completed_knowledge.provenance).toBe('explicit_user')
   })
 
+  test('identified early-year completion carries its authoritative hours into degree progress', async () => {
+    const { sent } = await setup()
+    openPanel()
+    const row = screen.getByRole('group', { name: /גרפיקה הנדסית/ })
+    fireEvent.click(within(row).getByRole('button', { name: 'השלמתי' }))
+    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    build()
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect((sent[0].plan_context as any).total_hours_progress).toEqual({
+      known_completed_hours: 4,
+    })
+  })
+
   test('completed ids never come from the completed-HOURS field', async () => {
     const { sent } = await setup()
     // Enter a large prior-hours total but report no courses at all.
