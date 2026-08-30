@@ -59,10 +59,27 @@ test('uses the responsive grid (no forced horizontal overflow)', () => {
   expect(grid.className).toMatch(/xl:grid-cols-4/)
 })
 
-test('dragging a course onto another semester invokes the same authoritative move intent', () => {
+test('mandatory courses do not advertise a move that authoritative validation must reject', () => {
   const onMoveCourse = jest.fn()
   const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
-  const card = screen.getByText('קורס לדוגמה').closest('[draggable="true"]') as HTMLElement
+  expect(screen.getByText('קורס לדוגמה').closest('[draggable="true"]')).toBeNull()
+  expect(container.querySelector('details')).toBeNull()
+})
+
+test('dragging an elective onto another semester invokes the same authoritative move intent', () => {
+  const onMoveCourse = jest.fn()
+  const electiveBoard = {
+    ...BOARD,
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+    ],
+  }
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(electiveBoard)} onMoveCourse={onMoveCourse} />)
+  const card = screen.getByText('קורס בחירה').closest('[draggable="true"]') as HTMLElement
   const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
   const transfer = {
     value: '',
@@ -74,6 +91,6 @@ test('dragging a course onto another semester invokes the same authoritative mov
   fireEvent.dragStart(card, { dataTransfer: transfer })
   fireEvent.dragOver(target, { dataTransfer: transfer })
   fireEvent.drop(target, { dataTransfer: transfer })
-  expect(onMoveCourse).toHaveBeenCalledWith('C-1', 'year_3_semester_b')
+  expect(onMoveCourse).toHaveBeenCalledWith('E-1', 'year_3_semester_b')
   expect(container.querySelector('details')).toBeInTheDocument() // non-drag keyboard alternative remains
 })

@@ -1,5 +1,22 @@
 # Autonomous Progress
 
+## Latest session — truthful manual move affordances
+
+Preview acceptance had shown that mandatory-course cards advertised drag and
+keyboard move destinations even though the authoritative server correctly
+rejected every such request as `PLAN_INVALID`. Strict RED→GREEN coverage now
+separates the behaviors: mandatory courses expose no move affordance, while
+elective courses retain both drag-and-drop and the keyboard-accessible move
+menu. The server validation remains unchanged and absolute.
+
+The focused native-board and authoritative manual-edit journey pass 25/25.
+Full web verification passes 27/27 suites and 227/227 tests; the web TypeScript
+check and a sequential optimized Next build also pass. A deliberately parallel
+test/build probe reproduced a `.next` artifact race, while the required
+sequential build completed cleanly; verification commands that share `.next`
+must remain serial. Production, Vercel aliases, databases and catalog sources
+were not modified.
+
 ## Latest session — durable Preview manual-edit recovery (`812d248`)
 
 The first immutable durable-storage Preview exposed a real first-edit defect:

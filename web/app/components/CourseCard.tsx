@@ -20,11 +20,13 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
+  const movable = course.type !== 'mandatory' && Boolean(onMove) && !mutationPending
+
   return (
     <div
-      draggable={Boolean(onMove) && !mutationPending}
+      draggable={movable}
       onDragStart={(event) => {
-        if (!onMove || mutationPending) return
+        if (!movable) return
         event.dataTransfer.effectAllowed = 'move'
         event.dataTransfer.setData('application/x-syllo-course-id', course.id)
       }}
@@ -81,7 +83,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           הסר מהלוח
         </button>
       )}
-      {onMove && moveDestinations && moveDestinations.length > 0 && (
+      {course.type !== 'mandatory' && onMove && moveDestinations && moveDestinations.length > 0 && (
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
             אפשרויות העברה עבור {course.name}
