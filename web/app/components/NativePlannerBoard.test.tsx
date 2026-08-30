@@ -82,9 +82,9 @@ test('dragging an elective onto another semester invokes the same authoritative 
   const card = screen.getByText('קורס בחירה').closest('[draggable="true"]') as HTMLElement
   const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
   const transfer = {
-    value: '',
-    setData(_type: string, value: string) { this.value = value },
-    getData() { return this.value },
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
     effectAllowed: '', dropEffect: '',
   }
   expect(card).not.toBeNull()
@@ -93,4 +93,65 @@ test('dragging an elective onto another semester invokes the same authoritative 
   fireEvent.drop(target, { dataTransfer: transfer })
   expect(onMoveCourse).toHaveBeenCalledWith('E-1', 'year_3_semester_b')
   expect(container.querySelector('details')).toBeInTheDocument() // non-drag keyboard alternative remains
+})
+
+test('an elective advertises only semesters listed by the authoritative catalog', () => {
+  const payload = {
+    metadata: {
+      board_data_version: 'rev-1',
+      program_repository_courses: [{
+        course_id: 'E-1', name_he: 'בחירה מוגבלת', weekly_hours: 3.5,
+        is_mandatory: false, offered_semesters: ['year_3_semester_b'],
+      }],
+    },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'בחירה מוגבלת', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+    ],
+  }
+
+  render(<NativePlannerBoard board={vmFromPayload(payload)} onMoveCourse={jest.fn()} />)
+
+  expect(screen.getByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ד׳ — סמסטר א׳' })).toBeNull()
+})
+
+test('dropping an elective outside its catalog offering does not send a move intent', () => {
+  const onMoveCourse = jest.fn()
+  const payload = {
+    metadata: {
+      board_data_version: 'rev-1',
+      program_repository_courses: [{
+        course_id: 'E-1', name_he: 'בחירה מוגבלת', weekly_hours: 3.5,
+        is_mandatory: false, offered_semesters: ['year_3_semester_b'],
+      }],
+    },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'בחירה מוגבלת', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+    ],
+  }
+  render(<NativePlannerBoard board={vmFromPayload(payload)} onMoveCourse={onMoveCourse} />)
+  const card = screen.getByText('בחירה מוגבלת').closest('[draggable="true"]') as HTMLElement
+  const invalidTarget = screen.getByRole('region', { name: 'שנה ד׳ — סמסטר א׳' })
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+
+  fireEvent.dragStart(card, { dataTransfer: transfer })
+  fireEvent.dragOver(invalidTarget, { dataTransfer: transfer })
+  fireEvent.drop(invalidTarget, { dataTransfer: transfer })
+
+  expect(onMoveCourse).not.toHaveBeenCalled()
 })

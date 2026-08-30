@@ -84,6 +84,8 @@ export interface BoardCourseModel {
   halfHours: number | null;
   courseType: string;
   isMandatory: boolean;
+  /** Catalog-authorized semester ids; absent when the source carries no offering fact. */
+  offeredSemesters?: string[];
 }
 export interface BoardSemesterModel {
   semesterId: string;

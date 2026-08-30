@@ -46,15 +46,21 @@ export function boardModelToVM(model: BoardModel): BoardVM {
       totalWeeklyHours: null,
       averageDifficulty: null,
       warnings: [],
-      courses: s.courses.map((c) => ({
-        id: c.courseId,
-        name: c.nameHe,
-        weeklyHours: c.halfHours == null ? null : fromHalfHours(c.halfHours),
-        type: c.courseType,
-        difficulty: null, // deferred (D1)
-        syllabusUrl: null, // deferred (D1)
-        hasWarnings: false, // deferred (D1)
-      })),
+      courses: s.courses.map((c) => {
+        const catalogCourse = model.courseCatalog[c.courseId]
+        return {
+          id: c.courseId,
+          name: c.nameHe,
+          weeklyHours: c.halfHours == null ? null : fromHalfHours(c.halfHours),
+          type: c.courseType,
+          difficulty: null, // deferred (D1)
+          syllabusUrl: null, // deferred (D1)
+          hasWarnings: false, // deferred (D1)
+          ...(catalogCourse?.offeredSemesters !== undefined
+            ? { offeredSemesters: [...catalogCourse.offeredSemesters] }
+            : {}),
+        }
+      }),
     }))
   return { semesters }
 }

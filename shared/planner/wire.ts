@@ -25,6 +25,7 @@ const boardCourseSchema = z
     name_he: z.string().nullish(),
     course_type: z.string().optional(),
     is_mandatory: z.boolean().optional(),
+    offered_semesters: z.array(z.string().min(1)).nullable().optional(),
   })
   .passthrough();
 

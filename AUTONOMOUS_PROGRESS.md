@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — catalog-grounded elective move destinations
+
+The manual board now preserves `offered_semesters` from the authoritative
+repository through the shared wire model and React board view-model. Elective
+course cards advertise only catalog-listed semester destinations, and their
+drag payload carries the same allowed set so an invalid drop produces no move
+intent. Missing offering metadata retains the existing server-authoritative
+fallback. Mandatory courses remain fixed by the prior slice.
+
+Strict RED proved both the incorrect keyboard destination and invalid drop.
+Focused board/model coverage passes 16/16, the shared planner contract passes
+35/35, the complete web suite passes 27/27 suites and 229/229 tests, both root
+and web TypeScript checks pass, and the sequential optimized Next build passes.
+Production, Vercel aliases, databases and catalog/data sources were not changed.
+
 ## Latest session — truthful manual move affordances
 
 Preview acceptance had shown that mandatory-course cards advertised drag and

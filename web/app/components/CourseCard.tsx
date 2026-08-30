@@ -20,7 +20,11 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
-  const movable = course.type !== 'mandatory' && Boolean(onMove) && !mutationPending
+  const availableMoveDestinations = course.offeredSemesters === undefined
+    ? moveDestinations
+    : moveDestinations?.filter((destination) => course.offeredSemesters?.includes(destination.semesterId))
+  const movable = course.type !== 'mandatory' && Boolean(onMove) &&
+    Boolean(availableMoveDestinations?.length) && !mutationPending
 
   return (
     <div
@@ -29,6 +33,12 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         if (!movable) return
         event.dataTransfer.effectAllowed = 'move'
         event.dataTransfer.setData('application/x-syllo-course-id', course.id)
+        if (course.offeredSemesters !== undefined) {
+          event.dataTransfer.setData(
+            'application/x-syllo-allowed-semester-ids',
+            JSON.stringify(course.offeredSemesters),
+          )
+        }
       }}
     >
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
@@ -83,13 +93,13 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           הסר מהלוח
         </button>
       )}
-      {course.type !== 'mandatory' && onMove && moveDestinations && moveDestinations.length > 0 && (
+      {course.type !== 'mandatory' && onMove && availableMoveDestinations && availableMoveDestinations.length > 0 && (
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
             אפשרויות העברה עבור {course.name}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {moveDestinations.map((destination) => (
+            {availableMoveDestinations.map((destination) => (
               <button
                 key={destination.semesterId}
                 type="button"

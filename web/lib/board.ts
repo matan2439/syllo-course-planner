@@ -55,6 +55,7 @@ export type CourseVM = {
   difficulty: string | null
   syllabusUrl: string | null
   hasWarnings: boolean
+  offeredSemesters?: string[]
 }
 
 export type SemesterVM = {

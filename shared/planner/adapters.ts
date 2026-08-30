@@ -13,6 +13,7 @@ type RawCourse = {
   weekly_hours?: number | null;
   course_type?: string;
   is_mandatory?: boolean;
+  offered_semesters?: string[] | null;
 };
 
 /** Map one raw course (from either source) to the canonical model. Half-hour exact. */
@@ -23,6 +24,7 @@ function courseToModel(c: RawCourse): BoardCourseModel {
     halfHours: c.weekly_hours == null ? null : toHalfHours(c.weekly_hours),
     courseType: c.course_type ?? '',
     isMandatory: c.is_mandatory ?? false,
+    ...(c.offered_semesters != null ? { offeredSemesters: [...c.offered_semesters] } : {}),
   };
 }
 

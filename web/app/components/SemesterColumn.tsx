@@ -22,12 +22,26 @@ export default function SemesterColumn({
       aria-label={semester.title}
       onDragOver={(event) => {
         if (!onMoveCourse || mutationPending) return
+        const allowedRaw = event.dataTransfer.getData('application/x-syllo-allowed-semester-ids')
+        if (allowedRaw) {
+          try {
+            const allowed = JSON.parse(allowedRaw) as unknown
+            if (!Array.isArray(allowed) || !allowed.includes(semester.id)) return
+          } catch { return }
+        }
         event.preventDefault()
         event.dataTransfer.dropEffect = 'move'
       }}
       onDrop={(event) => {
         if (!onMoveCourse || mutationPending) return
         event.preventDefault()
+        const allowedRaw = event.dataTransfer.getData('application/x-syllo-allowed-semester-ids')
+        if (allowedRaw) {
+          try {
+            const allowed = JSON.parse(allowedRaw) as unknown
+            if (!Array.isArray(allowed) || !allowed.includes(semester.id)) return
+          } catch { return }
+        }
         const courseId = event.dataTransfer.getData('application/x-syllo-course-id')
         if (courseId) onMoveCourse(courseId, semester.id)
       }}
