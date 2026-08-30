@@ -6906,6 +6906,13 @@ higher-priority correctness finding preempts it again.
   course `0509-4010` in year 3 semester B, proving selected-candidate persistence.
 - No browser errors were observed. The only console output was the existing
   non-blocking Three.js `Clock` deprecation warning.
+- Post-acceptance verification added 160 passing focused assertions: 47 native
+  journey/agent/completion/server-Apply tests, 71 atomic Apply/proposal/manual
+  edit/storage-failure tests, and 42 owner-key/context/proposal/board repository
+  tests. Root and web TypeScript checks passed, as did the optimized Next build.
+- Mobile Preview acceptance at 390x844 remained RTL, had no horizontal overflow,
+  exposed 115 enabled focusable controls, and produced no browser errors. The
+  temporary viewport override was reset after the check.
 - Acceptance UX finding: the proposal details expose optional academic questions
   in English, while the separate Hebrew preference conversation can look like
   the place to answer them. The actual critical gate in this scenario was the
