@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — explicit Electrical core-track memberships
+
+The authoritative תשפ"ה Electrical bulletin was revalidated as the 294-page
+undergraduate document for program `0512-11-01-0000`; the previously surfaced
+mixed graduate page is not an ingestion source. Curriculum course facts now
+retain every explicitly printed `core course in track` label, including one
+course belonging to multiple tracks, and include those labels in conflict
+identity. No title-based track inference or label normalization was added.
+
+Strict RED proved the membership loss. GREEN passes 17/17 focused tests and
+189/189 isolated curriculum/program regressions. This is still partial source
+ingestion: complete track and advanced-laboratory membership must be parsed and
+validated before Electrical can be registered or shown. Production, aliases,
+databases and catalog data were unchanged.
+
 ## Latest session — source-year integrity gate for Electrical
 
 Academic-year precedence now requires each claimed year to match the year

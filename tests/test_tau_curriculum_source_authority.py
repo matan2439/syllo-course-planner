@@ -1,5 +1,6 @@
 from app.parsing.tau_curriculum_document import (
     CurriculumSelectionRule,
+    _course_from_block,
     restore_rtl_pdf_line,
 )
 
@@ -72,3 +73,24 @@ def test_claimed_year_cannot_override_the_year_encoded_by_its_source_url() -> No
 
     assert resolution.resolved_rule is None
     assert resolution.reason == "conflicting_authoritative_selection_rules"
+
+
+def test_course_block_preserves_each_explicit_core_track_label() -> None:
+    course = _course_from_block(
+        "0512-4601",
+        [
+            (37, "0512-4601 אופן הוראה סה\"כ שעות משקל בציון"),
+            (37, "מבוא ללייזרים שיעור 3 ש\"ס"),
+            (37, "תרגיל 1 ש\"ס"),
+            (37, "4 4"),
+            (37, "• קורס ליבה מסלול אופטיקה ופוטוניקה"),
+            (37, "קורס ליבה במסלול ביו אלקטורניקה"),
+            (37, "דרישות קדם"),
+            (37, "מבוא לפיזיקה של מוליכים למחצה )0512-2507("),
+        ],
+        year=3,
+        semester="b",
+    )
+
+    assert course is not None
+    assert course.core_track_names == ("אופטיקה ופוטוניקה", "ביו אלקטורניקה")

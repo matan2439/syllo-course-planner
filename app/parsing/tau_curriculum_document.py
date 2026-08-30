@@ -65,6 +65,7 @@ class CurriculumCourse:
     prerequisite_course_ids: tuple[str, ...]
     concurrent_course_ids: tuple[str, ...]
     source_pages: tuple[int, ...]
+    core_track_names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -296,6 +297,14 @@ def _course_from_block(
     if concurrent_start is not None:
         concurrent_lines = block[concurrent_start + 1 :]
 
+    core_track_names = tuple(
+        dict.fromkeys(
+            match.group(1).strip()
+            for line in block
+            if (match := re.fullmatch(r"(?:•\s*)?קורס ליבה ב?מסלול\s+(.+)", line))
+        )
+    )
+
     return CurriculumCourse(
         course_id=course_id,
         name_he=name,
@@ -306,6 +315,7 @@ def _course_from_block(
         prerequisite_course_ids=_ids(prereq_lines),
         concurrent_course_ids=_ids(concurrent_lines),
         source_pages=tuple(sorted({page_number for page_number, _ in tagged_block})),
+        core_track_names=core_track_names,
     )
 
 
@@ -369,6 +379,7 @@ def _mandatory_courses(
                 item.credit_hours,
                 item.prerequisite_course_ids,
                 item.concurrent_course_ids,
+                item.core_track_names,
             )
             for item in versions
         }
