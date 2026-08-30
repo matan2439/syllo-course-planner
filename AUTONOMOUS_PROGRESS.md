@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — source-year integrity gate for Electrical
+
+Academic-year precedence now requires each claimed year to match the year
+encoded in its official TAU curriculum PDF URL. A mislabeled rule can no longer
+win merely by claiming a newer year; the conflicting rules remain unresolved
+and Electrical stays fail closed. Strict RED reproduced the unsafe override,
+then GREEN passed 16/16 focused tests and 188/188 isolated curriculum/program
+regressions. No program registration, catalog data, deployment or Production
+surface changed.
+
 ## Latest session — dated curriculum-source authority for Electrical
 
 The first fail-closed Electrical integration slice now restores visually

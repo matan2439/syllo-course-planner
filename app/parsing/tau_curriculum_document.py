@@ -17,6 +17,7 @@ _SECTION_2 = re.compile(r"^\.?2\.([1-4])(?:\.(1|2))?\b")
 _SECTION_3 = re.compile(r"^\.?3\.\s*(?:מערכת|לוח)\b")
 _NUMBER_PAIR = re.compile(r"^\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*$")
 _PRINT_DATE = re.compile(r"תאריך\s+הדפסה\s+(\d{2}/\d{2}/\d{2})")
+_SOURCE_ACADEMIC_YEAR = re.compile(r"/tochniot/pdf/(\d{4})/")
 
 
 @dataclass(frozen=True)
@@ -110,14 +111,15 @@ class CurriculumSelectionRule:
         *,
         other_source_url: str | None = None,
     ) -> SelectionRuleResolution:
-        source_urls = tuple(
-            url for url in (self.source_url, other_source_url or other.source_url) if url
-        )
+        effective_other_url = other_source_url or other.source_url
+        source_urls = tuple(url for url in (self.source_url, effective_other_url) if url)
         if self._semantic_identity() != other._semantic_identity():
             if (
                 self.academic_year is not None
                 and other.academic_year is not None
                 and self.academic_year != other.academic_year
+                and _year_matches_source(self.academic_year, self.source_url)
+                and _year_matches_source(other.academic_year, effective_other_url)
             ):
                 newer = self if self.academic_year > other.academic_year else other
                 return SelectionRuleResolution(
@@ -135,6 +137,11 @@ class CurriculumSelectionRule:
             reason=None,
             source_urls=source_urls,
         )
+
+
+def _year_matches_source(academic_year: int, source_url: str) -> bool:
+    match = _SOURCE_ACADEMIC_YEAR.search(source_url)
+    return match is not None and int(match.group(1)) == academic_year
 
 
 @dataclass(frozen=True)

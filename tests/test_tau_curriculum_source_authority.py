@@ -44,3 +44,31 @@ def test_newer_academic_year_supersedes_a_conflicting_older_official_rule() -> N
     assert resolution.resolved_rule == newer
     assert resolution.reason == "newer_academic_year_authority"
     assert resolution.source_urls == (older.source_url, newer.source_url)
+
+
+def test_claimed_year_cannot_override_the_year_encoded_by_its_source_url() -> None:
+    older = CurriculumSelectionRule(
+        total_track_courses=12,
+        minimum_core_courses=3,
+        minimum_distinct_core_tracks=3,
+        advanced_labs_required=2,
+        minimum_distinct_lab_tracks=2,
+        labs_require_prerequisites=True,
+        source_url="https://www.tau.ac.il/tochniot/pdf/2024/heb/051211010000.pdf",
+        academic_year=2024,
+    )
+    mislabeled = CurriculumSelectionRule(
+        total_track_courses=12,
+        minimum_core_courses=4,
+        minimum_distinct_core_tracks=4,
+        advanced_labs_required=2,
+        minimum_distinct_lab_tracks=2,
+        labs_require_prerequisites=True,
+        source_url="https://www.tau.ac.il/tochniot/pdf/2024/heb/051211010000.pdf",
+        academic_year=2025,
+    )
+
+    resolution = older.reconcile(mislabeled)
+
+    assert resolution.resolved_rule is None
+    assert resolution.reason == "conflicting_authoritative_selection_rules"
