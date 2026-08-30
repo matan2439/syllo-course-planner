@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## Latest session — dated curriculum-source authority for Electrical
+
+The first fail-closed Electrical integration slice now restores visually
+reversed RTL lines from official PDF extraction without reversing Latin course
+identifiers or numeric values. Curriculum sources and parsed selection rules
+also carry a normalized academic year, allowing a newer official-year rule to
+supersede an older conflicting rule while undated or same-year contradictions
+remain unresolved and fail closed.
+
+Strict RED first proved the missing RTL helper and year-authority behavior.
+Focused coverage passes 15/15, and the isolated broader curriculum/program
+regression gate passes 187/187. This is source-adapter groundwork only:
+Electrical Engineering remains hidden until its official-source program model
+and validation rules are complete. Production, aliases, databases and catalog
+data were not changed.
+
 ## Latest session — catalog-grounded elective move destinations
 
 The manual board now preserves `offered_semesters` from the authoritative

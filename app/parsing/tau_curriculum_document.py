@@ -26,6 +26,7 @@ class CurriculumSource:
     academic_year_he: str
     source_url: str
     printed_on: str
+    academic_year: int | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,7 @@ class CurriculumSelectionRule:
     labs_require_prerequisites: bool
     source_pages: tuple[int, ...] = ()
     source_url: str = ""
+    academic_year: int | None = None
 
     def _semantic_identity(self) -> tuple[int, int, int, int, int, bool]:
         return (
@@ -112,6 +114,17 @@ class CurriculumSelectionRule:
             url for url in (self.source_url, other_source_url or other.source_url) if url
         )
         if self._semantic_identity() != other._semantic_identity():
+            if (
+                self.academic_year is not None
+                and other.academic_year is not None
+                and self.academic_year != other.academic_year
+            ):
+                newer = self if self.academic_year > other.academic_year else other
+                return SelectionRuleResolution(
+                    resolved_rule=newer,
+                    reason="newer_academic_year_authority",
+                    source_urls=source_urls,
+                )
             return SelectionRuleResolution(
                 resolved_rule=None,
                 reason="conflicting_authoritative_selection_rules",
@@ -136,6 +149,17 @@ class ParsedCurriculumDocument:
 
 class CurriculumSourceMismatch(ValueError):
     """The extracted document does not match its declared authoritative source."""
+
+
+def restore_rtl_pdf_line(line: str) -> str:
+    """Restore a visually reversed RTL PDF line without reversing LTR ids."""
+    restored: list[str] = []
+    for token in reversed(line.split()):
+        if re.fullmatch(r"[A-Za-z0-9./:+_-]+", token):
+            restored.append(token)
+        else:
+            restored.append(token[::-1])
+    return " ".join(restored)
 
 
 def _lines(page: CurriculumTextPage) -> list[str]:
@@ -410,6 +434,7 @@ def _selection_rule(
                 labs_require_prerequisites="דרישות הקדם למעבדה" in text,
                 source_pages=(page.page_number,),
                 source_url=source.source_url,
+                academic_year=source.academic_year,
             )
         )
     if not claims:
