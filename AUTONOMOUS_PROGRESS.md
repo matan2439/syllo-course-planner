@@ -6882,3 +6882,33 @@ higher-priority correctness finding preempts it again.
 5. Issues #20/#21/#18(reconciliation)/#14 all still need a human product call
    — already fully diagnosed by prior sessions, not re-investigated further
    this session since nothing new was learned.
+
+## 2026-08-30 — durable planner Preview acceptance
+
+- Verified branch and remote at `ef6fb08fb3a421e87c5c40bee7608756b788b20b`.
+  `main` remained `a1fb964364d3cab287e2c73e58dab12a850db0f8` and the
+  unrelated stash remained untouched.
+- Provisioned Preview-only Neon through Vercel Marketplace, pulled only Preview
+  environment configuration, and ran the additive planner migration. The
+  migration was idempotent and reported schema version 1 current. Production,
+  Production environment variables, aliases, domains, Supabase, remote catalog
+  data, and `main` were not modified.
+- Deployed an immutable clean archive of `ef6fb08` to Preview only:
+  `https://tau-course-planner-myhoohvkn-matanyaron-1633s-projects.vercel.app`.
+- Live browser acceptance proved the server-side path, not just test doubles:
+  a manual elective add changed year 4 semester A from 2 to 3 courses and
+  survived reload; the explicit completed-course state (24 identified courses,
+  92.5 authoritative hours) also survived reload.
+- The deterministic Academic Decision Agent generated three alternatives from
+  that state. Apply remained fail-closed until completed-course identity and the
+  explicit no-exclusions answer were known. Alternative 2 was selected and
+  applied; after reload the committed board still contained its distinguishing
+  course `0509-4010` in year 3 semester B, proving selected-candidate persistence.
+- No browser errors were observed. The only console output was the existing
+  non-blocking Three.js `Clock` deprecation warning.
+- Acceptance UX finding: the proposal details expose optional academic questions
+  in English, while the separate Hebrew preference conversation can look like
+  the place to answer them. The actual critical gate in this scenario was the
+  explicit no-exclusions control. The next smallest product slice is to make the
+  required academic clarification and its answer control visibly co-located and
+  Hebrew, without weakening the fail-closed Apply gate.
