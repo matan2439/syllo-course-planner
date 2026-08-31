@@ -389,6 +389,31 @@ def parse_advanced_lab_memberships(
     return tuple(memberships)
 
 
+def validate_membership_completeness(
+    track_memberships: Iterable[CurriculumTrackMembership],
+    advanced_lab_memberships: Iterable[CurriculumAdvancedLabMembership],
+    selection_rule: CurriculumSelectionRule,
+) -> None:
+    """Fail closed when parsed memberships cannot satisfy stated track minima."""
+    core_tracks = {
+        membership.track_name
+        for membership in track_memberships
+        if membership.is_core
+    }
+    if len(core_tracks) < selection_rule.minimum_distinct_core_tracks:
+        raise CurriculumSourceMismatch(
+            f"Expected at least {selection_rule.minimum_distinct_core_tracks} "
+            f"distinct core tracks, found {len(core_tracks)}"
+        )
+
+    lab_tracks = {membership.track_name for membership in advanced_lab_memberships}
+    if len(lab_tracks) < selection_rule.minimum_distinct_lab_tracks:
+        raise CurriculumSourceMismatch(
+            f"Expected at least {selection_rule.minimum_distinct_lab_tracks} "
+            f"distinct lab tracks, found {len(lab_tracks)}"
+        )
+
+
 def _course_from_block(
     course_id: str,
     tagged_block: list[tuple[int, str]],

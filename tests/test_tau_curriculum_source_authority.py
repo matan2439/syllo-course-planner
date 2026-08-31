@@ -1,13 +1,16 @@
 import pytest
 
 from app.parsing.tau_curriculum_document import (
+    CurriculumAdvancedLabMembership,
     CurriculumSelectionRule,
     CurriculumSourceMismatch,
     CurriculumTextPage,
+    CurriculumTrackMembership,
     _course_from_block,
     parse_advanced_lab_memberships,
     parse_track_memberships,
     restore_rtl_pdf_line,
+    validate_membership_completeness,
 )
 
 
@@ -197,3 +200,37 @@ def test_conflicting_duplicate_track_membership_fails_closed() -> None:
         match="Conflicting track membership for 0512-4100 in תקשורת",
     ):
         parse_track_memberships(pages)
+
+
+def test_membership_catalog_requires_enough_distinct_core_tracks() -> None:
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+    )
+    labs = (
+        CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+        CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Expected at least 3 distinct core tracks, found 2",
+    ):
+        validate_membership_completeness(tracks, labs, rule)
+
+
+def test_membership_catalog_requires_enough_distinct_lab_tracks() -> None:
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+        CurriculumTrackMembership("0512-4300", "בקרה", True, (60,)),
+    )
+    labs = (CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),)
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Expected at least 2 distinct lab tracks, found 1",
+    ):
+        validate_membership_completeness(tracks, labs, rule)

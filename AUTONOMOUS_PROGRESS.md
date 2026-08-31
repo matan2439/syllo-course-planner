@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — Electrical membership completeness minima
+
+Parsed Electrical memberships now fail closed unless the authoritative
+catalog contains at least the selection rule's required number of distinct
+core tracks and distinct advanced-laboratory tracks. A partial extraction can
+therefore no longer look structurally usable merely because it contains some
+track and lab rows.
+
+Strict RED proved both missing gates. GREEN passes 22/22 focused tests and
+194/194 isolated curriculum/program regressions. The gate is not yet wired
+into final program materialization, and whole-document course-count and label
+reconciliation remain unfinished, so Electrical stays hidden. Production,
+aliases, databases and catalog data were unchanged.
+
 ## Latest session — fail-closed Electrical track contradictions
 
 Repeated authoritative course/track memberships are now reconciled by their
