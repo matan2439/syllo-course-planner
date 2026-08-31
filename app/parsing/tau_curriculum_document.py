@@ -20,6 +20,10 @@ _PRINT_DATE = re.compile(r"תאריך\s+הדפסה\s+(\d{2}/\d{2}/\d{2})")
 _SOURCE_ACADEMIC_YEAR = re.compile(r"/tochniot/pdf/(\d{4})/")
 _TRACK_SECTION = re.compile(r"^2\.5\.\d+\s+מסלול\s+(.+)$")
 _ADVANCED_LABS_SECTION = re.compile(r"^2\.6\b")
+_ADVANCED_LAB_SUBSECTION = re.compile(
+    r"^2\.6\.\d+\s+מעבדה מתקדמת\s+ב?מסלול\s+(.+)$"
+)
+_HUMANITIES_SECTION = re.compile(r"^2\.7\b")
 
 
 @dataclass(frozen=True)
@@ -82,6 +86,13 @@ class CurriculumTrackMembership:
     course_id: str
     track_name: str
     is_core: bool
+    source_pages: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class CurriculumAdvancedLabMembership:
+    course_id: str
+    track_name: str
     source_pages: tuple[int, ...]
 
 
@@ -326,6 +337,37 @@ def parse_track_memberships(
             )
             continue
         index += 1
+    return tuple(memberships)
+
+
+def parse_advanced_lab_memberships(
+    pages: Iterable[CurriculumTextPage],
+) -> tuple[CurriculumAdvancedLabMembership, ...]:
+    """Parse only explicit course membership under authoritative 2.6.x labs."""
+    tagged_lines = [
+        (page.page_number, line)
+        for page in sorted(pages, key=lambda item: (item.page_number, item.text))
+        for line in _lines(page)
+    ]
+    memberships: list[CurriculumAdvancedLabMembership] = []
+    track_name: str | None = None
+    track_page: int | None = None
+    for page_number, line in tagged_lines:
+        if _HUMANITIES_SECTION.match(line):
+            break
+        section = _ADVANCED_LAB_SUBSECTION.match(line)
+        if section:
+            track_name = section.group(1).strip()
+            track_page = page_number
+            continue
+        if track_name and (course_match := _COURSE_ID.match(line)):
+            memberships.append(
+                CurriculumAdvancedLabMembership(
+                    course_id=_normal_course_id(course_match.group(0)),
+                    track_name=track_name,
+                    source_pages=tuple(sorted({track_page, page_number})),
+                )
+            )
     return tuple(memberships)
 
 

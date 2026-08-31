@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — authoritative Electrical advanced-lab boundaries
+
+Advanced-laboratory membership can now be parsed only beneath explicit
+`2.6.x` undergraduate bulletin headings. The adapter supports both official
+heading forms (`track` and `in track`), preserves heading/course-page
+provenance, and stops at section `2.7`; neither course-number patterns nor a
+laboratory word in the title can create membership outside that boundary.
+
+Strict RED proved the missing boundary. GREEN passes 19/19 focused tests and
+191/191 isolated curriculum/program regressions. Whole-document completeness,
+cross-membership reconciliation and program materialization remain unfinished,
+so Electrical stays hidden and fail closed. Production, aliases, databases and
+catalog data were unchanged.
+
 ## Latest session — authoritative Electrical track membership boundaries
 
 Electrical course-to-track membership can now be parsed only from explicit

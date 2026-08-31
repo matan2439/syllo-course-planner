@@ -2,6 +2,7 @@ from app.parsing.tau_curriculum_document import (
     CurriculumSelectionRule,
     CurriculumTextPage,
     _course_from_block,
+    parse_advanced_lab_memberships,
     parse_track_memberships,
     restore_rtl_pdf_line,
 )
@@ -131,4 +132,34 @@ def test_track_memberships_come_only_from_authoritative_section_boundaries() -> 
         ("0512-4100", "תקשורת", True, (58,)),
         ("0512-4200", "תקשורת", False, (58,)),
         ("0512-4200", "עיבוד אותות", True, (58,)),
+    ]
+
+
+def test_advanced_lab_memberships_come_only_from_26_section_boundaries() -> None:
+    memberships = parse_advanced_lab_memberships(
+        [
+            CurriculumTextPage(
+                80,
+                """
+2.6.1 מעבדה מתקדמת מסלול תקשורת
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+מעבדה מתקדמת בתקשורת מעבדה 3 ש"ס
+3 2
+2.6.2 מעבדה מתקדמת במסלול התקנים וננו אלקטרוניקה
+0512-4790 אופן הוראה סה"כ שעות משקל בציון
+מעבדה מתקדמת בהתקנים מעבדה 3 ש"ס
+3 2
+2.7 קורסי שאר רוח
+0512-4990 מעבדה שאינה חלק מסעיף המעבדות המתקדמות
+""",
+            )
+        ]
+    )
+
+    assert [
+        (item.course_id, item.track_name, item.source_pages)
+        for item in memberships
+    ] == [
+        ("0512-4190", "תקשורת", (80,)),
+        ("0512-4790", "התקנים וננו אלקטרוניקה", (80,)),
     ]
