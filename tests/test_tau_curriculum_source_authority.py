@@ -1,6 +1,8 @@
 from app.parsing.tau_curriculum_document import (
     CurriculumSelectionRule,
+    CurriculumTextPage,
     _course_from_block,
+    parse_track_memberships,
     restore_rtl_pdf_line,
 )
 
@@ -94,3 +96,39 @@ def test_course_block_preserves_each_explicit_core_track_label() -> None:
 
     assert course is not None
     assert course.core_track_names == ("אופטיקה ופוטוניקה", "ביו אלקטורניקה")
+
+
+def test_track_memberships_come_only_from_authoritative_section_boundaries() -> None:
+    memberships = parse_track_memberships(
+        [
+            CurriculumTextPage(
+                58,
+                """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול תקשורת
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+עיבוד אותות מתקדם שיעור 3 ש"ס
+4 4
+2.5.2 מסלול עיבוד אותות
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+עיבוד אותות מתקדם שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול עיבוד אותות
+2.6 מעבדות מתקדמות )שנים ג' - ד'(
+0512-4190 מעבדה מתקדמת בתקשורת
+""",
+            )
+        ]
+    )
+
+    assert [
+        (item.course_id, item.track_name, item.is_core, item.source_pages)
+        for item in memberships
+    ] == [
+        ("0512-4100", "תקשורת", True, (58,)),
+        ("0512-4200", "תקשורת", False, (58,)),
+        ("0512-4200", "עיבוד אותות", True, (58,)),
+    ]

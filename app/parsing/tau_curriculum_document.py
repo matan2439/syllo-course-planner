@@ -18,6 +18,8 @@ _SECTION_3 = re.compile(r"^\.?3\.\s*(?:מערכת|לוח)\b")
 _NUMBER_PAIR = re.compile(r"^\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*$")
 _PRINT_DATE = re.compile(r"תאריך\s+הדפסה\s+(\d{2}/\d{2}/\d{2})")
 _SOURCE_ACADEMIC_YEAR = re.compile(r"/tochniot/pdf/(\d{4})/")
+_TRACK_SECTION = re.compile(r"^2\.5\.\d+\s+מסלול\s+(.+)$")
+_ADVANCED_LABS_SECTION = re.compile(r"^2\.6\b")
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,14 @@ class CurriculumCourse:
 class UnresolvedCurriculumFact:
     course_id: str
     reason: str
+    source_pages: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class CurriculumTrackMembership:
+    course_id: str
+    track_name: str
+    is_core: bool
     source_pages: tuple[int, ...]
 
 
@@ -258,6 +268,67 @@ def _ids(lines: Iterable[str]) -> tuple[str, ...]:
     return tuple(sorted({_normal_course_id(match.group(0)) for line in lines for match in _COURSE_ID.finditer(line)}))
 
 
+def _core_track_names(lines: Iterable[str]) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            match.group(1).strip()
+            for line in lines
+            if (match := re.fullmatch(r"(?:•\s*)?קורס ליבה ב?מסלול\s+(.+)", line))
+        )
+    )
+
+
+def parse_track_memberships(
+    pages: Iterable[CurriculumTextPage],
+) -> tuple[CurriculumTrackMembership, ...]:
+    """Parse only explicit course membership under authoritative 2.5.x tracks."""
+    tagged_lines = [
+        (page.page_number, line)
+        for page in sorted(pages, key=lambda item: (item.page_number, item.text))
+        for line in _lines(page)
+    ]
+    memberships: list[CurriculumTrackMembership] = []
+    track_name: str | None = None
+    track_page: int | None = None
+    index = 0
+    while index < len(tagged_lines):
+        page_number, line = tagged_lines[index]
+        if _ADVANCED_LABS_SECTION.match(line):
+            break
+        section = _TRACK_SECTION.match(line)
+        if section:
+            track_name = section.group(1).strip()
+            track_page = page_number
+            index += 1
+            continue
+        if track_name and (course_match := _COURSE_ID.match(line)):
+            block = [tagged_lines[index]]
+            index += 1
+            while index < len(tagged_lines):
+                next_line = tagged_lines[index][1]
+                if (
+                    _COURSE_ID.match(next_line)
+                    or _TRACK_SECTION.match(next_line)
+                    or _ADVANCED_LABS_SECTION.match(next_line)
+                ):
+                    break
+                block.append(tagged_lines[index])
+                index += 1
+            memberships.append(
+                CurriculumTrackMembership(
+                    course_id=_normal_course_id(course_match.group(0)),
+                    track_name=track_name,
+                    is_core=track_name in _core_track_names(line for _, line in block),
+                    source_pages=tuple(
+                        sorted({track_page, *(page for page, _ in block)})
+                    ),
+                )
+            )
+            continue
+        index += 1
+    return tuple(memberships)
+
+
 def _course_from_block(
     course_id: str,
     tagged_block: list[tuple[int, str]],
@@ -297,13 +368,7 @@ def _course_from_block(
     if concurrent_start is not None:
         concurrent_lines = block[concurrent_start + 1 :]
 
-    core_track_names = tuple(
-        dict.fromkeys(
-            match.group(1).strip()
-            for line in block
-            if (match := re.fullmatch(r"(?:•\s*)?קורס ליבה ב?מסלול\s+(.+)", line))
-        )
-    )
+    core_track_names = _core_track_names(block)
 
     return CurriculumCourse(
         course_id=course_id,

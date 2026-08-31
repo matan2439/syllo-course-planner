@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — authoritative Electrical track membership boundaries
+
+Electrical course-to-track membership can now be parsed only from explicit
+`2.5.x` undergraduate bulletin sections. The adapter preserves one membership
+per course/track occurrence, includes the track heading and course block pages
+as provenance, marks a course as core only when the block explicitly names the
+same track, and stops before the separate advanced-laboratory section. It does
+not infer membership from course ids, titles or prose.
+
+Strict RED proved the missing boundary. GREEN passes 18/18 focused tests and
+190/190 isolated curriculum/program regressions. Advanced-laboratory
+membership, whole-document consistency and program materialization remain
+unfinished, so Electrical stays hidden and fail closed. Production, aliases,
+databases and catalog data were unchanged.
+
 ## Latest session — explicit Electrical core-track memberships
 
 The authoritative תשפ"ה Electrical bulletin was revalidated as the 294-page
