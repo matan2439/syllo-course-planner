@@ -97,6 +97,12 @@ class CurriculumAdvancedLabMembership:
 
 
 @dataclass(frozen=True)
+class CurriculumMembershipCatalog:
+    track_memberships: tuple[CurriculumTrackMembership, ...]
+    advanced_lab_memberships: tuple[CurriculumAdvancedLabMembership, ...]
+
+
+@dataclass(frozen=True)
 class SelectionRuleResolution:
     resolved_rule: CurriculumSelectionRule | None
     reason: str | None
@@ -412,6 +418,25 @@ def validate_membership_completeness(
             f"Expected at least {selection_rule.minimum_distinct_lab_tracks} "
             f"distinct lab tracks, found {len(lab_tracks)}"
         )
+
+
+def parse_curriculum_membership_catalog(
+    pages: Iterable[CurriculumTextPage],
+    selection_rule: CurriculumSelectionRule,
+) -> CurriculumMembershipCatalog:
+    """Compose authoritative membership parsers behind one completeness gate."""
+    frozen_pages = tuple(pages)
+    track_memberships = parse_track_memberships(frozen_pages)
+    advanced_lab_memberships = parse_advanced_lab_memberships(frozen_pages)
+    validate_membership_completeness(
+        track_memberships,
+        advanced_lab_memberships,
+        selection_rule,
+    )
+    return CurriculumMembershipCatalog(
+        track_memberships=track_memberships,
+        advanced_lab_memberships=advanced_lab_memberships,
+    )
 
 
 def _course_from_block(

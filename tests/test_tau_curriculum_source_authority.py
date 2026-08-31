@@ -8,6 +8,7 @@ from app.parsing.tau_curriculum_document import (
     CurriculumTrackMembership,
     _course_from_block,
     parse_advanced_lab_memberships,
+    parse_curriculum_membership_catalog,
     parse_track_memberships,
     restore_rtl_pdf_line,
     validate_membership_completeness,
@@ -234,3 +235,38 @@ def test_membership_catalog_requires_enough_distinct_lab_tracks() -> None:
         match="Expected at least 2 distinct lab tracks, found 1",
     ):
         validate_membership_completeness(tracks, labs, rule)
+
+
+def test_membership_catalog_composes_parsers_and_completeness_gate() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול תקשורת
+2.5.2 מסלול עיבוד אותות
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול עיבוד אותות
+2.5.3 מסלול בקרה
+0512-4300 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול בקרה
+2.6.1 מעבדה מתקדמת מסלול תקשורת
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+3 2
+2.6.2 מעבדה מתקדמת במסלול עיבוד אותות
+0512-4290 אופן הוראה סה"כ שעות משקל בציון
+3 2
+2.7 קורסי שאר רוח
+""",
+        )
+    ]
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+
+    catalog = parse_curriculum_membership_catalog(pages, rule)
+
+    assert len(catalog.track_memberships) == 3
+    assert len(catalog.advanced_lab_memberships) == 2

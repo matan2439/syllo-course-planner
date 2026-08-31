@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — composed Electrical membership catalog
+
+Track-course and advanced-laboratory extraction now compose into one typed
+`CurriculumMembershipCatalog`. The composition freezes the source pages, runs
+both explicit section-boundary parsers, and applies the membership completeness
+gate before returning a catalog suitable for the future materializer.
+
+Strict RED proved the missing composition boundary. GREEN passes 23/23 focused
+tests and 195/195 isolated curriculum/program regressions. The catalog is not
+yet a registered planner program; full-source label reconciliation and program
+materialization remain, so Electrical stays hidden. Production, aliases,
+databases and catalog data were unchanged.
+
 ## Latest session — Electrical membership completeness minima
 
 Parsed Electrical memberships now fail closed unless the authoritative
