@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — fail-closed Electrical track contradictions
+
+Repeated authoritative course/track memberships are now reconciled by their
+explicit core status. If the same course in the same track is printed once as
+core and once as non-core, ingestion raises a source mismatch naming that
+course and track instead of retaining contradictory records or choosing one.
+
+Strict RED reproduced the unsafe duplicate acceptance. GREEN passes 20/20
+focused tests and 192/192 isolated curriculum/program regressions. Electrical
+remains hidden pending whole-document completeness and program materialization;
+Production, aliases, databases and catalog data were unchanged.
+
 ## Latest session — authoritative Electrical advanced-lab boundaries
 
 Advanced-laboratory membership can now be parsed only beneath explicit

@@ -1,5 +1,8 @@
+import pytest
+
 from app.parsing.tau_curriculum_document import (
     CurriculumSelectionRule,
+    CurriculumSourceMismatch,
     CurriculumTextPage,
     _course_from_block,
     parse_advanced_lab_memberships,
@@ -163,3 +166,34 @@ def test_advanced_lab_memberships_come_only_from_26_section_boundaries() -> None
         ("0512-4190", "תקשורת", (80,)),
         ("0512-4790", "התקנים וננו אלקטרוניקה", (80,)),
     ]
+
+
+def test_conflicting_duplicate_track_membership_fails_closed() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול תקשורת
+""",
+        ),
+        CurriculumTextPage(
+            59,
+            """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+2.6 מעבדות מתקדמות )שנים ג' - ד'(
+""",
+        ),
+    ]
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Conflicting track membership for 0512-4100 in תקשורת",
+    ):
+        parse_track_memberships(pages)

@@ -337,7 +337,25 @@ def parse_track_memberships(
             )
             continue
         index += 1
-    return tuple(memberships)
+    reconciled: dict[tuple[str, str], CurriculumTrackMembership] = {}
+    for membership in memberships:
+        key = (membership.course_id, membership.track_name)
+        existing = reconciled.get(key)
+        if existing and existing.is_core != membership.is_core:
+            raise CurriculumSourceMismatch(
+                f"Conflicting track membership for {membership.course_id} "
+                f"in {membership.track_name}"
+            )
+        if existing:
+            reconciled[key] = CurriculumTrackMembership(
+                course_id=membership.course_id,
+                track_name=membership.track_name,
+                is_core=membership.is_core,
+                source_pages=tuple(sorted({*existing.source_pages, *membership.source_pages})),
+            )
+        else:
+            reconciled[key] = membership
+    return tuple(reconciled.values())
 
 
 def parse_advanced_lab_memberships(
