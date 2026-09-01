@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — complete Electrical membership quantity gates
+
+Electrical membership completeness now enforces all course-count minima from
+the resolved selection rule: distinct track courses, distinct explicitly core
+courses, and distinct advanced laboratories. These checks complement the
+existing distinct-track gates and run on canonicalized memberships, so repeated
+PDF occurrences cannot satisfy an academic requirement twice.
+
+Strict RED proved all three missing quantity gates. GREEN passes 21/21 focused
+source-authority tests and 193/193 isolated curriculum/program regressions.
+Electrical remains hidden pending complete source-model validation and final
+program materialization. Production, aliases, databases and catalog data were
+unchanged.
+
 ## Latest session — canonical Electrical track reconciliation
 
 The composed Electrical catalog now canonicalizes typography-only course-track

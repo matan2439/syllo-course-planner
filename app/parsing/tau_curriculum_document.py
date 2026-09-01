@@ -425,6 +425,8 @@ def validate_membership_completeness(
     selection_rule: CurriculumSelectionRule,
 ) -> None:
     """Fail closed when parsed memberships cannot satisfy stated track minima."""
+    track_memberships = tuple(track_memberships)
+    advanced_lab_memberships = tuple(advanced_lab_memberships)
     core_tracks = {
         membership.track_name
         for membership in track_memberships
@@ -436,11 +438,38 @@ def validate_membership_completeness(
             f"distinct core tracks, found {len(core_tracks)}"
         )
 
+    core_course_ids = {
+        membership.course_id
+        for membership in track_memberships
+        if membership.is_core
+    }
+    if len(core_course_ids) < selection_rule.minimum_core_courses:
+        raise CurriculumSourceMismatch(
+            f"Expected at least {selection_rule.minimum_core_courses} "
+            f"distinct core courses, found {len(core_course_ids)}"
+        )
+
     lab_tracks = {membership.track_name for membership in advanced_lab_memberships}
     if len(lab_tracks) < selection_rule.minimum_distinct_lab_tracks:
         raise CurriculumSourceMismatch(
             f"Expected at least {selection_rule.minimum_distinct_lab_tracks} "
             f"distinct lab tracks, found {len(lab_tracks)}"
+        )
+
+    advanced_lab_course_ids = {
+        membership.course_id for membership in advanced_lab_memberships
+    }
+    if len(advanced_lab_course_ids) < selection_rule.advanced_labs_required:
+        raise CurriculumSourceMismatch(
+            f"Expected at least {selection_rule.advanced_labs_required} "
+            f"distinct advanced labs, found {len(advanced_lab_course_ids)}"
+        )
+
+    track_course_ids = {membership.course_id for membership in track_memberships}
+    if len(track_course_ids) < selection_rule.total_track_courses:
+        raise CurriculumSourceMismatch(
+            f"Expected at least {selection_rule.total_track_courses} "
+            f"distinct track courses, found {len(track_course_ids)}"
         )
 
     normalized_track_names = {

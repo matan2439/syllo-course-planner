@@ -257,7 +257,7 @@ def test_core_label_for_different_track_fails_closed() -> None:
 
 
 def test_membership_catalog_requires_enough_distinct_core_tracks() -> None:
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
     tracks = (
         CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
         CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
@@ -275,7 +275,7 @@ def test_membership_catalog_requires_enough_distinct_core_tracks() -> None:
 
 
 def test_membership_catalog_requires_enough_distinct_lab_tracks() -> None:
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
     tracks = (
         CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
         CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
@@ -286,6 +286,63 @@ def test_membership_catalog_requires_enough_distinct_lab_tracks() -> None:
     with pytest.raises(
         CurriculumSourceMismatch,
         match="Expected at least 2 distinct lab tracks, found 1",
+    ):
+        validate_membership_completeness(tracks, labs, rule)
+
+
+def test_membership_catalog_requires_enough_distinct_track_courses() -> None:
+    rule = CurriculumSelectionRule(4, 3, 3, 2, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+        CurriculumTrackMembership("0512-4300", "בקרה", True, (60,)),
+    )
+    labs = (
+        CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+        CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Expected at least 4 distinct track courses, found 3",
+    ):
+        validate_membership_completeness(tracks, labs, rule)
+
+
+def test_membership_catalog_requires_enough_distinct_core_courses() -> None:
+    rule = CurriculumSelectionRule(3, 3, 2, 2, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+        CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+    )
+    labs = (
+        CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+        CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Expected at least 3 distinct core courses, found 2",
+    ):
+        validate_membership_completeness(tracks, labs, rule)
+
+
+def test_membership_catalog_requires_enough_distinct_advanced_labs() -> None:
+    rule = CurriculumSelectionRule(3, 2, 2, 3, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+        CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+    )
+    labs = (
+        CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+        CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Expected at least 3 distinct advanced labs, found 2",
     ):
         validate_membership_completeness(tracks, labs, rule)
 
@@ -317,7 +374,7 @@ def test_membership_catalog_composes_parsers_and_completeness_gate() -> None:
 """,
         )
     ]
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
 
     catalog = parse_curriculum_membership_catalog(pages, rule)
 
@@ -352,7 +409,7 @@ def test_membership_catalog_uses_course_track_label_for_typographic_lab_variant(
 """,
         )
     ]
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
 
     catalog = parse_curriculum_membership_catalog(pages, rule)
 
@@ -396,7 +453,7 @@ def test_membership_catalog_merges_lab_duplicates_after_label_canonicalization()
 """,
         ),
     ]
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
 
     catalog = parse_curriculum_membership_catalog(pages, rule)
 
@@ -444,7 +501,7 @@ def test_membership_catalog_merges_track_duplicates_after_label_canonicalization
 """,
         ),
     ]
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
 
     catalog = parse_curriculum_membership_catalog(pages, rule)
 
@@ -490,7 +547,7 @@ def test_membership_catalog_rejects_core_conflict_after_label_canonicalization()
 """,
         ),
     ]
-    rule = CurriculumSelectionRule(12, 2, 2, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 2, 2, 2, 2, True)
 
     with pytest.raises(
         CurriculumSourceMismatch,
@@ -510,7 +567,7 @@ def test_track_label_normalization_is_typographic_only() -> None:
 
 
 def test_unknown_advanced_lab_track_fails_closed() -> None:
-    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    rule = CurriculumSelectionRule(3, 3, 3, 2, 2, True)
     tracks = (
         CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
         CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
