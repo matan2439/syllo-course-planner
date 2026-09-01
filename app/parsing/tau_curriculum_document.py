@@ -210,6 +210,7 @@ class CurriculumProgramSourceModel:
     mandatory_courses: tuple[CurriculumCourse, ...]
     track_memberships: tuple[CurriculumTrackMembership, ...]
     advanced_lab_memberships: tuple[CurriculumAdvancedLabMembership, ...]
+    catalog_courses: tuple[CurriculumCatalogCourse, ...]
 
 
 class CurriculumSourceMismatch(ValueError):
@@ -596,6 +597,7 @@ def parse_curriculum_membership_catalog(
 def materialize_program_source_model(
     document: ParsedCurriculumDocument,
     membership_catalog: CurriculumMembershipCatalog,
+    catalog_courses: ParsedCurriculumCatalogCourses,
 ) -> CurriculumProgramSourceModel:
     """Combine only fully resolved, validated facts into a typed source model."""
     if document.unresolved:
@@ -604,6 +606,14 @@ def materialize_program_source_model(
         )
         raise CurriculumSourceMismatch(
             f"Cannot materialize program source model with unresolved facts: "
+            f"{unresolved_ids}"
+        )
+    if catalog_courses.unresolved:
+        unresolved_ids = ", ".join(
+            sorted({fact.course_id for fact in catalog_courses.unresolved})
+        )
+        raise CurriculumSourceMismatch(
+            f"Cannot materialize program source model with unresolved catalog courses: "
             f"{unresolved_ids}"
         )
     validate_membership_completeness(
@@ -619,6 +629,7 @@ def materialize_program_source_model(
         mandatory_courses=document.mandatory_courses,
         track_memberships=membership_catalog.track_memberships,
         advanced_lab_memberships=membership_catalog.advanced_lab_memberships,
+        catalog_courses=catalog_courses.courses,
     )
 
 

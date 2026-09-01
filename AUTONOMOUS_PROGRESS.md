@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — catalog facts wired into the Electrical source model
+
+`materialize_program_source_model` now requires the parsed catalog-course
+result and preserves every accepted `CurriculumCatalogCourse` in the immutable
+`CurriculumProgramSourceModel`. Callers cannot silently omit the catalog while
+constructing the authoritative Electrical boundary.
+
+Materialization also fails closed when catalog reconciliation leaves any
+course unresolved, reporting the affected course ids before a planner program
+can be produced. Strict RED proved both the missing catalog input and the
+missing unresolved-catalog gate. GREEN passes 27/27 focused source-authority
+tests and 199/199 isolated curriculum/program regressions. Electrical remains
+hidden until the validated source model is converted into planner requirements
+and a board. Production, aliases, databases and catalog data were unchanged.
+
 ## Latest session — authoritative Electrical catalog course facts
 
 Course blocks beneath official Electrical sections `2.5` and `2.6` now parse

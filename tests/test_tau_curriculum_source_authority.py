@@ -626,7 +626,11 @@ def test_program_source_model_rejects_unresolved_curriculum_facts() -> None:
         CurriculumSourceMismatch,
         match="Cannot materialize program source model with unresolved facts: 0512-1000",
     ):
-        materialize(document, catalog)
+        materialize(
+            document,
+            catalog,
+            curriculum_document.ParsedCurriculumCatalogCourses((), ()),
+        )
 
 
 def test_program_source_model_preserves_validated_document_and_memberships() -> None:
@@ -645,12 +649,84 @@ def test_program_source_model_preserves_validated_document_and_memberships() -> 
         ),
     )
 
-    model = materialize(document, catalog)
+    model = materialize(
+        document,
+        catalog,
+        curriculum_document.ParsedCurriculumCatalogCourses((), ()),
+    )
 
     assert model.identity == document.identity
     assert model.selection_rule == document.selection_rule
     assert model.track_memberships == catalog.track_memberships
     assert model.advanced_lab_memberships == catalog.advanced_lab_memberships
+
+
+def test_program_source_model_preserves_validated_catalog_courses() -> None:
+    materialize = getattr(curriculum_document, "materialize_program_source_model", None)
+    assert materialize is not None
+    document = _program_source_document()
+    memberships = CurriculumMembershipCatalog(
+        (
+            CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+            CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+        ),
+        (
+            CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+            CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+        ),
+    )
+    catalog_courses = curriculum_document.ParsedCurriculumCatalogCourses(
+        (
+            curriculum_document.CurriculumCatalogCourse(
+                course_id="0512-4100",
+                name_he="תקשורת ספרתית",
+                weekly_hours=4,
+                credit_hours=4,
+                prerequisite_course_ids=("0512-2100",),
+                concurrent_course_ids=(),
+                source_pages=(58, 59),
+            ),
+        ),
+        (),
+    )
+
+    model = materialize(document, memberships, catalog_courses)
+
+    assert model.catalog_courses == catalog_courses.courses
+
+
+def test_program_source_model_rejects_unresolved_catalog_courses() -> None:
+    materialize = getattr(curriculum_document, "materialize_program_source_model", None)
+    assert materialize is not None
+    document = _program_source_document()
+    memberships = CurriculumMembershipCatalog(
+        (
+            CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+            CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+        ),
+        (
+            CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+            CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+        ),
+    )
+    catalog_courses = curriculum_document.ParsedCurriculumCatalogCourses(
+        (),
+        (
+            curriculum_document.UnresolvedCurriculumFact(
+                "0512-4100",
+                "conflicting_authoritative_catalog_course_facts",
+                (58, 59),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Cannot materialize program source model with unresolved catalog courses: 0512-4100",
+    ):
+        materialize(document, memberships, catalog_courses)
 
 
 def test_catalog_course_facts_merge_identical_cross_track_occurrences() -> None:
