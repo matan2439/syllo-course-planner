@@ -331,11 +331,21 @@ def parse_track_memberships(
                     break
                 block.append(tagged_lines[index])
                 index += 1
+            course_id = _normal_course_id(course_match.group(0))
+            core_track_names = _core_track_names(line for _, line in block)
+            normalized_track_name = normalize_track_label(track_name)
+            if core_track_names and normalized_track_name not in {
+                normalize_track_label(name) for name in core_track_names
+            }:
+                raise CurriculumSourceMismatch(
+                    f"Core track label mismatch for {course_id}: section {track_name}, "
+                    f"label {', '.join(core_track_names)}"
+                )
             memberships.append(
                 CurriculumTrackMembership(
-                    course_id=_normal_course_id(course_match.group(0)),
+                    course_id=course_id,
                     track_name=track_name,
-                    is_core=track_name in _core_track_names(line for _, line in block),
+                    is_core=bool(core_track_names),
                     source_pages=tuple(
                         sorted({track_page, *(page for page, _ in block)})
                     ),

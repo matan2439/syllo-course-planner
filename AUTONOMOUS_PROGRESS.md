@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — fail-closed Electrical core-label conflicts
+
+Electrical track ingestion now verifies every explicit core-course label
+against the authoritative `2.5.x` section containing that course. Typography-
+only variants use the existing safe normalization, while a semantically
+different track label raises a source mismatch instead of silently downgrading
+the course to non-core.
+
+Strict RED reproduced the silent downgrade. GREEN passes 14/14 focused
+source-authority tests and 186/186 isolated curriculum/program regressions.
+Electrical remains hidden until final program materialization and complete
+source-model validation. Production, aliases, databases and catalog data were
+unchanged.
+
 ## Latest session — canonical Electrical membership labels
 
 The composed Electrical membership catalog now rewrites typography-only

@@ -204,6 +204,28 @@ def test_conflicting_duplicate_track_membership_fails_closed() -> None:
         parse_track_memberships(pages)
 
 
+def test_core_label_for_different_track_fails_closed() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול מערכות מחשב
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+ארכיטקטורת מחשבים שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול מחשבים
+2.6 מעבדות מתקדמות )שנים ג' - ד'(
+""",
+        )
+    ]
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Core track label mismatch for 0512-4100: section מערכות מחשב, label מחשבים",
+    ):
+        parse_track_memberships(pages)
+
+
 def test_membership_catalog_requires_enough_distinct_core_tracks() -> None:
     rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
     tracks = (
