@@ -273,6 +273,40 @@ def test_membership_catalog_composes_parsers_and_completeness_gate() -> None:
     assert len(catalog.advanced_lab_memberships) == 2
 
 
+def test_membership_catalog_uses_course_track_label_for_typographic_lab_variant() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול מעגלים משולבים VLSI
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול מעגלים משולבים VLSI
+2.5.2 מסלול עיבוד אותות
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול עיבוד אותות
+2.5.3 מסלול בקרה
+0512-4300 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול בקרה
+2.6.1 מעבדה מתקדמת במסלול מעגלים משולבים )VLSI(
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+3 2
+2.6.2 מעבדה מתקדמת במסלול עיבוד אותות
+0512-4290 אופן הוראה סה"כ שעות משקל בציון
+3 2
+2.7 קורסי שאר רוח
+""",
+        )
+    ]
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+
+    catalog = parse_curriculum_membership_catalog(pages, rule)
+
+    assert catalog.advanced_lab_memberships[0].track_name == "מעגלים משולבים VLSI"
+
+
 def test_track_label_normalization_is_typographic_only() -> None:
     assert normalize_track_label("מעגלים משולבים )VLSI )") == normalize_track_label(
         "מעגלים משולבים VLSI"
