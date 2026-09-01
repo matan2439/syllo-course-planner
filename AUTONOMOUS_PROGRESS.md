@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — deduplicated Electrical lab memberships
+
+Repeated authoritative occurrences of the same Electrical advanced-laboratory
+course in the same track now reconcile into one membership with the union of
+its source pages. The parser no longer risks double-counting a repeated PDF
+section, and it does not infer equivalence between semantically different
+track labels.
+
+Strict RED reproduced the duplicate membership. GREEN passes 15/15 focused
+source-authority tests and 187/187 isolated curriculum/program regressions.
+Electrical remains hidden pending complete source-model validation and final
+program materialization. Production, aliases, databases and catalog data were
+unchanged.
+
 ## Latest session — fail-closed Electrical core-label conflicts
 
 Electrical track ingestion now verifies every explicit core-course label

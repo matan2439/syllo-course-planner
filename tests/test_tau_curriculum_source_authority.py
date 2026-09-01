@@ -173,6 +173,36 @@ def test_advanced_lab_memberships_come_only_from_26_section_boundaries() -> None
     ]
 
 
+def test_duplicate_advanced_lab_membership_merges_source_pages() -> None:
+    memberships = parse_advanced_lab_memberships(
+        [
+            CurriculumTextPage(
+                80,
+                """
+2.6.1 מעבדה מתקדמת במסלול תקשורת
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+""",
+            ),
+            CurriculumTextPage(
+                81,
+                """
+2.6.1 מעבדה מתקדמת במסלול תקשורת
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+2.7 קורסי שאר רוח
+""",
+            ),
+        ]
+    )
+
+    assert memberships == (
+        CurriculumAdvancedLabMembership(
+            "0512-4190",
+            "תקשורת",
+            (80, 81),
+        ),
+    )
+
+
 def test_conflicting_duplicate_track_membership_fails_closed() -> None:
     pages = [
         CurriculumTextPage(

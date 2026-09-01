@@ -402,7 +402,21 @@ def parse_advanced_lab_memberships(
                     source_pages=tuple(sorted({track_page, page_number})),
                 )
             )
-    return tuple(memberships)
+    reconciled: dict[tuple[str, str], CurriculumAdvancedLabMembership] = {}
+    for membership in memberships:
+        key = (membership.course_id, membership.track_name)
+        existing = reconciled.get(key)
+        if existing:
+            reconciled[key] = CurriculumAdvancedLabMembership(
+                course_id=membership.course_id,
+                track_name=membership.track_name,
+                source_pages=tuple(
+                    sorted({*existing.source_pages, *membership.source_pages})
+                ),
+            )
+        else:
+            reconciled[key] = membership
+    return tuple(reconciled.values())
 
 
 def validate_membership_completeness(
