@@ -1,7 +1,10 @@
 import pytest
 
+import app.parsing.tau_curriculum_document as curriculum_document
+
 from app.parsing.tau_curriculum_document import (
     CurriculumAdvancedLabMembership,
+    CurriculumMembershipCatalog,
     CurriculumSelectionRule,
     CurriculumSourceMismatch,
     CurriculumTextPage,
@@ -583,3 +586,68 @@ def test_unknown_advanced_lab_track_fails_closed() -> None:
         match="Advanced lab track has no course-track section: מסלול לא מוכר",
     ):
         validate_membership_completeness(tracks, labs, rule)
+
+
+def _program_source_document(
+    unresolved: tuple[curriculum_document.UnresolvedCurriculumFact, ...] = (),
+) -> curriculum_document.ParsedCurriculumDocument:
+    return curriculum_document.ParsedCurriculumDocument(
+        identity=curriculum_document.CurriculumIdentity(
+            program_code="0512-11-01-0000",
+            program_title_he="הנדסת חשמל",
+            degree_name="בוגר אוניברסיטה",
+            academic_year_he='תשפ"ה',
+            printed_on="01/01/25",
+            source_url="https://www.tau.ac.il/tochniot/pdf/2025/heb/051211010000.pdf",
+        ),
+        total_required_hours=179,
+        structure=(),
+        selection_rule=CurriculumSelectionRule(3, 2, 2, 2, 2, True),
+        mandatory_courses=(),
+        unresolved=unresolved,
+    )
+
+
+def test_program_source_model_rejects_unresolved_curriculum_facts() -> None:
+    materialize = getattr(curriculum_document, "materialize_program_source_model", None)
+    assert materialize is not None
+    document = _program_source_document(
+        (
+            curriculum_document.UnresolvedCurriculumFact(
+                "0512-1000",
+                "conflicting_authoritative_course_facts",
+                (12, 13),
+            ),
+        )
+    )
+    catalog = CurriculumMembershipCatalog((), ())
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Cannot materialize program source model with unresolved facts: 0512-1000",
+    ):
+        materialize(document, catalog)
+
+
+def test_program_source_model_preserves_validated_document_and_memberships() -> None:
+    materialize = getattr(curriculum_document, "materialize_program_source_model", None)
+    assert materialize is not None
+    document = _program_source_document()
+    catalog = CurriculumMembershipCatalog(
+        (
+            CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+            CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+        ),
+        (
+            CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+            CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+        ),
+    )
+
+    model = materialize(document, catalog)
+
+    assert model.identity == document.identity
+    assert model.selection_rule == document.selection_rule
+    assert model.track_memberships == catalog.track_memberships
+    assert model.advanced_lab_memberships == catalog.advanced_lab_memberships

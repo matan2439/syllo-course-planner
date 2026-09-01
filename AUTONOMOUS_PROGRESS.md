@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## Latest session — typed Electrical program source model
+
+Validated Electrical document facts and the canonical membership catalog can
+now combine into an immutable `CurriculumProgramSourceModel`. This boundary is
+deliberately not a registered planner program or board: it preserves identity,
+degree structure, the resolved selection rule, mandatory courses and cross-track
+memberships without forcing them into the Mechanical JSON schema.
+
+Materialization fails closed when any curriculum course fact remains unresolved
+and re-runs membership completeness against the document's selection rule.
+Strict RED proved the missing boundary and unresolved-fact gate. GREEN passes
+23/23 focused source-authority tests and 195/195 isolated curriculum/program
+regressions. Electrical remains hidden until catalog course details and final
+planner-board materialization are complete. Production, aliases, databases and
+catalog data were unchanged.
+
 ## Latest session — complete Electrical membership quantity gates
 
 Electrical membership completeness now enforces all course-count minima from

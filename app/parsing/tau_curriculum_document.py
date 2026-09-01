@@ -182,6 +182,19 @@ class ParsedCurriculumDocument:
     unresolved: tuple[UnresolvedCurriculumFact, ...]
 
 
+@dataclass(frozen=True)
+class CurriculumProgramSourceModel:
+    """Validated source facts; not yet a registered planner program or board."""
+
+    identity: CurriculumIdentity
+    total_required_hours: float
+    structure: tuple[CurriculumStructurePart, ...]
+    selection_rule: CurriculumSelectionRule
+    mandatory_courses: tuple[CurriculumCourse, ...]
+    track_memberships: tuple[CurriculumTrackMembership, ...]
+    advanced_lab_memberships: tuple[CurriculumAdvancedLabMembership, ...]
+
+
 class CurriculumSourceMismatch(ValueError):
     """The extracted document does not match its declared authoritative source."""
 
@@ -560,6 +573,35 @@ def parse_curriculum_membership_catalog(
     return CurriculumMembershipCatalog(
         track_memberships=canonical_tracks,
         advanced_lab_memberships=tuple(canonical_lab_memberships.values()),
+    )
+
+
+def materialize_program_source_model(
+    document: ParsedCurriculumDocument,
+    membership_catalog: CurriculumMembershipCatalog,
+) -> CurriculumProgramSourceModel:
+    """Combine only fully resolved, validated facts into a typed source model."""
+    if document.unresolved:
+        unresolved_ids = ", ".join(
+            sorted({fact.course_id for fact in document.unresolved})
+        )
+        raise CurriculumSourceMismatch(
+            f"Cannot materialize program source model with unresolved facts: "
+            f"{unresolved_ids}"
+        )
+    validate_membership_completeness(
+        membership_catalog.track_memberships,
+        membership_catalog.advanced_lab_memberships,
+        document.selection_rule,
+    )
+    return CurriculumProgramSourceModel(
+        identity=document.identity,
+        total_required_hours=document.total_required_hours,
+        structure=document.structure,
+        selection_rule=document.selection_rule,
+        mandatory_courses=document.mandatory_courses,
+        track_memberships=membership_catalog.track_memberships,
+        advanced_lab_memberships=membership_catalog.advanced_lab_memberships,
     )
 
 
