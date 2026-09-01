@@ -419,6 +419,22 @@ def validate_membership_completeness(
             f"distinct lab tracks, found {len(lab_tracks)}"
         )
 
+    normalized_track_names = {
+        normalize_track_label(membership.track_name)
+        for membership in track_memberships
+    }
+    for lab_track in sorted(lab_tracks):
+        if normalize_track_label(lab_track) not in normalized_track_names:
+            raise CurriculumSourceMismatch(
+                f"Advanced lab track has no course-track section: {lab_track}"
+            )
+
+
+def normalize_track_label(label: str) -> str:
+    """Normalize PDF typography without applying semantic track aliases."""
+    without_typography = re.sub(r"[()\[\]{}\-–—]", " ", label.casefold())
+    return re.sub(r"\s+", " ", without_typography).strip()
+
 
 def parse_curriculum_membership_catalog(
     pages: Iterable[CurriculumTextPage],

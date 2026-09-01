@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — typographic Electrical track reconciliation
+
+Advanced-laboratory track labels must now match an extracted course-track
+section after typography-only normalization. Parentheses, dash variants,
+letter case and repeated whitespace are ignored, while semantically different
+labels remain different; no alias such as `computer systems` → `computers` is
+invented. An unmatched laboratory track fails source ingestion explicitly.
+
+Strict RED proved both the safe typography boundary and the missing-track
+failure. GREEN passes 25/25 focused tests and 197/197 isolated curriculum/
+program regressions. Semantic label conflicts and final program materialization
+remain, so Electrical stays hidden. Production, aliases, databases and catalog
+data were unchanged.
+
 ## Latest session — composed Electrical membership catalog
 
 Track-course and advanced-laboratory extraction now compose into one typed

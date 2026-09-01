@@ -10,6 +10,7 @@ from app.parsing.tau_curriculum_document import (
     parse_advanced_lab_memberships,
     parse_curriculum_membership_catalog,
     parse_track_memberships,
+    normalize_track_label,
     restore_rtl_pdf_line,
     validate_membership_completeness,
 )
@@ -270,3 +271,32 @@ def test_membership_catalog_composes_parsers_and_completeness_gate() -> None:
 
     assert len(catalog.track_memberships) == 3
     assert len(catalog.advanced_lab_memberships) == 2
+
+
+def test_track_label_normalization_is_typographic_only() -> None:
+    assert normalize_track_label("מעגלים משולבים )VLSI )") == normalize_track_label(
+        "מעגלים משולבים VLSI"
+    )
+    assert normalize_track_label("ביו - אלקטרוניקה") == normalize_track_label(
+        "ביו אלקטרוניקה"
+    )
+    assert normalize_track_label("מערכות מחשב") != normalize_track_label("מחשבים")
+
+
+def test_unknown_advanced_lab_track_fails_closed() -> None:
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+    tracks = (
+        CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+        CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+        CurriculumTrackMembership("0512-4300", "בקרה", True, (60,)),
+    )
+    labs = (
+        CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+        CurriculumAdvancedLabMembership("0512-4990", "מסלול לא מוכר", (81,)),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Advanced lab track has no course-track section: מסלול לא מוכר",
+    ):
+        validate_membership_completeness(tracks, labs, rule)
