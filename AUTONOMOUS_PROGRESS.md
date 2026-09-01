@@ -1,5 +1,22 @@
 # Autonomous Progress
 
+## Latest session — truthful Electrical planner requirements boundary
+
+The validated Electrical source model can now materialize immutable typed
+planner requirements without flattening its cross-track rules into the
+independent Mechanical category schema. The boundary preserves total track and
+core-course minima, required distinct core tracks, advanced-lab and distinct
+lab-track minima, per-track core membership, cross-track course membership and
+the prerequisite requirement for laboratories.
+
+Source-model materialization now also fails closed when any track or laboratory
+membership lacks a matching authoritative catalog-course fact. Strict RED
+proved both the missing requirements boundary and the missing catalog-coverage
+gate. GREEN passes 29/29 focused source-authority tests and 201/201 isolated
+curriculum/program regressions. Electrical remains hidden until this richer
+requirements contract is consumed by the planner validator and board builder.
+Production, aliases, databases and catalog data were unchanged.
+
 ## Latest session — catalog facts wired into the Electrical source model
 
 `materialize_program_source_model` now requires the parsed catalog-course

@@ -213,6 +213,33 @@ class CurriculumProgramSourceModel:
     catalog_courses: tuple[CurriculumCatalogCourse, ...]
 
 
+@dataclass(frozen=True)
+class CurriculumPlannerTrackCategory:
+    track_name: str
+    course_ids: tuple[str, ...]
+    core_course_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CurriculumPlannerLabCategory:
+    track_name: str
+    course_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CurriculumPlannerRequirements:
+    total_required_hours: float
+    mandatory_course_ids: tuple[str, ...]
+    total_track_courses: int
+    minimum_core_courses: int
+    minimum_distinct_core_tracks: int
+    track_categories: tuple[CurriculumPlannerTrackCategory, ...]
+    advanced_labs_required: int
+    minimum_distinct_lab_tracks: int
+    advanced_lab_categories: tuple[CurriculumPlannerLabCategory, ...]
+    labs_require_prerequisites: bool
+
+
 class CurriculumSourceMismatch(ValueError):
     """The extracted document does not match its declared authoritative source."""
 
@@ -616,6 +643,21 @@ def materialize_program_source_model(
             f"Cannot materialize program source model with unresolved catalog courses: "
             f"{unresolved_ids}"
         )
+    catalog_course_ids = {course.course_id for course in catalog_courses.courses}
+    membership_course_ids = {
+        membership.course_id for membership in membership_catalog.track_memberships
+    } | {
+        membership.course_id
+        for membership in membership_catalog.advanced_lab_memberships
+    }
+    missing_catalog_course_ids = sorted(
+        membership_course_ids - catalog_course_ids
+    )
+    if missing_catalog_course_ids:
+        raise CurriculumSourceMismatch(
+            "Cannot materialize program source model without catalog facts for: "
+            f"{', '.join(missing_catalog_course_ids)}"
+        )
     validate_membership_completeness(
         membership_catalog.track_memberships,
         membership_catalog.advanced_lab_memberships,
@@ -630,6 +672,53 @@ def materialize_program_source_model(
         track_memberships=membership_catalog.track_memberships,
         advanced_lab_memberships=membership_catalog.advanced_lab_memberships,
         catalog_courses=catalog_courses.courses,
+    )
+
+
+def materialize_planner_requirements(
+    model: CurriculumProgramSourceModel,
+) -> CurriculumPlannerRequirements:
+    """Preserve cross-track minima without flattening them into independent pools."""
+    track_courses: dict[str, set[str]] = {}
+    core_courses: dict[str, set[str]] = {}
+    for membership in model.track_memberships:
+        track_courses.setdefault(membership.track_name, set()).add(membership.course_id)
+        if membership.is_core:
+            core_courses.setdefault(membership.track_name, set()).add(
+                membership.course_id
+            )
+
+    lab_courses: dict[str, set[str]] = {}
+    for membership in model.advanced_lab_memberships:
+        lab_courses.setdefault(membership.track_name, set()).add(membership.course_id)
+
+    rule = model.selection_rule
+    return CurriculumPlannerRequirements(
+        total_required_hours=model.total_required_hours,
+        mandatory_course_ids=tuple(
+            sorted({course.course_id for course in model.mandatory_courses})
+        ),
+        total_track_courses=rule.total_track_courses,
+        minimum_core_courses=rule.minimum_core_courses,
+        minimum_distinct_core_tracks=rule.minimum_distinct_core_tracks,
+        track_categories=tuple(
+            CurriculumPlannerTrackCategory(
+                track_name=track_name,
+                course_ids=tuple(sorted(course_ids)),
+                core_course_ids=tuple(sorted(core_courses.get(track_name, set()))),
+            )
+            for track_name, course_ids in sorted(track_courses.items())
+        ),
+        advanced_labs_required=rule.advanced_labs_required,
+        minimum_distinct_lab_tracks=rule.minimum_distinct_lab_tracks,
+        advanced_lab_categories=tuple(
+            CurriculumPlannerLabCategory(
+                track_name=track_name,
+                course_ids=tuple(sorted(course_ids)),
+            )
+            for track_name, course_ids in sorted(lab_courses.items())
+        ),
+        labs_require_prerequisites=rule.labs_require_prerequisites,
     )
 
 

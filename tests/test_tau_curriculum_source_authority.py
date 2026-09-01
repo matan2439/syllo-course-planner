@@ -608,6 +608,26 @@ def _program_source_document(
     )
 
 
+def _parsed_catalog_courses(
+    *course_ids: str,
+) -> curriculum_document.ParsedCurriculumCatalogCourses:
+    return curriculum_document.ParsedCurriculumCatalogCourses(
+        tuple(
+            curriculum_document.CurriculumCatalogCourse(
+                course_id=course_id,
+                name_he=course_id,
+                weekly_hours=4,
+                credit_hours=4,
+                prerequisite_course_ids=(),
+                concurrent_course_ids=(),
+                source_pages=(58,),
+            )
+            for course_id in course_ids
+        ),
+        (),
+    )
+
+
 def test_program_source_model_rejects_unresolved_curriculum_facts() -> None:
     materialize = getattr(curriculum_document, "materialize_program_source_model", None)
     assert materialize is not None
@@ -652,7 +672,13 @@ def test_program_source_model_preserves_validated_document_and_memberships() -> 
     model = materialize(
         document,
         catalog,
-        curriculum_document.ParsedCurriculumCatalogCourses((), ()),
+        _parsed_catalog_courses(
+            "0512-4100",
+            "0512-4190",
+            "0512-4200",
+            "0512-4290",
+            "0512-4300",
+        ),
     )
 
     assert model.identity == document.identity
@@ -676,19 +702,12 @@ def test_program_source_model_preserves_validated_catalog_courses() -> None:
             CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
         ),
     )
-    catalog_courses = curriculum_document.ParsedCurriculumCatalogCourses(
-        (
-            curriculum_document.CurriculumCatalogCourse(
-                course_id="0512-4100",
-                name_he="תקשורת ספרתית",
-                weekly_hours=4,
-                credit_hours=4,
-                prerequisite_course_ids=("0512-2100",),
-                concurrent_course_ids=(),
-                source_pages=(58, 59),
-            ),
-        ),
-        (),
+    catalog_courses = _parsed_catalog_courses(
+        "0512-4100",
+        "0512-4190",
+        "0512-4200",
+        "0512-4290",
+        "0512-4300",
     )
 
     model = materialize(document, memberships, catalog_courses)
@@ -727,6 +746,92 @@ def test_program_source_model_rejects_unresolved_catalog_courses() -> None:
         match="Cannot materialize program source model with unresolved catalog courses: 0512-4100",
     ):
         materialize(document, memberships, catalog_courses)
+
+
+def test_program_source_model_rejects_memberships_without_catalog_facts() -> None:
+    materialize = getattr(curriculum_document, "materialize_program_source_model", None)
+    assert materialize is not None
+    document = _program_source_document()
+    memberships = CurriculumMembershipCatalog(
+        (
+            CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+            CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+        ),
+        (
+            CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+            CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+        ),
+    )
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match=(
+            "Cannot materialize program source model without catalog facts for: "
+            "0512-4100, 0512-4190, 0512-4200, 0512-4290, 0512-4300"
+        ),
+    ):
+        materialize(
+            document,
+            memberships,
+            curriculum_document.ParsedCurriculumCatalogCourses((), ()),
+        )
+
+
+def test_planner_requirements_preserve_cross_track_selection_semantics() -> None:
+    materialize_requirements = getattr(
+        curriculum_document,
+        "materialize_planner_requirements",
+        None,
+    )
+    assert materialize_requirements is not None
+    document = _program_source_document()
+    model = curriculum_document.CurriculumProgramSourceModel(
+        identity=document.identity,
+        total_required_hours=document.total_required_hours,
+        structure=document.structure,
+        selection_rule=document.selection_rule,
+        mandatory_courses=(),
+        track_memberships=(
+            CurriculumTrackMembership("0512-4100", "תקשורת", True, (58,)),
+            CurriculumTrackMembership("0512-4100", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4200", "עיבוד אותות", True, (59,)),
+            CurriculumTrackMembership("0512-4300", "בקרה", False, (60,)),
+        ),
+        advanced_lab_memberships=(
+            CurriculumAdvancedLabMembership("0512-4190", "תקשורת", (80,)),
+            CurriculumAdvancedLabMembership("0512-4290", "עיבוד אותות", (81,)),
+        ),
+        catalog_courses=(),
+    )
+
+    requirements = materialize_requirements(model)
+
+    assert requirements.total_required_hours == 179
+    assert requirements.total_track_courses == 3
+    assert requirements.minimum_core_courses == 2
+    assert requirements.minimum_distinct_core_tracks == 2
+    assert requirements.advanced_labs_required == 2
+    assert requirements.minimum_distinct_lab_tracks == 2
+    assert requirements.track_categories == (
+        curriculum_document.CurriculumPlannerTrackCategory(
+            "בקרה", ("0512-4300",), (),
+        ),
+        curriculum_document.CurriculumPlannerTrackCategory(
+            "עיבוד אותות", ("0512-4100", "0512-4200"), ("0512-4100", "0512-4200"),
+        ),
+        curriculum_document.CurriculumPlannerTrackCategory(
+            "תקשורת", ("0512-4100",), ("0512-4100",),
+        ),
+    )
+    assert requirements.advanced_lab_categories == (
+        curriculum_document.CurriculumPlannerLabCategory(
+            "עיבוד אותות", ("0512-4290",),
+        ),
+        curriculum_document.CurriculumPlannerLabCategory(
+            "תקשורת", ("0512-4190",),
+        ),
+    )
 
 
 def test_catalog_course_facts_merge_identical_cross_track_occurrences() -> None:
