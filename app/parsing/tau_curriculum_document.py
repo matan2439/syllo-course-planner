@@ -479,17 +479,29 @@ def parse_curriculum_membership_catalog(
             normalize_track_label(membership.track_name),
             membership.track_name,
         )
-    canonical_lab_memberships = tuple(
-        CurriculumAdvancedLabMembership(
+    canonical_lab_memberships: dict[
+        tuple[str, str], CurriculumAdvancedLabMembership
+    ] = {}
+    for membership in advanced_lab_memberships:
+        canonical_membership = CurriculumAdvancedLabMembership(
             course_id=membership.course_id,
             track_name=canonical_track_names[normalize_track_label(membership.track_name)],
             source_pages=membership.source_pages,
         )
-        for membership in advanced_lab_memberships
-    )
+        key = (canonical_membership.course_id, canonical_membership.track_name)
+        existing = canonical_lab_memberships.get(key)
+        if existing:
+            canonical_membership = CurriculumAdvancedLabMembership(
+                course_id=canonical_membership.course_id,
+                track_name=canonical_membership.track_name,
+                source_pages=tuple(
+                    sorted({*existing.source_pages, *canonical_membership.source_pages})
+                ),
+            )
+        canonical_lab_memberships[key] = canonical_membership
     return CurriculumMembershipCatalog(
         track_memberships=track_memberships,
-        advanced_lab_memberships=canonical_lab_memberships,
+        advanced_lab_memberships=tuple(canonical_lab_memberships.values()),
     )
 
 

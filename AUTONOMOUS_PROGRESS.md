@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — canonical Electrical lab deduplication
+
+The composed Electrical catalog now reconciles advanced-laboratory duplicates
+again after typography-only track-label canonicalization. Two PDF occurrences
+that differ only by parentheses or similar typography therefore become one
+course/track membership with merged source-page provenance instead of leaking
+duplicate categories into future program materialization.
+
+Strict RED reproduced the post-canonicalization duplicate. GREEN passes 16/16
+focused source-authority tests and 188/188 isolated curriculum/program
+regressions. Electrical remains hidden pending complete source-model validation
+and final program materialization. Production, aliases, databases and catalog
+data were unchanged.
+
 ## Latest session — deduplicated Electrical lab memberships
 
 Repeated authoritative occurrences of the same Electrical advanced-laboratory
