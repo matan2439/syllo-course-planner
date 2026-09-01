@@ -103,6 +103,23 @@ class CurriculumMembershipCatalog:
 
 
 @dataclass(frozen=True)
+class CurriculumCatalogCourse:
+    course_id: str
+    name_he: str
+    weekly_hours: float
+    credit_hours: float
+    prerequisite_course_ids: tuple[str, ...]
+    concurrent_course_ids: tuple[str, ...]
+    source_pages: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class ParsedCurriculumCatalogCourses:
+    courses: tuple[CurriculumCatalogCourse, ...]
+    unresolved: tuple[UnresolvedCurriculumFact, ...]
+
+
+@dataclass(frozen=True)
 class SelectionRuleResolution:
     resolved_rule: CurriculumSelectionRule | None
     reason: str | None
@@ -658,6 +675,99 @@ def _course_from_block(
         source_pages=tuple(sorted({page_number for page_number, _ in tagged_block})),
         core_track_names=core_track_names,
     )
+
+
+def parse_catalog_courses(
+    pages: Iterable[CurriculumTextPage],
+) -> ParsedCurriculumCatalogCourses:
+    """Parse full course facts only from authoritative 2.5/2.6 sections."""
+    tagged_lines = [
+        (page.page_number, line)
+        for page in sorted(pages, key=lambda item: (item.page_number, item.text))
+        for line in _lines(page)
+    ]
+    occurrences: dict[str, list[CurriculumCatalogCourse]] = {}
+    in_catalog = False
+    index = 0
+    while index < len(tagged_lines):
+        _, line = tagged_lines[index]
+        if _HUMANITIES_SECTION.match(line):
+            break
+        if (
+            _TRACK_SECTION.match(line)
+            or _ADVANCED_LABS_SECTION.match(line)
+            or _ADVANCED_LAB_SUBSECTION.match(line)
+        ):
+            in_catalog = True
+            index += 1
+            continue
+        course_match = _COURSE_ID.match(line)
+        if in_catalog and course_match and "אופן הוראה" in line:
+            course_id = _normal_course_id(course_match.group(0))
+            block = [tagged_lines[index]]
+            index += 1
+            while index < len(tagged_lines):
+                next_line = tagged_lines[index][1]
+                next_course = _COURSE_ID.match(next_line)
+                if (
+                    (next_course and "אופן הוראה" in next_line)
+                    or _TRACK_SECTION.match(next_line)
+                    or _ADVANCED_LABS_SECTION.match(next_line)
+                    or _ADVANCED_LAB_SUBSECTION.match(next_line)
+                    or _HUMANITIES_SECTION.match(next_line)
+                ):
+                    break
+                block.append(tagged_lines[index])
+                index += 1
+            parsed = _course_from_block(course_id, block, year=0, semester="")
+            if parsed:
+                occurrences.setdefault(course_id, []).append(
+                    CurriculumCatalogCourse(
+                        course_id=parsed.course_id,
+                        name_he=parsed.name_he,
+                        weekly_hours=parsed.weekly_hours,
+                        credit_hours=parsed.credit_hours,
+                        prerequisite_course_ids=parsed.prerequisite_course_ids,
+                        concurrent_course_ids=parsed.concurrent_course_ids,
+                        source_pages=parsed.source_pages,
+                    )
+                )
+            continue
+        index += 1
+
+    accepted: list[CurriculumCatalogCourse] = []
+    unresolved: list[UnresolvedCurriculumFact] = []
+    for course_id in sorted(occurrences):
+        versions = occurrences[course_id]
+        facts = {
+            (
+                item.name_he,
+                item.weekly_hours,
+                item.credit_hours,
+                item.prerequisite_course_ids,
+                item.concurrent_course_ids,
+            )
+            for item in versions
+        }
+        source_pages = tuple(
+            sorted({page for item in versions for page in item.source_pages})
+        )
+        if len(facts) != 1:
+            unresolved.append(
+                UnresolvedCurriculumFact(
+                    course_id=course_id,
+                    reason="conflicting_authoritative_catalog_course_facts",
+                    source_pages=source_pages,
+                )
+            )
+            continue
+        item = versions[0]
+        accepted.append(
+            CurriculumCatalogCourse(
+                **{**item.__dict__, "source_pages": source_pages}
+            )
+        )
+    return ParsedCurriculumCatalogCourses(tuple(accepted), tuple(unresolved))
 
 
 def _mandatory_courses(

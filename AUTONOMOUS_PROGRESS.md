@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## Latest session — authoritative Electrical catalog course facts
+
+Course blocks beneath official Electrical sections `2.5` and `2.6` now parse
+into typed `CurriculumCatalogCourse` facts: Hebrew name, weekly and credit
+hours, prerequisite and concurrent course ids, and source pages. The parser
+recognizes real course headers via `אופן הוראה`, so prerequisite ids are not
+mistaken for new catalog entries.
+
+Identical cross-track occurrences merge provenance while differing hours,
+names or dependency facts remain explicitly unresolved and are excluded from
+accepted facts. Strict RED proved both merge and conflict paths. GREEN passes
+25/25 focused source-authority tests and 197/197 isolated curriculum/program
+regressions. Electrical remains hidden until these facts are wired into the
+source model and final planner materialization. Production, aliases, databases
+and catalog data were unchanged.
+
 ## Latest session — typed Electrical program source model
 
 Validated Electrical document facts and the canonical membership catalog can

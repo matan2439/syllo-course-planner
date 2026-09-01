@@ -651,3 +651,87 @@ def test_program_source_model_preserves_validated_document_and_memberships() -> 
     assert model.selection_rule == document.selection_rule
     assert model.track_memberships == catalog.track_memberships
     assert model.advanced_lab_memberships == catalog.advanced_lab_memberships
+
+
+def test_catalog_course_facts_merge_identical_cross_track_occurrences() -> None:
+    parse_catalog_courses = getattr(curriculum_document, "parse_catalog_courses", None)
+    assert parse_catalog_courses is not None
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול תקשורת
+דרישות קדם
+0512-2100 מבוא לתקשורת
+""",
+        ),
+        CurriculumTextPage(
+            59,
+            """
+2.5.2 מסלול עיבוד אותות
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+• קורס ליבה במסלול עיבוד אותות
+דרישות קדם
+0512-2100 מבוא לתקשורת
+2.6 מעבדות מתקדמות
+""",
+        ),
+    ]
+
+    parsed = parse_catalog_courses(pages)
+
+    assert parsed.unresolved == ()
+    assert parsed.courses == (
+        curriculum_document.CurriculumCatalogCourse(
+            course_id="0512-4100",
+            name_he="תקשורת ספרתית",
+            weekly_hours=4,
+            credit_hours=4,
+            prerequisite_course_ids=("0512-2100",),
+            concurrent_course_ids=(),
+            source_pages=(58, 59),
+        ),
+    )
+
+
+def test_catalog_course_facts_retain_conflicting_occurrences_as_unresolved() -> None:
+    parse_catalog_courses = getattr(curriculum_document, "parse_catalog_courses", None)
+    assert parse_catalog_courses is not None
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול תקשורת
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+4 4
+""",
+        ),
+        CurriculumTextPage(
+            59,
+            """
+2.5.2 מסלול עיבוד אותות
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+תקשורת ספרתית שיעור 3 ש"ס
+3 3
+2.6 מעבדות מתקדמות
+""",
+        ),
+    ]
+
+    parsed = parse_catalog_courses(pages)
+
+    assert parsed.courses == ()
+    assert parsed.unresolved == (
+        curriculum_document.UnresolvedCurriculumFact(
+            course_id="0512-4100",
+            reason="conflicting_authoritative_catalog_course_facts",
+            source_pages=(58, 59),
+        ),
+    )
