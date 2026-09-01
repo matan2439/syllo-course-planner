@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — canonical Electrical track reconciliation
+
+The composed Electrical catalog now canonicalizes typography-only course-track
+label variants before applying membership completeness. Duplicate course/track
+memberships merge their source pages, so repeated PDF typography cannot inflate
+the number of distinct tracks. If canonical duplicates disagree on core status,
+ingestion fails with an explicit source conflict instead of choosing one.
+
+Strict RED proved both the duplicate and conflicting-core paths. GREEN passes
+18/18 focused source-authority tests and 190/190 isolated curriculum/program
+regressions. Electrical remains hidden pending complete source-model validation
+and final program materialization. Production, aliases, databases and catalog
+data were unchanged.
+
 ## Latest session — canonical Electrical lab deduplication
 
 The composed Electrical catalog now reconciles advanced-laboratory duplicates

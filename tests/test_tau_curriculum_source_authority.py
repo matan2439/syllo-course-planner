@@ -410,6 +410,95 @@ def test_membership_catalog_merges_lab_duplicates_after_label_canonicalization()
     )
 
 
+def test_membership_catalog_merges_track_duplicates_after_label_canonicalization() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול מעגלים משולבים VLSI
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול מעגלים משולבים VLSI
+""",
+        ),
+        CurriculumTextPage(
+            59,
+            """
+2.5.1 מסלול מעגלים משולבים )VLSI(
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול מעגלים משולבים )VLSI(
+2.5.2 מסלול עיבוד אותות
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול עיבוד אותות
+2.5.3 מסלול בקרה
+0512-4300 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול בקרה
+2.6.1 מעבדה מתקדמת במסלול מעגלים משולבים VLSI
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+2.6.2 מעבדה מתקדמת במסלול עיבוד אותות
+0512-4290 אופן הוראה סה"כ שעות משקל בציון
+2.7 קורסי שאר רוח
+""",
+        ),
+    ]
+    rule = CurriculumSelectionRule(12, 3, 3, 2, 2, True)
+
+    catalog = parse_curriculum_membership_catalog(pages, rule)
+
+    assert catalog.track_memberships[0] == CurriculumTrackMembership(
+        "0512-4100",
+        "מעגלים משולבים VLSI",
+        True,
+        (58, 59),
+    )
+    assert len(catalog.track_memberships) == 3
+
+
+def test_membership_catalog_rejects_core_conflict_after_label_canonicalization() -> None:
+    pages = [
+        CurriculumTextPage(
+            58,
+            """
+2.5.1 מסלול מעגלים משולבים VLSI
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול מעגלים משולבים VLSI
+""",
+        ),
+        CurriculumTextPage(
+            59,
+            """
+2.5.1 מסלול מעגלים משולבים )VLSI(
+0512-4100 אופן הוראה סה"כ שעות משקל בציון
+4 4
+2.5.2 מסלול עיבוד אותות
+0512-4200 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול עיבוד אותות
+2.5.3 מסלול בקרה
+0512-4300 אופן הוראה סה"כ שעות משקל בציון
+4 4
+• קורס ליבה במסלול בקרה
+2.6.1 מעבדה מתקדמת במסלול מעגלים משולבים VLSI
+0512-4190 אופן הוראה סה"כ שעות משקל בציון
+2.6.2 מעבדה מתקדמת במסלול עיבוד אותות
+0512-4290 אופן הוראה סה"כ שעות משקל בציון
+2.7 קורסי שאר רוח
+""",
+        ),
+    ]
+    rule = CurriculumSelectionRule(12, 2, 2, 2, 2, True)
+
+    with pytest.raises(
+        CurriculumSourceMismatch,
+        match="Conflicting canonical track membership for 0512-4100 in מעגלים משולבים VLSI",
+    ):
+        parse_curriculum_membership_catalog(pages, rule)
+
+
 def test_track_label_normalization_is_typographic_only() -> None:
     assert normalize_track_label("מעגלים משולבים )VLSI )") == normalize_track_label(
         "מעגלים משולבים VLSI"

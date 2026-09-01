@@ -468,17 +468,46 @@ def parse_curriculum_membership_catalog(
     frozen_pages = tuple(pages)
     track_memberships = parse_track_memberships(frozen_pages)
     advanced_lab_memberships = parse_advanced_lab_memberships(frozen_pages)
-    validate_membership_completeness(
-        track_memberships,
-        advanced_lab_memberships,
-        selection_rule,
-    )
     canonical_track_names: dict[str, str] = {}
     for membership in track_memberships:
         canonical_track_names.setdefault(
             normalize_track_label(membership.track_name),
             membership.track_name,
         )
+    canonical_track_memberships: dict[
+        tuple[str, str], CurriculumTrackMembership
+    ] = {}
+    for membership in track_memberships:
+        canonical_membership = CurriculumTrackMembership(
+            course_id=membership.course_id,
+            track_name=canonical_track_names[normalize_track_label(membership.track_name)],
+            is_core=membership.is_core,
+            source_pages=membership.source_pages,
+        )
+        key = (canonical_membership.course_id, canonical_membership.track_name)
+        existing = canonical_track_memberships.get(key)
+        if existing:
+            if existing.is_core != canonical_membership.is_core:
+                raise CurriculumSourceMismatch(
+                    f"Conflicting canonical track membership for "
+                    f"{canonical_membership.course_id} in "
+                    f"{canonical_membership.track_name}"
+                )
+            canonical_membership = CurriculumTrackMembership(
+                course_id=canonical_membership.course_id,
+                track_name=canonical_membership.track_name,
+                is_core=canonical_membership.is_core,
+                source_pages=tuple(
+                    sorted({*existing.source_pages, *canonical_membership.source_pages})
+                ),
+            )
+        canonical_track_memberships[key] = canonical_membership
+    canonical_tracks = tuple(canonical_track_memberships.values())
+    validate_membership_completeness(
+        canonical_tracks,
+        advanced_lab_memberships,
+        selection_rule,
+    )
     canonical_lab_memberships: dict[
         tuple[str, str], CurriculumAdvancedLabMembership
     ] = {}
@@ -500,7 +529,7 @@ def parse_curriculum_membership_catalog(
             )
         canonical_lab_memberships[key] = canonical_membership
     return CurriculumMembershipCatalog(
-        track_memberships=track_memberships,
+        track_memberships=canonical_tracks,
         advanced_lab_memberships=tuple(canonical_lab_memberships.values()),
     )
 
