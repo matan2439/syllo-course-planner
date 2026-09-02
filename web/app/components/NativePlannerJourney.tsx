@@ -709,9 +709,9 @@ export default function NativePlannerJourney({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="planner-journey grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
-      <div className="order-2 flex flex-col gap-4 lg:order-1">
+      <div className="planner-board-region order-2 flex flex-col gap-4 lg:order-1">
         {manualAddIntent && (
           <Card className="flex flex-col gap-3 p-4" aria-live="polite">
             <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
@@ -770,7 +770,7 @@ export default function NativePlannerJourney({
       </div>
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
-      <aside className="order-1 flex flex-col gap-4 lg:order-2">
+      <aside aria-label="עוזר אקדמי" className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
         <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-bold tracking-tight">עוזר התכנון</h2>
           <div aria-label="שיחה" className="flex max-h-56 flex-col gap-2 overflow-y-auto">

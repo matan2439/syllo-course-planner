@@ -5,11 +5,12 @@ import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository from './UnifiedCourseRepository'
 
-type WorkspaceView = 'planner' | 'repository'
+type WorkspaceView = 'board' | 'repository' | 'agent'
 
 const VIEWS: Array<{ id: WorkspaceView; label: string }> = [
-  { id: 'planner', label: 'לוח ועוזר' },
+  { id: 'board', label: 'לוח סמסטרים' },
   { id: 'repository', label: 'מאגר קורסים' },
+  { id: 'agent', label: 'עוזר אקדמי' },
 ]
 
 export default function UnifiedPlannerWorkspace({
@@ -23,7 +24,7 @@ export default function UnifiedPlannerWorkspace({
   selectedCourseIds?: readonly string[]
   onRequestAdd?: (courseId: string) => void
 }) {
-  const [activeView, setActiveView] = useState<WorkspaceView>('planner')
+  const [activeView, setActiveView] = useState<WorkspaceView>('board')
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -53,7 +54,7 @@ export default function UnifiedPlannerWorkspace({
       .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
     setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
     onRequestAdd(courseId)
-    selectView('planner')
+    selectView('board')
   }
 
   return (
@@ -82,7 +83,7 @@ export default function UnifiedPlannerWorkspace({
             type="button"
             role="tab"
             id={`workspace-tab-${view.id}`}
-            aria-controls={`workspace-panel-${view.id}`}
+            aria-controls={view.id === 'repository' ? 'workspace-panel-repository' : 'workspace-panel-journey'}
             aria-selected={activeView === view.id}
             tabIndex={activeView === view.id ? 0 : -1}
             onClick={() => selectView(view.id)}
@@ -103,12 +104,13 @@ export default function UnifiedPlannerWorkspace({
         ))}
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="planner-workbench grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div
-          id="workspace-panel-planner"
+          id="workspace-panel-journey"
           role="tabpanel"
-          aria-labelledby="workspace-tab-planner"
-          className={activeView === 'planner' ? 'min-w-0' : 'hidden min-w-0 lg:block'}
+          aria-labelledby={`workspace-tab-${activeView === 'agent' ? 'agent' : 'board'}`}
+          data-mobile-surface={activeView}
+          className={`${activeView === 'repository' ? 'hidden lg:block' : ''} planner-agent-drawer min-w-0`}
         >
           <NativePlannerJourney
             programId={programId}
@@ -122,7 +124,7 @@ export default function UnifiedPlannerWorkspace({
           id="workspace-panel-repository"
           role="tabpanel"
           aria-labelledby="workspace-tab-repository"
-          className={activeView === 'repository' ? 'min-w-0' : 'hidden min-w-0 lg:block'}
+          className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <UnifiedCourseRepository
             repo={repo}

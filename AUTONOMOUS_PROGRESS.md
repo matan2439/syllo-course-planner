@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — responsive three-surface workbench
+
+The unified planner now exposes separate mobile tabs for the semester board,
+course repository and Academic Agent while keeping one mounted Journey and one
+authoritative state. RTL roving focus supports Arrow, Home and End navigation.
+On desktop the categorized repository is a sticky scrollable rail beside the
+semester table, while the Agent remains a dedicated region of the same Journey.
+
+Strict RED proved the workspace had only two combined views and lacked the
+workbench structure. GREEN passes 34/34 workspace, route and Journey tests plus
+the full TypeScript gate. Production has not yet changed; immutable Preview and
+the conversational Agent gates still precede promotion.
+
 ## Latest session — repository drops use server authority
 
 Dropping a repository course onto a semester now enters the same authoritative

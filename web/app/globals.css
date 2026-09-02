@@ -118,6 +118,20 @@ body {
 .course-detail-overlay { animation: detail-overlay-in 0.16s ease-out both; }
 .course-detail-panel   { animation: detail-panel-in 0.16s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 
+/* ── Unified academic workbench ── */
+.planner-workbench { align-items: start; }
+.planner-repository-rail { max-height: calc(100vh - 7rem); overflow-y: auto; }
+.planner-agent-drawer { min-width: 0; }
+
+@media (min-width: 1024px) {
+  .planner-repository-rail { position: sticky; top: 5.5rem; }
+}
+
+@media (max-width: 1023px) {
+  .planner-agent-drawer[data-mobile-surface="board"] .planner-agent-region { display: none; }
+  .planner-agent-drawer[data-mobile-surface="agent"] .planner-board-region { display: none; }
+}
+
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
