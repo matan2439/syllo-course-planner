@@ -31,6 +31,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/ai/conversation.ts",
+      "use": "@vercel/node"
+    },
+    {
       "src": "api/board.ts",
       "use": "@vercel/node"
     },
@@ -75,6 +79,10 @@
     {
       "source": "/api/ai/planning-context",
       "destination": "/api/ai/planning-context.ts"
+    },
+    {
+      "source": "/api/ai/conversation",
+      "destination": "/api/ai/conversation.ts"
     },
     {
       "source": "/",

@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — fail-closed conversation endpoint boundary
+
+`POST /api/ai/conversation` now has an explicit Vercel route and validates the
+shared bounded conversation contract before any model resolution. Unsupported
+methods and client-authored board/tool payloads are rejected; a missing model
+returns the typed `ASSISTANT_UNAVAILABLE` outcome with `Cache-Control: no-store`
+instead of a deterministic answer disguised as AI.
+
+Strict RED proved the endpoint was absent. GREEN passes 7/7 endpoint/wire tests
+and the root TypeScript gate. The configured-model path intentionally remains
+fail closed until the next slice composes server-owned board/context loading and
+proposal persistence. No provider or remote storage was contacted.
+
 ## Latest session — conversational tool orchestration
 
 The Agent can now run a bounded Hebrew LLM turn over an isolated
