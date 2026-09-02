@@ -25,6 +25,8 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd?: (courseId: string) => void
 }) {
   const [activeView, setActiveView] = useState<WorkspaceView>('board')
+  const [repositoryOpen, setRepositoryOpen] = useState(false)
+  const [agentOpen, setAgentOpen] = useState(false)
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -104,13 +106,42 @@ export default function UnifiedPlannerWorkspace({
         ))}
       </div>
 
-      <div className="planner-workbench grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="planner-drawer-controls" aria-label="כלי תכנון">
+        <button
+          type="button"
+          aria-controls="workspace-panel-repository"
+          aria-expanded={repositoryOpen}
+          aria-label={`${repositoryOpen ? 'סגור' : 'פתח'} מאגר קורסים`}
+          onClick={() => setRepositoryOpen((value) => !value)}
+          className="planner-drawer-toggle planner-drawer-toggle-repository"
+        >
+          <span aria-hidden="true">☰</span>
+          <span>קורסים</span>
+        </button>
+        <button
+          type="button"
+          aria-controls="workspace-agent-drawer"
+          aria-expanded={agentOpen}
+          aria-label={`${agentOpen ? 'סגור' : 'פתח'} עוזר AI`}
+          onClick={() => setAgentOpen((value) => !value)}
+          className="planner-drawer-toggle planner-drawer-toggle-agent"
+        >
+          <span aria-hidden="true">✦</span>
+          <span>עוזר AI</span>
+        </button>
+      </div>
+
+      <div
+        className="planner-workbench min-w-0"
+        data-repository-open={repositoryOpen}
+        data-agent-open={agentOpen}
+      >
         <div
           id="workspace-panel-journey"
           role="tabpanel"
           aria-labelledby={`workspace-tab-${activeView === 'agent' ? 'agent' : 'board'}`}
           data-mobile-surface={activeView}
-          className={`${activeView === 'repository' ? 'hidden lg:block' : ''} planner-agent-drawer min-w-0`}
+          className={`${activeView === 'repository' ? 'hidden lg:block' : ''} planner-board-canvas planner-agent-drawer min-w-0`}
         >
           <NativePlannerJourney
             programId={programId}
@@ -124,6 +155,7 @@ export default function UnifiedPlannerWorkspace({
           id="workspace-panel-repository"
           role="tabpanel"
           aria-labelledby="workspace-tab-repository"
+          data-open={repositoryOpen}
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <UnifiedCourseRepository

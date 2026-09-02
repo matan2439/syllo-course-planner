@@ -119,17 +119,72 @@ body {
 .course-detail-panel   { animation: detail-panel-in 0.16s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 
 /* ── Unified academic workbench ── */
-.planner-workbench { align-items: start; }
-.planner-repository-rail { max-height: calc(100vh - 7rem); overflow-y: auto; }
-.planner-agent-drawer { min-width: 0; }
+.planner-workbench { position: relative; min-height: 32rem; }
+.planner-board-canvas { min-width: 0; width: 100%; }
+.planner-board-canvas .planner-journey { display: block; }
+.planner-board-canvas .planner-board-region { width: 100%; }
+.planner-repository-rail,
+.planner-board-canvas .planner-agent-region {
+  position: fixed;
+  z-index: 40;
+  top: 5.25rem;
+  bottom: 1rem;
+  width: min(24rem, calc(100vw - 2rem));
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 24px 70px rgb(20 12 52 / 32%);
+  padding: 1rem;
+  backdrop-filter: blur(18px);
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.planner-repository-rail { right: 1rem; }
+.planner-repository-rail[data-open="true"] { display: block !important; }
+.planner-board-canvas .planner-agent-region { left: 1rem; }
+.planner-workbench[data-repository-open="false"] .planner-repository-rail {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(calc(100% + 2rem));
+}
+.planner-workbench[data-agent-open="false"] .planner-agent-region {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(calc(-100% - 2rem));
+}
+.planner-drawer-controls {
+  position: sticky;
+  z-index: 35;
+  top: 4.5rem;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.planner-drawer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: .65rem 1rem;
+  color: var(--text);
+  font-size: .875rem;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgb(20 12 52 / 18%);
+  pointer-events: auto;
+}
+.planner-drawer-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 
 @media (min-width: 1024px) {
-  .planner-repository-rail { position: sticky; top: 5.5rem; }
+  .planner-workbench[data-repository-open="true"] { padding-right: min(25rem, 27vw); }
+  .planner-workbench[data-agent-open="true"] { padding-left: min(25rem, 27vw); }
+  .planner-workbench { transition: padding 180ms ease; }
 }
 
 @media (max-width: 1023px) {
-  .planner-agent-drawer[data-mobile-surface="board"] .planner-agent-region { display: none; }
-  .planner-agent-drawer[data-mobile-surface="agent"] .planner-board-region { display: none; }
+  .planner-drawer-controls { top: 4rem; }
+  .planner-board-canvas .planner-board-region { display: flex !important; }
 }
 
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */

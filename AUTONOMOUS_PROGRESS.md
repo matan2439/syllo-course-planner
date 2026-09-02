@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — central board with independent side drawers
+
+The planner workbench now keeps the semester table as the permanent central
+canvas. The categorized course repository opens from the right and the
+Academic AI surface opens independently from the left; both are closed by
+default, keyboard-accessible, overlay the board on narrow screens, and gently
+reserve space for it on desktop without duplicating the shared journey state.
+
+Strict RED required the central canvas and two independently expanded drawers.
+GREEN passes 5/5 focused workspace tests, 21/21 workspace/journey/repository
+regressions, the web TypeScript gate, and the Next.js production build. No
+planner authority, model provider, Production configuration, or remote data was
+changed.
+
 ## Latest session — fail-closed conversation endpoint boundary
 
 `POST /api/ai/conversation` now has an explicit Vercel route and validates the

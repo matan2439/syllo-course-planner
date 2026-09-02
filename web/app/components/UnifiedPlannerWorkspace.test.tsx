@@ -74,6 +74,27 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-agent-drawer')).not.toBeNull()
   })
 
+  test('keeps the semester board central while course and AI drawers open independently', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    expect(container.querySelector('.planner-board-canvas')).not.toBeNull()
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(repositoryToggle)
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-repository-open', 'true')
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
+
+    fireEvent.click(agentToggle)
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-agent-open', 'true')
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
+  })
+
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה' }))
