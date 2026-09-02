@@ -13,12 +13,14 @@ describe('R2 — manual edit API client', () => {
       ok: true,
       context: {
         academic_status_digest: 'as_1234567890abcdef',
+        preference_digest: 'pref_0123456789abcdef',
         personal_status: { completed: [{ course_id: '0509-1510' }] },
         preferences: {},
       },
     }) }));
     await expect(getPlanningContext({ fetchImpl, baseUrl: '' }, request.program_id)).resolves.toEqual({
       academicStatusDigest: 'as_1234567890abcdef',
+      preferenceDigest: 'pref_0123456789abcdef',
       personalStatus: { completed: [{ course_id: '0509-1510' }] },
       preferences: {},
     });

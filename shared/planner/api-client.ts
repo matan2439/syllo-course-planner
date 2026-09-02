@@ -225,6 +225,7 @@ export async function establishPlanningContext(
 
 export interface LoadedPlanningContext {
   academicStatusDigest: string;
+  preferenceDigest: string;
   personalStatus: unknown;
   preferences: Record<string, unknown>;
 }
@@ -243,6 +244,7 @@ export async function getPlanningContext(
   if (!parsed.data.context) return null;
   return {
     academicStatusDigest: parsed.data.context.academic_status_digest,
+    preferenceDigest: parsed.data.context.preference_digest,
     personalStatus: parsed.data.context.personal_status,
     preferences: parsed.data.context.preferences,
   };

@@ -87,6 +87,7 @@ test('loads the same session academic context after refresh without exposing ano
     ok: true,
     context: {
       academic_status_digest: writeRes._body.academic_status_digest,
+      preference_digest: expect.stringMatching(/^pref_/u),
       personal_status: personalStatus,
       preferences: { disallowed_course_ids: [] },
     },

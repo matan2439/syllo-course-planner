@@ -6,6 +6,7 @@ import {
   ensurePlannerStorageReady,
   getAcademicContextStore,
   plannerStorageErrorCode,
+  preferenceDigest,
 } from './apply_runtime';
 import { resolveOwner } from './session_owner';
 
@@ -35,6 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         ok: true,
         context: stored ? {
           academic_status_digest: stored.digest,
+          preference_digest: preferenceDigest(stored.preferences),
           personal_status: stored.personalStatus,
           preferences: stored.preferences,
         } : null,

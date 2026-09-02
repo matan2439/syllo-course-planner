@@ -1,5 +1,22 @@
 # Autonomous Progress
 
+## Latest session — expose the server-owned preference digest
+
+The refreshable planning-context response now returns the server-computed
+`preference_digest` alongside the academic-status digest. The conversational
+Agent can therefore send the exact owner-scoped preference revision that the
+server will validate; it never has to guess a digest from UI state. The
+response remains program-scoped and contains no board replacement or client
+authority.
+
+Strict RED added the refresh/client assertions and reproduced both failures:
+the endpoint omitted the digest and the runtime-neutral client rejected the
+response. GREEN passes the planning-context endpoint/client suites (7/7),
+root and web TypeScript gates, and the existing conversation contract suite.
+No provider, Supabase, Production configuration, catalog source, or remote
+database was changed. The unrelated `tests/test_tau_curriculum_document.py`
+modification and untracked private files remain untouched and unstaged.
+
 ## Latest session — add the typed Hebrew conversation surface
 
 The planner now has a dedicated Hebrew transcript/composer surface for the

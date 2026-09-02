@@ -346,6 +346,7 @@ export const loadedPlanningContextResponseSchema = z.object({
   ok: z.literal(true),
   context: z.object({
     academic_status_digest: z.string().regex(/^as_[a-f0-9]{16}$/),
+    preference_digest: z.string().regex(/^pref_[a-f0-9]{16}$/),
     personal_status: z.unknown(),
     preferences: z.record(z.unknown()),
   }).strict().nullable(),
