@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — cross-track Electrical requirement validation
+
+The requirements engine now validates Electrical global track, core-course and
+advanced-lab minima without double-counting one cross-listed course as two
+distinct tracks. A deterministic maximum matching assigns each selected course
+to at most one track for diversity accounting, while mandatory and total-course
+minima remain unique-id counts.
+
+Strict RED proved that one core course appearing in two authoritative pools was
+previously able to reach no validator at all. GREEN passes 30/30 focused
+source-authority tests and 202/202 isolated curriculum/program regressions.
+Electrical remains hidden until this status is integrated into board generation
+and the full official corpus is materialized. Production, aliases, databases
+and catalog data were unchanged.
+
 ## Latest session — truthful Electrical planner requirements boundary
 
 The validated Electrical source model can now materialize immutable typed

@@ -16,11 +16,112 @@ public functions work with either.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from app.analysis.eligibility_engine import normalize_course_id
+from app.parsing.tau_curriculum_document import CurriculumPlannerRequirements
 from app.pipeline.bulk_import_courses import load_course_ids
+
+
+@dataclass(frozen=True)
+class CrossTrackRequirementStatus:
+    selected_track_courses: int
+    selected_core_courses: int
+    distinct_core_tracks: int
+    selected_advanced_labs: int
+    distinct_lab_tracks: int
+    valid: bool
+
+
+def _maximum_distinct_track_assignment(
+    selected_course_ids: set[str],
+    track_pools: list[tuple[str, set[str]]],
+) -> int:
+    """Return the largest one-course-per-track assignment supported by facts."""
+    assigned_course_by_track: dict[str, str] = {}
+
+    def assign(course_id: str, visited_tracks: set[str]) -> bool:
+        for track_name, course_ids in track_pools:
+            if course_id not in course_ids or track_name in visited_tracks:
+                continue
+            visited_tracks.add(track_name)
+            existing_course = assigned_course_by_track.get(track_name)
+            if existing_course is None or assign(existing_course, visited_tracks):
+                assigned_course_by_track[track_name] = course_id
+                return True
+        return False
+
+    for course_id in sorted(selected_course_ids):
+        assign(course_id, set())
+    return len(assigned_course_by_track)
+
+
+def validate_cross_track_requirements(
+    selected_course_ids: tuple[str, ...] | list[str] | set[str],
+    requirements: CurriculumPlannerRequirements,
+) -> CrossTrackRequirementStatus:
+    """Validate global course and distinct-track minima without double counting."""
+    selected = {normalize_course_id(course_id) for course_id in selected_course_ids}
+    track_ids = {
+        normalize_course_id(course_id)
+        for category in requirements.track_categories
+        for course_id in category.course_ids
+    }
+    core_ids = {
+        normalize_course_id(course_id)
+        for category in requirements.track_categories
+        for course_id in category.core_course_ids
+    }
+    lab_ids = {
+        normalize_course_id(course_id)
+        for category in requirements.advanced_lab_categories
+        for course_id in category.course_ids
+    }
+    selected_track_ids = selected & track_ids
+    selected_core_ids = selected & core_ids
+    selected_lab_ids = selected & lab_ids
+    distinct_core_tracks = _maximum_distinct_track_assignment(
+        selected_core_ids,
+        [
+            (
+                category.track_name,
+                {normalize_course_id(course_id) for course_id in category.core_course_ids},
+            )
+            for category in requirements.track_categories
+        ],
+    )
+    distinct_lab_tracks = _maximum_distinct_track_assignment(
+        selected_lab_ids,
+        [
+            (
+                category.track_name,
+                {normalize_course_id(course_id) for course_id in category.course_ids},
+            )
+            for category in requirements.advanced_lab_categories
+        ],
+    )
+    mandatory_ids = {
+        normalize_course_id(course_id)
+        for course_id in requirements.mandatory_course_ids
+    }
+    valid = (
+        mandatory_ids <= selected
+        and len(selected_track_ids) >= requirements.total_track_courses
+        and len(selected_core_ids) >= requirements.minimum_core_courses
+        and distinct_core_tracks >= requirements.minimum_distinct_core_tracks
+        and len(selected_lab_ids) >= requirements.advanced_labs_required
+        and distinct_lab_tracks >= requirements.minimum_distinct_lab_tracks
+    )
+    return CrossTrackRequirementStatus(
+        selected_track_courses=len(selected_track_ids),
+        selected_core_courses=len(selected_core_ids),
+        distinct_core_tracks=distinct_core_tracks,
+        selected_advanced_labs=len(selected_lab_ids),
+        distinct_lab_tracks=distinct_lab_tracks,
+        valid=valid,
+    )
 
 
 # ---------------------------------------------------------------------------

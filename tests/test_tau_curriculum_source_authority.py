@@ -1,5 +1,6 @@
 import pytest
 
+import app.analysis.program_requirements as program_requirements
 import app.parsing.tau_curriculum_document as curriculum_document
 
 from app.parsing.tau_curriculum_document import (
@@ -832,6 +833,36 @@ def test_planner_requirements_preserve_cross_track_selection_semantics() -> None
             "תקשורת", ("0512-4190",),
         ),
     )
+
+
+def test_cross_track_validator_does_not_count_one_course_as_two_tracks() -> None:
+    validate = getattr(program_requirements, "validate_cross_track_requirements", None)
+    assert validate is not None
+    requirements = curriculum_document.CurriculumPlannerRequirements(
+        total_required_hours=179,
+        mandatory_course_ids=(),
+        total_track_courses=1,
+        minimum_core_courses=1,
+        minimum_distinct_core_tracks=2,
+        track_categories=(
+            curriculum_document.CurriculumPlannerTrackCategory(
+                "עיבוד אותות", ("0512-4100",), ("0512-4100",),
+            ),
+            curriculum_document.CurriculumPlannerTrackCategory(
+                "תקשורת", ("0512-4100",), ("0512-4100",),
+            ),
+        ),
+        advanced_labs_required=0,
+        minimum_distinct_lab_tracks=0,
+        advanced_lab_categories=(),
+        labs_require_prerequisites=True,
+    )
+
+    result = validate(("0512-4100",), requirements)
+
+    assert result.selected_core_courses == 1
+    assert result.distinct_core_tracks == 1
+    assert not result.valid
 
 
 def test_catalog_course_facts_merge_identical_cross_track_occurrences() -> None:
