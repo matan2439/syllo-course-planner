@@ -94,6 +94,8 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'false')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
 
+    expect(container.querySelector('.planner-board-canvas')).not.toHaveClass('hidden')
+
     fireEvent.click(agentToggle)
     expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
     expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-agent-open', 'true')
@@ -101,6 +103,17 @@ describe('UnifiedPlannerWorkspace', () => {
 
     fireEvent.click(repositoryToggle)
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  test('keeps the board drop target mounted when the repository drawer is open', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    const boardCanvas = container.querySelector('.planner-board-canvas')
+    expect(boardCanvas).toBeInTheDocument()
+    expect(boardCanvas).not.toHaveClass('hidden')
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
   test('lets each open drawer close from inside its own surface', () => {

@@ -170,7 +170,7 @@ export default function UnifiedPlannerWorkspace({
           role="tabpanel"
           aria-labelledby={`workspace-tab-${activeView === 'agent' ? 'agent' : 'board'}`}
           data-mobile-surface={activeView}
-          className={`${activeView === 'repository' ? 'hidden lg:block' : ''} planner-board-canvas planner-agent-drawer min-w-0`}
+          className="planner-board-canvas planner-agent-drawer min-w-0"
         >
           <NativePlannerJourney
             programId={programId}

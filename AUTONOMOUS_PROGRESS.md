@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## Latest session — keep the semester board as the repository drop target
+
+Opening the course-repository drawer no longer applies a mobile-only `hidden`
+class to the shared board canvas. The semester table and its drop targets stay
+mounted and visible while the repository is open, so a course can be dragged
+from the repository into an offered semester; the existing server-authoritative
+manual-add path still performs the actual validation and commit.
+
+Strict RED reproduced the board canvas receiving `hidden` after opening the
+repository. GREEN passes the focused workspace suite (8/8) and the repository,
+board, and server-apply drag regression set (43/43), plus web typecheck and
+production build. No provider, Supabase, Production configuration, catalog
+source, or remote database was changed. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — connect the conversational agent to server-owned proposals
 
 The conversational endpoint now composes the configured model with the existing
