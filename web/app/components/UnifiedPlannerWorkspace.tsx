@@ -46,12 +46,12 @@ export default function UnifiedPlannerWorkspace({
     selectView(VIEWS[next].id, true)
   }
 
-  const requestAdd = (courseId: string) => {
+  const requestAdd = (courseId: string, semesterId?: string) => {
     const course = repo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
     const offered = new Set((course?.offered ?? []).map((value) => value.toLowerCase()))
     const semesterIds = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
       .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
-    setManualAddIntent({ courseId, semesterIds })
+    setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
     onRequestAdd(courseId)
     selectView('planner')
   }
@@ -127,6 +127,12 @@ export default function UnifiedPlannerWorkspace({
           <UnifiedCourseRepository
             repo={repo}
             selectedCourseIds={committedCourseIds}
+            semesterDestinations={[
+              { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+              { id: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
+              { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
+              { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
+            ]}
             onRequestAdd={requestAdd}
           />
         </aside>

@@ -23,6 +23,11 @@ const repo: RepositoryVM = {
   ],
 }
 
+const semesterDestinations = [
+  { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+  { id: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
+]
+
 describe('UnifiedCourseRepository', () => {
   test('searches by Hebrew name, id and category using the real repository projection', () => {
     render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
@@ -41,21 +46,50 @@ describe('UnifiedCourseRepository', () => {
     expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית')).toBeInTheDocument()
   })
 
-  test('exposes an add intent without mutating the board or generating a plan', () => {
+  test('exposes a semester-specific keyboard add without mutating the board', () => {
     const onRequestAdd = jest.fn()
     render(
       <UnifiedCourseRepository
         repo={repo}
         selectedCourseIds={['0542-4241']}
+        semesterDestinations={semesterDestinations}
         onRequestAdd={onRequestAdd}
       />,
     )
 
     expect(screen.getByRole('button', { name: 'בקרה מודרנית כבר נמצא בלוח' })).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם ללוח' }))
-    expect(onRequestAdd).toHaveBeenCalledWith('0542-4135')
+    expect(screen.getByText('בקרה מודרנית').closest('[draggable="true"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם אל שנה ג׳ — סמסטר א׳' }))
+    expect(onRequestAdd).toHaveBeenCalledWith('0542-4135', 'year_3_semester_a')
     expect(onRequestAdd).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/הוספה ידנית תישמר רק לאחר אימות השרת/)).toBeInTheDocument()
+  })
+
+  test('writes a typed repository drag payload with offered semester restrictions', () => {
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '',
+    }
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+      />,
+    )
+
+    const card = screen.getByText('בקרה מודרנית').closest('[draggable="true"]') as HTMLElement
+    expect(card).not.toBeNull()
+    fireEvent.dragStart(card, { dataTransfer: transfer })
+
+    expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({
+      kind: 'repository',
+      courseId: '0542-4241',
+      allowedSemesterIds: ['year_3_semester_a'],
+    })
   })
 
   test('opens understandable details from a keyboard-accessible control', () => {

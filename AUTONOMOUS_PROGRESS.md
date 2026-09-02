@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — draggable semester-aware course repository
+
+Repository courses can now be dragged with the typed repository payload and
+carry only the semesters supported by their authoritative offering facts.
+Every drag action has a keyboard-accessible semester-specific add control, and
+courses already committed to the board disable both interaction paths.
+
+Strict RED proved that repository cards were not drag sources and add controls
+could not name a destination. GREEN passes 8/8 repository/workspace tests and
+the full TypeScript gate. The workspace now forwards an explicitly selected
+semester into the existing authoritative manual-add journey. Production,
+aliases, databases and catalog data were unchanged.
+
 ## Latest session — typed planner drag boundary
 
 The unified planner now has a strict typed drag contract that distinguishes a
