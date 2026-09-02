@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — conversational tool orchestration
+
+The Agent can now run a bounded Hebrew LLM turn over an isolated
+`PlannerWorker` using the existing deterministic get/rank/add/remove/move/
+replace/finalize tools. Tool progress is reduced to safe typed events, every
+mutation remains worker-validated, and a deterministic repair/validation pass
+produces only a draft plan—not a committed board.
+
+Strict RED proved the conversational orchestrator was absent. GREEN passes
+30/30 conversational, tool and worker tests plus the root TypeScript gate.
+Invalid semester actions are rejected without state corruption; provider
+failure discards the isolated draft and returns a redacted unavailable result.
+All tests used an injected fake generator and invoked no real model.
+
 ## Latest session — bounded conversational Agent contract
 
 The conversational Academic Agent now has a strict shared wire contract for
