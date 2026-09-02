@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { conversationRequestSchema } from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
-import { getAcademicContextStore, getBoardRepository } from './apply_runtime';
+import { getAcademicContextStore, getBoardRepository, plannerStorageErrorCode } from './apply_runtime';
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
@@ -43,32 +43,45 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
-    const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
-    const board = await loadBoard(owner.ownerId, parsed.data.program_id);
-    const currentBoardVersion = board?.version ?? null;
-    if ((parsed.data.board_version ?? null) !== currentBoardVersion) {
-      res.status(409).json({
-        ok: false,
-        code: 'BOARD_VERSION_CONFLICT',
-        message_he: 'הלוח השתנה מאז תחילת השיחה.',
-        currentBoardVersion,
-      });
-      return;
-    }
-    const academicContext = await loadAcademicContext(owner.ownerId, parsed.data.program_id);
-    if (!academicContext || academicContext.digest !== parsed.data.academic_status_digest) {
-      res.status(409).json({
-        ok: false,
-        code: academicContext ? 'ACADEMIC_CONTEXT_CONFLICT' : 'ACADEMIC_CONTEXT_MISSING',
-        message_he: 'הסטטוס האקדמי השתנה או אינו זמין. יש לרענן אותו לפני המשך השיחה.',
-      });
-      return;
-    }
+    try {
+      const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+      const board = await loadBoard(owner.ownerId, parsed.data.program_id);
+      const currentBoardVersion = board?.version ?? null;
+      if ((parsed.data.board_version ?? null) !== currentBoardVersion) {
+        res.status(409).json({
+          ok: false,
+          code: 'BOARD_VERSION_CONFLICT',
+          message_he: 'הלוח השתנה מאז תחילת השיחה.',
+          currentBoardVersion,
+        });
+        return;
+      }
+      const academicContext = await loadAcademicContext(owner.ownerId, parsed.data.program_id);
+      if (!academicContext || academicContext.digest !== parsed.data.academic_status_digest) {
+        res.status(409).json({
+          ok: false,
+          code: academicContext ? 'ACADEMIC_CONTEXT_CONFLICT' : 'ACADEMIC_CONTEXT_MISSING',
+          message_he: 'הסטטוס האקדמי השתנה או אינו זמין. יש לרענן אותו לפני המשך השיחה.',
+        });
+        return;
+      }
 
-    // Until the session-authoritative board/context composition below this
-    // boundary is available, fail closed rather than invoke a model without
-    // grounded state or fabricate a conversational answer.
-    res.status(503).json(unavailable());
+      // Until proposal persistence is composed below this boundary, fail
+      // closed rather than invoke a model without an applyable server record.
+      res.status(503).json(unavailable());
+    } catch (error) {
+      const code = plannerStorageErrorCode(error);
+      if (code) {
+        res.status(503).json({
+          ok: false,
+          code,
+          message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
+        });
+        return;
+      }
+      console.error('[ai/conversation] unexpected error');
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+    }
   };
 }
 

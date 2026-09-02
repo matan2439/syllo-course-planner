@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — conversation storage-failure redaction
+
+The conversation endpoint now contains its owner, board and academic-context
+reads inside a fail-closed storage boundary. Known planner storage failures
+return a stable Hebrew `503` response and unexpected failures return a generic
+redacted `500`; neither leaks adapter errors or stack details.
+
+Strict RED reproduced an escaping `PlannerStorageError`. GREEN passes 6/6
+conversation endpoint tests, 9/9 endpoint/context regressions, and the root
+TypeScript gate. No model, provider, remote storage, or Production state was
+contacted.
+
 ## Latest session — conversation academic-context authority gate
 
 The configured-model conversation path now loads the owner-scoped academic

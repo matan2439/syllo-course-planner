@@ -1,4 +1,5 @@
 import { createConversationHandler } from '../../api/ai/conversation'
+import { PlannerStorageError } from '../../api/ai/apply_runtime'
 
 function response() {
   const res: any = {
@@ -92,4 +93,22 @@ test('configured conversation rejects a stale academic status digest', async () 
 
   expect(res.statusCode).toBe(409)
   expect(res.body).toEqual(expect.objectContaining({ code: 'ACADEMIC_CONTEXT_CONFLICT' }))
+})
+
+test('conversation redacts planner storage failures', async () => {
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => { throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE') },
+  })
+  const res = response()
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` }, body: validBody,
+  } as any, res)
+
+  expect(res.statusCode).toBe(503)
+  expect(res.body).toEqual({
+    ok: false,
+    code: 'PLANNER_STORAGE_UNAVAILABLE',
+    message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
+  })
 })
