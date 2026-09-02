@@ -17,8 +17,8 @@ source, or remote database was changed. The unrelated
 files remain untouched and unstaged.
 
 The verified Preview for the board/drop-target fix is
-https://tau-course-planner-9eg238lnf-matanyaron-1633s-projects.vercel.app/planner
-(deployment `dpl_FNKCy3aeKeMcyaF3YWtsWkYbPuFV`, status `Ready`). The browser
+https://tau-course-planner-ndpsrqa67-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_DQh6QZLjjFwUp7S3FcczxLLCv6Wa`, status `Ready`). The browser
 verified that the board and repository remain present together after opening
 the course drawer.
 
