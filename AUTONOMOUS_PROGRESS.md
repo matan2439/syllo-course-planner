@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — typed planner drag boundary
+
+The unified planner now has a strict typed drag contract that distinguishes a
+repository add from a move of an existing board course. Repository payloads
+can carry authoritative semester restrictions, while empty identifiers,
+unknown drag kinds, malformed JSON and invalid semester lists fail closed.
+
+Strict RED proved the boundary was absent. GREEN passes all 6 focused payload
+tests; the TypeScript gate also passes. This is the first implementation slice
+of the approved semester-table UI and does not yet expose repository dragging
+in the interface. Production, aliases, databases and catalog data were
+unchanged.
+
 ## Latest session — cross-track Electrical requirement validation
 
 The requirements engine now validates Electrical global track, core-course and
