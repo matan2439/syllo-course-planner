@@ -1,18 +1,22 @@
 # Autonomous Progress
 
-## Latest session — close drawers from their own surfaces
+## Latest session — close drawers and keep mobile surface singular
 
 The unified workspace now provides an explicit, keyboard-accessible close
 button inside both the course repository rail and the Academic Decision Agent
 rail. Closing either rail returns focus/state to the semester board, which is
 important on mobile where the floating trigger can be covered by the open
 surface. The agent close action is passed through the single journey instance;
-no duplicate board or agent state was introduced.
+no duplicate board or agent state was introduced. The active workspace surface
+is also recorded on the workbench: narrow layouts show only the selected rail,
+so repository and agent surfaces cannot overlap the semester board or each
+other. Desktop continues to support both rails at once.
 
-Strict RED reproduced the missing in-surface repository close control. GREEN
-passes 6/6 workspace tests and the web TypeScript gate. The prior verified
-board/repository/server-apply regression set and production build also pass.
-The verified slice is deployed as an immutable Preview at
+Strict RED reproduced the missing in-surface repository close control and the
+missing mobile-surface state. GREEN passes 7/7 workspace tests and the web
+TypeScript gate. The prior verified board/repository/server-apply regression
+set passes 42/42 and the production build passes. The previous verified slice
+is deployed as an immutable Preview at
 https://tau-course-planner-pu1yiy6r7-matanyaron-1633s-projects.vercel.app/planner
 (deployment `dpl_He89CxXBSML3Qcq5s7Rna9x1Bexm`, status `Ready`). The
 automation browser reached Vercel's authentication gate for this protected

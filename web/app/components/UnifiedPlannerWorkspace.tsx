@@ -33,6 +33,8 @@ export default function UnifiedPlannerWorkspace({
 
   const selectView = (view: WorkspaceView, focus = false) => {
     setActiveView(view)
+    if (view === 'repository') setRepositoryOpen(true)
+    if (view === 'agent') setAgentOpen(true)
     if (focus) {
       const index = VIEWS.findIndex((item) => item.id === view)
       tabRefs.current[index]?.focus()
@@ -61,12 +63,28 @@ export default function UnifiedPlannerWorkspace({
 
   const closeRepository = () => {
     setRepositoryOpen(false)
-    selectView('board')
+    setActiveView(agentOpen ? 'agent' : 'board')
   }
 
   const closeAgent = () => {
     setAgentOpen(false)
-    selectView('board')
+    setActiveView(repositoryOpen ? 'repository' : 'board')
+  }
+
+  const toggleRepository = () => {
+    if (repositoryOpen) closeRepository()
+    else {
+      setRepositoryOpen(true)
+      setActiveView('repository')
+    }
+  }
+
+  const toggleAgent = () => {
+    if (agentOpen) closeAgent()
+    else {
+      setAgentOpen(true)
+      setActiveView('agent')
+    }
   }
 
   return (
@@ -122,7 +140,7 @@ export default function UnifiedPlannerWorkspace({
           aria-controls="workspace-panel-repository"
           aria-expanded={repositoryOpen}
           aria-label={`${repositoryOpen ? 'סגור' : 'פתח'} מאגר קורסים`}
-          onClick={() => setRepositoryOpen((value) => !value)}
+          onClick={toggleRepository}
           className="planner-drawer-toggle planner-drawer-toggle-repository"
         >
           <span aria-hidden="true">☰</span>
@@ -133,7 +151,7 @@ export default function UnifiedPlannerWorkspace({
           aria-controls="workspace-agent-drawer"
           aria-expanded={agentOpen}
           aria-label={`${agentOpen ? 'סגור' : 'פתח'} עוזר AI`}
-          onClick={() => setAgentOpen((value) => !value)}
+          onClick={toggleAgent}
           className="planner-drawer-toggle planner-drawer-toggle-agent"
         >
           <span aria-hidden="true">✦</span>
@@ -143,6 +161,7 @@ export default function UnifiedPlannerWorkspace({
 
       <div
         className="planner-workbench min-w-0"
+        data-mobile-surface={activeView}
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
       >

@@ -239,6 +239,12 @@ body {
 @media (max-width: 1023px) {
   .planner-drawer-controls { top: 4rem; }
   .planner-board-canvas .planner-board-region { display: flex !important; }
+  .planner-workbench[data-mobile-surface="board"] .planner-repository-rail,
+  .planner-workbench[data-mobile-surface="board"] .planner-agent-region,
+  .planner-workbench[data-mobile-surface="repository"] .planner-agent-region,
+  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail {
+    display: none !important;
+  }
 }
 
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */

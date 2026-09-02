@@ -115,6 +115,17 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByRole('button', { name: 'פתח עוזר AI' })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  test('tracks the active drawer surface so narrow layouts never show two rails over the board', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    const workbench = container.querySelector('.planner-workbench')
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    expect(workbench).toHaveAttribute('data-mobile-surface', 'repository')
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+    expect(workbench).toHaveAttribute('data-mobile-surface', 'agent')
+  })
+
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
