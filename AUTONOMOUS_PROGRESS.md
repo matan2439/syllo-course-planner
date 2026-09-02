@@ -15,10 +15,10 @@ other. Desktop continues to support both rails at once.
 Strict RED reproduced the missing in-surface repository close control and the
 missing mobile-surface state. GREEN passes 7/7 workspace tests and the web
 TypeScript gate. The prior verified board/repository/server-apply regression
-set passes 42/42 and the production build passes. The previous verified slice
-is deployed as an immutable Preview at
-https://tau-course-planner-pu1yiy6r7-matanyaron-1633s-projects.vercel.app/planner
-(deployment `dpl_He89CxXBSML3Qcq5s7Rna9x1Bexm`, status `Ready`). The
+set passes 42/42 and the production build passes. This verified slice is
+deployed as an immutable Preview at
+https://tau-course-planner-8vza3sgy1-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_6aRgV46A3Z8XsXiDcjkUZe24pZnC`, status `Ready`). The
 automation browser reached Vercel's authentication gate for this protected
 Preview, so visual interaction still requires the signed-in private-beta
 browser session.
