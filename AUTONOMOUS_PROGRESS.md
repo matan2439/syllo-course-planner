@@ -1,5 +1,20 @@
 # Autonomous Progress
 
+## Latest session — semester-table UI verification gate
+
+The approved semester-table UI plan has passed its complete local gate. The
+web suite passes 240/240 tests across 28 suites, `tsc --noEmit` passes, and the
+Next.js 15 production build completes with `/planner` as a dynamic route. The
+full API regression run passes 2551/2552 tests across 199 suites with one
+pre-existing skipped test; the focused manual-edit/server-authority gate passes
+27/27 tests across all four required suites.
+
+The root `npm test -- <paths>` wrapper appended an incompatible UI-config run
+that found no matching tests, so the required four suites were rerun directly
+with the repository's local Jest binary and exited 0. No real provider, remote
+database, Preview or Production environment was contacted. Next work begins the
+approved conversational Academic Agent plan.
+
 ## Latest session — responsive three-surface workbench
 
 The unified planner now exposes separate mobile tabs for the semester board,
