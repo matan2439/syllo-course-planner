@@ -1,9 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { conversationRequestSchema } from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
+import { getBoardRepository } from './apply_runtime';
+import { resolveOwner } from './session_owner';
+import type { CommittedBoard } from './board_repository';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
+  loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
 };
 
 const unavailable = () => ({
@@ -15,6 +19,7 @@ const unavailable = () => ({
 
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
+  const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') {
@@ -28,8 +33,22 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
-    if (!resolveModel()) {
+    const model = resolveModel();
+    if (!model) {
       res.status(503).json(unavailable());
+      return;
+    }
+
+    const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+    const board = await loadBoard(owner.ownerId, parsed.data.program_id);
+    const currentBoardVersion = board?.version ?? null;
+    if ((parsed.data.board_version ?? null) !== currentBoardVersion) {
+      res.status(409).json({
+        ok: false,
+        code: 'BOARD_VERSION_CONFLICT',
+        message_he: 'הלוח השתנה מאז תחילת השיחה.',
+        currentBoardVersion,
+      });
       return;
     }
 
@@ -41,4 +60,3 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 }
 
 export default createConversationHandler();
-

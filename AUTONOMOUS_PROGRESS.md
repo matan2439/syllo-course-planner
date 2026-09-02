@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — conversation board-version authority gate
+
+The configured-model conversation path now resolves the server-issued owner,
+loads that owner's authoritative committed board, and rejects a stale client
+board version with `409 BOARD_VERSION_CONFLICT` before any model invocation.
+The missing-model path remains storage-free and fail closed.
+
+Strict RED proved the endpoint had no authoritative board loader. GREEN passes
+4/4 endpoint tests, 43/43 endpoint/wire/board-repository regressions, and the
+root TypeScript gate. No model, provider, remote storage, or Production state
+was contacted.
+
 ## Latest session — central board with independent side drawers
 
 The planner workbench now keeps the semester table as the permanent central

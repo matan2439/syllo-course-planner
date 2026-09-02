@@ -51,3 +51,27 @@ test('missing model fails closed with typed assistant unavailability', async () 
   })
 })
 
+test('configured conversation fails closed when the authoritative board version is stale', async () => {
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => ({
+      ownerId: 'server-owner',
+      programId: validBody.program_id,
+      version: 'bv_2',
+      semesters: [],
+      updatedAt: 1,
+    }),
+  })
+  const res = response()
+  await handler({
+    method: 'POST',
+    headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, board_version: 'bv_1' },
+  } as any, res)
+
+  expect(res.statusCode).toBe(409)
+  expect(res.body).toEqual(expect.objectContaining({
+    code: 'BOARD_VERSION_CONFLICT',
+    currentBoardVersion: 'bv_2',
+  }))
+})
