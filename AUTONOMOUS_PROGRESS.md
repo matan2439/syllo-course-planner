@@ -11,9 +11,13 @@ no duplicate board or agent state was introduced.
 
 Strict RED reproduced the missing in-surface repository close control. GREEN
 passes 6/6 workspace tests and the web TypeScript gate. The prior verified
-board/repository/server-apply regression set and production build remain the
-next required regression gates before commit. Preview deployment is still
-blocked because the Vercel CLI is not installed in this environment.
+board/repository/server-apply regression set and production build also pass.
+The verified slice is deployed as an immutable Preview at
+https://tau-course-planner-pu1yiy6r7-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_He89CxXBSML3Qcq5s7Rna9x1Bexm`, status `Ready`). The
+automation browser reached Vercel's authentication gate for this protected
+Preview, so visual interaction still requires the signed-in private-beta
+browser session.
 
 No provider, Supabase, Production configuration, catalog source, or remote
 database was changed. The unrelated `tests/test_tau_curriculum_document.py`
