@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — bounded conversational Agent contract
+
+The conversational Academic Agent now has a strict shared wire contract for
+Hebrew transcript turns, ownership/session identity, authoritative board and
+academic/preference digests, redacted tool-status events, clarifications,
+proposal availability and a truthful `assistant_unavailable` outcome.
+
+Strict RED proved the contract module was absent. GREEN passes 4/4 focused
+schema tests and the root TypeScript gate. The request rejects system/tool role
+spoofing, oversized transcripts, invalid UUID ownership and client-authored
+board or replacement-plan payloads. No model or provider was invoked.
+
 ## Latest session — semester-table UI verification gate
 
 The approved semester-table UI plan has passed its complete local gate. The
