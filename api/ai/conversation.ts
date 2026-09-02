@@ -1,13 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { conversationRequestSchema } from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
-import { getBoardRepository } from './apply_runtime';
+import { getAcademicContextStore, getBoardRepository } from './apply_runtime';
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
+import type { AcademicContextRecord } from './academic_context_store';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
+  loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
 };
 
 const unavailable = () => ({
@@ -20,6 +22,8 @@ const unavailable = () => ({
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
   const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
+  const loadAcademicContext = deps.loadAcademicContext
+    ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') {
@@ -48,6 +52,15 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         code: 'BOARD_VERSION_CONFLICT',
         message_he: 'הלוח השתנה מאז תחילת השיחה.',
         currentBoardVersion,
+      });
+      return;
+    }
+    const academicContext = await loadAcademicContext(owner.ownerId, parsed.data.program_id);
+    if (!academicContext || academicContext.digest !== parsed.data.academic_status_digest) {
+      res.status(409).json({
+        ok: false,
+        code: academicContext ? 'ACADEMIC_CONTEXT_CONFLICT' : 'ACADEMIC_CONTEXT_MISSING',
+        message_he: 'הסטטוס האקדמי השתנה או אינו זמין. יש לרענן אותו לפני המשך השיחה.',
       });
       return;
     }

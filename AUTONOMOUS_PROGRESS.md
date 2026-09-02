@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — conversation academic-context authority gate
+
+The configured-model conversation path now loads the owner-scoped academic
+context after the board-version check and rejects missing or stale academic
+status digests before any model invocation. Client digest strings remain
+expected-value checks; the underlying facts stay server-owned.
+
+Strict RED proved the endpoint had no academic-context dependency. GREEN passes
+5/5 endpoint tests, 11/11 conversation/context-store/context-endpoint
+regressions, and the root TypeScript gate. No model, provider, remote storage,
+or Production state was contacted.
+
 ## Latest session — conversation board-version authority gate
 
 The configured-model conversation path now resolves the server-issued owner,

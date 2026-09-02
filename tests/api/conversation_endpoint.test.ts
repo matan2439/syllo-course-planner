@@ -75,3 +75,21 @@ test('configured conversation fails closed when the authoritative board version 
     currentBoardVersion: 'bv_2',
   }))
 })
+
+test('configured conversation rejects a stale academic status digest', async () => {
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: 'as_server', personalStatus: {}, planContext: {}, preferences: {}, updatedAt: 1,
+    }),
+  })
+  const res = response()
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` }, body: validBody,
+  } as any, res)
+
+  expect(res.statusCode).toBe(409)
+  expect(res.body).toEqual(expect.objectContaining({ code: 'ACADEMIC_CONTEXT_CONFLICT' }))
+})
