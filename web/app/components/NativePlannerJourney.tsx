@@ -135,6 +135,7 @@ export default function NativePlannerJourney({
   planningContextFn = defaultPlanningContext,
   onManualAddSettled,
   onCommittedCourseIdsChange,
+  onCloseAgent,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -149,6 +150,7 @@ export default function NativePlannerJourney({
   planningContextFn?: (programId: string) => Promise<LoadedPlanningContext | null>
   onManualAddSettled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
+  onCloseAgent?: () => void
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -771,6 +773,16 @@ export default function NativePlannerJourney({
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
       <aside aria-label="עוזר אקדמי" className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
+        {onCloseAgent && (
+          <button
+            type="button"
+            aria-label="סגור סרגל עוזר AI"
+            onClick={onCloseAgent}
+            className="planner-drawer-close self-start"
+          >
+            × <span>סגור עוזר</span>
+          </button>
+        )}
         <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-bold tracking-tight">עוזר התכנון</h2>
           <div aria-label="שיחה" className="flex max-h-56 flex-col gap-2 overflow-y-auto">

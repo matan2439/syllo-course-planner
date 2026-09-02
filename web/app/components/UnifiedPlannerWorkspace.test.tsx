@@ -4,11 +4,14 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent }: any) => (
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent }: any) => (
     <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
       data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
       <div className="planner-board-region">לוח פעיל</div>
-      <aside className="planner-agent-region" aria-label="עוזר אקדמי">עוזר פעיל</aside>
+      <aside className="planner-agent-region" aria-label="עוזר אקדמי">
+        <button type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
+        עוזר פעיל
+      </aside>
     </div>
   ),
 }))
@@ -98,6 +101,18 @@ describe('UnifiedPlannerWorkspace', () => {
 
     fireEvent.click(repositoryToggle)
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  test('lets each open drawer close from inside its own surface', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' }))
+    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+    fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל עוזר AI' }))
+    expect(screen.getByRole('button', { name: 'פתח עוזר AI' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {

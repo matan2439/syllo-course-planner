@@ -1,5 +1,24 @@
 # Autonomous Progress
 
+## Latest session — close drawers from their own surfaces
+
+The unified workspace now provides an explicit, keyboard-accessible close
+button inside both the course repository rail and the Academic Decision Agent
+rail. Closing either rail returns focus/state to the semester board, which is
+important on mobile where the floating trigger can be covered by the open
+surface. The agent close action is passed through the single journey instance;
+no duplicate board or agent state was introduced.
+
+Strict RED reproduced the missing in-surface repository close control. GREEN
+passes 6/6 workspace tests and the web TypeScript gate. The prior verified
+board/repository/server-apply regression set and production build remain the
+next required regression gates before commit. Preview deployment is still
+blocked because the Vercel CLI is not installed in this environment.
+
+No provider, Supabase, Production configuration, catalog source, or remote
+database was changed. The unrelated `tests/test_tau_curriculum_document.py`
+modification and untracked private files remain untouched and unstaged.
+
 ## Latest session — unblock drawer controls and desktop drop geometry
 
 The planner workbench now keeps the repository and AI controls above the

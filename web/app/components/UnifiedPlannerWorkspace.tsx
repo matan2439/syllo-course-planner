@@ -59,6 +59,16 @@ export default function UnifiedPlannerWorkspace({
     selectView('board')
   }
 
+  const closeRepository = () => {
+    setRepositoryOpen(false)
+    selectView('board')
+  }
+
+  const closeAgent = () => {
+    setAgentOpen(false)
+    selectView('board')
+  }
+
   return (
     <section
       role="region"
@@ -146,6 +156,7 @@ export default function UnifiedPlannerWorkspace({
           <NativePlannerJourney
             programId={programId}
             useAcademicDecisionAgent
+            onCloseAgent={closeAgent}
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
@@ -159,6 +170,14 @@ export default function UnifiedPlannerWorkspace({
           aria-hidden={!repositoryOpen}
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
+          <button
+            type="button"
+            aria-label="סגור סרגל מאגר קורסים"
+            onClick={closeRepository}
+            className="planner-drawer-close mb-3"
+          >
+            × <span>סגור מאגר</span>
+          </button>
           <UnifiedCourseRepository
             repo={repo}
             selectedCourseIds={committedCourseIds}
