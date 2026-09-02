@@ -196,6 +196,20 @@ export function resetApplyRuntime(): void {
 
 const sha = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
 
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
+}
+
+/** Stable expected-value digest for the server-owned planning preferences. */
+export function preferenceDigest(preferences: unknown): string {
+  return `pref_${sha(canonicalJson(preferences ?? {}))}`;
+}
+
 /**
  * A stable digest of the ACADEMIC STATUS a plan assumed.
  *

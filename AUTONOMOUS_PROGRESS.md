@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — conversation preference authority gate
+
+Planning preferences now have a deterministic, key-order-independent server
+digest. The configured conversation path compares the client's expected digest
+with the owner-scoped preferences retained in academic context and rejects stale
+preferences before any model invocation.
+
+Strict RED proved no preference digest boundary existed. GREEN passes 7/7
+conversation endpoint tests, 26/26 conversation/proposal/context regressions,
+and the root TypeScript gate. No model, provider, remote storage, or Production
+state was contacted.
+
 ## Latest session — conversation storage-failure redaction
 
 The conversation endpoint now contains its owner, board and academic-context

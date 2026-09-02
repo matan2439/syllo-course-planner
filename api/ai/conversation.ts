@@ -1,7 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { conversationRequestSchema } from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
-import { getAcademicContextStore, getBoardRepository, plannerStorageErrorCode } from './apply_runtime';
+import {
+  getAcademicContextStore,
+  getBoardRepository,
+  plannerStorageErrorCode,
+  preferenceDigest,
+} from './apply_runtime';
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
@@ -62,6 +67,14 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           ok: false,
           code: academicContext ? 'ACADEMIC_CONTEXT_CONFLICT' : 'ACADEMIC_CONTEXT_MISSING',
           message_he: 'הסטטוס האקדמי השתנה או אינו זמין. יש לרענן אותו לפני המשך השיחה.',
+        });
+        return;
+      }
+      if (preferenceDigest(academicContext.preferences) !== parsed.data.preference_digest) {
+        res.status(409).json({
+          ok: false,
+          code: 'PREFERENCE_CONTEXT_CONFLICT',
+          message_he: 'העדפות התכנון השתנו. יש לרענן אותן לפני המשך השיחה.',
         });
         return;
       }

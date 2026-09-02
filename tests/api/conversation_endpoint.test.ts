@@ -1,5 +1,5 @@
 import { createConversationHandler } from '../../api/ai/conversation'
-import { PlannerStorageError } from '../../api/ai/apply_runtime'
+import { PlannerStorageError, preferenceDigest } from '../../api/ai/apply_runtime'
 
 function response() {
   const res: any = {
@@ -111,4 +111,25 @@ test('conversation redacts planner storage failures', async () => {
     code: 'PLANNER_STORAGE_UNAVAILABLE',
     message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
   })
+})
+
+test('configured conversation rejects stale planning preferences', async () => {
+  const preferences = { max_weekly_hours: 22, avoid_days: ['friday'] }
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest,
+      personalStatus: {}, planContext: {}, preferences, updatedAt: 1,
+    }),
+  })
+  const res = response()
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest({ max_weekly_hours: 18 }) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(409)
+  expect(res.body).toEqual(expect.objectContaining({ code: 'PREFERENCE_CONTEXT_CONFLICT' }))
 })
