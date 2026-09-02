@@ -1,5 +1,23 @@
 # Autonomous Progress
 
+## Latest session — connect the conversational agent to server-owned proposals
+
+The conversational endpoint now composes the configured model with the existing
+isolated `PlannerWorker`, seeding it from the current committed board when one
+exists. A successful, valid draft is persisted through the existing
+`ProposalStore`, and the response exposes only a proposal receipt plus a
+redacted `alternatives_ready` event; the client cannot submit a plan or tool
+payload as authoritative state. Invalid drafts remain non-applyable and model
+absence still returns the typed 503 unavailable response.
+
+Strict RED reproduced the missing `runAgent` seam. GREEN passes the focused
+conversation suite (9/9), the proposal/Apply/storage regression set (57/57),
+the root TypeScript gate, and the web production build. This slice is ready for
+an isolated Preview deployment; no provider, Supabase, Production
+configuration, catalog source, or remote database was changed. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — close drawers and keep mobile surface singular
 
 The unified workspace now provides an explicit, keyboard-accessible close

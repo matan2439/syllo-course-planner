@@ -155,3 +155,52 @@ test('configured conversation fails closed when the authoritative program univer
   expect(res.statusCode).toBe(503)
   expect(res.body).toEqual(expect.objectContaining({ code: 'NO_PROGRAM_UNIVERSE' }))
 })
+
+test('configured conversation returns a server-owned proposal receipt after the injected agent succeeds', async () => {
+  const preferences = { max_weekly_hours: 22 }
+  const putProposal = jest.fn(async (record: any) => record)
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest, personalStatus: {}, planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'proposal',
+      messageHe: 'הכנתי חלופה חוקית.',
+      events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
+      validation: { valid: true },
+    } as any),
+    putProposal,
+  })
+  const res = response()
+
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  expect(res.body).toEqual(expect.objectContaining({
+    outcome: 'proposal',
+    message_he: 'הכנתי חלופה חוקית.',
+    proposal_id: expect.any(String),
+  }))
+  expect(res.body).not.toHaveProperty('draftPlan')
+  expect(res.body.events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'alternatives_ready', candidate_ids: expect.any(Array) }),
+  ]))
+  expect(putProposal).toHaveBeenCalledTimes(1)
+  expect(putProposal.mock.calls[0][0]).toEqual(expect.objectContaining({
+    ownerId: expect.any(String),
+    baseBoardVersion: null,
+    candidates: [expect.objectContaining({
+      semesters: [{ semesterId: 'semester_a', courseIds: ['COURSE-1'] }],
+      valid: true,
+      applyable: true,
+    })],
+  }))
+})

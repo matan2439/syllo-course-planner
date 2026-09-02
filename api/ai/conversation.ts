@@ -1,9 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { conversationRequestSchema } from '../../shared/planner/conversation-wire';
+import { conversationRequestSchema, type ConversationTurn } from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
+import { buildModel } from './generate-plan';
+import { planContextToState } from './planner_model';
+import { PlannerWorker } from './planner_worker';
+import { runConversationalAgent, type ConversationalAgentResult } from './conversational_agent';
+import { PROPOSAL_TTL_MS, newProposalId, type ProposalRecord, type ProposalStore } from './proposal_store';
 import {
   getAcademicContextStore,
   getBoardRepository,
+  getProposalStore,
   plannerStorageErrorCode,
   preferenceDigest,
 } from './apply_runtime';
@@ -17,6 +23,11 @@ type ConversationEndpointDeps = {
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
   loadProgramBoard?: (programId: string) => unknown | null;
+  runAgent?: (
+    input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker },
+    deps: { model: ModelConfig['model'] },
+  ) => Promise<ConversationalAgentResult>;
+  putProposal?: ProposalStore['put'];
 };
 
 const unavailable = () => ({
@@ -32,6 +43,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const loadAcademicContext = deps.loadAcademicContext
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
+  const runAgent = deps.runAgent ?? runConversationalAgent;
+  const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') {
@@ -45,8 +58,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
-    const model = resolveModel();
-    if (!model) {
+    const modelConfig = resolveModel();
+    if (!modelConfig) {
       res.status(503).json(unavailable());
       return;
     }
@@ -91,9 +104,74 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
 
-      // Until proposal persistence is composed below this boundary, fail
-      // closed rather than invoke a model without an applyable server record.
-      res.status(503).json(unavailable());
+      const context = (academicContext.planContext ?? {}) as Record<string, unknown>;
+      const preferences = (academicContext.preferences ?? {}) as Record<string, unknown>;
+      const committedContext = board
+        ? {
+            ...context,
+            semesters: board.semesters.map((semester) => ({
+              id: semester.semesterId,
+              courses: semester.courseIds.map((course_id) => ({ course_id })),
+            })),
+          }
+        : context;
+      const model = buildModel(programBoard, context, preferences as any, parsed.data.program_id);
+      const createWorker = () => new PlannerWorker(
+        model,
+        planContextToState(committedContext, model),
+        { topN: 6, rolloutSteps: 80 },
+      );
+      const agent = await runAgent(
+        { transcript: parsed.data.transcript, createWorker },
+        { model: modelConfig.model },
+      );
+
+      if (agent.outcome === 'assistant_unavailable') {
+        res.status(503).json(unavailable());
+        return;
+      }
+
+      const messageHe = agent.messageHe.trim().slice(0, 4_000);
+      if (agent.outcome !== 'proposal' || !agent.validation.valid) {
+        res.status(200).json({ outcome: 'conversation', message_he: messageHe, events: agent.events });
+        return;
+      }
+
+      const proposalId = newProposalId();
+      const candidateId = `${proposalId}_candidate_1`;
+      const semesters = Object.entries(agent.draftPlan.semesters)
+        .filter(([, courseIds]) => courseIds.length > 0)
+        .map(([semesterId, courseIds]) => ({ semesterId, courseIds: [...courseIds] }));
+      const now = Date.now();
+      const record: ProposalRecord = {
+        proposalId,
+        ownerId: owner.ownerId,
+        programId: parsed.data.program_id,
+        createdAt: now,
+        expiresAt: now + PROPOSAL_TTL_MS,
+        baseBoardVersion: currentBoardVersion,
+        profileVersion: Number(preferences.profile_version ?? preferences.version ?? 0),
+        academicStatusDigest: parsed.data.academic_status_digest,
+        constraintFingerprint: `conversation_${parsed.data.program_id}`,
+        snapshotId: `conversation_${currentBoardVersion ?? 'empty'}`,
+        candidates: [{
+          candidateId,
+          semesters,
+          normalizedIdentity: JSON.stringify(semesters),
+          valid: true,
+          applyable: true,
+          recommended: true,
+        }],
+        recommendedCandidateId: candidateId,
+        outcome: 'proposal',
+        applyEligible: true,
+      };
+      await putProposal(record);
+      const events = [
+        ...agent.events,
+        { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
+      ];
+      res.status(200).json({ outcome: 'proposal', message_he: messageHe, events, proposal_id: proposalId });
     } catch (error) {
       const code = plannerStorageErrorCode(error);
       if (code) {
