@@ -83,21 +83,26 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-board-region')).toBeVisible()
     expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
     expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
 
     fireEvent.click(repositoryToggle)
     expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
     expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-repository-open', 'true')
+    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'false')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
 
     fireEvent.click(agentToggle)
     expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
     expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-agent-open', 'true')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
+
+    fireEvent.click(repositoryToggle)
+    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
   })
 
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
-    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
   })

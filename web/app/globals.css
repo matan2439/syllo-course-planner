@@ -154,7 +154,7 @@ body {
 }
 .planner-drawer-controls {
   position: sticky;
-  z-index: 35;
+  z-index: 60;
   top: 4.5rem;
   display: flex;
   justify-content: space-between;
@@ -177,9 +177,47 @@ body {
 .planner-drawer-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 
 @media (min-width: 1024px) {
-  .planner-workbench[data-repository-open="true"] { padding-right: min(25rem, 27vw); }
-  .planner-workbench[data-agent-open="true"] { padding-left: min(25rem, 27vw); }
-  .planner-workbench { transition: padding 180ms ease; }
+  .planner-workbench {
+    display: grid;
+    grid-template-areas: "agent board repository";
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+    gap: 0;
+    direction: ltr;
+    transition: grid-template-columns 180ms ease, gap 180ms ease;
+  }
+  .planner-workbench[data-agent-open="true"][data-repository-open="false"] {
+    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) 0;
+    column-gap: 1rem;
+  }
+  .planner-workbench[data-agent-open="false"][data-repository-open="true"] {
+    grid-template-columns: 0 minmax(0, 1fr) minmax(18rem, 22rem);
+    column-gap: 1rem;
+  }
+  .planner-workbench[data-agent-open="true"][data-repository-open="true"] {
+    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(18rem, 22rem);
+    column-gap: 1rem;
+  }
+  .planner-board-canvas,
+  .planner-board-canvas .planner-journey { display: contents; }
+  .planner-board-canvas .planner-board-region {
+    grid-area: board;
+    min-width: 0;
+    direction: rtl;
+  }
+  .planner-repository-rail,
+  .planner-board-canvas .planner-agent-region {
+    position: sticky;
+    top: 5.25rem;
+    bottom: auto;
+    width: auto;
+    max-height: calc(100vh - 6.25rem);
+    transform: none !important;
+    direction: rtl;
+  }
+  .planner-repository-rail { grid-area: repository; }
+  .planner-board-canvas .planner-agent-region { grid-area: agent; }
+  .planner-workbench[data-repository-open="false"] .planner-repository-rail,
+  .planner-workbench[data-agent-open="false"] .planner-agent-region { display: none !important; }
 }
 
 @media (max-width: 1023px) {

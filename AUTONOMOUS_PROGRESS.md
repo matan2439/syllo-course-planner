@@ -1,5 +1,29 @@
 # Autonomous Progress
 
+## Latest session — unblock drawer controls and desktop drop geometry
+
+The planner workbench now keeps the repository and AI controls above the
+drawer surfaces, and the desktop layout uses real grid columns instead of
+fixed overlays. When a drawer is closed it is removed from the desktop layout
+and exposed as `aria-hidden`; when open, the board retains a readable central
+column and the repository no longer covers semester drop targets. This keeps
+the existing keyboard add path and authoritative server mutation path intact.
+
+Strict RED reproduced the missing closed-panel accessibility state and the
+browser repro showed the repository rail covering the board and its toggle.
+Focused GREEN passes 5/5 workspace tests; the relevant board/repository/
+server-apply regression set passes 40/40. The full root suite passes 202/203
+API suites (one skipped), 2,566 passed API tests (one skipped), and 78/78 UI
+suites with 835 passed UI tests. Root and web typecheck and the Next.js
+production build pass. Python verification is blocked outside this change by
+the checked-out `data/database.sqlite` lacking the `courses` table after 266
+passed and 28 skipped tests; the first failure is
+`tests/test_difficulty_estimator.py::test_real_course_has_score`.
+
+No provider, Supabase, Production configuration, catalog source, or remote
+database was changed. Preview browser verification is still pending for the
+new commit.
+
 ## Latest session — conversation program-universe gate
 
 The configured conversation path now resolves the complete server-side program

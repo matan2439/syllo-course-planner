@@ -156,6 +156,7 @@ export default function UnifiedPlannerWorkspace({
           role="tabpanel"
           aria-labelledby="workspace-tab-repository"
           data-open={repositoryOpen}
+          aria-hidden={!repositoryOpen}
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <UnifiedCourseRepository
