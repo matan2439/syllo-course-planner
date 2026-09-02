@@ -1,5 +1,6 @@
 import type { CourseVM } from '../../lib/board'
 import { Badge, Card } from './ui'
+import { writeBoardDrag } from '../../lib/planner/drag-payload'
 
 const TYPE_LABELS: Record<string, string> = {
   mandatory: 'חובה',
@@ -32,13 +33,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
       onDragStart={(event) => {
         if (!movable) return
         event.dataTransfer.effectAllowed = 'move'
-        event.dataTransfer.setData('application/x-syllo-course-id', course.id)
-        if (course.offeredSemesters !== undefined) {
-          event.dataTransfer.setData(
-            'application/x-syllo-allowed-semester-ids',
-            JSON.stringify(course.offeredSemesters),
-          )
-        }
+        writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)
       }}
     >
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">

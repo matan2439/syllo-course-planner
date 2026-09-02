@@ -9,9 +9,10 @@ import type { BoardVM } from '../../lib/board'
  * no mutation, no draft/apply — those arrive in later slices. Not wired to any
  * route or navigation yet.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onMoveCourse, mutationPending = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
+  onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
   mutationPending?: boolean
 }) {
@@ -19,15 +20,16 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onMoveCourse
     return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
   }
   return (
+    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
     <div
       role="list"
       aria-label="לוח סמסטרים"
-      className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid min-w-full grid-flow-col auto-cols-[minmax(17rem,1fr)]"
     >
       {board.semesters.map((s, i) => (
         <div role="listitem" key={s.id} className="min-w-0">
           <SemesterColumn
-            semester={s} index={i} onRemoveCourse={onRemoveCourse} onMoveCourse={onMoveCourse}
+            semester={s} index={i} onRemoveCourse={onRemoveCourse} onAddCourse={onAddCourse} onMoveCourse={onMoveCourse}
             moveDestinations={board.semesters
               .filter((destination) => destination.id !== s.id)
               .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
@@ -35,6 +37,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onMoveCourse
           />
         </div>
       ))}
+    </div>
     </div>
   )
 }

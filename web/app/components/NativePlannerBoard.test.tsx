@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import NativePlannerBoard from './NativePlannerBoard'
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
+import { writeRepositoryDrag } from '../../lib/planner/drag-payload'
 
 const BOARD = {
   metadata: { board_data_version: 'rev-1' },
@@ -51,12 +52,52 @@ test('an entirely empty board renders the truthful board-unavailable state', () 
   expect(screen.getByText(/עדיין לא זמינים/)).toBeInTheDocument()
 })
 
-test('uses the responsive grid (no forced horizontal overflow)', () => {
+test('uses a continuous horizontally scrollable semester table', () => {
   const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
   const grid = container.querySelector('[role="list"]') as HTMLElement
-  expect(grid.className).toMatch(/grid-cols-1/)
-  expect(grid.className).toMatch(/sm:grid-cols-2/)
-  expect(grid.className).toMatch(/xl:grid-cols-4/)
+  expect(grid.parentElement?.className).toMatch(/overflow-x-auto/)
+  expect(grid.className).toMatch(/grid-flow-col/)
+  expect(grid.className).toMatch(/auto-cols-\[minmax\(17rem,1fr\)\]/)
+})
+
+test('a repository drop invokes add and never move', () => {
+  const onAddCourse = jest.fn()
+  const onMoveCourse = jest.fn()
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, '0542-4120', ['year_3_semester_a'])
+  render(
+    <NativePlannerBoard
+      board={vmFromPayload(BOARD)}
+      onAddCourse={onAddCourse}
+      onMoveCourse={onMoveCourse}
+    />,
+  )
+
+  fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' }), { dataTransfer: transfer })
+
+  expect(onAddCourse).toHaveBeenCalledWith('0542-4120', 'year_3_semester_a')
+  expect(onMoveCourse).not.toHaveBeenCalled()
+})
+
+test('a repository drop outside its offering fails closed', () => {
+  const onAddCourse = jest.fn()
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, '0542-4120', ['year_3_semester_a'])
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onAddCourse={onAddCourse} />)
+
+  fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' }), { dataTransfer: transfer })
+
+  expect(onAddCourse).not.toHaveBeenCalled()
 })
 
 test('mandatory courses do not advertise a move that authoritative validation must reject', () => {

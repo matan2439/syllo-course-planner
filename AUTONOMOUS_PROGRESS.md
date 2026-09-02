@@ -1,5 +1,19 @@
 # Autonomous Progress
 
+## Latest session — typed semester-table drop targets
+
+The native board now renders as one continuous horizontally scrollable
+semester table with stable 17rem columns and full-height drop zones. Typed
+repository payloads dispatch only to add intents, typed board payloads dispatch
+only to move intents, and both fail closed outside authoritative semester
+restrictions. Existing board cards now emit the shared typed drag contract.
+
+Strict RED proved repository drops were ignored and the board still used the
+old responsive card grid. GREEN passes 19/19 board and drag-contract tests plus
+the full TypeScript gate. The next slice will route repository drops through
+the existing server-authoritative manual-edit journey. Production, aliases,
+databases and catalog data were unchanged.
+
 ## Latest session — draggable semester-aware course repository
 
 Repository courses can now be dragged with the typed repository payload and

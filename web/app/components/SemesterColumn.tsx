@@ -1,11 +1,13 @@
 import type { SemesterVM } from '../../lib/board'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
+import { readPlannerDrag } from '../../lib/planner/drag-payload'
 
 export default function SemesterColumn({
   semester,
   index,
   onRemoveCourse,
+  onAddCourse,
   onMoveCourse,
   moveDestinations,
   mutationPending,
@@ -13,6 +15,7 @@ export default function SemesterColumn({
   semester: SemesterVM
   index: number
   onRemoveCourse?: (courseId: string) => void
+  onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
@@ -21,31 +24,29 @@ export default function SemesterColumn({
     <section
       aria-label={semester.title}
       onDragOver={(event) => {
-        if (!onMoveCourse || mutationPending) return
-        const allowedRaw = event.dataTransfer.getData('application/x-syllo-allowed-semester-ids')
-        if (allowedRaw) {
-          try {
-            const allowed = JSON.parse(allowedRaw) as unknown
-            if (!Array.isArray(allowed) || !allowed.includes(semester.id)) return
-          } catch { return }
-        }
+        if (mutationPending) return
+        const payload = readPlannerDrag(event.dataTransfer)
+        if (!payload) return
+        if (payload.kind === 'repository' && !onAddCourse) return
+        if (payload.kind === 'board' && !onMoveCourse) return
+        if (payload.allowedSemesterIds !== undefined && !payload.allowedSemesterIds.includes(semester.id)) return
         event.preventDefault()
-        event.dataTransfer.dropEffect = 'move'
+        event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
       }}
       onDrop={(event) => {
-        if (!onMoveCourse || mutationPending) return
-        event.preventDefault()
-        const allowedRaw = event.dataTransfer.getData('application/x-syllo-allowed-semester-ids')
-        if (allowedRaw) {
-          try {
-            const allowed = JSON.parse(allowedRaw) as unknown
-            if (!Array.isArray(allowed) || !allowed.includes(semester.id)) return
-          } catch { return }
+        if (mutationPending) return
+        const payload = readPlannerDrag(event.dataTransfer)
+        if (!payload) return
+        if (payload.allowedSemesterIds !== undefined && !payload.allowedSemesterIds.includes(semester.id)) return
+        if (payload.kind === 'repository' && onAddCourse) {
+          event.preventDefault()
+          onAddCourse(payload.courseId, semester.id)
+        } else if (payload.kind === 'board' && onMoveCourse) {
+          event.preventDefault()
+          onMoveCourse(payload.courseId, semester.id)
         }
-        const courseId = event.dataTransfer.getData('application/x-syllo-course-id')
-        if (courseId) onMoveCourse(courseId, semester.id)
       }}
-      className={`rise flex min-w-0 flex-col gap-2.5 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
