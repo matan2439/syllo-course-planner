@@ -16,6 +16,12 @@ source, or remote database was changed. The unrelated
 `tests/test_tau_curriculum_document.py` modification and untracked private
 files remain untouched and unstaged.
 
+The verified Preview for the board/drop-target fix is
+https://tau-course-planner-a9njni4d5-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_4iKNRgAoA6LcrkNjhRzGA5VLe2if`, status `Ready`). The browser
+verified that the board and repository remain present together after opening
+the course drawer.
+
 ## Latest session — connect the conversational agent to server-owned proposals
 
 The conversational endpoint now composes the configured model with the existing
