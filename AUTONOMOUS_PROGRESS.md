@@ -14,7 +14,10 @@ Strict RED reproduced the missing `runAgent` seam. GREEN passes the focused
 conversation suite (9/9), the proposal/Apply/storage regression set (57/57),
 the root TypeScript gate, and the web production build. This slice is ready for
 an isolated Preview deployment; no provider, Supabase, Production
-configuration, catalog source, or remote database was changed. The unrelated
+configuration, catalog source, or remote database was changed. The isolated
+Preview for this commit is
+https://tau-course-planner-r1ut6mvhy-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_3WR4SxBmWrnfUZmSvTp5jzkNZmgb`, status `Ready`). The unrelated
 `tests/test_tau_curriculum_document.py` modification and untracked private
 files remain untouched and unstaged.
 
