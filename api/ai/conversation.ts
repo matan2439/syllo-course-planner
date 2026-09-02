@@ -10,11 +10,13 @@ import {
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
+import { loadLocalBoardJson } from './board_loader';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
+  loadProgramBoard?: (programId: string) => unknown | null;
 };
 
 const unavailable = () => ({
@@ -29,6 +31,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
   const loadAcademicContext = deps.loadAcademicContext
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
+  const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') {
@@ -75,6 +78,15 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           ok: false,
           code: 'PREFERENCE_CONTEXT_CONFLICT',
           message_he: 'העדפות התכנון השתנו. יש לרענן אותן לפני המשך השיחה.',
+        });
+        return;
+      }
+      const programBoard = loadProgramBoard(parsed.data.program_id);
+      if (!programBoard) {
+        res.status(503).json({
+          ok: false,
+          code: 'NO_PROGRAM_UNIVERSE',
+          message_he: 'נתוני התוכנית הסמכותיים אינם זמינים כרגע.',
         });
         return;
       }

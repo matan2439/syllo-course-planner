@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — conversation program-universe gate
+
+The configured conversation path now resolves the complete server-side program
+board after owner, board-version, academic-status and preference checks. A
+missing authoritative universe returns a typed Hebrew `503` and the model is
+not invoked over a partial or client-authored catalog.
+
+Strict RED proved the endpoint had no program-universe dependency. GREEN passes
+8/8 endpoint tests, 18/18 endpoint/wire/board-loader regressions, and the root
+TypeScript gate. No model, provider, remote storage, or Production state was
+contacted.
+
 ## Latest session — conversation preference authority gate
 
 Planning preferences now have a deterministic, key-order-independent server

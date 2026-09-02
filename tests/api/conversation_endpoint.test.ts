@@ -133,3 +133,25 @@ test('configured conversation rejects stale planning preferences', async () => {
   expect(res.statusCode).toBe(409)
   expect(res.body).toEqual(expect.objectContaining({ code: 'PREFERENCE_CONTEXT_CONFLICT' }))
 })
+
+test('configured conversation fails closed when the authoritative program universe is unavailable', async () => {
+  const preferences = { max_weekly_hours: 22 }
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest,
+      personalStatus: {}, planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => null,
+  })
+  const res = response()
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(503)
+  expect(res.body).toEqual(expect.objectContaining({ code: 'NO_PROGRAM_UNIVERSE' }))
+})
