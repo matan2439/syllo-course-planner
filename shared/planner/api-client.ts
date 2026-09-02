@@ -11,6 +11,11 @@ import {
   loadedPlanningContextResponseSchema, planningContextResponseSchema,
   type ManualBoardEditRequest, type PlanningContextRequest,
 } from './wire';
+import {
+  conversationResponseSchema,
+  type ConversationRequest,
+  type ConversationResponse,
+} from './conversation-wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
 
@@ -159,6 +164,41 @@ export async function getCommittedBoard(
   const parsed = committedBoardResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed committed-board response', parsed.error);
   return parsed.data.board;
+}
+
+/**
+ * Send one bounded transcript turn to the conversational Academic Agent.
+ * Typed assistant unavailability is a normal response (including HTTP 503),
+ * while every other non-success status remains a transport/contract error.
+ */
+export async function sendConversation(
+  deps: ClientDeps,
+  req: ConversationRequest,
+): Promise<ConversationResponse> {
+  let res: FetchResponseLike;
+  try {
+    res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/conversation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(req),
+    });
+  } catch (error) {
+    throw new ContractError('conversation request failed', error);
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch (error) {
+    throw asContractError(error, 'conversation');
+  }
+  const parsed = conversationResponseSchema.safeParse(body);
+  if (!parsed.success) throw new ContractError('malformed conversation response', parsed.error);
+  if (!res.ok && parsed.data.outcome !== 'assistant_unavailable') {
+    throw new ContractError(`conversation request failed with HTTP ${res.status}`);
+  }
+  return parsed.data;
 }
 
 // ── R2: authoritative manual board edit ────────────────────────────────────

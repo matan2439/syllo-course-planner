@@ -1,0 +1,177 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  sendConversation,
+  type ClientDeps,
+} from '../../../shared/planner/api-client'
+import type {
+  ConversationEvent,
+  ConversationRequest,
+  ConversationResponse,
+  ConversationTurn,
+} from '../../../shared/planner/conversation-wire'
+import { Card } from './ui'
+
+type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
+
+const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as ClientDeps['fetchImpl']
+const defaultSendConversation: SendConversation = (request) => sendConversation(
+  { fetchImpl: browserFetch, baseUrl: '' },
+  request,
+)
+
+const TOOL_LABELS: Record<string, string> = {
+  get_state: 'בדיקת מצב הלוח',
+  rank_candidates: 'דירוג חלופות',
+  add_course: 'בדיקת הוספת קורס',
+  remove_course: 'בדיקת הסרת קורס',
+  move_course: 'בדיקת העברת קורס',
+  replace_course: 'בדיקת החלפת קורס',
+  finalize_plan: 'אימות התוכנית',
+}
+
+const TOOL_STATUS_LABELS: Record<string, string> = {
+  started: 'בתהליך',
+  completed: 'הושלם',
+  rejected: 'נדחה לפי הכללים',
+}
+
+export default function AcademicAgentConversation({
+  programId,
+  sessionToken,
+  boardVersion,
+  academicStatusDigest,
+  preferenceDigest,
+  sendConversationFn = defaultSendConversation,
+  onProposalReady,
+}: {
+  programId: string
+  sessionToken: string
+  boardVersion: string | null
+  academicStatusDigest: string
+  preferenceDigest: string
+  sendConversationFn?: SendConversation
+  onProposalReady?: (proposalId: string) => void
+}) {
+  const [transcript, setTranscript] = useState<ConversationTurn[]>([])
+  const [draft, setDraft] = useState('')
+  const [lastResponse, setLastResponse] = useState<ConversationResponse | null>(null)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || pending) return
+    const nextTranscript: ConversationTurn[] = [...transcript, { role: 'user', text: trimmed }]
+    setTranscript(nextTranscript)
+    setDraft('')
+    setPending(true)
+    setError(null)
+    setLastResponse(null)
+
+    try {
+      const response = await sendConversationFn({
+        program_id: programId,
+        session_token: sessionToken,
+        board_version: boardVersion,
+        academic_status_digest: academicStatusDigest,
+        preference_digest: preferenceDigest,
+        transcript: nextTranscript,
+      })
+      setLastResponse(response)
+      if (response.outcome !== 'assistant_unavailable') {
+        setTranscript((current) => [...current, { role: 'assistant', text: response.message_he }])
+        const ready = response.events.find(
+          (event): event is Extract<ConversationEvent, { type: 'alternatives_ready' }> => event.type === 'alternatives_ready',
+        )
+        if (ready) onProposalReady?.(ready.proposal_id)
+      }
+    } catch {
+      setError('שליחת ההודעה נכשלה. הלוח הנוכחי לא השתנה.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const unavailable = lastResponse?.outcome === 'assistant_unavailable'
+
+  return (
+    <div dir="rtl">
+      <Card className="flex flex-col gap-3 p-4">
+      <div>
+        <h2 className="text-sm font-bold tracking-tight">שיחה עם עוזר התכנון</h2>
+        <p className="mt-1 text-xs text-[var(--text-muted)]">
+          אפשר לשאול בעברית. העוזר בודק את הלוח והכללים, אבל רק אישור מפורש שלך מחיל שינוי.
+        </p>
+      </div>
+
+      <div
+        role="log"
+        aria-label="תמליל שיחה עם עוזר התכנון"
+        aria-live="polite"
+        className="flex max-h-72 min-h-24 flex-col gap-2 overflow-y-auto rounded-lg border border-[var(--border)] p-3"
+      >
+        {transcript.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)]">כתבו בקשה, למשל: „בנה לי שתי חלופות מאוזנות”.</p>
+        ) : transcript.map((turn, index) => (
+          <p key={`${turn.role}-${index}`} className={turn.role === 'user' ? 'text-sm' : 'text-sm text-[var(--text-muted)]'}>
+            <span className="font-semibold">{turn.role === 'user' ? 'אתם: ' : 'העוזר: '}</span>
+            {turn.text}
+          </p>
+        ))}
+      </div>
+
+      {lastResponse && !unavailable && (
+        <div aria-label="פעילות העוזר" className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
+          {lastResponse.events.filter((event) => event.type === 'tool_status').map((event, index) => (
+            <p key={`${event.tool}-${index}`}>
+              {TOOL_LABELS[event.tool] ?? 'בדיקה אקדמית'} — {TOOL_STATUS_LABELS[event.status] ?? 'עודכן'}
+            </p>
+          ))}
+          {lastResponse.events.some((event) => event.type === 'alternatives_ready') && (
+            <p className="font-semibold text-[var(--purple)]">החלופה מוכנה לבדיקה בלוח.</p>
+          )}
+        </div>
+      )}
+
+      {pending && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">בודק את התוכנית…</p>}
+      {unavailable && <p role="alert" className="rounded-lg border border-amber-500/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">{lastResponse.message_he}</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>}
+
+      <form onSubmit={(event) => { event.preventDefault(); void submit(draft) }} className="flex flex-col gap-2">
+        <label htmlFor="academic-agent-message" className="text-xs font-semibold text-[var(--text-muted)]">הודעה לעוזר האקדמי</label>
+        <textarea
+          id="academic-agent-message"
+          name="academic-agent-message"
+          aria-label="הודעה לעוזר האקדמי"
+          rows={3}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault()
+              void submit(draft)
+            }
+          }}
+          placeholder="כתבו בקשה או שאלה…"
+          className="w-full resize-y rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
+        />
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="submit" disabled={pending || !draft.trim()} className="rounded-full bg-[var(--purple-strong)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+            שלח לעוזר
+          </button>
+          <button
+            type="button"
+            disabled={pending || transcript.length === 0}
+            onClick={() => void submit('בנה לי חלופות חוקיות')}
+            className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            בנה חלופות
+          </button>
+        </div>
+      </form>
+      </Card>
+    </div>
+  )
+}

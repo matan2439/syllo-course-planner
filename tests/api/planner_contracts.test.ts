@@ -27,6 +27,7 @@ import {
   generatePlanResponseToModel,
   getBoard,
   generatePlan,
+  sendConversation,
   catalogRevision,
   proposalBaseRevision,
   localWorkspaceRevision,
@@ -226,6 +227,41 @@ describe('api client (runtime-neutral, injected fetch)', () => {
     await expect(
       getBoard({ fetchImpl: makeFetch(200, { semesters: 'not-an-array' }), baseUrl: '' }, 'p_2027'),
     ).rejects.toBeInstanceOf(ContractError);
+  });
+
+  test('sendConversation validates the available response and sends the typed transcript', async () => {
+    const fetchImpl = jest.fn(makeFetch(200, {
+      outcome: 'conversation', message_he: 'אני בודק את הלוח.', events: [],
+    }));
+    const result = await sendConversation({ fetchImpl, baseUrl: '' }, {
+      program_id: 'mechanical_engineering_2027',
+      session_token: '00000000-0000-4000-8000-000000000000',
+      board_version: null,
+      academic_status_digest: 'as_1',
+      preference_digest: 'pref_1',
+      transcript: [{ role: 'user', text: 'בנה לי חלופות' }],
+    });
+    expect(result.outcome).toBe('conversation');
+    expect(fetchImpl).toHaveBeenCalledWith('/api/ai/conversation', expect.objectContaining({
+      method: 'POST', credentials: 'same-origin',
+    }));
+    const requestInit = (fetchImpl as jest.Mock).mock.calls[0][1] as { body: string };
+    expect(JSON.parse(requestInit.body).transcript).toHaveLength(1);
+  });
+
+  test('sendConversation preserves a typed unavailable response from HTTP 503', async () => {
+    const result = await sendConversation({ fetchImpl: makeFetch(503, {
+      outcome: 'assistant_unavailable', message_he: 'העוזר האקדמי אינו זמין כרגע.',
+      events: [{ type: 'assistant_unavailable', message_he: 'העוזר האקדמי אינו זמין כרגע.' }],
+    }), baseUrl: '' }, {
+      program_id: 'mechanical_engineering_2027',
+      session_token: '00000000-0000-4000-8000-000000000000',
+      board_version: null,
+      academic_status_digest: 'as_1',
+      preference_digest: 'pref_1',
+      transcript: [{ role: 'user', text: 'בדיקה' }],
+    });
+    expect(result.outcome).toBe('assistant_unavailable');
   });
 });
 

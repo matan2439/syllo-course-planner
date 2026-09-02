@@ -1,5 +1,25 @@
 # Autonomous Progress
 
+## Latest session — add the typed Hebrew conversation surface
+
+The planner now has a dedicated Hebrew transcript/composer surface for the
+Academic Agent. It submits the bounded typed transcript to
+`/api/ai/conversation`, keeps Shift+Enter available for multi-line messages,
+shows a truthful pending/error/unavailable state, renders friendly tool-status
+labels, and never displays raw tool payloads. The explicit `בנה חלופות` action
+remains non-mutating; only the existing server-authoritative Apply path may
+change the board.
+
+Strict RED reproduced the missing conversation client export and the absent
+panel module. GREEN passes the focused API contract and panel suites (40/40),
+the conversation endpoint/wire regression set (50/50), the unified workspace,
+board, repository, alternatives and server-Apply UI regression set (52/52),
+root and web TypeScript gates. The panel is ready for the next integration
+slice into the single board journey. No provider, Supabase, Production
+configuration, catalog source, or remote database was changed. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — keep the semester board as the repository drop target
 
 Opening the course-repository drawer no longer applies a mobile-only `hidden`
