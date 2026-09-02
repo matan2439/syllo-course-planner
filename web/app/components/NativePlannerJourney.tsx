@@ -22,6 +22,7 @@ import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, propos
 import type { ProposalBaseRevision } from '../../../shared/planner/model'
 import {
   applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard, getPlanningContext,
+  sendConversation,
   type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type LoadedPlanningContext,
   type ManualBoardEditResult,
 } from '../../../shared/planner/api-client'
@@ -43,6 +44,7 @@ import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import { earlyYearHoursById } from '../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
+import AcademicAgentConversation from './AcademicAgentConversation'
 import { Badge, Card, EmptyState } from './ui'
 
 /** Hebrew labels for the non-'proposal' structured agent outcomes (opt-in path). */
@@ -90,6 +92,8 @@ const defaultEstablishPlanningContext = (req: Parameters<typeof establishPlannin
   establishPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, req)
 const defaultPlanningContext = (programId: string) =>
   getPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, programId)
+const defaultSendConversation = (req: Parameters<typeof sendConversation>[1]) =>
+  sendConversation({ fetchImpl: browserFetch, baseUrl: '' }, req)
 
 export interface ManualAddIntent {
   courseId: string
@@ -133,6 +137,8 @@ export default function NativePlannerJourney({
   editBoardFn = defaultEditBoard,
   establishPlanningContextFn = defaultEstablishPlanningContext,
   planningContextFn = defaultPlanningContext,
+  sendConversationFn = defaultSendConversation,
+  initializePlanningContext = false,
   onManualAddSettled,
   onCommittedCourseIdsChange,
   onCloseAgent,
@@ -148,6 +154,9 @@ export default function NativePlannerJourney({
   editBoardFn?: (req: Parameters<typeof editBoard>[1]) => Promise<ManualBoardEditResult>
   establishPlanningContextFn?: typeof defaultEstablishPlanningContext
   planningContextFn?: (programId: string) => Promise<LoadedPlanningContext | null>
+  sendConversationFn?: typeof defaultSendConversation
+  /** The production workspace may establish an explicitly-unknown context on first load. */
+  initializePlanningContext?: boolean
   onManualAddSettled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onCloseAgent?: () => void
@@ -238,6 +247,7 @@ export default function NativePlannerJourney({
   const [academicContextPhase, setAcademicContextPhase] = useState<'loading' | 'ready' | 'error'>(
     useAcademicDecisionAgent ? 'loading' : 'ready',
   )
+  const [loadedAcademicContext, setLoadedAcademicContext] = useState<LoadedPlanningContext | null>(null)
   const [statusVersion, setStatusVersion] = useState(0)
   const updateAcademicStatus = useCallback((next: AcademicStatusDraft) => {
     setAcademicStatus(next)
@@ -250,7 +260,10 @@ export default function NativePlannerJourney({
     planningContextFn(programId).then(
       (stored) => {
         if (!live) return
-        if (stored) setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+        if (stored) {
+          setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+          setLoadedAcademicContext(stored)
+        }
         setAcademicContextPhase('ready')
       },
       (error) => {
@@ -399,6 +412,31 @@ export default function NativePlannerJourney({
     academicStatus, catalogHoursById,
       applyAcademicStatus, exclusionsNoneConfirmed])
 
+  const refreshAcademicContext = useCallback(() => {
+    if (!useAcademicDecisionAgent) return
+    planningContextFn(programId).then((stored) => {
+      if (stored) setLoadedAcademicContext(stored)
+    }).catch((error) => {
+      console.error('[NativePlannerJourney] academic context refresh failed:', error)
+    })
+  }, [planningContextFn, programId, useAcademicDecisionAgent])
+
+  const initializedPlanningContextRef = useRef(false)
+  useEffect(() => {
+    if (!initializePlanningContext || !useAcademicDecisionAgent || !current
+      || academicContextPhase !== 'ready' || loadedAcademicContext || initializedPlanningContextRef.current) return
+    initializedPlanningContextRef.current = true
+    const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
+    establishPlanningContextFn({
+      program_id: programId,
+      plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
+      preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
+    }).then(() => refreshAcademicContext()).catch((error) => {
+      console.error('[NativePlannerJourney] initial academic context setup failed:', error)
+    })
+  }, [academicContextPhase, buildRequest, current, establishPlanningContextFn, initializePlanningContext,
+    loadedAcademicContext, programId, refreshAcademicContext, useAcademicDecisionAgent])
+
   const build = useCallback((profile?: PreferenceProfile) => {
     if (!current) return
     const token = ++tokenRef.current // a newer Build supersedes any older in-flight one
@@ -421,6 +459,7 @@ export default function NativePlannerJourney({
         setCapturedStatusVersion(statusAtRequest)
         setCapturedManualRevision(manualRevision)
         setGenPhase('done')
+        refreshAcademicContext()
       },
       (e) => {
         if (token !== tokenRef.current) return
@@ -879,6 +918,17 @@ export default function NativePlannerJourney({
               }}
             />
           </Card>
+        )}
+
+        {useAcademicDecisionAgent && loadedAcademicContext && (
+          <AcademicAgentConversation
+            programId={programId}
+            sessionToken={sessionToken()}
+            boardVersion={boardVersion}
+            academicStatusDigest={loadedAcademicContext.academicStatusDigest}
+            preferenceDigest={loadedAcademicContext.preferenceDigest}
+            sendConversationFn={sendConversationFn}
+          />
         )}
 
         {useAcademicDecisionAgent && academicContextPhase === 'loading' && (

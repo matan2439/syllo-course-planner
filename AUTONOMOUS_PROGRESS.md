@@ -1,5 +1,25 @@
 # Autonomous Progress
 
+## Latest session — connect the Hebrew conversation to the single journey
+
+The real Hebrew Academic Agent panel is now mounted inside the same
+`NativePlannerJourney` that owns the committed semester board. It sends the
+current board version, server-owned academic-status digest and server-owned
+preference digest through the typed conversation endpoint. A fresh workspace
+explicitly establishes an unknown academic context before exposing the chat,
+so the client never guesses a digest or pretends a conversation can mutate the
+board. Existing deterministic preference elicitation and server-authoritative
+Apply remain intact.
+
+Strict RED added a journey integration test and reproduced the missing
+conversation textbox. GREEN passes the Agent journey suite (9/9), the
+conversation/API/context regression suites (20/20), root and web TypeScript
+gates, and the Next production build. The isolated Preview is pending for this
+commit. No provider, Supabase, Production configuration, catalog source, or
+remote database was changed. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — expose the server-owned preference digest
 
 The refreshable planning-context response now returns the server-computed

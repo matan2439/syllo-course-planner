@@ -11,6 +11,7 @@ import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
 import { createServerApplyStub } from './serverApplyStub'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
+import type { ConversationResponse } from '../../../shared/planner/conversation-wire'
 
 const BOARD = {
   metadata: { board_data_version: 'rev-1', program_repository_courses: [{ course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 3.5, is_mandatory: false }] },
@@ -181,5 +182,37 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(generateFn).toHaveBeenCalledTimes(2)
     // still a single, current proposal (not replaced by the late one)
     expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument()
+  })
+
+  test('the conversational agent sends the current board context through the single journey', async () => {
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'conversation',
+      message_he: 'הלוח נבדק.',
+      events: [],
+    } satisfies ConversationResponse))
+    render(
+      <NativePlannerJourney
+        {...deps({ useAcademicDecisionAgent: true })}
+        planningContextFn={async () => ({
+          academicStatusDigest: 'as_test',
+          preferenceDigest: 'pref_test',
+          personalStatus: {},
+          preferences: {},
+        })}
+        sendConversationFn={sendConversation}
+      />,
+    )
+    await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'בדוק את העומס' } })
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(1))
+    const request = (sendConversation as jest.Mock).mock.calls[0][0]
+    expect(request).toEqual(expect.objectContaining({
+      program_id: 'mechanical_engineering_2027',
+      board_version: null,
+      academic_status_digest: 'as_test',
+      preference_digest: 'pref_test',
+    }))
   })
 })
