@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — repository drops use server authority
+
+Dropping a repository course onto a semester now enters the same authoritative
+`add_course` mutation used by manual controls. The committed board remains
+unchanged while the request is pending, adopts only the returned server board
+and version, refreshes the workspace course ids, and stales any visible Agent
+proposal through the existing manual-revision path.
+
+Strict RED proved the table accepted the gesture visually but the Journey sent
+no edit. GREEN passes 33/33 Journey, board and workspace tests plus the full
+TypeScript gate. No local optimistic board mutation was introduced.
+Production, aliases, databases and catalog data were unchanged.
+
 ## Latest session — typed semester-table drop targets
 
 The native board now renders as one continuous horizontally scrollable

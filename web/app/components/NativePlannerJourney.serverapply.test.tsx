@@ -12,6 +12,7 @@ import { boardResponseToModel } from '../../../shared/planner/adapters'
 import { createServerApplyStub } from './serverApplyStub'
 import type { GeneratePlanRequest, CommittedBoardState, ManualBoardEditResult } from '../../../shared/planner/api-client'
 import type { GeneratedPlanModel } from '../../../shared/planner/model'
+import { writeRepositoryDrag } from '../../lib/planner/drag-payload'
 
 const SEM_A = 'year_3_semester_a'
 const SEM_B = 'year_3_semester_b'
@@ -106,6 +107,38 @@ const applyBtn = () => screen.getByRole('button', { name: /החל/ })
 const committed = () => screen.queryByLabelText('התוכנית הנוכחית')?.textContent ?? ''
 
 describe('S5 — Apply goes to the server, and only the server commits', () => {
+  test('repository drop commits the chosen semester only through server authority', async () => {
+    let resolveEdit!: (result: ManualBoardEditResult) => void
+    const editBoardFn = jest.fn(() => new Promise<ManualBoardEditResult>((resolve) => { resolveEdit = resolve }))
+    await renderReady({
+      editBoardFn,
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_drop' }),
+    })
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '', dropEffect: '',
+    }
+    writeRepositoryDrag(transfer, 'Y-1', [SEM_A])
+
+    fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' }), { dataTransfer: transfer })
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(editBoardFn).toHaveBeenCalledWith(expect.objectContaining({
+      operation: 'add_course', course_id: 'Y-1', semester_id: SEM_A,
+      expected_board_version: null, academic_status_digest: 'as_drop',
+    }))
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+
+    resolveEdit({
+      ok: true, replayed: false, operationId: 'edit_drop',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_drop', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    })
+    await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y'))
+  })
+
   test('manual add before the first Build syncs context but never Generates', async () => {
     const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
     const establishPlanningContextFn = jest.fn(async () => ({ academicStatusDigest: 'as_synced' }))

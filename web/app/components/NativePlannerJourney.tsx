@@ -584,8 +584,9 @@ export default function NativePlannerJourney({
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
 
-  const commitManualAdd = async (semesterId: string) => {
-    if (!manualAddIntent || manualEditPhase === 'saving') return
+  const commitManualAdd = async (semesterId: string, requestedCourseId?: string) => {
+    const courseId = requestedCourseId ?? manualAddIntent?.courseId
+    if (!courseId || manualEditPhase === 'saving') return
     const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
     manualEditKeyRef.current = operationId
     setManualEditPhase('saving')
@@ -605,7 +606,7 @@ export default function NativePlannerJourney({
       result = await editBoardFn({
         operation: 'add_course', program_id: programId,
         expected_board_version: boardVersion, operation_id: operationId,
-        course_id: manualAddIntent.courseId, semester_id: semesterId,
+        course_id: courseId, semester_id: semesterId,
         academic_status_digest: academicStatusDigest,
       })
     } catch {
@@ -624,6 +625,7 @@ export default function NativePlannerJourney({
     setManualRevision((value) => value + 1)
     manualEditKeyRef.current = null
     setMessages((items) => [...items, { role: 'system', text: 'הקורס נוסף ללוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
+    onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
     onManualAddSettled?.()
   }
 
@@ -731,6 +733,7 @@ export default function NativePlannerJourney({
           <NativePlannerBoard
             board={boardModelToVM(current)}
             onRemoveCourse={commitManualRemove}
+            onAddCourse={(courseId, semesterId) => commitManualAdd(semesterId, courseId)}
             onMoveCourse={commitManualMove}
             mutationPending={manualEditPhase === 'saving'}
           />
