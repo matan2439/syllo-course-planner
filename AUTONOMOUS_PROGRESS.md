@@ -17,6 +17,12 @@ No provider, Supabase, Production configuration, catalog source, or remote
 database was changed. The unrelated `tests/test_tau_curriculum_document.py`
 modification and untracked private files remain untouched and unstaged.
 
+The isolated Preview for this verified contract is
+https://tau-course-planner-kh4476pvm-matanyaron-1633s-projects.vercel.app/planner
+(deployment `dpl_EDMuAUjXf3HUxdb5iABfESCdMGrk`, status `Ready`). The browser
+verified that the semester board remains visible beside the course repository,
+with the repository close control and draggable course sources present.
+
 ## Latest session — add the typed Hebrew conversation surface
 
 The planner now has a dedicated Hebrew transcript/composer surface for the
