@@ -16,7 +16,7 @@
  * beyond the anonymous quota session token. Transport is injected so this is
  * fully testable without a live backend; browser defaults hit the real routes.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../shared/planner/model'
 import type { ConversationProposal } from '../../../shared/planner/conversation-wire'
 import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../shared/planner/model'
@@ -196,6 +196,7 @@ export default function NativePlannerJourney({
   onManualAddSettled,
   onCommittedCourseIdsChange,
   onCloseAgent,
+  agentCloseRef,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -214,6 +215,7 @@ export default function NativePlannerJourney({
   onManualAddSettled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onCloseAgent?: () => void
+  agentCloseRef?: RefObject<HTMLButtonElement | null>
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -881,6 +883,7 @@ export default function NativePlannerJourney({
       <aside aria-label="עוזר אקדמי" className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
         {onCloseAgent && (
           <button
+            ref={agentCloseRef}
             type="button"
             aria-label="סגור סרגל עוזר AI"
             onClick={onCloseAgent}

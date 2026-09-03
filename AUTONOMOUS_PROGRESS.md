@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — focus both opened drawers
+
+Opening either the course repository or Academic Decision Agent drawer now
+places keyboard focus on that drawer's close control. The board remains the
+single mounted planning surface while both drawers keep consistent keyboard
+behavior. Full web tests (29 suites, 254 tests), root typecheck, and the web
+production build pass. No catalog, provider, Supabase, Production, or remote
+database configuration changed.
+
 ## Latest session — focus the opened course drawer
 
 Opening the course repository now moves keyboard focus directly to its close

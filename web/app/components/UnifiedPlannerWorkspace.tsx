@@ -34,6 +34,8 @@ export default function UnifiedPlannerWorkspace({
   const agentToggleRef = useRef<HTMLButtonElement | null>(null)
   const repositoryCloseRef = useRef<HTMLButtonElement | null>(null)
   const repositoryWasOpen = useRef(false)
+  const agentCloseRef = useRef<HTMLButtonElement | null>(null)
+  const agentWasOpen = useRef(false)
 
   const selectView = (view: WorkspaceView, focus = false) => {
     setActiveView(view)
@@ -94,6 +96,11 @@ export default function UnifiedPlannerWorkspace({
     if (repositoryOpen && !repositoryWasOpen.current) repositoryCloseRef.current?.focus()
     repositoryWasOpen.current = repositoryOpen
   }, [repositoryOpen])
+
+  useEffect(() => {
+    if (agentOpen && !agentWasOpen.current) agentCloseRef.current?.focus()
+    agentWasOpen.current = agentOpen
+  }, [agentOpen])
 
   const toggleRepository = () => {
     if (repositoryOpen) closeRepository()
@@ -204,6 +211,7 @@ export default function UnifiedPlannerWorkspace({
             useAcademicDecisionAgent
             initializePlanningContext
             onCloseAgent={closeAgent}
+            agentCloseRef={agentCloseRef}
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}

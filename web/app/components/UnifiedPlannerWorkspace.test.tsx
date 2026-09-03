@@ -4,12 +4,12 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent }: any) => (
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, agentCloseRef }: any) => (
     <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
       data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
       <div className="planner-board-region">לוח פעיל</div>
       <aside className="planner-agent-region" aria-label="עוזר אקדמי">
-        <button type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
+        <button ref={agentCloseRef} type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
         עוזר פעיל
       </aside>
     </div>
@@ -149,6 +149,14 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
     expect(screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' })).toHaveFocus()
+  })
+
+  test('moves focus into the academic assistant drawer when it opens', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+
+    expect(screen.getByRole('button', { name: 'סגור סרגל עוזר AI' })).toHaveFocus()
   })
 
   test('tracks the active drawer surface so narrow layouts never show two rails over the board', () => {
