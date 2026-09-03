@@ -97,9 +97,11 @@ test('an allowed repository drag visibly marks the semester drop target', () => 
   const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
   fireEvent.dragOver(target, { dataTransfer: transfer })
   expect(target).toHaveClass('planner-drop-target-active')
+  expect(screen.getByRole('status')).toHaveTextContent('אפשר לשחרר כאן')
 
   fireEvent.drop(target, { dataTransfer: transfer })
   expect(target).not.toHaveClass('planner-drop-target-active')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
 test('a repository drop outside its offering fails closed', () => {

@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — announce a valid drop target
+
+Semester columns now expose an accessible live status, `אפשר לשחרר כאן`, while
+an allowed repository/board drag is over them. The status and purple drop-target
+highlight clear on drop or when leaving the target; invalid payloads remain
+fail-closed and do not announce acceptance. The focused drag/workspace/
+repository/board suite passed with 34 tests, plus web typecheck and diff check.
+No catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — show the live semester drop target
 
 Added a fail-closed drag-over guard to semester columns and a visible

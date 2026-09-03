@@ -79,6 +79,12 @@ export default function SemesterColumn({
         </div>
       </header>
 
+      {dragActive && (
+        <p role="status" aria-live="polite" className="rounded-lg bg-purple-600/10 px-3 py-2 text-center text-xs font-semibold text-[var(--purple)]">
+          אפשר לשחרר כאן
+        </p>
+      )}
+
       {semester.courses.length === 0 ? (
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
