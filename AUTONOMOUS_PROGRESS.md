@@ -12,9 +12,12 @@ and browser acceptance confirmed no legacy iframe, a visible board, closed
 repository and agent triggers, and the repository interaction path exposing 56
 draggable course sources while the board remains mounted. Browser logs showed
 only the known non-blocking Three.js `Clock` deprecation warning and no errors.
-The bounded real-LLM smoke and Production promotion remain intentionally
-deferred; no provider, Supabase, Production configuration, catalog source, or
-remote database was contacted. Electrical remains hidden. The unrelated
+Production promotion remains intentionally deferred; the one approved bounded
+real-LLM smoke request completed in Hebrew, returned a
+grounded assistant response, kept the committed board at 6 courses, did not
+show raw tool JSON, and did not apply a plan. No provider configuration,
+Supabase, Production configuration, catalog source, or remote database was
+changed. Electrical remains hidden. The unrelated
 `tests/test_tau_curriculum_document.py` modification and untracked private
 files remain untouched and unstaged.
 
