@@ -117,6 +117,8 @@ describe('UnifiedCourseRepository', () => {
     expect(screen.getByRole('status')).toHaveTextContent('גוררים את בקרה מודרנית')
     expect(card).toHaveAttribute('data-dragging', 'true')
     expect(card.querySelector('[data-drag-handle]')).toHaveAttribute('title', 'גררו מכאן ללוח')
+    expect(card.querySelectorAll('[draggable="true"]').length + (card.matches('[draggable="true"]') ? 1 : 0))
+      .toBe(1)
 
     fireEvent.dragEnd(card)
 

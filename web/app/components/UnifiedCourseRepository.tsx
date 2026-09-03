@@ -114,15 +114,8 @@ export default function UnifiedCourseRepository({
                     {draggable && (
                       <span
                         data-drag-handle
-                        draggable
                         title="גררו מכאן ללוח"
                         aria-hidden="true"
-                        onDragStart={(event) => {
-                          event.dataTransfer.effectAllowed = 'copy'
-                          writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
-                          setDraggingCourseId(course.id)
-                        }}
-                        onDragEnd={() => setDraggingCourseId(null)}
                         className="planner-drag-handle self-center text-[11px] text-[var(--text-muted)]"
                       >
                         ⠿ גרור ללוח

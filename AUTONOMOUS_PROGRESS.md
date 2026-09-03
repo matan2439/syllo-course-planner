@@ -8011,3 +8011,13 @@ semester-choice controls. RED reproduced the missing handle; GREEN passed the
 focused repository suite. Preview deployment is still waiting on explicit
 security approval to upload this repository snapshot to the existing Vercel
 project.
+
+## Latest session — keep one native drag source per repository card
+
+The dedicated drag affordance remains visible and discoverable, but the
+interactive handle no longer creates a nested second HTML drag source. The
+course card alone owns the typed drag payload and lifecycle, preventing the
+browser from selecting an ambiguous source when the student starts on the
+handle. RED reproduced two nested draggable elements; GREEN passed the focused
+repository suite. Preview deployment remains blocked by the explicit Vercel
+snapshot-upload authorization gate.
