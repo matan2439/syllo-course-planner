@@ -373,6 +373,24 @@ test('an elective drag source visibly enters and leaves its dragging state', () 
   expect(card).not.toHaveAttribute('data-dragging')
 })
 
+test('an elective card exposes a clear drag affordance alongside keyboard controls', () => {
+  const electiveBoard = {
+    ...BOARD,
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+    ],
+  }
+
+  render(<NativePlannerBoard board={vmFromPayload(electiveBoard)} onMoveCourse={jest.fn()} />)
+
+  expect(screen.getByLabelText('גרור את קורס בחירה לסמסטר אחר')).toHaveTextContent('גרור להעברה')
+  expect(screen.getByRole('button', { name: 'העבר קורס בחירה אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
+})
+
 test('an elective advertises only semesters listed by the authoritative catalog', () => {
   const payload = {
     metadata: {

@@ -92,6 +92,18 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           </a>
         )}
       </div>
+      {movable && (
+        <div className="mt-2 flex items-center border-t border-[var(--border)] pt-2">
+          <span
+            data-drag-handle
+            title="גררו את הקורס לסמסטר אחר"
+            aria-label={`גרור את ${course.name} לסמסטר אחר`}
+            className="planner-drag-handle text-[11px] text-[var(--text-muted)]"
+          >
+            ⠿ גרור להעברה
+          </span>
+        </div>
+      )}
       {onRemove && course.type !== 'mandatory' && (
         <button
           type="button"

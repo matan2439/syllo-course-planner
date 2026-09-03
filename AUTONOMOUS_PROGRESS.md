@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — expose the board’s drag affordance
+
+Movable elective cards on the semester board now show a compact `⠿ גרור
+להעברה` affordance and a matching accessible label, while keeping the
+keyboard move controls beside it. The focused board suite passes (24 tests),
+the repository/board/workspace/server-authority regression set passes (68
+tests), and web typecheck and production build pass. No catalog, Electrical
+data, provider, Supabase, Production, or remote database configuration
+changed.
+
+
 ## Latest session — keep board controls separate from drag
 
 Board course cards now ignore drag gestures that begin on an interactive
