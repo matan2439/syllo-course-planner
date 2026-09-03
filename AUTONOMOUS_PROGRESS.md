@@ -7902,7 +7902,12 @@ destinations keep their drag and keyboard-add controls. RED reproduced the
 misleading empty add control; GREEN passed the focused regression, all 29 web
 suites (263 tests), root and web typechecks, and the web production build. The
 isolated Preview deployment and browser verification are the next release
-step. Production remains unchanged.
+Preview `https://tau-course-planner-95x6utu06-matanyaron-1633s-projects.vercel.app`
+was browser-verified with the repository open: the board remained a concrete
+720px surface beside the 352px repository rail, 35 cards with known targets
+were draggable, 21 cards without a known target showed no fake add control,
+and there were zero unavailable cards with an add summary. Production remains
+unchanged.
 
 ## Latest session — verify mobile workspace surfaces
 
