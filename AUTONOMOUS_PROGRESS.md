@@ -8049,5 +8049,10 @@ until drop. The target border, feedback label, and motion now match the state;
 drawer entry and repository drag-handle hover/press transitions are also
 explicit and reduced-motion safe. RED reproduced the missing invalid state;
 GREEN passed the focused board suite (17 tests), the repository/workspace
-regression (38 tests), web typecheck, and the web production build. Production
-remains unchanged; a new isolated Preview is the next release step.
+regression (38 tests), web typecheck, and the web production build. The isolated
+Preview is READY at
+https://tau-course-planner-cio7o1uhh-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_FXaJq7Z7VmLRp1oqMWNNYoev6CnE`). Browser verification confirmed
+the board remains visible beside the open repository and that the repository
+contains 35 draggable eligible-course handles and 21 fail-closed courses with
+no authoritative semester destination. Production remains unchanged.
