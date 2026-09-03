@@ -7990,3 +7990,14 @@ accessing a secret or remote database. Production promotion therefore remains
 blocked until an approved isolation and rollback check is available. The
 Python release suite also emitted early DB/fixture errors unrelated to this
 UI slice, so no Production promotion was attempted.
+
+## Latest session — make repository drag state explicit
+
+Repository course cards now announce the active drag in an RTL live region,
+mark the exact source card while it is being dragged, and clear that state on
+release. This makes the existing typed repository-to-semester drop flow
+discoverable and gives immediate feedback without changing authoritative server
+validation or pretending an illegal placement succeeded. RED reproduced the
+missing drag-state announcement; GREEN passed the focused repository suite.
+The next release step is sequential regression verification followed by a new
+isolated Preview deployment and browser check.

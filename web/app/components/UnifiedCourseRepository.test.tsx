@@ -95,6 +95,34 @@ describe('UnifiedCourseRepository', () => {
     })
   })
 
+  test('announces the active drag and clears it when the course card is released', () => {
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '',
+    }
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+      />,
+    )
+
+    const card = screen.getByText('בקרה מודרנית').closest('[draggable="true"]') as HTMLElement
+    fireEvent.dragStart(card, { dataTransfer: transfer })
+
+    expect(screen.getByRole('status')).toHaveTextContent('גוררים את בקרה מודרנית')
+    expect(card).toHaveAttribute('data-dragging', 'true')
+
+    fireEvent.dragEnd(card)
+
+    expect(screen.queryByText(/נגרר/)).not.toBeInTheDocument()
+    expect(card).not.toHaveAttribute('data-dragging', 'true')
+  })
+
   test('does not advertise a draggable source when no authoritative destination is known', () => {
     const repoWithoutOffering: RepositoryVM = {
       totalCourses: 1,

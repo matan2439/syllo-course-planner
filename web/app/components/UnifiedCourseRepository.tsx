@@ -33,9 +33,13 @@ export default function UnifiedCourseRepository({
 }) {
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState<CourseDetailsVM | null>(null)
+  const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null)
   const selected = useMemo(() => new Set(selectedCourseIds), [selectedCourseIds])
   const filtered = useMemo(() => filterRepository(repo, query), [query, repo])
   const status = repositoryStatus(repo, filtered, query)
+  const draggingCourse = draggingCourseId
+    ? repo.categories.flatMap((category) => category.courses).find((course) => course.id === draggingCourseId)
+    : null
 
   const showDetails = (course: RepoCourseVM, category: string) => {
     const view = buildCourseDetails({ ...course, category })
@@ -55,8 +59,14 @@ export default function UnifiedCourseRepository({
           aria-label="חיפוש קורס"
           className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
         />
-        <p aria-live="polite" className="mt-2 text-center text-xs text-[var(--text-muted)]">
-          {status}
+        <p
+          role={draggingCourse ? 'status' : undefined}
+          aria-live="polite"
+          className="mt-2 text-center text-xs text-[var(--text-muted)]"
+        >
+          {draggingCourse
+            ? `גוררים את ${draggingCourse.name} — שחררו בעמודת סמסטר מתאימה`
+            : status}
         </p>
       </div>
 
@@ -80,6 +90,7 @@ export default function UnifiedCourseRepository({
                 <div
                   key={course.id}
                   draggable={draggable}
+                  data-dragging={draggingCourseId === course.id ? 'true' : undefined}
                   className={draggable ? 'planner-drag-source' : undefined}
                   role={draggable ? 'group' : undefined}
                   aria-label={draggable ? `גרור את ${course.name} ללוח הסמסטרים` : undefined}
@@ -87,7 +98,9 @@ export default function UnifiedCourseRepository({
                     if (!draggable) return
                     event.dataTransfer.effectAllowed = 'copy'
                     writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
+                    setDraggingCourseId(course.id)
                   }}
+                  onDragEnd={() => setDraggingCourseId(null)}
                 >
                 <Card className="flex flex-col gap-3 px-3.5 py-3">
                   <div>
