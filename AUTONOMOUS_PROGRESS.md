@@ -10,6 +10,10 @@ The focused board suite passes (21 tests), the server-authority/workspace/
 repository regression set passes (64 tests), web typecheck and production
 build pass. No catalog, Electrical data, provider, Supabase, Production, or
 remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-qn38iigsh-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `a2fba4a`; browser-verified the unified board
+and course repository on the new build).
 
 ## Latest session — make pending course adds cancellable
 
