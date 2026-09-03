@@ -102,6 +102,15 @@ export default function AcademicAgentConversation({
         <p className="mt-1 text-xs text-[var(--text-muted)]">
           אפשר לשאול בעברית. העוזר בודק את הלוח והכללים, אבל רק אישור מפורש שלך מחיל שינוי.
         </p>
+        <div
+          data-testid="academic-agent-board-context"
+          aria-label="הקשר הלוח של העוזר"
+          className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs"
+        >
+          <span className="font-semibold">לוח התוכנית הנוכחי</span>
+          <span className="text-[var(--text-muted)]">• {boardVersion ? 'גרסה שמורה' : 'לפני שמירה אישית'}</span>
+          <span className="text-[var(--text-muted)]">• הצעה לא משנה את הלוח</span>
+        </div>
       </div>
 
       <div

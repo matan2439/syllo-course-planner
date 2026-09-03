@@ -82,6 +82,20 @@ test('renders pending state and the explicit build-alternatives action', async (
   expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
 })
 
+test('makes the authoritative board context and non-mutating boundary visible', () => {
+  render(
+    <AcademicAgentConversation
+      {...requestContext}
+      boardVersion="board_v7"
+      sendConversationFn={jest.fn()}
+    />,
+  )
+
+  expect(screen.getByTestId('academic-agent-board-context')).toHaveTextContent('לוח התוכנית הנוכחי')
+  expect(screen.getByTestId('academic-agent-board-context')).toHaveTextContent('גרסה שמורה')
+  expect(screen.getByTestId('academic-agent-board-context')).toHaveTextContent('הצעה לא משנה את הלוח')
+})
+
 test('shows the typed unavailable state without pretending that an assistant replied', async () => {
   const sendConversation = jest.fn(async () => ({
     outcome: 'assistant_unavailable',

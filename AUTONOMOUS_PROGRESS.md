@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — make the assistant’s board authority visible
+
+The Academic Decision Agent now shows its planning context inside the
+conversation: it is reading the current program board, whether that board has
+a saved version, and that a conversational proposal does not mutate the board.
+This makes the shared-board boundary visible without exposing raw transport
+payloads or weakening the server-authority apply flow. The focused agent,
+journey, workspace, and outcome suites pass (58 tests), web typecheck and
+production build pass. No catalog, Electrical data, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest session — make the dragged course source unmistakable
 
 Movable board cards now expose a transient dragging state, with a clear grab/
