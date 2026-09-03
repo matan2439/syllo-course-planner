@@ -75,15 +75,16 @@ export default function UnifiedCourseRepository({
             {category.courses.map((course) => {
               const onBoard = selected.has(course.id)
               const destinations = allowedDestinations(course, semesterDestinations)
+              const draggable = !onBoard && destinations.length > 0
               return (
                 <div
                   key={course.id}
-                  draggable={!onBoard}
-                  className={!onBoard ? 'planner-drag-source' : undefined}
-                  role={!onBoard ? 'group' : undefined}
-                  aria-label={!onBoard ? `גרור את ${course.name} ללוח הסמסטרים` : undefined}
+                  draggable={draggable}
+                  className={draggable ? 'planner-drag-source' : undefined}
+                  role={draggable ? 'group' : undefined}
+                  aria-label={draggable ? `גרור את ${course.name} ללוח הסמסטרים` : undefined}
                   onDragStart={(event) => {
-                    if (onBoard) return
+                    if (!draggable) return
                     event.dataTransfer.effectAllowed = 'copy'
                     writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
                   }}
@@ -97,7 +98,7 @@ export default function UnifiedCourseRepository({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {!onBoard && (
+                    {draggable && (
                       <span className="self-center text-[11px] text-[var(--text-muted)]">
                         גרור ללוח
                       </span>

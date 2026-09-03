@@ -95,6 +95,30 @@ describe('UnifiedCourseRepository', () => {
     })
   })
 
+  test('does not advertise a draggable source when no authoritative destination is known', () => {
+    const repoWithoutOffering: RepositoryVM = {
+      totalCourses: 1,
+      categories: [{
+        id: 'unknown', title: 'קורסים נוספים', courses: [{
+          id: '0542-4999', name: 'קורס ללא זמינות', weeklyHours: 3,
+          offered: [], difficulty: null, syllabusUrl: null,
+        }],
+      }],
+    }
+
+    render(
+      <UnifiedCourseRepository
+        repo={repoWithoutOffering}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+      />,
+    )
+
+    expect(screen.getByText('קורס ללא זמינות').closest('[draggable="true"]')).toBeNull()
+    expect(screen.getByText('אין סמסטר זמין')).toBeInTheDocument()
+  })
+
   test('opens understandable details from a keyboard-accessible control', () => {
     const onRequestDetails = jest.fn()
     render(

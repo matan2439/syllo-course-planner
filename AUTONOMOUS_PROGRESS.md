@@ -7944,3 +7944,16 @@ root and web typechecks, and the web production build. This keeps drag and
 keyboard add paths aligned with the actual board without weakening server
 validation. A new isolated Preview deployment and browser verification remain
 the next release step.
+
+## Latest session — fail closed for courses without known destinations
+
+Repository cards with no authoritative offered semester were previously
+marked `draggable` even though every semester target correctly rejected the
+empty destination list. Such a card now remains inspectable and explains
+`אין סמסטר זמין`, but does not advertise a drag source or emit a misleading
+payload. RED reproduced the contradictory draggable/no-target state; GREEN
+passed the focused regression, all 29 web suites (263 tests), root and web
+typechecks, and the web production build. This preserves the fail-closed rule
+for incomplete academic facts while keeping valid repository cards draggable.
+A new isolated Preview deployment and browser verification remain the next
+release step.
