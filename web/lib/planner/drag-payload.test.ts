@@ -2,6 +2,7 @@ import {
   BOARD_COURSE_MIME,
   PLAIN_TEXT_MIME,
   REPOSITORY_COURSE_MIME,
+  hasPlannerDragType,
   readPlannerDrag,
   writeBoardDrag,
   writeRepositoryDrag,
@@ -57,6 +58,10 @@ test('repository payload keeps a plain-text fallback for browsers that strip cus
     courseId: '0542-4120',
     allowedSemesterIds: ['year_3_semester_a'],
   })
+})
+
+test('plain-text-only dragover is eligible without treating arbitrary text as a course', () => {
+  expect(hasPlannerDragType({ types: [PLAIN_TEXT_MIME] })).toBe(true)
 })
 
 test.each([

@@ -7881,3 +7881,14 @@ the branch push, READY Preview metadata, and no-legacy-iframe planner load are
 complete. Full Python/root-Jest release coverage, real browser MIME drag
 mutation, mobile acceptance, provider smoke, and Production promotion remain
 open rather than being inferred from unit tests or a synthetic drag harness.
+
+## Latest session — tolerate plain-text-only dragover payloads
+
+Added a focused regression for browsers that expose only the `text/plain`
+fallback during `dragover`. RED reproduced the gap (`hasPlannerDragType` was
+false); GREEN now treats that MIME type as an eligible visual drop protocol
+while keeping `readPlannerDrag` as the fail-closed authority at `drop`, so
+arbitrary text cannot invent a course or bypass server validation. Focused
+payload and board tests pass (24 tests), the full web suite passes (29 suites,
+260 tests), root and web typechecks pass, and the web production build passes.
+Production remains unchanged.

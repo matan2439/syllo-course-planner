@@ -75,11 +75,13 @@ export function readPlannerDrag(dataTransfer: Pick<DataTransfer, 'getData'>): Pl
 
 /**
  * Some browsers expose a drag's MIME types during dragover but hide its data
- * until drop. This lets a target opt into the native drop protocol without
- * guessing the course or weakening the authoritative validation performed on
- * drop.
+ * until drop. Some browsers also expose only the plain-text fallback. This
+ * lets a target opt into the native drop protocol without guessing the course
+ * or weakening the authoritative validation performed on drop.
  */
 export function hasPlannerDragType(dataTransfer: Pick<DataTransfer, 'types'>): boolean {
   const types = Array.from(dataTransfer.types ?? [])
-  return types.includes(REPOSITORY_COURSE_MIME) || types.includes(BOARD_COURSE_MIME)
+  return types.includes(REPOSITORY_COURSE_MIME)
+    || types.includes(BOARD_COURSE_MIME)
+    || types.includes(PLAIN_TEXT_MIME)
 }
