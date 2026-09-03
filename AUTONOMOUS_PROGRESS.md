@@ -15,7 +15,10 @@ model remains a truthful single draft rather than a fabricated comparison.
 Strict RED added a journey test and reproduced the missing draft after a
 conversation proposal. GREEN passes the Agent/Apply/alternatives component
 suites (46/46), the conversation API/wire suites (13/13), and root and web
-TypeScript gates. The isolated Preview is pending for this commit. No provider,
+TypeScript gates. The isolated Preview
+https://tau-course-planner-qo4ix408r-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+was then browser-verified with the board visible beside the repository, one
+repository close control, and 56 draggable course sources. No provider,
 Supabase, Production configuration, catalog source, or remote database was
 changed. The unrelated `tests/test_tau_curriculum_document.py` modification
 and untracked private files remain untouched and unstaged.
