@@ -7977,3 +7977,16 @@ was browser-verified with the repository open: the board remained a concrete
 720px surface beside the 352px repository rail, 35 cards with known targets
 were draggable, 21 cards without a known target were not draggable, and all
 four board semester labels remained present. Production remains unchanged.
+
+## Latest session — inspect Preview isolation before release
+
+Read-only Vercel inspection confirms that the accepted deployment
+`dpl_HrFieR6XzTwfDdVEeNzzwjrRJRd4` is `READY` with target `preview`. The
+project exposes dedicated `SYLLO_PLANNER_*` storage variables only to Preview;
+their secret values were intentionally not read or changed. Because the
+remaining `DATABASE_URL` value is hidden and appears in both Preview and
+Production scopes, database identity cannot be independently proven without
+accessing a secret or remote database. Production promotion therefore remains
+blocked until an approved isolation and rollback check is available. The
+Python release suite also emitted early DB/fixture errors unrelated to this
+UI slice, so no Production promotion was attempted.
