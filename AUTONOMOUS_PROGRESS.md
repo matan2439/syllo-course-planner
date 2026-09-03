@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — show the live semester drop target
+
+Added a fail-closed drag-over guard to semester columns and a visible
+`planner-drop-target-active` state. Only a payload accepted for that semester
+highlights it; invalid, missing, or server-pending payloads do not. The state
+clears on drop/leave and the existing add-vs-move dispatch remains unchanged.
+The focused drag/workspace/repository/board suite passed with 34 tests, plus
+web typecheck and diff check. No catalog, provider, Supabase, Production, or
+remote database configuration changed.
+
 ## Latest session — label draggable repository sources
 
 Added an accessible group label to every unselected repository course that can

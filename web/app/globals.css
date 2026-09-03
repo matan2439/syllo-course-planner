@@ -193,6 +193,11 @@ body {
 .planner-drawer-close:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-drag-source { cursor: grab; }
 .planner-drag-source:active { cursor: grabbing; }
+.planner-drop-target-active {
+  border-color: var(--purple) !important;
+  background: color-mix(in srgb, var(--purple) 8%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--purple) 32%, transparent);
+}
 
 @media (min-width: 1024px) {
   .planner-workbench {

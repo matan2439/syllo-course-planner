@@ -1,4 +1,7 @@
+'use client'
+
 import type { SemesterVM } from '../../lib/board'
+import { useState } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
 import { readPlannerDrag } from '../../lib/planner/drag-payload'
@@ -20,24 +23,33 @@ export default function SemesterColumn({
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
+  const [dragActive, setDragActive] = useState(false)
+  const acceptsPayload = (payload: ReturnType<typeof readPlannerDrag>): payload is NonNullable<ReturnType<typeof readPlannerDrag>> => {
+    if (!payload) return false
+    if (payload.kind === 'repository' && !onAddCourse) return false
+    if (payload.kind === 'board' && !onMoveCourse) return false
+    return payload.allowedSemesterIds === undefined || payload.allowedSemesterIds.includes(semester.id)
+  }
+
   return (
     <section
       aria-label={semester.title}
       onDragOver={(event) => {
-        if (mutationPending) return
+        if (mutationPending) { setDragActive(false); return }
         const payload = readPlannerDrag(event.dataTransfer)
-        if (!payload) return
-        if (payload.kind === 'repository' && !onAddCourse) return
-        if (payload.kind === 'board' && !onMoveCourse) return
-        if (payload.allowedSemesterIds !== undefined && !payload.allowedSemesterIds.includes(semester.id)) return
+        if (!acceptsPayload(payload)) { setDragActive(false); return }
         event.preventDefault()
         event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
+        setDragActive(true)
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragActive(false)
       }}
       onDrop={(event) => {
+        setDragActive(false)
         if (mutationPending) return
         const payload = readPlannerDrag(event.dataTransfer)
-        if (!payload) return
-        if (payload.allowedSemesterIds !== undefined && !payload.allowedSemesterIds.includes(semester.id)) return
+        if (!acceptsPayload(payload)) return
         if (payload.kind === 'repository' && onAddCourse) {
           event.preventDefault()
           onAddCourse(payload.courseId, semester.id)
@@ -46,7 +58,7 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${dragActive ? 'planner-drop-target-active' : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
