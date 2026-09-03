@@ -7955,5 +7955,9 @@ payload. RED reproduced the contradictory draggable/no-target state; GREEN
 passed the focused regression, all 29 web suites (263 tests), root and web
 typechecks, and the web production build. This preserves the fail-closed rule
 for incomplete academic facts while keeping valid repository cards draggable.
-A new isolated Preview deployment and browser verification remain the next
-release step.
+The isolated Preview
+`https://tau-course-planner-qlvacuqih-matanyaron-1633s-projects.vercel.app`
+was browser-verified with the repository open: the board remained a concrete
+720px surface beside the 352px repository rail, 35 cards with known targets
+were draggable, 21 cards without a known target were not draggable, and all
+four board semester labels remained present. Production remains unchanged.
