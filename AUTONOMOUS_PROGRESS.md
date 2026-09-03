@@ -10,6 +10,9 @@ for another degree. The new route tests are stable under the full runner: all
 30 web suites pass (269 tests), typecheck passes, and the production build
 passes. No Electrical catalog data, provider, Supabase, Production, or remote
 database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-96n7wju25-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: latest Preview listed for commit `c37c0ee`).
 
 ## Latest session — preserve truthful illegal-drop feedback during real drags
 
