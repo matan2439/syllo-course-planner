@@ -7861,3 +7861,17 @@ higher-priority correctness finding preempts it again.
   explicit no-exclusions control. The next smallest product slice is to make the
   required academic clarification and its answer control visibly co-located and
   Hebrew, without weakening the fail-closed Apply gate.
+## Latest session — publish the board-and-repository drop fix as Preview
+
+The latest isolated Preview was rebuilt from `8f3f91b` and is READY. The
+browser acceptance at an 885px viewport confirms that opening `מאגר קורסים`
+keeps `לוח סמסטרים` mounted and visible beside it; the board owns a concrete
+semester-table drop surface, while repository course cards expose the native
+`draggable` contract and the visible keyboard fallback (`הוסף לסמסטר`). The
+browser session reported zero errors. Focused UI verification passed 34 tests
+across `NativePlannerBoard`, `UnifiedCourseRepository`, and
+`UnifiedPlannerWorkspace`; root and web typechecks passed; and `web npm run
+build` passed. Playwright's synthetic `dragTo` does not preserve the custom
+browser MIME payload, so successful live mutation is not claimed from that
+harness; the deterministic drop and server-authority tests remain the source
+of truth. Production was not changed.
