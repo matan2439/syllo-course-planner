@@ -8012,12 +8012,15 @@ focused repository suite. Preview deployment is still waiting on explicit
 security approval to upload this repository snapshot to the existing Vercel
 project.
 
-## Latest session — keep one native drag source per repository card
+## Latest session — make the repository drag handle the native source
 
-The dedicated drag affordance remains visible and discoverable, but the
-interactive handle no longer creates a nested second HTML drag source. The
-course card alone owns the typed drag payload and lifecycle, preventing the
-browser from selecting an ambiguous source when the student starts on the
-handle. RED reproduced two nested draggable elements; GREEN passed the focused
-repository suite. Preview deployment remains blocked by the explicit Vercel
-snapshot-upload authorization gate.
+The visible `⠿ גרור ללוח` affordance is now the single native HTML5 drag
+source for an eligible repository course. The surrounding card remains an
+inspectable, labelled course container without competing with its details and
+semester-choice controls. RED reproduced the missing dedicated drag source;
+GREEN passed the focused repository suite (7 tests), the board/workspace
+regression (37 tests), web typecheck, and the production build. The typed
+repository payload and authoritative server validation remain unchanged.
+The next release step is a new isolated Preview deployment and browser check;
+the current Preview still cannot show this commit until the Vercel snapshot
+upload authorization gate is cleared.

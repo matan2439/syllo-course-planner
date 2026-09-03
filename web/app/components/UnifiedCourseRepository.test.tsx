@@ -59,7 +59,7 @@ describe('UnifiedCourseRepository', () => {
 
     expect(screen.getByRole('button', { name: 'בקרה מודרנית כבר נמצא בלוח' })).toBeDisabled()
     expect(screen.getByText('בקרה מודרנית').closest('[draggable="true"]')).toBeNull()
-    expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית').closest('[draggable="true"]'))
+    expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית').closest('[data-drag-card]'))
       .toHaveAttribute('aria-label', 'גרור את מבוא ללמידת מכונה סטטיסטית ללוח הסמסטרים')
     fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם אל שנה ג׳ — סמסטר א׳' }))
     expect(onRequestAdd).toHaveBeenCalledWith('0542-4135', 'year_3_semester_a')
@@ -83,10 +83,12 @@ describe('UnifiedCourseRepository', () => {
       />,
     )
 
-    const card = screen.getByText('בקרה מודרנית').closest('[draggable="true"]') as HTMLElement
+    const card = screen.getByText('בקרה מודרנית').closest('[data-drag-card]') as HTMLElement
+    const handle = card.querySelector('[data-drag-handle]') as HTMLElement
     expect(card).not.toBeNull()
-    expect(card).toHaveClass('planner-drag-source')
-    fireEvent.dragStart(card, { dataTransfer: transfer })
+    expect(card).not.toHaveAttribute('draggable', 'true')
+    expect(handle).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(handle, { dataTransfer: transfer })
 
     expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({
       kind: 'repository',
@@ -111,8 +113,9 @@ describe('UnifiedCourseRepository', () => {
       />,
     )
 
-    const card = screen.getByText('בקרה מודרנית').closest('[draggable="true"]') as HTMLElement
-    fireEvent.dragStart(card, { dataTransfer: transfer })
+    const card = screen.getByText('בקרה מודרנית').closest('[data-drag-card]') as HTMLElement
+    const handle = card.querySelector('[data-drag-handle]') as HTMLElement
+    fireEvent.dragStart(handle, { dataTransfer: transfer })
 
     expect(screen.getByRole('status')).toHaveTextContent('גוררים את בקרה מודרנית')
     expect(card).toHaveAttribute('data-dragging', 'true')
@@ -120,7 +123,7 @@ describe('UnifiedCourseRepository', () => {
     expect(card.querySelectorAll('[draggable="true"]').length + (card.matches('[draggable="true"]') ? 1 : 0))
       .toBe(1)
 
-    fireEvent.dragEnd(card)
+    fireEvent.dragEnd(handle)
 
     expect(screen.queryByText(/נגרר/)).not.toBeInTheDocument()
     expect(card).not.toHaveAttribute('data-dragging', 'true')
