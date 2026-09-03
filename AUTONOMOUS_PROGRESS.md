@@ -1,5 +1,23 @@
 # Autonomous Progress
 
+## Latest session — release gate evidence for the unified planner
+
+The exact pushed head `a0e5df0` passed the local release gate: the full root API
+suite passed with 202 suites and 2,569 tests (one pre-existing skipped test),
+the full web suite passed with 29 suites and 249 tests, both TypeScript checks
+passed, and the Next production build completed. The isolated Preview for this
+head is
+https://tau-course-planner-5hvqqy528-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+and browser acceptance confirmed no legacy iframe, a visible board, closed
+repository and agent triggers, and the repository interaction path exposing 56
+draggable course sources while the board remains mounted. Browser logs showed
+only the known non-blocking Three.js `Clock` deprecation warning and no errors.
+The bounded real-LLM smoke and Production promotion remain intentionally
+deferred; no provider, Supabase, Production configuration, catalog source, or
+remote database was contacted. Electrical remains hidden. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — remove the duplicate assistant surface
 
 When the conversational Academic Agent is enabled, the journey now shows only
