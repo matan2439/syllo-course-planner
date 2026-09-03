@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — fail closed across all program entry surfaces
+
+The read-only `/board` and `/repository` routes now use the same explicit
+program resolver as the canonical planner. An unregistered request, including
+the still-hidden Electrical Engineering id, reaches `notFound()` before board
+data is read, so no surface can silently present Mechanical Engineering facts
+for another degree. The new route tests are stable under the full runner: all
+30 web suites pass (269 tests), typecheck passes, and the production build
+passes. No Electrical catalog data, provider, Supabase, Production, or remote
+database configuration changed.
+
 ## Latest session — preserve truthful illegal-drop feedback during real drags
 
 The repository now shares the active drag intent between the course drawer and

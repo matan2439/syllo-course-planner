@@ -1,6 +1,7 @@
+import { notFound } from 'next/navigation'
 import { adaptBoard } from '../../lib/board'
 import { programSubtitle, readBoardForProgram } from '../../lib/board-data'
-import { getProgram } from '../../lib/programs'
+import { resolveProgram } from '../../lib/programs'
 import ProductShell from '../components/ProductShell'
 import SemesterColumn from '../components/SemesterColumn'
 import { EmptyState } from '../components/ui'
@@ -16,7 +17,8 @@ export default async function BoardPage({
   searchParams: Promise<{ program?: string }>
 }) {
   const { program: programParam } = await searchParams
-  const program = getProgram(programParam)
+  const program = resolveProgram(programParam)
+  if (!program) notFound()
   const raw = await readBoardForProgram(program)
 
   return (
