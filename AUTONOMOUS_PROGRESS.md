@@ -10,6 +10,9 @@ clickable instead of receiving a hit-test from the toolbar behind them. The
 workspace suite passes (15 tests), the course/board/agent regression set passes
 (58 tests), and web typecheck passes. No catalog, Electrical data, provider,
 Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-nwrykg3ym-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `807a745`; browser-verified drawer interaction).
 
 ## Latest session — make completion confirmation truthful
 
