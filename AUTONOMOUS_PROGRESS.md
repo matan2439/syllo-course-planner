@@ -7913,3 +7913,16 @@ panel to `aria-hidden="true"`, restored focus to `פתח מאגר קורסים`,
 semester board and `semester-table` drop surface visible. This is an
 interaction check only; real MIME drag mutation, the full keyboard acceptance,
 provider smoke, and Production promotion remain open.
+
+## Latest session — surface rejected manual drops beside the board
+
+The live Preview drag path was verified to reach the authoritative
+`/api/ai/edit-board` endpoint; a server rejection was returned for an illegal
+course/semester placement. The rejection had previously rendered after the
+long semester board, making a valid fail-closed response look like a broken
+drag. The manual-edit error now renders as an assertive feedback banner before
+the board, so the student immediately sees why the drop was refused while the
+authoritative rules remain unchanged. RED reproduced the missing feedback
+placement; GREEN passed the focused regression, all 29 web suites (261 tests),
+root and web typechecks, and the web production build. A new isolated Preview
+deployment and browser verification remain the next release step.

@@ -335,6 +335,23 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
 })
 
 describe('S5 — a refusal leaves the committed board alone', () => {
+  test('shows a manual drop refusal at the top of the board feedback area', async () => {
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_drop' }),
+      editBoardFn: async (): Promise<ManualBoardEditResult> => ({
+        ok: false, code: 'PLAN_INVALID', messageHe: 'הקורס אינו חוקי בסמסטר שנבחר.',
+      }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('הקורס אינו חוקי בסמסטר שנבחר.')
+    expect(alert).toHaveClass('planner-board-feedback')
+    expect(Boolean(alert.compareDocumentPosition(screen.getByLabelText('התוכנית הנוכחית')) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+  })
+
   test('a typed server refusal is shown and nothing is committed', async () => {
     const server = createServerApplyStub({
       proposalId: PROPOSAL_ID,

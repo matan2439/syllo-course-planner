@@ -849,6 +849,15 @@ export default function NativePlannerJourney({
     <div className="planner-journey grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
       <div className="planner-board-region order-2 flex flex-col gap-4 lg:order-1">
+        {manualEditError && (
+          <p
+            role="alert"
+            aria-live="assertive"
+            className="planner-board-feedback rounded-xl border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-700 dark:text-red-300"
+          >
+            {manualEditError}
+          </p>
+        )}
         {manualAddIntent && (
           <Card className="flex flex-col gap-3 p-4" aria-live="polite">
             <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
@@ -875,7 +884,6 @@ export default function NativePlannerJourney({
             mutationPending={manualEditPhase === 'saving'}
           />
         </section>
-        {manualEditError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{manualEditError}</p>}
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
         {genPhase === 'done' && proposal && (
           <>
