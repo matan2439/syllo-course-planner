@@ -245,6 +245,40 @@ body {
   .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail {
     display: none !important;
   }
+
+  /* Keep the board as a real drop target while a drawer is open. The old
+     mobile rule made the repository a nearly full-screen fixed layer, so the
+     board remained mounted but was visually covered and impossible to drop
+     into. A split, horizontally scrollable workspace preserves both surfaces
+     and lets touch/HTML5 drag travel from the repository to the board. */
+  .planner-workbench[data-layout="drawer-split"] {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: .75rem;
+  }
+  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas {
+    flex: 0 0 min(42rem, calc(100vw - 2rem));
+    width: min(42rem, calc(100vw - 2rem));
+  }
+  .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
+    position: static;
+    flex: 0 0 min(22rem, calc(100vw - 2rem));
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: none;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    display: block !important;
+  }
+  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-agent-region {
+    position: static;
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: none;
+    transform: none;
+  }
 }
 
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */

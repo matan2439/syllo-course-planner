@@ -91,6 +91,7 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.click(repositoryToggle)
     expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
     expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-repository-open', 'true')
+    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-layout', 'drawer-split')
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'false')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
 

@@ -1,5 +1,18 @@
 # Autonomous Progress
 
+## Latest session — preserve the board beside the course drawer
+
+Fixed the responsive workspace regression where opening the course repository
+used a nearly full-screen fixed layer and covered the semester board. Open
+drawers now switch the workbench to a horizontally scrollable split layout on
+narrow screens: the board remains mounted, visible, and a live drop target while
+the repository stays draggable beside it. The focused workspace, repository,
+board, and drag-payload regressions passed (32 tests), and the web TypeScript
+check passed. This slice changes only the planner UI; no provider, catalog,
+Supabase, Production, or remote database configuration was changed. The
+unrelated curriculum test modification and private untracked files remain
+untouched and unstaged.
+
 ## Latest session — release gate evidence for the unified planner
 
 The exact pushed head `a0e5df0` passed the local release gate: the full root API
