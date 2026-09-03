@@ -89,14 +89,42 @@ describe('UnifiedCourseRepository', () => {
     const card = screen.getByText('בקרה מודרנית').closest('[data-drag-card]') as HTMLElement
     const handle = card.querySelector('[data-drag-handle]') as HTMLElement
     expect(card).not.toBeNull()
-    expect(card).not.toHaveAttribute('draggable', 'true')
-    expect(handle).toHaveAttribute('draggable', 'true')
-    expect(card).not.toHaveClass('planner-drag-source')
-    expect(handle).toHaveClass('planner-drag-source')
+    expect(card).toHaveAttribute('draggable', 'true')
+    expect(handle).not.toHaveAttribute('draggable', 'true')
+    expect(card).toHaveClass('planner-drag-source')
+    expect(handle).toHaveClass('planner-drag-handle')
     expect(handle).toHaveAttribute('aria-label', 'גרור את בקרה מודרנית ללוח הסמסטרים')
     expect(handle).not.toHaveAttribute('aria-hidden', 'true')
     fireEvent.dragStart(handle, { dataTransfer: transfer })
 
+    expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({
+      kind: 'repository',
+      courseId: '0542-4241',
+      allowedSemesterIds: ['year_3_semester_a'],
+    })
+  })
+
+  test('makes the full available course card a draggable source', () => {
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '',
+    }
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+      />,
+    )
+
+    const card = screen.getByText('בקרה מודרנית').closest('[data-drag-card]') as HTMLElement
+    expect(card).toHaveAttribute('draggable', 'true')
+    expect(card).toHaveClass('planner-drag-source')
+
+    fireEvent.dragStart(card, { dataTransfer: transfer })
     expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({
       kind: 'repository',
       courseId: '0542-4241',

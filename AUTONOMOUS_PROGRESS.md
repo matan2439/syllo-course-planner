@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — make the whole repository card draggable
+
+Available courses in the unified repository are now full-card drag sources,
+while the explicit “גרור ללוח” cue remains visible and the keyboard-friendly
+details/add controls stay separate. This removes the tiny hit area that made
+manual drag-and-drop feel broken. The focused repository, board, and workspace
+regression suites pass (41 tests), and typecheck passes. No catalog, Electrical
+data, provider, Supabase, Production, or remote database configuration changed.
+
 ## Latest session — show legal and illegal drop targets before hover
 
 The unified board now uses the shared drag intent to preview every semester as
