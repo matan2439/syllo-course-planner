@@ -33,11 +33,11 @@
 - Request includes `program_id`, transcript, current board version, status digest,
   preference digest and anonymous session token.
 
-- [ ] Write schema tests that reject role spoofing, oversized transcripts, raw board replacements and missing UUID session tokens.
-- [ ] Run `npm test -- --runInBand tests/api/conversation_wire.test.ts`; confirm RED because the module is absent.
-- [ ] Implement strict schemas with bounded message count/text length and no client-authored tool result.
-- [ ] Re-run the focused test; expect PASS.
-- [ ] Commit with `git commit -m "feat(agent): add typed conversation contract"`.
+- [x] Write schema tests that reject role spoofing, oversized transcripts, raw board replacements and missing UUID session tokens.
+- [x] Run `npm test -- --runInBand tests/api/conversation_wire.test.ts`; confirm RED because the module is absent.
+- [x] Implement strict schemas with bounded message count/text length and no client-authored tool result.
+- [x] Re-run the focused test; expect PASS.
+- [x] Commit with `git commit -m "feat(agent): add typed conversation contract"`.
 
 ### Task 2: Bounded LLM tool orchestrator
 
@@ -54,11 +54,11 @@
 - Returns user-safe assistant text plus proposal-ready worker result and a
   redacted event summary.
 
-- [ ] Write RED tests proving tool use, invalid tool arguments cannot mutate worker state, and free-form text cannot produce a committed board.
-- [ ] Implement an injected AI-SDK `generateText` loop with the existing tool definitions and a Hebrew grounding system prompt.
-- [ ] Ensure deterministic final validation/repair runs after the LLM loop and provider exceptions return a typed failure with unchanged state.
-- [ ] Run `npm test -- --runInBand tests/api/conversational_agent.test.ts tests/api/planner_tools.test.ts tests/api/planner_worker.test.ts`.
-- [ ] Commit with `git commit -m "feat(agent): orchestrate planner tools through conversation"`.
+- [x] Write RED tests proving tool use, invalid tool arguments cannot mutate worker state, and free-form text cannot produce a committed board.
+- [x] Implement an injected AI-SDK `generateText` loop with the existing tool definitions and a Hebrew grounding system prompt.
+- [x] Ensure deterministic final validation/repair runs after the LLM loop and provider exceptions return a typed failure with unchanged state.
+- [x] Run `npm test -- --runInBand tests/api/conversational_agent.test.ts tests/api/planner_tools.test.ts tests/api/planner_worker.test.ts`.
+- [x] Commit with `git commit -m "feat(agent): orchestrate planner tools through conversation"`.
 
 ### Task 3: Session-authoritative chat endpoint
 
@@ -73,11 +73,11 @@
 - Returns 503 `ASSISTANT_UNAVAILABLE` when `resolveModel()` is null.
 - Persists proposal authority through the existing proposal store; never accepts a client plan as authoritative.
 
-- [ ] Write RED tests for method/schema/session errors, unavailable model, stale board version, successful injected-model response and redacted errors.
-- [ ] Implement the endpoint by composing existing owner, board, context, model and proposal boundaries.
-- [ ] Add only the required route mapping in `vercel.json`.
-- [ ] Run endpoint plus proposal/apply/storage failure suites.
-- [ ] Commit with `git commit -m "feat(agent): expose authoritative conversation endpoint"`.
+- [x] Write RED tests for method/schema/session errors, unavailable model, stale board version, successful injected-model response and redacted errors.
+- [x] Implement the endpoint by composing existing owner, board, context, model and proposal boundaries.
+- [x] Add only the required route mapping in `vercel.json`.
+- [x] Run endpoint plus proposal/apply/storage failure suites.
+- [x] Commit with `git commit -m "feat(agent): expose authoritative conversation endpoint"`.
 
 ### Task 4: Transcript-style Agent panel
 
@@ -92,11 +92,11 @@
 - Panel renders user/assistant turns, pending state, clarification controls,
   grounded tool activity labels and an explicit “בנה חלופות” action.
 
-- [ ] Write RED tests for Hebrew transcript submission, Enter/Shift+Enter, pending/failed/unavailable states, no automatic Generate and hidden raw tool JSON.
-- [ ] Implement the API client and accessible transcript/composer.
-- [ ] Render structured clarification options and the existing typed preference summary as part of the conversation, not as a competing form.
-- [ ] Run component and contract tests.
-- [ ] Commit with `git commit -m "feat(agent): add Hebrew conversational interface"`.
+- [x] Write RED tests for Hebrew transcript submission, Enter/Shift+Enter, pending/failed/unavailable states, no automatic Generate and hidden raw tool JSON.
+- [x] Implement the API client and accessible transcript/composer.
+- [x] Render structured clarification options and the existing typed preference summary as part of the conversation, not as a competing form.
+- [x] Run component and contract tests.
+- [x] Commit with `git commit -m "feat(agent): add Hebrew conversational interface"`.
 
 ### Task 5: One board, proposals and Apply
 
@@ -110,19 +110,18 @@
 - Conversation always receives current committed board/version and typed status/preferences.
 - Returned candidates feed existing `PlanAlternatives`; Apply remains existing server authority.
 
-- [ ] Write RED journey tests proving a manual edit is visible to the next turn, manual edit stales all candidates, selecting a candidate is draft-local, and Apply commits only the server response.
-- [ ] Replace the misleading deterministic-only Agent surface with `AcademicAgentConversation`, while retaining the deterministic elicitation state as structured clarification support.
-- [ ] Show a truthful unavailable state when no runtime model exists.
-- [ ] Run all Agent, alternatives, priority, topic, completion and server-Apply journey suites.
-- [ ] Commit with `git commit -m "feat(agent): unify LLM conversation with durable board"`.
+- [x] Write RED journey tests proving a manual edit is visible to the next turn, manual edit stales all candidates, selecting a candidate is draft-local, and Apply commits only the server response.
+- [x] Replace the misleading deterministic-only Agent surface with `AcademicAgentConversation`, while retaining the deterministic elicitation state as structured clarification support.
+- [x] Show a truthful unavailable state when no runtime model exists.
+- [x] Run all Agent, alternatives, priority, topic, completion and server-Apply journey suites.
+- [x] Commit with `git commit -m "feat(agent): unify LLM conversation with durable board"`.
 
 ### Task 6: Agent verification gate
 
 **Files:**
 - Modify: `AUTONOMOUS_PROGRESS.md`
 
-- [ ] Run all root API tests with injected/fake model drivers only.
-- [ ] Run all web tests, web/root typecheck and production build.
-- [ ] Verify searches show no provider call in test/browser fixtures and no raw tool payload in rendered UI.
-- [ ] Update `AUTONOMOUS_PROGRESS.md` with exact counts and commit `docs: record conversational agent verification`.
-
+- [x] Run all root API tests with injected/fake model drivers only.
+- [x] Run all web tests, web/root typecheck and production build.
+- [x] Verify searches show no provider call in test/browser fixtures and no raw tool payload in rendered UI.
+- [x] Update `AUTONOMOUS_PROGRESS.md` with exact counts and commit `docs: record conversational agent verification`.

@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — reconcile the conversational-agent implementation plan
+
+The conversational-agent plan now records the typed conversation wire,
+bounded deterministic-tool orchestration, server-authoritative endpoint,
+Hebrew transcript UI, one-board proposal/apply behavior and provider-free
+verification as completed. Evidence is current: root conversational/planner
+tests pass in 5 suites with 43 tests; manual-authority tests pass in 4 suites
+with 27 tests; all 29 web suites pass with 259 tests; root typecheck and the
+web production build pass. Release and Production promotion remain open gates.
+
 ## Latest session — allow native drops when drag data is hidden during dragover
 
 The semester drop target now opts into the browser drop protocol from the
