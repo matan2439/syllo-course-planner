@@ -1,5 +1,22 @@
 # Autonomous Progress
 
+## Latest session — fail closed and clarify illegal drag destinations
+
+Dragging now fails closed when the authoritative catalog does not provide an
+offering list: the course is not advertised as movable, and a payload without
+known destinations cannot turn every semester into a legal target. Drop
+feedback exposes an explicit semantic state on the status chip, replays its
+entrance animation when the state changes, keeps illegal feedback readable in
+the purple/dark theme, and uses a border pulse instead of moving the whole
+semester column. The focused board suite passes (25 tests), the repository /
+workspace / server-authority regression set passes (44 tests), and the Next
+production build passes. No catalog, Electrical data, provider, Supabase,
+Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-6ugu7dq67-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `7514318`; Vercel reports the deployment
+`READY`).
+
 ## Latest session — expose the board’s drag affordance
 
 Movable elective cards on the semester board now show a compact `⠿ גרור
