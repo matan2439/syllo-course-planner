@@ -125,6 +125,7 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('גררו קורס מהמאגר אל עמודת סמסטר')
+    expect(screen.getByRole('status')).toHaveTextContent('לחלופין, השתמשו ב״הוסף לסמסטר״')
   })
 
   test('lets each open drawer close from inside its own surface', () => {

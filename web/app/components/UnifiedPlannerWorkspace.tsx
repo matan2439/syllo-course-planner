@@ -214,7 +214,8 @@ export default function UnifiedPlannerWorkspace({
               aria-live="polite"
               className="planner-board-drop-hint"
             >
-              גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח
+              גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין,
+              השתמשו ב״הוסף לסמסטר״.
             </p>
           )}
           <NativePlannerJourney

@@ -1,5 +1,13 @@
 # Autonomous Progress
 
+## Latest session — document the keyboard fallback beside drag guidance
+
+The open-repository board hint now explains both supported paths: drag a course
+to a semester or use the keyboard/touch-friendly “הוסף לסמסטר” action. This
+keeps the planner usable when a device does not provide reliable HTML5 drag
+events. The focused workspace suite passes 12 tests. No catalog, provider,
+Supabase, Production, or remote database configuration changed.
+
 ## Latest session — make the open drawer’s board affordance explicit
 
 When the course repository is open, the board canvas now announces that it is
