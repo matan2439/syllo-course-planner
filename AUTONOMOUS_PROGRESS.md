@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — make completion confirmation truthful
+
+The completed-course control now distinguishes a local academic-status
+confirmation from a durable plan save: the status line says `אושר בטיוטה`, the
+action says `אשר את הסטטוס`, and the helper text directs the student to build a
+plan for the state to reach the planning request. This keeps the Academic
+Decision Agent's completed-course state explainable without implying that a
+plan was already persisted or generated. The focused completion suite passes
+(13 tests), the agent/workspace regression set passes (40 tests), and web
+typecheck passes. No catalog, Electrical data, provider, Supabase, Production,
+or remote database configuration changed.
+
 ## Latest session — make the whole repository card draggable
 
 Available courses in the unified repository are now full-card drag sources,

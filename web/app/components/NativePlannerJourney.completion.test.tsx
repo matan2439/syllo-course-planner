@@ -86,7 +86,7 @@ test('refresh hydrates server-owned completed courses before the next explicit B
         },
         preferences: {},
       })
-  await waitFor(() => expect(screen.getByText(/נשמר: 2 קורסים שהושלמו/)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/אושר בטיוטה: 2 קורסים שהושלמו/)).toBeInTheDocument())
   expect(buildButton).toBeEnabled()
   build()
   await waitFor(() => expect(sent).toHaveLength(1))
@@ -107,6 +107,14 @@ const build = () => fireEvent.click(screen.getAllByRole('button', { name: /בנ�
 const personalStatus = (req: GeneratePlanRequest) => (req.plan_context as any).personal_status
 
 describe('completed-course academic status (flag on)', () => {
+  test('labels confirmation as a local draft until Build persists it', async () => {
+    await setup()
+    openPanel()
+
+    expect(screen.getByRole('button', { name: 'אשר את הסטטוס' })).toBeInTheDocument()
+    expect(screen.getByText(/האישור נשמר בטיוטה המקומית/)).toBeInTheDocument()
+  })
+
   test('flag OFF: no completed-course panel, and the payload keeps the legacy shape', async () => {
     const { sent } = await setup(false)
     expect(screen.queryByText('קורסים שכבר השלמתי')).toBeNull()
@@ -136,7 +144,7 @@ describe('completed-course academic status (flag on)', () => {
     const { sent } = await setup()
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: 'לא השלמתי אף אחד מהקורסים ברשימה' }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     build()
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(personalStatus(sent[0]).completed).toEqual([])
@@ -148,7 +156,7 @@ describe('completed-course academic status (flag on)', () => {
     openPanel()
     const row = screen.getByRole('group', { name: /גרפיקה הנדסית/ })
     fireEvent.click(within(row).getByRole('button', { name: 'השלמתי' }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     build()
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(personalStatus(sent[0]).completed).toEqual([{ course_id: '0509-1510' }])
@@ -160,7 +168,7 @@ describe('completed-course academic status (flag on)', () => {
     openPanel()
     const row = screen.getByRole('group', { name: /גרפיקה הנדסית/ })
     fireEvent.click(within(row).getByRole('button', { name: 'השלמתי' }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     build()
     await waitFor(() => expect(sent).toHaveLength(1))
     expect((sent[0].plan_context as any).total_hours_progress).toEqual({
@@ -183,7 +191,7 @@ describe('completed-course academic status (flag on)', () => {
     openPanel()
     fireEvent.change(screen.getByRole('textbox', { name: /קורסי בחירה שכבר השלמתי/ }), { target: { value: 'בחירה מוקדמת' } })
     fireEvent.click(await screen.findByRole('button', { name: /בחירה מוקדמת/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     build()
     await waitFor(() => expect(sent).toHaveLength(1))
     expect(personalStatus(sent[0]).completed).toEqual([{ course_id: 'ELEC-1' }])
@@ -196,7 +204,7 @@ describe('completed-course academic status (flag on)', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'השלמתי' }))
     fireEvent.click(within(row).getByRole('button', { name: 'לא השלמתי' }))
     fireEvent.click(screen.getByRole('button', { name: 'לא השלמתי אף אחד מהקורסים ברשימה' }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     expect(sent).toHaveLength(0) // only Build generates
   })
 
@@ -204,7 +212,7 @@ describe('completed-course academic status (flag on)', () => {
     const { sent } = await setup()
     openPanel()
     fireEvent.click(screen.getByRole('button', { name: 'לא השלמתי אף אחד מהקורסים ברשימה' }))
-    fireEvent.click(screen.getByRole('button', { name: 'שמור את הסטטוס' }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
     build()
     await waitFor(() => expect(sent).toHaveLength(1))
     await waitFor(() => expect(screen.getByRole('button', { name: 'החל תוכנית' })).toBeEnabled())

@@ -157,7 +157,7 @@ export default function CompletedCoursesPanel({
           without opening the panel. Text, not colour alone. */}
       <p role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
         {value.confirmed
-          ? `נשמר: ${completedIds.length} קורסים שהושלמו · ${credits} ש״ש מוכרות`
+          ? `אושר בטיוטה: ${completedIds.length} קורסים שהושלמו · ${credits} ש״ש מוכרות`
           : 'עדיין לא נענה — בלי זה לא ניתן לאשר תוכנית. סך שעות בלבד אינו מספיק; צריך לדעת אילו קורסים.'}
       </p>
 
@@ -290,9 +290,9 @@ export default function CompletedCoursesPanel({
               disabled={value.confirmed}
               className="rounded-full bg-[var(--purple-strong)] px-5 py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
-              {value.confirmed ? 'נשמר' : 'שמור את הסטטוס'}
+              {value.confirmed ? 'אושר' : 'אשר את הסטטוס'}
             </button>
-            <span className="text-[11px] text-[var(--text-muted)]">שמירה לא מייצרת תוכנית — לחצו “בנה תוכנית”.</span>
+            <span className="text-[11px] text-[var(--text-muted)]">האישור נשמר בטיוטה המקומית ואינו מייצר תוכנית — לחצו “בנה תוכנית”.</span>
           </div>
         </div>
       )}
