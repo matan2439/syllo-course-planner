@@ -10,6 +10,9 @@ drops. Board-originated moves use the same shared intent and remain subject to
 server validation. The focused RED→GREEN regression and all 29 web suites pass
 (267 tests); web typecheck and production build pass. No catalog, Electrical
 data, provider, Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-qyez1pg08-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: 8uQpAGgJWo9Uo7J8B83qbNcp1yM2).
 
 ## Latest session — fail closed for unknown planner programs
 
