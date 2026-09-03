@@ -7,7 +7,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import NativePlannerBoard from './NativePlannerBoard'
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
-import { writeRepositoryDrag } from '../../lib/planner/drag-payload'
+import { REPOSITORY_COURSE_MIME, writeRepositoryDrag } from '../../lib/planner/drag-payload'
 
 const BOARD = {
   metadata: { board_data_version: 'rev-1' },
@@ -119,6 +119,22 @@ test('an allowed repository drag marks the target as soon as it enters the semes
 
   expect(target).toHaveClass('planner-drop-target-active')
   expect(screen.getByRole('status')).toHaveTextContent('אפשר לשחרר כאן')
+})
+
+test('a browser that hides drag data during dragover still activates a known repository drop target', () => {
+  const transfer = {
+    types: [REPOSITORY_COURSE_MIME],
+    getData: () => '',
+    effectAllowed: '',
+    dropEffect: '',
+  }
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onAddCourse={jest.fn()} />)
+
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+
+  expect(target).toHaveClass('planner-drop-target-active')
+  expect(transfer.dropEffect).toBe('copy')
 })
 
 test('a repository drop outside its offering fails closed', () => {

@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — allow native drops when drag data is hidden during dragover
+
+The semester drop target now opts into the browser drop protocol from the
+known planner MIME type even when the browser withholds `getData()` until the
+drop event. Full course identity, offering restrictions and manual mutation
+authority remain fail-closed at drop time. Focused drag/repository/board tests
+pass (23 tests), all 29 web suites pass with 259 tests, root typecheck passes,
+and the web production build passes. No catalog, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest session — keep the semester board visible beside the course drawer
 
 The desktop workbench now keeps a concrete board shell in the grid instead of

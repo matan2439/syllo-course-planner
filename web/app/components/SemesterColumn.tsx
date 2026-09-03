@@ -4,7 +4,7 @@ import type { SemesterVM } from '../../lib/board'
 import { useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
-import { readPlannerDrag } from '../../lib/planner/drag-payload'
+import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag } from '../../lib/planner/drag-payload'
 
 export default function SemesterColumn({
   semester,
@@ -34,6 +34,12 @@ export default function SemesterColumn({
   const updateDragState = (event: DragEvent<HTMLElement>) => {
     if (mutationPending) { setDragActive(false); return false }
     const payload = readPlannerDrag(event.dataTransfer)
+    if (!payload && hasPlannerDragType(event.dataTransfer)) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = event.dataTransfer.types.includes(REPOSITORY_COURSE_MIME) ? 'copy' : 'move'
+      setDragActive(true)
+      return true
+    }
     if (!acceptsPayload(payload)) { setDragActive(false); return false }
     event.preventDefault()
     event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
