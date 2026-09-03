@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — label draggable repository sources
+
+Added an accessible group label to every unselected repository course that can
+be dragged (`גרור את … ללוח הסמסטרים`). Selected/non-draggable courses remain
+unchanged, while the existing visible drag hint and server-validated add path
+remain intact. The focused workspace, repository, board, and drag-payload
+regressions passed with 33 tests; web typecheck and diff check passed. No
+catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — make draggable course sources discoverable
 
 Added a shared `planner-drag-source` affordance to draggable repository and

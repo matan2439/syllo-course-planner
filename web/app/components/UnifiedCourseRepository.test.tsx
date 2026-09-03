@@ -59,6 +59,8 @@ describe('UnifiedCourseRepository', () => {
 
     expect(screen.getByRole('button', { name: 'בקרה מודרנית כבר נמצא בלוח' })).toBeDisabled()
     expect(screen.getByText('בקרה מודרנית').closest('[draggable="true"]')).toBeNull()
+    expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית').closest('[draggable="true"]'))
+      .toHaveAttribute('aria-label', 'גרור את מבוא ללמידת מכונה סטטיסטית ללוח הסמסטרים')
     fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם אל שנה ג׳ — סמסטר א׳' }))
     expect(onRequestAdd).toHaveBeenCalledWith('0542-4135', 'year_3_semester_a')
     expect(onRequestAdd).toHaveBeenCalledTimes(1)

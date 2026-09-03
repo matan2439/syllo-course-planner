@@ -80,6 +80,8 @@ export default function UnifiedCourseRepository({
                   key={course.id}
                   draggable={!onBoard}
                   className={!onBoard ? 'planner-drag-source' : undefined}
+                  role={!onBoard ? 'group' : undefined}
+                  aria-label={!onBoard ? `גרור את ${course.name} ללוח הסמסטרים` : undefined}
                   onDragStart={(event) => {
                     if (onBoard) return
                     event.dataTransfer.effectAllowed = 'copy'
@@ -95,6 +97,11 @@ export default function UnifiedCourseRepository({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {!onBoard && (
+                      <span className="self-center text-[11px] text-[var(--text-muted)]">
+                        גרור ללוח
+                      </span>
+                    )}
                     <button
                       type="button"
                       aria-label={`פרטים על ${course.name}`}
