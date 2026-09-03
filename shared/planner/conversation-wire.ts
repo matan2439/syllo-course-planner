@@ -48,6 +48,45 @@ const alternativesReadyEventSchema = z.object({
   candidate_ids: z.array(z.string().trim().min(1).max(256)).min(1).max(12),
 }).strict()
 
+const conversationAlternativeSchema = z.object({
+  candidate_id: z.string().trim().min(1).max(256),
+  normalized_identity: z.string().trim().min(1).max(4_000),
+  recommended: z.boolean(),
+  applyable: z.boolean(),
+  semesters: z.array(z.object({
+    semester_id: z.string().trim().min(1).max(256),
+    course_ids: z.array(z.string().trim().min(1).max(256)).max(256),
+  }).strict()).max(64),
+  constraint_fingerprint: z.string().trim().min(1).max(256),
+  profile_version: z.number().int().nonnegative(),
+  snapshot_id: z.string().trim().min(1).max(256),
+  non_dominated: z.boolean(),
+  composed_utility: z.number(),
+  objective_scores: z.array(z.object({
+    objective_id: z.string().trim().min(1).max(256),
+    normalized: z.number(),
+  }).strict()).max(32),
+  label_he: boundedText,
+  differences_he: z.array(boundedText).max(32),
+  workload: z.object({
+    peak_hours: z.number().nonnegative(),
+    total_hours: z.number().nonnegative(),
+    active_periods: z.number().int().nonnegative(),
+  }).strict(),
+}).strict()
+
+const conversationProposalSchema = z.object({
+  proposal_id: z.string().trim().min(1).max(256),
+  candidate_ids: z.array(z.string().trim().min(1).max(256)).min(1).max(12),
+  recommended_candidate_id: z.string().trim().min(1).max(256).nullable(),
+  base_board_version: z.string().trim().min(1).max(256).nullable(),
+  profile_version: z.number().int().nonnegative(),
+  academic_status_digest: digest,
+  expires_at: z.number().int().nonnegative(),
+  /** Read-only server materialization for the draft UI; Apply still names ids. */
+  alternatives: z.array(conversationAlternativeSchema).min(1).max(12),
+}).strict()
+
 export const assistantUnavailableEventSchema = z.object({
   type: z.literal('assistant_unavailable'),
   message_he: boundedText,
@@ -66,6 +105,7 @@ const availableResponseSchema = z.object({
   message_he: boundedText,
   events: z.array(conversationEventSchema).max(64),
   proposal_id: z.string().trim().min(1).max(256).optional(),
+  proposal: conversationProposalSchema.optional(),
 }).strict()
 
 const unavailableResponseSchema = z.object({
@@ -82,5 +122,5 @@ export const conversationResponseSchema = z.discriminatedUnion('outcome', [
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 export type ConversationRequest = z.infer<typeof conversationRequestSchema>
 export type ConversationEvent = z.infer<typeof conversationEventSchema>
+export type ConversationProposal = z.infer<typeof conversationProposalSchema>
 export type ConversationResponse = z.infer<typeof conversationResponseSchema>
-

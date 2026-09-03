@@ -215,4 +215,65 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
       preference_digest: 'pref_test',
     }))
   })
+
+  test('a conversation proposal becomes the visible draft instead of only a receipt message', async () => {
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'proposal',
+      message_he: 'מצאתי טיוטה חוקית לבדיקה.',
+      events: [{
+        type: 'alternatives_ready',
+        proposal_id: PROPOSAL_ID,
+        candidate_ids: [SINGLE_CANDIDATE],
+      }],
+      proposal: {
+        proposal_id: PROPOSAL_ID,
+        candidate_ids: [SINGLE_CANDIDATE],
+        recommended_candidate_id: SINGLE_CANDIDATE,
+        base_board_version: null,
+        profile_version: 0,
+        academic_status_digest: 'as_test',
+        expires_at: Date.now() + 3_600_000,
+        alternatives: [{
+          candidate_id: SINGLE_CANDIDATE,
+          normalized_identity: 'conversation-plan',
+          recommended: true,
+          applyable: true,
+          semesters: [
+            { semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] },
+            { semester_id: 'year_3_semester_b', course_ids: [] },
+          ],
+          constraint_fingerprint: 'cf_conversation',
+          profile_version: 0,
+          snapshot_id: 'conversation-snapshot',
+          non_dominated: true,
+          composed_utility: 0,
+          objective_scores: [],
+          label_he: 'הצעת העוזר',
+          differences_he: ['כולל קורס Y'],
+          workload: { peak_hours: 4, total_hours: 4, active_periods: 1 },
+        }],
+      },
+    } as unknown as ConversationResponse))
+
+    render(
+      <NativePlannerJourney
+        {...deps({ useAcademicDecisionAgent: true })}
+        planningContextFn={async () => ({
+          academicStatusDigest: 'as_test',
+          preferenceDigest: 'pref_test',
+          personalStatus: {},
+          preferences: {},
+        })}
+        sendConversationFn={sendConversation}
+      />,
+    )
+    await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'בנה לי טיוטה' } })
+    fireEvent.keyDown(composer, { key: 'Enter' })
+
+    await waitFor(() => expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toBeInTheDocument())
+    expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toHaveTextContent('קורס Y')
+    expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument()
+  })
 })

@@ -1,5 +1,25 @@
 # Autonomous Progress
 
+## Latest session — materialize conversation proposals in the board journey
+
+The Hebrew Academic Agent now returns a typed, read-only server materialization
+of its validated proposal. `NativePlannerJourney` converts that materialization
+into the existing draft view, so a conversational result is visible beside the
+authoritative board and can be applied only by naming the server-held proposal
+and candidate through the existing Apply endpoint. Manual edits still advance
+the journey revision and make the visible draft stale. The endpoint also uses
+the same deterministic candidate machinery to expose up to the validated
+non-dominated alternatives when the current model supports them; a partial
+model remains a truthful single draft rather than a fabricated comparison.
+
+Strict RED added a journey test and reproduced the missing draft after a
+conversation proposal. GREEN passes the Agent/Apply/alternatives component
+suites (46/46), the conversation API/wire suites (13/13), and root and web
+TypeScript gates. The isolated Preview is pending for this commit. No provider,
+Supabase, Production configuration, catalog source, or remote database was
+changed. The unrelated `tests/test_tau_curriculum_document.py` modification
+and untracked private files remain untouched and unstaged.
+
 ## Latest session — connect the Hebrew conversation to the single journey
 
 The real Hebrew Academic Agent panel is now mounted inside the same

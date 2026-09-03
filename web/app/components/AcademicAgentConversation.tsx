@@ -6,7 +6,7 @@ import {
   type ClientDeps,
 } from '../../../shared/planner/api-client'
 import type {
-  ConversationEvent,
+  ConversationProposal,
   ConversationRequest,
   ConversationResponse,
   ConversationTurn,
@@ -52,7 +52,8 @@ export default function AcademicAgentConversation({
   academicStatusDigest: string
   preferenceDigest: string
   sendConversationFn?: SendConversation
-  onProposalReady?: (proposalId: string) => void
+  /** The server-owned, read-only materialization used to show the draft. */
+  onProposalReady?: (proposal: ConversationProposal) => void
 }) {
   const [transcript, setTranscript] = useState<ConversationTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -82,10 +83,7 @@ export default function AcademicAgentConversation({
       setLastResponse(response)
       if (response.outcome !== 'assistant_unavailable') {
         setTranscript((current) => [...current, { role: 'assistant', text: response.message_he }])
-        const ready = response.events.find(
-          (event): event is Extract<ConversationEvent, { type: 'alternatives_ready' }> => event.type === 'alternatives_ready',
-        )
-        if (ready) onProposalReady?.(ready.proposal_id)
+        if (response.proposal) onProposalReady?.(response.proposal)
       }
     } catch {
       setError('שליחת ההודעה נכשלה. הלוח הנוכחי לא השתנה.')

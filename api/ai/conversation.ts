@@ -1,11 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { conversationRequestSchema, type ConversationTurn } from '../../shared/planner/conversation-wire';
+import {
+  conversationRequestSchema,
+  type ConversationProposal,
+  type ConversationTurn,
+} from '../../shared/planner/conversation-wire';
 import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
 import { buildModel } from './generate-plan';
 import { planContextToState } from './planner_model';
 import { PlannerWorker } from './planner_worker';
 import { runConversationalAgent, type ConversationalAgentResult } from './conversational_agent';
-import { PROPOSAL_TTL_MS, newProposalId, type ProposalRecord, type ProposalStore } from './proposal_store';
+import { generateCandidateSet, selectCandidate } from './candidate_set';
+import { buildPlanAlternatives, constraintFingerprint as planConstraintFingerprint, type PlanAlternative } from './plan_alternatives';
+import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord, type ProposalStore } from './proposal_store';
 import {
   getAcademicContextStore,
   getBoardRepository,
@@ -138,10 +144,105 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       }
 
       const proposalId = newProposalId();
-      const candidateId = `${proposalId}_candidate_1`;
-      const semesters = Object.entries(agent.draftPlan.semesters)
-        .filter(([, courseIds]) => courseIds.length > 0)
+      const profileVersion = Number(preferences.profile_version ?? preferences.version ?? 0);
+      const snapshotId = `conversation_${currentBoardVersion ?? 'empty'}`;
+      const conversationConstraintFingerprint = `conversation_${parsed.data.program_id}`;
+      const fallbackSemesters = Object.entries(agent.draftPlan.semesters)
         .map(([semesterId, courseIds]) => ({ semesterId, courseIds: [...courseIds] }));
+      const hoursFor = (courseId: string) => model.profiles.get(courseId)?.hours ?? 0;
+      const workloadFor = (semesters: Array<{ semesterId: string; courseIds: string[] }>) => {
+        const loads = semesters.map((semester) =>
+          [...new Set(semester.courseIds)].reduce((sum, courseId) => sum + hoursFor(courseId), 0));
+        return {
+          peak_hours: loads.length ? Math.max(...loads) : 0,
+          total_hours: loads.reduce((sum, value) => sum + value, 0),
+          active_periods: loads.filter((value) => value > 0).length,
+        };
+      };
+      const fallbackAlternative: ConversationProposal['alternatives'][number] = {
+        candidate_id: `${proposalId}_candidate_1`,
+        normalized_identity: JSON.stringify(fallbackSemesters),
+        recommended: true,
+        applyable: true,
+        semesters: fallbackSemesters.map((semester) => ({
+          semester_id: semester.semesterId,
+          course_ids: [...semester.courseIds],
+        })),
+        constraint_fingerprint: conversationConstraintFingerprint,
+        profile_version: profileVersion,
+        snapshot_id: snapshotId,
+        non_dominated: true,
+        composed_utility: 0,
+        objective_scores: [],
+        label_he: 'הצעת העוזר',
+        differences_he: [],
+        workload: workloadFor(fallbackSemesters),
+      };
+      let wireAlternatives: ConversationProposal['alternatives'] = [fallbackAlternative];
+      try {
+        const pinnedHome: Record<string, string> = {};
+        for (const courseId of model.pinnedCourseIds) {
+          const semester = Object.entries(agent.draftPlan.semesters)
+            .find(([, courseIds]) => courseIds.includes(courseId));
+          if (semester) pinnedHome[courseId] = semester[0];
+        }
+        const candidateSet = generateCandidateSet({
+          buildModel: () => model,
+          policy: 'neutral',
+          initialState: agent.draftPlan,
+          profileVersion,
+          pinnedHome,
+        });
+        const selected = selectCandidate(candidateSet);
+        if (selected) {
+          const exposed = buildPlanAlternatives({
+            candidates: candidateSet.candidates,
+            selectedId: selected.id,
+            model,
+            constraintFingerprint: planConstraintFingerprint({
+              model,
+              completedCourseIds: [...model.completedCourseIds],
+              profileVersion,
+            }),
+            snapshotId,
+            profileVersion,
+            objectiveIds: [],
+          });
+          if (exposed.length) {
+            wireAlternatives = exposed.map((alternative: PlanAlternative) => ({
+              candidate_id: alternative.candidateId,
+              normalized_identity: alternative.normalizedIdentity,
+              recommended: alternative.recommended,
+              applyable: alternative.applyable,
+              semesters: alternative.semesters.map((semester) => ({
+                semester_id: semester.semesterId,
+                course_ids: [...semester.courseIds],
+              })),
+              constraint_fingerprint: alternative.constraintFingerprint,
+              profile_version: alternative.profileVersion,
+              snapshot_id: alternative.snapshotId,
+              non_dominated: alternative.nonDominated,
+              composed_utility: alternative.composedUtility,
+              objective_scores: alternative.objectiveScores.map((score) => ({
+                objective_id: score.objectiveId,
+                normalized: score.normalized,
+              })),
+              label_he: alternative.labelHe,
+              differences_he: [...alternative.differencesHe],
+              workload: {
+                peak_hours: alternative.workload.peakHours,
+                total_hours: alternative.workload.totalHours,
+                active_periods: alternative.workload.activePeriods,
+              },
+            }));
+          }
+        }
+      } catch {
+        // Keep the LLM's validated draft usable as one server-owned proposal
+        // when an injected or partial model cannot produce comparisons.
+      }
+      const recommended = wireAlternatives.find((alternative) => alternative.recommended) ?? wireAlternatives[0];
+      const candidateId = recommended.candidate_id;
       const now = Date.now();
       const record: ProposalRecord = {
         proposalId,
@@ -150,28 +251,47 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         createdAt: now,
         expiresAt: now + PROPOSAL_TTL_MS,
         baseBoardVersion: currentBoardVersion,
-        profileVersion: Number(preferences.profile_version ?? preferences.version ?? 0),
+        profileVersion,
         academicStatusDigest: parsed.data.academic_status_digest,
-        constraintFingerprint: `conversation_${parsed.data.program_id}`,
-        snapshotId: `conversation_${currentBoardVersion ?? 'empty'}`,
-        candidates: [{
-          candidateId,
-          semesters,
-          normalizedIdentity: JSON.stringify(semesters),
+        constraintFingerprint: recommended.constraint_fingerprint,
+        snapshotId,
+        candidates: wireAlternatives.map((alternative) => ({
+          candidateId: alternative.candidate_id,
+          semesters: alternative.semesters.map((semester) => ({
+            semesterId: semester.semester_id,
+            courseIds: [...semester.course_ids],
+          })),
+          normalizedIdentity: alternative.normalized_identity,
           valid: true,
-          applyable: true,
-          recommended: true,
-        }],
+          applyable: alternative.applyable,
+          recommended: alternative.recommended,
+        })),
         recommendedCandidateId: candidateId,
         outcome: 'proposal',
         applyEligible: true,
       };
       await putProposal(record);
+      const receipt = toReceipt(record);
       const events = [
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
       ];
-      res.status(200).json({ outcome: 'proposal', message_he: messageHe, events, proposal_id: proposalId });
+      res.status(200).json({
+        outcome: 'proposal',
+        message_he: messageHe,
+        events,
+        proposal_id: proposalId,
+        proposal: {
+          proposal_id: receipt.proposalId,
+          candidate_ids: receipt.candidateIds,
+          recommended_candidate_id: receipt.recommendedCandidateId,
+          base_board_version: receipt.baseBoardVersion,
+          profile_version: receipt.profileVersion,
+          academic_status_digest: receipt.academicStatusDigest,
+          expires_at: receipt.expiresAt,
+          alternatives: wireAlternatives,
+        },
+      });
     } catch (error) {
       const code = plannerStorageErrorCode(error);
       if (code) {

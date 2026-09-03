@@ -20,6 +20,31 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hi
       { type: 'alternatives_ready', proposal_id: 'prop_1', candidate_ids: ['cand_1'] },
     ],
     proposal_id: 'prop_1',
+    proposal: {
+      proposal_id: 'prop_1',
+      candidate_ids: ['cand_1'],
+      recommended_candidate_id: 'cand_1',
+      base_board_version: null,
+      profile_version: 0,
+      academic_status_digest: 'as_1',
+      expires_at: Date.now() + 3_600_000,
+      alternatives: [{
+        candidate_id: 'cand_1',
+        normalized_identity: 'plan_1',
+        recommended: true,
+        applyable: true,
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['COURSE-1'] }],
+        constraint_fingerprint: 'cf_1',
+        profile_version: 0,
+        snapshot_id: 'snapshot_1',
+        non_dominated: true,
+        composed_utility: 0,
+        objective_scores: [],
+        label_he: 'הצעת העוזר',
+        differences_he: [],
+        workload: { peak_hours: 3, total_hours: 3, active_periods: 1 },
+      }],
+    },
   } satisfies ConversationResponse))
   const onProposalReady = jest.fn()
   render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} onProposalReady={onProposalReady} />)
@@ -39,7 +64,7 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hi
   expect(screen.getByText('מצאתי חלופה חוקית.')).toBeInTheDocument()
   expect(screen.getByText('דירוג חלופות — הושלם')).toBeInTheDocument()
   expect(screen.queryByText('rank_candidates')).not.toBeInTheDocument()
-  expect(onProposalReady).toHaveBeenCalledWith('prop_1')
+  expect(onProposalReady).toHaveBeenCalledWith(expect.objectContaining({ proposal_id: 'prop_1' }))
 })
 
 test('renders pending state and the explicit build-alternatives action', async () => {
