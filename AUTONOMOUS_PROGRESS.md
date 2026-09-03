@@ -9,6 +9,10 @@ or changing the board's transient drag state. The focused repository suite
 passes (9 tests), the board/workspace/server-authority regression set passes
 (66 tests), and web typecheck and production build pass. No catalog, Electrical
 data, provider, Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-9ljttsrz5-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `7da1da1`; browser-verified the board remains
+visible when the repository drawer is open and the close control is present).
 
 
 ## Latest session — make the assistant’s board authority visible
