@@ -7893,6 +7893,17 @@ payload and board tests pass (24 tests), the full web suite passes (29 suites,
 260 tests), root and web typechecks pass, and the web production build passes.
 Production remains unchanged.
 
+## Latest session — remove empty repository add control
+
+Cards without an authoritative destination no longer expose an interactive
+`הוסף לסמסטר…` summary that cannot actually add anything. They remain
+inspectable and show `אין סמסטר זמין` directly, while cards with known
+destinations keep their drag and keyboard-add controls. RED reproduced the
+misleading empty add control; GREEN passed the focused regression, all 29 web
+suites (263 tests), root and web typechecks, and the web production build. The
+isolated Preview deployment and browser verification are the next release
+step. Production remains unchanged.
+
 ## Latest session — verify mobile workspace surfaces
 
 The latest Preview was checked at 390×844. Board view kept the semester list

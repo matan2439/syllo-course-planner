@@ -117,6 +117,7 @@ describe('UnifiedCourseRepository', () => {
 
     expect(screen.getByText('קורס ללא זמינות').closest('[draggable="true"]')).toBeNull()
     expect(screen.getByText('אין סמסטר זמין')).toBeInTheDocument()
+    expect(screen.queryByText('הוסף לסמסטר…')).toBeNull()
   })
 
   test('opens understandable details from a keyboard-accessible control', () => {

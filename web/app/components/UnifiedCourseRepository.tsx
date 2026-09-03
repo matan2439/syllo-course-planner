@@ -120,7 +120,7 @@ export default function UnifiedCourseRepository({
                       >
                         כבר בלוח
                       </button>
-                    ) : (
+                    ) : destinations.length > 0 ? (
                       <details className="relative">
                         <summary className="cursor-pointer list-none rounded-full bg-[var(--purple-strong)] px-3 py-1.5 text-xs font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]">
                           הוסף לסמסטר…
@@ -137,11 +137,12 @@ export default function UnifiedCourseRepository({
                               {destination.label}
                             </button>
                           ))}
-                          {destinations.length === 0 && (
-                            <span className="px-2 py-1 text-xs text-[var(--text-muted)]">אין סמסטר זמין</span>
-                          )}
                         </div>
                       </details>
+                    ) : (
+                      <span className="self-center px-2 py-1 text-xs text-[var(--text-muted)]">
+                        אין סמסטר זמין
+                      </span>
                     )}
                   </div>
                 </Card>
