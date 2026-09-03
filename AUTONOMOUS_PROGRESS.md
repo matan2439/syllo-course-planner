@@ -8,6 +8,9 @@ details/add controls stay separate. This removes the tiny hit area that made
 manual drag-and-drop feel broken. The focused repository, board, and workspace
 regression suites pass (41 tests), and typecheck passes. No catalog, Electrical
 data, provider, Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-eyrh74kij-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `2e9e282`).
 
 ## Latest session — show legal and illegal drop targets before hover
 
