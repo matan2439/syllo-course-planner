@@ -889,7 +889,7 @@ export default function NativePlannerJourney({
             × <span>סגור עוזר</span>
           </button>
         )}
-        <Card className="flex flex-col gap-3 p-4">
+        {!useAcademicDecisionAgent && <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-bold tracking-tight">עוזר התכנון</h2>
           <div aria-label="שיחה" className="flex max-h-56 flex-col gap-2 overflow-y-auto">
             {messages.length === 0 ? (
@@ -917,7 +917,7 @@ export default function NativePlannerJourney({
               שלח
             </button>
           </div>
-        </Card>
+        </Card>}
 
         {useAcademicDecisionAgent && (
           <div id="completed-courses-control">
@@ -998,6 +998,12 @@ export default function NativePlannerJourney({
             onProposalReady={acceptConversationProposal}
           />
         )}
+
+        {useAcademicDecisionAgent && messages.filter((message) => message.role === 'system').slice(-1).map((message) => (
+          <p key={message.text} role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
+            {message.text}
+          </p>
+        ))}
 
         {useAcademicDecisionAgent && academicContextPhase === 'loading' && (
           <p role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">

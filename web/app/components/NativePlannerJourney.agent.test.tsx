@@ -83,11 +83,14 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
   test('flag OFF: no conversation is mounted (existing journey unchanged)', async () => {
     await renderReady({ useAcademicDecisionAgent: false })
     expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
+    expect(screen.getByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeInTheDocument()
   })
 
   test('flag ON: the real conversation is mounted (one question at a time)', async () => {
     await renderReady({ useAcademicDecisionAgent: true })
     expect(screen.getByText(/מה חשוב לך יותר כרגע/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('שיחה')).toBeNull()
+    expect(screen.queryByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeNull()
   })
 
   test('answering a conversation choice does NOT Generate', async () => {

@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## Latest session — remove the duplicate assistant surface
+
+When the conversational Academic Agent is enabled, the journey now shows only
+the real Hebrew chat surface and the structured preference elicitation. The old
+local-only composer is kept for the legacy path, while server-confirmed manual
+edit notices remain visible as accessible live status text beside the new chat.
+This prevents two competing message inputs from appearing in the same planner.
+
+Strict RED added a flag-on regression assertion and reproduced the duplicate
+`שיחה` surface. GREEN passes the Agent/Apply/alternatives component suites
+(46/46) and root and web TypeScript gates. The isolated Preview is pending for
+this commit. No provider, Supabase, Production configuration, catalog source,
+or remote database was changed. The unrelated
+`tests/test_tau_curriculum_document.py` modification and untracked private
+files remain untouched and unstaged.
+
 ## Latest session — materialize conversation proposals in the board journey
 
 The Hebrew Academic Agent now returns a typed, read-only server materialization
