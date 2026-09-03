@@ -23,6 +23,7 @@ import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
+import type { PreferenceProfile } from './preference_model';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
@@ -30,7 +31,7 @@ type ConversationEndpointDeps = {
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
   loadProgramBoard?: (programId: string) => unknown | null;
   runAgent?: (
-    input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker },
+    input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker; preferenceProfile?: PreferenceProfile },
     deps: { model: ModelConfig['model'] },
   ) => Promise<ConversationalAgentResult>;
   putProposal?: ProposalStore['put'];
@@ -131,7 +132,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         {
           transcript: parsed.data.transcript,
           createWorker,
-          preferenceProfile: parsed.data.preference_profile,
+          // The HTTP schema has already validated this exact shape. Keep the
+          // domain boundary explicit because the remote Zod version infers
+          // `z.any()` object properties more narrowly than the local build.
+          preferenceProfile: parsed.data.preference_profile as PreferenceProfile | undefined,
         },
         { model: modelConfig.model },
       );
