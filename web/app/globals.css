@@ -252,32 +252,50 @@ body {
      into. A split, horizontally scrollable workspace preserves both surfaces
      and lets touch/HTML5 drag travel from the repository to the board. */
   .planner-workbench[data-layout="drawer-split"] {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
     align-items: flex-start;
     gap: 1rem;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
     padding-bottom: .75rem;
+    direction: ltr;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-board-canvas {
-    flex: 0 0 min(42rem, calc(100vw - 2rem));
-    width: min(42rem, calc(100vw - 2rem));
+    width: 100%;
+    min-width: 0;
+    direction: rtl;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
     position: static;
-    flex: 0 0 min(22rem, calc(100vw - 2rem));
+    min-width: 0;
     width: min(22rem, calc(100vw - 2rem));
     max-height: none;
     transform: none;
     opacity: 1;
     pointer-events: auto;
     display: block !important;
+    direction: rtl;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-agent-region {
     position: static;
     width: min(22rem, calc(100vw - 2rem));
     max-height: none;
     transform: none;
+  }
+}
+
+@media (max-width: 575px) {
+  /* On very narrow phones a usable semester board needs its own width. Keep
+     both surfaces available in one horizontal workbench rather than shrinking
+     the drop target to an unusable sliver. */
+  .planner-workbench[data-layout="drawer-split"] {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas,
+  .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
+    flex: 0 0 min(42rem, calc(100vw - 2rem));
+    width: min(42rem, calc(100vw - 2rem));
   }
 }
 

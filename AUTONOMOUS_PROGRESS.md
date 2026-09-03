@@ -4,9 +4,11 @@
 
 Fixed the responsive workspace regression where opening the course repository
 used a nearly full-screen fixed layer and covered the semester board. Open
-drawers now switch the workbench to a horizontally scrollable split layout on
-narrow screens: the board remains mounted, visible, and a live drop target while
-the repository stays draggable beside it. The focused workspace, repository,
+drawers now switch the workbench to a split layout on narrow screens: at
+tablet/mobile widths the board remains visible beside the repository, while on
+very narrow phones both surfaces retain a usable width in a horizontal
+workbench. The board remains mounted and a live drop target while the
+repository stays draggable beside it. The focused workspace, repository,
 board, and drag-payload regressions passed (32 tests), and the web TypeScript
 check passed. This slice changes only the planner UI; no provider, catalog,
 Supabase, Production, or remote database configuration was changed. The
