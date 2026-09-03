@@ -4,7 +4,7 @@ import type { SemesterVM } from '../../lib/board'
 import { useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
-import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag } from '../../lib/planner/drag-payload'
+import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 export default function SemesterColumn({
   semester,
@@ -14,6 +14,8 @@ export default function SemesterColumn({
   onMoveCourse,
   moveDestinations,
   mutationPending,
+  activeDrag,
+  onDragStateChange,
 }: {
   semester: SemesterVM
   index: number
@@ -22,6 +24,8 @@ export default function SemesterColumn({
   onMoveCourse?: (courseId: string, semesterId: string) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
+  activeDrag?: PlannerDragPayload | null
+  onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
   const acceptsPayload = (payload: ReturnType<typeof readPlannerDrag>): payload is NonNullable<ReturnType<typeof readPlannerDrag>> => {
@@ -33,7 +37,7 @@ export default function SemesterColumn({
 
   const updateDragState = (event: DragEvent<HTMLElement>) => {
     if (mutationPending) { setDragState(null); return false }
-    const payload = readPlannerDrag(event.dataTransfer)
+    const payload = readPlannerDrag(event.dataTransfer) ?? activeDrag ?? null
     if (!payload && hasPlannerDragType(event.dataTransfer)) {
       event.preventDefault()
       event.dataTransfer.dropEffect = event.dataTransfer.types.includes(REPOSITORY_COURSE_MIME) ? 'copy' : 'move'
@@ -63,7 +67,7 @@ export default function SemesterColumn({
       onDrop={(event) => {
         setDragState(null)
         if (mutationPending) return
-        const payload = readPlannerDrag(event.dataTransfer)
+        const payload = readPlannerDrag(event.dataTransfer) ?? activeDrag ?? null
         if (!acceptsPayload(payload)) return
         if (payload.kind === 'repository' && onAddCourse) {
           event.preventDefault()
@@ -108,6 +112,7 @@ export default function SemesterColumn({
         semester.courses.map((c) => <CourseCard
           key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
+          onDragStateChange={onDragStateChange}
         />)
       )}
     </section>

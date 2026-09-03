@@ -47,6 +47,7 @@ import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import { Badge, Card, EmptyState } from './ui'
+import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 /** Hebrew labels for the non-'proposal' structured agent outcomes (opt-in path). */
 const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
@@ -198,6 +199,8 @@ export default function NativePlannerJourney({
   onCloseAgent,
   agentCloseRef,
   agentOpen,
+  activeDrag,
+  onDragStateChange,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -218,6 +221,8 @@ export default function NativePlannerJourney({
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
   agentOpen?: boolean
+  activeDrag?: PlannerDragPayload | null
+  onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -884,6 +889,8 @@ export default function NativePlannerJourney({
             onAddCourse={(courseId, semesterId) => commitManualAdd(semesterId, courseId)}
             onMoveCourse={commitManualMove}
             mutationPending={manualEditPhase === 'saving'}
+            activeDrag={activeDrag}
+            onDragStateChange={onDragStateChange}
           />
         </section>
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}

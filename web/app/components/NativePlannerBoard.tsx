@@ -1,20 +1,22 @@
 import SemesterColumn from './SemesterColumn'
 import { EmptyState } from './ui'
 import type { BoardVM } from '../../lib/board'
+import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 /**
- * Read-only native semester board (Slice 1). Purely presentational: it accepts a
- * BoardVM (produced from the canonical shared/planner path via boardModelToVM)
- * and reuses the existing read-only SemesterColumn/CourseCard. No data fetching,
- * no mutation, no draft/apply — those arrive in later slices. Not wired to any
- * route or navigation yet.
+ * Native semester board for the canonical planner. It renders the shared
+ * board view model and delegates every manual mutation to the journey's
+ * server-authority callbacks. The shared drag intent keeps feedback truthful
+ * even when a browser hides DataTransfer contents during dragover.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, onDragStateChange }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
   mutationPending?: boolean
+  activeDrag?: PlannerDragPayload | null
+  onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   if (board.semesters.length === 0) {
     return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
@@ -34,6 +36,8 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
               .filter((destination) => destination.id !== s.id)
               .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
             mutationPending={mutationPending}
+            activeDrag={activeDrag}
+            onDragStateChange={onDragStateChange}
           />
         </div>
       ))}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository, { type SemesterDestination } from './UnifiedCourseRepository'
+import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 type WorkspaceView = 'board' | 'repository' | 'agent'
 
@@ -38,6 +39,7 @@ export default function UnifiedPlannerWorkspace({
   const [agentOpen, setAgentOpen] = useState(false)
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
+  const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
   const agentToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -240,6 +242,8 @@ export default function UnifiedPlannerWorkspace({
             onManualAddSettled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
             agentOpen={agentOpen}
+            activeDrag={activeDrag}
+            onDragStateChange={setActiveDrag}
           />
         </div>
         <aside
@@ -264,6 +268,7 @@ export default function UnifiedPlannerWorkspace({
             selectedCourseIds={committedCourseIds}
             semesterDestinations={semesterDestinations}
             onRequestAdd={requestAdd}
+            onDragStateChange={setActiveDrag}
           />
         </aside>
       </div>

@@ -6,7 +6,7 @@ import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-detai
 import CourseDetailsPanel from './CourseDetailsPanel'
 import { filterRepository, repositoryStatus } from './RepositoryExplorer'
 import { Badge, Card, EmptyState } from './ui'
-import { writeRepositoryDrag } from '../../lib/planner/drag-payload'
+import { writeRepositoryDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 export type SemesterDestination = { id: string; label: string }
 
@@ -24,12 +24,14 @@ export default function UnifiedCourseRepository({
   semesterDestinations = [],
   onRequestAdd,
   onRequestDetails,
+  onDragStateChange,
 }: {
   repo: RepositoryVM
   selectedCourseIds: readonly string[]
   semesterDestinations?: readonly SemesterDestination[]
   onRequestAdd: (courseId: string, semesterId?: string) => void
   onRequestDetails?: (course: CourseDetailsVM) => void
+  onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState<CourseDetailsVM | null>(null)
@@ -95,9 +97,13 @@ export default function UnifiedCourseRepository({
                     if (!draggable) return
                     event.dataTransfer.effectAllowed = 'copy'
                     writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
+                    onDragStateChange?.({ kind: 'repository', courseId: course.id, allowedSemesterIds: destinations.map(({ id }) => id) })
                     setDraggingCourseId(course.id)
                   }}
-                  onDragEnd={() => setDraggingCourseId(null)}
+                  onDragEnd={() => {
+                    onDragStateChange?.(null)
+                    setDraggingCourseId(null)
+                  }}
                 >
                 <Card className="flex flex-col gap-3 px-3.5 py-3">
                   <div>
@@ -117,9 +123,13 @@ export default function UnifiedCourseRepository({
                         onDragStart={(event) => {
                           event.dataTransfer.effectAllowed = 'copy'
                           writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
+                          onDragStateChange?.({ kind: 'repository', courseId: course.id, allowedSemesterIds: destinations.map(({ id }) => id) })
                           setDraggingCourseId(course.id)
                         }}
-                        onDragEnd={() => setDraggingCourseId(null)}
+                        onDragEnd={() => {
+                          onDragStateChange?.(null)
+                          setDraggingCourseId(null)
+                        }}
                         className="planner-drag-handle planner-drag-source self-center text-[11px] text-[var(--text-muted)]"
                       >
                         ⠿ גרור ללוח

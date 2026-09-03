@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — preserve truthful illegal-drop feedback during real drags
+
+The repository now shares the active drag intent between the course drawer and
+the central semester table. When a browser hides `DataTransfer` contents during
+`dragover`, the board can still distinguish an allowed semester from an
+ineligible one and keeps the visible message `לא ניתן לשחרר כאן` for illegal
+drops. Board-originated moves use the same shared intent and remain subject to
+server validation. The focused RED→GREEN regression and all 29 web suites pass
+(267 tests); web typecheck and production build pass. No catalog, Electrical
+data, provider, Supabase, Production, or remote database configuration changed.
+
 ## Latest session — fail closed for unknown planner programs
 
 The canonical `/planner` route now resolves an explicitly requested program

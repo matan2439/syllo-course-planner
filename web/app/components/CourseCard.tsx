@@ -1,6 +1,6 @@
 import type { CourseVM } from '../../lib/board'
 import { Badge, Card } from './ui'
-import { writeBoardDrag } from '../../lib/planner/drag-payload'
+import { writeBoardDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 const TYPE_LABELS: Record<string, string> = {
   mandatory: 'חובה',
@@ -14,12 +14,13 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
-export default function CourseCard({ course, onRemove, onMove, moveDestinations, mutationPending = false }: {
+export default function CourseCard({ course, onRemove, onMove, moveDestinations, mutationPending = false, onDragStateChange }: {
   course: CourseVM
   onRemove?: (courseId: string) => void
   onMove?: (courseId: string, semesterId: string) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
+  onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const availableMoveDestinations = course.offeredSemesters === undefined
     ? moveDestinations
@@ -35,7 +36,9 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         if (!movable) return
         event.dataTransfer.effectAllowed = 'move'
         writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)
+        onDragStateChange?.({ kind: 'board', courseId: course.id, allowedSemesterIds: course.offeredSemesters })
       }}
+      onDragEnd={() => onDragStateChange?.(null)}
     >
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
       <div className="flex items-start justify-between gap-2">

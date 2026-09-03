@@ -3,6 +3,7 @@
  * the canonical path: board payload → shared/planner adapter → BoardModel →
  * boardModelToVM → NativePlannerBoard. No hand-built BoardVM data fixtures.
  */
+import { createElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import NativePlannerBoard from './NativePlannerBoard'
 import { boardModelToVM } from '../../lib/planner/board-vm'
@@ -153,6 +154,34 @@ test('a browser that hides drag data during dragover still activates a known rep
   expect(target).toHaveClass('planner-drop-target-pending')
   expect(screen.getByRole('status')).toHaveTextContent('בודקים אם ניתן לשחרר כאן')
   expect(transfer.dropEffect).toBe('copy')
+})
+
+test('uses the repository drag intent when the browser hides data and marks an illegal semester', () => {
+  const transfer = {
+    types: [REPOSITORY_COURSE_MIME],
+    getData: () => '',
+    effectAllowed: '',
+    dropEffect: '',
+  }
+  const onAddCourse = jest.fn()
+  render(createElement(NativePlannerBoard as any, {
+    board: vmFromPayload(BOARD),
+    onAddCourse,
+    activeDrag: {
+      kind: 'repository',
+      courseId: '0542-4120',
+      allowedSemesterIds: ['year_3_semester_a'],
+    },
+  }))
+
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+
+  expect(target).toHaveClass('planner-drop-target-invalid')
+  expect(screen.getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
+
+  fireEvent.drop(target, { dataTransfer: transfer })
+  expect(onAddCourse).not.toHaveBeenCalled()
 })
 
 test('a repository drop outside its offering fails closed', () => {
