@@ -3,9 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
-import UnifiedCourseRepository from './UnifiedCourseRepository'
+import UnifiedCourseRepository, { type SemesterDestination } from './UnifiedCourseRepository'
 
 type WorkspaceView = 'board' | 'repository' | 'agent'
+
+const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
+  { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+  { id: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
+  { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
+  { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
+]
 
 const VIEWS: Array<{ id: WorkspaceView; label: string }> = [
   { id: 'board', label: 'לוח סמסטרים' },
@@ -18,11 +25,13 @@ export default function UnifiedPlannerWorkspace({
   repo,
   selectedCourseIds = [],
   onRequestAdd = () => undefined,
+  semesterDestinations = DEFAULT_SEMESTER_DESTINATIONS,
 }: {
   programId: string
   repo: RepositoryVM
   selectedCourseIds?: readonly string[]
   onRequestAdd?: (courseId: string) => void
+  semesterDestinations?: readonly SemesterDestination[]
 }) {
   const [activeView, setActiveView] = useState<WorkspaceView>('board')
   const [repositoryOpen, setRepositoryOpen] = useState(false)
@@ -60,7 +69,8 @@ export default function UnifiedPlannerWorkspace({
   const requestAdd = (courseId: string, semesterId?: string) => {
     const course = repo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
     const offered = new Set((course?.offered ?? []).map((value) => value.toLowerCase()))
-    const semesterIds = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+    const semesterIds = semesterDestinations
+      .map(({ id }) => id)
       .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
     setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
     onRequestAdd(courseId)
@@ -251,12 +261,7 @@ export default function UnifiedPlannerWorkspace({
           <UnifiedCourseRepository
             repo={repo}
             selectedCourseIds={committedCourseIds}
-            semesterDestinations={[
-              { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
-              { id: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
-              { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
-              { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
-            ]}
+            semesterDestinations={semesterDestinations}
             onRequestAdd={requestAdd}
           />
         </aside>

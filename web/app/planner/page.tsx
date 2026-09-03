@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { readBoardForProgramId } from '../../lib/board-data'
 import { getProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
+import { semesterTitleHe } from '../../lib/planner/board-vm'
 import ProductShell from '../components/ProductShell'
 import UnifiedPlannerWorkspace from '../components/UnifiedPlannerWorkspace'
 
@@ -28,7 +29,14 @@ export default async function PlannerPage({
       programId={program.id}
       preferLightweightBackground={false}
     >
-      <UnifiedPlannerWorkspace programId={program.id} repo={repo} />
+      <UnifiedPlannerWorkspace
+        programId={program.id}
+        repo={repo}
+        semesterDestinations={raw.semesters.map((semester) => ({
+          id: semester.semester_id,
+          label: semesterTitleHe(semester.semester_id),
+        }))}
+      />
     </ProductShell>
   )
 }

@@ -199,4 +199,22 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
   })
+
+  test('routes add intent against the actual board semester destinations', () => {
+    render(
+      <UnifiedPlannerWorkspace
+        programId="mechanical_engineering_2027"
+        repo={repoWithCourse}
+        semesterDestinations={[
+          { id: 'year_1_semester_a', label: 'שנה א׳ — סמסטר א׳' },
+          { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+        ]}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
+
+    expect(screen.getByTestId('agent-journey')).toHaveAttribute(
+      'data-manual-semesters', 'year_1_semester_a,year_3_semester_a',
+    )
+  })
 })

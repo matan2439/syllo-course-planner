@@ -7931,3 +7931,16 @@ was then browser-verified with the repository open: the board kept a concrete
 reached the server and showed the rejection at the board top, and closing the
 drawer restored the full-width board with `aria-hidden="true"` on the
 repository panel. Production remains unchanged.
+
+## Latest session — derive repository add targets from the board
+
+The repository now receives its manual-add semester destinations from the
+authoritative board payload rendered by `/planner`, instead of a component
+hard-coding only years ג׳–ד׳. The fallback remains the existing four-semester
+view for isolated component usage, while the real route passes every semester
+id and its Hebrew label from the loaded board. RED reproduced the stale fixed
+destination list; GREEN passed the focused workspace/page tests (16 tests),
+root and web typechecks, and the web production build. This keeps drag and
+keyboard add paths aligned with the actual board without weakening server
+validation. A new isolated Preview deployment and browser verification remain
+the next release step.
