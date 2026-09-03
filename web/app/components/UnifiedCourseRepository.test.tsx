@@ -67,7 +67,7 @@ describe('UnifiedCourseRepository', () => {
     fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם אל שנה ג׳ — סמסטר א׳' }))
     expect(onRequestAdd).toHaveBeenCalledWith('0542-4135', 'year_3_semester_a')
     expect(onRequestAdd).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/הוספה ידנית תישמר רק לאחר אימות השרת/)).toBeInTheDocument()
+    expect(screen.getByText(/בחירת קורס מהמאגר פותחת בחירת סמסטר/)).toBeInTheDocument()
   })
 
   test('writes a typed repository drag payload with offered semester restrictions', () => {

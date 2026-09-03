@@ -4,10 +4,13 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, agentCloseRef }: any) => (
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, onManualAddCancelled, agentCloseRef }: any) => (
     <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
       data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
       <div className="planner-board-region">לוח פעיל</div>
+      {manualAddIntent && (
+        <button type="button" aria-label="ביטול הוספת קורס" onClick={onManualAddCancelled}>ביטול</button>
+      )}
       <aside className="planner-agent-region" aria-label="עוזר אקדמי">
         <button ref={agentCloseRef} type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
         עוזר פעיל
@@ -206,6 +209,16 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
+  })
+
+  test('clears a pending repository add intent when the student cancels it', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
+    expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'ביטול הוספת קורס' }))
+    expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', '')
   })
 
   test('routes add intent against the actual board semester destinations', () => {

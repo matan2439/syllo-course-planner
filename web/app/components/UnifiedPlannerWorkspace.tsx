@@ -241,6 +241,7 @@ export default function UnifiedPlannerWorkspace({
             agentCloseRef={agentCloseRef}
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
+            onManualAddCancelled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
             agentOpen={agentOpen}
             activeDrag={activeDrag}

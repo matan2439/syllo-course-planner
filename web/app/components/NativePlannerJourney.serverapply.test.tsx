@@ -69,6 +69,7 @@ async function renderReady(over: {
   stub?: Stub
   committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
   manualAddIntent?: { courseId: string; semesterIds: string[] } | null
+  onManualAddCancelled?: () => void
   editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
   establishPlanningContextFn?: (request: any) => Promise<{ academicStatusDigest: string }>
   planningContextFn?: (programId: string) => Promise<any>
@@ -90,6 +91,7 @@ async function renderReady(over: {
       committedBoardFn={over.committedBoardFn ?? server.committedBoardFn}
       useAcademicDecisionAgent
       manualAddIntent={over.manualAddIntent}
+      onManualAddCancelled={over.onManualAddCancelled}
       editBoardFn={over.editBoardFn}
       establishPlanningContextFn={over.establishPlanningContextFn}
       planningContextFn={over.planningContextFn ?? (async () => null)}
@@ -107,6 +109,23 @@ const applyBtn = () => screen.getByRole('button', { name: /החל/ })
 const committed = () => screen.queryByLabelText('התוכנית הנוכחית')?.textContent ?? ''
 
 describe('S5 — Apply goes to the server, and only the server commits', () => {
+  test('manual add destination picker can be cancelled without a server edit', async () => {
+    const onManualAddCancelled = jest.fn()
+    const editBoardFn = jest.fn(async (): Promise<ManualBoardEditResult> => {
+      throw new Error('cancel must not edit the board')
+    })
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      onManualAddCancelled,
+      editBoardFn,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'ביטול הוספת קורס' }))
+
+    expect(onManualAddCancelled).toHaveBeenCalledTimes(1)
+    expect(editBoardFn).not.toHaveBeenCalled()
+  })
+
   test('repository drop commits the chosen semester only through server authority', async () => {
     let resolveEdit!: (result: ManualBoardEditResult) => void
     const editBoardFn = jest.fn(() => new Promise<ManualBoardEditResult>((resolve) => { resolveEdit = resolve }))

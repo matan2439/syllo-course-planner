@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — make pending course adds cancellable
+
+The repository-to-board flow now exposes an explicit `ביטול` action while a
+course is waiting for semester selection. Cancelling clears the workspace's
+pending add intent without calling the edit endpoint or mutating the board.
+The repository copy now explains the two-step flow accurately: choose a
+semester first, then the server validates and commits the addition. The
+focused server-authority, workspace, and repository suites pass (43 tests),
+and web typecheck passes. No catalog, Electrical data, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest session — clear feedback after cancelled drags
 
 Semester columns now clear their local hover feedback whenever the shared drag

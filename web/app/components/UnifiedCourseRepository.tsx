@@ -73,7 +73,7 @@ export default function UnifiedCourseRepository({
       </div>
 
       <p className="rounded-lg border border-amber-500/30 px-3 py-2 text-xs text-[var(--text-muted)]">
-        הוספה ידנית תישמר רק לאחר אימות השרת. בשלב היסוד הכפתור מעביר בקשת הוספה בלבד ואינו משנה את הלוח.
+        בחירת קורס מהמאגר פותחת בחירת סמסטר. הקורס יתווסף ללוח רק לאחר אימות השרת.
       </p>
 
       {filtered.length === 0 ? (

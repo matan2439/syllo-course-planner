@@ -195,6 +195,7 @@ export default function NativePlannerJourney({
   sendConversationFn = defaultSendConversation,
   initializePlanningContext = false,
   onManualAddSettled,
+  onManualAddCancelled = () => undefined,
   onCommittedCourseIdsChange,
   onCloseAgent,
   agentCloseRef,
@@ -217,6 +218,7 @@ export default function NativePlannerJourney({
   /** The production workspace may establish an explicitly-unknown context on first load. */
   initializePlanningContext?: boolean
   onManualAddSettled?: () => void
+  onManualAddCancelled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
@@ -867,7 +869,18 @@ export default function NativePlannerJourney({
         )}
         {manualAddIntent && (
           <Card className="flex flex-col gap-3 p-4" aria-live="polite">
-            <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
+              <button
+                type="button"
+                aria-label="ביטול הוספת קורס"
+                onClick={onManualAddCancelled}
+                disabled={manualEditPhase === 'saving'}
+                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
+              >
+                ביטול
+              </button>
+            </div>
             {manualAddIntent.semesterIds.length ? (
               <div className="flex flex-wrap gap-2">
                 {manualAddIntent.semesterIds.map((semesterId) => (
