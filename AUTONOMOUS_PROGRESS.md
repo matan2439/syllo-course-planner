@@ -8001,3 +8001,13 @@ validation or pretending an illegal placement succeeded. RED reproduced the
 missing drag-state announcement; GREEN passed the focused repository suite.
 The next release step is sequential regression verification followed by a new
 isolated Preview deployment and browser check.
+
+## Latest session — add a dedicated repository drag handle
+
+Each draggable repository card now exposes a visible, dedicated `⠿ גרור
+ללוח` handle with a tooltip. The handle writes the same typed payload as the
+card surface, so drag initiation does not compete with the details or
+semester-choice controls. RED reproduced the missing handle; GREEN passed the
+focused repository suite. Preview deployment is still waiting on explicit
+security approval to upload this repository snapshot to the existing Vercel
+project.
