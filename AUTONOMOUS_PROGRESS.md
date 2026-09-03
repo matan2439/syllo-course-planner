@@ -10,6 +10,10 @@ payloads or weakening the server-authority apply flow. The focused agent,
 journey, workspace, and outcome suites pass (58 tests), web typecheck and
 production build pass. No catalog, Electrical data, provider, Supabase,
 Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-q8d92qqnv-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `4aa77e8`; browser-verified the left assistant
+drawer and its visible authoritative-board context).
 
 ## Latest session — make the dragged course source unmistakable
 
