@@ -7903,3 +7903,13 @@ without removing the mounted board; drawer and tab controls stayed within the
 viewport. This completes only the mobile acceptance checkbox in the release
 plan; live MIME drag mutation, full Python/root-Jest release coverage, provider
 smoke, and Production promotion remain open.
+
+## Latest session — verify repository search and drawer recovery
+
+The latest Preview acceptance checked the desktop-width repository interaction:
+searching `בקרה` reported `2 מתוך 56 קורסים` and exposed two draggable course
+cards with authoritative semester add actions. Closing the repository set its
+panel to `aria-hidden="true"`, restored focus to `פתח מאגר קורסים`, and left the
+semester board and `semester-table` drop surface visible. This is an
+interaction check only; real MIME drag mutation, the full keyboard acceptance,
+provider smoke, and Production promotion remain open.
