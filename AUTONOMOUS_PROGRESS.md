@@ -8051,8 +8051,8 @@ explicit and reduced-motion safe. RED reproduced the missing invalid state;
 GREEN passed the focused board suite (17 tests), the repository/workspace
 regression (38 tests), web typecheck, and the web production build. The isolated
 Preview is READY at
-https://tau-course-planner-cio7o1uhh-matanyaron-1633s-projects.vercel.app
-(deployment `dpl_FXaJq7Z7VmLRp1oqMWNNYoev6CnE`). Browser verification confirmed
+https://tau-course-planner-6lchl093c-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_DoX72Tdw3dyhUxp8UrdqzCrhNvoS`). Browser verification confirmed
 the board remains visible beside the open repository and that the repository
 contains 35 draggable eligible-course handles and 21 fail-closed courses with
 no authoritative semester destination. Production remains unchanged.
