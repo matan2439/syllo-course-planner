@@ -30,6 +30,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   return (
     <div
       draggable={movable}
+      className={movable ? 'planner-drag-source' : undefined}
       onDragStart={(event) => {
         if (!movable) return
         event.dataTransfer.effectAllowed = 'move'

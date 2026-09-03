@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — make draggable course sources discoverable
+
+Added a shared `planner-drag-source` affordance to draggable repository and
+board cards (`grab`/`grabbing` cursor), while keeping already-selected or
+non-movable cards unchanged. The focused repository, board, workspace, and
+drag-payload suite passed with 33 tests; web typecheck and diff check passed.
+No authoritative mutation path, catalog source, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest session — harden repository drag compatibility
 
 Hardened repository-to-board dragging by writing the same strict JSON payload

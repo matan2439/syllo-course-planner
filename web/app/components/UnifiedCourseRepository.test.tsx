@@ -83,6 +83,7 @@ describe('UnifiedCourseRepository', () => {
 
     const card = screen.getByText('בקרה מודרנית').closest('[draggable="true"]') as HTMLElement
     expect(card).not.toBeNull()
+    expect(card).toHaveClass('planner-drag-source')
     fireEvent.dragStart(card, { dataTransfer: transfer })
 
     expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({

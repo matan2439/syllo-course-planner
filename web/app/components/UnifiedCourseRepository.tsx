@@ -79,6 +79,7 @@ export default function UnifiedCourseRepository({
                 <div
                   key={course.id}
                   draggable={!onBoard}
+                  className={!onBoard ? 'planner-drag-source' : undefined}
                   onDragStart={(event) => {
                     if (onBoard) return
                     event.dataTransfer.effectAllowed = 'copy'
