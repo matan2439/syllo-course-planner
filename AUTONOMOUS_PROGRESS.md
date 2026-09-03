@@ -1,5 +1,12 @@
 # Autonomous Progress
 
+## Latest session — make the open drawer’s board affordance explicit
+
+When the course repository is open, the board canvas now announces that it is
+still active and accepts a course drop. The hint is visible, RTL-friendly and
+polite to assistive technology, so the drawer no longer visually suggests that
+it replaced the semester board. The focused workspace suite passes 12 tests.
+
 ## Latest session — activate semester drops on drag entry
 
 Semester columns now validate and activate an allowed repository or board drag

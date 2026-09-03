@@ -119,6 +119,14 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
+  test('explains that the visible board accepts a repository drag while the drawer is open', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent('גררו קורס מהמאגר אל עמודת סמסטר')
+  })
+
   test('lets each open drawer close from inside its own surface', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
 

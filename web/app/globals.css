@@ -193,6 +193,17 @@ body {
 .planner-drawer-close:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-drag-source { cursor: grab; }
 .planner-drag-source:active { cursor: grabbing; }
+.planner-board-drop-hint {
+  margin-bottom: .75rem;
+  border: 1px solid color-mix(in srgb, var(--purple) 32%, var(--border));
+  border-radius: .75rem;
+  background: color-mix(in srgb, var(--purple) 7%, var(--surface));
+  padding: .65rem .8rem;
+  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 650;
+  text-align: center;
+}
 .planner-drop-target-active {
   border-color: var(--purple) !important;
   background: color-mix(in srgb, var(--purple) 8%, var(--surface));

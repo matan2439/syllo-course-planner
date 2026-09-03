@@ -208,6 +208,15 @@ export default function UnifiedPlannerWorkspace({
           aria-label="לוח סמסטרים פעיל"
           className="planner-board-canvas planner-agent-drawer min-w-0"
         >
+          {repositoryOpen && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="planner-board-drop-hint"
+            >
+              גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח
+            </p>
+          )}
           <NativePlannerJourney
             programId={programId}
             useAcademicDecisionAgent
