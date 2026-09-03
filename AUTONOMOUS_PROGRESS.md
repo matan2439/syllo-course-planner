@@ -12,7 +12,7 @@ Strict RED added a flag-on regression assertion and reproduced the duplicate
 `שיחה` surface. GREEN passes the Agent/Apply/alternatives component suites
 (46/46), root and web TypeScript gates, and the Next build. The isolated Preview
 is ready at
-https://tau-course-planner-h71dv3vpa-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+https://tau-course-planner-55zgxndc6-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
 and browser verification confirms the board and repository remain visible with
 one close control and 56 draggable courses. No provider, Supabase, Production
 configuration, catalog source, or remote database was changed. The unrelated
