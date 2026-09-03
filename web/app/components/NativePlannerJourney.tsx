@@ -246,7 +246,26 @@ export default function NativePlannerJourney({
   const [capturedManualRevision, setCapturedManualRevision] = useState<number | null>(null)
   const [manualEditPhase, setManualEditPhase] = useState<'idle' | 'saving'>('idle')
   const [manualEditError, setManualEditError] = useState<string | null>(null)
+  // A server refusal happens after the browser's local drag preview has
+  // disappeared. Keep the rejected target highlighted briefly so the user can
+  // connect the written explanation with the semester they attempted.
+  const [rejectedDrop, setRejectedDrop] = useState<{ semesterId: string; key: number } | null>(null)
+  const rejectedDropTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const manualEditKeyRef = useRef<string | null>(null)
+
+  const showRejectedDrop = useCallback((semesterId: string) => {
+    if (rejectedDropTimerRef.current) clearTimeout(rejectedDropTimerRef.current)
+    const key = Date.now()
+    setRejectedDrop({ semesterId, key })
+    rejectedDropTimerRef.current = setTimeout(() => {
+      setRejectedDrop((current) => current?.key === key ? null : current)
+      rejectedDropTimerRef.current = null
+    }, 1100)
+  }, [])
+
+  useEffect(() => () => {
+    if (rejectedDropTimerRef.current) clearTimeout(rejectedDropTimerRef.current)
+  }, [])
 
   useEffect(() => {
     let live = true
@@ -763,6 +782,7 @@ export default function NativePlannerJourney({
     setManualEditPhase('idle')
     if (!result.ok) {
       setManualEditError(result.messageHe)
+      showRejectedDrop(semesterId)
       if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
       return
     }
@@ -839,6 +859,7 @@ export default function NativePlannerJourney({
       setManualEditPhase('idle')
       if (!result.ok) {
         setManualEditError(result.messageHe)
+        showRejectedDrop(semesterId)
         if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
         return
       }
@@ -853,6 +874,45 @@ export default function NativePlannerJourney({
       setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
     }
   }
+
+  const preferenceContent = useAcademicDecisionAgent ? (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-3">
+      <h3 className="text-sm font-bold tracking-tight">שאלות קצרות על ההעדפות שלך</h3>
+      <p className="mt-1 text-xs text-[var(--text-muted)]">
+        אפשר לענות בכפתור או לכתוב לסוכן. התשובות נשארות בטיוטה עד שלוחצים על בניית תוכנית.
+      </p>
+      <PreferenceConversation
+        onBuild={(profile) => build(profile)}
+        onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+        buildLabel={proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
+        buildDisabled={academicContextPhase !== 'ready'}
+        // The server owns all post-build impact signals. The UI only forwards
+        // them to the same question flow; it never invents a question from
+        // card order or an internal course id.
+        elicitationContext={{
+          ...(proposal && proposal.balanceAlternativesMaterial === false
+            ? { irrelevantTopicIds: ['semester_balance'] }
+            : {}),
+          ...(proposal?.groundedQuestionImpact
+            ? { groundedFeatureImpact: proposal.groundedQuestionImpact }
+            : {}),
+          ...(proposal?.topicQuestionImpact
+            ? { topicInterestImpact: proposal.topicQuestionImpact }
+            : {}),
+          ...(proposal?.priorityQuestionImpact && !stale
+            ? {
+                objectivePriorityImpact: {
+                  eligible: proposal.priorityQuestionImpact.eligible,
+                  options: proposal.priorityQuestionImpact.options.map((o) => ({
+                    value: o.value, labelHe: o.labelHe,
+                  })),
+                },
+              }
+            : {}),
+        }}
+      />
+    </div>
+  ) : null
 
   return (
     <div className="planner-journey grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -903,6 +963,8 @@ export default function NativePlannerJourney({
             onMoveCourse={commitManualMove}
             mutationPending={manualEditPhase === 'saving'}
             activeDrag={activeDrag}
+            rejectedSemesterId={rejectedDrop?.semesterId}
+            rejectedDropKey={rejectedDrop?.key}
             onDragStateChange={onDragStateChange}
           />
         </section>
@@ -991,62 +1053,6 @@ export default function NativePlannerJourney({
           </div>
         )}
 
-        {useAcademicDecisionAgent && (
-          <Card className="flex flex-col gap-3 p-4">
-            <h2 className="text-sm font-bold tracking-tight">שיחת העדפות</h2>
-            <p className="text-xs text-[var(--text-muted)]">
-              כמה שאלות קצרות שיעזרו לבנות תוכנית מתאימה יותר. התשובות משפיעות רק על טיוטה — לא על הלוח הנוכחי — ורק לחיצה על "בנה תוכנית" מייצרת הצעה.
-            </p>
-            <PreferenceConversation
-              onBuild={(profile) => build(profile)}
-              onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
-              buildLabel={proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
-              buildDisabled={academicContextPhase !== 'ready'}
-              // Impact-driven: after a Generate whose candidates showed no material
-              // balanced/compact difference, don't ask the semester_balance question
-              // (it can't change the selected plan). Before any Generate, or when
-              // alternatives are material, it stays askable.
-              elicitationContext={{
-                ...(proposal && proposal.balanceAlternativesMaterial === false
-                  ? { irrelevantTopicIds: ['semester_balance'] }
-                  : {}),
-                // K9C — the grounded course-feature question is gated on the
-                // server's impact probe over the ONE prepared evidence snapshot,
-                // so it is asked only when answering it could really change the
-                // selected plan. Absent before the first Build ⇒ never asked.
-                ...(proposal?.groundedQuestionImpact
-                  ? { groundedFeatureImpact: proposal.groundedQuestionImpact }
-                  : {}),
-                // W2 — the course content/topic question is gated on the same
-                // kind of server-side probe, computed over the retained
-                // candidates from the ONE prepared snapshot. Passed straight
-                // through: the browser never recomputes candidate differences
-                // and never decides for itself that a topic is interesting.
-                ...(proposal?.topicQuestionImpact
-                  ? { topicInterestImpact: proposal.topicQuestionImpact }
-                  : {}),
-                // C5 — the relative-priority question is gated on the server's
-                // own replay of the ranking under each possible answer. The
-                // browser forwards `eligible` and the option list verbatim: it
-                // never decides from two alternatives existing, from
-                // `unresolvedTradeoff`, from the objective vectors, or from card
-                // order. A STALE set is not an invitation to ask again, so the
-                // signal is withheld while the current proposal is stale.
-                ...(proposal?.priorityQuestionImpact && !stale
-                  ? {
-                      objectivePriorityImpact: {
-                        eligible: proposal.priorityQuestionImpact.eligible,
-                        options: proposal.priorityQuestionImpact.options.map((o) => ({
-                          value: o.value, labelHe: o.labelHe,
-                        })),
-                      },
-                    }
-                  : {}),
-              }}
-            />
-          </Card>
-        )}
-
         {useAcademicDecisionAgent && loadedAcademicContext && (
           <AcademicAgentConversation
             programId={programId}
@@ -1056,8 +1062,13 @@ export default function NativePlannerJourney({
             preferenceDigest={loadedAcademicContext.preferenceDigest}
             sendConversationFn={sendConversationFn}
             onProposalReady={acceptConversationProposal}
+            courseNameById={Object.fromEntries(
+              Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe ?? null]),
+            )}
+            preferenceContent={preferenceContent}
           />
         )}
+        {useAcademicDecisionAgent && !loadedAcademicContext && preferenceContent}
 
         {useAcademicDecisionAgent && messages.filter((message) => message.role === 'system').slice(-1).map((message) => (
           <p key={message.text} role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">

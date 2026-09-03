@@ -9,13 +9,17 @@ import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
  * server-authority callbacks. The shared drag intent keeps feedback truthful
  * even when a browser hides DataTransfer contents during dragover.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, onDragStateChange }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
   mutationPending?: boolean
   activeDrag?: PlannerDragPayload | null
+  /** The last target refused by server-side academic validation. */
+  rejectedSemesterId?: string | null
+  /** Changes on every refusal so the target feedback animation restarts. */
+  rejectedDropKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   if (board.semesters.length === 0) {
@@ -37,6 +41,8 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
               .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
             mutationPending={mutationPending}
             activeDrag={activeDrag}
+            rejected={rejectedSemesterId === s.id}
+            rejectedKey={rejectedDropKey}
             onDragStateChange={onDragStateChange}
           />
         </div>

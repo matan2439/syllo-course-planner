@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ConversationContextConflictError,
   sendConversation,
@@ -15,6 +15,26 @@ import type {
 import { Card } from './ui'
 
 type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
+
+/**
+ * The model is allowed to cite canonical course ids, but ids alone are not a
+ * usable Hebrew answer. Replace only ids that the authoritative board/catalog
+ * supplied to this component, and retain the id in parentheses for auditability.
+ * Unknown tokens stay untouched rather than being guessed.
+ */
+export function formatAssistantMessage(
+  message: string,
+  courseNameById: Readonly<Record<string, string | null | undefined>> = {},
+): string {
+  const entries = Object.entries(courseNameById)
+    .filter(([, name]) => typeof name === 'string' && name.trim().length > 0)
+    .sort(([a], [b]) => b.length - a.length)
+  return entries.reduce((formatted, [courseId, name]) => {
+    const escaped = courseId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(^|[^A-Za-z0-9])${escaped}(?=$|[^A-Za-z0-9])`, 'g')
+    return formatted.replace(pattern, (_match, prefix: string) => `${prefix}${name} (${courseId})`)
+  }, message)
+}
 
 const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as ClientDeps['fetchImpl']
 const defaultSendConversation: SendConversation = (request) => sendConversation(
@@ -46,6 +66,8 @@ export default function AcademicAgentConversation({
   preferenceDigest,
   sendConversationFn = defaultSendConversation,
   onProposalReady,
+  preferenceContent,
+  courseNameById,
 }: {
   programId: string
   sessionToken: string
@@ -55,6 +77,10 @@ export default function AcademicAgentConversation({
   sendConversationFn?: SendConversation
   /** The server-owned, read-only materialization used to show the draft. */
   onProposalReady?: (proposal: ConversationProposal) => void
+  /** Optional preference questions rendered inside this same conversation card. */
+  preferenceContent?: ReactNode
+  /** Names come only from the authoritative board/catalog view model. */
+  courseNameById?: Readonly<Record<string, string | null | undefined>>
 }) {
   const [transcript, setTranscript] = useState<ConversationTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -85,7 +111,10 @@ export default function AcademicAgentConversation({
       })
       setLastResponse(response)
       if (response.outcome !== 'assistant_unavailable') {
-        setTranscript((current) => [...current, { role: 'assistant', text: response.message_he }])
+        setTranscript((current) => [...current, {
+          role: 'assistant',
+          text: formatAssistantMessage(response.message_he, courseNameById),
+        }])
         if (response.proposal) onProposalReady?.(response.proposal)
       }
     } catch (caught) {
@@ -111,7 +140,7 @@ export default function AcademicAgentConversation({
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
 
   return (
-    <div dir="rtl">
+    <div dir="rtl" data-testid="academic-agent-conversation">
       <Card className="flex flex-col gap-3 p-4">
       <div>
         <h2 className="text-sm font-bold tracking-tight">שיחה עם עוזר התכנון</h2>
@@ -128,6 +157,8 @@ export default function AcademicAgentConversation({
           <span className="text-[var(--text-muted)]">• הצעה לא משנה את הלוח</span>
         </div>
       </div>
+
+      {preferenceContent}
 
       <div
         role="log"

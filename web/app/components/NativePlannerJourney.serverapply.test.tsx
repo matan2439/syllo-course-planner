@@ -6,7 +6,7 @@
  * leaves it untouched, a refresh reads the server's board back, and the request
  * carries a candidate NAME rather than a plan.
  */
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import { createServerApplyStub } from './serverApplyStub'
@@ -178,6 +178,28 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(generateFn).not.toHaveBeenCalled()
     expect(editBoardFn.mock.calls[0][0].academic_status_digest).toBe('as_synced')
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+  })
+
+  test('a server-rejected manual add returns visible invalid-drop feedback to the target semester', async () => {
+    const editBoardFn = jest.fn(async (): Promise<ManualBoardEditResult> => ({
+      ok: false,
+      code: 'SEMESTER_RULE_VIOLATION',
+      messageHe: 'הקורס אינו עומד בתנאי הסמסטר הזה.',
+      currentBoardVersion: null,
+    }))
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_B] },
+      editBoardFn,
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_rejected' }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר ב׳/ }))
+
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+    expect(target).toHaveAttribute('data-drop-state', 'rejected')
+    expect(within(target).getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
+    expect(screen.getByRole('alert')).toHaveTextContent('הקורס אינו עומד בתנאי הסמסטר הזה')
   })
 
   test('manual add commits the server board, sends no Generate, and stales the visible proposal', async () => {

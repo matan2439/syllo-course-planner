@@ -15,6 +15,8 @@ export default function SemesterColumn({
   moveDestinations,
   mutationPending,
   activeDrag,
+  rejected = false,
+  rejectedKey,
   onDragStateChange,
 }: {
   semester: SemesterVM
@@ -25,6 +27,8 @@ export default function SemesterColumn({
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
   activeDrag?: PlannerDragPayload | null
+  rejected?: boolean
+  rejectedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
@@ -73,11 +77,13 @@ export default function SemesterColumn({
     ? null
     : acceptsPayload(activeDrag) ? 'allowed' : 'invalid'
   const visibleDragState = previewDragState ?? dragState
+  const feedbackState = rejected ? 'invalid' : visibleDragState
+  const feedbackKey = rejected ? `rejected-${rejectedKey ?? 'latest'}` : feedbackState
 
   return (
     <section
       aria-label={semester.title}
-      data-drop-state={visibleDragState ?? undefined}
+      data-drop-state={rejected ? 'rejected' : visibleDragState ?? undefined}
       onDragEnter={updateDragState}
       onDragOver={updateDragState}
       onDragLeave={(event) => {
@@ -96,7 +102,7 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
@@ -117,24 +123,24 @@ export default function SemesterColumn({
         </div>
       </header>
 
-      {visibleDragState && (
+      {feedbackState && (
         <p
-          key={visibleDragState}
+          key={feedbackKey}
           role="status"
-          aria-live="polite"
-          data-feedback-state={visibleDragState}
-          className={`planner-drop-feedback planner-drop-feedback-${visibleDragState}`}
+          aria-live={rejected ? 'assertive' : 'polite'}
+          data-feedback-state={feedbackState}
+          className={`planner-drop-feedback planner-drop-feedback-${feedbackState}`}
         >
           <span aria-hidden="true" className="planner-drop-feedback-icon">
-            {visibleDragState === 'allowed' && '✓'}
-            {visibleDragState === 'invalid' && '×'}
-            {visibleDragState === 'unknown' && '…'}
+            {feedbackState === 'allowed' && '✓'}
+            {feedbackState === 'invalid' && '×'}
+            {feedbackState === 'unknown' && '…'}
           </span>
           {' '}
           <span>
-            {visibleDragState === 'allowed' && 'ניתן לשחרר כאן'}
-            {visibleDragState === 'invalid' && 'לא ניתן לשחרר כאן'}
-            {visibleDragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
+            {feedbackState === 'allowed' && 'ניתן לשחרר כאן'}
+            {feedbackState === 'invalid' && 'לא ניתן לשחרר כאן'}
+            {feedbackState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
           </span>
         </p>
       )}

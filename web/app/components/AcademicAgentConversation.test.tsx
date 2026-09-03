@@ -68,6 +68,41 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hi
   expect(onProposalReady).toHaveBeenCalledWith(expect.objectContaining({ proposal_id: 'prop_1' }))
 })
 
+test('renders known course ids in assistant replies as Hebrew names with the id retained', async () => {
+  const sendConversation = jest.fn(async () => ({
+    outcome: 'conversation',
+    message_he: 'מומלץ לשבץ את 0542-4224 ואת 0542-4221 בסמסטר הבא.',
+    events: [],
+  } satisfies ConversationResponse))
+  render(
+    <AcademicAgentConversation
+      {...requestContext}
+      sendConversationFn={sendConversation}
+      courseNameById={{ '0542-4224': 'תורת הבקרה', '0542-4221': 'מערכות בקרה' }}
+    />,
+  )
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'תציע לי סמסטר' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+
+  const reply = await screen.findByText(/מומלץ לשבץ/)
+  expect(reply).toHaveTextContent('תורת הבקרה (0542-4224)')
+  expect(reply).toHaveTextContent('מערכות בקרה (0542-4221)')
+})
+
+test('keeps preference questions inside the same assistant conversation surface', () => {
+  render(
+    <AcademicAgentConversation
+      {...requestContext}
+      preferenceContent={<div data-testid="embedded-preferences">מה חשוב לך יותר כרגע?</div>}
+    />,
+  )
+
+  const surface = screen.getByTestId('academic-agent-conversation')
+  expect(surface).toContainElement(screen.getByTestId('embedded-preferences'))
+  expect(surface).toContainElement(screen.getByRole('log', { name: 'תמליל שיחה עם עוזר התכנון' }))
+})
+
 test('renders pending state and the explicit build-alternatives action', async () => {
   let resolve: ((value: ConversationResponse) => void) | undefined
   const sendConversation = jest.fn(() => new Promise<ConversationResponse>((done) => { resolve = done }))
