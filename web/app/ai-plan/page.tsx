@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
-import { getProgram, programQuery } from '../../lib/programs'
+import { notFound, redirect } from 'next/navigation'
+import { programQuery, resolveProgram } from '../../lib/programs'
 
 // The native /ai-plan entry was a presentation-only placeholder that faked a
 // build animation and never called the planner API. It is retired: real AI
@@ -11,6 +11,7 @@ export default async function AiPlanPage({
   searchParams: Promise<{ program?: string }>
 }) {
   const { program: programParam } = await searchParams
-  const program = getProgram(programParam)
+  const program = resolveProgram(programParam)
+  if (!program) notFound()
   redirect(`/planner${programQuery(program.id)}`)
 }

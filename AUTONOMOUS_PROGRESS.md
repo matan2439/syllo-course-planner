@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — fail closed on legacy planner redirects
+
+The historical `/plan`, `/ai-plan`, and `/planner/native` entries now resolve
+explicit program ids without fallback. Unknown ids reach `notFound()` before
+redirecting, while registered programs keep their existing canonical planner
+URL. This keeps the hidden Electrical Engineering program from being presented
+as Mechanical Engineering through an old bookmark. All 30 web suites pass (272
+tests), typecheck passes, and the Next production build passes. No catalog,
+Electrical data, provider, Supabase, Production, or remote database
+configuration changed.
+
 ## Latest session — fail closed across all program entry surfaces
 
 The read-only `/board` and `/repository` routes now use the same explicit
