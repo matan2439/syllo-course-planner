@@ -119,6 +119,18 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
+  test('keeps a stable board shell and active drop surface beside the open repository', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    const boardCanvas = container.querySelector('.planner-board-canvas')
+    expect(boardCanvas).toHaveClass('planner-board-canvas-stable')
+    expect(boardCanvas).toHaveAttribute('data-board-layout', 'stable')
+    expect(boardCanvas).toHaveAttribute('data-drop-surface', 'semester-table')
+    expect(boardCanvas).not.toHaveAttribute('aria-hidden', 'true')
+  })
+
   test('explains that the visible board accepts a repository drag while the drawer is open', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
 

@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — keep the semester board visible beside the course drawer
+
+The desktop workbench now keeps a concrete board shell in the grid instead of
+flattening it with `display: contents`. Opening the course repository therefore
+keeps the semester table visible as the central, labelled drop surface while
+the repository remains a separate side column. The focused workspace suite
+passes 13 tests, the repository/board/server-authority regression set passes
+50 tests, all 29 web suites pass with 258 tests, root typecheck passes, and the
+web production build passes. No catalog, provider, Supabase, Production, or
+remote database configuration changed.
+
 ## Latest session — reconcile the semester-table implementation plan
 
 The semester-table plan is now marked complete through its responsive

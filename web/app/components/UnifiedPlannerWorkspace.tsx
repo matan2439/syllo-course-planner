@@ -205,8 +205,10 @@ export default function UnifiedPlannerWorkspace({
           aria-labelledby={`workspace-tab-${activeView === 'agent' ? 'agent' : 'board'}`}
           data-mobile-surface={activeView}
           data-board-surface="persistent-drop-target"
+          data-board-layout="stable"
+          data-drop-surface="semester-table"
           aria-label="לוח סמסטרים פעיל"
-          className="planner-board-canvas planner-agent-drawer min-w-0"
+          className="planner-board-canvas planner-board-canvas-stable planner-agent-drawer min-w-0"
         >
           {repositoryOpen && (
             <p

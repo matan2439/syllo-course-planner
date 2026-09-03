@@ -231,15 +231,24 @@ body {
     grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(18rem, 22rem);
     column-gap: 1rem;
   }
-  .planner-board-canvas,
-  .planner-board-canvas .planner-journey { display: contents; }
-  .planner-board-canvas .planner-board-region {
+  /* Keep one concrete board shell in the desktop grid. `display: contents`
+     flattened this wrapper and made the board lose its layout/hit-test box
+     exactly when the repository rail opened. The drawer is a sibling column;
+     the semester table remains a stable, visible drop surface. */
+  .planner-board-canvas {
     grid-area: board;
+    display: block;
+    width: 100%;
+  }
+  .planner-board-canvas .planner-journey {
+    display: block;
+  }
+  .planner-board-canvas .planner-board-region {
+    width: 100%;
     min-width: 0;
     direction: rtl;
   }
-  .planner-repository-rail,
-  .planner-board-canvas .planner-agent-region {
+  .planner-repository-rail {
     position: sticky;
     top: 5.25rem;
     bottom: auto;
@@ -249,7 +258,7 @@ body {
     direction: rtl;
   }
   .planner-repository-rail { grid-area: repository; }
-  .planner-board-canvas .planner-agent-region { grid-area: agent; }
+  .planner-board-canvas .planner-agent-region { direction: rtl; }
   .planner-workbench[data-repository-open="false"] .planner-repository-rail,
   .planner-workbench[data-agent-open="false"] .planner-agent-region { display: none !important; }
 }
