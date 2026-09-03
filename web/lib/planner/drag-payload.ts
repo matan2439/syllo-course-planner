@@ -1,5 +1,6 @@
 export const REPOSITORY_COURSE_MIME = 'application/x-syllo-repository-course'
 export const BOARD_COURSE_MIME = 'application/x-syllo-board-course'
+export const PLAIN_TEXT_MIME = 'text/plain'
 
 export type PlannerDragPayload = {
   kind: 'repository' | 'board'
@@ -47,7 +48,9 @@ export function writeRepositoryDrag(
     courseId,
     ...(allowedSemesterIds === undefined ? {} : { allowedSemesterIds }),
   }
-  dataTransfer.setData(REPOSITORY_COURSE_MIME, JSON.stringify(payload))
+  const encoded = JSON.stringify(payload)
+  dataTransfer.setData(REPOSITORY_COURSE_MIME, encoded)
+  dataTransfer.setData(PLAIN_TEXT_MIME, encoded)
 }
 
 export function writeBoardDrag(dataTransfer: DragDataTransfer, courseId: string, allowedSemesterIds?: string[]) {
@@ -56,13 +59,16 @@ export function writeBoardDrag(dataTransfer: DragDataTransfer, courseId: string,
     courseId,
     ...(allowedSemesterIds === undefined ? {} : { allowedSemesterIds }),
   }
-  dataTransfer.setData(BOARD_COURSE_MIME, JSON.stringify(payload))
+  const encoded = JSON.stringify(payload)
+  dataTransfer.setData(BOARD_COURSE_MIME, encoded)
+  dataTransfer.setData(PLAIN_TEXT_MIME, encoded)
 }
 
 export function readPlannerDrag(dataTransfer: Pick<DataTransfer, 'getData'>): PlannerDragPayload | null {
   return (
     parsePayload(dataTransfer.getData(REPOSITORY_COURSE_MIME), 'repository')
     ?? parsePayload(dataTransfer.getData(BOARD_COURSE_MIME), 'board')
+    ?? parsePayload(dataTransfer.getData(PLAIN_TEXT_MIME), 'repository')
+    ?? parsePayload(dataTransfer.getData(PLAIN_TEXT_MIME), 'board')
   )
 }
-

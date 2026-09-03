@@ -1,5 +1,6 @@
 import {
   BOARD_COURSE_MIME,
+  PLAIN_TEXT_MIME,
   REPOSITORY_COURSE_MIME,
   readPlannerDrag,
   writeBoardDrag,
@@ -40,6 +41,24 @@ test('board payload round-trips without inventing semester restrictions', () => 
   expect(transfer.getData(BOARD_COURSE_MIME)).not.toBe('')
 })
 
+test('repository payload keeps a plain-text fallback for browsers that strip custom MIME data', () => {
+  const transfer = fakeDataTransfer()
+
+  writeRepositoryDrag(transfer, '0542-4120', ['year_3_semester_a'])
+
+  const plainText = transfer.getData(PLAIN_TEXT_MIME)
+  expect(JSON.parse(plainText)).toEqual({
+    kind: 'repository',
+    courseId: '0542-4120',
+    allowedSemesterIds: ['year_3_semester_a'],
+  })
+  expect(readPlannerDrag(fakeDataTransfer({ [PLAIN_TEXT_MIME]: plainText }))).toEqual({
+    kind: 'repository',
+    courseId: '0542-4120',
+    allowedSemesterIds: ['year_3_semester_a'],
+  })
+})
+
 test.each([
   { [REPOSITORY_COURSE_MIME]: '{' },
   { [REPOSITORY_COURSE_MIME]: JSON.stringify({ kind: 'repository', courseId: '' }) },
@@ -54,4 +73,3 @@ test.each([
 ])('malformed planner payload fails closed', (initial) => {
   expect(readPlannerDrag(fakeDataTransfer(initial))).toBeNull()
 })
-

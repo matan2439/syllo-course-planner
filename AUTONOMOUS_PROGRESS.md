@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — harden repository drag compatibility
+
+Hardened repository-to-board dragging by writing the same strict JSON payload
+to `text/plain` in addition to the typed planner MIME and accepting that
+fallback only when it still validates as a repository or board payload. This
+covers browsers/mobile WebViews that strip custom drag MIME types without
+loosening server authority or allowing arbitrary text to become a course edit.
+The focused drag, repository, board, and workspace regression suite passed
+with 33 tests, and web typecheck/diff check passed. No catalog, provider,
+Supabase, Production, or remote database configuration changed.
+
 ## Latest session — preserve the board beside the course drawer
 
 Fixed the responsive workspace regression where opening the course repository
