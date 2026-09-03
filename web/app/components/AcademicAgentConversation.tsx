@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  ConversationContextConflictError,
   sendConversation,
   type ClientDeps,
 } from '../../../shared/planner/api-client'
@@ -60,15 +61,17 @@ export default function AcademicAgentConversation({
   const [lastResponse, setLastResponse] = useState<ConversationResponse | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [contextConflict, setContextConflict] = useState(false)
 
   const submit = async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || pending) return
+    if (!trimmed || pending || contextConflict) return
     const nextTranscript: ConversationTurn[] = [...transcript, { role: 'user', text: trimmed }]
     setTranscript(nextTranscript)
     setDraft('')
     setPending(true)
     setError(null)
+    setContextConflict(false)
     setLastResponse(null)
 
     try {
@@ -85,11 +88,24 @@ export default function AcademicAgentConversation({
         setTranscript((current) => [...current, { role: 'assistant', text: response.message_he }])
         if (response.proposal) onProposalReady?.(response.proposal)
       }
-    } catch {
-      setError('שליחת ההודעה נכשלה. הלוח הנוכחי לא השתנה.')
+    } catch (caught) {
+      if (caught instanceof ConversationContextConflictError) {
+        setError(caught.messageHe)
+        setContextConflict(true)
+      } else {
+        setError('שליחת ההודעה נכשלה. הלוח הנוכחי לא השתנה.')
+      }
     } finally {
       setPending(false)
     }
+  }
+
+  const restartConversation = () => {
+    setTranscript([])
+    setDraft('')
+    setLastResponse(null)
+    setError(null)
+    setContextConflict(false)
   }
 
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
@@ -165,17 +181,26 @@ export default function AcademicAgentConversation({
           className="w-full resize-y rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
         />
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="submit" disabled={pending || !draft.trim()} className="rounded-full bg-[var(--purple-strong)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={pending || contextConflict || !draft.trim()} className="rounded-full bg-[var(--purple-strong)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
             שלח לעוזר
           </button>
           <button
             type="button"
-            disabled={pending || transcript.length === 0}
+            disabled={pending || contextConflict || transcript.length === 0}
             onClick={() => void submit('בנה לי חלופות חוקיות')}
             className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             בנה חלופות
           </button>
+          {contextConflict && (
+            <button
+              type="button"
+              onClick={restartConversation}
+              className="rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-700 dark:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
+            >
+              התחל שיחה חדשה
+            </button>
+          )}
         </div>
       </form>
       </Card>

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import type { ConversationResponse } from '../../../shared/planner/conversation-wire'
+import { ConversationContextConflictError } from '../../../shared/planner/api-client'
 
 const requestContext = {
   programId: 'mechanical_engineering_2027',
@@ -109,4 +110,30 @@ test('shows the typed unavailable state without pretending that an assistant rep
 
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('העוזר האקדמי אינו זמין כרגע.'))
   expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
+})
+
+test('explains a stale planning context and offers a clean conversation restart', async () => {
+  const sendConversation = jest.fn(async () => {
+    throw new ConversationContextConflictError({
+      ok: false,
+      code: 'BOARD_VERSION_CONFLICT',
+      message_he: 'הלוח השתנה מאז תחילת השיחה. יש להתחיל שיחה חדשה.',
+      currentBoardVersion: 'bv_2',
+    })
+  })
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} />)
+
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'בנה לי חלופה' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('הלוח השתנה מאז תחילת השיחה')
+  expect(screen.getByRole('button', { name: 'התחל שיחה חדשה' })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'התחל שיחה חדשה' }))
+
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(screen.getByRole('log')).toHaveTextContent('כתבו בקשה')
+  expect(screen.getByRole('button', { name: 'שלח לעוזר' })).toBeDisabled()
 })

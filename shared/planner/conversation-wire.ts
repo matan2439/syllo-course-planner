@@ -119,8 +119,27 @@ export const conversationResponseSchema = z.discriminatedUnion('outcome', [
   unavailableResponseSchema,
 ])
 
+/**
+ * A conversation is pinned to the board, academic status, and preferences
+ * captured when it starts. These are normal server refusals, not malformed
+ * assistant responses, so the client can explain the stale context and offer
+ * a clean restart.
+ */
+export const conversationContextConflictResponseSchema = z.object({
+  ok: z.literal(false),
+  code: z.enum([
+    'BOARD_VERSION_CONFLICT',
+    'ACADEMIC_CONTEXT_CONFLICT',
+    'ACADEMIC_CONTEXT_MISSING',
+    'PREFERENCE_CONTEXT_CONFLICT',
+  ]),
+  message_he: boundedText,
+  currentBoardVersion: z.string().trim().min(1).max(256).nullable().optional(),
+}).strict()
+
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 export type ConversationRequest = z.infer<typeof conversationRequestSchema>
 export type ConversationEvent = z.infer<typeof conversationEventSchema>
 export type ConversationProposal = z.infer<typeof conversationProposalSchema>
 export type ConversationResponse = z.infer<typeof conversationResponseSchema>
+export type ConversationContextConflictResponse = z.infer<typeof conversationContextConflictResponseSchema>

@@ -13,8 +13,10 @@ import {
 } from './wire';
 import {
   conversationResponseSchema,
+  conversationContextConflictResponseSchema,
   type ConversationRequest,
   type ConversationResponse,
+  type ConversationContextConflictResponse,
 } from './conversation-wire';
 import { ContractError } from './model';
 import type { BoardModel, GeneratedPlanModel } from './model';
@@ -166,6 +168,21 @@ export async function getCommittedBoard(
   return parsed.data.board;
 }
 
+/** A conversation was refused because its captured planning context is stale. */
+export class ConversationContextConflictError extends ContractError {
+  readonly code: ConversationContextConflictResponse['code'];
+  readonly messageHe: string;
+  readonly currentBoardVersion?: string | null;
+
+  constructor(conflict: ConversationContextConflictResponse) {
+    super('conversation context conflict', conflict);
+    this.name = 'ConversationContextConflictError';
+    this.code = conflict.code;
+    this.messageHe = conflict.message_he;
+    this.currentBoardVersion = conflict.currentBoardVersion;
+  }
+}
+
 /**
  * Send one bounded transcript turn to the conversational Academic Agent.
  * Typed assistant unavailability is a normal response (including HTTP 503),
@@ -192,6 +209,10 @@ export async function sendConversation(
     body = await res.json();
   } catch (error) {
     throw asContractError(error, 'conversation');
+  }
+  if (!res.ok) {
+    const conflict = conversationContextConflictResponseSchema.safeParse(body);
+    if (conflict.success) throw new ConversationContextConflictError(conflict.data);
   }
   const parsed = conversationResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed conversation response', parsed.error);

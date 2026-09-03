@@ -263,6 +263,27 @@ describe('api client (runtime-neutral, injected fetch)', () => {
     });
     expect(result.outcome).toBe('assistant_unavailable');
   });
+
+  test('sendConversation exposes an actionable typed context conflict from HTTP 409', async () => {
+    await expect(sendConversation({ fetchImpl: makeFetch(409, {
+      ok: false,
+      code: 'BOARD_VERSION_CONFLICT',
+      message_he: 'הלוח השתנה מאז תחילת השיחה.',
+      currentBoardVersion: 'bv_2',
+    }), baseUrl: '' }, {
+      program_id: 'mechanical_engineering_2027',
+      session_token: '00000000-0000-4000-8000-000000000000',
+      board_version: 'bv_1',
+      academic_status_digest: 'as_1',
+      preference_digest: 'pref_1',
+      transcript: [{ role: 'user', text: 'בדיקה' }],
+    })).rejects.toMatchObject({
+      name: 'ConversationContextConflictError',
+      code: 'BOARD_VERSION_CONFLICT',
+      messageHe: 'הלוח השתנה מאז תחילת השיחה.',
+      currentBoardVersion: 'bv_2',
+    });
+  });
 });
 
 // ── local workspace schema ────────────────────────────────────────────────────
