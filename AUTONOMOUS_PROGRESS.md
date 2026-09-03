@@ -11,6 +11,9 @@ focused board suite passes (19 tests), typecheck passes, the full Jest runner
 completes without failures, and the Next production build completes. No
 catalog, Electrical data, provider, Supabase, Production, or remote database
 configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-pxlu46frf-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `ed67b9a`).
 
 ## Latest session — fail closed on legacy planner redirects
 
