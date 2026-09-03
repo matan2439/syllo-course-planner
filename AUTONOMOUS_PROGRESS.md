@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — reconcile the semester-table implementation plan
+
+The semester-table plan is now marked complete through its responsive
+workbench, typed repository drag payloads, server-authoritative add/move/remove
+paths and accessibility regressions. Evidence is current: 4 root manual-
+authority suites with 27 tests, 29 web suites with 257 tests, root typecheck and
+web production build all pass. The conversational-agent and release plans
+remain intentionally open for their separate gates.
+
 ## Latest session — document the keyboard fallback beside drag guidance
 
 The open-repository board hint now explains both supported paths: drag a course
