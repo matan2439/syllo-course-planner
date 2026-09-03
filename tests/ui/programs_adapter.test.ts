@@ -11,6 +11,7 @@ import {
   getProgram,
   listProgramFamilies,
   programQuery,
+  resolveProgram,
 } from '../../web/lib/programs';
 
 test('families expose shipped Hebrew names, tracks and default versions', () => {
@@ -35,6 +36,12 @@ test('getProgram resolves the default for missing or unknown ids', () => {
   expect(getProgram('mechanical_engineering_2025').id).toBe(
     'mechanical_engineering_2025'
   );
+});
+
+test('resolveProgram fails closed for an explicitly requested unregistered program', () => {
+  expect(resolveProgram('electrical_engineering_2027')).toBeNull();
+  expect(resolveProgram('no_such_program')).toBeNull();
+  expect(resolveProgram(undefined)?.id).toBe(DEFAULT_PROGRAM_ID);
 });
 
 test('programs carry the shipped board JSON filename', () => {

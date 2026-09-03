@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — fail closed for unknown planner programs
+
+The canonical `/planner` route now resolves an explicitly requested program
+without silently falling back to Mechanical Engineering. Unknown or
+unregistered ids, including the still-hidden Electrical Engineering program,
+stop at the route boundary before any board or repository data is rendered.
+The resolver and route regression tests pass, the Academic Agent/workspace
+regression set passes (20 tests), root typecheck passes, and the web
+production build completes successfully. No Electrical catalog data was
+invented or changed; Production, Supabase, and remote databases remain
+untouched.
+
 ## Latest session — reconcile the conversational-agent implementation plan
 
 The conversational-agent plan now records the typed conversation wire,

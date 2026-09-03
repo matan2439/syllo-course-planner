@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { readBoardForProgramId } from '../../lib/board-data'
-import { getProgram } from '../../lib/programs'
+import { resolveProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
 import { semesterTitleHe } from '../../lib/planner/board-vm'
 import ProductShell from '../components/ProductShell'
@@ -18,7 +18,8 @@ export default async function PlannerPage({
   searchParams: Promise<{ program?: string }>
 }) {
   const { program: programParam } = await searchParams
-  const program = getProgram(programParam)
+  const program = resolveProgram(programParam)
+  if (!program) notFound()
   const raw = await readBoardForProgramId(program.id)
   if (!raw) notFound()
   const repo = adaptRepository(raw)

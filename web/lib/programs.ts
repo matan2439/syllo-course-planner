@@ -89,6 +89,16 @@ export function getProgram(id: string | undefined): ProgramVM {
   return PROGRAMS[id ?? ''] ?? PROGRAMS[DEFAULT_PROGRAM_ID]
 }
 
+/**
+ * Resolve a requested program without silently substituting another degree.
+ * `getProgram` keeps its historical defaulting behavior for legacy callers;
+ * user-facing routes should use this boundary for explicit query parameters.
+ */
+export function resolveProgram(id: string | undefined): ProgramVM | null {
+  if (!id) return PROGRAMS[DEFAULT_PROGRAM_ID]
+  return PROGRAMS[id] ?? null
+}
+
 /** Query-string suffix that preserves a non-default selection across pages. */
 export function programQuery(id: string | undefined): string {
   if (!id || id === DEFAULT_PROGRAM_ID || !PROGRAMS[id]) return ''
