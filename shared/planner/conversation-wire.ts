@@ -11,7 +11,10 @@ const preferenceProfileSchema = z.object({
     category: z.string().trim().min(1).max(128),
     originalWording: z.string().max(1_000).optional(),
     normalized: z.string().trim().min(1).max(256),
-    value: z.unknown(),
+    // `z.unknown()` is inferred as optional by the Zod version used in the
+    // remote build; `any` here still validates presence while preserving the
+    // preference model's intentionally open value type.
+    value: z.any(),
     classification: z.enum(['hard_constraint', 'soft_preference', 'goal', 'indifferent', 'uncertain']),
     confidence: z.number().min(0).max(1),
     source: z.enum(['explicit_answer', 'confirmed_interpretation', 'existing_profile', 'safe_default']),
