@@ -8033,5 +8033,9 @@ handle now carries the visible grab affordance and accessible course-specific
 label, while the keyboard add menu remains the non-drag equivalent. RED
 reproduced the card still advertising drag ownership; GREEN passed the focused
 repository suite (7 tests), the board/workspace regression (37 tests), web
-typecheck, and the production build. Preview deployment remains blocked until
-the Vercel snapshot upload authorization gate is cleared.
+typecheck, and the production build. The approved full-snapshot Preview
+deployment is now READY at
+https://tau-course-planner-j9m8yiy3g-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_4mcSpxPA9CnbnTRSnfDgwvJLn1k5`). Browser verification confirmed
+the persistent semester board, repository drawer open/close behavior, AI drawer
+open/close behavior, and visible dedicated drag handles for eligible courses.
