@@ -11,6 +11,9 @@ plan was already persisted or generated. The focused completion suite passes
 (13 tests), the agent/workspace regression set passes (40 tests), and web
 typecheck passes. No catalog, Electrical data, provider, Supabase, Production,
 or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-ot9d6gk96-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `82195cb`).
 
 ## Latest session — make the whole repository card draggable
 
