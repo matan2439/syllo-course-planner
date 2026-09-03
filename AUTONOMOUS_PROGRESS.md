@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — keep drawer controls clickable
+
+The unified workspace now reserves a clear interaction layer between the
+toolbar toggles and the fixed/sticky course and Academic Agent drawers. The
+drawer surfaces start below the toolbar on desktop, and their available height
+is reduced accordingly so the close button and first controls remain
+clickable instead of receiving a hit-test from the toolbar behind them. The
+workspace suite passes (15 tests), the course/board/agent regression set passes
+(58 tests), and web typecheck passes. No catalog, Electrical data, provider,
+Supabase, Production, or remote database configuration changed.
+
 ## Latest session — make completion confirmation truthful
 
 The completed-course control now distinguishes a local academic-status

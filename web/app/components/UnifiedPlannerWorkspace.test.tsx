@@ -106,6 +106,14 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
   })
 
+  test('reserves a clear interaction layer between drawer surfaces and toolbar controls', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    expect(container.querySelector('.planner-workbench')).toHaveAttribute(
+      'data-drawer-interaction', 'below-toolbar',
+    )
+  })
+
   test('keeps the board drop target mounted when the repository drawer is open', () => {
     const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
 

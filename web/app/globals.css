@@ -153,6 +153,13 @@ body {
   pointer-events: none;
   transform: translateX(calc(-100% - 2rem));
 }
+/* The toolbar is part of the normal page flow while the drawers are fixed or
+   sticky surfaces. Keep every drawer's first interactive row below it so a
+   click on an inner drawer control can never hit the toolbar behind it. */
+.planner-workbench[data-drawer-interaction="below-toolbar"] .planner-repository-rail,
+.planner-workbench[data-drawer-interaction="below-toolbar"] .planner-agent-region {
+  top: 11.5rem;
+}
 .planner-drawer-controls {
   position: sticky;
   z-index: 60;
@@ -313,10 +320,10 @@ body {
   }
   .planner-repository-rail {
     position: sticky;
-    top: 5.25rem;
+    top: 11.5rem;
     bottom: auto;
     width: auto;
-    max-height: calc(100vh - 6.25rem);
+    max-height: calc(100vh - 12.5rem);
     transform: none;
     direction: rtl;
   }

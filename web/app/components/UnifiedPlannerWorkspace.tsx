@@ -210,6 +210,7 @@ export default function UnifiedPlannerWorkspace({
         data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
+        data-drawer-interaction="below-toolbar"
       >
         <div
           id="workspace-panel-journey"
