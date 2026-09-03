@@ -114,6 +114,8 @@ describe('UnifiedPlannerWorkspace', () => {
     const boardCanvas = container.querySelector('.planner-board-canvas')
     expect(boardCanvas).toBeInTheDocument()
     expect(boardCanvas).not.toHaveClass('hidden')
+    expect(boardCanvas).toHaveAttribute('data-board-surface', 'persistent-drop-target')
+    expect(boardCanvas).toHaveAttribute('aria-label', 'לוח סמסטרים פעיל')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 

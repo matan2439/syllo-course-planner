@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — keep the board concrete while the course drawer is open
+
+The open course drawer now leaves an explicit, persistent semester-board drop
+surface in the workspace contract. On tablet and mobile layouts the board
+canvas uses a real layout box instead of `display: contents`, so it remains
+visible and participates in drag hit-testing while the repository is open.
+The focused workspace regression, repository/board drag suites (36 tests),
+root typecheck, and web production build pass. No catalog, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest session — retain board frame on load failure
 
 The planner now preserves the labelled semester-board frame when the

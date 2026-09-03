@@ -270,6 +270,17 @@ body {
     width: 100%;
     min-width: 0;
     direction: rtl;
+    /* Keep the board a concrete layout box while a drawer is open. The
+       desktop grid can use display: contents to place the board and agent in
+       separate workbench areas, but mobile/tablet drag interactions need a
+       stable parent that can receive pointer and HTML5 drag hit-testing. */
+    display: block !important;
+    position: relative;
+    visibility: visible;
+    z-index: 1;
+  }
+  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-journey {
+    display: grid !important;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
     position: static;
