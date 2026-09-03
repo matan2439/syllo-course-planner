@@ -1,5 +1,23 @@
 # Autonomous Progress
 
+## Latest session — explain stale Academic Agent conversations
+
+The conversational Academic Decision Agent now preserves typed server context
+conflicts instead of collapsing a stale board/status/preferences response into
+a generic network error. When a manual edit or another authoritative update
+invalidates the captured conversation context, the drawer explains the Hebrew
+reason, disables further sends against stale context, and offers `התחל שיחה
+חדשה`, which clears only the transcript and draft. The board remains untouched,
+and the existing non-mutating proposal/apply boundary is unchanged. The
+focused agent suite passes (5 tests), the planner contract suite passes (38
+tests), the agent/board/repository/workspace regression set passes (49 tests),
+and the Next production build passes. No catalog, Electrical data, provider,
+Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-lw55qohzp-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `3267f52`; Vercel reports the deployment
+`READY`).
+
 ## Latest session — fail closed and clarify illegal drag destinations
 
 Dragging now fails closed when the authoritative catalog does not provide an
