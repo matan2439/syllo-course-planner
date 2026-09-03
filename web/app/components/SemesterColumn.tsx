@@ -75,6 +75,7 @@ export default function SemesterColumn({
   return (
     <section
       aria-label={semester.title}
+      data-drop-state={visibleDragState ?? undefined}
       onDragEnter={updateDragState}
       onDragOver={updateDragState}
       onDragLeave={(event) => {
@@ -116,9 +117,17 @@ export default function SemesterColumn({
 
       {visibleDragState && (
         <p role="status" aria-live="polite" className={`planner-drop-feedback planner-drop-feedback-${visibleDragState}`}>
-          {visibleDragState === 'allowed' && 'ניתן לשחרר כאן'}
-          {visibleDragState === 'invalid' && 'לא ניתן לשחרר כאן'}
-          {visibleDragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
+          <span aria-hidden="true" className="planner-drop-feedback-icon">
+            {visibleDragState === 'allowed' && '✓'}
+            {visibleDragState === 'invalid' && '×'}
+            {visibleDragState === 'unknown' && '…'}
+          </span>
+          {' '}
+          <span>
+            {visibleDragState === 'allowed' && 'ניתן לשחרר כאן'}
+            {visibleDragState === 'invalid' && 'לא ניתן לשחרר כאן'}
+            {visibleDragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
+          </span>
         </p>
       )}
 

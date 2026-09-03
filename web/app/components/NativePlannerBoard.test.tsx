@@ -201,9 +201,29 @@ test('previews every semester against the active drag before pointer hover', () 
   expect(allowedTarget).toHaveClass('planner-drop-target-active')
   expect(invalidTarget).toHaveClass('planner-drop-target-invalid')
   expect(screen.getAllByRole('status').map((status) => status.textContent)).toEqual([
-    'ניתן לשחרר כאן',
-    'לא ניתן לשחרר כאן',
+    '✓ ניתן לשחרר כאן',
+    '× לא ניתן לשחרר כאן',
   ])
+})
+
+test('drop feedback exposes a distinct visual state for legal and illegal destinations', () => {
+  render(createElement(NativePlannerBoard as any, {
+    board: vmFromPayload(BOARD),
+    onAddCourse: jest.fn(),
+    activeDrag: {
+      kind: 'repository',
+      courseId: '0542-4120',
+      allowedSemesterIds: ['year_3_semester_a'],
+    },
+  }))
+
+  const allowedTarget = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
+  const invalidTarget = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+
+  expect(allowedTarget).toHaveAttribute('data-drop-state', 'allowed')
+  expect(invalidTarget).toHaveAttribute('data-drop-state', 'invalid')
+  expect(within(allowedTarget).getByRole('status')).toHaveTextContent('✓ ניתן לשחרר כאן')
+  expect(within(invalidTarget).getByRole('status')).toHaveTextContent('× לא ניתן לשחרר כאן')
 })
 
 test('clears a hovered drop target when the shared drag intent ends', () => {

@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — make legal and illegal drop states unmistakable
+
+Semester columns now expose a stable `data-drop-state` marker while a drag is
+active and show a high-contrast feedback chip: green `✓ ניתן לשחרר כאן` for a
+legal destination, red `× לא ניתן לשחרר כאן` for an illegal destination, and a
+purple checking state while the browser has not exposed enough drag data yet.
+The focused board suite passes (21 tests), the server-authority/workspace/
+repository regression set passes (64 tests), web typecheck and production
+build pass. No catalog, Electrical data, provider, Supabase, Production, or
+remote database configuration changed.
+
 ## Latest session — make pending course adds cancellable
 
 The repository-to-board flow now exposes an explicit `ביטול` action while a
