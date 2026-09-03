@@ -59,8 +59,11 @@ describe('UnifiedCourseRepository', () => {
 
     expect(screen.getByRole('button', { name: 'בקרה מודרנית כבר נמצא בלוח' })).toBeDisabled()
     expect(screen.getByText('בקרה מודרנית').closest('[draggable="true"]')).toBeNull()
-    expect(screen.getByText('מבוא ללמידת מכונה סטטיסטית').closest('[data-drag-card]'))
-      .toHaveAttribute('aria-label', 'גרור את מבוא ללמידת מכונה סטטיסטית ללוח הסמסטרים')
+    const machineLearningCard = screen.getByText('מבוא ללמידת מכונה סטטיסטית').closest('[data-drag-card]') as HTMLElement
+    expect(machineLearningCard).not.toHaveAttribute('aria-label')
+    expect(machineLearningCard.querySelector('[data-drag-handle]')).toHaveAttribute(
+      'aria-label', 'גרור את מבוא ללמידת מכונה סטטיסטית ללוח הסמסטרים',
+    )
     fireEvent.click(screen.getByRole('button', { name: 'הוסף את תכן תרמי מתקדם אל שנה ג׳ — סמסטר א׳' }))
     expect(onRequestAdd).toHaveBeenCalledWith('0542-4135', 'year_3_semester_a')
     expect(onRequestAdd).toHaveBeenCalledTimes(1)
@@ -88,6 +91,10 @@ describe('UnifiedCourseRepository', () => {
     expect(card).not.toBeNull()
     expect(card).not.toHaveAttribute('draggable', 'true')
     expect(handle).toHaveAttribute('draggable', 'true')
+    expect(card).not.toHaveClass('planner-drag-source')
+    expect(handle).toHaveClass('planner-drag-source')
+    expect(handle).toHaveAttribute('aria-label', 'גרור את בקרה מודרנית ללוח הסמסטרים')
+    expect(handle).not.toHaveAttribute('aria-hidden', 'true')
     fireEvent.dragStart(handle, { dataTransfer: transfer })
 
     expect(JSON.parse(transfer.getData('application/x-syllo-repository-course'))).toEqual({

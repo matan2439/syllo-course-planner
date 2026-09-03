@@ -91,9 +91,6 @@ export default function UnifiedCourseRepository({
                   key={course.id}
                   data-drag-card
                   data-dragging={draggingCourseId === course.id ? 'true' : undefined}
-                  className={draggable ? 'planner-drag-source' : undefined}
-                  role={draggable ? 'group' : undefined}
-                  aria-label={draggable ? `גרור את ${course.name} ללוח הסמסטרים` : undefined}
                   onDragStart={(event) => {
                     if (!draggable) return
                     event.dataTransfer.effectAllowed = 'copy'
@@ -116,14 +113,14 @@ export default function UnifiedCourseRepository({
                         data-drag-handle
                         draggable
                         title="גררו מכאן ללוח"
-                        aria-hidden="true"
+                        aria-label={`גרור את ${course.name} ללוח הסמסטרים`}
                         onDragStart={(event) => {
                           event.dataTransfer.effectAllowed = 'copy'
                           writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
                           setDraggingCourseId(course.id)
                         }}
                         onDragEnd={() => setDraggingCourseId(null)}
-                        className="planner-drag-handle self-center text-[11px] text-[var(--text-muted)]"
+                        className="planner-drag-handle planner-drag-source self-center text-[11px] text-[var(--text-muted)]"
                       >
                         ⠿ גרור ללוח
                       </span>

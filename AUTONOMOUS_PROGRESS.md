@@ -8024,3 +8024,14 @@ repository payload and authoritative server validation remain unchanged.
 The next release step is a new isolated Preview deployment and browser check;
 the current Preview still cannot show this commit until the Vercel snapshot
 upload authorization gate is cleared.
+
+## Latest session — keep drag affordance truthful
+
+After moving native drag initiation to the dedicated handle, the course card
+no longer carries a misleading grab cursor, drag role, or drag label. The
+handle now carries the visible grab affordance and accessible course-specific
+label, while the keyboard add menu remains the non-drag equivalent. RED
+reproduced the card still advertising drag ownership; GREEN passed the focused
+repository suite (7 tests), the board/workspace regression (37 tests), web
+typecheck, and the production build. Preview deployment remains blocked until
+the Vercel snapshot upload authorization gate is cleared.
