@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — show legal and illegal drop targets before hover
+
+The unified board now uses the shared drag intent to preview every semester as
+soon as a course drag begins. Eligible columns show `ניתן לשחרר כאן`, while
+columns excluded by the authoritative offering show `לא ניתן לשחרר כאן` with
+the existing green pulse or red shake treatment. This removes the misleading
+window where every target looked neutral until the pointer crossed it. The
+focused board suite passes (19 tests), typecheck passes, the full Jest runner
+completes without failures, and the Next production build completes. No
+catalog, Electrical data, provider, Supabase, Production, or remote database
+configuration changed.
+
 ## Latest session — fail closed on legacy planner redirects
 
 The historical `/plan`, `/ai-plan`, and `/planner/native` entries now resolve

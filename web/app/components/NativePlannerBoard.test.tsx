@@ -4,7 +4,7 @@
  * boardModelToVM → NativePlannerBoard. No hand-built BoardVM data fixtures.
  */
 import { createElement } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import NativePlannerBoard from './NativePlannerBoard'
 import { boardModelToVM } from '../../lib/planner/board-vm'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
@@ -119,7 +119,7 @@ test('an ineligible repository drag visibly marks the semester as unavailable', 
   fireEvent.dragOver(target, { dataTransfer: transfer })
 
   expect(target).toHaveClass('planner-drop-target-invalid')
-  expect(screen.getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
+  expect(within(target).getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
 })
 
 test('an allowed repository drag marks the target as soon as it enters the semester', () => {
@@ -178,10 +178,32 @@ test('uses the repository drag intent when the browser hides data and marks an i
   fireEvent.dragOver(target, { dataTransfer: transfer })
 
   expect(target).toHaveClass('planner-drop-target-invalid')
-  expect(screen.getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
+  expect(within(target).getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
 
   fireEvent.drop(target, { dataTransfer: transfer })
   expect(onAddCourse).not.toHaveBeenCalled()
+})
+
+test('previews every semester against the active drag before pointer hover', () => {
+  render(createElement(NativePlannerBoard as any, {
+    board: vmFromPayload(BOARD),
+    onAddCourse: jest.fn(),
+    activeDrag: {
+      kind: 'repository',
+      courseId: '0542-4120',
+      allowedSemesterIds: ['year_3_semester_a'],
+    },
+  }))
+
+  const allowedTarget = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
+  const invalidTarget = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+
+  expect(allowedTarget).toHaveClass('planner-drop-target-active')
+  expect(invalidTarget).toHaveClass('planner-drop-target-invalid')
+  expect(screen.getAllByRole('status').map((status) => status.textContent)).toEqual([
+    'ניתן לשחרר כאן',
+    'לא ניתן לשחרר כאן',
+  ])
 })
 
 test('a repository drop outside its offering fails closed', () => {

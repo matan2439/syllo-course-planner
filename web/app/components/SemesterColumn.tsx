@@ -56,6 +56,15 @@ export default function SemesterColumn({
     return true
   }
 
+  // The browser may not dispatch dragover until the pointer enters a target.
+  // The shared intent is authoritative enough to preview every target as soon
+  // as a drag starts, so the user can see legal and illegal destinations at a
+  // glance instead of discovering them one column at a time.
+  const previewDragState = mutationPending || !activeDrag
+    ? null
+    : acceptsPayload(activeDrag) ? 'allowed' : 'invalid'
+  const visibleDragState = previewDragState ?? dragState
+
   return (
     <section
       aria-label={semester.title}
@@ -77,7 +86,7 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${dragState === 'allowed' ? 'planner-drop-target-active' : ''} ${dragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${dragState === 'unknown' ? 'planner-drop-target-pending' : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
@@ -98,11 +107,11 @@ export default function SemesterColumn({
         </div>
       </header>
 
-      {dragState && (
-        <p role="status" aria-live="polite" className={`planner-drop-feedback planner-drop-feedback-${dragState}`}>
-          {dragState === 'allowed' && 'ניתן לשחרר כאן'}
-          {dragState === 'invalid' && 'לא ניתן לשחרר כאן'}
-          {dragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
+      {visibleDragState && (
+        <p role="status" aria-live="polite" className={`planner-drop-feedback planner-drop-feedback-${visibleDragState}`}>
+          {visibleDragState === 'allowed' && 'ניתן לשחרר כאן'}
+          {visibleDragState === 'invalid' && 'לא ניתן לשחרר כאן'}
+          {visibleDragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
         </p>
       )}
 
