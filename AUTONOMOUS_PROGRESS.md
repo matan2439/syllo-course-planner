@@ -7875,3 +7875,9 @@ build` passed. Playwright's synthetic `dragTo` does not preserve the custom
 browser MIME payload, so successful live mutation is not claimed from that
 harness; the deterministic drop and server-authority tests remain the source
 of truth. Production was not changed.
+
+The release plan now records only the gates actually evidenced by this run:
+the branch push, READY Preview metadata, and no-legacy-iframe planner load are
+complete. Full Python/root-Jest release coverage, real browser MIME drag
+mutation, mobile acceptance, provider smoke, and Production promotion remain
+open rather than being inferred from unit tests or a synthetic drag harness.

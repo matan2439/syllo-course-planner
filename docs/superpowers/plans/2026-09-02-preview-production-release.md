@@ -26,19 +26,19 @@
 **Files:**
 - Modify: `AUTONOMOUS_PROGRESS.md`
 
-- [ ] Confirm `git status --short` contains only the explicitly preserved unrelated files.
+- [x] Confirm `git status --short` contains only the explicitly preserved unrelated files.
 - [ ] Run complete Python, root Jest, web Jest, root/web typecheck and `web` production build commands from repository manifests.
-- [ ] Run `git diff --check` and record exact test/build evidence.
-- [ ] Commit only the release evidence update.
+- [x] Run `git diff --check` and record exact test/build evidence.
+- [x] Commit only the release evidence update.
 
 ### Task 2: Push and immutable Preview
 
 **Files:** none
 
-- [ ] Confirm branch is `ui/frontend-modernization`, list commits ahead of `origin`, and verify no preserved file is staged.
-- [ ] Push explicitly to `origin/ui/frontend-modernization` after egress approval.
-- [ ] Confirm Vercel CLI availability. If unavailable, install only with user/system approval or use the configured Git deployment and inspect its resulting commit SHA.
-- [ ] Capture Preview URL, deployment id, commit SHA, framework and READY status.
+- [x] Confirm branch is `ui/frontend-modernization`, list commits ahead of `origin`, and verify no preserved file is staged.
+- [x] Push explicitly to `origin/ui/frontend-modernization` after egress approval.
+- [x] Confirm Vercel CLI availability. If unavailable, install only with user/system approval or use the configured Git deployment and inspect its resulting commit SHA.
+- [x] Capture Preview URL, deployment id, commit SHA, framework and READY status.
 - [ ] Confirm Preview uses isolated durable storage and does not target Production data.
 
 ### Task 3: Deterministic Preview acceptance
@@ -46,7 +46,7 @@
 **Files:**
 - Create or modify only focused browser acceptance tests under `tests/ui/` when a missing automated assertion is found through RED.
 
-- [ ] Verify `/planner?program=mechanical_engineering_2027` loads the purple React workspace with no legacy iframe.
+- [x] Verify `/planner?program=mechanical_engineering_2027` loads the purple React workspace with no legacy iframe.
 - [ ] Desktop: verify repository category/search, drag add, board move, remove, selected state, details and refresh persistence.
 - [ ] Keyboard: verify repository add menu, board move menu, tab order, focus visibility and live error/status announcements.
 - [ ] Mobile: verify three views, horizontal semester navigation, no clipped controls and no page-level horizontal overflow.
@@ -83,4 +83,3 @@
 - [ ] Record live URL, deployment id, commit, test/build counts, Preview acceptance, real-conversation smoke, previous Production id and rollback command.
 - [ ] Commit and push the release record to `ui/frontend-modernization`.
 - [ ] Report any intentionally deferred items, especially Electrical visibility, accounts/cross-device sync and monetization.
-
