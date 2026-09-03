@@ -37,6 +37,10 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
       data-dragging={dragging ? 'true' : undefined}
       onDragStart={(event) => {
         if (!movable) return
+        if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select')) {
+          event.preventDefault()
+          return
+        }
         setDragging(true)
         event.dataTransfer.effectAllowed = 'move'
         writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)

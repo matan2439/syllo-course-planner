@@ -314,6 +314,38 @@ test('dragging an elective onto another semester invokes the same authoritative 
   expect(container.querySelector('details')).toBeInTheDocument() // non-drag keyboard alternative remains
 })
 
+test('does not hijack a drag that starts on a board card control', () => {
+  const electiveBoard = {
+    ...BOARD,
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+    ],
+  }
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  const onDragStateChange = jest.fn()
+  render(
+    <NativePlannerBoard
+      board={vmFromPayload(electiveBoard)}
+      onMoveCourse={jest.fn()}
+      onDragStateChange={onDragStateChange}
+    />,
+  )
+
+  fireEvent.dragStart(screen.getByText('אפשרויות העברה עבור קורס בחירה'), { dataTransfer: transfer })
+
+  expect(onDragStateChange).not.toHaveBeenCalled()
+  expect(transfer.values.size).toBe(0)
+})
+
 test('an elective drag source visibly enters and leaves its dragging state', () => {
   const electiveBoard = {
     ...BOARD,

@@ -1,5 +1,17 @@
 # Autonomous Progress
 
+## Latest session — keep board controls separate from drag
+
+Board course cards now ignore drag gestures that begin on an interactive
+control such as «אפשרויות העברה», a move button, a remove button, or a syllabus
+link. This keeps keyboard/click alternatives independent from the manual drag
+gesture while preserving drag from the card surface. The focused board suite
+passes (23 tests), the repository/board/workspace/server-authority regression
+set passes (67 tests), and web typecheck and production build pass. No catalog,
+Electrical data, provider, Supabase, Production, or remote database
+configuration changed.
+
+
 ## Latest session — keep repository controls separate from drag
 
 Repository course cards remain full-card drag sources, but drag gestures that
