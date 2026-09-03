@@ -13,7 +13,12 @@ board, and drag-payload regressions passed (32 tests), and the web TypeScript
 check passed. This slice changes only the planner UI; no provider, catalog,
 Supabase, Production, or remote database configuration was changed. The
 unrelated curriculum test modification and private untracked files remain
-untouched and unstaged.
+untouched and unstaged. The isolated Preview for this slice is
+https://tau-course-planner-hqxzdt4nq-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027;
+browser verification at the affected 639px width confirmed the board and
+repository were side by side (224px and 352px), non-overlapping, and the board
+drop point was not covered. The Preview still exposed 56 draggable sources and
+no iframe.
 
 ## Latest session — release gate evidence for the unified planner
 
