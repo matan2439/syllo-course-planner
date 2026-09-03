@@ -7892,3 +7892,14 @@ arbitrary text cannot invent a course or bypass server validation. Focused
 payload and board tests pass (24 tests), the full web suite passes (29 suites,
 260 tests), root and web typechecks pass, and the web production build passes.
 Production remains unchanged.
+
+## Latest session — verify mobile workspace surfaces
+
+The latest Preview was checked at 390×844. Board view kept the semester list
+inside an internal horizontal scroller (`342px` client width over `1088px` of
+semester content), while the document stayed at `375px` with no page-level
+horizontal overflow. The repository and academic-assistant views both opened
+without removing the mounted board; drawer and tab controls stayed within the
+viewport. This completes only the mobile acceptance checkbox in the release
+plan; live MIME drag mutation, full Python/root-Jest release coverage, provider
+smoke, and Production promotion remain open.

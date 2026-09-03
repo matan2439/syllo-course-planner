@@ -49,7 +49,7 @@
 - [x] Verify `/planner?program=mechanical_engineering_2027` loads the purple React workspace with no legacy iframe.
 - [ ] Desktop: verify repository category/search, drag add, board move, remove, selected state, details and refresh persistence.
 - [ ] Keyboard: verify repository add menu, board move menu, tab order, focus visibility and live error/status announcements.
-- [ ] Mobile: verify three views, horizontal semester navigation, no clipped controls and no page-level horizontal overflow.
+- [x] Mobile: verify three views, horizontal semester navigation, no clipped controls and no page-level horizontal overflow.
 - [ ] Agent with provider calls disabled: verify truthful unavailable or deterministic test mode, alternatives never mutate before Apply, manual edit stales, stale Apply blocks, selected candidate server-applies and survives refresh.
 - [ ] Verify session isolation, console errors, failed requests and unexpected network calls.
 - [ ] Record immutable acceptance evidence and exact Preview URL.
