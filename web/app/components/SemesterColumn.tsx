@@ -1,7 +1,7 @@
 'use client'
 
 import type { SemesterVM } from '../../lib/board'
-import { useState, type DragEvent } from 'react'
+import { useEffect, useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
 import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
@@ -34,6 +34,13 @@ export default function SemesterColumn({
     if (payload.kind === 'board' && !onMoveCourse) return false
     return payload.allowedSemesterIds === undefined || payload.allowedSemesterIds.includes(semester.id)
   }
+
+  useEffect(() => {
+    // A source can end a drag outside this column, so no dragleave/drop event
+    // is guaranteed to reach the hovered target. The shared intent is the
+    // lifecycle boundary that must clear any local visual feedback.
+    if (!activeDrag) setDragState(null)
+  }, [activeDrag])
 
   const updateDragState = (event: DragEvent<HTMLElement>) => {
     if (mutationPending) { setDragState(null); return false }

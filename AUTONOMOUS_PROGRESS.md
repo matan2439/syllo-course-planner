@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — clear feedback after cancelled drags
+
+Semester columns now clear their local hover feedback whenever the shared drag
+intent ends. This covers a drag cancelled outside the board, where neither a
+`drop` nor a `dragleave` event is guaranteed to arrive, and prevents stale
+`ניתן לשחרר כאן` / `לא ניתן לשחרר כאן` states from remaining on screen. The
+focused board suite passes (20 tests), the course/board/agent/workspace
+regression set passes (59 tests), and web typecheck passes. No catalog,
+Electrical data, provider, Supabase, Production, or remote database
+configuration changed.
+
 ## Latest session — keep drawer controls clickable
 
 The unified workspace now reserves a clear interaction layer between the

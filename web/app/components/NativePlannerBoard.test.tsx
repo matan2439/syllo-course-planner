@@ -206,6 +206,42 @@ test('previews every semester against the active drag before pointer hover', () 
   ])
 })
 
+test('clears a hovered drop target when the shared drag intent ends', () => {
+  const payload = {
+    kind: 'repository' as const,
+    courseId: '0542-4120',
+    allowedSemesterIds: ['year_3_semester_a'],
+  }
+  const { rerender } = render(
+    <NativePlannerBoard
+      board={vmFromPayload(BOARD)}
+      onAddCourse={jest.fn()}
+      activeDrag={payload}
+    />,
+  )
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+  expect(within(target).getByRole('status')).toHaveTextContent('ניתן לשחרר כאן')
+
+  rerender(
+    <NativePlannerBoard
+      board={vmFromPayload(BOARD)}
+      onAddCourse={jest.fn()}
+      activeDrag={null}
+    />,
+  )
+
+  expect(within(target).queryByRole('status')).toBeNull()
+  expect(target).not.toHaveClass('planner-drop-target-active')
+})
+
 test('a repository drop outside its offering fails closed', () => {
   const onAddCourse = jest.fn()
   const transfer = {
