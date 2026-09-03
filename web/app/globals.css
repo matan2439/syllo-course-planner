@@ -199,13 +199,26 @@ body {
 .planner-drawer-close:first-letter { font-size: 1.2rem; line-height: 1; }
 .planner-drawer-close:hover { color: var(--text); border-color: var(--purple); }
 .planner-drawer-close:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.planner-drag-source { cursor: grab; }
+.planner-drag-source {
+  cursor: grab;
+  transition: transform 180ms cubic-bezier(.2,.7,.3,1), opacity 180ms ease,
+    filter 180ms ease;
+}
+.planner-drag-source:hover { transform: translateY(-2px); }
 .planner-drag-source:active { cursor: grabbing; }
-.planner-drag-handle { cursor: grab; user-select: none; }
+.planner-drag-source[data-dragging="true"] {
+  opacity: .62;
+  transform: scale(.98) rotate(-.4deg);
+  filter: saturate(.82);
+}
+.planner-drag-handle {
+  cursor: grab;
+  user-select: none;
+  transition: color 150ms ease, transform 150ms ease;
+}
 .planner-drag-handle:hover { color: var(--purple); transform: translateY(-1px); }
 .planner-drag-handle:active { transform: scale(.96); }
 .planner-drag-source[data-dragging="true"] {
-  opacity: .62;
   outline: 2px solid color-mix(in srgb, var(--purple) 55%, transparent);
   outline-offset: 3px;
 }

@@ -1,4 +1,5 @@
 import type { CourseVM } from '../../lib/board'
+import { useState } from 'react'
 import { Badge, Card } from './ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
@@ -22,6 +23,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   mutationPending?: boolean
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
+  const [dragging, setDragging] = useState(false)
   const availableMoveDestinations = course.offeredSemesters === undefined
     ? moveDestinations
     : moveDestinations?.filter((destination) => course.offeredSemesters?.includes(destination.semesterId))
@@ -32,13 +34,18 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
     <div
       draggable={movable}
       className={movable ? 'planner-drag-source' : undefined}
+      data-dragging={dragging ? 'true' : undefined}
       onDragStart={(event) => {
         if (!movable) return
+        setDragging(true)
         event.dataTransfer.effectAllowed = 'move'
         writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)
         onDragStateChange?.({ kind: 'board', courseId: course.id, allowedSemesterIds: course.offeredSemesters })
       }}
-      onDragEnd={() => onDragStateChange?.(null)}
+      onDragEnd={() => {
+        setDragging(false)
+        onDragStateChange?.(null)
+      }}
     >
     <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
       <div className="flex items-start justify-between gap-2">

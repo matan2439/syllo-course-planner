@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — make the dragged course source unmistakable
+
+Movable board cards now expose a transient dragging state, with a clear grab/
+grabbing cursor, a restrained hover lift, and a subtle scale/rotation change
+while the card is in flight. The state resets on `dragend`, including a
+cancelled drag, so the board cannot leave a course looking selected. The
+focused board suite passes (22 tests), the server-authority/workspace/
+repository regression set passes (65 tests), and web typecheck and production
+build pass. No catalog, Electrical data, provider, Supabase, Production, or
+remote database configuration changed.
+
 ## Latest session — make legal and illegal drop states unmistakable
 
 Semester columns now expose a stable `data-drop-state` marker while a drag is
