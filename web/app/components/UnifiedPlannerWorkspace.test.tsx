@@ -137,7 +137,9 @@ describe('UnifiedPlannerWorkspace', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(repositoryToggle).toHaveFocus()
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 

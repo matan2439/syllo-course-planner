@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — return focus when closing a drawer
+
+Closing the active course or AI drawer with `Escape` now returns keyboard focus
+to its trigger, while the semester board remains mounted and visible. The
+focused workspace suite passed with 9 tests; the full web suite passed with 29
+suites and 252 tests, followed by root typecheck and the web production build.
+No catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — keyboard-close drawer behavior
 
 The active course or AI drawer now closes with `Escape`, returning focus state to

@@ -30,6 +30,8 @@ export default function UnifiedPlannerWorkspace({
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
+  const agentToggleRef = useRef<HTMLButtonElement | null>(null)
 
   const selectView = (view: WorkspaceView, focus = false) => {
     setActiveView(view)
@@ -64,22 +66,22 @@ export default function UnifiedPlannerWorkspace({
   const closeRepository = () => {
     setRepositoryOpen(false)
     setActiveView(agentOpen ? 'agent' : 'board')
+    repositoryToggleRef.current?.focus()
   }
 
   const closeAgent = () => {
     setAgentOpen(false)
     setActiveView(repositoryOpen ? 'repository' : 'board')
+    agentToggleRef.current?.focus()
   }
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (agentOpen) {
-        setAgentOpen(false)
-        setActiveView(repositoryOpen ? 'repository' : 'board')
+        closeAgent()
       } else if (repositoryOpen) {
-        setRepositoryOpen(false)
-        setActiveView('board')
+        closeRepository()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -151,6 +153,7 @@ export default function UnifiedPlannerWorkspace({
 
       <div className="planner-drawer-controls" aria-label="כלי תכנון">
         <button
+          ref={repositoryToggleRef}
           type="button"
           aria-controls="workspace-panel-repository"
           aria-expanded={repositoryOpen}
@@ -162,6 +165,7 @@ export default function UnifiedPlannerWorkspace({
           <span>קורסים</span>
         </button>
         <button
+          ref={agentToggleRef}
           type="button"
           aria-controls="workspace-agent-drawer"
           aria-expanded={agentOpen}
