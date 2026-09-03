@@ -7924,5 +7924,10 @@ drag. The manual-edit error now renders as an assertive feedback banner before
 the board, so the student immediately sees why the drop was refused while the
 authoritative rules remain unchanged. RED reproduced the missing feedback
 placement; GREEN passed the focused regression, all 29 web suites (261 tests),
-root and web typechecks, and the web production build. A new isolated Preview
-deployment and browser verification remain the next release step.
+root and web typechecks, and the web production build. The isolated Preview
+`https://tau-course-planner-bhavesv9r-matanyaron-1633s-projects.vercel.app`
+was then browser-verified with the repository open: the board kept a concrete
+720px layout box, 56 repository cards remained draggable, a real MIME drop
+reached the server and showed the rejection at the board top, and closing the
+drawer restored the full-width board with `aria-hidden="true"` on the
+repository panel. Production remains unchanged.
