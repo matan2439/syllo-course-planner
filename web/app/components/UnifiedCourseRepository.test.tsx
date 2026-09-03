@@ -132,6 +132,31 @@ describe('UnifiedCourseRepository', () => {
     })
   })
 
+  test('does not hijack a drag that starts on an interactive card control', () => {
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '',
+    }
+    const onDragStateChange = jest.fn()
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+        onDragStateChange={onDragStateChange}
+      />,
+    )
+
+    const detailsButton = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
+    fireEvent.dragStart(detailsButton, { dataTransfer: transfer })
+
+    expect(onDragStateChange).not.toHaveBeenCalled()
+    expect(transfer.values.size).toBe(0)
+  })
+
   test('announces the active drag and clears it when the course card is released', () => {
     const transfer = {
       values: new Map<string, string>(),

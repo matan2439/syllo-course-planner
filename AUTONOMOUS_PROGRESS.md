@@ -1,5 +1,16 @@
 # Autonomous Progress
 
+## Latest session — keep repository controls separate from drag
+
+Repository course cards remain full-card drag sources, but drag gestures that
+start on an interactive control (`פרטים`, add, or a disclosure control) are
+now ignored. This prevents a click-oriented action from starting a copy drag
+or changing the board's transient drag state. The focused repository suite
+passes (9 tests), the board/workspace/server-authority regression set passes
+(66 tests), and web typecheck and production build pass. No catalog, Electrical
+data, provider, Supabase, Production, or remote database configuration changed.
+
+
 ## Latest session — make the assistant’s board authority visible
 
 The Academic Decision Agent now shows its planning context inside the

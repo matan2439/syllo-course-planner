@@ -97,6 +97,10 @@ export default function UnifiedCourseRepository({
                   className={draggable ? 'planner-drag-source' : undefined}
                   onDragStart={(event) => {
                     if (!draggable) return
+                    if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select')) {
+                      event.preventDefault()
+                      return
+                    }
                     event.dataTransfer.effectAllowed = 'copy'
                     writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
                     onDragStateChange?.({ kind: 'repository', courseId: course.id, allowedSemesterIds: destinations.map(({ id }) => id) })
