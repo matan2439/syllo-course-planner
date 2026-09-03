@@ -197,6 +197,7 @@ export default function NativePlannerJourney({
   onCommittedCourseIdsChange,
   onCloseAgent,
   agentCloseRef,
+  agentOpen,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -216,6 +217,7 @@ export default function NativePlannerJourney({
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
+  agentOpen?: boolean
   /**
    * Development/diagnostic-only: when true, Build sends
    * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
@@ -915,7 +917,7 @@ export default function NativePlannerJourney({
       </div>
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
-      <aside aria-label="עוזר אקדמי" className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
+      <aside aria-label="עוזר אקדמי" data-open={agentOpen ?? true} className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
         {onCloseAgent && (
           <button
             ref={agentCloseRef}

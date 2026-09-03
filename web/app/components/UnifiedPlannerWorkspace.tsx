@@ -239,6 +239,7 @@ export default function UnifiedPlannerWorkspace({
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
+            agentOpen={agentOpen}
           />
         </div>
         <aside

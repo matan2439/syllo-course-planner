@@ -97,11 +97,28 @@ test('an allowed repository drag visibly marks the semester drop target', () => 
   const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
   fireEvent.dragOver(target, { dataTransfer: transfer })
   expect(target).toHaveClass('planner-drop-target-active')
-  expect(screen.getByRole('status')).toHaveTextContent('אפשר לשחרר כאן')
+  expect(screen.getByRole('status')).toHaveTextContent('ניתן לשחרר כאן')
 
   fireEvent.drop(target, { dataTransfer: transfer })
   expect(target).not.toHaveClass('planner-drop-target-active')
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+test('an ineligible repository drag visibly marks the semester as unavailable', () => {
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, '0542-4120', ['year_3_semester_a'])
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onAddCourse={jest.fn()} />)
+
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+
+  expect(target).toHaveClass('planner-drop-target-invalid')
+  expect(screen.getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
 })
 
 test('an allowed repository drag marks the target as soon as it enters the semester', () => {
@@ -118,7 +135,7 @@ test('an allowed repository drag marks the target as soon as it enters the semes
   fireEvent.dragEnter(target, { dataTransfer: transfer })
 
   expect(target).toHaveClass('planner-drop-target-active')
-  expect(screen.getByRole('status')).toHaveTextContent('אפשר לשחרר כאן')
+  expect(screen.getByRole('status')).toHaveTextContent('ניתן לשחרר כאן')
 })
 
 test('a browser that hides drag data during dragover still activates a known repository drop target', () => {
@@ -133,7 +150,8 @@ test('a browser that hides drag data during dragover still activates a known rep
   const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
   fireEvent.dragOver(target, { dataTransfer: transfer })
 
-  expect(target).toHaveClass('planner-drop-target-active')
+  expect(target).toHaveClass('planner-drop-target-pending')
+  expect(screen.getByRole('status')).toHaveTextContent('בודקים אם ניתן לשחרר כאן')
   expect(transfer.dropEffect).toBe('copy')
 })
 

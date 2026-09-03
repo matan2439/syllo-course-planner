@@ -137,7 +137,8 @@ body {
   box-shadow: 0 24px 70px rgb(20 12 52 / 32%);
   padding: 1rem;
   backdrop-filter: blur(18px);
-  transition: transform 180ms ease, opacity 180ms ease;
+  transition: transform 240ms cubic-bezier(.2,.7,.3,1), opacity 180ms ease, box-shadow 180ms ease;
+  will-change: transform, opacity;
 }
 .planner-repository-rail { right: 1rem; }
 .planner-repository-rail[data-open="true"] { display: block !important; }
@@ -194,6 +195,8 @@ body {
 .planner-drag-source { cursor: grab; }
 .planner-drag-source:active { cursor: grabbing; }
 .planner-drag-handle { cursor: grab; user-select: none; }
+.planner-drag-handle:hover { color: var(--purple); transform: translateY(-1px); }
+.planner-drag-handle:active { transform: scale(.96); }
 .planner-drag-source[data-dragging="true"] {
   opacity: .62;
   outline: 2px solid color-mix(in srgb, var(--purple) 55%, transparent);
@@ -210,11 +213,65 @@ body {
   font-weight: 650;
   text-align: center;
 }
-.planner-drop-target-active {
-  border-color: var(--purple) !important;
-  background: color-mix(in srgb, var(--purple) 8%, var(--surface));
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--purple) 32%, transparent);
+@keyframes planner-drop-allowed {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgb(16 185 129 / 38%), 0 0 0 0 rgb(16 185 129 / 0%); }
+  50% { box-shadow: inset 0 0 0 2px rgb(16 185 129 / 70%), 0 0 0 5px rgb(16 185 129 / 13%); }
 }
+@keyframes planner-drop-invalid {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(-3px); }
+  70% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+@keyframes planner-feedback-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.planner-drop-target-active,
+.planner-drop-target-invalid,
+.planner-drop-target-pending {
+  position: relative;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.planner-drop-target-active {
+  border-color: rgb(16 185 129 / 80%) !important;
+  background: color-mix(in srgb, rgb(16 185 129) 9%, var(--surface));
+  animation: planner-drop-allowed 900ms ease-in-out infinite;
+}
+.planner-drop-target-invalid {
+  border-color: rgb(248 113 113 / 88%) !important;
+  background: color-mix(in srgb, rgb(248 113 113) 10%, var(--surface));
+  box-shadow: inset 0 0 0 2px rgb(248 113 113 / 58%), 0 0 0 5px rgb(248 113 113 / 12%);
+  animation: planner-drop-invalid 260ms ease-out both;
+}
+.planner-drop-target-pending {
+  border-color: color-mix(in srgb, var(--purple) 64%, var(--border)) !important;
+  background: color-mix(in srgb, var(--purple) 6%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--purple) 30%, transparent);
+}
+.planner-drop-feedback {
+  margin: 0;
+  border-radius: .65rem;
+  padding: .55rem .7rem;
+  text-align: center;
+  font-size: .78rem;
+  font-weight: 750;
+  animation: planner-feedback-in 160ms ease-out both;
+}
+.planner-drop-feedback-allowed { color: rgb(5 150 105); background: rgb(16 185 129 / 12%); }
+.planner-drop-feedback-invalid { color: rgb(220 38 38); background: rgb(248 113 113 / 14%); }
+.planner-drop-feedback-unknown { color: var(--purple-strong); background: color-mix(in srgb, var(--purple) 9%, var(--surface)); }
+
+@keyframes planner-drawer-in-right {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes planner-drawer-in-left {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.planner-repository-rail[data-open="true"] { animation: planner-drawer-in-right 240ms cubic-bezier(.2,.7,.3,1) both; }
+.planner-agent-region[data-open="true"] { animation: planner-drawer-in-left 240ms cubic-bezier(.2,.7,.3,1) both; }
 
 @media (min-width: 1024px) {
   .planner-workbench {
@@ -260,7 +317,7 @@ body {
     bottom: auto;
     width: auto;
     max-height: calc(100vh - 6.25rem);
-    transform: none !important;
+    transform: none;
     direction: rtl;
   }
   .planner-repository-rail { grid-area: repository; }

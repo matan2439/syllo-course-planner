@@ -8039,3 +8039,15 @@ https://tau-course-planner-j9m8yiy3g-matanyaron-1633s-projects.vercel.app
 (deployment `dpl_4mcSpxPA9CnbnTRSnfDgwvJLn1k5`). Browser verification confirmed
 the persistent semester board, repository drawer open/close behavior, AI drawer
 open/close behavior, and visible dedicated drag handles for eligible courses.
+
+## Latest session — distinguish legal and illegal drop targets
+
+Semester targets now expose three truthful drag states: green `ניתן לשחרר כאן`
+for an accepted destination, red `לא ניתן לשחרר כאן` for a known invalid
+destination, and a neutral checking state when the browser withholds drag data
+until drop. The target border, feedback label, and motion now match the state;
+drawer entry and repository drag-handle hover/press transitions are also
+explicit and reduced-motion safe. RED reproduced the missing invalid state;
+GREEN passed the focused board suite (17 tests), the repository/workspace
+regression (38 tests), web typecheck, and the web production build. Production
+remains unchanged; a new isolated Preview is the next release step.

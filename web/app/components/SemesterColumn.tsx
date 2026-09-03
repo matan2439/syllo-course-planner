@@ -23,7 +23,7 @@ export default function SemesterColumn({
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
 }) {
-  const [dragActive, setDragActive] = useState(false)
+  const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
   const acceptsPayload = (payload: ReturnType<typeof readPlannerDrag>): payload is NonNullable<ReturnType<typeof readPlannerDrag>> => {
     if (!payload) return false
     if (payload.kind === 'repository' && !onAddCourse) return false
@@ -32,18 +32,23 @@ export default function SemesterColumn({
   }
 
   const updateDragState = (event: DragEvent<HTMLElement>) => {
-    if (mutationPending) { setDragActive(false); return false }
+    if (mutationPending) { setDragState(null); return false }
     const payload = readPlannerDrag(event.dataTransfer)
     if (!payload && hasPlannerDragType(event.dataTransfer)) {
       event.preventDefault()
       event.dataTransfer.dropEffect = event.dataTransfer.types.includes(REPOSITORY_COURSE_MIME) ? 'copy' : 'move'
-      setDragActive(true)
+      setDragState('unknown')
       return true
     }
-    if (!acceptsPayload(payload)) { setDragActive(false); return false }
+    if (!acceptsPayload(payload)) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'none'
+      setDragState('invalid')
+      return true
+    }
     event.preventDefault()
     event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
-    setDragActive(true)
+    setDragState('allowed')
     return true
   }
 
@@ -53,10 +58,10 @@ export default function SemesterColumn({
       onDragEnter={updateDragState}
       onDragOver={updateDragState}
       onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragActive(false)
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragState(null)
       }}
       onDrop={(event) => {
-        setDragActive(false)
+        setDragState(null)
         if (mutationPending) return
         const payload = readPlannerDrag(event.dataTransfer)
         if (!acceptsPayload(payload)) return
@@ -68,7 +73,7 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${dragActive ? 'planner-drop-target-active' : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${dragState === 'allowed' ? 'planner-drop-target-active' : ''} ${dragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${dragState === 'unknown' ? 'planner-drop-target-pending' : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
@@ -89,9 +94,11 @@ export default function SemesterColumn({
         </div>
       </header>
 
-      {dragActive && (
-        <p role="status" aria-live="polite" className="rounded-lg bg-purple-600/10 px-3 py-2 text-center text-xs font-semibold text-[var(--purple)]">
-          אפשר לשחרר כאן
+      {dragState && (
+        <p role="status" aria-live="polite" className={`planner-drop-feedback planner-drop-feedback-${dragState}`}>
+          {dragState === 'allowed' && 'ניתן לשחרר כאן'}
+          {dragState === 'invalid' && 'לא ניתן לשחרר כאן'}
+          {dragState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
         </p>
       )}
 
