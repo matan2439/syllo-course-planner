@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — retain board frame on load failure
+
+The planner now preserves the labelled semester-board frame when the
+authoritative board request fails, while the error remains explicit and no
+course or drop target is fabricated. This prevents the course drawer from
+appearing to replace the planner during a failed load. Full web tests (29
+suites, 255 tests), root typecheck, and the web production build pass. No
+catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — preserve the board while it loads
 
 The unified planner now keeps a labelled semester-board shell visible while

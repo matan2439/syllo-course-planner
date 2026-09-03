@@ -692,9 +692,14 @@ export default function NativePlannerJourney({
   }
   if (boardPhase === 'error' || !current) {
     return (
-      <div role="alert" className="rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-        טעינת התוכנית הנוכחית נכשלה. נא לרענן או לנסות שוב מאוחר יותר.
-      </div>
+      <section aria-label="התוכנית הנוכחית" className="planner-board-region flex flex-col gap-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="text-sm font-bold tracking-tight">לוח הסמסטרים</h2>
+          <p role="alert" className="mt-2 rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            טעינת התוכנית הנוכחית נכשלה. נא לרענן או לנסות שוב מאוחר יותר.
+          </p>
+        </div>
+      </section>
     )
   }
 
