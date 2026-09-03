@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest release gate — Preview remains ready
+
+Re-verified the latest visible Preview at
+`https://tau-course-planner-84rboslpa-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027`.
+The full web suite passed with 29 suites and 251 tests, and the repository
+typecheck passed. The board/repository split layout, accessible valid-drop
+announcement, and typed drag/drop fallback are included in this Preview. No
+catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — announce a valid drop target
 
 Semester columns now expose an accessible live status, `אפשר לשחרר כאן`, while
