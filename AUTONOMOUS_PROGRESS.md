@@ -10,6 +10,10 @@ focused board suite passes (22 tests), the server-authority/workspace/
 repository regression set passes (65 tests), and web typecheck and production
 build pass. No catalog, Electrical data, provider, Supabase, Production, or
 remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-greacne5u-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `a22bc79`; browser-verified the planner shell,
+board, repository toggle, and 35 draggable course sources).
 
 ## Latest session — make legal and illegal drop states unmistakable
 
