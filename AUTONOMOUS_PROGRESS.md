@@ -10,6 +10,9 @@ focused board suite passes (20 tests), the course/board/agent/workspace
 regression set passes (59 tests), and web typecheck passes. No catalog,
 Electrical data, provider, Supabase, Production, or remote database
 configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-lp8f88j9b-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `795daf6`; browser-verified cancelled-drag path).
 
 ## Latest session — keep drawer controls clickable
 
