@@ -1,27 +1,42 @@
 # Autonomous Progress
 
-## Latest session — unify the Academic Agent conversation and humanize course replies
+## 2026-09-04 — unified agent intake and board presentation
 
-The planner now presents preference questions inside the same Academic Decision
-Agent conversation card, so the student can answer with quick options or text
-without switching between separate panels. Replies replace course IDs that are
-known in the authoritative catalog with Hebrew course names while retaining
-the ID for verification; unknown IDs remain untouched. A server-refused manual
-add or move now marks the attempted semester as rejected, shows
-`לא ניתן לשחרר כאן`, and plays a subtle rejection animation so an illegal
-destination is immediately understandable.
+- The canonical `/planner` journey now keeps the academic agent, structured
+  preferences, completed-course status, and free-form Hebrew conversation in
+  one assistant surface. The legacy preference-only build control is hidden on
+  the agent path; the agent must return `next_action: offer_build` before
+  “בנה חלופות” appears.
+- Structured preference answers are sent with every conversation turn as a
+  typed `preference_profile`. The server includes that profile in the LLM
+  prompt and uses its version for the proposal receipt, so the client and
+  server agree about staleness instead of silently rejecting a valid draft.
+- Agent clarifications render as explicit Hebrew follow-up questions with
+  option buttons. Assistant course references are rendered with the
+  authoritative Hebrew course name and retain the id in parentheses.
+- Multiple agent candidates are selectable directly above a read-only
+  materialization of the semester board. The current durable board remains the
+  only editable board; applying a selected candidate still goes through the
+  server authority.
+- The planner shell includes closable right/left drawers, Escape and focus
+  return behavior, a light/dark toggle persisted under `tau_theme`, and the
+  Syllo infinity/sparkle mark plus wordmark assets. The drop feedback path also
+  keeps legal, invalid, and server-rejected destinations visually distinct.
 
-The focused Academic Agent / planner suites pass (17 tests), and the focused
-server-rejection board suite passes (20 tests). The broader six-suite run
-passed 89/90; the one board-load failure was then reproduced successfully in
-an isolated run. `npm run typecheck` completed without errors. The Next build
-reached `Compiled successfully` and traced the server output, but the local
-process hung before returning its final status. No catalog, Electrical data,
-provider, Supabase, Production, or remote database configuration changed.
-The isolated Preview is ready at
-https://tau-course-planner-7tpqji9ef-matanyaron-1633s-projects.vercel.app/planner
-(deployment built from commit `115c5b4`; Vercel deployment protection may
-require login in an automated browser).
+Verification completed for this slice:
+
+- `web`: `AcademicAgentConversation.test.tsx` — 9 passed.
+- `web`: `NativePlannerJourney.agent.test.tsx` — 11 passed.
+- `web`: `AlternativeBoardSwitcher.test.tsx` — 1 passed.
+- `web`: `ThemeToggle.test.tsx` — 1 passed.
+- `root`: `tests/api/conversational_agent.test.ts` and
+  `tests/api/planner_tools.test.ts` — 6 passed.
+- `web`: `npm run typecheck` — passed.
+
+The broader legacy journey tests still contain assertions for the removed
+preference-owned “בנה תוכנית” button and must be migrated in a later test-only
+cleanup; no catalog, Electrical Engineering, Supabase, Production, aliases,
+or environment variables were changed.
 
 ## Latest session — explain stale Academic Agent conversations
 

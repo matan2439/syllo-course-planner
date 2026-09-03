@@ -12,6 +12,7 @@ import type {
   ConversationResponse,
   ConversationTurn,
 } from '../../../shared/planner/conversation-wire'
+import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import { Card } from './ui'
 
 type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
@@ -45,6 +46,7 @@ const defaultSendConversation: SendConversation = (request) => sendConversation(
 const TOOL_LABELS: Record<string, string> = {
   get_state: 'בדיקת מצב הלוח',
   rank_candidates: 'דירוג חלופות',
+  ask_clarification: 'שאלת המשך',
   add_course: 'בדיקת הוספת קורס',
   remove_course: 'בדיקת הסרת קורס',
   move_course: 'בדיקת העברת קורס',
@@ -64,6 +66,8 @@ export default function AcademicAgentConversation({
   boardVersion,
   academicStatusDigest,
   preferenceDigest,
+  preferenceProfile,
+  conversationReady = true,
   sendConversationFn = defaultSendConversation,
   onProposalReady,
   preferenceContent,
@@ -74,6 +78,9 @@ export default function AcademicAgentConversation({
   boardVersion: string | null
   academicStatusDigest: string
   preferenceDigest: string
+  preferenceProfile?: PreferenceProfile
+  /** The durable academic context must be loaded before sending to the agent. */
+  conversationReady?: boolean
   sendConversationFn?: SendConversation
   /** The server-owned, read-only materialization used to show the draft. */
   onProposalReady?: (proposal: ConversationProposal) => void
@@ -91,7 +98,7 @@ export default function AcademicAgentConversation({
 
   const submit = async (text: string) => {
     const trimmed = text.trim()
-    if (!trimmed || pending || contextConflict) return
+    if (!trimmed || pending || contextConflict || !conversationReady) return
     const nextTranscript: ConversationTurn[] = [...transcript, { role: 'user', text: trimmed }]
     setTranscript(nextTranscript)
     setDraft('')
@@ -107,6 +114,7 @@ export default function AcademicAgentConversation({
         board_version: boardVersion,
         academic_status_digest: academicStatusDigest,
         preference_digest: preferenceDigest,
+        ...(preferenceProfile ? { preference_profile: preferenceProfile } : {}),
         transcript: nextTranscript,
       })
       setLastResponse(response)
@@ -138,6 +146,8 @@ export default function AcademicAgentConversation({
   }
 
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
+  const clarificationEvents = lastResponse?.events.filter((event) => event.type === 'clarification') ?? []
+  const canOfferBuild = lastResponse?.outcome === 'conversation' && lastResponse.next_action === 'offer_build'
 
   return (
     <div dir="rtl" data-testid="academic-agent-conversation">
@@ -189,6 +199,40 @@ export default function AcademicAgentConversation({
         </div>
       )}
 
+      {!conversationReady && (
+        <p role="status" aria-live="polite" className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-muted)]">
+          טוען את ההקשר האקדמי המאובטח לפני פתיחת השיחה…
+        </p>
+      )}
+
+      {clarificationEvents.map((event, index) => event.type === 'clarification' ? (
+        <section key={`${event.question_he}-${index}`} role="group" aria-label="שאלת המשך מהעוזר האקדמי" className="rounded-xl border border-[var(--purple)]/40 bg-[var(--purple)]/5 p-4">
+          <h3 className="font-semibold">שאלת המשך</h3>
+          <p className="mt-1 text-sm">{event.question_he}</p>
+          {event.options_he && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {event.options_he.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={pending || contextConflict || !conversationReady}
+                  onClick={() => void submit(option)}
+                  className="rounded-full border border-[var(--purple)]/50 px-4 py-2 text-sm font-semibold transition-colors hover:bg-[var(--purple)]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null)}
+
+      {canOfferBuild && (
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+          יש לסוכן מספיק מידע כדי להכין חלופות חוקיות. אפשר לבקש ממנו לבנות עכשיו.
+        </p>
+      )}
+
       {pending && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">בודק את התוכנית…</p>}
       {unavailable && <p role="alert" className="rounded-lg border border-amber-500/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">{lastResponse.message_he}</p>}
       {error && <p role="alert" className="rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>}
@@ -208,21 +252,24 @@ export default function AcademicAgentConversation({
               void submit(draft)
             }
           }}
+          disabled={!conversationReady || pending || contextConflict}
           placeholder="כתבו בקשה או שאלה…"
           className="w-full resize-y rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
         />
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="submit" disabled={pending || contextConflict || !draft.trim()} className="rounded-full bg-[var(--purple-strong)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={!conversationReady || pending || contextConflict || !draft.trim()} className="rounded-full bg-[var(--purple-strong)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
             שלח לעוזר
           </button>
-          <button
-            type="button"
-            disabled={pending || contextConflict || transcript.length === 0}
-            onClick={() => void submit('בנה לי חלופות חוקיות')}
-            className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            בנה חלופות
-          </button>
+          {canOfferBuild && (
+            <button
+              type="button"
+              disabled={!conversationReady || pending || contextConflict}
+              onClick={() => void submit('בנה לי חלופות חוקיות')}
+              className="rounded-full border border-[var(--purple)]/60 px-4 py-2 text-sm font-semibold text-[var(--purple)] transition-colors hover:bg-[var(--purple)]/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              בנה חלופות
+            </button>
+          )}
           {contextConflict && (
             <button
               type="button"

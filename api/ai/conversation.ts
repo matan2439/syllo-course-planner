@@ -128,7 +128,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         { topN: 6, rolloutSteps: 80 },
       );
       const agent = await runAgent(
-        { transcript: parsed.data.transcript, createWorker },
+        {
+          transcript: parsed.data.transcript,
+          createWorker,
+          preferenceProfile: parsed.data.preference_profile,
+        },
         { model: modelConfig.model },
       );
 
@@ -139,12 +143,18 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       if (agent.outcome !== 'proposal' || !agent.validation.valid) {
-        res.status(200).json({ outcome: 'conversation', message_he: messageHe, events: agent.events });
+        res.status(200).json({
+          outcome: 'conversation',
+          message_he: messageHe,
+          events: agent.events,
+          next_action: agent.outcome === 'conversation' ? agent.nextAction : undefined,
+        });
         return;
       }
 
       const proposalId = newProposalId();
-      const profileVersion = Number(preferences.profile_version ?? preferences.version ?? 0);
+      const profileVersion = parsed.data.preference_profile?.version
+        ?? Number(preferences.profile_version ?? preferences.version ?? 0);
       const snapshotId = `conversation_${currentBoardVersion ?? 'empty'}`;
       const conversationConstraintFingerprint = `conversation_${parsed.data.program_id}`;
       const fallbackSemesters = Object.entries(agent.draftPlan.semesters)

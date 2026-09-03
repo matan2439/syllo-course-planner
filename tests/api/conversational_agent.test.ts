@@ -52,7 +52,7 @@ test('the model can orchestrate deterministic tools and returns only a draft pla
   expect(result).not.toHaveProperty('committedBoard')
 })
 
-test('an invalid tool action is rejected without corrupting worker state', async () => {
+test('an invalid tool action is rejected without corrupting worker state or pretending a plan was built', async () => {
   const result = await runConversationalAgent({ transcript, createWorker }, {
     model: {} as never,
     generate: async ({ tools }) => {
@@ -62,9 +62,33 @@ test('an invalid tool action is rejected without corrupting worker state', async
     },
   })
 
-  if (result.outcome !== 'proposal') throw new Error('expected proposal')
-  expect(result.draftPlan.semesters[SEMESTER]).toEqual(['E-1'])
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  expect(result.nextAction).toBe('offer_build')
   expect(result.events).toContainEqual({ type: 'tool_status', tool: 'add_course', status: 'rejected' })
+})
+
+test('clarification tool returns a focused question and suppresses proposal finalization', async () => {
+  const result = await runConversationalAgent({ transcript, createWorker }, {
+    model: {} as never,
+    generate: async ({ tools }) => {
+      await tools.ask_clarification.execute!({
+        questionHe: 'מה חשוב יותר בסמסטר הקרוב?',
+        optionsHe: ['שבוע קל יותר', 'לסיים מוקדם יותר'],
+      }, {} as never)
+      return { text: 'אני צריך עוד מידע לפני שאבנה חלופות.' }
+    },
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  expect(result.nextAction).toBe('ask')
+  expect(result.events).toContainEqual({
+    type: 'clarification',
+    question_he: 'מה חשוב יותר בסמסטר הקרוב?',
+    options_he: ['שבוע קל יותר', 'לסיים מוקדם יותר'],
+  })
+  expect(result.events.some((event) => event.type === 'tool_status' && event.tool === 'finalize_plan')).toBe(false)
 })
 
 test('provider failure discards the isolated draft and returns truthful unavailability', async () => {

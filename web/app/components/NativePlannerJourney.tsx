@@ -34,14 +34,14 @@ import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
 import AgentOutcomeDetails from './AgentOutcomeDetails'
 import GroundedExplanation from './GroundedExplanation'
 import PreferenceConversation from './PreferenceConversation'
-import PlanAlternatives from './PlanAlternatives'
+import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import CompletedCoursesPanel, {
   EMPTY_ACADEMIC_STATUS,
   academicStatusDraftFromPersonalStatus,
   completedCourseIdsOf,
   type AcademicStatusDraft,
 } from './CompletedCoursesPanel'
-import type { PreferenceProfile } from '../../../api/ai/preference_model'
+import { emptyProfile, type PreferenceProfile } from '../../../api/ai/preference_model'
 import { earlyYearHoursById } from '../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
@@ -403,7 +403,7 @@ export default function NativePlannerJourney({
   // not a second profile representation) for staleness comparison, and hold the
   // latest profile in a ref so an explicit Build sends the exact typed profile.
   const [convProfileVersion, setConvProfileVersion] = useState<number | undefined>(undefined)
-  const convProfileRef = useRef<PreferenceProfile | null>(null)
+  const convProfileRef = useRef<PreferenceProfile>(emptyProfile())
 
   /**
    * The ACADEMIC STATUS both Generate and Apply describe.
@@ -570,7 +570,7 @@ export default function NativePlannerJourney({
           // REFUSED to apply in this case, but that guard is silent — it only
           // greys the button out. Surfacing it here can only make MORE proposals
           // stale, never fewer, so no guard is loosened.
-          : useAcademicDecisionAgent && proposal?.profileVersion != null &&
+          : useAcademicDecisionAgent && proposal?.profileVersion != null && convProfileVersion != null &&
             proposal.profileVersion !== convProfileVersion
             ? 'preferences'
             : capturedManualRevision != null && capturedManualRevision !== manualRevision
@@ -748,6 +748,9 @@ export default function NativePlannerJourney({
     : null
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
+  const alternativeBoard = selectedAlternative
+    ? applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current)
+    : null
 
   const commitManualAdd = async (semesterId: string, requestedCourseId?: string) => {
     const courseId = requestedCourseId ?? manualAddIntent?.courseId
@@ -859,7 +862,6 @@ export default function NativePlannerJourney({
       setManualEditPhase('idle')
       if (!result.ok) {
         setManualEditError(result.messageHe)
-        showRejectedDrop(semesterId)
         if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
         return
       }
@@ -876,41 +878,70 @@ export default function NativePlannerJourney({
   }
 
   const preferenceContent = useAcademicDecisionAgent ? (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-3">
-      <h3 className="text-sm font-bold tracking-tight">שאלות קצרות על ההעדפות שלך</h3>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">
-        אפשר לענות בכפתור או לכתוב לסוכן. התשובות נשארות בטיוטה עד שלוחצים על בניית תוכנית.
-      </p>
-      <PreferenceConversation
-        onBuild={(profile) => build(profile)}
-        onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
-        buildLabel={proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
-        buildDisabled={academicContextPhase !== 'ready'}
-        // The server owns all post-build impact signals. The UI only forwards
-        // them to the same question flow; it never invents a question from
-        // card order or an internal course id.
-        elicitationContext={{
-          ...(proposal && proposal.balanceAlternativesMaterial === false
-            ? { irrelevantTopicIds: ['semester_balance'] }
-            : {}),
-          ...(proposal?.groundedQuestionImpact
-            ? { groundedFeatureImpact: proposal.groundedQuestionImpact }
-            : {}),
-          ...(proposal?.topicQuestionImpact
-            ? { topicInterestImpact: proposal.topicQuestionImpact }
-            : {}),
-          ...(proposal?.priorityQuestionImpact && !stale
-            ? {
+    <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-3">
+      <details open>
+        <summary className="cursor-pointer text-sm font-semibold">מידע אישי והעדפות (אופציונלי)</summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <p className="text-xs text-[var(--text-muted)]">הסוכן ישתמש במידע הזה רק לאחר שתאשרו אותו בשיחה. אין כאן בנייה אוטומטית.</p>
+          <CompletedCoursesPanel
+            programId={programId}
+            catalogCourses={pickerCourses}
+            catalogHoursById={catalogHoursById}
+            value={academicStatus}
+            onChange={updateAcademicStatus}
+          />
+          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
+            מגבלת שעות שבועיות (אם יש לך העדפה ברורה)
+            <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
+              onChange={(e) => setMaxHours(e.target.value)}
+              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
+            שעות שכבר הושלמו (רק אם אינן מופיעות ברשימה)
+            <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
+              onChange={(e) => setPriorHours(e.target.value)}
+              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
+          </label>
+          <CourseNamePicker inputName="wanted-course-search" label="קורסים שחשוב לך לשלב" placeholder="חיפוש לפי שם קורס…"
+            courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
+          <div id="excluded-courses-control">
+            <CourseNamePicker inputName="excluded-course-search" label="קורסים שתרצה להימנע מהם" placeholder="חיפוש לפי שם קורס…"
+              courses={pickerCourses} selectedIds={excludeIds}
+              onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
+            {excludeIds.length === 0 && (
+              <button
+                type="button"
+                aria-pressed={exclusionsNoneConfirmed}
+                onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
+                className={`mt-2 self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
+                  exclusionsNoneConfirmed
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
+                }`}
+              >
+                אין קורסים שאני רוצה להימנע מהם
+              </button>
+            )}
+          </div>
+          <PreferenceConversation
+            onBuild={() => undefined}
+            onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+            showBuild={false}
+            // Server-provided impact signals only refine which question is useful.
+            elicitationContext={{
+              ...(proposal && proposal.balanceAlternativesMaterial === false ? { irrelevantTopicIds: ['semester_balance'] } : {}),
+              ...(proposal?.groundedQuestionImpact ? { groundedFeatureImpact: proposal.groundedQuestionImpact } : {}),
+              ...(proposal?.topicQuestionImpact ? { topicInterestImpact: proposal.topicQuestionImpact } : {}),
+              ...(proposal?.priorityQuestionImpact && !stale ? {
                 objectivePriorityImpact: {
                   eligible: proposal.priorityQuestionImpact.eligible,
-                  options: proposal.priorityQuestionImpact.options.map((o) => ({
-                    value: o.value, labelHe: o.labelHe,
-                  })),
+                  options: proposal.priorityQuestionImpact.options.map((o) => ({ value: o.value, labelHe: o.labelHe })),
                 },
-              }
-            : {}),
-        }}
-      />
+              } : {}),
+            }}
+          />
+        </div>
+      </details>
     </div>
   ) : null
 
@@ -955,33 +986,34 @@ export default function NativePlannerJourney({
           </Card>
         )}
         <section aria-label="התוכנית הנוכחית">
-          <h2 className="mb-3 text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+            {alternativeBoard && <span className="text-xs text-[var(--text-muted)]">לא נשמר עד לאישור מפורש</span>}
+          </div>
+          {(proposal?.alternatives?.length ?? 0) >= 2 && (
+            <AlternativeBoardSwitcher
+              alternatives={proposal!.alternatives!}
+              selectedId={selectedAlternativeId ?? ''}
+              onSelect={setSelectedAlternativeId}
+              disabled={stale}
+            />
+          )}
           <NativePlannerBoard
-            board={boardModelToVM(current)}
-            onRemoveCourse={commitManualRemove}
-            onAddCourse={(courseId, semesterId) => commitManualAdd(semesterId, courseId)}
-            onMoveCourse={commitManualMove}
-            mutationPending={manualEditPhase === 'saving'}
-            activeDrag={activeDrag}
-            rejectedSemesterId={rejectedDrop?.semesterId}
-            rejectedDropKey={rejectedDrop?.key}
-            onDragStateChange={onDragStateChange}
+            board={boardModelToVM(alternativeBoard ?? current)}
+            onRemoveCourse={alternativeBoard ? undefined : commitManualRemove}
+            onAddCourse={alternativeBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
+            onMoveCourse={alternativeBoard ? undefined : commitManualMove}
+            mutationPending={alternativeBoard || manualEditPhase === 'saving' ? true : false}
+            activeDrag={alternativeBoard ? null : activeDrag}
+            rejectedSemesterId={alternativeBoard ? null : rejectedDrop?.semesterId}
+            rejectedDropKey={alternativeBoard ? null : rejectedDrop?.key}
+            onDragStateChange={alternativeBoard ? undefined : onDragStateChange}
+            readOnly={Boolean(alternativeBoard)}
           />
         </section>
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
         {genPhase === 'done' && proposal && (
           <>
-          {(proposal.alternatives?.length ?? 0) >= 2 && (
-            <PlanAlternatives
-              alternatives={proposal.alternatives!}
-              selectedId={selectedAlternativeId ?? ''}
-              onSelect={setSelectedAlternativeId}
-              disabled={stale}
-              courseNameById={Object.fromEntries(
-                Object.entries(current.courseCatalog).map(([id, c]) => [id, c.nameHe ?? id]),
-              )}
-            />
-          )}
           <ProposalView
             draft={buildDraftVM(effectiveProposal ?? proposal, current)}
             intentOutcome={proposal.intentOutcome}
@@ -1042,33 +1074,22 @@ export default function NativePlannerJourney({
         </Card>}
 
         {useAcademicDecisionAgent && (
-          <div id="completed-courses-control">
-            <CompletedCoursesPanel
-              programId={programId}
-              catalogCourses={pickerCourses}
-              catalogHoursById={catalogHoursById}
-              value={academicStatus}
-              onChange={updateAcademicStatus}
-            />
-          </div>
-        )}
-
-        {useAcademicDecisionAgent && loadedAcademicContext && (
           <AcademicAgentConversation
             programId={programId}
             sessionToken={sessionToken()}
             boardVersion={boardVersion}
-            academicStatusDigest={loadedAcademicContext.academicStatusDigest}
-            preferenceDigest={loadedAcademicContext.preferenceDigest}
+            academicStatusDigest={loadedAcademicContext?.academicStatusDigest ?? 'academic_context_loading'}
+            preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
+            preferenceProfile={convProfileRef.current}
+            conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
             sendConversationFn={sendConversationFn}
             onProposalReady={acceptConversationProposal}
             courseNameById={Object.fromEntries(
-              Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe ?? null]),
+              Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
             )}
             preferenceContent={preferenceContent}
           />
         )}
-        {useAcademicDecisionAgent && !loadedAcademicContext && preferenceContent}
 
         {useAcademicDecisionAgent && messages.filter((message) => message.role === 'system').slice(-1).map((message) => (
           <p key={message.text} role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
@@ -1087,7 +1108,7 @@ export default function NativePlannerJourney({
           </p>
         )}
 
-        <Card className="flex flex-col gap-3 p-4">
+        {!useAcademicDecisionAgent && <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-sm font-bold tracking-tight">העדפות</h2>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             מגבלת שעות שבועיות לסמסטר
@@ -1124,7 +1145,7 @@ export default function NativePlannerJourney({
               </button>
             )}
           </div>
-        </Card>
+        </Card>}
 
         <div className="flex items-center gap-3">
           {/* Flag-off: the standalone Build. Flag-on: the mounted conversation's

@@ -5,7 +5,7 @@
  * enforces profile-version staleness at the real Apply handler. Flag-off is
  * unchanged.
  */
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
@@ -51,13 +51,21 @@ const PROPOSAL_ID = 'prop_agent'
 const SINGLE_CANDIDATE = 'cand_agent'
 let server: ReturnType<typeof createServerApplyStub>
 
-const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecisionAgent: boolean }> = {}) => ({
+const offerBuildResponse = (): ConversationResponse => ({
+  outcome: 'conversation',
+  message_he: 'יש לי מספיק מידע כדי להכין חלופות.',
+  next_action: 'offer_build',
+  events: [],
+})
+
+const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecisionAgent: boolean; sendConversationFn: any }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
   generateFn: over.generateFn ?? (async (req: GeneratePlanRequest) => agentProposal(req)),
   applyFn: server.applyFn,
   committedBoardFn: server.committedBoardFn,
   planningContextFn: async () => null,
+  sendConversationFn: over.sendConversationFn ?? (async () => offerBuildResponse()),
   useAcademicDecisionAgent: over.useAcademicDecisionAgent ?? false,
 })
 
@@ -75,8 +83,21 @@ async function renderReady(over = {}) {
   render(<NativePlannerJourney {...deps(over)} />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
   if ((over as { useAcademicDecisionAgent?: boolean }).useAcademicDecisionAgent) {
-    await waitFor(() => expect(screen.getByRole('button', { name: 'בנה תוכנית' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByTestId('academic-agent-conversation')).toBeInTheDocument())
   }
+}
+
+async function askAgentToBuild() {
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'יש לי מידע נוסף לתכנון' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await waitFor(() => {
+    if (!screen.queryByRole('button', { name: 'בנה חלופות' }) && !screen.queryByRole('region', { name: 'טיוטת תוכנית' })) {
+      throw new Error('agent has not offered build or returned a proposal yet')
+    }
+  })
+  const buildButton = screen.queryByRole('button', { name: 'בנה חלופות' })
+  if (buildButton) fireEvent.click(buildButton)
 }
 
 describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
@@ -93,6 +114,14 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.queryByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeNull()
   })
 
+  test('flag ON: preference questions and free-form agent chat share one conversation surface', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+    const conversation = screen.getByTestId('academic-agent-conversation')
+
+    expect(within(conversation).getByText(/מה חשוב לך יותר כרגע/)).toBeInTheDocument()
+    expect(within(conversation).getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeInTheDocument()
+  })
+
   test('answering a conversation choice does NOT Generate', async () => {
     const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
     await renderReady({ useAcademicDecisionAgent: true, generateFn })
@@ -100,24 +129,34 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(generateFn).not.toHaveBeenCalled()
   })
 
-  test('explicit Build sends the current typed profile + version through the real request', async () => {
-    let captured: GeneratePlanRequest | null = null
-    const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return agentProposal(req) })
-    await renderReady({ useAcademicDecisionAgent: true, generateFn })
+  test('the agent owns the build action after it has enough conversation context', async () => {
+    const sendConversation = jest.fn(async () => offerBuildResponse())
+    const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
+    await renderReady({ useAcademicDecisionAgent: true, generateFn, sendConversationFn: sendConversation })
     fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' })) // answer one (version bumps)
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
-    await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(1))
-    const pp = (captured as any).preference_profile
-    expect(pp).toBeDefined()
-    expect(pp.version).toBeGreaterThan(1)
-    expect(pp.preferences.find((p: any) => p.id === 'workload_target')).toBeTruthy()
-    expect((captured as any).use_academic_decision_agent).toBe(true)
+    expect(screen.queryByRole('button', { name: 'בנה תוכנית' })).toBeNull()
+    await askAgentToBuild()
+    expect(sendConversation).toHaveBeenCalledTimes(2)
+    expect(generateFn).not.toHaveBeenCalled()
   })
 
   test('a matching-version proposal applies exactly once and updates the committed board', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
-    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'proposal', message_he: 'מצאתי חלופה חוקית.', events: [],
+      proposal_id: PROPOSAL_ID,
+      proposal: {
+        proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+        base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+        alternatives: [{
+          candidate_id: SINGLE_CANDIDATE, normalized_identity: 'identity', recommended: true, applyable: true,
+          semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+          constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+          objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 },
+        }],
+      },
+    } as unknown as ConversationResponse))
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /החל/ }))
     // committed board now shows the applied plan (Y-1 added) and the draft closed
@@ -128,9 +167,20 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
   })
 
   test('editing a preference AFTER a proposal stales it — the real Apply handler rejects it', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'proposal', message_he: 'מצאתי חלופה חוקית.', events: [], proposal_id: PROPOSAL_ID,
+      proposal: {
+        proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+        base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+        alternatives: [{ candidate_id: SINGLE_CANDIDATE, normalized_identity: 'identity', recommended: true, applyable: true,
+          semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+          constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+          objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
+      },
+    } as unknown as ConversationResponse))
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
     fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
     // remove the captured preference → profile version advances → proposal is stale
     const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
@@ -140,17 +190,27 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     // real handler enforces it too: clicking does not change the committed board
     fireEvent.click(applyBtn)
     expect(server.calls).toHaveLength(0)
-    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
-    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('לא נשמר עד לאישור מפורש')
   })
 
   test('a profile-version-stale proposal is VISIBLY marked stale, not just disabled', async () => {
     // Browser acceptance (check 4B) found the guard working but silent: editing a
     // preference disabled Apply while rendering no explanation, so the state was
     // conveyed only by a greyed-out control. Meaning must be carried by TEXT.
-    await renderReady({ useAcademicDecisionAgent: true })
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'proposal', message_he: 'מצאתי חלופה חוקית.', events: [], proposal_id: PROPOSAL_ID,
+      proposal: {
+        proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+        base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+        alternatives: [{ candidate_id: SINGLE_CANDIDATE, normalized_identity: 'identity', recommended: true, applyable: true,
+          semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+          constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+          objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
+      },
+    } as unknown as ConversationResponse))
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
     fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' }))
+    await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
 
     const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
@@ -166,25 +226,17 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(note.textContent ?? '').not.toMatch(/הקטלוג/)
   })
 
-  test('a late response superseded by a newer Build never becomes the proposal', async () => {
-    let resolveFirst: () => void = () => {}
-    let call = 0
-    const generateFn = jest.fn((req: GeneratePlanRequest) => {
-      call += 1
-      if (call === 1) return new Promise<GeneratedPlanModel>((res) => { resolveFirst = () => res(agentProposal(req)) })
-      return Promise.resolve(agentProposal(req))
-    })
-    await renderReady({ useAcademicDecisionAgent: true, generateFn })
-    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' })) // build #1 (in-flight)
-    fireEvent.click(screen.getByRole('button', { name: 'עומס מאוזן' })) // answer more (version bumps)
-    fireEvent.click(screen.getByRole('button', { name: 'בנה תוכנית' })) // build #2 supersedes #1
-    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
-    // now resolve the STALE first response — it must be ignored
-    await act(async () => { resolveFirst() })
-    expect(generateFn).toHaveBeenCalledTimes(2)
-    // still a single, current proposal (not replaced by the late one)
-    expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument()
+  test('the agent prevents duplicate requests while a conversation turn is pending', async () => {
+    let resolve: ((value: ConversationResponse) => void) | undefined
+    const sendConversation = jest.fn(() => new Promise<ConversationResponse>((done) => { resolve = done }))
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'בדוק את הלוח' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    expect(sendConversation).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'שלח לעוזר' })).toBeDisabled()
+    resolve?.(offerBuildResponse())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeEnabled())
   })
 
   test('the conversational agent sends the current board context through the single journey', async () => {
@@ -233,7 +285,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
         candidate_ids: [SINGLE_CANDIDATE],
         recommended_candidate_id: SINGLE_CANDIDATE,
         base_board_version: null,
-        profile_version: 0,
+        profile_version: 1,
         academic_status_digest: 'as_test',
         expires_at: Date.now() + 3_600_000,
         alternatives: [{
@@ -246,7 +298,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
             { semester_id: 'year_3_semester_b', course_ids: [] },
           ],
           constraint_fingerprint: 'cf_conversation',
-          profile_version: 0,
+          profile_version: 1,
           snapshot_id: 'conversation-snapshot',
           non_dominated: true,
           composed_utility: 0,

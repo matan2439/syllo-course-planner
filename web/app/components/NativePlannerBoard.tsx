@@ -9,7 +9,7 @@ import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
  * server-authority callbacks. The shared drag intent keeps feedback truthful
  * even when a browser hides DataTransfer contents during dragover.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange, readOnly = false }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
@@ -21,6 +21,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   /** Changes on every refusal so the target feedback animation restarts. */
   rejectedDropKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
+  readOnly?: boolean
 }) {
   if (board.semesters.length === 0) {
     return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
@@ -35,15 +36,15 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
       {board.semesters.map((s, i) => (
         <div role="listitem" key={s.id} className="min-w-0">
           <SemesterColumn
-            semester={s} index={i} onRemoveCourse={onRemoveCourse} onAddCourse={onAddCourse} onMoveCourse={onMoveCourse}
+            semester={s} index={i} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
             moveDestinations={board.semesters
               .filter((destination) => destination.id !== s.id)
               .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
-            mutationPending={mutationPending}
-            activeDrag={activeDrag}
+            mutationPending={readOnly || mutationPending}
+            activeDrag={readOnly ? null : activeDrag}
             rejected={rejectedSemesterId === s.id}
             rejectedKey={rejectedDropKey}
-            onDragStateChange={onDragStateChange}
+            onDragStateChange={readOnly ? undefined : onDragStateChange}
           />
         </div>
       ))}

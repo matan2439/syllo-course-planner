@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import BrandLogo from './components/BrandLogo'
 import ShaderGradientBackground from './components/ShaderGradientBackground'
+import ThemeToggle from './components/ThemeToggle'
 
 const FEATURES = [
   'עוזר AI שבונה תוכנית מלאה',
@@ -15,10 +16,8 @@ export default function Home() {
 
       <div className="flex min-h-screen flex-col">
         <header className="flex items-center gap-3 px-6 py-5 sm:px-10">
-          <BrandLogo size={30} />
-          <span className="text-sm font-semibold tracking-tight">
-            מתכנן לימודים
-          </span>
+          <BrandLogo size={30} wordmark />
+          <ThemeToggle />
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">

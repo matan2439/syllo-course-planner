@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import type { ConversationResponse } from '../../../shared/planner/conversation-wire'
 import { ConversationContextConflictError } from '../../../shared/planner/api-client'
+import type { PreferenceProfile } from '../../../api/ai/preference_model'
 
 const requestContext = {
   programId: 'mechanical_engineering_2027',
@@ -68,6 +69,45 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hi
   expect(onProposalReady).toHaveBeenCalledWith(expect.objectContaining({ proposal_id: 'prop_1' }))
 })
 
+test('sends the structured preference profile with each agent turn', async () => {
+  const sendConversation = jest.fn(async () => ({
+    outcome: 'conversation',
+    message_he: 'הבנתי את סדר העדיפויות שלך.',
+    next_action: 'ask',
+    events: [],
+  } satisfies ConversationResponse))
+  const preferenceProfile: PreferenceProfile = {
+    version: 2,
+    preferences: [{
+      id: 'semester_balance',
+      category: 'workload',
+      value: 'lighter',
+      normalized: 'lighter',
+      originalWording: 'שבוע קל יותר',
+      classification: 'soft_preference',
+      confidence: 1,
+      source: 'explicit_answer',
+      confirmationStatus: 'confirmed',
+      affects: 'balance_score',
+      mayAffectPlanningBeforeConfirmation: true,
+    }],
+  }
+  render(
+    <AcademicAgentConversation
+      {...requestContext}
+      preferenceProfile={preferenceProfile}
+      sendConversationFn={sendConversation}
+    />,
+  )
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'תמשיך' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(1))
+  expect((sendConversation as jest.Mock).mock.calls[0][0]).toEqual(expect.objectContaining({
+    preference_profile: preferenceProfile,
+  }))
+})
+
 test('renders known course ids in assistant replies as Hebrew names with the id retained', async () => {
   const sendConversation = jest.fn(async () => ({
     outcome: 'conversation',
@@ -111,11 +151,42 @@ test('renders pending state and the explicit build-alternatives action', async (
   fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'בדוק את התוכנית' } })
   fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
   expect(screen.getByRole('status')).toHaveTextContent('בודק את התוכנית…')
-  expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
 
-  resolve?.({ outcome: 'conversation', message_he: 'צריך עוד מידע.', events: [] })
+  resolve?.({ outcome: 'conversation', message_he: 'צריך עוד מידע.', events: [], next_action: 'ask' })
   await waitFor(() => expect(screen.getByText('צריך עוד מידע.')).toBeInTheDocument())
-  expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
+})
+
+test('renders an agent clarification question and offers build only when the agent says so', async () => {
+  const sendConversation = jest.fn()
+    .mockResolvedValueOnce({
+      outcome: 'conversation',
+      message_he: 'כדי להתאים את החלופה, מה חשוב יותר?',
+      next_action: 'ask',
+      events: [{
+        type: 'clarification',
+        question_he: 'מה חשוב יותר בסמסטר הקרוב?',
+        options_he: ['שבוע קל יותר', 'לסיים מוקדם יותר'],
+      }],
+    } satisfies ConversationResponse)
+    .mockResolvedValueOnce({
+      outcome: 'conversation',
+      message_he: 'יש לי מספיק מידע כדי להכין חלופות.',
+      next_action: 'offer_build',
+      events: [],
+    } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} />)
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'אני מתלבט' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  expect(await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })).toHaveTextContent('מה חשוב יותר בסמסטר הקרוב?')
+  expect(screen.getByRole('button', { name: 'שבוע קל יותר' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
+  await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(2))
+  expect(await screen.findByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
 })
 
 test('makes the authoritative board context and non-mutating boundary visible', () => {
@@ -144,7 +215,7 @@ test('shows the typed unavailable state without pretending that an assistant rep
   fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
 
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('העוזר האקדמי אינו זמין כרגע.'))
-  expect(screen.getByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
 })
 
 test('explains a stale planning context and offers a clean conversation restart', async () => {

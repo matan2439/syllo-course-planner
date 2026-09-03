@@ -11,9 +11,10 @@ import { z } from 'zod';
 import type { PlannerWorker, MutationResult } from './planner_worker';
 
 export type PlannerToolName = 'get_state' | 'rank_candidates' | 'add_course' | 'remove_course' |
-  'move_course' | 'replace_course' | 'finalize_plan';
+  'move_course' | 'replace_course' | 'finalize_plan' | 'ask_clarification';
 export type PlannerToolStatus = 'started' | 'completed' | 'rejected';
 export type PlannerToolObserver = (event: { tool: PlannerToolName; status: PlannerToolStatus }) => void;
+export type PlannerClarificationObserver = (event: { questionHe: string; optionsHe: string[] }) => void;
 
 /** Compact, model-readable snapshot after an action. */
 function snapshot(worker: PlannerWorker) {
@@ -50,7 +51,11 @@ function safeMutation(worker: PlannerWorker, mutate: () => MutationResult) {
   }
 }
 
-export function buildPlannerTools(worker: PlannerWorker, observe?: PlannerToolObserver) {
+export function buildPlannerTools(
+  worker: PlannerWorker,
+  observe?: PlannerToolObserver,
+  onClarification?: PlannerClarificationObserver,
+) {
   const run = async <T>(name: PlannerToolName, action: () => T | Promise<T>): Promise<T> => {
     observe?.({ tool: name, status: 'started' });
     const result = await action();
@@ -74,6 +79,22 @@ export function buildPlannerTools(worker: PlannerWorker, observe?: PlannerToolOb
         actions: worker.rankActions(),
         ...snapshot(worker),
       })),
+    }),
+
+    ask_clarification: tool({
+      description: 'שאל את הסטודנט שאלה ממוקדת כאשר חסר מידע אישי לבחירת תוכנית. שאל שאלה אחת עם שתי אפשרויות או יותר, ואל תסיים תוכנית באותו תור.',
+      parameters: z.object({
+        questionHe: z.string().trim().min(1).max(400),
+        optionsHe: z.array(z.string().trim().min(1).max(160)).min(2).max(5),
+      }),
+      execute: async ({ questionHe, optionsHe }) => {
+        onClarification?.({ questionHe, optionsHe });
+        return run('ask_clarification', () => ({
+          asked: true,
+          question_he: questionHe,
+          options_he: optionsHe,
+        }));
+      },
     }),
 
     add_course: tool({

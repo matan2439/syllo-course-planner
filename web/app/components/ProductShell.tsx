@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { programQuery } from '../../lib/programs'
 import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
+import ThemeToggle from './ThemeToggle'
 
 const NAV_ITEMS = [
   { key: 'plan', href: '/plan', label: 'תכנון' },
@@ -64,10 +65,7 @@ export default function ProductShell({
             href="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
           >
-            <BrandLogo size={26} />
-            <span className="hidden text-sm font-semibold tracking-tight sm:inline">
-              מתכנן לימודים
-            </span>
+            <BrandLogo size={26} wordmark />
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -91,6 +89,7 @@ export default function ProductShell({
             >
               תכנון עם AI
             </Link>
+            <ThemeToggle />
           </nav>
         </header>
 

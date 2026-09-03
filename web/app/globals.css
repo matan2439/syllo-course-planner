@@ -60,8 +60,10 @@
 
 html {
   /* Matches the planner HTML's stack so /planner ↔ landing feel continuous */
-  font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  font-family: Inter, Assistant, Rubik, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 }
+
+.syllo-wordmark { color: var(--text); }
 
 body {
   background: var(--bg);

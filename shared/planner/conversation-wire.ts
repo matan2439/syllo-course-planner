@@ -1,7 +1,27 @@
 import { z } from 'zod'
+import type { PreferenceProfile } from '../../api/ai/preference_model'
 
 const boundedText = z.string().trim().min(1).max(4_000)
 const digest = z.string().trim().min(1).max(256)
+
+const preferenceProfileSchema = z.object({
+  version: z.number().int().nonnegative(),
+  preferences: z.array(z.object({
+    id: z.string().trim().min(1).max(128),
+    category: z.string().trim().min(1).max(128),
+    originalWording: z.string().max(1_000).optional(),
+    normalized: z.string().trim().min(1).max(256),
+    value: z.unknown(),
+    classification: z.enum(['hard_constraint', 'soft_preference', 'goal', 'indifferent', 'uncertain']),
+    confidence: z.number().min(0).max(1),
+    source: z.enum(['explicit_answer', 'confirmed_interpretation', 'existing_profile', 'safe_default']),
+    confirmationStatus: z.enum(['unconfirmed', 'pending', 'confirmed', 'rejected']),
+    affects: z.string().trim().min(1).max(256),
+    scope: z.string().max(128).optional(),
+    expiry: z.string().max(128).optional(),
+    mayAffectPlanningBeforeConfirmation: z.boolean(),
+  }).strict()).max(32),
+}).strict()
 
 export const conversationTurnSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -14,6 +34,8 @@ export const conversationRequestSchema = z.object({
   board_version: z.string().trim().min(1).max(256).nullable(),
   academic_status_digest: digest,
   preference_digest: digest,
+  /** The typed answers from the unified agent intake, not a UI-only shadow. */
+  preference_profile: preferenceProfileSchema.optional(),
   transcript: z.array(conversationTurnSchema).min(1).max(40),
 }).strict()
 
@@ -27,6 +49,7 @@ const toolStatusEventSchema = z.object({
   tool: z.enum([
     'get_state',
     'rank_candidates',
+    'ask_clarification',
     'add_course',
     'remove_course',
     'move_course',
@@ -104,6 +127,8 @@ const availableResponseSchema = z.object({
   outcome: z.enum(['conversation', 'clarification_required', 'proposal']),
   message_he: boundedText,
   events: z.array(conversationEventSchema).max(64),
+  /** The agent, not the client, decides whether to ask or offer planning. */
+  next_action: z.enum(['ask', 'offer_build']).optional(),
   proposal_id: z.string().trim().min(1).max(256).optional(),
   proposal: conversationProposalSchema.optional(),
 }).strict()
@@ -139,6 +164,7 @@ export const conversationContextConflictResponseSchema = z.object({
 
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 export type ConversationRequest = z.infer<typeof conversationRequestSchema>
+export type ConversationPreferenceProfile = PreferenceProfile
 export type ConversationEvent = z.infer<typeof conversationEventSchema>
 export type ConversationProposal = z.infer<typeof conversationProposalSchema>
 export type ConversationResponse = z.infer<typeof conversationResponseSchema>
