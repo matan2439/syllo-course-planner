@@ -60,6 +60,14 @@ test('loads and shows the current semester plan', async () => {
   expect(getBoardFn).toHaveBeenCalledWith('mechanical_engineering_2027')
 })
 
+test('keeps a labelled semester-board shell visible while the board loads', () => {
+  render(<NativePlannerJourney {...deps({ getBoardFn: () => new Promise(() => undefined) })} />)
+
+  expect(screen.getByRole('region', { name: 'התוכנית הנוכחית' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'לוח הסמסטרים' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('טוען את התוכנית הנוכחית')
+})
+
 test('a board load failure is shown truthfully (no silent blank)', async () => {
   render(<NativePlannerJourney {...deps({ getBoardFn: async () => { throw new Error('down') } })} />)
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/טעינ|נכשל|שגיא/))

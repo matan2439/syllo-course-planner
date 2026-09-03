@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — preserve the board while it loads
+
+The unified planner now keeps a labelled semester-board shell visible while
+the authoritative board request is pending, instead of collapsing to a lone
+loading line when the course drawer is opened early. The shell is explicitly
+non-interactive until authoritative data arrives, so it never presents fake
+drop targets. Full web tests (29 suites, 255 tests), root typecheck, and the
+web production build pass. No catalog, provider, Supabase, Production, or
+remote database configuration changed.
+
 ## Latest session — focus both opened drawers
 
 Opening either the course repository or Academic Decision Agent drawer now
