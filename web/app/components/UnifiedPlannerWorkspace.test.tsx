@@ -143,6 +143,14 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
+  test('moves focus into the repository drawer when it opens', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    expect(screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' })).toHaveFocus()
+  })
+
   test('tracks the active drawer surface so narrow layouts never show two rails over the board', () => {
     const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
     const workbench = container.querySelector('.planner-workbench')

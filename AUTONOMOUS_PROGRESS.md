@@ -1,5 +1,14 @@
 # Autonomous Progress
 
+## Latest session — focus the opened course drawer
+
+Opening the course repository now moves keyboard focus directly to its close
+button. This keeps the drawer immediately dismissible without hiding or
+unmounting the semester board, and the focused workspace suite now covers the
+behavior. Full web tests, root typecheck, and the web production build pass.
+No catalog, provider, Supabase, Production, or remote database configuration
+changed.
+
 ## Latest session — return focus when closing a drawer
 
 Closing the active course or AI drawer with `Escape` now returns keyboard focus

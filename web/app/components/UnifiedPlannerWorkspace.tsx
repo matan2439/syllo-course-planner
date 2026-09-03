@@ -32,6 +32,8 @@ export default function UnifiedPlannerWorkspace({
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
   const agentToggleRef = useRef<HTMLButtonElement | null>(null)
+  const repositoryCloseRef = useRef<HTMLButtonElement | null>(null)
+  const repositoryWasOpen = useRef(false)
 
   const selectView = (view: WorkspaceView, focus = false) => {
     setActiveView(view)
@@ -87,6 +89,11 @@ export default function UnifiedPlannerWorkspace({
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [agentOpen, repositoryOpen])
+
+  useEffect(() => {
+    if (repositoryOpen && !repositoryWasOpen.current) repositoryCloseRef.current?.focus()
+    repositoryWasOpen.current = repositoryOpen
+  }, [repositoryOpen])
 
   const toggleRepository = () => {
     if (repositoryOpen) closeRepository()
@@ -211,6 +218,7 @@ export default function UnifiedPlannerWorkspace({
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <button
+            ref={repositoryCloseRef}
             type="button"
             aria-label="סגור סרגל מאגר קורסים"
             onClick={closeRepository}
