@@ -10,6 +10,11 @@ passes (23 tests), the repository/board/workspace/server-authority regression
 set passes (67 tests), and web typecheck and production build pass. No catalog,
 Electrical data, provider, Supabase, Production, or remote database
 configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-amug61hra-matanyaron-1633s-projects.vercel.app/planner
+(deployment inspection: commit `c61aab0`; browser-verified the planner, open
+repository drawer, persistent board, close control, and course detail controls).
+
 
 
 ## Latest session — keep repository controls separate from drag
