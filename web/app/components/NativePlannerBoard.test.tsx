@@ -104,6 +104,23 @@ test('an allowed repository drag visibly marks the semester drop target', () => 
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+test('an allowed repository drag marks the target as soon as it enters the semester', () => {
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, '0542-4120', ['year_3_semester_a'])
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onAddCourse={jest.fn()} />)
+
+  const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })
+  fireEvent.dragEnter(target, { dataTransfer: transfer })
+
+  expect(target).toHaveClass('planner-drop-target-active')
+  expect(screen.getByRole('status')).toHaveTextContent('אפשר לשחרר כאן')
+})
+
 test('a repository drop outside its offering fails closed', () => {
   const onAddCourse = jest.fn()
   const transfer = {

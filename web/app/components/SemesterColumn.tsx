@@ -1,7 +1,7 @@
 'use client'
 
 import type { SemesterVM } from '../../lib/board'
-import { useState } from 'react'
+import { useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
 import { readPlannerDrag } from '../../lib/planner/drag-payload'
@@ -31,17 +31,21 @@ export default function SemesterColumn({
     return payload.allowedSemesterIds === undefined || payload.allowedSemesterIds.includes(semester.id)
   }
 
+  const updateDragState = (event: DragEvent<HTMLElement>) => {
+    if (mutationPending) { setDragActive(false); return false }
+    const payload = readPlannerDrag(event.dataTransfer)
+    if (!acceptsPayload(payload)) { setDragActive(false); return false }
+    event.preventDefault()
+    event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
+    setDragActive(true)
+    return true
+  }
+
   return (
     <section
       aria-label={semester.title}
-      onDragOver={(event) => {
-        if (mutationPending) { setDragActive(false); return }
-        const payload = readPlannerDrag(event.dataTransfer)
-        if (!acceptsPayload(payload)) { setDragActive(false); return }
-        event.preventDefault()
-        event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
-        setDragActive(true)
-      }}
+      onDragEnter={updateDragState}
+      onDragOver={updateDragState}
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragActive(false)
       }}

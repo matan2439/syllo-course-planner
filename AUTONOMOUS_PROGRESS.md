@@ -1,5 +1,15 @@
 # Autonomous Progress
 
+## Latest session — activate semester drops on drag entry
+
+Semester columns now validate and activate an allowed repository or board drag
+as soon as the pointer enters the column, then reuse the same fail-closed
+handler during `dragover`. This makes the drop affordance reliable in browsers
+that do not emit a useful first `dragover`, while manual edits still go through
+the existing authoritative server mutation. The NativePlannerBoard suite now
+passes 15 tests. No catalog, provider, Supabase, Production, or remote
+database configuration changed.
+
 ## Latest session — keep the board concrete while the course drawer is open
 
 The open course drawer now leaves an explicit, persistent semester-board drop
