@@ -1,5 +1,28 @@
 # Autonomous Progress
 
+## Latest session — unify the Academic Agent conversation and humanize course replies
+
+The planner now presents preference questions inside the same Academic Decision
+Agent conversation card, so the student can answer with quick options or text
+without switching between separate panels. Replies replace course IDs that are
+known in the authoritative catalog with Hebrew course names while retaining
+the ID for verification; unknown IDs remain untouched. A server-refused manual
+add or move now marks the attempted semester as rejected, shows
+`לא ניתן לשחרר כאן`, and plays a subtle rejection animation so an illegal
+destination is immediately understandable.
+
+The focused Academic Agent / planner suites pass (17 tests), and the focused
+server-rejection board suite passes (20 tests). The broader six-suite run
+passed 89/90; the one board-load failure was then reproduced successfully in
+an isolated run. `npm run typecheck` completed without errors. The Next build
+reached `Compiled successfully` and traced the server output, but the local
+process hung before returning its final status. No catalog, Electrical data,
+provider, Supabase, Production, or remote database configuration changed.
+The isolated Preview is ready at
+https://tau-course-planner-7tpqji9ef-matanyaron-1633s-projects.vercel.app/planner
+(deployment built from commit `115c5b4`; Vercel deployment protection may
+require login in an automated browser).
+
 ## Latest session — explain stale Academic Agent conversations
 
 The conversational Academic Decision Agent now preserves typed server context
