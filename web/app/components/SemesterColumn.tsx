@@ -32,7 +32,9 @@ export default function SemesterColumn({
     if (!payload) return false
     if (payload.kind === 'repository' && !onAddCourse) return false
     if (payload.kind === 'board' && !onMoveCourse) return false
-    return payload.allowedSemesterIds === undefined || payload.allowedSemesterIds.includes(semester.id)
+    // An absent offering list is an unknown academic fact. A drop target must
+    // never turn that absence into permission for every semester.
+    return payload.allowedSemesterIds !== undefined && payload.allowedSemesterIds.includes(semester.id)
   }
 
   useEffect(() => {
@@ -116,7 +118,13 @@ export default function SemesterColumn({
       </header>
 
       {visibleDragState && (
-        <p role="status" aria-live="polite" className={`planner-drop-feedback planner-drop-feedback-${visibleDragState}`}>
+        <p
+          key={visibleDragState}
+          role="status"
+          aria-live="polite"
+          data-feedback-state={visibleDragState}
+          className={`planner-drop-feedback planner-drop-feedback-${visibleDragState}`}
+        >
           <span aria-hidden="true" className="planner-drop-feedback-icon">
             {visibleDragState === 'allowed' && '✓'}
             {visibleDragState === 'invalid' && '×'}

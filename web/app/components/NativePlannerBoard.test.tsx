@@ -37,6 +37,33 @@ test('an empty semester shows the truthful "no courses" state', () => {
   expect(screen.getByText('אין קורסים משובצים')).toBeInTheDocument()
 })
 
+test('a movable course without an authoritative offering is not advertised as draggable', () => {
+  const boardWithUnknownOffering = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{
+          course_id: 'E-UNKNOWN',
+          name_he: 'קורס ללא זמינות מאומתת',
+          weekly_hours: 3,
+          course_type: 'elective',
+          is_mandatory: false,
+        }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+    ],
+  }
+
+  const { container } = render(
+    <NativePlannerBoard board={vmFromPayload(boardWithUnknownOffering)} onMoveCourse={jest.fn()} />,
+  )
+
+  const card = screen.getByText('קורס ללא זמינות מאומתת').closest('[draggable]')
+  expect(card).not.toHaveAttribute('draggable', 'true')
+  expect(container.querySelector('[data-drag-handle]')).toBeNull()
+})
+
 test('the board and its semesters expose accessible labels (RTL Hebrew)', () => {
   render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
   expect(screen.getByRole('list', { name: 'לוח סמסטרים' })).toBeInTheDocument()
@@ -222,7 +249,9 @@ test('drop feedback exposes a distinct visual state for legal and illegal destin
 
   expect(allowedTarget).toHaveAttribute('data-drop-state', 'allowed')
   expect(invalidTarget).toHaveAttribute('data-drop-state', 'invalid')
+  expect(within(allowedTarget).getByRole('status')).toHaveAttribute('data-feedback-state', 'allowed')
   expect(within(allowedTarget).getByRole('status')).toHaveTextContent('✓ ניתן לשחרר כאן')
+  expect(within(invalidTarget).getByRole('status')).toHaveAttribute('data-feedback-state', 'invalid')
   expect(within(invalidTarget).getByRole('status')).toHaveTextContent('× לא ניתן לשחרר כאן')
 })
 
@@ -292,7 +321,7 @@ test('dragging an elective onto another semester invokes the same authoritative 
     semesters: [
       {
         semester_id: 'year_3_semester_a',
-        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false, offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }],
       },
       { semester_id: 'year_3_semester_b', courses: [] },
     ],
@@ -320,7 +349,7 @@ test('does not hijack a drag that starts on a board card control', () => {
     semesters: [
       {
         semester_id: 'year_3_semester_a',
-        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false, offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }],
       },
       { semester_id: 'year_3_semester_b', courses: [] },
     ],
@@ -352,7 +381,7 @@ test('an elective drag source visibly enters and leaves its dragging state', () 
     semesters: [
       {
         semester_id: 'year_3_semester_a',
-        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false, offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }],
       },
       { semester_id: 'year_3_semester_b', courses: [] },
     ],
@@ -379,7 +408,7 @@ test('an elective card exposes a clear drag affordance alongside keyboard contro
     semesters: [
       {
         semester_id: 'year_3_semester_a',
-        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false }],
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false, offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }],
       },
       { semester_id: 'year_3_semester_b', courses: [] },
     ],

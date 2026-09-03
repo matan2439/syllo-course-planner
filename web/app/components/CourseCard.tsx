@@ -24,9 +24,13 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragging, setDragging] = useState(false)
-  const availableMoveDestinations = course.offeredSemesters === undefined
-    ? moveDestinations
-    : moveDestinations?.filter((destination) => course.offeredSemesters?.includes(destination.semesterId))
+  // Missing offering data is an unknown academic fact, not permission to move
+  // everywhere. Keep the card keyboard-readable, but fail closed until the
+  // authoritative catalog names at least one destination.
+  const offeredSemesters = course.offeredSemesters
+  const availableMoveDestinations = offeredSemesters === undefined
+    ? []
+    : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
   const movable = course.type !== 'mandatory' && Boolean(onMove) &&
     Boolean(availableMoveDestinations?.length) && !mutationPending
 

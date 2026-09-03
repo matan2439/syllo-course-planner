@@ -24,8 +24,8 @@ const BOARD = {
   metadata: {
     board_data_version: 'rev-1',
     program_repository_courses: [
-      { course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 4, is_mandatory: false },
-      { course_id: 'Z-1', name_he: 'קורס Z', weekly_hours: 4, is_mandatory: false },
+      { course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 4, is_mandatory: false, offered_semesters: [SEM_A, SEM_B] },
+      { course_id: 'Z-1', name_he: 'קורס Z', weekly_hours: 4, is_mandatory: false, offered_semesters: [SEM_A, SEM_B] },
     ],
   },
   semesters: [
