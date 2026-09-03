@@ -1,5 +1,13 @@
 # Autonomous Progress
 
+## Latest session — keyboard-close drawer behavior
+
+The active course or AI drawer now closes with `Escape`, returning focus state to
+the board without unmounting or replacing the authoritative planner surface.
+The focused workspace suite passed with 9 tests; the full web suite and typecheck
+are the release checks for this slice. No catalog, provider, Supabase,
+Production, or remote database configuration changed.
+
 ## Latest release gate — Preview remains ready
 
 Re-verified the latest visible Preview at

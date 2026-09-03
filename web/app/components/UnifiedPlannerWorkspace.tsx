@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository from './UnifiedCourseRepository'
@@ -70,6 +70,21 @@ export default function UnifiedPlannerWorkspace({
     setAgentOpen(false)
     setActiveView(repositoryOpen ? 'repository' : 'board')
   }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (agentOpen) {
+        setAgentOpen(false)
+        setActiveView(repositoryOpen ? 'repository' : 'board')
+      } else if (repositoryOpen) {
+        setRepositoryOpen(false)
+        setActiveView('board')
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [agentOpen, repositoryOpen])
 
   const toggleRepository = () => {
     if (repositoryOpen) closeRepository()

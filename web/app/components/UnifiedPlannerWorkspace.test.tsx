@@ -129,6 +129,18 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByRole('button', { name: 'פתח עוזר AI' })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  test('closes the active drawer with Escape without unmounting the board', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    expect(screen.getByRole('button', { name: 'סגור מאגר קורסים' })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
+  })
+
   test('tracks the active drawer surface so narrow layouts never show two rails over the board', () => {
     const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
     const workbench = container.querySelector('.planner-workbench')
