@@ -79,4 +79,53 @@ describe('PlannerWorker.rankActions', () => {
       ).toBeGreaterThanOrEqual(0);
     }
   });
+
+  it('exposes grounded read-only academic tools without mutating the worker', async () => {
+    const w = new PlannerWorker(buildModel(), {
+      semesters: {
+        year_3_semester_a: ['MAND'], year_3_semester_b: [],
+        year_4_semester_a: [], year_4_semester_b: [],
+      },
+    });
+    const tools = buildPlannerTools(w);
+
+    const status = await tools.get_academic_status.execute({}, undefined as any);
+    expect(status.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 1 }));
+    expect(status.data).toEqual(expect.objectContaining({
+      completed_course_ids: [], currently_taking_course_ids: [],
+      planned_course_ids: ['MAND'],
+    }));
+
+    const requirements = await tools.get_requirements_gap.execute({}, undefined as any);
+    expect(requirements.fact).toEqual(expect.objectContaining({ source: 'planner_model' }));
+    expect(requirements.data).toEqual(expect.objectContaining({
+      degree_hours_required: 20, degree_hours_current: 5, degree_hours_remaining: 15,
+      mandatory_remaining: 0,
+    }));
+
+    const details = await tools.get_course_details.execute({ courseId: 'MAND' }, undefined as any);
+    expect(details.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 0.5 }));
+    expect(details.data).toEqual(expect.objectContaining({ course_id: 'MAND', hours: 5, name_he: 'MAND' }));
+
+    const offerings = await tools.get_offerings.execute({ courseId: 'MAND' }, undefined as any);
+    expect(offerings.data).toEqual(expect.objectContaining({
+      course_id: 'MAND', allowed_semesters: ['year_3_semester_a'], known: true,
+    }));
+
+    const prereqs = await tools.check_prerequisites.execute({ courseId: 'MAND' }, undefined as any);
+    expect(prereqs.data).toEqual(expect.objectContaining({ course_id: 'MAND', missing_course_ids: [] }));
+
+    const simulated = await tools.simulate_move.execute({ courseId: 'MAND', toSemester: 'year_3_semester_b' }, undefined as any);
+    expect(simulated.data).toEqual(expect.objectContaining({ accepted: false, course_id: 'MAND' }));
+    expect(w.getPlan().semesters.year_3_semester_a).toEqual(['MAND']);
+
+    const compared = await tools.compare_candidates.execute({ courseIds: ['E0', 'E1'] }, undefined as any);
+    expect(compared.fact).toEqual(expect.objectContaining({ source: 'planner_model' }));
+    expect(compared.data.candidates).toHaveLength(2);
+
+    const explanation = await tools.explain_constraint.execute({ courseId: 'MAND', constraint: 'offering' }, undefined as any);
+    expect(explanation.data).toEqual(expect.objectContaining({
+      course_id: 'MAND', constraint: 'offering', allowed_semesters: ['year_3_semester_a'],
+    }));
+  });
 });

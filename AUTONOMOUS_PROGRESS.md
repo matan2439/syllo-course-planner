@@ -8738,3 +8738,16 @@ https://tau-course-planner-7851yf0z6-matanyaron-1633s-projects.vercel.app
 (deployment `dpl_BMEs9toTLSAZcX9MGtDHz1vBP4iP`). Browser verification confirmed
 the board remains visible while the repository drawer is open, and that the AI
 drawer opens and closes. Production remains unchanged.
+
+## Latest session — ground the Academic Agent's read-only tools
+
+The conversational agent now exposes eight deterministic, read-only academic
+tools over the same `PlannerWorker` snapshot: academic status, requirements gap,
+course details, offerings, prerequisites, isolated move simulation, candidate
+comparison, and constraint explanation. Each result carries source, snapshot
+freshness and confidence metadata; unknown course/offering facts remain unknown
+instead of being guessed. Simulated moves run on a cloned worker and cannot
+mutate the authoritative draft. RED reproduced the missing tool contract;
+GREEN passed the focused planner-tool test, the conversational-agent and wire
+regressions (12 tests), root typecheck, web typecheck/build, and the focused UI
+regression (30 tests). Production remains unchanged.
