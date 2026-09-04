@@ -143,6 +143,20 @@ test('keeps preference questions inside the same assistant conversation surface'
   expect(surface).toContainElement(screen.getByRole('log', { name: 'תמליל שיחה עם עוזר התכנון' }))
 })
 
+test('presents preference context as an integrated conversation region, not a second card', () => {
+  render(
+    <AcademicAgentConversation
+      {...requestContext}
+      preferenceContent={<div data-testid="embedded-preferences">מה חשוב לך יותר כרגע?</div>}
+    />,
+  )
+
+  const context = screen.getByRole('region', { name: 'מידע שהעוזר צריך לדעת' })
+  expect(context).toContainElement(screen.getByTestId('embedded-preferences'))
+  expect(context.className).toContain('border-b')
+  expect(context.className).not.toContain('rounded-xl')
+})
+
 test('renders pending state and the explicit build-alternatives action', async () => {
   let resolve: ((value: ConversationResponse) => void) | undefined
   const sendConversation = jest.fn(() => new Promise<ConversationResponse>((done) => { resolve = done }))

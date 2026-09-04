@@ -1,5 +1,27 @@
 # Autonomous Progress
 
+## 2026-09-04 — unify the Academic Agent context with the conversation surface
+
+- The optional completed-course, workload, and course-interest controls now sit
+  in a named context region inside the same Academic Agent card. The visual
+  treatment no longer creates a second bordered card that competes with the
+  transcript, and the copy makes clear that these details inform the dialogue
+  rather than trigger automatic planning.
+- The agent still offers plan construction only after the server returns the
+  explicit readiness action; alternatives remain non-mutating until a selected
+  candidate is applied through server authority.
+
+Verification for this slice:
+
+- `web`: `AcademicAgentConversation.test.tsx` — 10 passed, including the new
+  integrated-context contract (RED confirmed before implementation, then
+  GREEN).
+- `web`: `npm run typecheck` — passed.
+- `web`: full `npm test` currently reports 27 passed suites and 6 failing
+  legacy `NativePlannerJourney` suites whose fixtures still expect the removed
+  standalone “בנה תוכנית” action while the Academic Agent readiness flow is
+  active; the focused agent and workspace regressions remain green.
+
 ## 2026-09-04 — make shell navigation usable on narrow screens
 
 - The shared product shell now wraps its header and navigation at phone widths,

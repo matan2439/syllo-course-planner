@@ -878,11 +878,11 @@ export default function NativePlannerJourney({
   }
 
   const preferenceContent = useAcademicDecisionAgent ? (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]/70 p-3">
+    <div className="flex flex-col gap-3">
       <details open>
-        <summary className="cursor-pointer text-sm font-semibold">מידע אישי והעדפות (אופציונלי)</summary>
+        <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
         <div className="mt-3 flex flex-col gap-3">
-          <p className="text-xs text-[var(--text-muted)]">הסוכן ישתמש במידע הזה רק לאחר שתאשרו אותו בשיחה. אין כאן בנייה אוטומטית.</p>
+          <p className="text-xs text-[var(--text-muted)]">אפשר להשלים כאן פרטים שיעזרו לשיחה. הסוכן יאשר אותם מולכם — ואין כאן בנייה אוטומטית.</p>
           <CompletedCoursesPanel
             programId={programId}
             catalogCourses={pickerCourses}

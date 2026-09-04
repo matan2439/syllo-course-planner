@@ -168,7 +168,15 @@ export default function AcademicAgentConversation({
         </div>
       </div>
 
-      {preferenceContent}
+      {preferenceContent && (
+        <section
+          aria-label="מידע שהעוזר צריך לדעת"
+          data-testid="academic-agent-context"
+          className="border-b border-[var(--border)] pb-3"
+        >
+          {preferenceContent}
+        </section>
+      )}
 
       <div
         role="log"
