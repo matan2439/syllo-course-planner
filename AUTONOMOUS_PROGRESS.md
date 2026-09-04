@@ -8768,6 +8768,6 @@ window or pretending that a chat response changed the authoritative board.
 RED reproduced the missing readiness surface; GREEN passed the focused
 conversation, unified workspace, and alternative-board UI suites (31 tests),
 the conversation API/wire regressions (9 tests), web typecheck, and the
-production build. The next step is to publish this slice to an isolated
-Preview and verify the new status on the deployed planner. Production remains
-unchanged.
+production build. The isolated Preview is READY at
+https://tau-course-planner-m71midv5v-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_47EtohVRDa6wt1VpQP1pitrQTpjp`). Production remains unchanged.
