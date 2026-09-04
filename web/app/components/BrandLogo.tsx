@@ -4,6 +4,7 @@
  * contrast without a hydration-time flash or a second logo implementation.
  */
 export default function BrandLogo({ size = 28, wordmark = false }: { size?: number; wordmark?: boolean }) {
+  const markWidth = Math.round(size * 2)
   return (
     <span className="inline-flex items-center gap-2">
       <span
@@ -17,8 +18,9 @@ export default function BrandLogo({ size = 28, wordmark = false }: { size?: numb
           src="/brand/logo-light.svg"
           alt=""
           aria-hidden="true"
-          width={Math.round(size * 2)}
+          width={markWidth}
           height={size}
+          style={{ width: `${markWidth}px`, height: `${size}px` }}
           className="syllo-brand-asset syllo-brand-asset-light"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -26,8 +28,9 @@ export default function BrandLogo({ size = 28, wordmark = false }: { size?: numb
           src="/brand/logo-dark.svg"
           alt=""
           aria-hidden="true"
-          width={Math.round(size * 2)}
+          width={markWidth}
           height={size}
+          style={{ width: `${markWidth}px`, height: `${size}px` }}
           className="syllo-brand-asset syllo-brand-asset-dark"
         />
       </span>

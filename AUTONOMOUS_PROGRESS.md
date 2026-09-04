@@ -1,5 +1,26 @@
 # Autonomous Progress
 
+## 2026-09-04 — make the Syllo mark visible in both themes
+
+- The supplied light/dark Syllo infinity marks now keep explicit pixel
+  dimensions in the rendered `<img>` styles. The previous `width:auto` CSS
+  over SVGs without intrinsic dimensions collapsed the mark to 0×0, leaving
+  only the wordmark visible in the live header.
+- Both theme variants retain the same geometry, so the day/night toggle changes
+  contrast without changing the header layout.
+
+Verification for this slice:
+
+- `web`: focused RED test failed because the light mark had no explicit rendered
+  dimensions; GREEN passed after the minimal BrandLogo fix.
+- `web`: BrandLogo, ProductShell and ThemeToggle — 3 tests passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+- Preview browser check — light mark rendered at 52×26px; after toggling night
+  mode, the dark mark rendered at 52×26px and the toggle switched to day mode.
+  Console errors: 0.
+- Preview: https://tau-course-planner-ncv0gs33q-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/HBbp5g9UAatUEdRBZFLGsyWqM5sn
+
 ## 2026-09-04 — remove phantom horizontal scroll from drawer animation
 
 - Closed fixed drawers now animate outside the viewport without widening the
