@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## 2026-09-04 — make shell navigation usable on narrow screens
+
+- The shared product shell now wraps its header and navigation at phone widths,
+  keeping the Syllo mark, route links, AI entry point, and day/night control
+  inside the viewport instead of clipping the left side of the header.
+- Desktop navigation keeps its single-row layout; the change is limited to the
+  responsive flex contract and does not alter routes or theme persistence.
+
+Verification for this slice:
+
+- `web`: new `ProductShell.test.tsx` — RED confirmed before implementation,
+  then GREEN.
+- `web`: shell, workspace, board, repository, Academic Agent, alternatives,
+  and theme suites — 64 passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+
 ## 2026-09-04 — keep the central board visible on mobile drawer use
 
 - Narrow screens now keep the semester board as the full central workspace when

@@ -60,7 +60,7 @@ export default function ProductShell({
               }`
         }
       >
-        <header className="flex shrink-0 items-center justify-between gap-3 py-5">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-5">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
@@ -68,7 +68,7 @@ export default function ProductShell({
             <BrandLogo size={26} wordmark />
           </Link>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex w-full flex-wrap items-center justify-start gap-1 sm:w-auto sm:flex-nowrap">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.key}
