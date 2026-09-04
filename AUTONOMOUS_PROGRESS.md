@@ -1,5 +1,34 @@
 # Autonomous Progress
 
+## 2026-09-04 — show Academic Agent alternatives as semester-board previews
+
+- Alternative proposals now render as actual mini-board summaries: each option
+  shows the Hebrew semester label and the authoritative Hebrew course names
+  resolved from the catalog, with course IDs only as a truthful fallback when a
+  name is unavailable.
+- Selecting an alternative projects its semesters onto the central board for
+  inspection without mutating the committed durable board. Manual edit controls
+  stay read-only while a proposal is projected; explicit Apply remains the only
+  path that asks the server to commit the candidate.
+- Durable board loading and server-authoritative Apply are controlled separately
+  from whether the Academic Agent conversation is visible, so the unified
+  planner remains usable with or without the agent drawer.
+- Updated the route wiring regression to assert the current `resolveProgram`
+  contract used by the canonical redirects.
+
+Verification for this slice:
+
+- `web`: focused alternative/agent/server-apply/priority/topic regressions — 35
+  passed.
+- API regression — 202 suites passed, 1 skipped (2572 passed, 1 skipped).
+- Full UI regression — 78 suites and 836 tests passed.
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Preview browser check — page title correct, 0 console errors, board and
+  assistant drawer controls present.
+- Preview: https://tau-course-planner-6compl2jg-matanyaron-1633s-projects.vercel.app/planner
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/Hdfh6DeEtTa29zEpBeY5fvitWAhJ
+
 ## 2026-09-04 — align the Syllo mark with explicit day/night mode
 
 - The Syllo lockup now renders the supplied light and dark infinity marks and

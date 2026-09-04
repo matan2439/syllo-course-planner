@@ -188,6 +188,7 @@ export default function NativePlannerJourney({
   applyFn = defaultApply,
   committedBoardFn = defaultCommittedBoard,
   useAcademicDecisionAgent = false,
+  serverApply = useAcademicDecisionAgent,
   manualAddIntent = null,
   editBoardFn = defaultEditBoard,
   establishPlanningContextFn = defaultEstablishPlanningContext,
@@ -232,6 +233,8 @@ export default function NativePlannerJourney({
    * journey — the native page never sets it. Default false/absent.
    */
   useAcademicDecisionAgent?: boolean
+  /** Enable server-authoritative Apply independently of the conversation UI. */
+  serverApply?: boolean
 }) {
   // ── current plan ──────────────────────────────────────────────────────────
   const [boardPhase, setBoardPhase] = useState<BoardPhase>('loading')
@@ -274,12 +277,10 @@ export default function NativePlannerJourney({
     // COMMITTED board is this session's own state. Both are needed, and only
     // the second is user data — so a failure to read it must not hide the
     // catalog, but it must also never be replaced by a silent default.
-    const committed = useAcademicDecisionAgent
-      ? committedBoardFn(programId).catch((e) => {
-          console.error('[NativePlannerJourney] committed board load failed:', e)
-          return null
-        })
-      : Promise.resolve(null)
+    const committed = serverApply ? committedBoardFn(programId).catch((e) => {
+      console.error('[NativePlannerJourney] committed board load failed:', e)
+      return null
+    }) : Promise.resolve(null)
 
     Promise.all([getBoardFn(programId), committed]).then(
       ([catalog, saved]) => {
@@ -291,7 +292,7 @@ export default function NativePlannerJourney({
       (e) => { if (live) { console.error('[NativePlannerJourney] board load failed:', e); setBoardPhase('error') } },
     )
     return () => { live = false }
-  }, [programId, getBoardFn, committedBoardFn, useAcademicDecisionAgent])
+  }, [programId, getBoardFn, committedBoardFn, serverApply])
 
   useEffect(() => {
     if (!current) return
@@ -643,7 +644,7 @@ export default function NativePlannerJourney({
   const apply = async () => {
     if (!current || !proposal || !canApply || applyPhase === 'applying') return
 
-    if (!useAcademicDecisionAgent) {
+    if (!serverApply) {
       // Legacy path, byte-identical to before.
       const applyTarget = applyTargetProposal()
       if (!applyTarget) return
@@ -1007,6 +1008,9 @@ export default function NativePlannerJourney({
               alternatives={proposal!.alternatives!}
               selectedId={selectedAlternativeId ?? ''}
               onSelect={setSelectedAlternativeId}
+              courseNameById={Object.fromEntries(
+                Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe || null]),
+              )}
               disabled={stale}
             />
           )}

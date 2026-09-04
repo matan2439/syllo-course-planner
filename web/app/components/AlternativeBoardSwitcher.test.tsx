@@ -18,11 +18,18 @@ const alternative = (candidateId: string, labelHe: string) => ({
   workload: { peakHours: 4, totalHours: 8, activePeriods: 2 },
 })
 
-test('renders alternatives as board modes instead of a text-only plan list', () => {
+test('renders alternatives as board modes with semester course previews', () => {
   const onSelect = jest.fn()
-  render(<AlternativeBoardSwitcher alternatives={[alternative('a', 'עומס מאוזן'), alternative('b', 'סיום מהיר')]} selectedId="a" onSelect={onSelect} />)
+  const alternatives = [
+    { ...alternative('a', 'עומס מאוזן'), semesters: [{ semesterId: 'year_3_semester_a', courseIds: ['c-1'] }] },
+    { ...alternative('b', 'סיום מהיר'), semesters: [{ semesterId: 'year_3_semester_b', courseIds: ['c-2'] }] },
+  ]
+  render(<AlternativeBoardSwitcher alternatives={alternatives} selectedId="a" onSelect={onSelect} courseNameById={{ 'c-1': 'מבוא למערכות', 'c-2': 'תכנון מתקדם' }} />)
   expect(screen.getByTestId('alternative-board-switcher')).toHaveTextContent('בחרו חלופה להצגה על הלוח')
   expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('מבוא למערכות')
+  expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('שנה ג׳ — סמסטר א׳')
+  expect(screen.getByRole('radio', { name: /סיום מהיר/ })).toHaveTextContent('תכנון מתקדם')
   fireEvent.click(screen.getByRole('radio', { name: /סיום מהיר/ }))
   expect(onSelect).toHaveBeenCalledWith('b')
 })

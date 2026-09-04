@@ -78,7 +78,7 @@ test('/programs picker renders the shipped program families', () => {
 
 test('plan, board and repository resolve the program from the query param', () => {
   for (const page of ['plan', 'board', 'repository']) {
-    expect(read(`web/app/${page}/page.tsx`)).toContain('getProgram');
+    expect(read(`web/app/${page}/page.tsx`)).toContain('resolveProgram');
   }
 });
 
@@ -90,7 +90,7 @@ test('/ai-plan is retired — it redirects to the canonical /planner assistant, 
   const page = read('web/app/ai-plan/page.tsx');
   expect(page).toContain('redirect');
   expect(page).toContain('/planner');
-  expect(page).toContain('getProgram'); // still resolves/normalizes the selected program before redirecting
+  expect(page).toContain('resolveProgram'); // still resolves/normalizes the selected program before redirecting
   expect(page).not.toContain('AiPlanningExperience');
 });
 

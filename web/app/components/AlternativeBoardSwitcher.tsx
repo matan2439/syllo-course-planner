@@ -4,16 +4,29 @@ import type { GeneratedPlanModel } from '../../../shared/planner/model'
 
 type Alternative = NonNullable<GeneratedPlanModel['alternatives']>[number]
 
+const SEMESTER_LABEL_HE: Record<string, string> = {
+  year_1_semester_a: 'שנה א׳ — סמסטר א׳',
+  year_1_semester_b: 'שנה א׳ — סמסטר ב׳',
+  year_2_semester_a: 'שנה ב׳ — סמסטר א׳',
+  year_2_semester_b: 'שנה ב׳ — סמסטר ב׳',
+  year_3_semester_a: 'שנה ג׳ — סמסטר א׳',
+  year_3_semester_b: 'שנה ג׳ — סמסטר ב׳',
+  year_4_semester_a: 'שנה ד׳ — סמסטר א׳',
+  year_4_semester_b: 'שנה ד׳ — סמסטר ב׳',
+}
+
 export default function AlternativeBoardSwitcher({
   alternatives,
   selectedId,
   onSelect,
   disabled = false,
+  courseNameById = {},
 }: {
   alternatives: Alternative[]
   selectedId: string
   onSelect: (candidateId: string) => void
   disabled?: boolean
+  courseNameById?: Readonly<Record<string, string | null | undefined>>
 }) {
   if (alternatives.length < 2) return null
   return (
@@ -39,6 +52,14 @@ export default function AlternativeBoardSwitcher({
             >
               <span className="block">{selected ? '✓ ' : ''}{alternative.labelHe}</span>
               <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]">עומס שיא {alternative.workload.peakHours} ש״ש · {alternative.workload.activePeriods} סמסטרים פעילים</span>
+              <span className="mt-2 flex flex-col gap-0.5 border-t border-[var(--border)] pt-2 text-xs font-normal text-[var(--text-muted)]">
+                {alternative.semesters.filter((semester) => semester.courseIds.length > 0).map((semester) => (
+                  <span key={semester.semesterId}>
+                    <span className="font-semibold">{SEMESTER_LABEL_HE[semester.semesterId] ?? semester.semesterId}:</span>{' '}
+                    {semester.courseIds.map((courseId) => courseNameById[courseId] ?? courseId).join(', ')}
+                  </span>
+                ))}
+              </span>
             </button>
           )
         })}

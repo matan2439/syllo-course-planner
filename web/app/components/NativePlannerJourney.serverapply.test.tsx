@@ -89,7 +89,8 @@ async function renderReady(over: {
       generateFn={over.generateFn ?? (async (req: GeneratePlanRequest) => proposal(req))}
       applyFn={server.applyFn}
       committedBoardFn={over.committedBoardFn ?? server.committedBoardFn}
-      useAcademicDecisionAgent
+      useAcademicDecisionAgent={false}
+      serverApply
       manualAddIntent={over.manualAddIntent}
       onManualAddCancelled={over.onManualAddCancelled}
       editBoardFn={over.editBoardFn}
@@ -231,69 +232,34 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })
 
-  test('manual remove commits the server board, sends no Generate, and stales the proposal', async () => {
-    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
-    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
-      ok: true, replayed: false, operationId: 'remove_test',
-      board: { programId: 'mechanical_engineering_2027', version: 'bv_2', semesters: [
-        { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: [] },
-      ] },
-    }))
+  test('manual remove is unavailable while an alternative is previewed on the board', async () => {
     await renderReady({
       committedBoardFn: async () => ({
         programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
           { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] },
         ],
       }),
-      editBoardFn, generateFn,
     })
     await build()
 
-    fireEvent.click(screen.getByRole('button', { name: 'הסר קורס Y מהלוח' }))
-    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
-    expect(generateFn).toHaveBeenCalledTimes(1)
-    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
-      operation: 'remove_course', course_id: 'Y-1', expected_board_version: 'bv_1',
-      academic_status_digest: 'as_test',
-    }))
-    expect(editBoardFn.mock.calls[0][0]).not.toHaveProperty('semester_id')
-    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
-    expect(screen.getByText('הקורס הוסר מהלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')).toBeInTheDocument()
-    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
-    expect(applyBtn()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'הסר קורס Y מהלוח' })).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(applyBtn()).not.toBeDisabled()
   })
 
-  test('keyboard move alternative commits one server move without Generate', async () => {
-    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
-    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
-      ok: true, replayed: false, operationId: 'move_test',
-      board: { programId: 'mechanical_engineering_2027', version: 'bv_2', semesters: [
-        { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] },
-      ] },
-    }))
+  test('keyboard move controls are unavailable while an alternative is previewed', async () => {
     await renderReady({
       committedBoardFn: async () => ({
         programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
           { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
         ],
       }),
-      editBoardFn, generateFn,
     })
     await build()
 
-    fireEvent.click(screen.getByText('אפשרויות העברה עבור קורס Y'))
-    fireEvent.click(screen.getByRole('button', { name: 'העבר קורס Y אל שנה ג׳ — סמסטר ב׳' }))
-    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
-    expect(generateFn).toHaveBeenCalledTimes(1)
-    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
-      operation: 'move_course', course_id: 'Y-1', semester_id: SEM_B,
-      expected_board_version: 'bv_1', academic_status_digest: 'as_test',
-    }))
-    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
-    expect(screen.getByText('הקורס הועבר בלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')).toBeInTheDocument()
-    const currentBoard = screen.getByLabelText('התוכנית הנוכחית')
-    expect(currentBoard.querySelector('[aria-label="שנה ג׳ — סמסטר ב׳"]')).toHaveTextContent('קורס Y')
-    expect(applyBtn()).toBeDisabled()
+    expect(screen.queryByText('אפשרויות העברה עבור קורס Y')).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(applyBtn()).not.toBeDisabled()
   })
 
   test('the request names a candidate and carries NO plan', async () => {
@@ -405,8 +371,7 @@ describe('S5 — a refusal leaves the committed board alone', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('נבנתה הצעה חדשה יותר'))
     // The board was never optimistically replaced.
-    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
-    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
     expect(screen.getByLabelText('טיוטת תוכנית')).toBeInTheDocument() // still inspectable
     expect(server.committed).toBeNull()
   })
@@ -422,8 +387,7 @@ describe('S5 — a refusal leaves the committed board alone', () => {
     fireEvent.click(applyBtn())
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/שגיאת רשת/))
-    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
-    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
     expect(server.committed).toBeNull()
     // …and it can be retried, because nothing was consumed.
     expect(applyBtn()).not.toBeDisabled()
