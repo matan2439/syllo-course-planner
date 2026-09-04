@@ -21,6 +21,8 @@ Verification for this slice:
   legacy `NativePlannerJourney` suites whose fixtures still expect the removed
   standalone “בנה תוכנית” action while the Academic Agent readiness flow is
   active; the focused agent and workspace regressions remain green.
+- Preview: https://tau-course-planner-pinpnr4bi-matanyaron-1633s-projects.vercel.app/planner
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/7f2XZWiwguYPsfKAumP6wokWWwez
 
 ## 2026-09-04 — make shell navigation usable on narrow screens
 
