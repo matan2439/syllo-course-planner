@@ -43,6 +43,45 @@ const SYSTEM_PROMPT = `אתה עוזר אקדמי לתכנון תואר באונ
 רק אחרי שיש לך מספיק מידע מהסטודנט, הפעל finalize_plan והסבר בקצרה את
 החלופה שנבדקה. אל תציע בנייה על סמך שאלה יחידה על עומס בלבד.`;
 
+const FALLBACK_CLARIFICATION = {
+  questionHe: 'כדי לבנות חלופות שבאמת מתאימות לך, איזה מידע חשוב שניקח בחשבון קודם?',
+  optionsHe: [
+    'אילו קורסים כבר השלמתי או אני לומד/ת עכשיו',
+    'אילו מגבלות עומס או ימים חשובים לי',
+    'אילו תחומי קורסים מעניינים אותי במיוחד',
+  ],
+};
+
+function hasEnoughUserContext(
+  transcript: readonly ConversationTurn[],
+  preferenceProfile?: PreferenceProfile,
+): boolean {
+  const preferences = preferenceProfile?.preferences ?? [];
+  const unresolved = preferences.some((preference) =>
+    preference.classification === 'uncertain'
+    || preference.confirmationStatus === 'pending'
+    || preference.confirmationStatus === 'rejected'
+    || (preference.classification === 'hard_constraint' && preference.confirmationStatus !== 'confirmed'));
+  if (unresolved) return false;
+
+  const usablePreferences = preferences.filter((preference) =>
+    preference.classification !== 'indifferent'
+    && preference.mayAffectPlanningBeforeConfirmation,
+  );
+  if (usablePreferences.length >= 2) return true;
+
+  // A free-form conversation can also supply the context. Do not count a
+  // one-line build command as personal information; require two substantive
+  // user turns before the LLM is allowed to offer generation.
+  const substantiveTurns = transcript.filter((turn) => {
+    if (turn.role !== 'user') return false;
+    const text = turn.text.trim().replace(/\s+/g, ' ');
+    if (text.length < 8) return false;
+    return !/^(בנה|תבנה|תציע|צור|build|create|plan)\b/i.test(text);
+  });
+  return substantiveTurns.length >= 2;
+}
+
 function transcriptPrompt(
   transcript: readonly ConversationTurn[],
   preferenceProfile?: PreferenceProfile,
@@ -83,6 +122,19 @@ export async function runConversationalAgent(
         type: 'clarification',
         question_he: clarification.questionHe,
         options_he: clarification.optionsHe,
+      });
+      return {
+        outcome: 'conversation',
+        nextAction: 'ask',
+        messageHe,
+        events,
+      };
+    }
+    if (!hasEnoughUserContext(input.transcript, input.preferenceProfile)) {
+      events.push({
+        type: 'clarification',
+        question_he: FALLBACK_CLARIFICATION.questionHe,
+        options_he: FALLBACK_CLARIFICATION.optionsHe,
       });
       return {
         outcome: 'conversation',

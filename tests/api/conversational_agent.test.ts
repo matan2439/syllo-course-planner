@@ -2,6 +2,7 @@ import { runConversationalAgent } from '../../api/ai/conversational_agent'
 import { PlannerWorker } from '../../api/ai/planner_worker'
 import type { ConstraintModel } from '../../api/ai/planner_types'
 import type { CourseProfile } from '../../api/ai/course_profile'
+import { makePreference, type PreferenceProfile } from '../../api/ai/preference_model'
 
 const SEMESTER = 'year_3_semester_a'
 
@@ -31,10 +32,26 @@ function createWorker() {
   return new PlannerWorker(model)
 }
 
+function readyProfile(): PreferenceProfile {
+  return {
+    version: 3,
+    preferences: [
+      makePreference({
+        id: 'workload', category: 'workload', normalized: 'lighter_week', value: 'lighter_week',
+        classification: 'soft_preference', confidence: 1, source: 'explicit_answer', affects: 'max_weekly_hours',
+      }),
+      makePreference({
+        id: 'balance', category: 'semester_balance', normalized: 'balanced', value: 'balanced',
+        classification: 'soft_preference', confidence: 1, source: 'explicit_answer', affects: 'balance_score',
+      }),
+    ],
+  }
+}
+
 const transcript = [{ role: 'user' as const, text: 'תציע לי תוכנית מאוזנת' }]
 
-test('the model can orchestrate deterministic tools and returns only a draft plan', async () => {
-  const result = await runConversationalAgent({ transcript, createWorker }, {
+test('the model can orchestrate deterministic tools and returns only a draft plan once context is sufficient', async () => {
+  const result = await runConversationalAgent({ transcript, createWorker, preferenceProfile: readyProfile() }, {
     model: {} as never,
     generate: async ({ tools }) => {
       await tools.add_course.execute!({ courseId: 'E-1', semesterId: SEMESTER }, {} as never)
@@ -64,8 +81,11 @@ test('an invalid tool action is rejected without corrupting worker state or pret
 
   expect(result.outcome).toBe('conversation')
   if (result.outcome !== 'conversation') throw new Error('expected conversation')
-  expect(result.nextAction).toBe('offer_build')
+  expect(result.nextAction).toBe('ask')
   expect(result.events).toContainEqual({ type: 'tool_status', tool: 'add_course', status: 'rejected' })
+  expect(result.events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'clarification' }),
+  ]))
 })
 
 test('clarification tool returns a focused question and suppresses proposal finalization', async () => {
@@ -89,6 +109,23 @@ test('clarification tool returns a focused question and suppresses proposal fina
     options_he: ['שבוע קל יותר', 'לסיים מוקדם יותר'],
   })
   expect(result.events.some((event) => event.type === 'tool_status' && event.tool === 'finalize_plan')).toBe(false)
+})
+
+test('does not offer plan building after one shallow request without enough personal context', async () => {
+  const result = await runConversationalAgent({
+    transcript: [{ role: 'user', text: 'בנה לי מערכת' }],
+    createWorker,
+  }, {
+    model: {} as never,
+    generate: async () => ({ text: 'כדי להתאים את התכנון אליך אני צריך עוד מידע.' }),
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  expect(result.nextAction).toBe('ask')
+  expect(result.events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'clarification' }),
+  ]))
 })
 
 test('provider failure discards the isolated draft and returns truthful unavailability', async () => {

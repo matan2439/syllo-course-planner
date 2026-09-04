@@ -1,5 +1,28 @@
 # Autonomous Progress
 
+## 2026-09-04 — prevent premature Academic Agent build offers
+
+- The conversation agent no longer returns `offer_build` after a single shallow
+  request such as “בנה לי מערכת”. It now requires two usable structured
+  preferences or two substantive user turns, and refuses unresolved/uncertain
+  preferences as sufficient context.
+- If the LLM does not call `ask_clarification` while context is insufficient,
+  the server emits a deterministic Hebrew follow-up with three concrete paths:
+  completed/current courses, workload/day constraints, or content interests.
+  The UI therefore always has a visible next question and never exposes a
+  misleading build action.
+- Once the context gate is satisfied, the existing LLM conversation and
+  server-authoritative proposal/apply flow remain unchanged.
+
+Verification for this slice:
+
+- `root`: `tests/api/conversational_agent.test.ts` — 5 passed.
+- `root`: conversational agent, conversation endpoint, and planner tools —
+  16 passed.
+- `web`: Academic Agent, native journey, alternative board, and theme suites —
+  22 passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+
 ## Latest verified Preview — unified agent intake and board presentation
 
 - Commit `4ecdb5f` is pushed to `ui/frontend-modernization`.
