@@ -199,6 +199,28 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
 
+      if (agent.outcome === 'conversation'
+        && agent.nextAction === 'offer_build'
+        && hasCriticalMissingInput(clarification)) {
+        const question = clarification.questions[0];
+        const events = question
+          ? [...agent.events, clarificationEvent(question)]
+          : agent.events;
+        res.status(200).json({
+          outcome: 'clarification_required',
+          message_he: 'לפני בניית מערכת אני צריך להשלים כמה פרטים אקדמיים חשובים.',
+          events,
+          next_action: 'ask',
+          academic_decision: {
+            engine: 'AcademicDecisionAgent',
+            ready_to_plan: false,
+            planned: false,
+            clarification_required: true,
+          },
+        });
+        return;
+      }
+
       if (agent.outcome === 'proposal' && hasCriticalMissingInput(clarification)) {
         const question = clarification.questions[0];
         const events = question

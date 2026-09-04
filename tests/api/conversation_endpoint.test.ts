@@ -301,3 +301,38 @@ test('conversation blocks an early proposal until critical academic facts are kn
   ]))
   expect(runDecisionPipeline).not.toHaveBeenCalled()
 })
+
+test('conversation never offers Build while critical academic facts are unknown', async () => {
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest, personalStatus: {}, planContext: {},
+      preferences: { max_weekly_hours: 22 }, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'conversation',
+      nextAction: 'offer_build',
+      messageHe: 'אפשר כבר לבנות מערכת.',
+      events: [{ type: 'assistant_message', text_he: 'אפשר כבר לבנות מערכת.' }],
+    } as any),
+  })
+  const res = response()
+
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest({ max_weekly_hours: 22 }) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  expect(res.body).toEqual(expect.objectContaining({
+    outcome: 'clarification_required',
+    next_action: 'ask',
+    academic_decision: expect.objectContaining({ ready_to_plan: false }),
+  }))
+  expect(res.body.events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'clarification' }),
+  ]))
+})

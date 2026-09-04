@@ -8724,3 +8724,14 @@ conversation tests, the full API regression (202 suites, 2,574 tests), root
 typecheck, and the existing UI/board behavior remains unchanged. The next step
 is to deploy this coherent slice to an isolated immutable Preview and verify the
 clarification and ready paths in the browser. Production remains unchanged.
+
+## Latest session — block premature build offers in conversation mode
+
+The same server-owned academic readiness gate now covers conversational
+responses that try to offer `בנה מערכת` before the required academic facts are
+known. The endpoint converts that offer into a Hebrew clarification request,
+keeping `next_action: ask` and `ready_to_plan: false` until the user supplies
+the missing context. RED reproduced the early `offer_build` response; GREEN
+passed the focused endpoint contract, conversation wire/integration regression,
+root typecheck, and diff checks. The next step is a fresh isolated Preview and
+browser verification of the deployed gate. Production remains unchanged.
