@@ -1,5 +1,28 @@
 # Autonomous Progress
 
+## 2026-09-04 — make board-to-board moves start from an explicit handle
+
+- Movable elective cards now expose a real draggable “גרור להעברה” handle, not
+  only a draggable card surface. Pointer-down announces the validated move
+  destinations to the shared board preview before native dragstart, while
+  pointer-up/cancel clears a click that did not become a drag.
+- The full-card fallback and keyboard semester buttons remain available, and
+  mandatory courses still fail closed without a drag affordance. Drop cleanup
+  from the previous slice keeps the drawer interaction state consistent.
+
+Verification for this slice:
+
+- `web`: focused RED test failed because the board handle had no `draggable`
+  attribute and emitted no shared intent; GREEN passed after the implementation.
+- `web`: affected planner components — 3 suites, 56 tests passed.
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Preview browser check — canonical Mechanical Engineering 2027 planner loaded
+  with the board and repository drawer, with 0 console errors; mandatory cards
+  correctly expose no move handle until authoritative move destinations exist.
+- Preview: https://tau-course-planner-hq6p1bmxj-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/EGr9oF8u15bhJNWZjgUS9nUP7z86
+
 ## 2026-09-04 — clear the shared drag state at drop time
 
 - Semester columns now clear the shared drag intent as soon as a drop event is

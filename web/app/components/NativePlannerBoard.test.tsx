@@ -442,6 +442,31 @@ test('an elective card exposes a clear drag affordance alongside keyboard contro
   expect(screen.getByRole('button', { name: 'העבר קורס בחירה אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
 })
 
+test('the board drag affordance starts a shared move preview before native dragstart', () => {
+  const electiveBoard = {
+    ...BOARD,
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'E-1', name_he: 'קורס בחירה', weekly_hours: 3.5, course_type: 'elective', is_mandatory: false, offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+    ],
+  }
+  const onDragStateChange = jest.fn()
+  render(<NativePlannerBoard board={vmFromPayload(electiveBoard)} onMoveCourse={jest.fn()} onDragStateChange={onDragStateChange} />)
+
+  const handle = screen.getByLabelText('גרור את קורס בחירה לסמסטר אחר')
+  expect(handle).toHaveAttribute('draggable', 'true')
+  fireEvent.pointerDown(handle)
+
+  expect(onDragStateChange).toHaveBeenCalledWith({
+    kind: 'board',
+    courseId: 'E-1',
+    allowedSemesterIds: ['year_3_semester_b'],
+  })
+})
+
 test('an elective advertises only semesters listed by the authoritative catalog', () => {
   const payload = {
     metadata: {

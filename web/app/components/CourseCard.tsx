@@ -1,5 +1,5 @@
 import type { CourseVM } from '../../lib/board'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Badge, Card } from './ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
@@ -24,6 +24,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragging, setDragging] = useState(false)
+  const nativeDragStarted = useRef(false)
   // Missing offering data is an unknown academic fact, not permission to move
   // everywhere. Keep the card keyboard-readable, but fail closed until the
   // authoritative catalog names at least one destination.
@@ -33,6 +34,16 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
     : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
   const movable = course.type !== 'mandatory' && Boolean(onMove) &&
     Boolean(availableMoveDestinations?.length) && !mutationPending
+  const allowedSemesterIds = availableMoveDestinations?.map(({ semesterId }) => semesterId) ?? []
+
+  const announceDragPreview = () => {
+    onDragStateChange?.({ kind: 'board', courseId: course.id, allowedSemesterIds })
+  }
+
+  const clearPendingDragPreview = () => {
+    if (nativeDragStarted.current) return
+    onDragStateChange?.(null)
+  }
 
   return (
     <div
@@ -46,11 +57,13 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           return
         }
         setDragging(true)
+        nativeDragStarted.current = true
         event.dataTransfer.effectAllowed = 'move'
         writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)
-        onDragStateChange?.({ kind: 'board', courseId: course.id, allowedSemesterIds: course.offeredSemesters })
+        announceDragPreview()
       }}
       onDragEnd={() => {
+        nativeDragStarted.current = false
         setDragging(false)
         onDragStateChange?.(null)
       }}
@@ -100,6 +113,13 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         <div className="mt-2 flex items-center border-t border-[var(--border)] pt-2">
           <span
             data-drag-handle
+            draggable={movable}
+            onPointerDown={() => {
+              nativeDragStarted.current = false
+              announceDragPreview()
+            }}
+            onPointerUp={clearPendingDragPreview}
+            onPointerCancel={clearPendingDragPreview}
             title="גררו את הקורס לסמסטר אחר"
             aria-label={`גרור את ${course.name} לסמסטר אחר`}
             className="planner-drag-handle text-[11px] text-[var(--text-muted)]"
