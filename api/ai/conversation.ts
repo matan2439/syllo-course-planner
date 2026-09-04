@@ -11,6 +11,17 @@ import { PlannerWorker } from './planner_worker';
 import { runConversationalAgent, type ConversationalAgentResult } from './conversational_agent';
 import { generateCandidateSet, selectCandidate } from './candidate_set';
 import { buildPlanAlternatives, constraintFingerprint as planConstraintFingerprint, type PlanAlternative } from './plan_alternatives';
+import {
+  clarifyForAcademicDecision,
+  extractClarificationContext,
+  hasCriticalMissingInput,
+  resolveHardExcludedCourseIds,
+} from './academic_decision_runtime';
+import {
+  runAcademicDecisionAgent as runAcademicDecisionAgentDefault,
+  type AcademicDecisionAgentRun,
+} from './academic_decision_integration';
+import type { BuildModelOptions } from './planner_model';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord, type ProposalStore } from './proposal_store';
 import {
   getAcademicContextStore,
@@ -34,6 +45,9 @@ type ConversationEndpointDeps = {
     input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker; preferenceProfile?: PreferenceProfile },
     deps: { model: ModelConfig['model'] },
   ) => Promise<ConversationalAgentResult>;
+  runAcademicDecisionAgent?: (
+    input: Parameters<typeof runAcademicDecisionAgentDefault>[0],
+  ) => Promise<AcademicDecisionAgentRun>;
   putProposal?: ProposalStore['put'];
 };
 
@@ -44,6 +58,24 @@ const unavailable = () => ({
   code: 'ASSISTANT_UNAVAILABLE' as const,
 });
 
+const CLARIFICATION_QUESTIONS_HE: Record<string, string> = {
+  completed_courses: 'אילו קורסים כבר השלמת? אפשר לציין שמות או מספרי קורסים.',
+  excluded_courses: 'האם יש קורסים שתרצה או תרצי להימנע מהם בתכנון?',
+  current_courses: 'אילו קורסים את או אתה לומד/ת עכשיו?',
+  max_weekly_hours: 'מהי מגבלת השעות השבועית שנוח לך ללמוד?',
+  track_or_focus: 'באיזה מסלול או תחום מיקוד את או אתה מתכנן/ת להתמקד?',
+};
+
+function clarificationEvent(question: { id: string; question: string; options?: Array<{ label: string }> }) {
+  return {
+    type: 'clarification' as const,
+    question_he: CLARIFICATION_QUESTIONS_HE[question.id] ?? question.question,
+    ...(question.options?.length
+      ? { options_he: question.options.map((option) => option.label) }
+      : {}),
+  };
+}
+
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
   const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
@@ -51,6 +83,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
   const runAgent = deps.runAgent ?? runConversationalAgent;
+  const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
@@ -113,6 +146,27 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const context = (academicContext.planContext ?? {}) as Record<string, unknown>;
       const preferences = (academicContext.preferences ?? {}) as Record<string, unknown>;
+      const personalStatus = (context.personal_status ?? academicContext.personalStatus ?? {}) as Record<string, unknown>;
+      const contextWithStatus = context.personal_status ? context : { ...context, personal_status: personalStatus };
+      const completedCourseIds = Array.isArray(personalStatus.completed)
+        ? personalStatus.completed
+          .map((course) => typeof course === 'string' ? course : (course as { course_id?: unknown })?.course_id)
+          .filter((courseId): courseId is string => typeof courseId === 'string' && courseId.trim().length > 0)
+        : [];
+      const currentCourseIds = Array.isArray(personalStatus.currently_taking)
+        ? personalStatus.currently_taking
+          .map((course) => typeof course === 'string' ? course : (course as { course_id?: unknown })?.course_id)
+          .filter((courseId): courseId is string => typeof courseId === 'string' && courseId.trim().length > 0)
+        : [];
+      const buildModelOptions: BuildModelOptions = {
+        completedCourseIds,
+        currentlyPlannedCourseIds: currentCourseIds,
+        disallowedCourseIds: resolveHardExcludedCourseIds(preferences as { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] }),
+        maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
+      };
+      const clarification = await clarifyForAcademicDecision(
+        extractClarificationContext(contextWithStatus, preferences, undefined),
+      );
       const committedContext = board
         ? {
             ...context,
@@ -143,6 +197,61 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       if (agent.outcome === 'assistant_unavailable') {
         res.status(503).json(unavailable());
         return;
+      }
+
+      if (agent.outcome === 'proposal' && hasCriticalMissingInput(clarification)) {
+        const question = clarification.questions[0];
+        const events = question
+          ? [...agent.events, clarificationEvent(question)]
+          : agent.events;
+        res.status(200).json({
+          outcome: 'clarification_required',
+          message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
+          events,
+          next_action: 'ask',
+          academic_decision: {
+            engine: 'AcademicDecisionAgent',
+            ready_to_plan: false,
+            planned: false,
+            clarification_required: true,
+          },
+        });
+        return;
+      }
+
+      let academicDecision: AcademicDecisionAgentRun | null = null;
+      if (agent.outcome === 'proposal') {
+        academicDecision = await runAcademicDecisionAgent({
+          programId: parsed.data.program_id,
+          board: programBoard as Record<string, unknown>,
+          model,
+          finalState: agent.draftPlan,
+          clarification,
+          buildModelOptions,
+          currentCourseIds,
+        });
+        const readyToPlan = academicDecision.orchestration.engine === 'AcademicDecisionAgent'
+          && academicDecision.orchestration.planned
+          && !academicDecision.structuredClarification.applyBlocked;
+        if (!readyToPlan) {
+          const question = academicDecision.clarification.questions[0];
+          const events = question
+            ? [...agent.events, clarificationEvent(question)]
+            : agent.events;
+          res.status(200).json({
+            outcome: 'clarification_required',
+            message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
+            events,
+            next_action: 'ask',
+            academic_decision: {
+              engine: academicDecision.orchestration.engine,
+              ready_to_plan: false,
+              planned: academicDecision.orchestration.planned,
+              clarification_required: true,
+            },
+          });
+          return;
+        }
       }
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
@@ -294,6 +403,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         outcome: 'proposal',
         message_he: messageHe,
         events,
+        academic_decision: academicDecision ? {
+          engine: academicDecision.orchestration.engine,
+          ready_to_plan: true,
+          planned: academicDecision.orchestration.planned,
+          clarification_required: hasCriticalMissingInput(academicDecision.clarification),
+        } : undefined,
         proposal_id: proposalId,
         proposal: {
           proposal_id: receipt.proposalId,

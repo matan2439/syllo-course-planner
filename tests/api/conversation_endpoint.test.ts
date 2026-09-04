@@ -1,5 +1,6 @@
 import { createConversationHandler } from '../../api/ai/conversation'
 import { PlannerStorageError, preferenceDigest } from '../../api/ai/apply_runtime'
+import type { AcademicDecisionAgentRun } from '../../api/ai/academic_decision_integration'
 
 function response() {
   const res: any = {
@@ -157,14 +158,16 @@ test('configured conversation fails closed when the authoritative program univer
 })
 
 test('configured conversation returns a server-owned proposal receipt after the injected agent succeeds', async () => {
-  const preferences = { max_weekly_hours: 22 }
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
   const putProposal = jest.fn(async (record: any) => record)
   const handler = createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
     loadBoard: async () => null,
     loadAcademicContext: async () => ({
       ownerId: 'server-owner', programId: validBody.program_id,
-      digest: validBody.academic_status_digest, personalStatus: {}, planContext: {}, preferences, updatedAt: 1,
+      digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async () => ({
@@ -203,4 +206,98 @@ test('configured conversation returns a server-owned proposal receipt after the 
       applyable: true,
     })],
   }))
+})
+
+test('configured conversation runs the AcademicDecisionAgent pipeline over the authoritative board and draft', async () => {
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const runDecisionPipeline = jest.fn(async (input: any) => ({
+    orchestration: {
+      engine: 'AcademicDecisionAgent',
+      planningSource: 'stable-planner',
+      planned: true,
+      gapsDetected: 0,
+    },
+    clarification: { needsClarification: false, missingInputs: [], questions: [] },
+    structuredClarification: { items: [], applyBlocked: false },
+    grounding: { facts: [], conflicts: [] },
+    validation: { findings: [], applyBlocked: false },
+    input,
+  } as unknown as AcademicDecisionAgentRun))
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'proposal',
+      messageHe: 'הכנתי חלופה חוקית.',
+      events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
+      validation: { valid: true },
+    } as any),
+    runAcademicDecisionAgent: runDecisionPipeline,
+    putProposal: async (record: any) => record,
+  })
+  const res = response()
+
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  expect(runDecisionPipeline).toHaveBeenCalledTimes(1)
+  expect(runDecisionPipeline.mock.calls[0][0]).toEqual(expect.objectContaining({
+    programId: validBody.program_id,
+    finalState: { semesters: { semester_a: ['COURSE-1'] } },
+  }))
+  expect(res.body.academic_decision).toEqual(expect.objectContaining({
+    engine: 'AcademicDecisionAgent',
+    ready_to_plan: true,
+  }))
+})
+
+test('conversation blocks an early proposal until critical academic facts are known', async () => {
+  const runDecisionPipeline = jest.fn()
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest, personalStatus: {}, planContext: {},
+      preferences: { max_weekly_hours: 22 }, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'proposal',
+      messageHe: 'הכנתי חלופה מוקדם מדי.',
+      events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה מוקדם מדי.' }],
+      draftPlan: { semesters: {} },
+      validation: { valid: true },
+    } as any),
+    runAcademicDecisionAgent: runDecisionPipeline as any,
+  })
+  const res = response()
+
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest({ max_weekly_hours: 22 }) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  expect(res.body).toEqual(expect.objectContaining({
+    outcome: 'clarification_required',
+    next_action: 'ask',
+    message_he: expect.stringContaining('פרטים אקדמיים'),
+    academic_decision: expect.objectContaining({ ready_to_plan: false }),
+  }))
+  expect(res.body.events).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'clarification', question_he: expect.stringContaining('קורסים') }),
+  ]))
+  expect(runDecisionPipeline).not.toHaveBeenCalled()
 })

@@ -8709,3 +8709,18 @@ https://tau-course-planner-6lchl093c-matanyaron-1633s-projects.vercel.app
 the board remains visible beside the open repository and that the repository
 contains 35 draggable eligible-course handles and 21 fail-closed courses with
 no authoritative semester destination. Production remains unchanged.
+
+## Latest session — route conversation through the AcademicDecisionAgent gate
+
+The conversation endpoint now evaluates the server-owned academic context before
+accepting a proposal. If critical facts such as completed courses or explicit
+exclusions are still unknown, it returns a Hebrew clarification event and
+`ready_to_plan: false`; an LLM-generated draft cannot bypass that gate. Once the
+critical facts are known, the endpoint runs the real `AcademicDecisionAgent`
+pipeline over the same authoritative program model and the isolated
+PlannerWorker draft, and exposes a compact server-owned readiness summary.
+RED reproduced the missing dependency seam, then GREEN passed the focused
+conversation tests, the full API regression (202 suites, 2,574 tests), root
+typecheck, and the existing UI/board behavior remains unchanged. The next step
+is to deploy this coherent slice to an isolated immutable Preview and verify the
+clarification and ready paths in the browser. Production remains unchanged.

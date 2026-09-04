@@ -113,6 +113,13 @@ const conversationProposalSchema = z.object({
   alternatives: z.array(conversationAlternativeSchema).min(1).max(12),
 }).strict()
 
+const academicDecisionSummarySchema = z.object({
+  engine: z.enum(['AcademicDecisionAgent', 'runtime-adapter-fallback']),
+  ready_to_plan: z.boolean(),
+  planned: z.boolean(),
+  clarification_required: z.boolean(),
+}).strict()
+
 export const assistantUnavailableEventSchema = z.object({
   type: z.literal('assistant_unavailable'),
   message_he: boundedText,
@@ -132,6 +139,7 @@ const availableResponseSchema = z.object({
   events: z.array(conversationEventSchema).max(64),
   /** The agent, not the client, decides whether to ask or offer planning. */
   next_action: z.enum(['ask', 'offer_build']).optional(),
+  academic_decision: academicDecisionSummarySchema.optional(),
   proposal_id: z.string().trim().min(1).max(256).optional(),
   proposal: conversationProposalSchema.optional(),
 }).strict()
