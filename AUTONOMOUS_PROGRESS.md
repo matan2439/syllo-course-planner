@@ -20,8 +20,8 @@ Verification for this slice:
 - Preview browser check — canonical Mechanical Engineering 2027 planner loaded
   with the board and repository drawer, with 0 console errors; mandatory cards
   correctly expose no move handle until authoritative move destinations exist.
-- Preview: https://tau-course-planner-exlwz4q07-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
-- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/CqwQS6XsgSdtUD233AMbRRJpsim1
+- Preview: https://tau-course-planner-dqgngizvz-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/DuttGvfKvKfMH4PncQkaADzdxiYy
 
 ## 2026-09-04 — clear the shared drag state at drop time
 
