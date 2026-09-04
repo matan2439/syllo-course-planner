@@ -5,3 +5,7 @@
 
 # Session runtime state (transient lock files race the upload walk)
 .remember
+.tmp/
+.agents/
+.codex/
+.playwright-mcp/
