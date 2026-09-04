@@ -1,5 +1,24 @@
 # Autonomous Progress
 
+## 2026-09-04 — remove phantom horizontal scroll from drawer animation
+
+- Closed fixed drawers now animate outside the viewport without widening the
+  document. Clipping `html` and `body` on the x-axis keeps the semester board
+  centered and prevents the large blank side area/second horizontal scrollbar
+  visible in the previous Preview.
+
+Verification for this slice:
+
+- `tests/ui/web_next_wiring.test.js`: focused RED failed because the viewport
+  rule was missing; GREEN and the full 25-test suite passed after the fix.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+- Preview browser check — document scroll width is now 1,521px for a 1,536px
+  viewport with both drawers closed and with the Academic Agent open; the
+  closed agent remains off-screen without creating page scroll, and the agent
+  composer remains visible. Console errors: 0.
+- Preview: https://tau-course-planner-4813xx29g-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/2DBh2Yc3Dm9UMcpRqJjmuzPg2tan
+
 ## 2026-09-04 — let the Academic Agent conversation lead
 
 - The optional academic context remains inside the same Academic Agent

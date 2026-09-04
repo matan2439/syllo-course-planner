@@ -58,7 +58,15 @@
   }
 }
 
-html {
+    /* Closed side drawers animate just beyond the viewport. Clip that visual
+       exit at the document boundary so the board never gains a phantom
+       horizontal scrollbar while a drawer is closed. */
+    html,
+    body {
+      overflow-x: clip;
+    }
+
+    html {
   /* Assistant is the Hebrew-first face used by the brand direction; the
      system fallbacks keep the same rhythm when it is not installed locally. */
   font-family: Assistant, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;

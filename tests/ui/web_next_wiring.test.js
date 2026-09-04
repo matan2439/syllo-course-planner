@@ -147,6 +147,11 @@ test('the route transition and reduced-motion rules live in globals', () => {
   expect(css).toContain('prefers-reduced-motion');
 });
 
+test('the planner viewport clips hidden drawer transforms instead of creating horizontal page scroll', () => {
+  const css = read('web/app/globals.css');
+  expect(css).toMatch(/html\s*,\s*body\s*\{[^}]*overflow-x:\s*clip/);
+});
+
 test('ProductShell supports a full-bleed variant for the embedded planner', () => {
   expect(read('web/app/components/ProductShell.tsx')).toContain('fullBleed');
 });
