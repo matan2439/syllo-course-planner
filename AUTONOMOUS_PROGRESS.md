@@ -1,5 +1,12 @@
 # Autonomous Progress
 
+## Latest verified Preview — unified agent intake and board presentation
+
+- Commit `4ecdb5f` is pushed to `ui/frontend-modernization`.
+- Preview: https://tau-course-planner-2plc9z75h-matanyaron-1633s-projects.vercel.app/planner
+- Vercel status: `Ready`; `/planner` returned HTTP 200.
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/8NC8Z4xkSWtGiaN1cmftuM46EJ7g
+
 ## 2026-09-04 — unified agent intake and board presentation
 
 - The canonical `/planner` journey now keeps the academic agent, structured
