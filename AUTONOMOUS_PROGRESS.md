@@ -75,14 +75,15 @@ Verification for this slice:
 
 ## Latest verified Preview — unified agent intake and board presentation
 
-- Commit `0f35ac9` is pushed to `ui/frontend-modernization`.
-- Preview: https://tau-course-planner-rdjyt1ng7-matanyaron-1633s-projects.vercel.app/planner
+- Commit `ffdb846` is pushed to `ui/frontend-modernization`.
+- Preview: https://tau-course-planner-e6llwpb98-matanyaron-1633s-projects.vercel.app/planner
 - Vercel status: `Ready`; `/planner` returned HTTP 200.
-- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/5b5PNCFxyESHKYwryczGG6mH9rt9
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/Fgp5ZvMCp9RociitirUG7GEhTzi7
 - Browser verification: mobile 390px keeps the board at full central width with
   a fixed repository drawer; switching to the agent hides the repository and
-  keeps the agent as the fixed active drawer. Desktop keeps both drawers
-  floating without shrinking the board.
+  keeps the agent as the fixed active drawer. The shell navigation wraps all
+  controls inside the same 390px viewport. Desktop keeps both drawers floating
+  without shrinking the board.
 
 ## 2026-09-04 — unified agent intake and board presentation
 
