@@ -1,5 +1,29 @@
 # Autonomous Progress
 
+## 2026-09-04 — align the Syllo mark with explicit day/night mode
+
+- The Syllo lockup now renders the supplied light and dark infinity marks and
+  switches them from the same explicit `data-theme` used by the planner. The
+  operating-system preference remains the fallback when the student has not
+  chosen a mode.
+- The wordmark now has a deliberate, separate typographic treatment instead of
+  inheriting generic utility text styling. The document `color-scheme` also
+  follows an explicit day/night selection so native controls keep their contrast.
+- The unified Academic Agent, central board, and drawer behavior are unchanged;
+  this is a visual identity pass on the shared product shell.
+
+Verification for this slice:
+
+- `web`: new `BrandLogo.test.tsx`, plus shell/theme/Academic Agent regression —
+  13 passed (RED confirmed before the new theme-aware mark contract, then
+  GREEN).
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Browser Preview check — 0 console errors; explicit night mode showed the dark
+  mark, hid the light mark, and applied `color-scheme: dark`.
+- Preview: https://tau-course-planner-8rd0uquyd-matanyaron-1633s-projects.vercel.app/planner
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/5c1jwNu6ziJdTzGdVvSKXVV3zYXD
+
 ## 2026-09-04 — let the Academic Agent own elicitation and invalidate preference edits
 
 - The flagged Academic Agent path now opens directly on its single chat composer;

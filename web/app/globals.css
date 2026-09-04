@@ -59,11 +59,36 @@
 }
 
 html {
-  /* Matches the planner HTML's stack so /planner ↔ landing feel continuous */
-  font-family: Inter, Assistant, Rubik, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  /* Assistant is the Hebrew-first face used by the brand direction; the
+     system fallbacks keep the same rhythm when it is not installed locally. */
+  font-family: Assistant, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
 }
 
-.syllo-wordmark { color: var(--text); }
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+
+.syllo-brand-mark {
+  display: inline-flex;
+  width: max-content;
+  height: max-content;
+  flex: 0 0 auto;
+}
+.syllo-brand-asset { display: block; width: auto; height: auto; }
+.syllo-brand-asset-dark { display: none; }
+:root[data-theme='dark'] .syllo-brand-asset-light { display: none; }
+:root[data-theme='dark'] .syllo-brand-asset-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .syllo-brand-asset-light { display: none; }
+  :root:not([data-theme]) .syllo-brand-asset-dark { display: block; }
+}
+.syllo-wordmark {
+  color: var(--text);
+  font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  letter-spacing: .055em;
+  line-height: 1;
+}
 
 body {
   background: var(--bg);
