@@ -109,6 +109,18 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
   })
 
+  test('keeps both side drawers overlaid so the central board does not shrink', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+
+    const workbench = container.querySelector('.planner-workbench')
+    expect(workbench).toHaveClass('planner-drawers-overlay')
+    expect(container.querySelector('.planner-board-canvas')).toHaveAttribute('data-board-layout', 'stable')
+    expect(container.querySelector('.planner-board-canvas')).toBeVisible()
+  })
+
   test('reserves a clear interaction layer between drawer surfaces and toolbar controls', () => {
     const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
 

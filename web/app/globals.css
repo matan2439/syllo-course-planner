@@ -364,31 +364,14 @@ body {
 
 @media (min-width: 1024px) {
   .planner-workbench {
-    display: grid;
-    grid-template-areas: "agent board repository";
-    grid-template-columns: 0 minmax(0, 1fr) 0;
-    gap: 0;
+    display: block;
     direction: ltr;
-    transition: grid-template-columns 180ms ease, gap 180ms ease;
   }
-  .planner-workbench[data-agent-open="true"][data-repository-open="false"] {
-    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) 0;
-    column-gap: 1rem;
-  }
-  .planner-workbench[data-agent-open="false"][data-repository-open="true"] {
-    grid-template-columns: 0 minmax(0, 1fr) minmax(18rem, 22rem);
-    column-gap: 1rem;
-  }
-  .planner-workbench[data-agent-open="true"][data-repository-open="true"] {
-    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(18rem, 22rem);
-    column-gap: 1rem;
-  }
-  /* Keep one concrete board shell in the desktop grid. `display: contents`
-     flattened this wrapper and made the board lose its layout/hit-test box
-     exactly when the repository rail opened. The drawer is a sibling column;
-     the semester table remains a stable, visible drop surface. */
+  /* Drawers float above the workbench; the semester table keeps the full
+     central width even when both side surfaces are open. This mirrors the
+     product metaphor: the board is the workspace, the rails are temporary
+     tools around it. */
   .planner-board-canvas {
-    grid-area: board;
     display: block;
     width: 100%;
   }
@@ -401,18 +384,16 @@ body {
     direction: rtl;
   }
   .planner-repository-rail {
-    position: sticky;
+    position: fixed;
     top: 11.5rem;
-    bottom: auto;
-    width: auto;
-    max-height: calc(100vh - 12.5rem);
-    transform: none;
+    bottom: 1rem;
+    right: 1rem;
+    width: min(24rem, calc(100vw - 2rem));
+    max-height: none;
     direction: rtl;
   }
-  .planner-repository-rail { grid-area: repository; }
   .planner-board-canvas .planner-agent-region { direction: rtl; }
-  .planner-workbench[data-repository-open="false"] .planner-repository-rail,
-  .planner-workbench[data-agent-open="false"] .planner-agent-region { display: none !important; }
+  .planner-workbench[data-repository-open="false"] .planner-repository-rail { display: none !important; }
 }
 
 @media (max-width: 1023px) {

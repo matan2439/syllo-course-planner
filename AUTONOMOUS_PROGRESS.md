@@ -1,5 +1,21 @@
 # Autonomous Progress
 
+## 2026-09-04 — keep the semester board full-width with open drawers
+
+- The course repository and Academic Agent now behave as true floating side
+  drawers on desktop. Opening either or both no longer converts the workbench
+  into three grid columns, so the central semester table keeps its full width
+  and remains the stable drag/drop surface.
+- The existing close buttons, Escape behavior, keyboard fallbacks, and mobile
+  split layout remain unchanged; the drawer surfaces still preserve their own
+  scroll areas and focus targets.
+
+Verification for this slice:
+
+- `web`: workspace, board, repository, Academic Agent, alternatives, and theme
+  suites — 62 passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+
 ## 2026-09-04 — prevent premature Academic Agent build offers
 
 - The conversation agent no longer returns `offer_build` after a single shallow

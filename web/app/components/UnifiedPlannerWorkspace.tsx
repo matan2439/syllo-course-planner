@@ -205,7 +205,7 @@ export default function UnifiedPlannerWorkspace({
       </div>
 
       <div
-        className="planner-workbench min-w-0"
+        className="planner-workbench planner-drawers-overlay min-w-0"
         data-mobile-surface={activeView}
         data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
         data-repository-open={repositoryOpen}
