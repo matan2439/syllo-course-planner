@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 
 const alternative = (candidateId: string, labelHe: string) => ({
@@ -29,6 +29,9 @@ test('renders alternatives as board modes with semester course previews', () => 
   expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveAttribute('aria-checked', 'true')
   expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('מבוא למערכות')
   expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('שנה ג׳ — סמסטר א׳')
+  const balancedPreview = screen.getByTestId('alternative-preview-a')
+  expect(balancedPreview).toHaveAttribute('aria-label', 'תצוגת לוח: עומס מאוזן')
+  expect(within(balancedPreview).getByText('מבוא למערכות')).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: /סיום מהיר/ })).toHaveTextContent('תכנון מתקדם')
   fireEvent.click(screen.getByRole('radio', { name: /סיום מהיר/ }))
   expect(onSelect).toHaveBeenCalledWith('b')

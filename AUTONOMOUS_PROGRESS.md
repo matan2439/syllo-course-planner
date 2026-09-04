@@ -1,5 +1,29 @@
 # Autonomous Progress
 
+## 2026-09-04 — show agent alternatives as compact semester boards
+
+- Each server-returned alternative now has a visual mini-board inside its
+  selectable radio card: semester cells are separated, semester names stay
+  visible, and the authoritative Hebrew course names are shown as the cell
+  contents. This makes alternatives comparable as plans rather than as a
+  paragraph of comma-separated course text.
+- Selecting a card still only projects that candidate onto the central board;
+  the durable board and its manual controls remain unchanged until the
+  server-authoritative Apply action.
+
+Verification for this slice:
+
+- `web`: focused RED test failed because the mini-board preview was absent;
+  GREEN passed after the minimal component change.
+- `web`: AlternativeBoardSwitcher + NativePlannerJourney agent/server-Apply
+  regression — 3 suites, 34 tests passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+- Preview browser check — canonical Mechanical Engineering 2027 planner
+  loaded with board and drawers, 0 console errors; the server-generated
+  alternative cards remain gated until the Academic Agent has enough context.
+- Preview: https://tau-course-planner-oujtvvnfh-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/HC4Cu2xScSdKYvdrkRqXiKfhCKpR
+
 ## 2026-09-04 — make the Syllo mark visible in both themes
 
 - The supplied light/dark Syllo infinity marks now keep explicit pixel

@@ -52,14 +52,20 @@ export default function AlternativeBoardSwitcher({
             >
               <span className="block">{selected ? '✓ ' : ''}{alternative.labelHe}</span>
               <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]">עומס שיא {alternative.workload.peakHours} ש״ש · {alternative.workload.activePeriods} סמסטרים פעילים</span>
-              <span className="mt-2 flex flex-col gap-0.5 border-t border-[var(--border)] pt-2 text-xs font-normal text-[var(--text-muted)]">
+              <div
+                data-testid={`alternative-preview-${alternative.candidateId}`}
+                aria-label={`תצוגת לוח: ${alternative.labelHe}`}
+                className="mt-2 grid grid-cols-2 gap-1.5 border-t border-[var(--border)] pt-2 text-xs font-normal text-[var(--text-muted)]"
+              >
                 {alternative.semesters.filter((semester) => semester.courseIds.length > 0).map((semester) => (
-                  <span key={semester.semesterId}>
-                    <span className="font-semibold">{SEMESTER_LABEL_HE[semester.semesterId] ?? semester.semesterId}:</span>{' '}
-                    {semester.courseIds.map((courseId) => courseNameById[courseId] ?? courseId).join(', ')}
-                  </span>
+                  <div key={semester.semesterId} className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5">
+                    <span className="block text-[.68rem] font-semibold leading-tight">{SEMESTER_LABEL_HE[semester.semesterId] ?? semester.semesterId}</span>
+                    <span className="mt-1 block break-words leading-tight">
+                      {semester.courseIds.map((courseId) => courseNameById[courseId] ?? courseId).join(' · ')}
+                    </span>
+                  </div>
                 ))}
-              </span>
+              </div>
             </button>
           )
         })}
