@@ -60,6 +60,7 @@ export default function PreferenceConversation({
   buildLabel = 'בנה תוכנית',
   buildDisabled = false,
   showBuild = true,
+  showInitialQuestion = true,
 }: {
   onBuild: (profile: PreferenceProfile) => void
   onProfileChange?: (profile: PreferenceProfile) => void
@@ -67,6 +68,12 @@ export default function PreferenceConversation({
   buildDisabled?: boolean
   /** The unified Academic Agent owns the build action on the flagged path. */
   showBuild?: boolean
+  /**
+   * The unified agent starts with its own conversation. When false, the
+   * deterministic preference helper keeps its typed state available for
+   * callers but does not put a standalone question above the agent composer.
+   */
+  showInitialQuestion?: boolean
   /**
    * Impact-driven gating context. e.g. after a Generate whose candidates
    * converge, pass { irrelevantTopicIds: ['semester_balance'] } so the balance
@@ -139,7 +146,7 @@ export default function PreferenceConversation({
         {state.status === 'ready_to_plan' ? 'יש מספיק מידע כדי לבנות תוכנית' : ''}
       </p>
 
-      {state.status === 'question_pending' && q && (
+      {showInitialQuestion && state.status === 'question_pending' && q && (
         <fieldset role="group" aria-label={`שאלה: ${q.question_he}`} className="rounded-xl border border-[var(--border)] p-4">
           <legend className="px-1 font-medium text-[var(--text)]">{q.question_he}</legend>
           {q.rationale_he && <p className="mb-2 text-xs text-[var(--text-muted)]">{q.rationale_he}</p>}

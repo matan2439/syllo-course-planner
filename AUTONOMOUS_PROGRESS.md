@@ -1,5 +1,31 @@
 # Autonomous Progress
 
+## 2026-09-04 — let the Academic Agent own elicitation and invalidate preference edits
+
+- The flagged Academic Agent path now opens directly on its single chat composer;
+  the old standalone “what matters most?” workload question is not rendered as
+  a competing conversation. Follow-up questions and the build offer remain
+  server-driven through the agent response (`next_action`), so a plan is not
+  generated from one shallow answer.
+- Direct preference controls now have their own revision counter. Changing
+  weekly hours, completed hours entered manually, wanted courses, exclusions,
+  or the explicit “no exclusions” answer makes an existing proposal stale with
+  the truthful “preferences changed” explanation. Academic-status edits keep a
+  separate status revision and explanation.
+- Conversation proposals still materialize as visible, non-mutating drafts and
+  can only be committed through the server-authoritative Apply action.
+
+Verification for this slice:
+
+- `web`: `NativePlannerJourney.agent.test.tsx`,
+  `AcademicAgentConversation.test.tsx`, and `PreferenceConversation.test.tsx` —
+  33 passed (RED confirmed for the removed standalone question before the
+  implementation, then GREEN).
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Preview: https://tau-course-planner-3xdvs3nxi-matanyaron-1633s-projects.vercel.app/planner
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/9tqJdxVBAXyyGk82AbQX1ZAG7ZTy
+
 ## 2026-09-04 — unify the Academic Agent context with the conversation surface
 
 - The optional completed-course, workload, and course-interest controls now sit

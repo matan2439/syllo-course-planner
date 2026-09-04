@@ -109,7 +109,8 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
 
   test('flag ON: the real conversation is mounted (one question at a time)', async () => {
     await renderReady({ useAcademicDecisionAgent: true })
-    expect(screen.getByText(/מה חשוב לך יותר כרגע/)).toBeInTheDocument()
+    expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
+    expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeInTheDocument()
     expect(screen.queryByLabelText('שיחה')).toBeNull()
     expect(screen.queryByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeNull()
   })
@@ -118,13 +119,28 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     await renderReady({ useAcademicDecisionAgent: true })
     const conversation = screen.getByTestId('academic-agent-conversation')
 
-    expect(within(conversation).getByText(/מה חשוב לך יותר כרגע/)).toBeInTheDocument()
+    expect(within(conversation).queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
     expect(within(conversation).getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeInTheDocument()
+  })
+
+  test('flag ON starts with the agent composer, not a standalone workload question', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+
+    expect(screen.queryByRole('group', { name: /שאלה:.*מה חשוב לך יותר כרגע/ })).toBeNull()
+    expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toHaveAttribute('placeholder', 'כתבו בקשה או שאלה…')
   })
 
   test('answering a conversation choice does NOT Generate', async () => {
     const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
-    await renderReady({ useAcademicDecisionAgent: true, generateFn })
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'conversation', message_he: 'מה חשוב לך יותר?', next_action: 'ask',
+      events: [{ type: 'clarification', question_he: 'מה חשוב לך יותר?', options_he: ['שבוע קל יותר'] }],
+    } as unknown as ConversationResponse))
+    await renderReady({ useAcademicDecisionAgent: true, generateFn, sendConversationFn: sendConversation })
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'אני רוצה עזרה' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'שבוע קל יותר' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
     expect(generateFn).not.toHaveBeenCalled()
   })
@@ -133,7 +149,6 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     const sendConversation = jest.fn(async () => offerBuildResponse())
     const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
     await renderReady({ useAcademicDecisionAgent: true, generateFn, sendConversationFn: sendConversation })
-    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' })) // answer one (version bumps)
     expect(screen.queryByRole('button', { name: 'בנה תוכנית' })).toBeNull()
     await askAgentToBuild()
     expect(sendConversation).toHaveBeenCalledTimes(2)
@@ -179,12 +194,10 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
       },
     } as unknown as ConversationResponse))
     await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
-    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
     await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
-    // remove the captured preference → profile version advances → proposal is stale
-    const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
-    fireEvent.click(within(summary).getByRole('button', { name: /הסר/ }))
+    // change an explicit preference → the proposal is stale
+    fireEvent.change(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' }), { target: { value: '12' } })
     const applyBtn = screen.getByRole('button', { name: /החל/ }) as HTMLButtonElement
     expect(applyBtn).toBeDisabled()
     // real handler enforces it too: clicking does not change the committed board
@@ -209,12 +222,10 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
       },
     } as unknown as ConversationResponse))
     await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
-    fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
     await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
 
-    const summary = screen.getByRole('region', { name: /מה הבנתי ממך/ })
-    fireEvent.click(within(summary).getByRole('button', { name: /הסר/ }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' }), { target: { value: '12' } })
 
     expect(screen.getByRole('button', { name: /החל/ })).toBeDisabled()
     // …and the reason is stated in text the user can actually read.

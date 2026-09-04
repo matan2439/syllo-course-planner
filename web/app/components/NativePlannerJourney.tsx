@@ -306,6 +306,7 @@ export default function NativePlannerJourney({
   const [priorHours, setPriorHours] = useState('')
   const [wantIds, setWantIds] = useState<string[]>([])
   const [excludeIds, setExcludeIds] = useState<string[]>([])
+  const [preferenceVersion, setPreferenceVersion] = useState(0)
 
   // Course universe for the approximate-name pickers (fuzzy search by Hebrew name).
   const pickerCourses = useMemo(
@@ -336,6 +337,9 @@ export default function NativePlannerJourney({
   const updateAcademicStatus = useCallback((next: AcademicStatusDraft) => {
     setAcademicStatus(next)
     setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
+  }, [])
+  const updatePreferenceVersion = useCallback(() => {
+    setPreferenceVersion((v) => v + 1) // preference edits invalidate old proposals
   }, [])
   useEffect(() => {
     if (!useAcademicDecisionAgent) return
@@ -385,6 +389,7 @@ export default function NativePlannerJourney({
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string | null>(null)
   const [capturedRev, setCapturedRev] = useState<ProposalBaseRevision | null>(null)
   const [capturedStatusVersion, setCapturedStatusVersion] = useState<number | null>(null)
+  const [capturedPreferenceVersion, setCapturedPreferenceVersion] = useState<number | null>(null)
   const [errKind, setErrKind] = useState<'network' | 'contract' | null>(null)
   const tokenRef = useRef(0)
   /** S5 — Apply is a real round-trip now, so it has a pending state. */
@@ -526,6 +531,7 @@ export default function NativePlannerJourney({
     const token = ++tokenRef.current // a newer Build supersedes any older in-flight one
     const revAtRequest = current.catalogRevision
     const statusAtRequest = statusVersion
+    const preferenceAtRequest = preferenceVersion
     setGenPhase('generating')
     setErrKind(null)
     generateFn(buildRequest(current, profile)).then(
@@ -541,6 +547,7 @@ export default function NativePlannerJourney({
         setSelectedAlternativeId(result.alternatives?.find((a) => a.recommended)?.candidateId ?? null)
         setCapturedRev(proposalBaseRevision(revAtRequest as unknown as string))
         setCapturedStatusVersion(statusAtRequest)
+        setCapturedPreferenceVersion(preferenceAtRequest)
         setCapturedManualRevision(manualRevision)
         setGenPhase('done')
         refreshAcademicContext()
@@ -551,7 +558,7 @@ export default function NativePlannerJourney({
         setGenPhase('error')
       },
     )
-  }, [current, buildRequest, generateFn, statusVersion, manualRevision])
+  }, [current, buildRequest, generateFn, preferenceVersion, statusVersion, manualRevision])
 
   // WHY the proposal is stale, not merely THAT it is — the note must name the
   // real cause. Browser acceptance (check 4B) found the profile-version case
@@ -566,6 +573,8 @@ export default function NativePlannerJourney({
         // proposal was generated — it was planned from facts that no longer hold.
         : capturedStatusVersion != null && capturedStatusVersion !== statusVersion
           ? 'status'
+          : capturedPreferenceVersion != null && capturedPreferenceVersion !== preferenceVersion
+            ? 'preferences'
           // The typed preference profile advanced. `isProposalApplyable` already
           // REFUSED to apply in this case, but that guard is silent — it only
           // greys the button out. Surfacing it here can only make MORE proposals
@@ -597,11 +606,12 @@ export default function NativePlannerJourney({
     setSelectedAlternativeId(incoming.recommended_candidate_id)
     setCapturedRev(proposalBaseRevision(current.catalogRevision as unknown as string))
     setCapturedStatusVersion(statusVersion)
+    setCapturedPreferenceVersion(preferenceVersion)
     setCapturedManualRevision(manualRevision)
     setGenPhase('done')
     setApplyError(null)
     applyKeyRef.current = null
-  }, [current, manualRevision, statusVersion])
+  }, [current, manualRevision, preferenceVersion, statusVersion])
 
   const canApply = !!proposal && isProposalApplyable(proposal, stale, {
     // On the flagged path, the proposal must match the CURRENT conversation
@@ -893,26 +903,27 @@ export default function NativePlannerJourney({
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             מגבלת שעות שבועיות (אם יש לך העדפה ברורה)
             <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
-              onChange={(e) => setMaxHours(e.target.value)}
+              onChange={(e) => { setMaxHours(e.target.value); updatePreferenceVersion() }}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             שעות שכבר הושלמו (רק אם אינן מופיעות ברשימה)
             <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
-              onChange={(e) => setPriorHours(e.target.value)}
+              onChange={(e) => { setPriorHours(e.target.value); updatePreferenceVersion() }}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
           <CourseNamePicker inputName="wanted-course-search" label="קורסים שחשוב לך לשלב" placeholder="חיפוש לפי שם קורס…"
-            courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
+            courses={pickerCourses} selectedIds={wantIds}
+            onChange={(ids) => { setWantIds(ids); updatePreferenceVersion() }} />
           <div id="excluded-courses-control">
             <CourseNamePicker inputName="excluded-course-search" label="קורסים שתרצה להימנע מהם" placeholder="חיפוש לפי שם קורס…"
               courses={pickerCourses} selectedIds={excludeIds}
-              onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
+              onChange={(ids) => { setExcludeIds(ids); updatePreferenceVersion() }} />
             {excludeIds.length === 0 && (
               <button
                 type="button"
                 aria-pressed={exclusionsNoneConfirmed}
-                onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
+                onClick={() => { setExclusionsNoneConfirmed((v) => !v); updatePreferenceVersion() }}
                 className={`mt-2 self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
                   exclusionsNoneConfirmed
                     ? 'border-emerald-600 bg-emerald-600 text-white'
@@ -927,6 +938,7 @@ export default function NativePlannerJourney({
             onBuild={() => undefined}
             onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
             showBuild={false}
+            showInitialQuestion={false}
             // Server-provided impact signals only refine which question is useful.
             elicitationContext={{
               ...(proposal && proposal.balanceAlternativesMaterial === false ? { irrelevantTopicIds: ['semester_balance'] } : {}),
@@ -1113,28 +1125,29 @@ export default function NativePlannerJourney({
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             מגבלת שעות שבועיות לסמסטר
             <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
-              onChange={(e) => setMaxHours(e.target.value)}
+              onChange={(e) => { setMaxHours(e.target.value); updatePreferenceVersion() }}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
           <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
             שעות שהושלמו (שנים א׳–ב׳, מחוץ ללוח)
             <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
-              onChange={(e) => setPriorHours(e.target.value)}
+              onChange={(e) => { setPriorHours(e.target.value); updatePreferenceVersion() }}
               className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
           </label>
           <CourseNamePicker inputName="wanted-course-search" label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
-            courses={pickerCourses} selectedIds={wantIds} onChange={setWantIds} />
+            courses={pickerCourses} selectedIds={wantIds}
+            onChange={(ids) => { setWantIds(ids); updatePreferenceVersion() }} />
           <div id="excluded-courses-control">
             <CourseNamePicker inputName="excluded-course-search" label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
               courses={pickerCourses} selectedIds={excludeIds}
-              onChange={(ids) => { setExcludeIds(ids); setStatusVersion((v) => v + 1) }} />
+              onChange={(ids) => { setExcludeIds(ids); updatePreferenceVersion() }} />
             {/* An empty selection is only an ANSWER once the student says so —
                 untouched stays unknown, so it is never silently read as "none". */}
             {useAcademicDecisionAgent && excludeIds.length === 0 && (
               <button
                 type="button"
                 aria-pressed={exclusionsNoneConfirmed}
-                onClick={() => { setExclusionsNoneConfirmed((v) => !v); setStatusVersion((v) => v + 1) }}
+                onClick={() => { setExclusionsNoneConfirmed((v) => !v); updatePreferenceVersion() }}
                 className={`self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
                   exclusionsNoneConfirmed
                     ? 'border-emerald-600 bg-emerald-600 text-white'
