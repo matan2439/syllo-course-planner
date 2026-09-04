@@ -1,5 +1,27 @@
 # Autonomous Progress
 
+## 2026-09-04 — let the Academic Agent conversation lead
+
+- The optional academic context remains inside the same Academic Agent
+  conversation surface, but it is now collapsed on first open. Students see the
+  agent's board context and message composer first, while completed courses and
+  preferences remain available behind the explicit “מה חשוב לעוזר לדעת?
+  (אופציונלי)” disclosure.
+- The disclosure is native keyboard-accessible and does not remove or duplicate
+  any of the structured academic context sent to the real conversation API.
+
+Verification for this slice:
+
+- `web`: focused RED test failed because the optional context rendered with an
+  `open` attribute; GREEN passed after removing that default expansion.
+- `web`: affected agent/journey tests — 2 suites, 23 tests passed.
+- `web`: `npm run typecheck` — passed.
+- Preview browser check — the new Preview loaded with the Academic Agent open;
+  the optional context disclosure reported `open: false`, the agent composer
+  remained visible, and the page reported 0 console errors.
+- Preview: https://tau-course-planner-1xmuhe1ky-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/6H4u7UDxkMsBHjJzTEwK7WADHexs
+
 ## 2026-09-04 — make board-to-board moves start from an explicit handle
 
 - Movable elective cards now expose a real draggable “גרור להעברה” handle, not

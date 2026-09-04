@@ -890,7 +890,7 @@ export default function NativePlannerJourney({
 
   const preferenceContent = useAcademicDecisionAgent ? (
     <div className="flex flex-col gap-3">
-      <details open>
+      <details>
         <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
         <div className="mt-3 flex flex-col gap-3">
           <p className="text-xs text-[var(--text-muted)]">אפשר להשלים כאן פרטים שיעזרו לשיחה. הסוכן יאשר אותם מולכם — ואין כאן בנייה אוטומטית.</p>

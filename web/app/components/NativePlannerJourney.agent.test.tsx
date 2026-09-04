@@ -130,6 +130,16 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toHaveAttribute('placeholder', 'כתבו בקשה או שאלה…')
   })
 
+  test('flag ON keeps optional planning context collapsed so the conversation leads', async () => {
+    await renderReady({ useAcademicDecisionAgent: true })
+
+    const context = screen.getByRole('region', { name: 'מידע שהעוזר צריך לדעת' })
+    const details = within(context).getByText('מה חשוב לעוזר לדעת? (אופציונלי)').closest('details')
+
+    expect(details).not.toHaveAttribute('open')
+    expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeVisible()
+  })
+
   test('answering a conversation choice does NOT Generate', async () => {
     const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
     const sendConversation = jest.fn(async () => ({
