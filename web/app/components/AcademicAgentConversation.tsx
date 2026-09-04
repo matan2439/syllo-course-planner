@@ -156,6 +156,9 @@ export default function AcademicAgentConversation({
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
   const clarificationEvents = lastResponse?.events.filter((event) => event.type === 'clarification') ?? []
   const canOfferBuild = lastResponse?.outcome === 'conversation' && lastResponse.next_action === 'offer_build'
+  const readiness = lastResponse && lastResponse.outcome !== 'assistant_unavailable'
+    ? lastResponse.academic_decision
+    : undefined
 
   return (
     <div dir="rtl" data-testid="academic-agent-conversation">
@@ -211,6 +214,29 @@ export default function AcademicAgentConversation({
           ))}
           {lastResponse.events.some((event) => event.type === 'alternatives_ready') && (
             <p className="font-semibold text-[var(--purple)]">החלופה מוכנה לבדיקה בלוח.</p>
+          )}
+        </div>
+      )}
+
+      {readiness && (readiness.clarification_required || readiness.ready_to_plan) && (
+        <div
+          data-testid="academic-agent-readiness"
+          role="status"
+          aria-live="polite"
+          className={readiness.clarification_required
+            ? 'rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm'
+            : 'rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm'}
+        >
+          {readiness.clarification_required ? (
+            <>
+              <strong className="block">עדיין לא ניתן לבנות חלופות</strong>
+              <span className="text-[var(--text-muted)]">נדרש מידע אקדמי נוסף לפני בניית מערכת.</span>
+            </>
+          ) : (
+            <>
+              <strong className="block">הסוכן מוכן לבניית חלופות</strong>
+              <span className="text-[var(--text-muted)]">אפשר לבקש עכשיו בנייה של חלופות חוקיות.</span>
+            </>
           )}
         </div>
       )}

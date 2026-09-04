@@ -8755,3 +8755,19 @@ https://tau-course-planner-drqaqsrh1-matanyaron-1633s-projects.vercel.app
 (deployment `dpl_7CASD7W5sDyNF5uiLZAwdHhZJRTj`). Browser verification confirmed
 the planner board is mounted and error-free on the deployed route. Production
 remains unchanged.
+
+## Latest session — surface AcademicDecisionAgent readiness in the conversation
+
+The single Academic Agent conversation card now renders the server-owned
+readiness summary returned by the conversation endpoint. When critical
+academic facts are missing, the UI explicitly says that alternatives cannot
+yet be built and keeps the build action hidden; when the agent is ready, it
+clearly announces that legal alternatives can be requested. This makes the
+agent's decision boundary visible without introducing a second preferences
+window or pretending that a chat response changed the authoritative board.
+RED reproduced the missing readiness surface; GREEN passed the focused
+conversation, unified workspace, and alternative-board UI suites (31 tests),
+the conversation API/wire regressions (9 tests), web typecheck, and the
+production build. The next step is to publish this slice to an isolated
+Preview and verify the new status on the deployed planner. Production remains
+unchanged.

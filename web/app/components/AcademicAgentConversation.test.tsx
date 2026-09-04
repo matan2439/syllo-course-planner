@@ -203,6 +203,33 @@ test('renders an agent clarification question and offers build only when the age
   expect(await screen.findByRole('button', { name: 'בנה חלופות' })).toBeEnabled()
 })
 
+test('renders the server-owned readiness state inside the conversation surface', async () => {
+  const sendConversation = jest.fn(async () => ({
+    outcome: 'clarification_required',
+    message_he: 'נדרש עוד מידע אקדמי.',
+    next_action: 'ask',
+    academic_decision: {
+      engine: 'AcademicDecisionAgent',
+      ready_to_plan: false,
+      planned: false,
+      clarification_required: true,
+    },
+    events: [{
+      type: 'clarification',
+      question_he: 'אילו קורסים כבר השלמת?',
+    }],
+  } satisfies ConversationResponse))
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} />)
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'בנה לי חלופות' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+
+  const readiness = await screen.findByTestId('academic-agent-readiness')
+  expect(readiness).toHaveTextContent('עדיין לא ניתן לבנות חלופות')
+  expect(readiness).toHaveTextContent('נדרש מידע אקדמי נוסף')
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
+})
+
 test('makes the authoritative board context and non-mutating boundary visible', () => {
   render(
     <AcademicAgentConversation
