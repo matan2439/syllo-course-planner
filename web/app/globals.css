@@ -406,16 +406,12 @@ body {
     display: none !important;
   }
 
-  /* Keep the board as a real drop target while a drawer is open. The old
-     mobile rule made the repository a nearly full-screen fixed layer, so the
-     board remained mounted but was visually covered and impossible to drop
-     into. A split, horizontally scrollable workspace preserves both surfaces
-     and lets touch/HTML5 drag travel from the repository to the board. */
+  /* Keep the board as the central workspace while a drawer is open. Drawers
+     overlay the board on narrow screens instead of reflowing it into a second
+     horizontal page that focus can scroll out of view. */
   .planner-workbench[data-layout="drawer-split"] {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
-    align-items: flex-start;
-    gap: 1rem;
+    display: block;
+    overflow: visible;
     padding-bottom: .75rem;
     direction: ltr;
   }
@@ -436,10 +432,13 @@ body {
     display: grid !important;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
-    position: static;
+    position: fixed;
+    top: 11.5rem;
+    right: 1rem;
+    bottom: 1rem;
     min-width: 0;
     width: min(22rem, calc(100vw - 2rem));
-    max-height: none;
+    max-height: calc(100dvh - 12.5rem);
     transform: none;
     opacity: 1;
     pointer-events: auto;
@@ -447,26 +446,34 @@ body {
     direction: rtl;
   }
   .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-agent-region {
-    position: static;
+    position: fixed;
+    top: 11.5rem;
+    left: 1rem;
+    bottom: 1rem;
     width: min(22rem, calc(100vw - 2rem));
-    max-height: none;
+    max-height: calc(100dvh - 12.5rem);
     transform: none;
+  }
+
+  /* Only the selected drawer is visible on a narrow screen. The board stays
+     mounted underneath either surface, so keyboard and pointer users retain a
+     predictable central destination. */
+  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail,
+  .planner-workbench[data-mobile-surface="board"] .planner-repository-rail {
+    display: none !important;
+  }
+  .planner-workbench[data-mobile-surface="repository"] .planner-board-canvas .planner-agent-region,
+  .planner-workbench[data-mobile-surface="board"] .planner-board-canvas .planner-agent-region {
+    display: none !important;
   }
 }
 
 @media (max-width: 575px) {
-  /* On very narrow phones a usable semester board needs its own width. Keep
-     both surfaces available in one horizontal workbench rather than shrinking
-     the drop target to an unusable sliver. */
+  /* Keep the overlay model on very narrow phones too. The board remains a
+     full-width surface and the drawer remains a contained, closable panel. */
   .planner-workbench[data-layout="drawer-split"] {
-    display: flex;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-  }
-  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas,
-  .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
-    flex: 0 0 min(42rem, calc(100vw - 2rem));
-    width: min(42rem, calc(100vw - 2rem));
+    display: block;
+    overflow: visible;
   }
 }
 

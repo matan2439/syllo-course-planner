@@ -1,14 +1,32 @@
 # Autonomous Progress
 
+## 2026-09-04 — keep the central board visible on mobile drawer use
+
+- Narrow screens now keep the semester board as the full central workspace when
+  the course repository or Academic Agent opens. The side surfaces overlay the
+  board instead of creating a horizontally scrolled second page; this avoids
+  the focused repository close button moving the board off-screen.
+- Only the active drawer is visible on mobile. The board remains mounted as the
+  persistent semester drop target, and the existing close button, Escape,
+  keyboard, and explicit “הוסף לסמסטר” paths remain available.
+
+Verification for this slice:
+
+- `web`: `UnifiedPlannerWorkspace.test.tsx` — 18 passed, including the new
+  mobile overlay contract (RED confirmed before implementation, then GREEN).
+- `web`: workspace, board, repository, Academic Agent, alternatives, and theme
+  suites — 63 passed.
+- `web`: `npm run typecheck` and `npm run build` — passed.
+
 ## 2026-09-04 — keep the semester board full-width with open drawers
 
 - The course repository and Academic Agent now behave as true floating side
   drawers on desktop. Opening either or both no longer converts the workbench
   into three grid columns, so the central semester table keeps its full width
   and remains the stable drag/drop surface.
-- The existing close buttons, Escape behavior, keyboard fallbacks, and mobile
-  split layout remain unchanged; the drawer surfaces still preserve their own
-  scroll areas and focus targets.
+- The existing close buttons, Escape behavior, keyboard fallbacks, and drawer
+  scroll areas remain unchanged; mobile now uses the same overlay model so the
+  board stays visible while a tool is open.
 
 Verification for this slice:
 

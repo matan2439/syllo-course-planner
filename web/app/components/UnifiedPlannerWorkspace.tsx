@@ -208,6 +208,7 @@ export default function UnifiedPlannerWorkspace({
         className="planner-workbench planner-drawers-overlay min-w-0"
         data-mobile-surface={activeView}
         data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
+        data-drawer-mode="overlay"
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
         data-drawer-interaction="below-toolbar"

@@ -216,6 +216,16 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(workbench).toHaveAttribute('data-mobile-surface', 'agent')
   })
 
+  test('marks open drawers as overlays so the central board stays the mobile workspace', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    const workbench = container.querySelector('.planner-workbench')
+
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    expect(workbench).toHaveAttribute('data-drawer-mode', 'overlay')
+    expect(container.querySelector('[data-board-surface="persistent-drop-target"]')).toBeVisible()
+  })
+
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
