@@ -8733,5 +8733,8 @@ known. The endpoint converts that offer into a Hebrew clarification request,
 keeping `next_action: ask` and `ready_to_plan: false` until the user supplies
 the missing context. RED reproduced the early `offer_build` response; GREEN
 passed the focused endpoint contract, conversation wire/integration regression,
-root typecheck, and diff checks. The next step is a fresh isolated Preview and
-browser verification of the deployed gate. Production remains unchanged.
+root typecheck, and diff checks. The isolated Preview is READY at
+https://tau-course-planner-7851yf0z6-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_BMEs9toTLSAZcX9MGtDHz1vBP4iP`). Browser verification confirmed
+the board remains visible while the repository drawer is open, and that the AI
+drawer opens and closes. Production remains unchanged.
