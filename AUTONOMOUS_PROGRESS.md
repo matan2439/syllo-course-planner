@@ -32,6 +32,13 @@ Verification completed for this slice:
 - `root`: `tests/api/conversational_agent.test.ts` and
   `tests/api/planner_tools.test.ts` — 6 passed.
 - `web`: `npm run typecheck` — passed.
+- Local `web`: `npm run build` — passed; the remote Vercel build for commit
+  `ec144ec` also completed without TypeScript errors.
+
+Preview from the verified implementation:
+
+- https://tau-course-planner-f9r58we52-matanyaron-1633s-projects.vercel.app/planner
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/5UrpeB145Ggo8rvVUFAjdNACkWbS
 
 The broader legacy journey tests still contain assertions for the removed
 preference-owned “בנה תוכנית” button and must be migrated in a later test-only
