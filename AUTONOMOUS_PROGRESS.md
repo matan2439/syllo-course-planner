@@ -1,5 +1,28 @@
 # Autonomous Progress
 
+## 2026-09-04 — clear the shared drag state at drop time
+
+- Semester columns now clear the shared drag intent as soon as a drop event is
+  received, in addition to the normal native `dragend` cleanup. This prevents
+  a drawer from staying in pass-through mode when a browser or assistive drag
+  flow omits `dragend`.
+- The cleanup is performed before the server-authority add/move callback, so a
+  legal drop restores normal drawer controls immediately while the mutation
+  remains governed by the existing server validation path.
+
+Verification for this slice:
+
+- `web`: focused RED test failed with 0 cleanup callback calls before the fix;
+  GREEN test passed after the fix.
+- `web`: affected planner components — 3 suites, 55 tests passed.
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Preview browser check — the open repository drawer still exposed legal ✓ and
+  illegal × drop feedback with 0 console errors; the shared drop-cleanup path
+  is covered by the component test.
+- Preview: https://tau-course-planner-i70z0waak-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/4rUDrBaFETEs5DRqQsyt2s6SiBEm
+
 ## 2026-09-04 — make drawer-overlaid semester columns reachable during drag
 
 - Repository cards now expose an explicit, keyboard-visible drag handle and

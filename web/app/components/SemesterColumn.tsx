@@ -91,6 +91,7 @@ export default function SemesterColumn({
       }}
       onDrop={(event) => {
         setDragState(null)
+        onDragStateChange?.(null)
         if (mutationPending) return
         const payload = readPlannerDrag(event.dataTransfer) ?? activeDrag ?? null
         if (!acceptsPayload(payload)) return

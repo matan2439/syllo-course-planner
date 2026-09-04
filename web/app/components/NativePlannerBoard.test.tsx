@@ -112,6 +112,28 @@ test('a repository drop invokes add and never move', () => {
   expect(onMoveCourse).not.toHaveBeenCalled()
 })
 
+test('clears the shared drag intent when a valid drop is received', () => {
+  const onDragStateChange = jest.fn()
+  render(
+    <NativePlannerBoard
+      board={vmFromPayload(BOARD)}
+      onAddCourse={jest.fn()}
+      activeDrag={{
+        kind: 'repository',
+        courseId: '0542-4120',
+        allowedSemesterIds: ['year_3_semester_a'],
+      }}
+      onDragStateChange={onDragStateChange}
+    />,
+  )
+
+  fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' }), {
+    dataTransfer: { getData: () => '', types: [] },
+  })
+
+  expect(onDragStateChange).toHaveBeenCalledWith(null)
+})
+
 test('an allowed repository drag visibly marks the semester drop target', () => {
   const transfer = {
     values: new Map<string, string>(),
