@@ -90,7 +90,7 @@ describe('UnifiedCourseRepository', () => {
     const handle = card.querySelector('[data-drag-handle]') as HTMLElement
     expect(card).not.toBeNull()
     expect(card).toHaveAttribute('draggable', 'true')
-    expect(handle).not.toHaveAttribute('draggable', 'true')
+    expect(handle).toHaveAttribute('draggable', 'true')
     expect(card).toHaveClass('planner-drag-source')
     expect(handle).toHaveClass('planner-drag-handle')
     expect(handle).toHaveAttribute('aria-label', 'גרור את בקרה מודרנית ללוח הסמסטרים')
@@ -181,12 +181,34 @@ describe('UnifiedCourseRepository', () => {
     expect(card).toHaveAttribute('data-dragging', 'true')
     expect(card.querySelector('[data-drag-handle]')).toHaveAttribute('title', 'גררו מכאן ללוח')
     expect(card.querySelectorAll('[draggable="true"]').length + (card.matches('[draggable="true"]') ? 1 : 0))
-      .toBe(1)
+      .toBe(2)
 
     fireEvent.dragEnd(handle)
 
     expect(screen.queryByText(/נגרר/)).not.toBeInTheDocument()
     expect(card).not.toHaveAttribute('data-dragging', 'true')
+  })
+
+  test('announces a pending drag from the visible handle before native dragstart', () => {
+    const onDragStateChange = jest.fn()
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+        onDragStateChange={onDragStateChange}
+      />,
+    )
+
+    const handle = screen.getByLabelText('גרור את בקרה מודרנית ללוח הסמסטרים')
+    fireEvent.pointerDown(handle)
+
+    expect(onDragStateChange).toHaveBeenCalledWith({
+      kind: 'repository',
+      courseId: '0542-4241',
+      allowedSemesterIds: ['year_3_semester_a'],
+    })
   })
 
   test('does not advertise a draggable source when no authoritative destination is known', () => {

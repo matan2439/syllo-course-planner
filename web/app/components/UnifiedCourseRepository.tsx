@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { RepoCourseVM, RepositoryVM } from '../../lib/repository'
 import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-details'
 import CourseDetailsPanel from './CourseDetailsPanel'
@@ -36,12 +36,24 @@ export default function UnifiedCourseRepository({
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState<CourseDetailsVM | null>(null)
   const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null)
+  const nativeDragStarted = useRef(false)
   const selected = useMemo(() => new Set(selectedCourseIds), [selectedCourseIds])
   const filtered = useMemo(() => filterRepository(repo, query), [query, repo])
   const status = repositoryStatus(repo, filtered, query)
   const draggingCourse = draggingCourseId
     ? repo.categories.flatMap((category) => category.courses).find((course) => course.id === draggingCourseId)
     : null
+
+  const announceDragPreview = (courseId: string, allowedSemesterIds: string[]) => {
+    onDragStateChange?.({ kind: 'repository', courseId, allowedSemesterIds })
+    setDraggingCourseId(courseId)
+  }
+
+  const clearPendingDragPreview = () => {
+    if (nativeDragStarted.current) return
+    onDragStateChange?.(null)
+    setDraggingCourseId(null)
+  }
 
   const showDetails = (course: RepoCourseVM, category: string) => {
     const view = buildCourseDetails({ ...course, category })
@@ -88,6 +100,7 @@ export default function UnifiedCourseRepository({
               const onBoard = selected.has(course.id)
               const destinations = allowedDestinations(course, semesterDestinations)
               const draggable = !onBoard && destinations.length > 0
+              const allowedSemesterIds = destinations.map(({ id }) => id)
               return (
                 <div
                   key={course.id}
@@ -102,11 +115,12 @@ export default function UnifiedCourseRepository({
                       return
                     }
                     event.dataTransfer.effectAllowed = 'copy'
-                    writeRepositoryDrag(event.dataTransfer, course.id, destinations.map(({ id }) => id))
-                    onDragStateChange?.({ kind: 'repository', courseId: course.id, allowedSemesterIds: destinations.map(({ id }) => id) })
-                    setDraggingCourseId(course.id)
+                    nativeDragStarted.current = true
+                    writeRepositoryDrag(event.dataTransfer, course.id, allowedSemesterIds)
+                    announceDragPreview(course.id, allowedSemesterIds)
                   }}
                   onDragEnd={() => {
+                    nativeDragStarted.current = false
                     onDragStateChange?.(null)
                     setDraggingCourseId(null)
                   }}
@@ -123,6 +137,13 @@ export default function UnifiedCourseRepository({
                     {draggable && (
                       <span
                         data-drag-handle
+                        draggable={draggable}
+                        onPointerDown={() => {
+                          nativeDragStarted.current = false
+                          announceDragPreview(course.id, allowedSemesterIds)
+                        }}
+                        onPointerUp={clearPendingDragPreview}
+                        onPointerCancel={clearPendingDragPreview}
                         title="גררו מכאן ללוח"
                         aria-label={`גרור את ${course.name} ללוח הסמסטרים`}
                         className="planner-drag-handle self-center text-[11px] text-[var(--text-muted)]"

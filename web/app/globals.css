@@ -180,6 +180,13 @@ body {
   pointer-events: none;
   transform: translateX(calc(-100% - 2rem));
 }
+/* During an active drag the board is the destination, even when a drawer is
+   visually above it. Let pointer hit-testing pass through the temporary tool
+   surface so the rightmost/leftmost semester columns remain real drop targets. */
+.planner-workbench[data-drag-active="true"] .planner-repository-rail,
+.planner-workbench[data-drag-active="true"] .planner-agent-region {
+  pointer-events: none;
+}
 /* The toolbar is part of the normal page flow while the drawers are fixed or
    sticky surfaces. Keep every drawer's first interactive row below it so a
    click on an inner drawer control can never hit the toolbar behind it. */

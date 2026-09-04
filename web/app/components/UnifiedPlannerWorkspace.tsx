@@ -211,6 +211,7 @@ export default function UnifiedPlannerWorkspace({
         data-drawer-mode="overlay"
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
+        data-drag-active={activeDrag ? 'true' : 'false'}
         data-drawer-interaction="below-toolbar"
       >
         <div
@@ -249,12 +250,13 @@ export default function UnifiedPlannerWorkspace({
             onDragStateChange={setActiveDrag}
           />
         </div>
-        <aside
+          <aside
           id="workspace-panel-repository"
           role="tabpanel"
           aria-labelledby="workspace-tab-repository"
-          data-open={repositoryOpen}
-          aria-hidden={!repositoryOpen}
+            data-open={repositoryOpen}
+            data-drag-pass-through={activeDrag ? 'true' : 'false'}
+            aria-hidden={!repositoryOpen}
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <button

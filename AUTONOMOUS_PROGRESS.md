@@ -1,5 +1,33 @@
 # Autonomous Progress
 
+## 2026-09-04 — make drawer-overlaid semester columns reachable during drag
+
+- Repository cards now expose an explicit, keyboard-visible drag handle and
+  announce the pending drag on pointer-down, before native drag events begin.
+  This lets the shared planner know which semester IDs are academically valid
+  while the pointer is still over the repository.
+- When a drag is active, the visually open repository and agent drawers pass
+  pointer hit-testing through to the persistent semester board. The drawers
+  remain visible, but their close controls cannot steal the drop target from
+  the board. Existing legal/illegal feedback continues to show
+  “ניתן לשחרר כאן” or “לא ניתן לשחרר כאן” per semester.
+- The browser Preview check completed a real repository-to-board drag with the
+  repository drawer open: Playwright reached the semester target without the
+  previous pointer-interception failure, and the board showed both allowed and
+  invalid drop feedback.
+
+Verification for this slice:
+
+- `web`: `UnifiedCourseRepository.test.tsx` — 10 passed (RED confirmed before
+  the pending pointer-down announcement, then GREEN).
+- `web`: focused planner integration — 6 suites, 87 tests passed.
+- `web`: `npm run typecheck` — passed.
+- `web`: `npm run build` — passed.
+- Preview browser check — real drag from “תרמודינמיקה (2)” while the course
+  drawer was open reached “שנה ג׳ — סמסטר א׳”; 0 console errors.
+- Preview: https://tau-course-planner-75n4fr4qg-matanyaron-1633s-projects.vercel.app/planner?program=mechanical_engineering_2027
+- Inspect: https://vercel.com/matanyaron-1633s-projects/tau-course-planner/DWTwfLyY8aFJgPXjBpXyaR2rLvUo
+
 ## 2026-09-04 — show Academic Agent alternatives as semester-board previews
 
 - Alternative proposals now render as actual mini-board summaries: each option

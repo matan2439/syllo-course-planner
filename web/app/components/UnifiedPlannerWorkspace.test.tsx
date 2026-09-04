@@ -21,7 +21,8 @@ jest.mock('./NativePlannerJourney', () => ({
 
 jest.mock('./UnifiedCourseRepository', () => ({
   __esModule: true,
-  default: ({ onRequestAdd }: any) => <div data-testid="course-repository">מאגר פעיל
+  default: ({ onRequestAdd, onDragStateChange }: any) => <div data-testid="course-repository">מאגר פעיל
+    <button type="button" draggable onDragStart={() => onDragStateChange?.({ kind: 'repository', courseId: 'C1', allowedSemesterIds: ['year_3_semester_a'] })} onDragEnd={() => onDragStateChange?.(null)}>גרירה לדוגמה</button>
     <button type="button" onClick={() => onRequestAdd('C1')}>בקש הוספה</button>
   </div>,
 }))
@@ -161,6 +162,22 @@ describe('UnifiedPlannerWorkspace', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('גררו קורס מהמאגר אל עמודת סמסטר')
     expect(screen.getByRole('status')).toHaveTextContent('לחלופין, השתמשו ב״הוסף לסמסטר״')
+  })
+
+  test('passes through an open drawer while a drag is heading for the board', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+
+    const workbench = container.querySelector('.planner-workbench')
+    expect(workbench).toHaveAttribute('data-drag-active', 'false')
+
+    fireEvent.dragStart(screen.getByRole('button', { name: 'גרירה לדוגמה' }))
+
+    expect(workbench).toHaveAttribute('data-drag-active', 'true')
+    expect(container.querySelector('.planner-repository-rail')).toHaveAttribute('data-drag-pass-through', 'true')
+
+    fireEvent.dragEnd(screen.getByRole('button', { name: 'גרירה לדוגמה' }))
+    expect(workbench).toHaveAttribute('data-drag-active', 'false')
   })
 
   test('lets each open drawer close from inside its own surface', () => {
