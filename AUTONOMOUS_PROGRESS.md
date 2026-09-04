@@ -8750,4 +8750,8 @@ instead of being guessed. Simulated moves run on a cloned worker and cannot
 mutate the authoritative draft. RED reproduced the missing tool contract;
 GREEN passed the focused planner-tool test, the conversational-agent and wire
 regressions (12 tests), root typecheck, web typecheck/build, and the focused UI
-regression (30 tests). Production remains unchanged.
+regression (30 tests). The isolated Preview is READY at
+https://tau-course-planner-drqaqsrh1-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_7CASD7W5sDyNF5uiLZAwdHhZJRTj`). Browser verification confirmed
+the planner board is mounted and error-free on the deployed route. Production
+remains unchanged.
