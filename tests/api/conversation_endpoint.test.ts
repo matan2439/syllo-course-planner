@@ -338,7 +338,11 @@ test('conversation never offers Build while critical academic facts are unknown'
 })
 
 test('conversation persists a structured clarification answer and returns refreshed context digests', async () => {
-  const personalStatus = {}
+  const personalStatus = {
+    completed: [{ course_id: '0542-2400', grade: 91 }],
+    currently_taking: [{ course_id: '0542-2500', semester_id: 'semester_5' }],
+    completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+  }
   const preferences = { max_weekly_hours: 22 }
   const putAcademicContext = jest.fn(async (input: any) => ({
     ...input,

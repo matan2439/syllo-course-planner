@@ -8799,3 +8799,20 @@ status READY and browser verification confirmed that `/planner` mounts the
 semester board and the unified workspace controls. The earlier authorization
 error was resolved by retrying against the linked project Team; no Production
 deployment or configuration was changed.
+
+## 2026-09-05 — preserve academic history across clarification turns
+
+Found and reproduced a regression in the new clarification persistence bridge:
+answering an unrelated preference reconstructed completed/current course records
+as string lists, silently clearing both arrays and marking an unanswered empty
+completion list as explicitly known. The bridge now merges only fields supplied
+by valid answers in this turn. Existing course records, grades, semester metadata,
+completion knowledge, preferences and track context remain intact.
+
+RED confirmed completed and current records became empty after an exclusion answer;
+GREEN passed 45 tests across conversation, wire, clarification and preflight suites,
+including a four-turn answer sequence and the unknown-completion readiness gate.
+The endpoint regression also verifies persisted metadata and unchanged academic
+digest for an unrelated answer. Root TypeScript checking passed. Verification used
+local fixtures only, with no provider calls or remote database writes. The code
+slice will be deployed from an exact committed snapshot to isolated Preview.

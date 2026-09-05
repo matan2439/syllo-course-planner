@@ -39,12 +39,6 @@ const ANSWERABLE_QUESTION_IDS = new Set([
   'track_or_focus',
 ]);
 
-function courseIds(value: unknown): string[] | undefined {
-  return Array.isArray(value)
-    ? [...new Set(value.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))]
-    : undefined;
-}
-
 /** Apply only the stable questions emitted by this endpoint. */
 export function applyConversationClarificationAnswers(
   input: ConversationClarificationContextInput,
@@ -63,19 +57,10 @@ export function applyConversationClarificationAnswers(
   }
 
   const personal = input.personalStatus;
-  const baseRequest: AcademicDecisionRequest = {
-    programId: input.programId,
-    currentCourseIds: courseIds(personal.currently_taking),
-    buildModelOptions: {
-      completedCourseIds: courseIds(personal.completed),
-      disallowedCourseIds: Array.isArray(input.preferences.disallowed_course_ids)
-        ? courseIds(input.preferences.disallowed_course_ids)
-        : undefined,
-      maxHoursPerSemester: typeof input.preferences.max_weekly_hours === 'number'
-        ? input.preferences.max_weekly_hours
-        : undefined,
-    },
-  };
+  // Build a patch from this turn's answers only. Reconstructing the existing
+  // personal status through planner ID lists loses course metadata and can
+  // turn an unanswered completion question into an explicit "none" answer.
+  const baseRequest: AcademicDecisionRequest = { programId: input.programId };
   const merged = applyClarificationLoopAnswers(baseRequest, answers);
   const nextPersonalStatus: Record<string, unknown> = { ...personal };
   const nextPreferences: Record<string, unknown> = { ...input.preferences };
