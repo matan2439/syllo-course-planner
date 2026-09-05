@@ -8816,3 +8816,14 @@ The endpoint regression also verifies persisted metadata and unchanged academic
 digest for an unrelated answer. Root TypeScript checking passed. Verification used
 local fixtures only, with no provider calls or remote database writes. The code
 slice will be deployed from an exact committed snapshot to isolated Preview.
+
+Preview acceptance for code commit `ea5e832`: Vercel reports READY for deployment
+`dpl_HhCTqCD6i93FW3BUnc5NJzh5G6Tu` at
+https://tau-course-planner-9zvdwe9yx-matanyaron-1633s-projects.vercel.app/planner
+The upload came from `git archive ea5e832`, excluding unrelated working changes
+and untracked files. Browser verification confirmed the loaded semester board,
+the open agent drawer and its conversation input. No conversation was submitted
+to a live model; multi-turn persistence is covered by the local tests above.
+Production, aliases, domains, catalog/data and remote database state were not
+changed. Next: finish the structured follow-up UX (course selection by name)
+before expanding validated alternatives.
