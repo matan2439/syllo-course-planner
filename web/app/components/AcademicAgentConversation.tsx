@@ -16,6 +16,11 @@ import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import { Card } from './ui'
 
 type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
+type ClarificationAnswer = NonNullable<ConversationRequest['clarification_answers']>[number]
+type ActiveClarification = {
+  question_id: NonNullable<ClarificationAnswer['question_id']>
+  answer_type: 'course_id_list' | 'number' | 'text'
+}
 
 /**
  * The model is allowed to cite canonical course ids, but ids alone are not a
@@ -78,6 +83,7 @@ export default function AcademicAgentConversation({
   conversationReady = true,
   sendConversationFn = defaultSendConversation,
   onProposalReady,
+  onAcademicContextUpdated,
   preferenceContent,
   courseNameById,
 }: {
@@ -92,6 +98,8 @@ export default function AcademicAgentConversation({
   sendConversationFn?: SendConversation
   /** The server-owned, read-only materialization used to show the draft. */
   onProposalReady?: (proposal: ConversationProposal) => void
+  /** Refreshes the parent's academic-context digests after a stored answer. */
+  onAcademicContextUpdated?: (update: { academic_status_digest: string; preference_digest: string }) => void
   /** Optional preference questions rendered inside this same conversation card. */
   preferenceContent?: ReactNode
   /** Names come only from the authoritative board/catalog view model. */
@@ -103,8 +111,27 @@ export default function AcademicAgentConversation({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [contextConflict, setContextConflict] = useState(false)
+  const [activeClarification, setActiveClarification] = useState<ActiveClarification | null>(null)
 
-  const submit = async (text: string) => {
+  const clarificationAnswerFromText = (text: string): ClarificationAnswer | undefined => {
+    if (!activeClarification) return undefined
+    if (activeClarification.answer_type === 'number') {
+      const value = Number(text.replace(',', '.'))
+      return Number.isFinite(value) ? { question_id: activeClarification.question_id, value } : undefined
+    }
+    if (activeClarification.answer_type === 'text') {
+      return { question_id: activeClarification.question_id, value: text }
+    }
+    if (/^(לא|אין|אף אחד|אף קורס)/.test(text)) {
+      return { question_id: activeClarification.question_id, value: [] }
+    }
+    const ids = [...new Set(text.match(/\b\d{4}-\d{4}\b/g) ?? [])]
+    return ids.length > 0
+      ? { question_id: activeClarification.question_id, value: ids }
+      : undefined
+  }
+
+  const submit = async (text: string, explicitAnswer?: ClarificationAnswer) => {
     const trimmed = text.trim()
     if (!trimmed || pending || contextConflict || !conversationReady) return
     const nextTranscript: ConversationTurn[] = [...transcript, { role: 'user', text: trimmed }]
@@ -123,9 +150,22 @@ export default function AcademicAgentConversation({
         academic_status_digest: academicStatusDigest,
         preference_digest: preferenceDigest,
         ...(preferenceProfile ? { preference_profile: preferenceProfile } : {}),
+        ...((explicitAnswer ?? clarificationAnswerFromText(trimmed))
+          ? { clarification_answers: [explicitAnswer ?? clarificationAnswerFromText(trimmed)!] }
+          : {}),
         transcript: nextTranscript,
       })
       setLastResponse(response)
+      const nextClarification = [...response.events]
+        .reverse()
+        .find((event): event is Extract<typeof event, { type: 'clarification' }> =>
+          event.type === 'clarification' && Boolean(event.question_id && event.answer_type))
+      setActiveClarification(nextClarification
+        ? { question_id: nextClarification.question_id!, answer_type: nextClarification.answer_type! }
+        : null)
+      if (response.outcome !== 'assistant_unavailable' && response.context_update) {
+        onAcademicContextUpdated?.(response.context_update)
+      }
       if (response.outcome !== 'assistant_unavailable') {
         setTranscript((current) => [...current, {
           role: 'assistant',
@@ -151,6 +191,7 @@ export default function AcademicAgentConversation({
     setLastResponse(null)
     setError(null)
     setContextConflict(false)
+    setActiveClarification(null)
   }
 
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
@@ -258,7 +299,13 @@ export default function AcademicAgentConversation({
                   key={option}
                   type="button"
                   disabled={pending || contextConflict || !conversationReady}
-                  onClick={() => void submit(option)}
+                  onClick={() => void submit(option, event.question_id && event.answer_type
+                    ? {
+                        question_id: event.question_id,
+                        value: event.answer_type === 'course_id_list' ? [option]
+                          : event.answer_type === 'number' ? Number(option) : option,
+                      }
+                    : undefined)}
                   className="rounded-full border border-[var(--purple)]/50 px-4 py-2 text-sm font-semibold transition-colors hover:bg-[var(--purple)]/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {option}

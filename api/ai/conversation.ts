@@ -33,8 +33,10 @@ import {
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
+import type { AcademicContextStore } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
 import type { PreferenceProfile } from './preference_model';
+import { applyConversationClarificationAnswers } from './conversation_clarification';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
@@ -49,6 +51,7 @@ type ConversationEndpointDeps = {
     input: Parameters<typeof runAcademicDecisionAgentDefault>[0],
   ) => Promise<AcademicDecisionAgentRun>;
   putProposal?: ProposalStore['put'];
+  putAcademicContext?: AcademicContextStore['put'];
 };
 
 const unavailable = () => ({
@@ -69,6 +72,9 @@ const CLARIFICATION_QUESTIONS_HE: Record<string, string> = {
 function clarificationEvent(question: { id: string; question: string; options?: Array<{ label: string }> }) {
   return {
     type: 'clarification' as const,
+    question_id: question.id as 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus',
+    answer_type: question.id === 'max_weekly_hours' ? 'number' as const
+      : question.id === 'track_or_focus' ? 'text' as const : 'course_id_list' as const,
     question_he: CLARIFICATION_QUESTIONS_HE[question.id] ?? question.question,
     ...(question.options?.length
       ? { options_he: question.options.map((option) => option.label) }
@@ -85,6 +91,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const runAgent = deps.runAgent ?? runConversationalAgent;
   const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
+  const putAcademicContext = deps.putAcademicContext ?? ((input: Parameters<AcademicContextStore['put']>[0]) => getAcademicContextStore().put(input));
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') {
@@ -144,9 +151,53 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
 
-      const context = (academicContext.planContext ?? {}) as Record<string, unknown>;
-      const preferences = (academicContext.preferences ?? {}) as Record<string, unknown>;
-      const personalStatus = (context.personal_status ?? academicContext.personalStatus ?? {}) as Record<string, unknown>;
+      let context = (academicContext.planContext ?? {}) as Record<string, unknown>;
+      let preferences = (academicContext.preferences ?? {}) as Record<string, unknown>;
+      let personalStatus = (context.personal_status ?? academicContext.personalStatus ?? {}) as Record<string, unknown>;
+      let contextUpdate: {
+        academic_status_digest: string;
+        preference_digest: string;
+      } | undefined;
+
+      if (parsed.data.clarification_answers?.length) {
+        const merged = applyConversationClarificationAnswers({
+          programId: parsed.data.program_id,
+          planContext: context,
+          personalStatus,
+          preferences,
+          answers: parsed.data.clarification_answers.map((answer) => ({
+            questionId: answer.question_id,
+            value: answer.value,
+          })),
+        });
+        if (merged.invalidAnswers.length > 0) {
+          res.status(400).json({
+            ok: false,
+            code: 'INVALID_CLARIFICATION_ANSWER',
+            message_he: 'תשובת ההבהרה אינה תואמת לשאלה שנשאלה.',
+          });
+          return;
+        }
+        if (merged.changed) {
+          await putAcademicContext({
+            ownerId: owner.ownerId,
+            programId: parsed.data.program_id,
+            digest: merged.academicStatusDigest,
+            personalStatus: merged.personalStatus,
+            planContext: merged.planContext,
+            preferences: merged.preferences,
+          });
+          context = merged.planContext;
+          personalStatus = merged.personalStatus;
+          preferences = merged.preferences;
+          contextUpdate = {
+            academic_status_digest: merged.academicStatusDigest,
+            preference_digest: merged.preferenceDigest,
+          };
+        }
+      }
+
+      const effectiveAcademicStatusDigest = contextUpdate?.academic_status_digest ?? academicContext.digest;
       const contextWithStatus = context.personal_status ? context : { ...context, personal_status: personalStatus };
       const completedCourseIds = Array.isArray(personalStatus.completed)
         ? personalStatus.completed
@@ -211,6 +262,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           message_he: 'לפני בניית מערכת אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
           next_action: 'ask',
+          ...(contextUpdate ? { context_update: contextUpdate } : {}),
           academic_decision: {
             engine: 'AcademicDecisionAgent',
             ready_to_plan: false,
@@ -231,6 +283,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
           next_action: 'ask',
+          ...(contextUpdate ? { context_update: contextUpdate } : {}),
           academic_decision: {
             engine: 'AcademicDecisionAgent',
             ready_to_plan: false,
@@ -265,6 +318,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
             events,
             next_action: 'ask',
+            ...(contextUpdate ? { context_update: contextUpdate } : {}),
             academic_decision: {
               engine: academicDecision.orchestration.engine,
               ready_to_plan: false,
@@ -283,6 +337,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           message_he: messageHe,
           events: agent.events,
           next_action: agent.outcome === 'conversation' ? agent.nextAction : undefined,
+          ...(contextUpdate ? { context_update: contextUpdate } : {}),
         });
         return;
       }
@@ -397,7 +452,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         expiresAt: now + PROPOSAL_TTL_MS,
         baseBoardVersion: currentBoardVersion,
         profileVersion,
-        academicStatusDigest: parsed.data.academic_status_digest,
+        academicStatusDigest: effectiveAcademicStatusDigest,
         constraintFingerprint: recommended.constraint_fingerprint,
         snapshotId,
         candidates: wireAlternatives.map((alternative) => ({
@@ -431,6 +486,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           planned: academicDecision.orchestration.planned,
           clarification_required: hasCriticalMissingInput(academicDecision.clarification),
         } : undefined,
+        ...(contextUpdate ? { context_update: contextUpdate } : {}),
         proposal_id: proposalId,
         proposal: {
           proposal_id: receipt.proposalId,

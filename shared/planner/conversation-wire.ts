@@ -39,6 +39,21 @@ export const conversationRequestSchema = z.object({
   preference_digest: digest,
   /** The typed answers from the unified agent intake, not a UI-only shadow. */
   preference_profile: preferenceProfileSchema.optional(),
+  /** Answers to the current server-issued clarification question. */
+  clarification_answers: z.array(z.object({
+    question_id: z.enum([
+      'completed_courses',
+      'current_courses',
+      'excluded_courses',
+      'max_weekly_hours',
+      'track_or_focus',
+    ]),
+    value: z.union([
+      z.array(z.string().trim().min(1).max(128)).max(64),
+      boundedText,
+      z.number().finite(),
+    ]),
+  }).strict()).max(8).optional(),
   transcript: z.array(conversationTurnSchema).min(1).max(40),
 }).strict()
 
@@ -72,6 +87,14 @@ const toolStatusEventSchema = z.object({
 
 const clarificationEventSchema = z.object({
   type: z.literal('clarification'),
+  question_id: z.enum([
+    'completed_courses',
+    'current_courses',
+    'excluded_courses',
+    'max_weekly_hours',
+    'track_or_focus',
+  ]).optional(),
+  answer_type: z.enum(['course_id_list', 'number', 'text']).optional(),
   question_he: boundedText,
   options_he: z.array(boundedText).min(2).max(8).optional(),
 }).strict()
@@ -128,6 +151,11 @@ const academicDecisionSummarySchema = z.object({
   clarification_required: z.boolean(),
 }).strict()
 
+const conversationContextUpdateSchema = z.object({
+  academic_status_digest: digest,
+  preference_digest: digest,
+}).strict()
+
 export const assistantUnavailableEventSchema = z.object({
   type: z.literal('assistant_unavailable'),
   message_he: boundedText,
@@ -148,6 +176,7 @@ const availableResponseSchema = z.object({
   /** The agent, not the client, decides whether to ask or offer planning. */
   next_action: z.enum(['ask', 'offer_build']).optional(),
   academic_decision: academicDecisionSummarySchema.optional(),
+  context_update: conversationContextUpdateSchema.optional(),
   proposal_id: z.string().trim().min(1).max(256).optional(),
   proposal: conversationProposalSchema.optional(),
 }).strict()

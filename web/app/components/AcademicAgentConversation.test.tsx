@@ -230,6 +230,43 @@ test('renders the server-owned readiness state inside the conversation surface',
   expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
 })
 
+test('sends a structured answer for the active clarification and accepts refreshed context', async () => {
+  const sendConversation = jest.fn()
+    .mockResolvedValueOnce({
+      outcome: 'clarification_required',
+      message_he: 'האם יש קורסים שתרצה להחריג?',
+      next_action: 'ask',
+      academic_decision: {
+        engine: 'AcademicDecisionAgent', ready_to_plan: false, planned: false, clarification_required: true,
+      },
+      events: [{
+        type: 'clarification', question_id: 'excluded_courses', answer_type: 'course_id_list',
+        question_he: 'האם יש קורסים שתרצה להחריג?',
+      }],
+    } satisfies ConversationResponse)
+    .mockResolvedValueOnce({
+      outcome: 'conversation',
+      message_he: 'תודה, שמרתי את התשובה.',
+      next_action: 'ask',
+      context_update: { academic_status_digest: 'as_2', preference_digest: 'pref_2' },
+      events: [],
+    } satisfies ConversationResponse)
+  const onAcademicContextUpdated = jest.fn()
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} onAcademicContextUpdated={onAcademicContextUpdated} />)
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'אין קורסים' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'אין קורסים' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(2))
+  expect((sendConversation as jest.Mock).mock.calls[1][0]).toEqual(expect.objectContaining({
+    clarification_answers: [{ question_id: 'excluded_courses', value: [] }],
+  }))
+  expect(onAcademicContextUpdated).toHaveBeenCalledWith({ academic_status_digest: 'as_2', preference_digest: 'pref_2' })
+})
+
 test('makes the authoritative board context and non-mutating boundary visible', () => {
   render(
     <AcademicAgentConversation

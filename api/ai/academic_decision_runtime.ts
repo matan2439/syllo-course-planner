@@ -213,6 +213,9 @@ export function extractClarificationContext(
     currentCourseIds: current,
     excludedCourseIds: excluded,
     maxWeeklyHours: preferences?.max_weekly_hours ?? undefined,
+    track: typeof planContext?.track === 'string'
+      ? planContext.track
+      : (typeof preferences?.track_or_focus === 'string' ? preferences.track_or_focus : undefined),
   };
   const trackAnswer = resolveTrackAnswer(clarificationAnswers);
   if (trackAnswer !== undefined) context.track = trackAnswer;

@@ -511,6 +511,20 @@ export default function NativePlannerJourney({
     })
   }, [planningContextFn, programId, useAcademicDecisionAgent])
 
+  const handleAcademicContextUpdated = useCallback((update: {
+    academic_status_digest: string
+    preference_digest: string
+  }) => {
+    setLoadedAcademicContext((current) => current
+      ? {
+          ...current,
+          academicStatusDigest: update.academic_status_digest,
+          preferenceDigest: update.preference_digest,
+        }
+      : current)
+    refreshAcademicContext()
+  }, [refreshAcademicContext])
+
   const initializedPlanningContextRef = useRef(false)
   useEffect(() => {
     if (!initializePlanningContext || !useAcademicDecisionAgent || !current
@@ -1099,6 +1113,7 @@ export default function NativePlannerJourney({
             preferenceProfile={convProfileRef.current}
             conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
             sendConversationFn={sendConversationFn}
+            onAcademicContextUpdated={handleAcademicContextUpdated}
             onProposalReady={acceptConversationProposal}
             courseNameById={Object.fromEntries(
               Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),

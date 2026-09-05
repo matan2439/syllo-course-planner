@@ -1,5 +1,5 @@
 import { createConversationHandler } from '../../api/ai/conversation'
-import { PlannerStorageError, preferenceDigest } from '../../api/ai/apply_runtime'
+import { PlannerStorageError, academicStatusDigest, preferenceDigest } from '../../api/ai/apply_runtime'
 import type { AcademicDecisionAgentRun } from '../../api/ai/academic_decision_integration'
 
 function response() {
@@ -335,4 +335,50 @@ test('conversation never offers Build while critical academic facts are unknown'
   expect(res.body.events).toEqual(expect.arrayContaining([
     expect.objectContaining({ type: 'clarification' }),
   ]))
+})
+
+test('conversation persists a structured clarification answer and returns refreshed context digests', async () => {
+  const personalStatus = {}
+  const preferences = { max_weekly_hours: 22 }
+  const putAcademicContext = jest.fn(async (input: any) => ({
+    ...input,
+    updatedAt: 2,
+  }))
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: academicStatusDigest(personalStatus), personalStatus, planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'conversation',
+      nextAction: 'ask',
+      messageHe: 'תודה, ממשיכים.',
+      events: [{ type: 'assistant_message', text_he: 'תודה, ממשיכים.' }],
+    } as any),
+    putAcademicContext,
+  })
+  const res = response()
+
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: {
+      ...validBody,
+      academic_status_digest: academicStatusDigest(personalStatus),
+      preference_digest: preferenceDigest(preferences),
+      clarification_answers: [{ question_id: 'excluded_courses', value: [] }],
+    },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  expect(putAcademicContext).toHaveBeenCalledWith(expect.objectContaining({
+    personalStatus,
+    preferences: { max_weekly_hours: 22, disallowed_course_ids: [] },
+  }))
+  expect(res.body.context_update).toEqual({
+    academic_status_digest: academicStatusDigest(personalStatus),
+    preference_digest: preferenceDigest({ max_weekly_hours: 22, disallowed_course_ids: [] }),
+  })
 })

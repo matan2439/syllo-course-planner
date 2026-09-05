@@ -8771,3 +8771,20 @@ the conversation API/wire regressions (9 tests), web typecheck, and the
 production build. The isolated Preview is READY at
 https://tau-course-planner-m71midv5v-matanyaron-1633s-projects.vercel.app
 (deployment `dpl_47EtohVRDa6wt1VpQP1pitrQTpjp`). Production remains unchanged.
+
+## Latest session — persist structured clarification answers
+
+The unified conversation now accepts the server-issued clarification question
+identifier and a typed answer. Valid answers are merged into the existing
+server-owned academic context, persisted through the same context store used
+by planning, and returned with fresh academic and preference digests. The
+agent therefore sees a completed/excluded/current course answer on the next
+turn instead of treating it as transcript-only text. Explicit empty answers
+remain meaningful (for example, “אין קורסים להחרגה”), while invalid shapes fail
+closed without mutating context. Track answers are retained in plan context
+only as clarification state and are not invented as a planner preference.
+RED reproduced the missing persistence dependency; GREEN passed the focused
+endpoint test, all clarification/preflight and conversation-wire regressions
+(42 tests), the Academic Agent/UI/workspace suites (65 tests), and web
+typecheck. A new isolated Preview is required after the coherent commit.
+Production remains unchanged.
