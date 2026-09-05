@@ -8849,5 +8849,14 @@ Web build and typecheck passed. A temporary localhost-only fixture exercised the
 real conversation component without a model: search, Tab/Space selection and
 Tab/Enter confirmation worked in the browser, with Hebrew names in the transcript.
 The fixture page was removed and its server stopped before the release build;
-the build route list confirms it is absent. Exact-commit Preview publication is
-the remaining acceptance step for this slice.
+the build route list confirms it is absent.
+
+Preview acceptance for code commit `553f3d5`: Vercel reports READY for deployment
+`dpl_AgSQYQrJ9VrmUFfkZajxaZRtBHQC` at
+https://tau-course-planner-8pqda4k2d-matanyaron-1633s-projects.vercel.app/planner
+The upload came from `git archive 553f3d5`, excluding unrelated working changes
+and untracked files. Browser verification confirmed that the deployed semester
+board loaded and the agent drawer opens with its conversation input. The new
+question controls were exercised in the local browser fixture and regressions
+above, not through a live provider call. No Production, aliases, domains,
+environment variables, catalog/data or remote database state were changed.
