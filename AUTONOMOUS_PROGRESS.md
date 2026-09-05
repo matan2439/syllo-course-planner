@@ -8788,3 +8788,14 @@ endpoint test, all clarification/preflight and conversation-wire regressions
 (42 tests), the Academic Agent/UI/workspace suites (65 tests), and web
 typecheck. A new isolated Preview is required after the coherent commit.
 Production remains unchanged.
+
+## Latest session — publish structured clarification persistence Preview
+
+The committed clarification-answer persistence slice is now published as an
+isolated Preview at
+https://tau-course-planner-exo4117bp-matanyaron-1633s-projects.vercel.app
+(deployment `dpl_8oNe8m22JBKm3R9uDCAypjwVPoUt`). The deployment completed with
+status READY and browser verification confirmed that `/planner` mounts the
+semester board and the unified workspace controls. The earlier authorization
+error was resolved by retrying against the linked project Team; no Production
+deployment or configuration was changed.
