@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import type { ConversationResponse } from '../../../shared/planner/conversation-wire'
 import { ConversationContextConflictError } from '../../../shared/planner/api-client'
@@ -11,6 +11,94 @@ const requestContext = {
   academicStatusDigest: 'as_1',
   preferenceDigest: 'pref_1',
 }
+
+test('answers a course clarification by selecting Hebrew names without sending until confirmation', async () => {
+  const sendConversation = jest.fn()
+    .mockResolvedValueOnce({
+      outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+      events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+    } satisfies ConversationResponse)
+    .mockResolvedValueOnce({
+      outcome: 'conversation', message_he: 'קיבלתי את רשימת הקורסים.', next_action: 'ask', events: [],
+    } satisfies ConversationResponse)
+  const onProposalReady = jest.fn()
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} onProposalReady={onProposalReady}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)', '0542-2500': 'מכניקת הזורמים (1)' }} />)
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'עזור לי לתכנן' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  const question = await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  const search = within(question).getByRole('searchbox', { name: 'חיפוש קורסים לתשובה' })
+  fireEvent.change(search, { target: { value: 'תכן מכני' } })
+  fireEvent.click(within(question).getByRole('checkbox', { name: /תכן מכני/ }))
+  fireEvent.change(search, { target: { value: 'מכניקת הזורמים' } })
+  fireEvent.click(within(question).getByRole('checkbox', { name: /מכניקת הזורמים/ }))
+  expect(sendConversation).toHaveBeenCalledTimes(1)
+  expect(onProposalReady).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
+  fireEvent.click(within(question).getByRole('button', { name: 'אישור 2 קורסים' }))
+  await screen.findByText('קיבלתי את רשימת הקורסים.')
+  expect(sendConversation.mock.calls[1][0]).toEqual(expect.objectContaining({
+    clarification_answers: [{ question_id: 'completed_courses', value: ['0542-2400', '0542-2500'] }],
+    transcript: expect.arrayContaining([{ role: 'user', text: 'הקורסים שהשלמתי: תכן מכני (1), מכניקת הזורמים (1)' }]),
+  }))
+});
+
+test.each(['לא יודע', 'אין לי מושג', 'לא השלמתי 0542-2400'])('does not turn uncertain or negative free text into course claims: %s', async (answer) => {
+  const sendConversation = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation} />)
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: answer } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(2))
+  expect(sendConversation.mock.calls[1][0]).not.toHaveProperty('clarification_answers')
+})
+
+test.each([
+  ['completed_courses', 'לא השלמתי קורסים'],
+  ['current_courses', 'איני לומד/ת קורסים כעת'],
+  ['excluded_courses', 'אין קורסים להחרגה'],
+] as const)('sends an explicit empty list only on the none action for %s', async (questionId, noneLabel) => {
+  const sendConversation = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: questionId, answer_type: 'course_id_list', question_he: 'אילו קורסים?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)' }} />)
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  const noneButton = await screen.findByRole('button', { name: noneLabel })
+  fireEvent.click(screen.getByRole('checkbox', { name: /תכן מכני/ }))
+  expect(noneButton).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: /הסר תכן מכני/ }))
+  expect(screen.getByRole('button', { name: 'אישור 0 קורסים' })).toBeDisabled()
+  fireEvent.click(noneButton)
+  await waitFor(() => expect(sendConversation).toHaveBeenCalledTimes(2))
+  expect(sendConversation.mock.calls[1][0].clarification_answers).toEqual([{ question_id: questionId, value: [] }])
+})
+
+test('preserves the selected answer after a send failure so it can be retried', async () => {
+  const sendConversation = jest.fn()
+    .mockResolvedValueOnce({
+      outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+      events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+    } satisfies ConversationResponse)
+    .mockRejectedValueOnce(new Error('network unavailable'))
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={sendConversation}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)' }} />)
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  fireEvent.click(await screen.findByRole('checkbox', { name: /תכן מכני/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'אישור קורס אחד' }))
+  await screen.findByRole('alert')
+  expect(screen.getByRole('checkbox', { name: /תכן מכני/ })).toBeChecked()
+  expect(screen.getByRole('button', { name: 'אישור קורס אחד' })).toBeEnabled()
+})
 
 test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hides raw tool payloads', async () => {
   const sendConversation = jest.fn(async () => ({

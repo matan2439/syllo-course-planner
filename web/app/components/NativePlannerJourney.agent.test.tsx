@@ -101,6 +101,21 @@ async function askAgentToBuild() {
 }
 
 describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
+  test('course clarification includes early-year course names alongside the active board catalog', async () => {
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'clarification_required', message_he: 'אילו קורסים כבר השלמת?', next_action: 'ask',
+      events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים כבר השלמת?' }],
+    } satisfies ConversationResponse))
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'אני רוצה לתכנן את שנה ג' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    const search = await screen.findByRole('searchbox', { name: 'חיפוש קורסים לתשובה' })
+    fireEvent.change(search, { target: { value: 'גרפיקה הנדסית' } })
+    expect(screen.getByRole('checkbox', { name: /גרפיקה הנדסית/ })).toBeInTheDocument()
+    fireEvent.change(search, { target: { value: 'קורס בסיס X' } })
+    expect(screen.getByRole('checkbox', { name: /קורס בסיס X/ })).toBeInTheDocument()
+  })
+
   test('flag OFF: no conversation is mounted (existing journey unchanged)', async () => {
     await renderReady({ useAcademicDecisionAgent: false })
     expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()

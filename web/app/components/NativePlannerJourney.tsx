@@ -42,7 +42,7 @@ import CompletedCoursesPanel, {
   type AcademicStatusDraft,
 } from './CompletedCoursesPanel'
 import { emptyProfile, type PreferenceProfile } from '../../../api/ai/preference_model'
-import { earlyYearHoursById } from '../../../shared/planner/early_year_courses'
+import { earlyYearCoursesFor, earlyYearHoursById } from '../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
 import CourseNamePicker from './CourseNamePicker'
 import AcademicAgentConversation from './AcademicAgentConversation'
@@ -1115,9 +1115,10 @@ export default function NativePlannerJourney({
             sendConversationFn={sendConversationFn}
             onAcademicContextUpdated={handleAcademicContextUpdated}
             onProposalReady={acceptConversationProposal}
-            courseNameById={Object.fromEntries(
-              Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
-            )}
+            courseNameById={Object.fromEntries([
+              ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
+              ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
+            ])}
             preferenceContent={preferenceContent}
           />
         )}

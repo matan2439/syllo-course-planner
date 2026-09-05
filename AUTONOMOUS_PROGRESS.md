@@ -8827,3 +8827,27 @@ to a live model; multi-turn persistence is covered by the local tests above.
 Production, aliases, domains, catalog/data and remote database state were not
 changed. Next: finish the structured follow-up UX (course selection by name)
 before expanding validated alternatives.
+
+## 2026-09-05 — answer course questions by Hebrew name in the agent drawer
+
+Server-issued completed/current/excluded-course questions now include an inline
+searchable course checklist, selected-course summary, explicit confirmation and
+a question-specific "none" action. Selections remain local until confirmation;
+the transcript shows Hebrew names and the existing conversation contract sends
+canonical course IDs. The name universe includes the existing program-scoped
+early-year course table as well as the active board catalog, without changing
+either data source. Unknown/negative free text (including "לא יודע" and
+"לא השלמתי 0542-2400") no longer becomes an empty completion claim. Failed
+requests retain the selection for retry. No additional preference window or
+client-owned Build permission was introduced.
+
+RED reproduced the absent name-selection control, unsafe negative-text claims,
+lost selection after network failure, and unavailable early-year names. GREEN:
+74 tests passed across the conversation, journey, server-Apply, workspace and
+alternative-board suites; existing act() warnings in the journey suite remain.
+Web build and typecheck passed. A temporary localhost-only fixture exercised the
+real conversation component without a model: search, Tab/Space selection and
+Tab/Enter confirmation worked in the browser, with Hebrew names in the transcript.
+The fixture page was removed and its server stopped before the release build;
+the build route list confirms it is absent. Exact-commit Preview publication is
+the remaining acceptance step for this slice.

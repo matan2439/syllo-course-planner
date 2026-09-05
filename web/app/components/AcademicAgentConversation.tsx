@@ -14,6 +14,7 @@ import type {
 } from '../../../shared/planner/conversation-wire'
 import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import { Card } from './ui'
+import CourseClarificationAnswer, { isCourseQuestion } from './CourseClarificationAnswer'
 
 type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
 type ClarificationAnswer = NonNullable<ConversationRequest['clarification_answers']>[number]
@@ -122,9 +123,12 @@ export default function AcademicAgentConversation({
     if (activeClarification.answer_type === 'text') {
       return { question_id: activeClarification.question_id, value: text }
     }
-    if (/^(לא|אין|אף אחד|אף קורס)/.test(text)) {
+    // Only an explicit complete statement means "none". Phrases such as
+    // "לא יודע" or "לא השלמתי <course>" must remain conversational context.
+    if (/^(?:אין קורסים(?: להחרגה)?|לא השלמתי (?:אף )?קורסים|אף קורס)[.!]?$/u.test(text)) {
       return { question_id: activeClarification.question_id, value: [] }
     }
+    if (!/^\d{4}-\d{4}(?:[\s,;]+\d{4}-\d{4})*$/.test(text)) return undefined
     const ids = [...new Set(text.match(/\b\d{4}-\d{4}\b/g) ?? [])]
     return ids.length > 0
       ? { question_id: activeClarification.question_id, value: ids }
@@ -140,7 +144,6 @@ export default function AcademicAgentConversation({
     setPending(true)
     setError(null)
     setContextConflict(false)
-    setLastResponse(null)
 
     try {
       const response = await sendConversationFn({
@@ -292,7 +295,15 @@ export default function AcademicAgentConversation({
         <section key={`${event.question_he}-${index}`} role="group" aria-label="שאלת המשך מהעוזר האקדמי" className="rounded-xl border border-[var(--purple)]/40 bg-[var(--purple)]/5 p-4">
           <h3 className="font-semibold">שאלת המשך</h3>
           <p className="mt-1 text-sm">{event.question_he}</p>
-          {event.options_he && (
+          {event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id) && (
+            <CourseClarificationAnswer
+              questionId={event.question_id}
+              courseNameById={courseNameById}
+              disabled={pending || contextConflict || !conversationReady}
+              onConfirm={(ids, text) => void submit(text, { question_id: event.question_id!, value: ids })}
+            />
+          )}
+          {event.options_he && !(event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id)) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {event.options_he.map((option) => (
                 <button
