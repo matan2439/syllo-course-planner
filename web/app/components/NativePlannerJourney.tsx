@@ -1088,7 +1088,14 @@ export default function NativePlannerJourney({
       </div>
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
-      <aside aria-label="עוזר אקדמי" data-open={agentOpen ?? true} className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2">
+      <aside
+        id="workspace-agent-drawer"
+        aria-label="עוזר אקדמי"
+        aria-hidden={agentOpen === false}
+        inert={agentOpen === false}
+        data-open={agentOpen ?? true}
+        className="planner-agent-region order-1 flex flex-col gap-4 lg:order-2"
+      >
         {onCloseAgent && (
           <button
             ref={agentCloseRef}

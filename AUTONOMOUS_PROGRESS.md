@@ -8949,3 +8949,21 @@ The smoke also found an existing accessibility follow-up: the agent toggle's
 `aria-controls="workspace-agent-drawer"` names an id absent from the rendered aside.
 The role/name-based open/close check passes; repair this association with a focused
 regression in the next approved drawer slice. Do not treat it as a timetable blocker.
+
+## 2026-09-06 — accessible drawer association and closed-state interaction
+
+Fixed the existing agent toggle's broken aria-controls association with the actual
+rendered drawer. Inspection also found that closed desktop drawers were translated
+offscreen with opacity/pointer-events only, leaving their controls keyboard-focusable.
+Both closed drawers now use native inertness; the agent also exposes its hidden state
+to accessible navigation. Reopening restores interaction without unmounting conversation
+state or changing the CSS transitions. Standalone journeys remain open by default.
+
+RED: the real workspace integration could not resolve the agent toggle's target;
+separate closed-state regressions then failed on missing inertness for each drawer.
+GREEN: all three new tests passed, followed by 123 tests in seven relevant web suites,
+then web typecheck and release build, sequentially. The older journey act() warnings
+remain; the new integration suite is clean. Only server I/O is mocked in the new
+tests. Independent read-only review found no actionable defects in the scoped change.
+No source data, remote database, Production or provider operations were performed.
+Immutable Preview acceptance will be recorded below after deployment.

@@ -201,6 +201,7 @@ export default function UnifiedPlannerWorkspace({
             data-open={repositoryOpen}
             data-drag-pass-through={activeDrag ? 'true' : 'false'}
             aria-hidden={!repositoryOpen}
+            inert={!repositoryOpen}
           className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
         >
           <button
