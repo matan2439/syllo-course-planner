@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import {
   ConversationContextConflictError,
   sendConversation,
@@ -15,6 +15,7 @@ import type {
 import type { PreferenceProfile } from '../../../api/ai/preference_model'
 import { Card } from './ui'
 import CourseClarificationAnswer, { isCourseQuestion } from './CourseClarificationAnswer'
+import CourseAnswerReview, { reviewCourseText, type CourseScope, type CourseTextReview } from './CourseAnswerReview'
 
 type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
 type ClarificationAnswer = NonNullable<ConversationRequest['clarification_answers']>[number]
@@ -87,6 +88,8 @@ export default function AcademicAgentConversation({
   onAcademicContextUpdated,
   preferenceContent,
   courseNameById,
+  localContextVersion = 0,
+  courseScopes = [],
 }: {
   programId: string
   sessionToken: string
@@ -105,6 +108,8 @@ export default function AcademicAgentConversation({
   preferenceContent?: ReactNode
   /** Names come only from the authoritative board/catalog view model. */
   courseNameById?: Readonly<Record<string, string | null | undefined>>
+  localContextVersion?: number
+  courseScopes?: readonly CourseScope[]
 }) {
   const [transcript, setTranscript] = useState<ConversationTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -113,9 +118,13 @@ export default function AcademicAgentConversation({
   const [error, setError] = useState<string | null>(null)
   const [contextConflict, setContextConflict] = useState(false)
   const [activeClarification, setActiveClarification] = useState<ActiveClarification | null>(null)
+  const [responseContextVersion, setResponseContextVersion] = useState<number | null>(null)
+  const contextVersionRef = useRef(localContextVersion)
+  contextVersionRef.current = localContextVersion
+  const [courseReview, setCourseReview] = useState<CourseTextReview | null>(null)
 
   const clarificationAnswerFromText = (text: string): ClarificationAnswer | undefined => {
-    if (!activeClarification) return undefined
+    if (!activeClarification || responseContextVersion !== localContextVersion) return undefined
     if (activeClarification.answer_type === 'number') {
       const value = Number(text.replace(',', '.'))
       return Number.isFinite(value) ? { question_id: activeClarification.question_id, value } : undefined
@@ -138,6 +147,11 @@ export default function AcademicAgentConversation({
   const submit = async (text: string, explicitAnswer?: ClarificationAnswer) => {
     const trimmed = text.trim()
     if (!trimmed || pending || contextConflict || !conversationReady) return
+    const answer = explicitAnswer ?? clarificationAnswerFromText(trimmed)
+    if (!answer && responseContextVersion === localContextVersion && activeClarification?.question_id === 'completed_courses') {
+      const review = reviewCourseText(trimmed, courseNameById ?? {})
+      if (review) { setCourseReview(review); setDraft(''); return }
+    }
     const nextTranscript: ConversationTurn[] = [...transcript, { role: 'user', text: trimmed }]
     setTranscript(nextTranscript)
     setDraft('')
@@ -153,12 +167,14 @@ export default function AcademicAgentConversation({
         academic_status_digest: academicStatusDigest,
         preference_digest: preferenceDigest,
         ...(preferenceProfile ? { preference_profile: preferenceProfile } : {}),
-        ...((explicitAnswer ?? clarificationAnswerFromText(trimmed))
-          ? { clarification_answers: [explicitAnswer ?? clarificationAnswerFromText(trimmed)!] }
+        ...(answer
+          ? { clarification_answers: [answer] }
           : {}),
         transcript: nextTranscript,
       })
       setLastResponse(response)
+      setCourseReview(null)
+      setResponseContextVersion(localContextVersion)
       const nextClarification = [...response.events]
         .reverse()
         .find((event): event is Extract<typeof event, { type: 'clarification' }> =>
@@ -174,7 +190,7 @@ export default function AcademicAgentConversation({
           role: 'assistant',
           text: formatAssistantMessage(response.message_he, courseNameById),
         }])
-        if (response.proposal) onProposalReady?.(response.proposal)
+        if (response.proposal && contextVersionRef.current === localContextVersion) onProposalReady?.(response.proposal)
       }
     } catch (caught) {
       if (caught instanceof ConversationContextConflictError) {
@@ -195,12 +211,14 @@ export default function AcademicAgentConversation({
     setError(null)
     setContextConflict(false)
     setActiveClarification(null)
+    setCourseReview(null)
   }
 
   const unavailable = lastResponse?.outcome === 'assistant_unavailable'
-  const clarificationEvents = lastResponse?.events.filter((event) => event.type === 'clarification') ?? []
-  const canOfferBuild = lastResponse?.outcome === 'conversation' && lastResponse.next_action === 'offer_build'
-  const readiness = lastResponse && lastResponse.outcome !== 'assistant_unavailable'
+  const responseCurrent = responseContextVersion === localContextVersion
+  const clarificationEvents = responseCurrent ? lastResponse?.events.filter((event) => event.type === 'clarification') ?? [] : []
+  const canOfferBuild = responseCurrent && lastResponse?.outcome === 'conversation' && lastResponse.next_action === 'offer_build'
+  const readiness = responseCurrent && lastResponse && lastResponse.outcome !== 'assistant_unavailable'
     ? lastResponse.academic_decision
     : undefined
 
@@ -295,7 +313,12 @@ export default function AcademicAgentConversation({
         <section key={`${event.question_he}-${index}`} role="group" aria-label="שאלת המשך מהעוזר האקדמי" className="rounded-xl border border-[var(--purple)]/40 bg-[var(--purple)]/5 p-4">
           <h3 className="font-semibold">שאלת המשך</h3>
           <p className="mt-1 text-sm">{event.question_he}</p>
-          {event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id) && (
+          {courseReview && event.question_id === 'completed_courses' ? (
+            <CourseAnswerReview key={courseReview.text} review={courseReview} names={courseNameById ?? {}} scopes={courseScopes}
+              disabled={pending || contextConflict || !conversationReady}
+              onConfirm={(ids, text) => void submit(text, { question_id: 'completed_courses', value: ids })}
+              onCancel={() => { setDraft(courseReview.text); setCourseReview(null) }} />
+          ) : event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id) && (
             <CourseClarificationAnswer
               questionId={event.question_id}
               courseNameById={courseNameById}

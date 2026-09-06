@@ -292,7 +292,7 @@ export default function CompletedCoursesPanel({
             >
               {value.confirmed ? 'אושר' : 'אשר את הסטטוס'}
             </button>
-            <span className="text-[11px] text-[var(--text-muted)]">האישור נשמר בטיוטה המקומית ואינו מייצר תוכנית — לחצו “בנה תוכנית”.</span>
+            <span className="text-[11px] text-[var(--text-muted)]">האישור אינו משנה את הלוח. הפרטים יישלחו לעוזר עם ההודעה הבאה.</span>
           </div>
         </div>
       )}

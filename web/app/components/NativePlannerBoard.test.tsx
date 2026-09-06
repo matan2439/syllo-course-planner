@@ -22,6 +22,28 @@ const BOARD = {
 }
 const vmFromPayload = (payload: unknown) => boardModelToVM(boardResponseToModel(payload))
 
+test('mandatory courses can request an offered move by drag or keyboard, but cannot be removed', () => {
+  const onMove = jest.fn()
+  render(<NativePlannerBoard onMoveCourse={onMove} onRemoveCourse={jest.fn()} board={vmFromPayload({
+    ...BOARD,
+    semesters: [
+      { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }] },
+      BOARD.semesters[1],
+    ],
+  })} />)
+  const card = screen.getByText('קורס לדוגמה').closest('[draggable]')!
+  expect(card).toHaveAttribute('draggable', 'true')
+  const values = new Map<string, string>()
+  const transfer = { setData: (key: string, value: string) => values.set(key, value), getData: (key: string) => values.get(key) ?? '', effectAllowed: '', dropEffect: '' }
+  fireEvent.dragStart(card, { dataTransfer: transfer })
+  fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' }), { dataTransfer: transfer })
+  expect(onMove).toHaveBeenCalledWith('C-1', 'year_3_semester_b')
+  fireEvent.click(screen.getByText('אפשרויות העברה עבור קורס לדוגמה'))
+  fireEvent.click(screen.getByRole('button', { name: 'העבר קורס לדוגמה אל שנה ג׳ — סמסטר ב׳' }))
+  expect(onMove).toHaveBeenCalledTimes(2)
+  expect(screen.queryByRole('button', { name: 'הסר קורס לדוגמה מהלוח' })).toBeNull()
+})
+
 test('renders semesters and courses from the canonical path', () => {
   render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
   expect(screen.getByText('קורס לדוגמה')).toBeInTheDocument()

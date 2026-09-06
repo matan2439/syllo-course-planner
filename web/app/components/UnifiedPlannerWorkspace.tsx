@@ -15,12 +15,6 @@ const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
   { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
 ]
 
-const VIEWS: Array<{ id: WorkspaceView; label: string }> = [
-  { id: 'board', label: 'לוח סמסטרים' },
-  { id: 'repository', label: 'מאגר קורסים' },
-  { id: 'agent', label: 'עוזר אקדמי' },
-]
-
 export default function UnifiedPlannerWorkspace({
   programId,
   repo,
@@ -40,7 +34,6 @@ export default function UnifiedPlannerWorkspace({
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
   const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
   const agentToggleRef = useRef<HTMLButtonElement | null>(null)
   const repositoryCloseRef = useRef<HTMLButtonElement | null>(null)
@@ -48,24 +41,10 @@ export default function UnifiedPlannerWorkspace({
   const agentCloseRef = useRef<HTMLButtonElement | null>(null)
   const agentWasOpen = useRef(false)
 
-  const selectView = (view: WorkspaceView, focus = false) => {
+  const selectView = (view: WorkspaceView) => {
     setActiveView(view)
     if (view === 'repository') setRepositoryOpen(true)
     if (view === 'agent') setAgentOpen(true)
-    if (focus) {
-      const index = VIEWS.findIndex((item) => item.id === view)
-      tabRefs.current[index]?.focus()
-    }
-  }
-
-  const onTabKeyDown = (index: number, key: string) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
-    let next = index
-    if (key === 'Home') next = 0
-    else if (key === 'End') next = VIEWS.length - 1
-    else if (key === 'ArrowRight') next = (index - 1 + VIEWS.length) % VIEWS.length
-    else next = (index + 1) % VIEWS.length
-    selectView(VIEWS[next].id, true)
   }
 
   const requestAdd = (courseId: string, semesterId?: string) => {
@@ -144,39 +123,6 @@ export default function UnifiedPlannerWorkspace({
         </p>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="אזורי מרחב התכנון"
-        className="flex gap-2 lg:hidden"
-      >
-        {VIEWS.map((view, index) => (
-          <button
-            key={view.id}
-            ref={(node) => { tabRefs.current[index] = node }}
-            type="button"
-            role="tab"
-            id={`workspace-tab-${view.id}`}
-            aria-controls={view.id === 'repository' ? 'workspace-panel-repository' : 'workspace-panel-journey'}
-            aria-selected={activeView === view.id}
-            tabIndex={activeView === view.id ? 0 : -1}
-            onClick={() => selectView(view.id)}
-            onKeyDown={(event) => {
-              if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-                event.preventDefault()
-                onTabKeyDown(index, event.key)
-              }
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] ${
-              activeView === view.id
-                ? 'bg-[#7c3aed] text-white'
-                : 'border border-[var(--border)] bg-[var(--surface)]'
-            }`}
-          >
-            {view.label}
-          </button>
-        ))}
-      </div>
-
       <div className="planner-drawer-controls" aria-label="כלי תכנון">
         <button
           ref={repositoryToggleRef}
@@ -216,8 +162,7 @@ export default function UnifiedPlannerWorkspace({
       >
         <div
           id="workspace-panel-journey"
-          role="tabpanel"
-          aria-labelledby={`workspace-tab-${activeView === 'agent' ? 'agent' : 'board'}`}
+          role="region"
           data-mobile-surface={activeView}
           data-board-surface="persistent-drop-target"
           data-board-layout="stable"
@@ -252,8 +197,7 @@ export default function UnifiedPlannerWorkspace({
         </div>
           <aside
           id="workspace-panel-repository"
-          role="tabpanel"
-          aria-labelledby="workspace-tab-repository"
+          aria-label="מאגר קורסים"
             data-open={repositoryOpen}
             data-drag-pass-through={activeDrag ? 'true' : 'false'}
             aria-hidden={!repositoryOpen}

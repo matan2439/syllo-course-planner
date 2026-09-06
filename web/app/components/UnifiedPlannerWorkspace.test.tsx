@@ -35,6 +35,17 @@ const repoWithCourse: RepositoryVM = { totalCourses: 1, categories: [{
 }] }
 
 describe('UnifiedPlannerWorkspace', () => {
+  test('has a single opening control per drawer and returns focus on Escape', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    expect(screen.queryByRole('tab', { name: 'עוזר אקדמי' })).toBeNull()
+    const toggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
+  })
+
   test('renders one Agent and one repository in one iframe-free RTL workspace', () => {
     const { container } = render(
       <UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />,
@@ -48,30 +59,22 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('iframe')).not.toBeInTheDocument()
   })
 
-  test('offers three keyboard-accessible mobile views without duplicating journey state', () => {
+  test('switches drawers without duplicating journey state or hiding the board region', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
 
-    const boardTab = screen.getByRole('tab', { name: 'לוח סמסטרים' })
-    const repoTab = screen.getByRole('tab', { name: 'מאגר קורסים' })
-    const agentTab = screen.getByRole('tab', { name: 'עוזר אקדמי' })
-    expect(boardTab).toHaveAttribute('aria-selected', 'true')
-
-    fireEvent.click(repoTab)
-    expect(repoTab).toHaveAttribute('aria-selected', 'true')
-    expect(boardTab).toHaveAttribute('aria-selected', 'false')
+    const repoToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    fireEvent.click(repoToggle)
+    expect(repoToggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByTestId('agent-journey')).toBeInTheDocument()
     expect(screen.getByTestId('course-repository')).toBeInTheDocument()
     expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
 
-    fireEvent.click(agentTab)
-    expect(agentTab).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(agentToggle)
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
 
-    fireEvent.keyDown(agentTab, { key: 'End' })
-    expect(agentTab).toHaveFocus()
-    fireEvent.keyDown(agentTab, { key: 'Home' })
-    expect(boardTab).toHaveFocus()
-    expect(boardTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'לוח סמסטרים פעיל' })).toBeVisible()
   })
 
   test('marks the desktop repository rail and shared journey surfaces structurally', () => {

@@ -12,6 +12,19 @@ const requestContext = {
   preferenceDigest: 'pref_1',
 }
 
+test('an edited academic context retires an old Build offer without losing the transcript', async () => {
+  let finish!: (response: ConversationResponse) => void
+  const send = () => new Promise<ConversationResponse>((resolve) => { finish = resolve })
+  const { rerender } = render(<AcademicAgentConversation {...requestContext} localContextVersion={0} sendConversationFn={send} />)
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'תכנן לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  rerender(<AcademicAgentConversation {...requestContext} localContextVersion={1} sendConversationFn={send} />)
+  finish({ outcome: 'conversation', message_he: 'אפשר לבנות', next_action: 'offer_build', events: [] })
+  await screen.findByText('אפשר לבנות')
+  expect(screen.queryByRole('button', { name: 'בנה חלופות' })).toBeNull()
+  expect(screen.getByText('תכנן לי')).toBeInTheDocument()
+})
+
 test('answers a course clarification by selecting Hebrew names without sending until confirmation', async () => {
   const sendConversation = jest.fn()
     .mockResolvedValueOnce({
@@ -42,6 +55,51 @@ test('answers a course clarification by selecting Hebrew names without sending u
     transcript: expect.arrayContaining([{ role: 'user', text: 'הקורסים שהשלמתי: תכן מכני (1), מכניקת הזורמים (1)' }]),
   }))
 });
+
+test('reviews all-except against an explicit course scope before sending completion claims', async () => {
+  const send = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={send}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)', '0542-2500': 'מכניקת הזורמים (1)', '9999-9999': 'קורס בחירה נוסף' }}
+    courseScopes={[{ id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: ['0542-2400', '0542-2500'] }]} />)
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'כל הקורסים חוץ מתכן מכני' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'אישור הרשימה ושליחה לעוזר' })).toBeDisabled()
+  fireEvent.change(screen.getByRole('combobox', { name: 'לאיזו קבוצת קורסים התכוונת?' }), { target: { value: 'board' } })
+  expect(screen.getByRole('list', { name: 'הרשימה שתישלח לעוזר' })).toHaveTextContent('מכניקת הזורמים (1)')
+  expect(screen.getByRole('list', { name: 'הרשימה שתישלח לעוזר' })).not.toHaveTextContent('קורס בחירה נוסף')
+  fireEvent.click(screen.getByRole('button', { name: 'אישור הרשימה ושליחה לעוזר' }))
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+  expect(send.mock.calls[1][0].clarification_answers).toEqual([{ question_id: 'completed_courses', value: ['0542-2500'] }])
+})
+
+test('partial course names are reviewed and ambiguous names require a choice', async () => {
+  const send = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={send}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)', '0542-2401': 'תכן מכני (2)' }} />)
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'השלמתי תכן מכני' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  expect(send).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'אישור הרשימה ושליחה לעוזר' })).toBeDisabled()
+  fireEvent.change(screen.getByRole('combobox', { name: /איזה קורס הוא.*תכן מכני/ }), { target: { value: '0542-2401' } })
+  fireEvent.click(screen.getByRole('button', { name: 'אישור הרשימה ושליחה לעוזר' }))
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+  expect(send.mock.calls[1][0].clarification_answers).toEqual([{ question_id: 'completed_courses', value: ['0542-2401'] }])
+})
 
 test.each(['לא יודע', 'אין לי מושג', 'לא השלמתי 0542-2400'])('does not turn uncertain or negative free text into course claims: %s', async (answer) => {
   const sendConversation = jest.fn().mockResolvedValue({

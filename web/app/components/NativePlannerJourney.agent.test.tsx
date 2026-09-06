@@ -101,6 +101,67 @@ async function askAgentToBuild() {
 }
 
 describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
+  test('refreshing an accepted chat answer also refreshes the completed-course panel', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    let stored = { academicStatusDigest: 'as_old', preferenceDigest: 'pref_old', personalStatus: {} as unknown, preferences: {} }
+    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+      planningContextFn={async () => stored}
+      sendConversationFn={async () => {
+        stored = { ...stored, academicStatusDigest: 'as_new', personalStatus: {
+          completed: [{ course_id: '0509-1510' }], completed_knowledge: { status: 'known' },
+        } }
+        return { outcome: 'conversation', next_action: 'ask', message_he: 'שמרתי את הקורסים', events: [],
+          context_update: { academic_status_digest: 'as_new', preference_digest: 'pref_old' } }
+      }} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'עדכן את הרשימה' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText(/אושר בטיוטה: 1 קורסים/)
+  })
+
+  test('manual moves reuse saved academic context instead of overwriting answers from chat', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const establish = jest.fn(async () => ({ academicStatusDigest: 'overwritten' }))
+    const edit = jest.fn(async () => ({ ok: false as const, code: 'PLAN_INVALID', messageHe: 'השרת דחה את ההעברה' }))
+    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+      getBoardFn={async () => boardResponseToModel({ ...BOARD, semesters: [
+        { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }] },
+        BOARD.semesters[1],
+      ] })}
+      planningContextFn={async () => ({ academicStatusDigest: 'as_chat', preferenceDigest: 'pref_chat',
+        personalStatus: { completed: [], currently_taking: [{ course_id: 'Y-1' }] }, preferences: { max_weekly_hours: 18 } })}
+      establishPlanningContextFn={establish} editBoardFn={edit} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('אפשרויות העברה עבור קורס בסיס X'))
+    fireEvent.click(screen.getByRole('button', { name: 'העבר קורס בסיס X אל שנה ג׳ — סמסטר ב׳' }))
+    await screen.findByText('השרת דחה את ההעברה')
+    expect(establish).not.toHaveBeenCalled()
+    expect(edit).toHaveBeenCalledWith(expect.objectContaining({ academic_status_digest: 'as_chat', operation: 'move_course' }))
+    expect(within(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })).getByText('קורס בסיס X')).toBeInTheDocument()
+  })
+
+  test('sends confirmed panel completion with the next chat turn, only until accepted', async () => {
+    const send = jest.fn().mockResolvedValue(offerBuildResponse())
+    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: send })
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })).getByRole('button', { name: /^השלמתי$/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
+    expect(send).not.toHaveBeenCalled()
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'מילאתי את הקורסים שלי, נמשיך' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByRole('button', { name: 'בנה חלופות' })
+    expect(send.mock.calls[0][0].clarification_answers).toEqual([
+      { question_id: 'completed_courses', value: ['0509-1510'] },
+    ])
+    fireEvent.change(composer, { target: { value: 'חשוב לי שבוע קל' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+    expect(send.mock.calls[1][0]).not.toHaveProperty('clarification_answers')
+  })
+
   test('course clarification includes early-year course names alongside the active board catalog', async () => {
     const sendConversation = jest.fn(async () => ({
       outcome: 'clarification_required', message_he: 'אילו קורסים כבר השלמת?', next_action: 'ask',

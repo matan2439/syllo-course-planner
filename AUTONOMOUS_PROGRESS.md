@@ -8860,3 +8860,32 @@ board loaded and the agent drawer opens with its conversation input. The new
 question controls were exercised in the local browser fixture and regressions
 above, not through a live provider call. No Production, aliases, domains,
 environment variables, catalog/data or remote database state were changed.
+
+## 2026-09-06 — completion context, reviewed free text and mandatory moves
+
+Confirmed completed-course panel edits now travel with the next conversation
+request exactly once; accepted chat context refreshes the panel. Manual edits use
+the saved academic digest instead of reconstructing and erasing chat history.
+Local context edits retire stale follow-up/Build controls and in-flight proposals.
+Partial course names and "all courses except" answers enter an inline review:
+ambiguous names require selection, complements require an explicit bounded scope,
+and no academic claim is sent before the user confirms the resulting named list.
+Mandatory courses may move to known offered semesters through the existing server
+validator, but may not be removed. Duplicate drawer tabs were removed; one toggle
+per drawer, close/Escape and focus return remain.
+
+Each regression was observed RED before implementation. GREEN: 109 tests across
+six web suites and 41 tests across five API suites, sequentially; web typecheck
+and release build passed. Existing journey act() warnings remain. A temporary
+local route exercised real review controls, confirmation and keyboard mandatory
+movement in the browser without network/provider calls; it was removed before
+the release build. No protected files, source catalogs or remote data changed.
+
+New user priority (bidding in two days): real weekly group scheduling alongside
+the degree board, with conflict checking and timetable-aware assistant support.
+Public read-only Bidit research found its chosen-courses-info endpoint returning
+2026/27 groups and meeting times for TAU course 05422400. This is not official
+academic authority: provenance, semester/year validation and missing-data warnings
+are required. No private database/account endpoints were accessed. The weekly
+feature is not implemented yet; this priority supersedes the older ordered beta
+backlog. User course list and exact target terms were requested asynchronously.

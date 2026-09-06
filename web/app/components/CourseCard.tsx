@@ -32,7 +32,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   const availableMoveDestinations = offeredSemesters === undefined
     ? []
     : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
-  const movable = course.type !== 'mandatory' && Boolean(onMove) &&
+  const movable = Boolean(onMove) &&
     Boolean(availableMoveDestinations?.length) && !mutationPending
   const allowedSemesterIds = availableMoveDestinations?.map(({ semesterId }) => semesterId) ?? []
 
@@ -59,7 +59,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         setDragging(true)
         nativeDragStarted.current = true
         event.dataTransfer.effectAllowed = 'move'
-        writeBoardDrag(event.dataTransfer, course.id, course.offeredSemesters)
+        writeBoardDrag(event.dataTransfer, course.id, allowedSemesterIds)
         announceDragPreview()
       }}
       onDragEnd={() => {
@@ -139,7 +139,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           הסר מהלוח
         </button>
       )}
-      {course.type !== 'mandatory' && onMove && availableMoveDestinations && availableMoveDestinations.length > 0 && (
+      {onMove && availableMoveDestinations && availableMoveDestinations.length > 0 && (
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
             אפשרויות העברה עבור {course.name}

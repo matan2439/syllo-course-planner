@@ -335,13 +335,29 @@ export default function NativePlannerJourney({
   )
   const [loadedAcademicContext, setLoadedAcademicContext] = useState<LoadedPlanningContext | null>(null)
   const [statusVersion, setStatusVersion] = useState(0)
+  const acceptedStatusVersionRef = useRef(0)
+  const statusVersionRef = useRef(0)
   const updateAcademicStatus = useCallback((next: AcademicStatusDraft) => {
     setAcademicStatus(next)
+    statusVersionRef.current += 1
     setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
   }, [])
   const updatePreferenceVersion = useCallback(() => {
     setPreferenceVersion((v) => v + 1) // preference edits invalidate old proposals
   }, [])
+  const sendConversationWithPanelStatus: typeof defaultSendConversation = async (request) => {
+    const panelChanged = statusVersion > acceptedStatusVersionRef.current && academicStatus.confirmed
+    const answers = new Map((request.clarification_answers ?? []).map((answer) => [answer.question_id, answer]))
+    if (panelChanged && !answers.has('completed_courses')) {
+      answers.set('completed_courses', { question_id: 'completed_courses', value: completedCourseIdsOf(academicStatus) })
+    }
+    const response = await sendConversationFn({
+      ...request,
+      ...(answers.size ? { clarification_answers: [...answers.values()] } : {}),
+    })
+    if (panelChanged && response.outcome !== 'assistant_unavailable') acceptedStatusVersionRef.current = statusVersion
+    return response
+  }
   useEffect(() => {
     if (!useAcademicDecisionAgent) return
     let live = true
@@ -505,7 +521,12 @@ export default function NativePlannerJourney({
   const refreshAcademicContext = useCallback(() => {
     if (!useAcademicDecisionAgent) return
     planningContextFn(programId).then((stored) => {
-      if (stored) setLoadedAcademicContext(stored)
+      if (stored) {
+        setLoadedAcademicContext(stored)
+        if (statusVersionRef.current === acceptedStatusVersionRef.current) {
+          setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+        }
+      }
     }).catch((error) => {
       console.error('[NativePlannerJourney] academic context refresh failed:', error)
     })
@@ -786,7 +807,7 @@ export default function NativePlannerJourney({
     setManualEditError(null)
     let result: ManualBoardEditResult
     try {
-      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
       if (!academicStatusDigest) {
         const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
         const synced = await establishPlanningContextFn({
@@ -830,7 +851,7 @@ export default function NativePlannerJourney({
     setManualEditPhase('saving')
     setManualEditError(null)
     try {
-      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
       if (!academicStatusDigest) {
         const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
         academicStatusDigest = (await establishPlanningContextFn({
@@ -869,7 +890,7 @@ export default function NativePlannerJourney({
     setManualEditPhase('saving')
     setManualEditError(null)
     try {
-      let academicStatusDigest = proposal?.proposal?.academicStatusDigest
+      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
       if (!academicStatusDigest) {
         const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
         academicStatusDigest = (await establishPlanningContextFn({
@@ -1112,7 +1133,12 @@ export default function NativePlannerJourney({
             preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
             preferenceProfile={convProfileRef.current}
             conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
-            sendConversationFn={sendConversationFn}
+            sendConversationFn={sendConversationWithPanelStatus}
+            localContextVersion={statusVersion + preferenceVersion}
+            courseScopes={[
+              { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
+              { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },
+            ].filter((scope) => scope.courseIds.length > 0)}
             onAcademicContextUpdated={handleAcademicContextUpdated}
             onProposalReady={acceptConversationProposal}
             courseNameById={Object.fromEntries([
