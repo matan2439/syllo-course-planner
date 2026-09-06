@@ -334,6 +334,7 @@ export default function NativePlannerJourney({
     useAcademicDecisionAgent ? 'loading' : 'ready',
   )
   const [loadedAcademicContext, setLoadedAcademicContext] = useState<LoadedPlanningContext | null>(null)
+  const academicContextReadVersionRef = useRef(0)
   const [statusVersion, setStatusVersion] = useState(0)
   const acceptedStatusVersionRef = useRef(0)
   const statusVersionRef = useRef(0)
@@ -366,7 +367,9 @@ export default function NativePlannerJourney({
       (stored) => {
         if (!live) return
         if (stored) {
-          setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+          if (statusVersionRef.current === acceptedStatusVersionRef.current) {
+            setAcademicStatus(academicStatusDraftFromPersonalStatus(stored.personalStatus, programId))
+          }
           setLoadedAcademicContext(stored)
         }
         setAcademicContextPhase('ready')
@@ -520,7 +523,10 @@ export default function NativePlannerJourney({
 
   const refreshAcademicContext = useCallback(() => {
     if (!useAcademicDecisionAgent) return
+    const readVersion = ++academicContextReadVersionRef.current
     planningContextFn(programId).then((stored) => {
+      // A slower read from an earlier turn must not rewind accepted answers or digests.
+      if (readVersion !== academicContextReadVersionRef.current) return
       if (stored) {
         setLoadedAcademicContext(stored)
         if (statusVersionRef.current === acceptedStatusVersionRef.current) {

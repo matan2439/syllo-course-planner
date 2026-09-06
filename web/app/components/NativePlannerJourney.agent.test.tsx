@@ -5,7 +5,7 @@
  * enforces profile-version staleness at the real Apply handler. Flag-off is
  * unchanged.
  */
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../shared/planner/api-client'
@@ -101,6 +101,79 @@ async function askAgentToBuild() {
 }
 
 describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
+  test('initial context loading preserves a completed-course edit made while it was pending', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const stored = { academicStatusDigest: 'as_saved', preferenceDigest: 'pref_saved', personalStatus: {
+      completed: [], completed_knowledge: { status: 'known' },
+    }, preferences: {} }
+    let finishInitialRead!: (value: typeof stored) => void
+    const pendingRead = new Promise<typeof stored>((resolve) => { finishInitialRead = resolve })
+    const send = jest.fn().mockResolvedValue({ outcome: 'conversation', message_he: 'קיבלתי את הבחירה', events: [] })
+    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+      planningContextFn={() => pendingRead} sendConversationFn={send} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })).getByRole('button', { name: /^השלמתי$/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
+    expect(screen.getByText(/אושר בטיוטה: 1 קורסים/)).toBeInTheDocument()
+
+    await act(async () => { finishInitialRead(stored); await pendingRead })
+
+    expect(screen.getByText(/אושר בטיוטה: 1 קורסים/)).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'נמשיך עם הבחירה שלי' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('קיבלתי את הבחירה')
+    expect(send.mock.calls[0][0]).toEqual(expect.objectContaining({
+      academic_status_digest: 'as_saved',
+      clarification_answers: [{ question_id: 'completed_courses', value: ['0509-1510'] }],
+    }))
+  })
+
+  test('a delayed earlier context refresh cannot replace a newer accepted chat answer', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const oldContext = { academicStatusDigest: 'as_one', preferenceDigest: 'pref_one', personalStatus: {
+      completed: [{ course_id: '0509-1510' }], completed_knowledge: { status: 'known' },
+    }, preferences: {} }
+    const newContext = { ...oldContext, academicStatusDigest: 'as_two', preferenceDigest: 'pref_two', personalStatus: {
+      completed: [], completed_knowledge: { status: 'known' },
+    } }
+    let finishEarlierRead!: (value: typeof oldContext) => void
+    const delayedRead = new Promise<typeof oldContext>((resolve) => { finishEarlierRead = resolve })
+    const context = jest.fn()
+      .mockResolvedValueOnce({ ...oldContext, academicStatusDigest: 'as_initial', personalStatus: {} })
+      .mockReturnValueOnce(delayedRead)
+      .mockResolvedValue(newContext)
+    const send = jest.fn()
+      .mockResolvedValueOnce({ outcome: 'conversation', message_he: 'העדכון הראשון התקבל', events: [],
+        context_update: { academic_status_digest: 'as_one', preference_digest: 'pref_one' } })
+      .mockResolvedValueOnce({ outcome: 'conversation', message_he: 'התיקון שלך התקבל', events: [],
+        context_update: { academic_status_digest: 'as_two', preference_digest: 'pref_two' } })
+      .mockResolvedValue({ outcome: 'conversation', message_he: 'ממשיך מהמידע המעודכן', events: [] })
+    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+      planningContextFn={context} sendConversationFn={send} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'השלמתי גרפיקה הנדסית' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('העדכון הראשון התקבל')
+    await waitFor(() => expect(context).toHaveBeenCalledTimes(2))
+    fireEvent.change(composer, { target: { value: 'טעיתי, עדיין לא השלמתי אף קורס' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText(/אושר בטיוטה: 0 קורסים/)
+
+    await act(async () => { finishEarlierRead(oldContext); await delayedRead })
+
+    expect(screen.getByText(/אושר בטיוטה: 0 קורסים/)).toBeInTheDocument()
+    fireEvent.change(composer, { target: { value: 'נמשיך לתכנון' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('ממשיך מהמידע המעודכן')
+    expect(send.mock.calls[2][0]).toEqual(expect.objectContaining({
+      academic_status_digest: 'as_two', preference_digest: 'pref_two',
+    }))
+  })
+
   test('refreshing an accepted chat answer also refreshes the completed-course panel', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     let stored = { academicStatusDigest: 'as_old', preferenceDigest: 'pref_old', personalStatus: {} as unknown, preferences: {} }

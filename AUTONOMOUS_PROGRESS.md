@@ -8909,3 +8909,25 @@ The proposed new subsystem (parallel weekly board, linked group choices, conflic
 and missing-data flags, existing agent on the same context) was presented to the
 user for approval under the brainstorming skill. Awaiting that approval and
 target course/term details; no weekly UI, optimizer or agent tool is implemented.
+
+## 2026-09-06 — prevent asynchronous academic context rollback
+
+Continued the already-approved completed-course/chat synchronization fixes while
+the new weekly-timetable design awaits user approval. Two independently reproduced
+RED regressions: (1) an older GET finishing after a newer conversation refresh
+replaced the accepted completed-course list and both context digests; (2) initial
+context loading erased a confirmed local panel edit made while that GET was pending.
+The minimal fix uses a latest-read guard for conversation refreshes and the existing
+dirty-status guard during initial hydration. No new UI or academic rules were added.
+The tests render the real journey/conversation and assert the visible completion
+summary plus the next outgoing request, with only external transports controlled.
+
+GREEN: 111 tests in six web suites, then 41 tests in five API suites; web typecheck
+and release build passed sequentially. Existing act() warnings in the older journey
+tests remain; both new regression tests are clean. No live provider calls or remote
+database writes. The unrelated modified/untracked files remain untouched.
+
+Updated the existing heartbeat (same id, thread, ACTIVE status and 15-minute cadence)
+to reflect the urgent Bidit timetable priority and pending design decision, continue
+already-authorized bug fixes meanwhile, and avoid repeated unchanged approval
+notifications. The weekly timetable and timetable-aware agent are still not built.
