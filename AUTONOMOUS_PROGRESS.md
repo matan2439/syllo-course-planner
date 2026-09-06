@@ -8931,3 +8931,21 @@ Updated the existing heartbeat (same id, thread, ACTIVE status and 15-minute cad
 to reflect the urgent Bidit timetable priority and pending design decision, continue
 already-authorized bug fixes meanwhile, and avoid repeated unchanged approval
 notifications. The weekly timetable and timetable-aware agent are still not built.
+
+Preview acceptance for code commit `855570b`: Vercel reports READY for deployment
+`dpl_EZxkpkKSfGAcmm2PDXfvCwoGhFaW` at
+https://tau-course-planner-9gkmlam6r-matanyaron-1633s-projects.vercel.app/planner
+The deployment used the exact committed archive, excluding unrelated working files.
+Independent read-only review found no actionable defects in the scoped async-context
+fix. Authenticated HTTP returned 200; an authenticated clean-browser check verified
+the loaded semester board, single agent toggle, opening, Escape closing and focus
+return, with no page errors. All non-GET/HEAD browser requests were blocked, including
+the planning-context bootstrap POST: this was a read-only UI smoke, not live chat,
+durable-write or provider acceptance. Deployment Protection remains enabled; access
+used the existing Vercel credentials from the isolated snapshot directory. No
+Production, aliases, domains, environment settings or remote database state changed.
+
+The smoke also found an existing accessibility follow-up: the agent toggle's
+`aria-controls="workspace-agent-drawer"` names an id absent from the rendered aside.
+The role/name-based open/close check passes; repair this association with a focused
+regression in the next approved drawer slice. Do not treat it as a timetable blocker.
