@@ -8889,3 +8889,23 @@ academic authority: provenance, semester/year validation and missing-data warnin
 are required. No private database/account endpoints were accessed. The weekly
 feature is not implemented yet; this priority supersedes the older ordered beta
 backlog. User course list and exact target terms were requested asynchronously.
+
+Preview acceptance for code commit `a677d33`: deployment
+`dpl_7MtJHoSLMtR1GGfJqKp6zhU6vbWq` is READY at
+https://tau-course-planner-3uwr69it6-matanyaron-1633s-projects.vercel.app/planner
+Uploaded from an exact `git archive a677d33` snapshot, without local/untracked
+files. The browser was moved from the stopped local fixture to this Preview;
+verified the loaded board, single drawer opener, conversation input and Escape
+close/focus return. No live model calls or board writes were performed in Preview.
+Mandatory movement is enabled only with known offering destinations; missing
+offering facts still fail closed. Production and protected state are unchanged.
+
+Weekly timetable discovery also verified public Bidit semester-2 data for
+05424320 (2026): lecture group 01 and tutorial 02 share havura A. Its public UI
+uses kind "ראשית"/"משנית" and havura to link group options. Empty semester-1
+results must not be treated as a no-conflict schedule. A direct official TAU
+course URL returned a no-query-results shell, not corroborating timetable facts.
+The proposed new subsystem (parallel weekly board, linked group choices, conflict
+and missing-data flags, existing agent on the same context) was presented to the
+user for approval under the brainstorming skill. Awaiting that approval and
+target course/term details; no weekly UI, optimizer or agent tool is implemented.
