@@ -9028,5 +9028,16 @@ review remains unavailable following the previously reported reviewer usage limi
 
 Only the workspace, its accessibility tests and this progress record are included.
 No source catalogs, remote data, provider calls or Production settings changed.
-The immutable Preview and read-only desktop/mobile browser acceptance follow below
-after deploying the exact verified commit. The weekly timetable scope is unchanged.
+The weekly timetable scope is unchanged.
+
+Exact archive commit `66b1f67cb01810c3435f8a9f73c53525590b2a6d` is deployed READY
+as `dpl_Hy9NQ1YfuiSUwKpvqiziE7TkdjNy` (47-second remote build) at
+https://tau-course-planner-4bg955h5l-matanyaron-1633s-projects.vercel.app/planner
+Authenticated Chrome acceptance passed at 1440x1000 and 390x844: Escape from the
+repository closes it while retaining the agent, and Escape from the agent retains
+the repository. Desktop also verified focusing the repository after opening the
+agent last. Matching toggle focus, query retention, closed-control Tab exclusion
+and board visibility all passed with HTTP 200 and no page errors. Requests other
+than GET/HEAD were blocked, including context bootstrap; no live chat/provider or
+durable-write acceptance is claimed. Deployment Protection and Production remain
+unchanged. Code and this acceptance record are pushed only to the approved branch.
