@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import * as plannerApi from '../../../shared/planner/api-client'
 import { boardResponseToModel } from '../../../shared/planner/adapters'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
@@ -20,6 +20,26 @@ beforeEach(() => {
 })
 
 afterEach(() => jest.restoreAllMocks())
+
+test('Escape closes the repository without also invoking the native search clear action', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
+    repo={{ categories: [], totalCourses: 0 }} />)
+  await screen.findByText('תכן מכני (1)')
+  const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  fireEvent.click(toggle)
+  const search = within(screen.getByRole('complementary', { name: 'מאגר קורסים' })).getByRole('searchbox')
+  fireEvent.change(search, { target: { value: 'תכן' } })
+
+  // JSDOM does not run the native <input type="search"> Escape default action.
+  // The event must be cancelled, or Chrome clears the query while closing the rail.
+  const browserDefaultAllowed = fireEvent.keyDown(search, { key: 'Escape' })
+
+  expect(browserDefaultAllowed).toBe(false)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(toggle).toHaveFocus()
+  fireEvent.click(toggle)
+  expect(search).toHaveValue('תכן')
+})
 
 test('the agent toggle identifies its actual drawer throughout opening and closing', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"

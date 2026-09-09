@@ -74,8 +74,10 @@ export default function UnifiedPlannerWorkspace({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (agentOpen) {
+        event.preventDefault()
         closeAgent()
       } else if (repositoryOpen) {
+        event.preventDefault()
         closeRepository()
       }
     }

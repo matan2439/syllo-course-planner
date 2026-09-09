@@ -8966,4 +8966,31 @@ then web typecheck and release build, sequentially. The older journey act() warn
 remain; the new integration suite is clean. Only server I/O is mocked in the new
 tests. Independent read-only review found no actionable defects in the scoped change.
 No source data, remote database, Production or provider operations were performed.
-Immutable Preview acceptance will be recorded below after deployment.
+Code commit `f0f9c28` was deployed from its exact archive to READY deployment
+`dpl_2YbsM4bs2BNKaWePNT4NUDpPAFNq` at
+https://tau-course-planner-7z3u3vdpn-matanyaron-1633s-projects.vercel.app/planner
+Read-only browser acceptance found a follow-up: Escape closed the repository but
+also triggered Chrome's native search-input clear action, losing the query.
+
+## 2026-09-09 — preserve repository search when closing a drawer with Escape
+
+Resumed the unfinished follow-up without changing the pending weekly-timetable
+scope. The focused regression was observed RED (the keydown default was allowed),
+then GREEN after cancelling the default action only when Escape closes an open
+drawer. Other keys and Escape with no open drawer are unchanged. The test uses
+the real workspace and checks cancellation, focus return and the retained query;
+JSDOM cannot execute Chrome's native search-clear action, so remote Chrome
+acceptance is also required before claiming this browser defect resolved.
+
+Fresh sequential verification: 124 tests in seven relevant web suites passed,
+then web typecheck and release build passed. Existing act() warnings in older
+journey tests remain; the new integration suite is clean. Main-agent review of
+the two-line implementation and regression found no additional defect in scope.
+The attempted independent follow-up reviewer was unavailable due to its usage
+limit; this follow-up has not received an independent review. The earlier drawer
+association/inertness change did receive a completed independent review.
+
+No live provider calls or remote writes were performed. Unrelated modified and
+untracked files remain excluded. The exact follow-up snapshot's immutable Preview
+URL and browser acceptance will be recorded after deployment. Weekly timetable
+UI and timetable-aware agent tools are not implemented by this drawer slice.
