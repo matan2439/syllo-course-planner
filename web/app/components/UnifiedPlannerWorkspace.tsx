@@ -35,6 +35,7 @@ export default function UnifiedPlannerWorkspace({
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
   const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
+  const repositoryDrawerRef = useRef<HTMLElement | null>(null)
   const agentToggleRef = useRef<HTMLButtonElement | null>(null)
   const repositoryCloseRef = useRef<HTMLButtonElement | null>(null)
   const repositoryWasOpen = useRef(false)
@@ -73,12 +74,14 @@ export default function UnifiedPlannerWorkspace({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (agentOpen) {
-        event.preventDefault()
-        closeAgent()
-      } else if (repositoryOpen) {
+      const fromRepository = event.target instanceof Node && repositoryDrawerRef.current?.contains(event.target)
+      // Both drawers can stay open; Escape belongs to the drawer receiving it.
+      if (repositoryOpen && (!agentOpen || fromRepository)) {
         event.preventDefault()
         closeRepository()
+      } else if (agentOpen) {
+        event.preventDefault()
+        closeAgent()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -198,6 +201,7 @@ export default function UnifiedPlannerWorkspace({
           />
         </div>
           <aside
+          ref={repositoryDrawerRef}
           id="workspace-panel-repository"
           aria-label="מאגר קורסים"
             data-open={repositoryOpen}

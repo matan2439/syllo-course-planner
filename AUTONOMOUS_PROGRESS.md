@@ -9007,3 +9007,26 @@ POST. The composer is consequently disabled in this read-only smoke: live chat,
 conversation draft retention and durable writes were NOT accepted by this check.
 Deployment Protection remains enabled. No Production promotion, alias/domain or
 environment-setting changes were made. Code commit pushed to the approved branch.
+
+## 2026-09-09 — Escape closes the drawer receiving keyboard input
+
+Inspection found the document Escape handler always prioritizing the agent whenever
+both drawers were open. Consequently Escape in repository search closed the agent
+and stole focus, leaving the intended repository drawer open. Added a real-workspace
+regression for both opening orders: both failed RED on the repository remaining
+expanded. A stable repository element ref now identifies the event's owning drawer;
+the single-open and outside-drawer fallback behavior is unchanged.
+
+GREEN: six focused integration tests, then 126 tests across seven relevant web
+suites, then typecheck and release build, all sequentially passing. The new tests
+also check that the other drawer stays open, focus returns to the matching toggle,
+the search survives reopening, and Escape in the agent still closes the agent.
+Existing act() warnings in older journey tests remain. Main-agent scoped review
+covered event ownership, stable ref lifecycle, default-action cancellation and
+single-drawer fallbacks; no additional defects found in this change. Independent
+review remains unavailable following the previously reported reviewer usage limit.
+
+Only the workspace, its accessibility tests and this progress record are included.
+No source catalogs, remote data, provider calls or Production settings changed.
+The immutable Preview and read-only desktop/mobile browser acceptance follow below
+after deploying the exact verified commit. The weekly timetable scope is unchanged.

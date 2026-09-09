@@ -21,6 +21,38 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks())
 
+test.each(['agent-first', 'repository-first'] as const)(
+  'Escape closes the focused repository, not the other open drawer (%s)',
+  async (openingOrder) => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
+      repo={{ categories: [], totalCourses: 0 }} />)
+    await screen.findByText('תכן מכני (1)')
+    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    const toggles = openingOrder === 'agent-first'
+      ? [agentToggle, repositoryToggle] : [repositoryToggle, agentToggle]
+    toggles.forEach((toggle) => fireEvent.click(toggle))
+    const search = within(screen.getByRole('complementary', { name: 'מאגר קורסים' })).getByRole('searchbox')
+    fireEvent.change(search, { target: { value: 'תכן' } })
+    search.focus()
+
+    fireEvent.keyDown(search, { key: 'Escape' })
+
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(repositoryToggle).toHaveFocus()
+    fireEvent.click(repositoryToggle)
+    expect(search).toHaveValue('תכן')
+
+    const agentClose = screen.getByRole('button', { name: 'סגור סרגל עוזר AI' })
+    agentClose.focus()
+    fireEvent.keyDown(agentClose, { key: 'Escape' })
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(agentToggle).toHaveFocus()
+  },
+)
+
 test('Escape closes the repository without also invoking the native search clear action', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
     repo={{ categories: [], totalCourses: 0 }} />)
