@@ -8991,6 +8991,19 @@ limit; this follow-up has not received an independent review. The earlier drawer
 association/inertness change did receive a completed independent review.
 
 No live provider calls or remote writes were performed. Unrelated modified and
-untracked files remain excluded. The exact follow-up snapshot's immutable Preview
-URL and browser acceptance will be recorded after deployment. Weekly timetable
-UI and timetable-aware agent tools are not implemented by this drawer slice.
+untracked files remain excluded. Weekly timetable UI and timetable-aware agent
+tools are not implemented by this drawer slice.
+
+Preview acceptance for code commit `0c899da4ffc308188e013e1dac5c1c867da90a2d`:
+exact git archive snapshot deployed as `dpl_C7k85jx3YhjeCgMrn3iBcCQszqCh`, READY
+(remote build 50 seconds), at
+https://tau-course-planner-indy0g093-matanyaron-1633s-projects.vercel.app/planner
+Authenticated clean Chrome contexts at 1440x1000 and 390x844 both returned HTTP
+200 and verified: correct agent toggle association, closed drawer focus rejection,
+Tab skipping closed controls, opening/closing focus behavior, retained Hebrew
+repository search after Escape/reopen, visible semester board and no page errors.
+All non-GET/HEAD requests were blocked, including the planning-context bootstrap
+POST. The composer is consequently disabled in this read-only smoke: live chat,
+conversation draft retention and durable writes were NOT accepted by this check.
+Deployment Protection remains enabled. No Production promotion, alias/domain or
+environment-setting changes were made. Code commit pushed to the approved branch.
