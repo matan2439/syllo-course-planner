@@ -47,6 +47,31 @@ const boardSemesterSchema = z
   })
   .passthrough();
 
+const boardRequirementCategoryResultSchema = z
+  .object({
+    category_id: z.string().min(1),
+    name_he: z.string(),
+    min_courses: z.number(),
+    selected_count: z.number(),
+    satisfied: z.boolean(),
+    missing_count: z.number(),
+  })
+  .passthrough();
+
+const boardRequirementsValidationSchema = z
+  .object({
+    valid: z.boolean(),
+    total_required_hours: z.number(),
+    planned_hours: z.number(),
+    remaining_hours: z.number(),
+    core_courses_total_min: z.number(),
+    core_courses_selected: z.number(),
+    core_courses_satisfied: z.boolean(),
+    category_results: z.array(boardRequirementCategoryResultSchema).optional(),
+    warnings: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
 export const boardResponseSchema = z
   .object({
     metadata: z
@@ -55,6 +80,9 @@ export const boardResponseSchema = z
         // The elective universe the planner draws from, alongside placed courses.
         // Optional: some program payloads may omit it (catalog is then placed-only).
         program_repository_courses: z.array(boardCourseSchema).optional(),
+        // Degree-progress snapshot (hours + per-category counts), already computed
+        // data-side. Pure passthrough: never recomputed client-side.
+        program_requirements_validation: boardRequirementsValidationSchema.optional(),
       })
       .passthrough(),
     semesters: z.array(boardSemesterSchema),

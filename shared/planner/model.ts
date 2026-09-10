@@ -99,6 +99,28 @@ export function isAnnualCourse(c: BoardCourseModel): boolean {
   return c.isAnnual === true || c.placementPolicy === 'annual';
 }
 
+export interface BoardRequirementCategoryModel {
+  categoryId: string;
+  nameHe: string;
+  minCourses: number;
+  selectedCount: number;
+  satisfied: boolean;
+  missingCount: number;
+}
+
+/** Pass-through of shipped numbers only — never recomputed client-side. */
+export interface BoardRequirementsModel {
+  valid: boolean;
+  totalRequiredHours: number;
+  plannedHours: number;
+  remainingHours: number;
+  coreCoursesTotalMin: number;
+  coreCoursesSelected: number;
+  coreCoursesSatisfied: boolean;
+  categories: BoardRequirementCategoryModel[];
+  warnings: string[];
+}
+
 export interface BoardSemesterModel {
   semesterId: string;
   courses: BoardCourseModel[];
@@ -113,6 +135,8 @@ export interface BoardModel {
    * generated course ids; `semesters` remain PLACEMENTS, not the whole universe.
    */
   courseCatalog: Record<string, BoardCourseModel>;
+  /** Degree-progress snapshot as of this board load; absent if the source board carried none. Never recomputed client-side. */
+  requirementsValidation?: BoardRequirementsModel;
 }
 
 export interface PlanSemesterModel {

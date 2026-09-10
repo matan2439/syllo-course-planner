@@ -4,7 +4,7 @@
  */
 import { boardResponseSchema, generatePlanResponseSchema } from './wire';
 import { toHalfHours, catalogRevision, normalizeCourseId } from './model';
-import type { BoardModel, BoardCourseModel, GeneratedPlanModel } from './model';
+import type { BoardModel, BoardCourseModel, BoardRequirementsModel, GeneratedPlanModel } from './model';
 
 /** Raw course shape shared by placed courses and program_repository_courses. */
 type RawCourse = {
@@ -67,6 +67,29 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
   };
 }
 
+function requirementsToModel(
+  v: NonNullable<ReturnType<typeof boardResponseSchema.parse>['metadata']['program_requirements_validation']>,
+): BoardRequirementsModel {
+  return {
+    valid: v.valid,
+    totalRequiredHours: v.total_required_hours,
+    plannedHours: v.planned_hours,
+    remainingHours: v.remaining_hours,
+    coreCoursesTotalMin: v.core_courses_total_min,
+    coreCoursesSelected: v.core_courses_selected,
+    coreCoursesSatisfied: v.core_courses_satisfied,
+    categories: (v.category_results ?? []).map((c) => ({
+      categoryId: c.category_id,
+      nameHe: c.name_he,
+      minCourses: c.min_courses,
+      selectedCount: c.selected_count,
+      satisfied: c.satisfied,
+      missingCount: c.missing_count,
+    })),
+    warnings: v.warnings ?? [],
+  };
+}
+
 /** Parse + map a raw /api/board response into the canonical BoardModel + catalog. */
 export function boardResponseToModel(raw: unknown): BoardModel {
   const parsed = boardResponseSchema.parse(raw);
@@ -101,6 +124,9 @@ export function boardResponseToModel(raw: unknown): BoardModel {
     catalogRevision: catalogRevision(parsed.metadata.board_data_version),
     semesters,
     courseCatalog,
+    ...(parsed.metadata.program_requirements_validation
+      ? { requirementsValidation: requirementsToModel(parsed.metadata.program_requirements_validation) }
+      : {}),
   };
 }
 

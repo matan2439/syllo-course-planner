@@ -121,3 +121,49 @@ test('isAnnualCourse is true for an annual ELECTIVE course too (is_annual indepe
   expect(course.placementPolicy).toBe('elective')
   expect(isAnnualCourse(course)).toBe(true)
 })
+
+test('program_requirements_validation passes through to BoardModel.requirementsValidation', () => {
+  const board = {
+    metadata: {
+      board_data_version: 'rev-1',
+      program_requirements_validation: {
+        valid: false,
+        total_required_hours: 185,
+        planned_hours: 128.5,
+        remaining_hours: 56.5,
+        core_courses_total_min: 6,
+        core_courses_selected: 0,
+        core_courses_satisfied: false,
+        category_results: [
+          { category_id: 'fluids', name_he: 'זורמים', min_courses: 1, selected_count: 0, satisfied: false, missing_count: 1 },
+        ],
+        warnings: ['שעות חסרות: 56.5'],
+      },
+    },
+    semesters: [
+      { semester_id: 'year_3_semester_a', courses: [] },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const model = boardResponseToModel(board)
+  expect(model.requirementsValidation).toEqual({
+    valid: false,
+    totalRequiredHours: 185,
+    plannedHours: 128.5,
+    remainingHours: 56.5,
+    coreCoursesTotalMin: 6,
+    coreCoursesSelected: 0,
+    coreCoursesSatisfied: false,
+    categories: [
+      { categoryId: 'fluids', nameHe: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1 },
+    ],
+    warnings: ['שעות חסרות: 56.5'],
+  })
+})
+
+test('requirementsValidation is absent when the board carries no requirements block', () => {
+  const model = boardResponseToModel(BASE_BOARD)
+  expect(model.requirementsValidation).toBeUndefined()
+})
