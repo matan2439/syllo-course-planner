@@ -9041,3 +9041,29 @@ and board visibility all passed with HTTP 200 and no page errors. Requests other
 than GET/HEAD were blocked, including context bootstrap; no live chat/provider or
 durable-write acceptance is claimed. Deployment Protection and Production remain
 unchanged. Code and this acceptance record are pushed only to the approved branch.
+
+## 2026-09-10 — preserve workspace context when dismissing course details
+
+Continued the approved manual-planning accessibility fixes. Course-details Escape
+previously reached two document handlers, closing the repository as well as the
+dialog. Button/backdrop dismissal also lost focus to the document body. Three real
+workspace regressions were observed RED for these exact failures. Escape is now
+handled by the dialog before it reaches the workspace; closing restores the still-
+connected opener. The focus effect follows the course lifecycle rather than the
+parent's inline callback identity.
+
+Two further RED regressions showed Tab/Shift+Tab could leave the modal. The dialog
+now wraps its close-button/optional-syllabus-link boundaries, verified GREEN in
+both directions. No academic facts, board authority or conversation behavior changed.
+Scoped review covered propagation, focus restoration, effect cleanup and both
+repository consumers; no additional in-scope defect found. No independent reviewer
+run was claimed; the previously reported reviewer usage limitation is unchanged.
+
+Sequential verification: 132 tests in eight web suites, 12 existing course-details
+compatibility guards, typecheck and release build passed. Typecheck caught an
+unsupported test-query option; it was removed and all 132 web tests plus typecheck
+were rerun successfully before the release build. Older journey act() warnings
+remain; the new integration regressions are clean. No provider calls or remote
+writes. Only the details component, workspace regression tests and this record are
+included; protected/unrelated working changes remain untouched. Exact immutable
+Preview and read-only browser acceptance will be recorded after deployment.

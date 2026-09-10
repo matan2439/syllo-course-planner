@@ -21,6 +21,60 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks())
 
+const repositoryWithDetails = {
+  totalCourses: 1,
+  categories: [{ id: 'control', title: 'בקרה', courses: [{
+    id: '0542-4241', name: 'בקרה מודרנית', weeklyHours: 3, offered: ['A'],
+    difficulty: null, syllabusUrl: null,
+  }] }],
+}
+
+test.each([false, true])('course details wraps Tab inside the dialog (shift=%s)', async (shiftKey) => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
+  await screen.findByText('תכן מכני (1)')
+  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  fireEvent.click(screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' }))
+  const closeButtons = within(screen.getByRole('dialog', { name: 'פרטי קורס' }))
+    .getAllByRole('button', { name: 'סגור' })
+  const first = closeButtons[0]
+  const last = closeButtons[1]
+  const boundary = shiftKey ? first : last
+  boundary.focus()
+
+  const defaultAllowed = fireEvent.keyDown(boundary, { key: 'Tab', shiftKey })
+
+  expect(defaultAllowed).toBe(false)
+  expect(shiftKey ? last : first).toHaveFocus()
+})
+
+test.each(['Escape', 'close button', 'backdrop'] as const)(
+  'closing course details with %s preserves the open drawers and restores its trigger',
+  async (method) => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
+    await screen.findByText('תכן מכני (1)')
+    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    fireEvent.click(agentToggle)
+    fireEvent.click(repositoryToggle)
+    const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog', { name: 'פרטי קורס' })
+    const close = within(dialog).getAllByRole('button', { name: 'סגור' })[0]
+    expect(close).toHaveFocus()
+
+    if (method === 'Escape') fireEvent.keyDown(close, { key: 'Escape' })
+    else if (method === 'close button') fireEvent.click(close)
+    else fireEvent.click(dialog.parentElement!)
+
+    expect(screen.queryByRole('dialog', { name: 'פרטי קורס' })).toBeNull()
+    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toHaveFocus()
+    expect(screen.getByRole('region', { name: 'לוח סמסטרים פעיל' })).toBeInTheDocument()
+  },
+)
+
 test.each(['agent-first', 'repository-first'] as const)(
   'Escape closes the focused repository, not the other open drawer (%s)',
   async (openingOrder) => {

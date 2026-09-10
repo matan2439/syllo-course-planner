@@ -29,16 +29,15 @@ export default function CourseDetailsPanel({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  // Escape closes; move focus onto the close control when the dialog opens.
+  // Keep focus changes tied to the dialog lifecycle, not callback identities.
   useEffect(() => {
     if (!course) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
+    const trigger = document.activeElement
     closeRef.current?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [course, onClose])
+    return () => {
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus()
+    }
+  }, [course])
 
   if (!course) return null
 
@@ -54,6 +53,24 @@ export default function CourseDetailsPanel({
         aria-modal="true"
         aria-label="פרטי קורס"
         dir="rtl"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            onClose()
+            return
+          }
+          if (event.key !== 'Tab') return
+          // The dialog contains close buttons and an optional syllabus link.
+          const controls = event.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')
+          const first = controls[0]
+          const last = controls[controls.length - 1]
+          if (first && last && document.activeElement === (event.shiftKey ? first : last)) {
+            event.preventDefault()
+            const nextFocus = event.shiftKey ? last : first
+            nextFocus.focus()
+          }
+        }}
         className="course-detail-panel relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm shadow-[var(--shadow-premium)]"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
