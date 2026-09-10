@@ -9088,3 +9088,28 @@ review remains unavailable and is not claimed. This follow-up includes only the
 workspace handler, its regression and this record. No provider calls, remote data
 writes or Production changes. A new exact snapshot still requires remote Chrome
 acceptance before this slice is considered complete.
+
+### Follow-up — course details must escape the drawer's clipping context
+
+Code `8efe8c98588934e3a6060da0ff56b32da4f1ff97` deployed READY as
+`dpl_93TW871qHCfAATUttX5EcGZUH7Q6` (51-second remote build) at
+https://tau-course-planner-bcnuwq1ve-matanyaron-1633s-projects.vercel.app/planner
+Chrome verified the Escape correction and button dismissal, but full acceptance
+still failed on backdrop clicking: the scrolling/transformed repository clipped
+its fixed modal descendant. Measured desktop backdrop was only 382px wide in a
+1440px viewport; mobile backdrop started above its clipping ancestor. Screenshots
+confirmed the dialog and shading were constrained to the rail, with sticky toolbar
+controls above them. Diagnostic reruns used Escape instead of the failed backdrop
+click; their success is NOT evidence that backdrop dismissal worked.
+
+Added one focused workspace regression, observed RED because the modal was still
+inside the drawer. The details component now portals to the document body above
+the sticky toolbar, preserving the existing theme colors, RTL, animation, focus
+trap and restoration. The frontend-design skill guided a constrained placement
+fix, not a new visual design. No global drawer CSS or new dependencies were added.
+GREEN: 14 focused tests, then 134 tests in eight web suites, 12 compatibility
+guards, typecheck and release build, sequentially. Older journey act() warnings
+remain. Scoped main-agent review covered both repository consumers, SSR safety,
+theme inheritance, pointer layering and event/focus cleanup. No independent review
+is claimed. Remote acceptance will additionally check full-viewport backdrop
+geometry, actual click dismissal, both widths and both color schemes.

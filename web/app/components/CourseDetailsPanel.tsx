@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { CourseDetailsVM } from '../../lib/course-details'
 import { Badge } from './ui'
 
@@ -39,11 +40,12 @@ export default function CourseDetailsPanel({
     }
   }, [course])
 
-  if (!course) return null
+  if (!course || typeof document === 'undefined') return null
 
-  return (
+  // Escape transformed/scrolling drawers and stay above their sticky controls.
+  return createPortal(
     <div
-      className="course-detail-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="course-detail-overlay fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -71,7 +73,7 @@ export default function CourseDetailsPanel({
             nextFocus.focus()
           }
         }}
-        className="course-detail-panel relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm shadow-[var(--shadow-premium)]"
+        className="course-detail-panel relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] backdrop-blur-sm shadow-[var(--shadow-premium)]"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
           <div className="min-w-0">
@@ -166,7 +168,8 @@ export default function CourseDetailsPanel({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

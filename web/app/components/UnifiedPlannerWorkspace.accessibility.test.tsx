@@ -29,6 +29,24 @@ const repositoryWithDetails = {
   }] }],
 }
 
+test('course details escapes the scrolling drawer so its backdrop covers the workspace', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
+  await screen.findByText('תכן מכני (1)')
+  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
+  trigger.focus()
+  fireEvent.click(trigger)
+  const drawer = screen.getByRole('complementary', { name: 'מאגר קורסים' })
+  const dialog = screen.getByRole('dialog', { name: 'פרטי קורס' })
+
+  // A transformed scrolling drawer contains/clips fixed descendants in Chrome.
+  expect(drawer).not.toContainElement(dialog)
+  expect(dialog.parentElement?.parentElement).toBe(document.body)
+  fireEvent.click(dialog.parentElement!)
+  expect(screen.queryByRole('dialog', { name: 'פרטי קורס' })).toBeNull()
+  expect(trigger).toHaveFocus()
+})
+
 test('an Escape already handled by a nested surface does not close either drawer', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
