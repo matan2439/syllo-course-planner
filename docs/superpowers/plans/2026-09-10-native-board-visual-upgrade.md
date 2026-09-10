@@ -809,7 +809,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Modify: `web/app/components/CourseCard.tsx`
 - Create: `web/app/components/CategoryLegend.tsx`
 - Test: `web/app/components/CategoryLegend.test.tsx` (new)
-- Test: `web/app/components/CourseCard.test.tsx` (extend existing file)
+- Test: `web/app/components/CourseCard.test.tsx` (new — verified during planning that no such file exists yet, despite CourseCard.tsx itself being an existing component)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -829,9 +829,12 @@ test('renders one chip per category, including mandatory', () => {
 })
 ```
 
-Find the existing `web/app/components/CourseCard.test.tsx` and add:
+Create `web/app/components/CourseCard.test.tsx` (this component has no test file yet):
 
 ```tsx
+import { render, screen } from '@testing-library/react'
+import CourseCard from './CourseCard'
+
 test('an elective with a categoryId gets the matching category accent class', () => {
   render(<CourseCard course={{
     id: 'FLU-1', name: 'זרימה', weeklyHours: 3, type: 'elective', difficulty: null,
@@ -848,8 +851,6 @@ test('a mandatory course has no data-category attribute', () => {
   expect(screen.getByText('חובה').closest('[data-category]')).toBeNull()
 })
 ```
-
-(Match the existing file's import style — it already imports `render`/`screen` from `@testing-library/react` and `CourseCard` from `./CourseCard`; just append these two tests.)
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -1244,7 +1245,7 @@ Expected: PASS
 - [ ] **Step 9: Run the full suite**
 
 Run: `cd web && npm test`
-Expected: PASS — double-check any existing `SemesterColumn.test.tsx` cases that assert on course counts still pass (they should, since non-annual counts are unaffected).
+Expected: PASS (no `SemesterColumn.test.tsx` exists yet at this point in the plan — it's created in Task 8).
 
 - [ ] **Step 10: Commit**
 
@@ -1497,25 +1498,31 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Modify: `web/app/globals.css`
 - Modify: `web/app/components/SemesterColumn.tsx`
 - Modify: `web/app/components/NativePlannerJourney.tsx`
-- Test: `web/app/components/SemesterColumn.test.tsx` (extend existing file)
+- Test: `web/app/components/SemesterColumn.test.tsx` (new — verified during planning that no such file exists yet, despite SemesterColumn.tsx itself being an existing component)
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `web/app/components/SemesterColumn.test.tsx` (match its existing fixture style for `semester`/props):
+Create `web/app/components/SemesterColumn.test.tsx`:
 
 ```tsx
+import { render, screen } from '@testing-library/react'
+import SemesterColumn from './SemesterColumn'
+import type { SemesterVM } from '../../lib/board'
+
+const SEMESTER_FIXTURE: SemesterVM = {
+  id: 'year_3_semester_a', title: 'שנה ג׳ — סמסטר א׳', totalWeeklyHours: null, averageDifficulty: null,
+  warnings: [], courses: [],
+}
+
 test('a successful placement flashes the target column via data-just-placed, keyed to re-trigger on repeat', () => {
   const { rerender } = render(
     <SemesterColumn semester={SEMESTER_FIXTURE} index={0} justPlaced justPlacedKey={1} />,
   )
-  expect(screen.getByRole('region', { hidden: true }) ?? document.querySelector('section'))
-    .toHaveAttribute('data-just-placed', 'true')
+  expect(screen.getByLabelText(SEMESTER_FIXTURE.title)).toHaveAttribute('data-just-placed', 'true')
   rerender(<SemesterColumn semester={SEMESTER_FIXTURE} index={0} justPlaced={false} justPlacedKey={1} />)
-  expect(document.querySelector('section')).not.toHaveAttribute('data-just-placed')
+  expect(screen.getByLabelText(SEMESTER_FIXTURE.title)).not.toHaveAttribute('data-just-placed')
 })
 ```
-
-(Adjust the query to whatever the existing test file already uses to select the column's root `<section>` — e.g. if it already has a helper or `screen.getByLabelText(SEMESTER_FIXTURE.title)`, reuse that instead of `document.querySelector('section')`.)
 
 - [ ] **Step 2: Run the test to verify it fails**
 
