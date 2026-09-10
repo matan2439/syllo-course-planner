@@ -20,6 +20,7 @@ function allowedDestinations(course: RepoCourseVM, destinations: readonly Semest
 
 export default function UnifiedCourseRepository({
   repo,
+  programId,
   selectedCourseIds,
   semesterDestinations = [],
   onRequestAdd,
@@ -27,6 +28,8 @@ export default function UnifiedCourseRepository({
   onDragStateChange,
 }: {
   repo: RepositoryVM
+  /** Required to ask the per-course AI chat; omit only where no AI context exists yet. */
+  programId?: string
   selectedCourseIds: readonly string[]
   semesterDestinations?: readonly SemesterDestination[]
   onRequestAdd: (courseId: string, semesterId?: string) => void
@@ -201,7 +204,7 @@ export default function UnifiedCourseRepository({
         </section>
       ))}
 
-      {!onRequestDetails && <CourseDetailsPanel course={details} onClose={() => setDetails(null)} />}
+      {!onRequestDetails && <CourseDetailsPanel course={details} onClose={() => setDetails(null)} programId={programId} />}
     </section>
   )
 }

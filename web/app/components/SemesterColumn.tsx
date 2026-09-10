@@ -1,6 +1,6 @@
 'use client'
 
-import type { SemesterVM } from '../../lib/board'
+import type { CourseVM, SemesterVM } from '../../lib/board'
 import { useEffect, useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { Badge, EmptyState } from './ui'
@@ -12,6 +12,7 @@ export default function SemesterColumn({
   onRemoveCourse,
   onAddCourse,
   onMoveCourse,
+  onSelectCourse,
   moveDestinations,
   mutationPending,
   activeDrag,
@@ -24,6 +25,8 @@ export default function SemesterColumn({
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
+  /** Opens the read-only details panel (with the per-course AI chat) for a board course. */
+  onSelectCourse?: (course: CourseVM) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
   activeDrag?: PlannerDragPayload | null
@@ -150,7 +153,7 @@ export default function SemesterColumn({
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
         semester.courses.map((c) => <CourseCard
-          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse}
+          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse} onSelect={onSelectCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
           onDragStateChange={onDragStateChange}
         />)

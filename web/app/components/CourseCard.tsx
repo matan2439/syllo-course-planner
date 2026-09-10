@@ -15,10 +15,12 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
-export default function CourseCard({ course, onRemove, onMove, moveDestinations, mutationPending = false, onDragStateChange }: {
+export default function CourseCard({ course, onRemove, onMove, onSelect, moveDestinations, mutationPending = false, onDragStateChange }: {
   course: CourseVM
   onRemove?: (courseId: string) => void
   onMove?: (courseId: string, semesterId: string) => void
+  /** Opens the read-only details panel (with the per-course AI chat) for this course. */
+  onSelect?: (course: CourseVM) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
@@ -48,8 +50,23 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
   return (
     <div
       draggable={movable}
-      className={movable ? 'planner-drag-source' : undefined}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-label={onSelect ? `פרטים על ${course.name}` : undefined}
+      className={[movable ? 'planner-drag-source' : '', onSelect ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] rounded-xl' : ''].filter(Boolean).join(' ') || undefined}
       data-dragging={dragging ? 'true' : undefined}
+      onClick={(event) => {
+        if (!onSelect) return
+        if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select,[data-drag-handle]')) return
+        onSelect(course)
+      }}
+      onKeyDown={(event) => {
+        if (!onSelect) return
+        if (event.target !== event.currentTarget) return
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onSelect(course)
+      }}
       onDragStart={(event) => {
         if (!movable) return
         if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select')) {
@@ -68,7 +85,7 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         onDragStateChange?.(null)
       }}
     >
-    <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
+    <Card className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
         {course.hasWarnings && (

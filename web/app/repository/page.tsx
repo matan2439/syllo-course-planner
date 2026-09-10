@@ -30,7 +30,7 @@ export default async function RepositoryPage({
       programId={program.id}
     >
       {raw ? (
-        <RepositoryExplorer repo={adaptRepository(raw)} />
+        <RepositoryExplorer repo={adaptRepository(raw)} programId={program.id} />
       ) : (
         <EmptyState>מאגר הקורסים לתוכנית זו עדיין לא זמין כאן</EmptyState>
       )}

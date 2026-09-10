@@ -1,6 +1,6 @@
 import SemesterColumn from './SemesterColumn'
 import { EmptyState } from './ui'
-import type { BoardVM } from '../../lib/board'
+import type { BoardVM, CourseVM } from '../../lib/board'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 /**
@@ -9,11 +9,13 @@ import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
  * server-authority callbacks. The shared drag intent keeps feedback truthful
  * even when a browser hides DataTransfer contents during dragover.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange, readOnly = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange, readOnly = false }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
+  /** Opens the read-only details panel (with the per-course AI chat) for a board course. Allowed even in readOnly mode — viewing details is not a mutation. */
+  onSelectCourse?: (course: CourseVM) => void
   mutationPending?: boolean
   activeDrag?: PlannerDragPayload | null
   /** The last target refused by server-side academic validation. */
@@ -37,6 +39,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
         <div role="listitem" key={s.id} className="min-w-0">
           <SemesterColumn
             semester={s} index={i} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
+            onSelectCourse={onSelectCourse}
             moveDestinations={board.semesters
               .filter((destination) => destination.id !== s.id)
               .map((destination) => ({ semesterId: destination.id, label: destination.title }))}

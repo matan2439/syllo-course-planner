@@ -221,6 +221,7 @@ export default function UnifiedPlannerWorkspace({
           </button>
           <UnifiedCourseRepository
             repo={repo}
+            programId={programId}
             selectedCourseIds={committedCourseIds}
             semesterDestinations={semesterDestinations}
             onRequestAdd={requestAdd}

@@ -28,6 +28,9 @@ import {
   type ManualBoardEditResult,
 } from '../../../shared/planner/api-client'
 import { boardModelToVM, semesterTitleHe } from '../../lib/planner/board-vm'
+import type { CourseVM } from '../../lib/board'
+import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-details'
+import CourseDetailsPanel from './CourseDetailsPanel'
 import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../lib/planner/apply-eligibility'
@@ -48,6 +51,7 @@ import CourseNamePicker from './CourseNamePicker'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import { Badge, Card, EmptyState } from './ui'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
+import { getAiSessionToken, uuidv4 } from '../../lib/ai-session-token'
 
 /** Hebrew labels for the non-'proposal' structured agent outcomes (opt-in path). */
 const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
@@ -155,32 +159,6 @@ export interface ManualAddIntent {
   semesterIds: string[]
 }
 
-/** RFC-4122 v4 UUID with graceful fallback (older/embedded runtimes lack crypto.randomUUID). */
-function uuidv4(): string {
-  const c = (globalThis as { crypto?: Crypto }).crypto
-  if (c?.randomUUID) return c.randomUUID()
-  const b = new Uint8Array(16)
-  if (c?.getRandomValues) c.getRandomValues(b)
-  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256)
-  b[6] = (b[6] & 0x0f) | 0x40
-  b[8] = (b[8] & 0x3f) | 0x80
-  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0'))
-  return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h.slice(10).join('')}`
-}
-
-/** Anonymous quota session token (UUID), persisted like the legacy planner. */
-function sessionToken(): string {
-  const KEY = 'tau_ai_session'
-  try {
-    let t = localStorage.getItem(KEY)
-    if (!t) { t = uuidv4(); localStorage.setItem(KEY, t) }
-    return t
-  } catch {
-    return uuidv4()
-  }
-}
-
-
 export default function NativePlannerJourney({
   programId,
   getBoardFn = defaultGetBoard,
@@ -254,6 +232,10 @@ export default function NativePlannerJourney({
   // connect the written explanation with the semester they attempted.
   const [rejectedDrop, setRejectedDrop] = useState<{ semesterId: string; key: number } | null>(null)
   const rejectedDropTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Read-only details panel (with the per-course AI chat) for a course already on the board.
+  const [selectedBoardCourse, setSelectedBoardCourse] = useState<CourseDetailsVM | null>(null)
+  const selectBoardCourse = (course: CourseVM) =>
+    setSelectedBoardCourse(buildCourseDetails({ ...course, offered: course.offeredSemesters ?? [] }))
   const manualEditKeyRef = useRef<string | null>(null)
 
   const showRejectedDrop = useCallback((semesterId: string) => {
@@ -494,7 +476,7 @@ export default function NativePlannerJourney({
       program_id: programId,
       plan_context: planContext,
       preferences,
-      session_token: sessionToken(),
+      session_token: getAiSessionToken(),
       // Interpret the free-text conversation into structured planner intent so
       // it measurably affects the plan (not just the LLM prompt). Additive.
       interpret_free_text: true,
@@ -1060,6 +1042,7 @@ export default function NativePlannerJourney({
             onRemoveCourse={alternativeBoard ? undefined : commitManualRemove}
             onAddCourse={alternativeBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
             onMoveCourse={alternativeBoard ? undefined : commitManualMove}
+            onSelectCourse={selectBoardCourse}
             mutationPending={alternativeBoard || manualEditPhase === 'saving' ? true : false}
             activeDrag={alternativeBoard ? null : activeDrag}
             rejectedSemesterId={alternativeBoard ? null : rejectedDrop?.semesterId}
@@ -1068,6 +1051,7 @@ export default function NativePlannerJourney({
             readOnly={Boolean(alternativeBoard)}
           />
         </section>
+        <CourseDetailsPanel course={selectedBoardCourse} onClose={() => setSelectedBoardCourse(null)} programId={programId} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
         {genPhase === 'done' && proposal && (
           <>
@@ -1140,7 +1124,7 @@ export default function NativePlannerJourney({
         {useAcademicDecisionAgent && (
           <AcademicAgentConversation
             programId={programId}
-            sessionToken={sessionToken()}
+            sessionToken={getAiSessionToken()}
             boardVersion={boardVersion}
             academicStatusDigest={loadedAcademicContext?.academicStatusDigest ?? 'academic_context_loading'}
             preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
