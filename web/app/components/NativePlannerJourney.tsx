@@ -176,6 +176,7 @@ export default function NativePlannerJourney({
   onManualAddSettled,
   onManualAddCancelled = () => undefined,
   onCommittedCourseIdsChange,
+  onSemestersChange,
   onCloseAgent,
   agentCloseRef,
   agentOpen,
@@ -199,6 +200,7 @@ export default function NativePlannerJourney({
   onManualAddSettled?: () => void
   onManualAddCancelled?: () => void
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
+  onSemestersChange?: (semesters: Array<{ semesterId: string; courseIds: string[] }>) => void
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
   agentOpen?: boolean
@@ -281,6 +283,14 @@ export default function NativePlannerJourney({
     onCommittedCourseIdsChange?.([...new Set(current.semesters.flatMap((semester) =>
       semester.courses.map((course) => course.courseId)))])
   }, [current, onCommittedCourseIdsChange])
+
+  useEffect(() => {
+    if (!current) return
+    onSemestersChange?.(current.semesters.map((semester) => ({
+      semesterId: semester.semesterId,
+      courseIds: semester.courses.map((course) => course.courseId),
+    })))
+  }, [current, onSemestersChange])
 
   // ── conversation + preferences (recorded; never auto-generate) ─────────────
   const [messages, setMessages] = useState<ChatMsg[]>([])
