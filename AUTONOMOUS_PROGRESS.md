@@ -9113,3 +9113,23 @@ remain. Scoped main-agent review covered both repository consumers, SSR safety,
 theme inheritance, pointer layering and event/focus cleanup. No independent review
 is claimed. Remote acceptance will additionally check full-viewport backdrop
 geometry, actual click dismissal, both widths and both color schemes.
+
+Final Preview acceptance: exact code archive
+`d23aac1ba50f0e8d249317c37c61cdada4784843` deployed READY as
+`dpl_7oQgzMSQREpuq9S4uFuYPxmZ41Tb` (50-second remote build) at
+https://tau-course-planner-e2ok93jsq-matanyaron-1633s-projects.vercel.app/planner
+Clean authenticated Chrome checks passed in all four combinations of 1440x1000 /
+390x844 and light / dark: HTTP 200, full-viewport backdrop geometry, actual backdrop
+click dismissal, Escape and button dismissal without closing either drawer, focus
+return to the course, Tab/Shift+Tab wrapping, correct focused-drawer Escape routing,
+retained repository query, closed-drawer focus exclusion, visible board and no
+page errors. Repeated successfully with screenshots captured after modal animations
+finished; visual inspection confirms the dialog is centered above the drawers and
+toolbar with the existing theme treatment preserved.
+
+All requests other than GET/HEAD were blocked, including planning-context bootstrap.
+The resulting disabled composer is expected: these checks do NOT accept live chat,
+conversation draft persistence or durable writes. No model calls, source changes,
+remote data writes, Production promotion, alias/domain/environment-setting changes
+or protection changes. Unrelated working files remain untouched. The weekly Bidit
+UI and timetable-aware assistant are still not implemented by this modal slice.
