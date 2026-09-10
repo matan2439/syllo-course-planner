@@ -9067,3 +9067,24 @@ remain; the new integration regressions are clean. No provider calls or remote
 writes. Only the details component, workspace regression tests and this record are
 included; protected/unrelated working changes remain untouched. Exact immutable
 Preview and read-only browser acceptance will be recorded after deployment.
+
+### Follow-up — respect modal-handled Escape at the document root
+
+Exact archive commit `39407f3e0a3501144658691754b849ba7f199b11` deployed READY
+as `dpl_7K53qPmrvxCC9bqWTZAChfR26GTm` at
+https://tau-course-planner-qn0ywcqre-matanyaron-1633s-projects.vercel.app/planner
+This deployment did NOT pass browser acceptance: Chrome reproduced Escape closing
+the agent drawer after the details dialog closed. React document-root delegation
+can still deliver the handled event to a second native document listener. The
+workspace must also honor `defaultPrevented`, not just propagation stopping.
+
+A focused real-workspace regression for this already-cancelled event was observed
+RED (a drawer incorrectly closed), then GREEN after adding the document-handler
+guard. Fresh sequential verification passed: 12 accessibility tests, 133 tests in
+eight relevant web suites, web typecheck, 12 course-details compatibility guards,
+then release build. Existing older journey act() warnings remain. Main-agent scoped
+review covered event ownership and unchanged unhandled-Escape behavior; independent
+review remains unavailable and is not claimed. This follow-up includes only the
+workspace handler, its regression and this record. No provider calls, remote data
+writes or Production changes. A new exact snapshot still requires remote Chrome
+acceptance before this slice is considered complete.

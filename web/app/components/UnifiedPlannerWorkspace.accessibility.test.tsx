@@ -29,6 +29,26 @@ const repositoryWithDetails = {
   }] }],
 }
 
+test('an Escape already handled by a nested surface does not close either drawer', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
+  await screen.findByText('תכן מכני (1)')
+  const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+  const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  fireEvent.click(agentToggle)
+  fireEvent.click(repositoryToggle)
+  const close = screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' })
+  // Next's document-root event delegation can deliver an already-handled event
+  // to another document listener; cancelling a dialog must not dismiss its owner.
+  const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  escape.preventDefault()
+
+  fireEvent(close, escape)
+
+  expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
+  expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+  expect(close).toHaveFocus()
+})
+
 test.each([false, true])('course details wraps Tab inside the dialog (shift=%s)', async (shiftKey) => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')

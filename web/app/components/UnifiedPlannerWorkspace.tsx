@@ -73,7 +73,7 @@ export default function UnifiedPlannerWorkspace({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || event.defaultPrevented) return
       const fromRepository = event.target instanceof Node && repositoryDrawerRef.current?.contains(event.target)
       // Both drawers can stay open; Escape belongs to the drawer receiving it.
       if (repositoryOpen && (!agentOpen || fromRepository)) {
