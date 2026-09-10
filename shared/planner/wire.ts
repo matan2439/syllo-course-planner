@@ -26,6 +26,12 @@ const boardCourseSchema = z
     course_type: z.string().optional(),
     is_mandatory: z.boolean().optional(),
     offered_semesters: z.array(z.string().min(1)).nullable().optional(),
+    // Elective category (fluids/solids/systems/advanced_labs/other_specialization/…);
+    // null/absent for mandatory courses and uncategorized electives.
+    program_category_id: z.string().nullable().optional(),
+    // Opaque string as shipped ("fixed" | "flexible" | "annual" | "elective" today);
+    // never treated as a closed enum, matching course_type elsewhere in this schema.
+    placement_policy: z.string().optional(),
   })
   .passthrough();
 

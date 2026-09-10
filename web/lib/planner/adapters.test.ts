@@ -3,6 +3,7 @@
  * config (the only one that runs TS tests outside tests/api) picks them up.
  */
 import { boardResponseToModel } from '../../../shared/planner/adapters'
+import { isAnnualCourse } from '../../../shared/planner/model'
 
 const BASE_BOARD = {
   metadata: { board_data_version: 'rev-1' },
@@ -71,4 +72,32 @@ test('a course with no offered_semesters field keeps offeredSemesters absent (un
   }
   const model = boardResponseToModel(board)
   expect(model.courseCatalog['C-4'].offeredSemesters).toBeUndefined()
+})
+
+test('program_category_id and placement_policy pass through to the catalog unchanged', () => {
+  const board = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [
+          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', program_category_id: 'fluids', placement_policy: 'elective' },
+          { course_id: 'MAND-1', name_he: 'חובה', weekly_hours: 4, course_type: 'mandatory', placement_policy: 'fixed' },
+        ],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const model = boardResponseToModel(board)
+  expect(model.courseCatalog['FLU-1'].programCategoryId).toBe('fluids')
+  expect(model.courseCatalog['MAND-1'].programCategoryId).toBeUndefined()
+  expect(model.courseCatalog['MAND-1'].placementPolicy).toBe('fixed')
+})
+
+test('isAnnualCourse is true only for placement_policy "annual"', () => {
+  expect(isAnnualCourse({ courseId: 'x', nameHe: '', halfHours: null, courseType: '', isMandatory: true, placementPolicy: 'annual' })).toBe(true)
+  expect(isAnnualCourse({ courseId: 'x', nameHe: '', halfHours: null, courseType: '', isMandatory: true, placementPolicy: 'flexible' })).toBe(false)
+  expect(isAnnualCourse({ courseId: 'x', nameHe: '', halfHours: null, courseType: '', isMandatory: false })).toBe(false)
 })

@@ -86,7 +86,17 @@ export interface BoardCourseModel {
   isMandatory: boolean;
   /** Catalog-authorized semester ids; absent when the source carries no offering fact. */
   offeredSemesters?: string[];
+  /** Elective category id (fluids/solids/systems/advanced_labs/other_specialization/…). Absent for mandatory courses and uncategorized electives. */
+  programCategoryId?: string;
+  /** Opaque, as shipped: "fixed" | "flexible" | "annual" | "elective" today. */
+  placementPolicy?: string;
 }
+
+/** A year-long course spans both semester halves as one atomic placement — never independently movable, never split. */
+export function isAnnualCourse(c: BoardCourseModel): boolean {
+  return c.placementPolicy === 'annual';
+}
+
 export interface BoardSemesterModel {
   semesterId: string;
   courses: BoardCourseModel[];
