@@ -215,9 +215,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         disallowedCourseIds: resolveHardExcludedCourseIds(preferences as { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] }),
         maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
       };
-      const clarification = await clarifyForAcademicDecision(
-        extractClarificationContext(contextWithStatus, preferences, undefined),
-      );
+      const clarificationContext = extractClarificationContext(contextWithStatus, preferences, undefined);
+      const clarification = await clarifyForAcademicDecision(clarificationContext);
       const committedContext = board
         ? {
             ...context,
@@ -241,6 +240,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           // domain boundary explicit because the remote Zod version infers
           // `z.any()` object properties more narrowly than the local build.
           preferenceProfile: parsed.data.preference_profile as PreferenceProfile | undefined,
+          // Confirmed panel state, not conversational text — stops the agent
+          // (fallback and LLM prompt alike) from re-asking what's already known.
+          knownFacts: { completedCoursesConfirmed: clarificationContext.completedCoursesKnown },
         },
         { model: modelConfig.model },
       );

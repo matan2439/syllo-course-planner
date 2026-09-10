@@ -128,6 +128,40 @@ test('does not offer plan building after one shallow request without enough pers
   ]))
 })
 
+test('the fallback clarification omits the completed-courses option once the panel already confirmed it', async () => {
+  const result = await runConversationalAgent({
+    transcript: [],
+    createWorker,
+    knownFacts: { completedCoursesConfirmed: true },
+  }, {
+    model: {} as never,
+    generate: async () => ({ text: 'כדי להתאים את התכנון אליך אני צריך עוד מידע.' }),
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  const clarification = result.events.find((event) => event.type === 'clarification')
+  expect(clarification).toBeDefined()
+  if (clarification?.type !== 'clarification') throw new Error('expected a clarification event')
+  expect((clarification.options_he ?? []).join(' ')).not.toContain('קורסים כבר השלמתי')
+})
+
+test('confirmed completed-courses knowledge plus one substantive turn is enough context to skip the generic fallback question', async () => {
+  const result = await runConversationalAgent({
+    transcript: [{ role: 'user', text: 'אני מעוניין בקורסים בתחום האנרגיה' }],
+    createWorker,
+    knownFacts: { completedCoursesConfirmed: true },
+  }, {
+    model: {} as never,
+    generate: async () => ({ text: 'הבנתי, בוא נמשיך.' }),
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  expect(result.nextAction).toBe('offer_build')
+  expect(result.events.some((event) => event.type === 'clarification')).toBe(false)
+})
+
 test('provider failure discards the isolated draft and returns truthful unavailability', async () => {
   const result = await runConversationalAgent({ transcript, createWorker }, {
     model: {} as never,

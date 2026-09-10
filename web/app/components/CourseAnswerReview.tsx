@@ -13,17 +13,26 @@ export function reviewCourseText(text: string, names: Names): CourseTextReview |
   const except = /^(?:כל הקורסים|הכול|הכל)\s+(?:חוץ\s+מ|למעט\s+)(.+)$/u.exec(content)
   const queries = (except?.[1] ?? content).split(/[,;\n]+/u).map((query) => query.trim()).filter(Boolean)
   const courses = Object.entries(names).filter((entry): entry is [string, string] => Boolean(entry[1]))
-  if (!except && !queries.every((query) => rankCourseMatches(query, courses, (c) => c[1], (c) => c[0]).length > 0)) return null
+  // Require every query — including an "except X" target — to resolve to a
+  // real course before intercepting the message with this review UI. An
+  // unresolvable "except X" used to still open the review (stuck forever:
+  // nothing could ever become `ready`), so it now falls through and the raw
+  // text is sent to the agent like any other free-text answer.
+  if (!queries.every((query) => rankCourseMatches(query, courses, (c) => c[1], (c) => c[0]).length > 0)) return null
   return queries.length ? { text, except: Boolean(except), queries } : null
 }
 
-export default function CourseAnswerReview({ review, names, scopes, disabled, onConfirm, onCancel }: {
+export default function CourseAnswerReview({ review, names, scopes, disabled, onConfirm, onCancel, onSendRaw }: {
   review: CourseTextReview
   names: Names
   scopes: readonly CourseScope[]
   disabled: boolean
   onConfirm: (ids: string[], text: string) => void
   onCancel: () => void
+  /** Escape hatch: send the original text as a plain message, bypassing this
+   * review — the only way out when a genuinely resolvable answer still can't
+   * become `ready` (e.g. no offered scope covers an "except X" course). */
+  onSendRaw?: () => void
 }) {
   const [scopeId, setScopeId] = useState('')
   const [queries, setQueries] = useState(review.queries)
@@ -80,6 +89,11 @@ export default function CourseAnswerReview({ review, names, scopes, disabled, on
         <button type="button" disabled={!ready} onClick={() => onConfirm(ids, `${review.text}\nאישור הרשימה: ${ids.length ? ids.map((id) => names[id] ?? id).join(', ') : 'אין קורסים'}`)}
           className="min-h-11 rounded-full bg-[var(--purple-strong)] px-4 text-sm text-white disabled:opacity-50">אישור הרשימה ושליחה לעוזר</button>
         <button type="button" onClick={onCancel} className="min-h-11 rounded-full border border-[var(--border)] px-4 text-sm">חזרה לשיחה</button>
+        {onSendRaw && (
+          <button type="button" onClick={onSendRaw} className="min-h-11 rounded-full border border-dashed border-[var(--border)] px-4 text-sm text-[var(--text-muted)]">
+            שליחה כטקסט חופשי בכל זאת
+          </button>
+        )}
       </div>
     </fieldset>
   )

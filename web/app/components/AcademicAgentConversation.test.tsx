@@ -80,6 +80,55 @@ test('reviews all-except against an explicit course scope before sending complet
   expect(send.mock.calls[1][0].clarification_answers).toEqual([{ question_id: 'completed_courses', value: ['0542-2500'] }])
 })
 
+test('an except target that matches no real course is sent as plain free text instead of getting stuck', async () => {
+  const send = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={send}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)' }}
+    courseScopes={[{ id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: ['0542-2400'] }]} />)
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'כל הקורסים חוץ ממשהו שלא קיים בקטלוג' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  // No stuck review UI — the unresolvable except-target falls through and the
+  // raw text is sent to the agent like any other free-text turn.
+  expect(screen.queryByRole('combobox', { name: 'לאיזו קבוצת קורסים התכוונת?' })).toBeNull()
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+  expect(send.mock.calls[1][0]).not.toHaveProperty('clarification_answers')
+  expect(send.mock.calls[1][0].transcript).toEqual(expect.arrayContaining([
+    { role: 'user', text: 'כל הקורסים חוץ ממשהו שלא קיים בקטלוג' },
+  ]))
+})
+
+test('an except answer that resolves but matches no offered course scope can still be sent as free text', async () => {
+  const send = jest.fn().mockResolvedValue({
+    outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',
+    events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים השלמת?' }],
+  } satisfies ConversationResponse)
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={send}
+    courseNameById={{ '0542-2400': 'תכן מכני (1)' }} />)
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'עזור לי' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  await screen.findByRole('group', { name: 'שאלת המשך מהעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'כל הקורסים חוץ מתכן מכני' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+  expect(send).toHaveBeenCalledTimes(1)
+  // Resolved, but no scope was offered to confirm the exclusion set against —
+  // "אישור הרשימה" can never become ready. The escape hatch must still work.
+  expect(screen.getByRole('button', { name: 'אישור הרשימה ושליחה לעוזר' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'שליחה כטקסט חופשי בכל זאת' }))
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+  expect(send.mock.calls[1][0]).not.toHaveProperty('clarification_answers')
+  expect(send.mock.calls[1][0].transcript).toEqual(expect.arrayContaining([
+    { role: 'user', text: 'כל הקורסים חוץ מתכן מכני' },
+  ]))
+})
+
 test('partial course names are reviewed and ambiguous names require a choice', async () => {
   const send = jest.fn().mockResolvedValue({
     outcome: 'clarification_required', message_he: 'אילו קורסים השלמת?', next_action: 'ask',

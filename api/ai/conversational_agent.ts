@@ -43,18 +43,29 @@ const SYSTEM_PROMPT = `אתה עוזר אקדמי לתכנון תואר באונ
 רק אחרי שיש לך מספיק מידע מהסטודנט, הפעל finalize_plan והסבר בקצרה את
 החלופה שנבדקה. אל תציע בנייה על סמך שאלה יחידה על עומס בלבד.`;
 
-const FALLBACK_CLARIFICATION = {
-  questionHe: 'כדי לבנות חלופות שבאמת מתאימות לך, איזה מידע חשוב שניקח בחשבון קודם?',
-  optionsHe: [
-    'אילו קורסים כבר השלמתי או אני לומד/ת עכשיו',
-    'אילו מגבלות עומס או ימים חשובים לי',
-    'אילו תחומי קורסים מעניינים אותי במיוחד',
-  ],
-};
+/**
+ * Facts the caller already knows to be true and confirmed (e.g. the student
+ * filled in the completed-courses panel earlier in this same session), so
+ * the deterministic fallback and the LLM's own `ask_clarification` calls
+ * don't re-ask for them. Absent/false means "unknown", never "none".
+ */
+type KnownFacts = { completedCoursesConfirmed?: boolean };
+
+function buildFallbackClarification(knownFacts?: KnownFacts) {
+  return {
+    questionHe: 'כדי לבנות חלופות שבאמת מתאימות לך, איזה מידע חשוב שניקח בחשבון קודם?',
+    optionsHe: [
+      ...(knownFacts?.completedCoursesConfirmed ? [] : ['אילו קורסים כבר השלמתי או אני לומד/ת עכשיו']),
+      'אילו מגבלות עומס או ימים חשובים לי',
+      'אילו תחומי קורסים מעניינים אותי במיוחד',
+    ],
+  };
+}
 
 function hasEnoughUserContext(
   transcript: readonly ConversationTurn[],
   preferenceProfile?: PreferenceProfile,
+  knownFacts?: KnownFacts,
 ): boolean {
   const preferences = preferenceProfile?.preferences ?? [];
   const unresolved = preferences.some((preference) =>
@@ -72,27 +83,41 @@ function hasEnoughUserContext(
 
   // A free-form conversation can also supply the context. Do not count a
   // one-line build command as personal information; require two substantive
-  // user turns before the LLM is allowed to offer generation.
+  // user turns before the LLM is allowed to offer generation. Confirmed
+  // completed-courses knowledge (from outside the transcript, e.g. the panel)
+  // counts as one substantive turn's worth of context.
   const substantiveTurns = transcript.filter((turn) => {
     if (turn.role !== 'user') return false;
     const text = turn.text.trim().replace(/\s+/g, ' ');
     if (text.length < 8) return false;
     return !/^(בנה|תבנה|תציע|צור|build|create|plan)\b/i.test(text);
   });
-  return substantiveTurns.length >= 2;
+  const knownFactCredit = knownFacts?.completedCoursesConfirmed ? 1 : 0;
+  return substantiveTurns.length + knownFactCredit >= 2;
 }
 
 function transcriptPrompt(
   transcript: readonly ConversationTurn[],
   preferenceProfile?: PreferenceProfile,
+  knownFacts?: KnownFacts,
 ): string {
   const turns = transcript.map((turn) => `${turn.role === 'user' ? 'סטודנט' : 'עוזר'}: ${turn.text}`).join('\n');
-  if (!preferenceProfile) return turns;
-  return `${turns}\n\nפרופיל העדפות מובנה שנמסר ואושר על ידי הסטודנט (גרסה ${preferenceProfile.version}):\n${JSON.stringify(preferenceProfile)}`;
+  const knownFactsNote = knownFacts?.completedCoursesConfirmed
+    ? '\n\nמידע ידוע ומאושר: רשימת הקורסים שהסטודנט כבר השלים כבר נמסרה ואושרה קודם בשיחה זו. אל תשאל שוב אילו קורסים הושלמו.'
+    : '';
+  const profilePart = preferenceProfile
+    ? `\n\nפרופיל העדפות מובנה שנמסר ואושר על ידי הסטודנט (גרסה ${preferenceProfile.version}):\n${JSON.stringify(preferenceProfile)}`
+    : '';
+  return `${turns}${knownFactsNote}${profilePart}`;
 }
 
 export async function runConversationalAgent(
-  input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker; preferenceProfile?: PreferenceProfile },
+  input: {
+    transcript: readonly ConversationTurn[];
+    createWorker: () => PlannerWorker;
+    preferenceProfile?: PreferenceProfile;
+    knownFacts?: KnownFacts;
+  },
   deps: { model: LanguageModel; generate?: ConversationGenerateFn; maxSteps?: number },
 ): Promise<ConversationalAgentResult> {
   const worker = input.createWorker();
@@ -109,7 +134,7 @@ export async function runConversationalAgent(
     const result = await generate({
       model: deps.model,
       system: SYSTEM_PROMPT,
-      prompt: transcriptPrompt(input.transcript, input.preferenceProfile),
+      prompt: transcriptPrompt(input.transcript, input.preferenceProfile, input.knownFacts),
       tools,
       maxSteps: deps.maxSteps ?? 16,
     });
@@ -130,11 +155,12 @@ export async function runConversationalAgent(
         events,
       };
     }
-    if (!hasEnoughUserContext(input.transcript, input.preferenceProfile)) {
+    if (!hasEnoughUserContext(input.transcript, input.preferenceProfile, input.knownFacts)) {
+      const fallback = buildFallbackClarification(input.knownFacts);
       events.push({
         type: 'clarification',
-        question_he: FALLBACK_CLARIFICATION.questionHe,
-        options_he: FALLBACK_CLARIFICATION.optionsHe,
+        question_he: fallback.questionHe,
+        options_he: fallback.optionsHe,
       });
       return {
         outcome: 'conversation',

@@ -144,11 +144,11 @@ export default function AcademicAgentConversation({
       : undefined
   }
 
-  const submit = async (text: string, explicitAnswer?: ClarificationAnswer) => {
+  const submit = async (text: string, explicitAnswer?: ClarificationAnswer, opts?: { skipReview?: boolean }) => {
     const trimmed = text.trim()
     if (!trimmed || pending || contextConflict || !conversationReady) return
     const answer = explicitAnswer ?? clarificationAnswerFromText(trimmed)
-    if (!answer && responseContextVersion === localContextVersion && activeClarification?.question_id === 'completed_courses') {
+    if (!opts?.skipReview && !answer && responseContextVersion === localContextVersion && activeClarification?.question_id === 'completed_courses') {
       const review = reviewCourseText(trimmed, courseNameById ?? {})
       if (review) { setCourseReview(review); setDraft(''); return }
     }
@@ -317,7 +317,8 @@ export default function AcademicAgentConversation({
             <CourseAnswerReview key={courseReview.text} review={courseReview} names={courseNameById ?? {}} scopes={courseScopes}
               disabled={pending || contextConflict || !conversationReady}
               onConfirm={(ids, text) => void submit(text, { question_id: 'completed_courses', value: ids })}
-              onCancel={() => { setDraft(courseReview.text); setCourseReview(null) }} />
+              onCancel={() => { setDraft(courseReview.text); setCourseReview(null) }}
+              onSendRaw={() => { const text = courseReview.text; setCourseReview(null); void submit(text, undefined, { skipReview: true }) }} />
           ) : event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id) && (
             <CourseClarificationAnswer
               questionId={event.question_id}
