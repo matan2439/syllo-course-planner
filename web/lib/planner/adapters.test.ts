@@ -101,3 +101,23 @@ test('isAnnualCourse is true only for placement_policy "annual"', () => {
   expect(isAnnualCourse({ courseId: 'x', nameHe: '', halfHours: null, courseType: '', isMandatory: true, placementPolicy: 'flexible' })).toBe(false)
   expect(isAnnualCourse({ courseId: 'x', nameHe: '', halfHours: null, courseType: '', isMandatory: false })).toBe(false)
 })
+
+test('isAnnualCourse is true for an annual ELECTIVE course too (is_annual independent of placement_policy)', () => {
+  const board = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'ANN-ELEC-1', name_he: 'שנתי בחירה', weekly_hours: 4, course_type: 'elective', placement_policy: 'elective', is_annual: true }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const model = boardResponseToModel(board)
+  const course = model.courseCatalog['ANN-ELEC-1']
+  expect(course.isAnnual).toBe(true)
+  expect(course.placementPolicy).toBe('elective')
+  expect(isAnnualCourse(course)).toBe(true)
+})

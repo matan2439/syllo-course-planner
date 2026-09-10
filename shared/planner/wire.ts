@@ -32,6 +32,7 @@ const boardCourseSchema = z
     // Opaque string as shipped ("fixed" | "flexible" | "annual" | "elective" today);
     // never treated as a closed enum, matching course_type elsewhere in this schema.
     placement_policy: z.string().optional(),
+    is_annual: z.boolean().optional(),
   })
   .passthrough();
 

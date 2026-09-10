@@ -90,11 +90,13 @@ export interface BoardCourseModel {
   programCategoryId?: string;
   /** Opaque, as shipped: "fixed" | "flexible" | "annual" | "elective" today. */
   placementPolicy?: string;
+  /** Explicit annual flag from the source data — independent of placementPolicy; an annual course can have placementPolicy 'elective' while still being annual. */
+  isAnnual?: boolean;
 }
 
-/** A year-long course spans both semester halves as one atomic placement — never independently movable, never split. */
+/** A year-long course spans both semester halves as one atomic placement — never independently movable, never split. Checks BOTH signals: the source data can mark a course annual via the explicit `is_annual` flag even when its placementPolicy is 'elective' (e.g. an annual elective course). */
 export function isAnnualCourse(c: BoardCourseModel): boolean {
-  return c.placementPolicy === 'annual';
+  return c.isAnnual === true || c.placementPolicy === 'annual';
 }
 
 export interface BoardSemesterModel {

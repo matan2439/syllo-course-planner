@@ -16,6 +16,7 @@ type RawCourse = {
   offered_semesters?: string[] | null;
   program_category_id?: string | null;
   placement_policy?: string;
+  is_annual?: boolean;
 };
 
 /**
@@ -62,6 +63,7 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
       : {}),
     ...(c.program_category_id != null ? { programCategoryId: c.program_category_id } : {}),
     ...(c.placement_policy != null ? { placementPolicy: c.placement_policy } : {}),
+    ...(c.is_annual != null ? { isAnnual: c.is_annual } : {}),
   };
 }
 
