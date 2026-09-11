@@ -15,6 +15,14 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
+const CATEGORY_CLASS: Record<string, string> = {
+  fluids: 'card-cat-fluids',
+  solids: 'card-cat-solids',
+  systems: 'card-cat-systems',
+  advanced_labs: 'card-cat-labs',
+  other_specialization: 'card-cat-other_specialization',
+}
+
 export default function CourseCard({ course, onRemove, onMove, onSelect, moveDestinations, mutationPending = false, onDragStateChange }: {
   course: CourseVM
   onRemove?: (courseId: string) => void
@@ -55,6 +63,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
       aria-label={onSelect ? `פרטים על ${course.name}` : undefined}
       className={[movable ? 'planner-drag-source' : '', onSelect ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] rounded-xl' : ''].filter(Boolean).join(' ') || undefined}
       data-dragging={dragging ? 'true' : undefined}
+      data-category={course.categoryId ?? undefined}
       onClick={(event) => {
         if (!onSelect) return
         if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select,[data-drag-handle]')) return
@@ -85,7 +94,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         onDragStateChange?.(null)
       }}
     >
-    <Card className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''}`}>
+    <Card className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''} ${course.categoryId ? (CATEGORY_CLASS[course.categoryId] ?? '') : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
         {course.hasWarnings && (
