@@ -3,6 +3,7 @@
  * exact (throws on unsupported precision, never rounds). Runtime-neutral.
  */
 import { boardResponseSchema, generatePlanResponseSchema } from './wire';
+import type { RawRequirementsValidation } from './wire';
 import { toHalfHours, catalogRevision, normalizeCourseId } from './model';
 import type { BoardModel, BoardCourseModel, BoardRequirementsModel, GeneratedPlanModel } from './model';
 
@@ -67,9 +68,7 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
   };
 }
 
-function requirementsToModel(
-  v: NonNullable<ReturnType<typeof boardResponseSchema.parse>['metadata']['program_requirements_validation']>,
-): BoardRequirementsModel {
+function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsModel {
   return {
     valid: v.valid,
     totalRequiredHours: v.total_required_hours,

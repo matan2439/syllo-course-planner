@@ -71,6 +71,7 @@ const boardRequirementsValidationSchema = z
     warnings: z.array(z.string()).optional(),
   })
   .passthrough();
+export type RawRequirementsValidation = z.infer<typeof boardRequirementsValidationSchema>;
 
 export const boardResponseSchema = z
   .object({
