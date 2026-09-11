@@ -48,7 +48,10 @@ export function boardModelToVM(model: BoardModel): BoardVM {
       warnings: [],
       courses: s.courses.map((c) => {
         const catalogCourse = model.courseCatalog[c.courseId]
-        const isElectiveLike = c.courseType !== 'mandatory'
+        // Stricter than a bare courseType check (course_type is documented as
+        // free-form, never a closed enum): combine it with the authoritative
+        // isMandatory boolean, matching the legacy viewer's own combined check.
+        const isElectiveLike = c.courseType !== 'mandatory' && !c.isMandatory
         return {
           id: c.courseId,
           name: c.nameHe,
@@ -60,8 +63,11 @@ export function boardModelToVM(model: BoardModel): BoardVM {
           ...(catalogCourse?.offeredSemesters !== undefined
             ? { offeredSemesters: [...catalogCourse.offeredSemesters] }
             : {}),
-          ...(isElectiveLike
-            ? { categoryId: catalogCourse?.programCategoryId ?? GENERAL_ELECTIVE_CATEGORY_ID }
+          // Only default a category for a course the catalog actually resolved
+          // — an unresolved/placeholder course (apply-plan.ts's resolve()) must
+          // never have a category fabricated for it.
+          ...(catalogCourse && isElectiveLike
+            ? { categoryId: catalogCourse.programCategoryId ?? GENERAL_ELECTIVE_CATEGORY_ID }
             : {}),
           ...(catalogCourse && isAnnualCourse(catalogCourse) ? { isAnnual: true } : {}),
         }

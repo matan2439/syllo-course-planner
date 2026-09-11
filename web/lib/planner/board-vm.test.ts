@@ -95,3 +95,20 @@ test('isAnnual is copied from the catalog placement policy or explicit is_annual
   const vm = boardModelToVM(boardResponseToModel(board))
   expect(vm.semesters[0].courses[0].isAnnual).toBe(true)
 })
+
+test('an unresolved course (not in courseCatalog) never gets a fabricated categoryId or isAnnual', () => {
+  // Mirrors the placeholder apply-plan.ts's resolve() produces for a generated
+  // course id the catalog doesn't know: courseType '', isMandatory false —
+  // truthfully "unknown", not "elective".
+  const model = {
+    catalogRevision: 'rev-1' as never,
+    courseCatalog: {},
+    semesters: [
+      { semesterId: 'year_3_semester_a', courses: [{ courseId: 'UNKNOWN-1', nameHe: '', halfHours: null, courseType: '', isMandatory: false }] },
+    ],
+  }
+  const vm = boardModelToVM(model)
+  const course = vm.semesters[0].courses[0]
+  expect(course.categoryId).toBeUndefined()
+  expect(course.isAnnual).toBeUndefined()
+})
