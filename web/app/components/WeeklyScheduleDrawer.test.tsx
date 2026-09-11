@@ -115,3 +115,53 @@ test('shows a bid-it provenance line with the fetch time', async () => {
   renderDrawer()
   expect(await screen.findByText(/מקור: bid-it \(לא רשמי\)/)).toBeInTheDocument()
 })
+
+test('warns when bid-it returned data for a different year than the mapped term', async () => {
+  const fetchScheduleGroupsFn = jest.fn().mockResolvedValue(groupsResponse({
+    courses: [
+      { ...groupsResponse().courses[0], cYear: 2099 },
+      groupsResponse().courses[1],
+    ],
+  }))
+  renderDrawer({ fetchScheduleGroupsFn })
+  expect(await screen.findByText(/2099/)).toBeInTheDocument()
+})
+
+test('a stale selection that newly conflicts after refetched data is removed, not silently kept', async () => {
+  let call = 0
+  const fetchScheduleGroupsFn = jest.fn().mockImplementation(async () => {
+    call += 1
+    if (call === 1) {
+      // first load: the two courses do NOT overlap
+      return groupsResponse({
+        courses: [
+          groupsResponse().courses[0],
+          { ...groupsResponse().courses[1], groups: [{ ...groupsResponse().courses[1].groups[0], slots: [{ day: 'ב', start: '11:00', end: '13:00' }] }] },
+        ],
+      })
+    }
+    // second load (after a term edit refetch): now they DO overlap
+    return groupsResponse()
+  })
+  renderDrawer({ fetchScheduleGroupsFn })
+
+  const first = await screen.findByRole('checkbox', { name: /תכן מכני \(1\).*ראשית.*א.*10:00-12:00/ })
+  fireEvent.click(first)
+  const second = await screen.findByRole('checkbox', { name: /אבטחה ובטיחות.*ראשית.*ב.*11:00-13:00/ })
+  fireEvent.click(second)
+  expect(first).toBeChecked()
+  expect(second).toBeChecked()
+
+  // trigger a refetch by editing the term semester (existing UI control)
+  fireEvent.change(screen.getByLabelText('סמסטר'), { target: { value: '2' } })
+
+  await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenCalledTimes(2))
+  // one of the two conflicting selections must be gone
+  await waitFor(() => {
+    const stillChecked = [
+      screen.queryByRole('checkbox', { name: /תכן מכני \(1\)/ }),
+      screen.queryByRole('checkbox', { name: /אבטחה ובטיחות/ }),
+    ].filter((el) => el && (el as HTMLInputElement).checked)
+    expect(stillChecked.length).toBeLessThanOrEqual(1)
+  })
+})

@@ -109,6 +109,56 @@ export default function WeeklyScheduleDrawer({
     return result
   }
 
+  useEffect(() => {
+    if (!scheduleData) return
+
+    const accepted: Array<{ courseId: string; courseName: string; group: ScheduleGroup }> = []
+    const nextSelections = { ...state.selections }
+    let changed = false
+    let removedBecauseOfConflict: { courseName: string; conflictingCourseName: string } | null = null
+
+    for (const course of scheduleData.courses) {
+      const key = selectionKey(course.courseId, term)
+      const selectedIds = state.selections[key] ?? []
+      const keptIds: string[] = []
+
+      for (const groupId of selectedIds) {
+        const group = course.groups.find((candidate) => candidate.groupId === groupId)
+        if (!group) {
+          changed = true
+          continue
+        }
+        const conflict = accepted.find(
+          (selected) => selected.courseId !== course.courseId && groupsOverlap(selected.group, group),
+        )
+        if (conflict) {
+          changed = true
+          removedBecauseOfConflict ??= {
+            courseName: course.nameHe ?? course.courseId,
+            conflictingCourseName: conflict.courseName,
+          }
+          continue
+        }
+        keptIds.push(groupId)
+        accepted.push({
+          courseId: course.courseId,
+          courseName: course.nameHe ?? course.courseId,
+          group,
+        })
+      }
+
+      if (keptIds.length !== selectedIds.length) nextSelections[key] = keptIds
+    }
+
+    if (!changed) return
+    setState((previous) => ({ ...previous, selections: nextSelections }))
+    if (removedBecauseOfConflict) {
+      setConflictMessage(
+        `הבחירה ב'${removedBecauseOfConflict.courseName}' הוסרה כי היא חופפת ל'${removedBecauseOfConflict.conflictingCourseName}' לאחר רענון נתוני השעות.`,
+      )
+    }
+  }, [scheduleData, state.selections, term])
+
   const toggleGroup = (courseId: string, courseName: string, group: ScheduleGroup) => {
     const key = selectionKey(courseId, term)
     const current = state.selections[key] ?? []
@@ -221,6 +271,11 @@ export default function WeeklyScheduleDrawer({
         {(scheduleData?.courses ?? []).map((course) => (
           <li key={course.courseId}>
             <span>{course.nameHe ?? course.courseId}</span>
+            {course.cYear !== null && course.cYear !== term.year && (
+              <span role="status">
+                {' '}נתוני bid-it הם לשנת {course.cYear}, ולא לשנת {term.year} שנבחרה
+              </span>
+            )}
             {!course.found && <span> אין נתוני שעות</span>}
             {course.found && course.incompleteData && <span> נתוני שעות חלקיים</span>}
             {course.found && course.groups.map((group) => {
