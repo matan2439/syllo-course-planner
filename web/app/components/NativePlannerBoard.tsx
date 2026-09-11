@@ -49,7 +49,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
         <AnnualCourseBand key={band.course.id} course={band.course} startIndex={band.startIndex} />
       ))}
       {board.semesters.map((s, i) => (
-        <div role="listitem" key={`${s.id}-${justPlacedSemesterId === s.id ? justPlacedKey ?? 'p' : 'idle'}`} className="min-w-0" style={{ gridColumn: i + 1, gridRow: 2 }}>
+        <div role="listitem" key={s.id} className="min-w-0" style={{ gridColumn: i + 1, gridRow: 2 }}>
           <SemesterColumn
             semester={s} index={i} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
             onSelectCourse={onSelectCourse}

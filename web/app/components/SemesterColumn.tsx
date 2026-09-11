@@ -117,8 +117,15 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''} ${justPlaced ? 'planner-drop-target-placed' : ''}`}
+      className={`rise relative flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''}`}
     >
+      {/* Keyed on justPlacedKey (not the whole column) so the pulse replays on
+          each new placement without unmounting SemesterColumn/CourseCard —
+          a full-column remount here would also restart the entrance `.rise`
+          animation and could interrupt an in-progress drag in this column. */}
+      {justPlaced && (
+        <div key={justPlacedKey} aria-hidden="true" className="pointer-events-none absolute inset-0 planner-drop-target-placed" />
+      )}
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
         <div className="flex shrink-0 items-center gap-1.5">
