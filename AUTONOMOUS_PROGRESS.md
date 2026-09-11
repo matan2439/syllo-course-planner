@@ -9133,3 +9133,83 @@ conversation draft persistence or durable writes. No model calls, source changes
 remote data writes, Production promotion, alias/domain/environment-setting changes
 or protection changes. Unrelated working files remain untouched. The weekly Bidit
 UI and timetable-aware assistant are still not implemented by this modal slice.
+
+## 2026-09-10 — concurrent-edit boundary (no code changes by this heartbeat)
+
+Read-only inspection found a truthfulness defect: the repository VM omits
+prerequisites, while the details panel renders its normalized empty list as
+"אין דרישות קדם". Missing evidence must not imply confirmed absence. No regression
+or fix has been written yet. Before editing, a fresh git check found HEAD had
+advanced externally from `c940227` to `eb60055` (new timetable/design commits),
+along with overlapping unstaged changes to CourseDetailsPanel, both repositories,
+the journey/workspace, plus shared/API and protected source-data changes. Those
+changes belong to the other active work and were not staged, edited or discarded.
+
+Task-owner discovery through list_threads failed with "Transport closed". This
+heartbeat stops before overlapping code edits, verification or deployment and asks
+the user where development should be coordinated. Only this progress note is left
+unstaged; there is no new commit or Preview. Do not repeat an unchanged concurrency
+notification on later heartbeats. Recheck actual ownership/state first, and do not
+infer from this older log that the externally advancing timetable work is absent
+or approved for this runner to take over.
+
+## 2026-09-11 — weekly timetable (Bidit-style schedule) shipped
+
+This is the externally-advancing timetable work the heartbeat above deferred to.
+Built via Claude Code's subagent-driven-development skill: fresh implementer
+subagent per task, then a spec-compliance reviewer, then a code-quality reviewer,
+for every task — never self-approved. Spec:
+`docs/superpowers/specs/2026-09-10-weekly-timetable-design.md`. Plan (10 tasks):
+`docs/superpowers/plans/2026-09-10-weekly-timetable.md`.
+
+Shipped: `shared/planner/schedule.ts` (wire types, hard `hasOverlap`/`groupsOverlap`,
+`defaultTermMapping`) — `api/ai/schedule-groups.ts`, a server-side proxy to bid-it's
+public, unauthenticated group/course-search endpoints (bid-it is NOT an official TAU
+authority; every response carries `source`/`fetchedAt`) — `web/lib/planner/
+schedule-client.ts` + `schedule-storage.ts` — `NativePlannerJourney` now emits
+per-semester course ids (`onSemestersChange`) so the weekly view stays board-synced
+automatically, no manual re-entry — `WeeklyScheduleGrid` (presentational) —
+`WeeklyScheduleDrawer` (fetches groups for the active board semester's courses,
+enforces the hard no-overlap rule at selection time, re-validates existing
+selections after any data refresh instead of silently keeping a now-stale
+conflict, flags missing/incomplete bid-it data and course/term-year mismatches
+rather than reading them as conflict-free) — wired into `UnifiedPlannerWorkspace`
+as a third drawer sharing one side rail with the course repository (mutually
+exclusive; the AI assistant drawer stays independent), full Escape/focus parity
+with the existing two drawers.
+
+Two real defects were caught by review (not by the author) and fixed before
+merge: the weekly grid's day columns used a hardcoded physical `left` offset that
+would have rendered blocks under the mirrored/wrong day once mounted inside the
+app's `dir="rtl"` ancestor (CSS Grid's RTL auto-flow correctly reorders the header
+row; absolute-positioned `left` does not follow `dir`) — fixed to a `right`
+offset. And two gaps against this plan's own explicit text: no warning when
+bid-it's returned year didn't match the board column's mapped term, and no
+re-validation of existing selections after a data refresh (a stale selection that
+newly conflicts must be surfaced, never silently kept) — both closed, with tests
+proving the specific failure mode each fix closes.
+
+A third defect was caught by live manual browser testing specifically (not by any
+automated test): the free-course-search call had no error handling — a network
+failure produced an unhandled promise rejection and zero user feedback. Fixed;
+both that path and the main schedule-fetch failure path now surface a visible
+`role="alert"` message instead of failing silently, with regression tests using
+real rejected-promise mocks.
+
+Verification: 65 automated tests across 8 files (22 API-side node tests + 43
+web/jsdom tests), all green; `tsc --noEmit` clean. The actual shipped
+`api/ai/schedule-groups.ts` code (not a mock) was run directly against the real,
+live bid-it endpoints — confirmed correct multi-slot-per-group normalization
+(a lecture group meeting Sunday AND Wednesday came back as one group with two
+slots, as designed) and correct course-search results. The real `/planner`
+workspace was driven live in a browser: the weekly-schedule drawer opens/closes,
+shares its rail with the repository drawer correctly in both directions, computes
+the correct default term mapping for today's date, and the fixed search-error
+path was reproduced and confirmed fixed live (visible alert, no console
+exception). The repository and AI-assistant drawers were re-checked and are
+unaffected. NOT verified live: the board-synced fetch path itself (this
+environment's `next dev` has no `PLANNER_API_ORIGIN` proxy configured, so
+`/api/board` 500s locally and the drawer's candidate-course list is empty) — that
+path is covered only by automated tests with realistic DI'd data, not a live
+end-to-end run. No Production, deployment, or protected data changes; no Preview
+was created for this slice.
