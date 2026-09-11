@@ -51,9 +51,15 @@ export default function UnifiedPlannerWorkspace({
 
   const selectView = (view: WorkspaceView) => {
     setActiveView(view)
-    if (view === 'repository') setRepositoryOpen(true)
+    if (view === 'repository') {
+      setRepositoryOpen(true)
+      setWeeklyOpen(false)
+    }
     if (view === 'agent') setAgentOpen(true)
-    if (view === 'weekly') setWeeklyOpen(true)
+    if (view === 'weekly') {
+      setWeeklyOpen(true)
+      setRepositoryOpen(false)
+    }
   }
 
   const requestAdd = (courseId: string, semesterId?: string) => {
@@ -129,6 +135,7 @@ export default function UnifiedPlannerWorkspace({
     if (repositoryOpen) closeRepository()
     else {
       setRepositoryOpen(true)
+      setWeeklyOpen(false)
       setActiveView('repository')
     }
   }
@@ -145,6 +152,7 @@ export default function UnifiedPlannerWorkspace({
     if (weeklyOpen) closeWeekly()
     else {
       setWeeklyOpen(true)
+      setRepositoryOpen(false)
       setActiveView('weekly')
     }
   }
@@ -284,7 +292,7 @@ export default function UnifiedPlannerWorkspace({
           data-open={weeklyOpen}
           aria-hidden={!weeklyOpen}
           inert={!weeklyOpen}
-          className={`${activeView === 'weekly' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
+          className={`${activeView === 'weekly' ? '' : 'hidden lg:block'} planner-repository-rail planner-weekly-rail min-w-0`}
         >
           <WeeklyScheduleDrawer
             programId={programId}

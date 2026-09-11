@@ -317,12 +317,12 @@ describe('UnifiedPlannerWorkspace — weekly schedule drawer', () => {
     expect(toggle).toHaveFocus()
   })
 
-  test('repository, agent and weekly can all stay open independently', () => {
+  test('weekly replaces the repository in the shared side panel while the agent stays open', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח מערכת שעות' }))
-    expect(screen.getByTestId('course-repository')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
   })

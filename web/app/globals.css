@@ -21,6 +21,12 @@
     radial-gradient(ellipse at 62% 52%, rgba(214,204,255,.56) 0%, rgba(238,240,245,.42) 32%, transparent 64%),
     linear-gradient(135deg, #FAFAFC 0%, #EEF0F5 48%, #D6CCFF 100%);
   --syllo-bg-duration: 28s;
+
+  --cat-fluids-accent:  #0E7490; --cat-fluids-bg:  rgba(8,145,178,.12);
+  --cat-solids-accent:  #B45309; --cat-solids-bg:  rgba(217,119,6,.12);
+  --cat-systems-accent: #6D28D9; --cat-systems-bg: rgba(124,58,237,.11);
+  --cat-labs-accent:    #047857; --cat-labs-bg:    rgba(5,150,105,.12);
+  --cat-other-accent:   #475569; --cat-other-bg:   rgba(100,116,139,.09);
 }
 
 /* Dark tokens. Applied two ways so the shell stays in sync with the legacy
@@ -40,6 +46,12 @@
   --syllo-bg-image:
     radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
     linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
+
+  --cat-fluids-accent:  #22D3EE; --cat-fluids-bg:  rgba(8,145,178,.12);
+  --cat-solids-accent:  #FBBF24; --cat-solids-bg:  rgba(217,119,6,.12);
+  --cat-systems-accent: #A78BFA; --cat-systems-bg: rgba(124,58,237,.12);
+  --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
+  --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,8 +67,22 @@
     --syllo-bg-image:
       radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
       linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
+
+    --cat-fluids-accent:  #22D3EE; --cat-fluids-bg:  rgba(8,145,178,.12);
+    --cat-solids-accent:  #FBBF24; --cat-solids-bg:  rgba(217,119,6,.12);
+    --cat-systems-accent: #A78BFA; --cat-systems-bg: rgba(124,58,237,.12);
+    --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
+    --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
   }
 }
+
+/* ── Category accents (electives only) — ported from the legacy planner's
+      already-validated palette (app/web/semester_board_viewer.html CAT_CSS). ── */
+.card-cat-fluids  { border-inline-end-color: var(--cat-fluids-accent)  !important; background: var(--cat-fluids-bg)  !important; }
+.card-cat-solids  { border-inline-end-color: var(--cat-solids-accent)  !important; background: var(--cat-solids-bg)  !important; }
+.card-cat-systems { border-inline-end-color: var(--cat-systems-accent) !important; background: var(--cat-systems-bg) !important; }
+.card-cat-labs    { border-inline-end-color: var(--cat-labs-accent)    !important; background: var(--cat-labs-bg)    !important; }
+.card-cat-other_specialization { border-inline-end-color: var(--cat-other-accent) !important; background: var(--cat-other-bg) !important; }
 
     /* Closed side drawers animate just beyond the viewport. Clip that visual
        exit at the document boundary so the board never gains a phantom
@@ -178,7 +204,8 @@ body {
 .planner-repository-rail { right: 1rem; }
 .planner-repository-rail[data-open="true"] { display: block !important; }
 .planner-board-canvas .planner-agent-region { left: 1rem; }
-.planner-workbench[data-repository-open="false"] .planner-repository-rail {
+.planner-workbench[data-repository-open="false"] .planner-repository-rail:not(.planner-weekly-rail),
+.planner-workbench[data-weekly-open="false"] .planner-weekly-rail {
   opacity: 0;
   pointer-events: none;
   transform: translateX(calc(100% + 2rem));
@@ -433,7 +460,8 @@ body {
     direction: rtl;
   }
   .planner-board-canvas .planner-agent-region { direction: rtl; }
-  .planner-workbench[data-repository-open="false"] .planner-repository-rail { display: none !important; }
+  .planner-workbench[data-repository-open="false"] .planner-repository-rail:not(.planner-weekly-rail),
+  .planner-workbench[data-weekly-open="false"] .planner-weekly-rail { display: none !important; }
 }
 
 @media (max-width: 1023px) {
@@ -442,7 +470,9 @@ body {
   .planner-workbench[data-mobile-surface="board"] .planner-repository-rail,
   .planner-workbench[data-mobile-surface="board"] .planner-agent-region,
   .planner-workbench[data-mobile-surface="repository"] .planner-agent-region,
-  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail {
+  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail,
+  .planner-workbench[data-mobile-surface="repository"] .planner-weekly-rail,
+  .planner-workbench[data-mobile-surface="weekly"] .planner-repository-rail:not(.planner-weekly-rail) {
     display: none !important;
   }
 
