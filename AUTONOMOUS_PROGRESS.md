@@ -9232,3 +9232,52 @@ annual-course-band rendering in `NativePlannerBoard.tsx`) — zero commits touch
 `NativePlannerJourney.tsx`/its test since this feature's last commit, and the
 weekly-timetable test suite (65 tests, 8 files) is unaffected. Not this feature's
 regression; noted here so it isn't mis-attributed later.
+
+## 2026-09-11 — weekly timetable: real UI complaint fixed (readability + placement)
+
+User tested the shipped feature live and reported it "looks like a column, very
+unclear," and asked for it to appear below the semester board — not beside it in
+the narrow side rail, and not replacing the board. Both were real defects, not
+polish, and both fixed with the same implement→review rigor as the rest of this
+feature:
+
+1. `WeeklyScheduleGrid.tsx` (commit `303ef19`) had zero visual grid structure —
+   day headers rendered, but the hour/day body below was just floating hour-number
+   labels and a few absolutely-positioned colored blocks with no borders, no
+   gridlines, nothing showing day/hour boundaries. Redesigned into an actual
+   bordered 6×14 calendar (84 real cells), using this app's real design tokens
+   (`--border`, `--text-muted`, `--purple`/`--purple-strong` — not invented ones).
+   The RTL-correct block positioning from the earlier `a47b3de` fix was re-verified
+   intact against the new structure (dayIndex 0/5 traced by hand against the new
+   grid-template). Public interface (`GridBlock`, `WeeklyScheduleGrid` props)
+   unchanged, so `WeeklyScheduleDrawer` needed no changes.
+
+2. `UnifiedPlannerWorkspace.tsx` (commit `68eaf05`) had the weekly panel squeezed
+   into the same ~24rem `position:fixed` side rail the repository drawer uses —
+   far too narrow for a 6-day grid regardless of the grid's own fix. Moved it
+   completely out of that system: `'weekly'` removed from `WorkspaceView`/the
+   mobile single-surface-exclusivity system, repository and weekly are no longer
+   mutually exclusive (that exclusivity, added in `11a2a64`, existed only to solve
+   the now-gone shared-rail cramping), and the panel now renders as a plain
+   `hidden={!weeklyOpen}` full-width `<section>` sibling AFTER the board+repository
+   row, in normal document flow. Escape-handling was restructured to a form
+   verified by hand-trace to reduce to the EXACT pre-existing repository/agent
+   behavior when weekly is closed, while correctly prioritizing an Escape pressed
+   inside the weekly panel itself. Dead rail-sharing CSS removed from
+   `globals.css`. 24/24 tests pass in the workspace suite (up from 22 — two new:
+   independence of the three panels, and a structural DOM-order assertion that
+   weekly renders after/outside the board+rail row).
+
+Live-verified in a real browser (`/planner`, dev server): screenshots are
+unavailable in this environment (`computer{action:"screenshot"}` times out with
+"window minimized or hidden" — a known, pre-existing Browser-pane driver
+limitation, not a product defect; see
+`reference-browser-pane-driver-limits` memory). Verified instead via DOM/computed-
+style evidence: `getBoundingClientRect()` showed the weekly panel at 1104px wide
+(was ~380px in the old rail) positioned below the scrolled-past board section;
+`getComputedStyle()` on an actual cell showed a real rendered border
+(`0.8px rgba(167, 139, 250, 0.16)`, matching the `--border` token exactly) and a
+genuine 7-column `grid-template-columns` (64px hour gutter + six ~167px day
+columns) — concrete proof the grid is a real wide calendar now, not a narrow
+column of floating numbers. All 6 test suites for this feature still pass; `tsc
+--noEmit` clean. No Production, deployment, or protected data changes.
