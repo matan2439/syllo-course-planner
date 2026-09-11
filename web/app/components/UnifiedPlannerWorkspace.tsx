@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository, { type SemesterDestination } from './UnifiedCourseRepository'
+import WeeklyScheduleDrawer from './WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
-type WorkspaceView = 'board' | 'repository' | 'agent'
+type WorkspaceView = 'board' | 'repository' | 'agent' | 'weekly'
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
   { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
@@ -31,6 +32,8 @@ export default function UnifiedPlannerWorkspace({
   const [activeView, setActiveView] = useState<WorkspaceView>('board')
   const [repositoryOpen, setRepositoryOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
+  const [weeklyOpen, setWeeklyOpen] = useState(false)
+  const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
@@ -41,11 +44,16 @@ export default function UnifiedPlannerWorkspace({
   const repositoryWasOpen = useRef(false)
   const agentCloseRef = useRef<HTMLButtonElement | null>(null)
   const agentWasOpen = useRef(false)
+  const weeklyToggleRef = useRef<HTMLButtonElement | null>(null)
+  const weeklyDrawerRef = useRef<HTMLElement | null>(null)
+  const weeklyCloseRef = useRef<HTMLButtonElement | null>(null)
+  const weeklyWasOpen = useRef(false)
 
   const selectView = (view: WorkspaceView) => {
     setActiveView(view)
     if (view === 'repository') setRepositoryOpen(true)
     if (view === 'agent') setAgentOpen(true)
+    if (view === 'weekly') setWeeklyOpen(true)
   }
 
   const requestAdd = (courseId: string, semesterId?: string) => {
@@ -71,22 +79,36 @@ export default function UnifiedPlannerWorkspace({
     agentToggleRef.current?.focus()
   }
 
+  const closeWeekly = () => {
+    setWeeklyOpen(false)
+    setActiveView(agentOpen ? 'agent' : repositoryOpen ? 'repository' : 'board')
+    weeklyToggleRef.current?.focus()
+  }
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
-      const fromRepository = event.target instanceof Node && repositoryDrawerRef.current?.contains(event.target)
-      // Both drawers can stay open; Escape belongs to the drawer receiving it.
-      if (repositoryOpen && (!agentOpen || fromRepository)) {
+      const target = event.target
+      const fromRepository = target instanceof Node && repositoryDrawerRef.current?.contains(target)
+      const fromWeekly = target instanceof Node && weeklyDrawerRef.current?.contains(target)
+      if (repositoryOpen && (fromRepository || (!agentOpen && !weeklyOpen))) {
         event.preventDefault()
         closeRepository()
-      } else if (agentOpen) {
+        return
+      }
+      if (weeklyOpen && (fromWeekly || !agentOpen)) {
+        event.preventDefault()
+        closeWeekly()
+        return
+      }
+      if (agentOpen) {
         event.preventDefault()
         closeAgent()
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [agentOpen, repositoryOpen])
+  }, [agentOpen, repositoryOpen, weeklyOpen])
 
   useEffect(() => {
     if (repositoryOpen && !repositoryWasOpen.current) repositoryCloseRef.current?.focus()
@@ -97,6 +119,11 @@ export default function UnifiedPlannerWorkspace({
     if (agentOpen && !agentWasOpen.current) agentCloseRef.current?.focus()
     agentWasOpen.current = agentOpen
   }, [agentOpen])
+
+  useEffect(() => {
+    if (weeklyOpen && !weeklyWasOpen.current) weeklyCloseRef.current?.focus()
+    weeklyWasOpen.current = weeklyOpen
+  }, [weeklyOpen])
 
   const toggleRepository = () => {
     if (repositoryOpen) closeRepository()
@@ -111,6 +138,14 @@ export default function UnifiedPlannerWorkspace({
     else {
       setAgentOpen(true)
       setActiveView('agent')
+    }
+  }
+
+  const toggleWeekly = () => {
+    if (weeklyOpen) closeWeekly()
+    else {
+      setWeeklyOpen(true)
+      setActiveView('weekly')
     }
   }
 
@@ -153,15 +188,28 @@ export default function UnifiedPlannerWorkspace({
           <span aria-hidden="true">✦</span>
           <span>עוזר AI</span>
         </button>
+        <button
+          ref={weeklyToggleRef}
+          type="button"
+          aria-controls="workspace-panel-weekly"
+          aria-expanded={weeklyOpen}
+          aria-label={`${weeklyOpen ? 'הסתר' : 'פתח'} מערכת שעות`}
+          onClick={toggleWeekly}
+          className="planner-drawer-toggle planner-drawer-toggle-weekly"
+        >
+          <span aria-hidden="true">🗓️</span>
+          <span>מערכת שעות</span>
+        </button>
       </div>
 
       <div
         className="planner-workbench planner-drawers-overlay min-w-0"
         data-mobile-surface={activeView}
-        data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
+        data-layout={repositoryOpen || agentOpen || weeklyOpen ? 'drawer-split' : 'board'}
         data-drawer-mode="overlay"
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
+        data-weekly-open={weeklyOpen}
         data-drag-active={activeDrag ? 'true' : 'false'}
         data-drawer-interaction="below-toolbar"
       >
@@ -195,6 +243,7 @@ export default function UnifiedPlannerWorkspace({
             onManualAddSettled={() => setManualAddIntent(null)}
             onManualAddCancelled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
+            onSemestersChange={setSemesterCourses}
             agentOpen={agentOpen}
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
@@ -226,6 +275,23 @@ export default function UnifiedPlannerWorkspace({
             semesterDestinations={semesterDestinations}
             onRequestAdd={requestAdd}
             onDragStateChange={setActiveDrag}
+          />
+        </aside>
+        <aside
+          ref={weeklyDrawerRef}
+          id="workspace-panel-weekly"
+          aria-label="מערכת שעות"
+          data-open={weeklyOpen}
+          aria-hidden={!weeklyOpen}
+          inert={!weeklyOpen}
+          className={`${activeView === 'weekly' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
+        >
+          <WeeklyScheduleDrawer
+            programId={programId}
+            semesterDestinations={semesterDestinations}
+            semesterCourses={semesterCourses}
+            onClose={closeWeekly}
+            closeRef={weeklyCloseRef}
           />
         </aside>
       </div>
