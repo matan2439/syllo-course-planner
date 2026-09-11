@@ -353,9 +353,13 @@ test('a repository drop outside its offering fails closed', () => {
 
 test('mandatory courses do not advertise a move that authoritative validation must reject', () => {
   const onMoveCourse = jest.fn()
-  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  const card = screen.getByText('קורס לדוגמה').closest('[draggable]')
   expect(screen.getByText('קורס לדוגמה').closest('[draggable="true"]')).toBeNull()
-  expect(container.querySelector('details')).toBeNull()
+  // Scoped to the card itself — the board also renders an unrelated <details>
+  // (CategoryLegend's color key), which must not be mistaken for this card's
+  // own "move options" details dropdown.
+  expect(card?.querySelector('details')).toBeNull()
 })
 
 test('dragging an elective onto another semester invokes the same authoritative move intent', () => {

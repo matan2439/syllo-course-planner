@@ -1,4 +1,5 @@
 import SemesterColumn from './SemesterColumn'
+import CategoryLegend from './CategoryLegend'
 import { EmptyState } from './ui'
 import type { BoardVM, CourseVM } from '../../lib/board'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
@@ -29,6 +30,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
     return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
   }
   return (
+    <div className="flex flex-col gap-2">
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
     <div
       role="list"
@@ -52,6 +54,8 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
         </div>
       ))}
     </div>
+    </div>
+    <CategoryLegend />
     </div>
   )
 }
