@@ -5,6 +5,7 @@ import { Badge, Card } from './ui'
 export default function AnnualCourseBand({ course, startIndex }: { course: CourseVM; startIndex: number }) {
   return (
     <div
+      role="listitem"
       style={{ gridColumn: `${startIndex + 1} / span 2`, gridRow: 1 }}
       className="min-w-0"
     >
