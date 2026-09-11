@@ -27,7 +27,13 @@ const boardCourseSchema = z
     is_mandatory: z.boolean().optional(),
     offered_semesters: z.array(z.string().min(1)).nullable().optional(),
     // Elective category (fluids/solids/systems/advanced_labs/other_specialization/…);
-    // null/absent for mandatory courses and uncategorized electives.
+    // null/absent for mandatory courses and uncategorized electives. The data
+    // generator (app/analysis/semester_board.py) genuinely names this field
+    // differently on the two course lists in the same payload: repository
+    // entries (program_repository_courses) ship `category_id`, while placed
+    // entries (semesters[].courses) ship `program_category_id` — both are
+    // accepted; the adapter prefers whichever is present.
+    category_id: z.string().nullable().optional(),
     program_category_id: z.string().nullable().optional(),
     // Opaque string as shipped ("fixed" | "flexible" | "annual" | "elective" today);
     // never treated as a closed enum, matching course_type elsewhere in this schema.

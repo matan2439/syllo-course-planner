@@ -15,6 +15,9 @@ type RawCourse = {
   course_type?: string;
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
+  // See the matching field comment in wire.ts: repository entries ship
+  // category_id, placed entries ship program_category_id — both accepted.
+  category_id?: string | null;
   program_category_id?: string | null;
   placement_policy?: string;
   is_annual?: boolean;
@@ -62,7 +65,9 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
     ...(c.offered_semesters != null
       ? { offeredSemesters: normalizeSemesterIds(c.offered_semesters, knownSemesterIds) }
       : {}),
-    ...(c.program_category_id != null ? { programCategoryId: c.program_category_id } : {}),
+    ...((c.category_id ?? c.program_category_id) != null
+      ? { programCategoryId: (c.category_id ?? c.program_category_id) as string }
+      : {}),
     ...(c.placement_policy != null ? { placementPolicy: c.placement_policy } : {}),
     ...(c.is_annual != null ? { isAnnual: c.is_annual } : {}),
   };

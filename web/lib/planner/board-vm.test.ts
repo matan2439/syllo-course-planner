@@ -62,7 +62,7 @@ test('categoryId is copied from the catalog for electives; mandatory courses sta
       {
         semester_id: 'year_3_semester_a',
         courses: [
-          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', program_category_id: 'fluids' },
+          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', category_id: 'fluids' },
           { course_id: 'ELEC-2', name_he: 'בחירה כללית', weekly_hours: 2, course_type: 'elective' },
           { course_id: 'MAND-1', name_he: 'חובה', weekly_hours: 4, course_type: 'mandatory' },
         ],

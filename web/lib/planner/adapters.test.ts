@@ -74,14 +74,14 @@ test('a course with no offered_semesters field keeps offeredSemesters absent (un
   expect(model.courseCatalog['C-4'].offeredSemesters).toBeUndefined()
 })
 
-test('program_category_id and placement_policy pass through to the catalog unchanged', () => {
+test('category_id and placement_policy pass through to the catalog unchanged', () => {
   const board = {
     metadata: { board_data_version: 'rev-1' },
     semesters: [
       {
         semester_id: 'year_3_semester_a',
         courses: [
-          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', program_category_id: 'fluids', placement_policy: 'elective' },
+          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', category_id: 'fluids', placement_policy: 'elective' },
           { course_id: 'MAND-1', name_he: 'חובה', weekly_hours: 4, course_type: 'mandatory', placement_policy: 'fixed' },
         ],
       },
@@ -94,6 +94,27 @@ test('program_category_id and placement_policy pass through to the catalog uncha
   expect(model.courseCatalog['FLU-1'].programCategoryId).toBe('fluids')
   expect(model.courseCatalog['MAND-1'].programCategoryId).toBeUndefined()
   expect(model.courseCatalog['MAND-1'].placementPolicy).toBe('fixed')
+})
+
+test('program_category_id is also accepted (placed courses use this name, not category_id)', () => {
+  // Real board data (app/analysis/semester_board.py) genuinely names this
+  // field differently between the two course lists in the same payload:
+  // program_repository_courses ships category_id, but semesters[].courses
+  // (placed courses) ships program_category_id. Both must work.
+  const board = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'FLU-2', name_he: 'זרימה מוצבת', weekly_hours: 3, course_type: 'elective', program_category_id: 'fluids' }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const model = boardResponseToModel(board)
+  expect(model.courseCatalog['FLU-2'].programCategoryId).toBe('fluids')
 })
 
 test('isAnnualCourse is true only for placement_policy "annual"', () => {
