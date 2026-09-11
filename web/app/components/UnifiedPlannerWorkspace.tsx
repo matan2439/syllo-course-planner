@@ -7,7 +7,7 @@ import UnifiedCourseRepository, { type SemesterDestination } from './UnifiedCour
 import WeeklyScheduleDrawer from './WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
-type WorkspaceView = 'board' | 'repository' | 'agent' | 'weekly'
+type WorkspaceView = 'board' | 'repository' | 'agent'
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
   { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
@@ -51,15 +51,8 @@ export default function UnifiedPlannerWorkspace({
 
   const selectView = (view: WorkspaceView) => {
     setActiveView(view)
-    if (view === 'repository') {
-      setRepositoryOpen(true)
-      setWeeklyOpen(false)
-    }
+    if (view === 'repository') setRepositoryOpen(true)
     if (view === 'agent') setAgentOpen(true)
-    if (view === 'weekly') {
-      setWeeklyOpen(true)
-      setRepositoryOpen(false)
-    }
   }
 
   const requestAdd = (courseId: string, semesterId?: string) => {
@@ -87,7 +80,6 @@ export default function UnifiedPlannerWorkspace({
 
   const closeWeekly = () => {
     setWeeklyOpen(false)
-    setActiveView(agentOpen ? 'agent' : repositoryOpen ? 'repository' : 'board')
     weeklyToggleRef.current?.focus()
   }
 
@@ -97,20 +89,16 @@ export default function UnifiedPlannerWorkspace({
       const target = event.target
       const fromRepository = target instanceof Node && repositoryDrawerRef.current?.contains(target)
       const fromWeekly = target instanceof Node && weeklyDrawerRef.current?.contains(target)
-      if (repositoryOpen && (fromRepository || (!agentOpen && !weeklyOpen))) {
-        event.preventDefault()
-        closeRepository()
-        return
-      }
-      if (weeklyOpen && (fromWeekly || !agentOpen)) {
-        event.preventDefault()
-        closeWeekly()
-        return
-      }
-      if (agentOpen) {
-        event.preventDefault()
-        closeAgent()
-      }
+
+      if (fromWeekly && weeklyOpen) { event.preventDefault(); closeWeekly(); return }
+      if (fromRepository && repositoryOpen) { event.preventDefault(); closeRepository(); return }
+      // Fallback for Escape pressed somewhere that isn't inside a specific
+      // drawer's own DOM (e.g. focus on a toolbar toggle button) — preserves
+      // the repository/agent priority that was already tested before weekly
+      // existed, then falls back to weekly last.
+      if (repositoryOpen && !agentOpen) { event.preventDefault(); closeRepository(); return }
+      if (agentOpen) { event.preventDefault(); closeAgent(); return }
+      if (weeklyOpen) { event.preventDefault(); closeWeekly() }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -135,7 +123,6 @@ export default function UnifiedPlannerWorkspace({
     if (repositoryOpen) closeRepository()
     else {
       setRepositoryOpen(true)
-      setWeeklyOpen(false)
       setActiveView('repository')
     }
   }
@@ -150,11 +137,7 @@ export default function UnifiedPlannerWorkspace({
 
   const toggleWeekly = () => {
     if (weeklyOpen) closeWeekly()
-    else {
-      setWeeklyOpen(true)
-      setRepositoryOpen(false)
-      setActiveView('weekly')
-    }
+    else setWeeklyOpen(true)
   }
 
   return (
@@ -213,11 +196,10 @@ export default function UnifiedPlannerWorkspace({
       <div
         className="planner-workbench planner-drawers-overlay min-w-0"
         data-mobile-surface={activeView}
-        data-layout={repositoryOpen || agentOpen || weeklyOpen ? 'drawer-split' : 'board'}
+        data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
         data-drawer-mode="overlay"
         data-repository-open={repositoryOpen}
         data-agent-open={agentOpen}
-        data-weekly-open={weeklyOpen}
         data-drag-active={activeDrag ? 'true' : 'false'}
         data-drawer-interaction="below-toolbar"
       >
@@ -285,24 +267,23 @@ export default function UnifiedPlannerWorkspace({
             onDragStateChange={setActiveDrag}
           />
         </aside>
-        <aside
-          ref={weeklyDrawerRef}
-          id="workspace-panel-weekly"
-          aria-label="מערכת שעות"
-          data-open={weeklyOpen}
-          aria-hidden={!weeklyOpen}
-          inert={!weeklyOpen}
-          className={`${activeView === 'weekly' ? '' : 'hidden lg:block'} planner-repository-rail planner-weekly-rail min-w-0`}
-        >
-          <WeeklyScheduleDrawer
-            programId={programId}
-            semesterDestinations={semesterDestinations}
-            semesterCourses={semesterCourses}
-            onClose={closeWeekly}
-            closeRef={weeklyCloseRef}
-          />
-        </aside>
       </div>
+
+      <section
+        ref={weeklyDrawerRef}
+        id="workspace-panel-weekly"
+        aria-label="מערכת שעות"
+        hidden={!weeklyOpen}
+        className="planner-weekly-panel mt-4 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+      >
+        <WeeklyScheduleDrawer
+          programId={programId}
+          semesterDestinations={semesterDestinations}
+          semesterCourses={semesterCourses}
+          onClose={closeWeekly}
+          closeRef={weeklyCloseRef}
+        />
+      </section>
     </section>
   )
 }

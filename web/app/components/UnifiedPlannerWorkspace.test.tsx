@@ -317,13 +317,32 @@ describe('UnifiedPlannerWorkspace — weekly schedule drawer', () => {
     expect(toggle).toHaveFocus()
   })
 
-  test('weekly replaces the repository in the shared side panel while the agent stays open', () => {
+  test('repository, agent and weekly can all stay open independently', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח מערכת שעות' }))
-    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('course-repository')).toBeInTheDocument()
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+  })
+
+  test('renders the weekly panel below the board, outside the repository rail row', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מערכת שעות' }))
+
+    const board = document.getElementById('workspace-panel-journey')
+    const weekly = document.getElementById('workspace-panel-weekly')
+    const workbench = container.querySelector('.planner-workbench')
+    expect(board).not.toBeNull()
+    expect(weekly).not.toBeNull()
+    expect(workbench).not.toBeNull()
+
+    // Weekly is not inside the board+repository-rail row at all.
+    expect(workbench?.contains(weekly as Node)).toBe(false)
+    // It comes after that row in document order, i.e. below it.
+    expect(
+      (board?.compareDocumentPosition(weekly as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })
