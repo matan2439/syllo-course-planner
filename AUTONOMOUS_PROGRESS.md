@@ -9213,3 +9213,22 @@ environment's `next dev` has no `PLANNER_API_ORIGIN` proxy configured, so
 path is covered only by automated tests with realistic DI'd data, not a live
 end-to-end run. No Production, deployment, or protected data changes; no Preview
 was created for this slice.
+
+### Follow-up — final holistic review, HTTP-handler gap closed
+
+A final cross-task review (after all 10 tasks) found the earlier live check had
+only exercised `fetchGroupsFromBidit`/`normalizeGroupsResponse` directly in Node,
+never the actual exported `handler` through a real HTTP request — so
+`VercelRequest.query` parsing and status/JSON marshaling were unverified. Closed:
+a throwaway local Node HTTP server wrapped the real `handler` and received real
+requests. `GET ?semester=1&courses=0542-2400,0512-4266` → 200 with correct
+normalized data from live bid-it (including the two-slot group again). `GET
+?search=מכני&semester=1` → 200, 18 real results. `GET` with no params → 400
+`INVALID_SEMESTER`. `POST` → 405. Script and output were not committed (one-off
+verification, not part of the app). The review also confirmed the one failing
+test in a full-suite run (`NativePlannerJourney.test.tsx`, `בנה תוכנית` button not
+found) is caused by unrelated concurrent work on this branch (commit `7ce228f`,
+annual-course-band rendering in `NativePlannerBoard.tsx`) — zero commits touched
+`NativePlannerJourney.tsx`/its test since this feature's last commit, and the
+weekly-timetable test suite (65 tests, 8 files) is unaffected. Not this feature's
+regression; noted here so it isn't mis-attributed later.
