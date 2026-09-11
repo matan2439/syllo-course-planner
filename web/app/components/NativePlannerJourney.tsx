@@ -47,6 +47,8 @@ import CompletedCoursesPanel, {
 import { emptyProfile, type PreferenceProfile } from '../../../api/ai/preference_model'
 import { earlyYearCoursesFor, earlyYearHoursById } from '../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
+import ProgressBadge from './ProgressBadge'
+import { adaptRequirementsFromModel } from '../../lib/requirements'
 import CourseNamePicker from './CourseNamePicker'
 import AcademicAgentConversation from './AcademicAgentConversation'
 import { Badge, Card, EmptyState } from './ui'
@@ -1033,7 +1035,10 @@ export default function NativePlannerJourney({
         )}
         <section aria-label="התוכנית הנוכחית">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+              <ProgressBadge requirements={adaptRequirementsFromModel(current)} />
+            </div>
             {alternativeBoard && <span className="text-xs text-[var(--text-muted)]">לא נשמר עד לאישור מפורש</span>}
           </div>
           {(proposal?.alternatives?.length ?? 0) >= 2 && (
