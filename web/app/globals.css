@@ -345,6 +345,14 @@ body {
 .planner-drop-target-rejected {
   animation: planner-drop-rejected 520ms ease-out both;
 }
+@keyframes planner-drop-placed {
+  0%   { box-shadow: inset 0 0 0 2px rgb(16 185 129 / 0%),  0 0 0 0 rgb(16 185 129 / 0%); }
+  35%  { box-shadow: inset 0 0 0 3px rgb(16 185 129 / 80%), 0 0 0 8px rgb(16 185 129 / 16%); }
+  100% { box-shadow: inset 0 0 0 2px rgb(16 185 129 / 0%),  0 0 0 0 rgb(16 185 129 / 0%); }
+}
+.planner-drop-target-placed {
+  animation: planner-drop-placed 420ms ease-out both;
+}
 .planner-drop-target-pending {
   border-color: color-mix(in srgb, var(--purple) 64%, var(--border)) !important;
   background: color-mix(in srgb, var(--purple) 6%, var(--surface));

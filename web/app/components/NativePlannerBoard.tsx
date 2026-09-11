@@ -12,7 +12,7 @@ import { annualBandsOf } from '../../lib/planner/annual-bands'
  * server-authority callbacks. The shared drag intent keeps feedback truthful
  * even when a browser hides DataTransfer contents during dragover.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, onDragStateChange, readOnly = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
@@ -25,6 +25,10 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   rejectedSemesterId?: string | null
   /** Changes on every refusal so the target feedback animation restarts. */
   rejectedDropKey?: string | number | null
+  /** The semester a manual add/move most recently landed in successfully. */
+  justPlacedSemesterId?: string | null
+  /** Changes on every successful placement so the confirmation animation restarts. */
+  justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   readOnly?: boolean
 }) {
@@ -45,7 +49,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
         <AnnualCourseBand key={band.course.id} course={band.course} startIndex={band.startIndex} />
       ))}
       {board.semesters.map((s, i) => (
-        <div role="listitem" key={s.id} className="min-w-0" style={{ gridColumn: i + 1, gridRow: 2 }}>
+        <div role="listitem" key={`${s.id}-${justPlacedSemesterId === s.id ? justPlacedKey ?? 'p' : 'idle'}`} className="min-w-0" style={{ gridColumn: i + 1, gridRow: 2 }}>
           <SemesterColumn
             semester={s} index={i} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
             onSelectCourse={onSelectCourse}
@@ -56,6 +60,8 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
             activeDrag={readOnly ? null : activeDrag}
             rejected={rejectedSemesterId === s.id}
             rejectedKey={rejectedDropKey}
+            justPlaced={justPlacedSemesterId === s.id}
+            justPlacedKey={justPlacedKey}
             onDragStateChange={readOnly ? undefined : onDragStateChange}
           />
         </div>

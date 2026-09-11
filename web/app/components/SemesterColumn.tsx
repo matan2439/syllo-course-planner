@@ -18,6 +18,8 @@ export default function SemesterColumn({
   activeDrag,
   rejected = false,
   rejectedKey,
+  justPlaced = false,
+  justPlacedKey,
   onDragStateChange,
 }: {
   semester: SemesterVM
@@ -32,6 +34,10 @@ export default function SemesterColumn({
   activeDrag?: PlannerDragPayload | null
   rejected?: boolean
   rejectedKey?: string | number | null
+  /** True immediately after a manual add/move successfully lands in this semester. */
+  justPlaced?: boolean
+  /** Changes on every successful placement so the confirmation animation restarts. */
+  justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   // Annual courses render once, at the board level (AnnualCourseBand), spanning
@@ -91,6 +97,7 @@ export default function SemesterColumn({
     <section
       aria-label={semester.title}
       data-drop-state={rejected ? 'rejected' : visibleDragState ?? undefined}
+      data-just-placed={justPlaced ? 'true' : undefined}
       onDragEnter={updateDragState}
       onDragOver={updateDragState}
       onDragLeave={(event) => {
@@ -110,7 +117,7 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''}`}
+      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''} ${justPlaced ? 'planner-drop-target-placed' : ''}`}
     >
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>

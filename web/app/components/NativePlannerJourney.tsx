@@ -236,6 +236,10 @@ export default function NativePlannerJourney({
   // connect the written explanation with the semester they attempted.
   const [rejectedDrop, setRejectedDrop] = useState<{ semesterId: string; key: number } | null>(null)
   const rejectedDropTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Mirrors rejectedDrop for the success case: briefly flash the semester a
+  // manual add/move actually landed in, so the confirmation is legible.
+  const [justPlaced, setJustPlaced] = useState<{ semesterId: string; key: number } | null>(null)
+  const justPlacedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Read-only details panel (with the per-course AI chat) for a course already on the board.
   const [selectedBoardCourse, setSelectedBoardCourse] = useState<CourseDetailsVM | null>(null)
   const selectBoardCourse = (course: CourseVM) =>
@@ -254,6 +258,20 @@ export default function NativePlannerJourney({
 
   useEffect(() => () => {
     if (rejectedDropTimerRef.current) clearTimeout(rejectedDropTimerRef.current)
+  }, [])
+
+  const showJustPlaced = useCallback((semesterId: string) => {
+    if (justPlacedTimerRef.current) clearTimeout(justPlacedTimerRef.current)
+    const key = Date.now()
+    setJustPlaced({ semesterId, key })
+    justPlacedTimerRef.current = setTimeout(() => {
+      setJustPlaced((current) => current?.key === key ? null : current)
+      justPlacedTimerRef.current = null
+    }, 500)
+  }, [])
+
+  useEffect(() => () => {
+    if (justPlacedTimerRef.current) clearTimeout(justPlacedTimerRef.current)
   }, [])
 
   useEffect(() => {
@@ -836,6 +854,7 @@ export default function NativePlannerJourney({
       return
     }
     setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+    showJustPlaced(semesterId)
     setBoardVersion(result.board.version)
     setManualRevision((value) => value + 1)
     manualEditKeyRef.current = null
@@ -912,6 +931,7 @@ export default function NativePlannerJourney({
         return
       }
       setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+      showJustPlaced(semesterId)
       setBoardVersion(result.board.version)
       setManualRevision((value) => value + 1)
       manualEditKeyRef.current = null
@@ -1062,6 +1082,8 @@ export default function NativePlannerJourney({
             activeDrag={alternativeBoard ? null : activeDrag}
             rejectedSemesterId={alternativeBoard ? null : rejectedDrop?.semesterId}
             rejectedDropKey={alternativeBoard ? null : rejectedDrop?.key}
+            justPlacedSemesterId={alternativeBoard ? null : justPlaced?.semesterId}
+            justPlacedKey={alternativeBoard ? null : justPlaced?.key}
             onDragStateChange={alternativeBoard ? undefined : onDragStateChange}
             readOnly={Boolean(alternativeBoard)}
           />
