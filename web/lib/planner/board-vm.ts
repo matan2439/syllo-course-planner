@@ -11,8 +11,8 @@
  * Direct module imports (not the shared barrel): model.ts is pure TS (no zod),
  * so this view-model pulls no runtime schema code into the client bundle.
  */
-import { SEMESTER_ORDER, type BoardVM } from '../board'
-import { fromHalfHours } from '../../../shared/planner/model'
+import { SEMESTER_ORDER, GENERAL_ELECTIVE_CATEGORY_ID, type BoardVM } from '../board'
+import { fromHalfHours, isAnnualCourse } from '../../../shared/planner/model'
 import type { BoardModel } from '../../../shared/planner/model'
 
 const YEAR_HE: Record<string, string> = {
@@ -48,6 +48,7 @@ export function boardModelToVM(model: BoardModel): BoardVM {
       warnings: [],
       courses: s.courses.map((c) => {
         const catalogCourse = model.courseCatalog[c.courseId]
+        const isElectiveLike = c.courseType !== 'mandatory'
         return {
           id: c.courseId,
           name: c.nameHe,
@@ -59,6 +60,10 @@ export function boardModelToVM(model: BoardModel): BoardVM {
           ...(catalogCourse?.offeredSemesters !== undefined
             ? { offeredSemesters: [...catalogCourse.offeredSemesters] }
             : {}),
+          ...(isElectiveLike
+            ? { categoryId: catalogCourse?.programCategoryId ?? GENERAL_ELECTIVE_CATEGORY_ID }
+            : {}),
+          ...(catalogCourse && isAnnualCourse(catalogCourse) ? { isAnnual: true } : {}),
         }
       }),
     }))

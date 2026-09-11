@@ -54,3 +54,44 @@ test('display fields not in the canonical contract are deferred (D1): difficulty
   expect(course.hasWarnings).toBe(false)
   expect(vm.semesters[0].totalWeeklyHours).toBeNull()
 })
+
+test('categoryId is copied from the catalog for electives; mandatory courses stay uncategorized', () => {
+  const board = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [
+          { course_id: 'FLU-1', name_he: 'זרימה', weekly_hours: 3, course_type: 'elective', program_category_id: 'fluids' },
+          { course_id: 'ELEC-2', name_he: 'בחירה כללית', weekly_hours: 2, course_type: 'elective' },
+          { course_id: 'MAND-1', name_he: 'חובה', weekly_hours: 4, course_type: 'mandatory' },
+        ],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const vm = boardModelToVM(boardResponseToModel(board))
+  const [flu, elec, mand] = vm.semesters[0].courses
+  expect(flu.categoryId).toBe('fluids')
+  expect(elec.categoryId).toBe('other_specialization') // uncategorized elective falls back
+  expect(mand.categoryId).toBeUndefined() // categories are an elective-only concept
+})
+
+test('isAnnual is copied from the catalog placement policy or explicit is_annual flag', () => {
+  const board = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'ANN-1', name_he: 'שנתי', weekly_hours: 4, course_type: 'mandatory', placement_policy: 'annual' }],
+      },
+      { semester_id: 'year_3_semester_b', courses: [] },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const vm = boardModelToVM(boardResponseToModel(board))
+  expect(vm.semesters[0].courses[0].isAnnual).toBe(true)
+})

@@ -47,6 +47,9 @@ export type RawBoard = {
   summary?: { total_courses?: number }
 }
 
+/** Category to fall back to for elective courses without a recognized categoryId. Mirrors legacy GENERAL_ELECTIVE_CAT_ID. */
+export const GENERAL_ELECTIVE_CATEGORY_ID = 'other_specialization'
+
 export type CourseVM = {
   id: string
   name: string
@@ -56,6 +59,10 @@ export type CourseVM = {
   syllabusUrl: string | null
   hasWarnings: boolean
   offeredSemesters?: string[]
+  /** Elective category id, defaulted to GENERAL_ELECTIVE_CATEGORY_ID for uncategorized electives. Absent for mandatory courses. */
+  categoryId?: string
+  /** A year-long course spanning both semester halves as one atomic placement — never independently movable. */
+  isAnnual?: boolean
 }
 
 export type SemesterVM = {
