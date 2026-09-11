@@ -104,9 +104,12 @@ test('an entirely empty board renders the truthful board-unavailable state', () 
 
 test('uses a continuous horizontally scrollable semester table', () => {
   const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
-  const grid = container.querySelector('[role="list"]') as HTMLElement
-  expect(grid.parentElement?.className).toMatch(/overflow-x-auto/)
-  expect(grid.className).toMatch(/grid/)
+  const list = container.querySelector('[role="list"]') as HTMLElement
+  expect(list.parentElement?.className).toMatch(/overflow-x-auto/)
+  // Each year-pair is its own small grid (so an annual course's spanning
+  // card can sit between the pair's headers and its two course lists); the
+  // outer list itself just lays those pair-grids side by side.
+  expect(list.querySelectorAll('[style*="grid-template-columns"]').length).toBeGreaterThan(0)
 })
 
 test('a repository drop invokes add and never move', () => {
@@ -517,7 +520,7 @@ test('an elective advertises only semesters listed by the authoritative catalog'
   expect(screen.queryByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ד׳ — סמסטר א׳' })).toBeNull()
 })
 
-test('an annual course renders in each of its two semester columns, styled like any other card, and is never draggable', () => {
+test('an annual course renders once, as one card spanning both of its year\'s semester columns, styled like any other card and never draggable', () => {
   const annualBoard = {
     metadata: { board_data_version: 'rev-1' },
     semesters: [
@@ -534,14 +537,12 @@ test('an annual course renders in each of its two semester columns, styled like 
     ],
   }
   render(<NativePlannerBoard board={vmFromPayload(annualBoard)} onMoveCourse={jest.fn()} />)
-  // Present once per semester it spans — no special spanning block, just a
-  // normal card under each semester's own heading, alongside any other course.
-  const cards = screen.getAllByText('קורס שנתי')
-  expect(cards).toHaveLength(2)
-  expect(screen.getAllByText('שנתי (א׳+ב׳)')).toHaveLength(2)
-  for (const card of cards) {
-    expect(card.closest('[draggable]')).toHaveAttribute('draggable', 'false')
-  }
+  // Rendered once (not once per semester) — a single wide card, using the
+  // exact same CourseCard as everything else, spanning both columns of its
+  // year, positioned right under the headers rather than in a separate block.
+  expect(screen.getAllByText('קורס שנתי')).toHaveLength(1)
+  expect(screen.getByText('שנתי (א׳+ב׳)')).toBeInTheDocument()
+  expect(screen.getByText('קורס שנתי').closest('[draggable]')).toHaveAttribute('draggable', 'false')
 })
 
 test('dropping an elective outside its catalog offering does not send a move intent', () => {
