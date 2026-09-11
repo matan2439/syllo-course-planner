@@ -115,8 +115,20 @@ export default function WeeklyScheduleDrawer({
     const accepted: Array<{ courseId: string; courseName: string; group: ScheduleGroup }> = []
     const nextSelections = { ...state.selections }
     let changed = false
-    let removedBecauseOfConflict: { courseName: string; conflictingCourseName: string } | null = null
+    const removedSelections: Array<
+      | { kind: 'conflict'; courseName: string; conflictingCourseName: string }
+      | { kind: 'dangling'; courseName: string }
+    > = []
 
+    // When this refetch reveals a conflict between two selections that were
+    // previously independent, the course that sorts EARLIER in
+    // scheduleData.courses (board/API order) survives and the later one is
+    // dropped. That is a different tie-break than toggleGroup's, which
+    // always keeps whatever the user already had selected and blocks the
+    // new click — there is no "the user's original choice" to prefer here,
+    // because this revalidation runs in response to a data refresh, not a
+    // user action. The survivor is simply whichever course is reached first
+    // while iterating the freshly-fetched course list.
     for (const course of scheduleData.courses) {
       const key = selectionKey(course.courseId, term)
       const selectedIds = state.selections[key] ?? []
@@ -126,6 +138,7 @@ export default function WeeklyScheduleDrawer({
         const group = course.groups.find((candidate) => candidate.groupId === groupId)
         if (!group) {
           changed = true
+          removedSelections.push({ kind: 'dangling', courseName: course.nameHe ?? course.courseId })
           continue
         }
         const conflict = accepted.find(
@@ -133,10 +146,11 @@ export default function WeeklyScheduleDrawer({
         )
         if (conflict) {
           changed = true
-          removedBecauseOfConflict ??= {
+          removedSelections.push({
+            kind: 'conflict',
             courseName: course.nameHe ?? course.courseId,
             conflictingCourseName: conflict.courseName,
-          }
+          })
           continue
         }
         keptIds.push(groupId)
@@ -152,9 +166,17 @@ export default function WeeklyScheduleDrawer({
 
     if (!changed) return
     setState((previous) => ({ ...previous, selections: nextSelections }))
-    if (removedBecauseOfConflict) {
+    if (removedSelections.length === 1) {
+      const removal = removedSelections[0]
       setConflictMessage(
-        `הבחירה ב'${removedBecauseOfConflict.courseName}' הוסרה כי היא חופפת ל'${removedBecauseOfConflict.conflictingCourseName}' לאחר רענון נתוני השעות.`,
+        removal.kind === 'conflict'
+          ? `הבחירה ב'${removal.courseName}' הוסרה כי היא חופפת ל'${removal.conflictingCourseName}' לאחר רענון נתוני השעות.`
+          : `הבחירה ב'${removal.courseName}' הוסרה כי נתוני הקבוצה השתנו או נעלמו לאחר רענון נתוני השעות.`,
+      )
+    } else if (removedSelections.length > 1) {
+      const courseNames = [...new Set(removedSelections.map((removal) => removal.courseName))]
+      setConflictMessage(
+        `הבחירות הבאות הוסרו לאחר רענון נתוני השעות: ${courseNames.join(', ')}.`,
       )
     }
   }, [scheduleData, state.selections, term])

@@ -140,10 +140,15 @@ test('a stale selection that newly conflicts after refetched data is removed, no
         ],
       })
     }
-    // second load (after a term edit refetch): now they DO overlap
+    // second load (after adding an extra course triggers a refetch): now they DO overlap
     return groupsResponse()
   })
-  renderDrawer({ fetchScheduleGroupsFn })
+  const fetchCourseSearchFn = jest.fn().mockResolvedValue({
+    results: [{ courseId: '9999-9999', nameHe: 'קורס נוסף' }],
+    source: 'bidit',
+    fetchedAt: 't',
+  } as CourseSearchResponse)
+  renderDrawer({ fetchScheduleGroupsFn, fetchCourseSearchFn })
 
   const first = await screen.findByRole('checkbox', { name: /תכן מכני \(1\).*ראשית.*א.*10:00-12:00/ })
   fireEvent.click(first)
@@ -152,16 +157,25 @@ test('a stale selection that newly conflicts after refetched data is removed, no
   expect(first).toBeChecked()
   expect(second).toBeChecked()
 
-  // trigger a refetch by editing the term semester (existing UI control)
-  fireEvent.change(screen.getByLabelText('סמסטר'), { target: { value: '2' } })
+  // Trigger a refetch WITHOUT changing the term (which would change the
+  // selection-storage key and hide the existing selections regardless of
+  // conflict logic). Adding an extra course via search changes the
+  // candidate-course-ids key and forces a refetch while keeping the term
+  // — and therefore the stored selection keys — stable.
+  fireEvent.change(screen.getByPlaceholderText('חיפוש קורס להוספה לצפייה'), { target: { value: 'נוסף' } })
+  fireEvent.click(screen.getByRole('button', { name: 'חפש' }))
+  const addButton = await screen.findByRole('button', { name: /הוסף קורס נוסף/ })
+  fireEvent.click(addButton)
 
   await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenCalledTimes(2))
-  // one of the two conflicting selections must be gone
+  // Deterministic outcome: the earlier course in scheduleData.courses
+  // ('תכן מכני (1)', index 0) survives the revalidation, and the later one
+  // ('אבטחה ובטיחות', index 1) is dropped — per the documented tie-break.
   await waitFor(() => {
-    const stillChecked = [
-      screen.queryByRole('checkbox', { name: /תכן מכני \(1\)/ }),
-      screen.queryByRole('checkbox', { name: /אבטחה ובטיחות/ }),
-    ].filter((el) => el && (el as HTMLInputElement).checked)
-    expect(stillChecked.length).toBeLessThanOrEqual(1)
+    expect(screen.getByRole('checkbox', { name: /תכן מכני \(1\)/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /אבטחה ובטיחות/ })).not.toBeChecked()
   })
+  expect(
+    await screen.findByText(/הבחירה ב'אבטחה ובטיחות' הוסרה כי היא חופפת ל'תכן מכני/),
+  ).toBeInTheDocument()
 })
