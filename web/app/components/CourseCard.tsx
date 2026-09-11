@@ -37,9 +37,12 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
   const nativeDragStarted = useRef(false)
   // Missing offering data is an unknown academic fact, not permission to move
   // everywhere. Keep the card keyboard-readable, but fail closed until the
-  // authoritative catalog names at least one destination.
+  // authoritative catalog names at least one destination. An annual course
+  // spans both halves of its year as one atomic placement — it lists both as
+  // "offered" (so each half's card is individually legal), but it must never
+  // be independently moved or split, so it never advertises a destination.
   const offeredSemesters = course.offeredSemesters
-  const availableMoveDestinations = offeredSemesters === undefined
+  const availableMoveDestinations = course.isAnnual || offeredSemesters === undefined
     ? []
     : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
   const movable = Boolean(onMove) &&
@@ -110,6 +113,9 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         <Badge variant={course.type === 'mandatory' ? 'purple' : 'neutral'}>
           {TYPE_LABELS[course.type] ?? course.type}
         </Badge>
+        {course.isAnnual && (
+          <Badge variant="purple">שנתי (א׳+ב׳)</Badge>
+        )}
         {course.weeklyHours != null && (
           <Badge>{course.weeklyHours} ש״ש</Badge>
         )}

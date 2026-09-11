@@ -40,10 +40,6 @@ export default function SemesterColumn({
   justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
-  // Annual courses render once, at the board level (AnnualCourseBand), spanning
-  // both semester columns of their year — never as a per-column card here.
-  const visibleCourses = semester.courses.filter((c) => !c.isAnnual)
-
   const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
   const acceptsPayload = (payload: ReturnType<typeof readPlannerDrag>): payload is NonNullable<ReturnType<typeof readPlannerDrag>> => {
     if (!payload) return false
@@ -129,9 +125,9 @@ export default function SemesterColumn({
       <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
         <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
         <div className="flex shrink-0 items-center gap-1.5">
-          {visibleCourses.length > 0 && (
+          {semester.courses.length > 0 && (
             <span className="text-[11px] text-[var(--text-muted)]">
-              {visibleCourses.length} קורסים
+              {semester.courses.length} קורסים
             </span>
           )}
           {semester.totalWeeklyHours != null && (
@@ -167,10 +163,10 @@ export default function SemesterColumn({
         </p>
       )}
 
-      {visibleCourses.length === 0 ? (
+      {semester.courses.length === 0 ? (
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
-        visibleCourses.map((c) => <CourseCard
+        semester.courses.map((c) => <CourseCard
           key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse} onSelect={onSelectCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
           onDragStateChange={onDragStateChange}

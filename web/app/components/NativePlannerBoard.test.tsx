@@ -107,9 +107,6 @@ test('uses a continuous horizontally scrollable semester table', () => {
   const grid = container.querySelector('[role="list"]') as HTMLElement
   expect(grid.parentElement?.className).toMatch(/overflow-x-auto/)
   expect(grid.className).toMatch(/grid/)
-  // Explicit column template (not grid-flow-col) so an AnnualCourseBand can
-  // span two columns in row 1 above the semester columns in row 2.
-  expect(grid.style.gridTemplateColumns).toBe('repeat(2, minmax(17rem, 1fr))')
 })
 
 test('a repository drop invokes add and never move', () => {
@@ -520,7 +517,7 @@ test('an elective advertises only semesters listed by the authoritative catalog'
   expect(screen.queryByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ד׳ — סמסטר א׳' })).toBeNull()
 })
 
-test('an annual course renders once, spanning both columns of its year, not inside either SemesterColumn', () => {
+test('an annual course renders in each of its two semester columns, styled like any other card, and is never draggable', () => {
   const annualBoard = {
     metadata: { board_data_version: 'rev-1' },
     semesters: [
@@ -536,9 +533,15 @@ test('an annual course renders once, spanning both columns of its year, not insi
       { semester_id: 'year_4_semester_b', courses: [] },
     ],
   }
-  render(<NativePlannerBoard board={vmFromPayload(annualBoard)} />)
-  expect(screen.getAllByText('קורס שנתי')).toHaveLength(1)
-  expect(screen.getByText('שנתי (א׳+ב׳)')).toBeInTheDocument()
+  render(<NativePlannerBoard board={vmFromPayload(annualBoard)} onMoveCourse={jest.fn()} />)
+  // Present once per semester it spans — no special spanning block, just a
+  // normal card under each semester's own heading, alongside any other course.
+  const cards = screen.getAllByText('קורס שנתי')
+  expect(cards).toHaveLength(2)
+  expect(screen.getAllByText('שנתי (א׳+ב׳)')).toHaveLength(2)
+  for (const card of cards) {
+    expect(card.closest('[draggable]')).toHaveAttribute('draggable', 'false')
+  }
 })
 
 test('dropping an elective outside its catalog offering does not send a move intent', () => {

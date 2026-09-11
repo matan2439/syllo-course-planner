@@ -1,10 +1,8 @@
 import SemesterColumn from './SemesterColumn'
 import CategoryLegend from './CategoryLegend'
-import AnnualCourseBand from './AnnualCourseBand'
 import { EmptyState } from './ui'
 import type { BoardVM, CourseVM } from '../../lib/board'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
-import { annualBandsOf } from '../../lib/planner/annual-bands'
 
 /**
  * Native semester board for the canonical planner. It renders the shared
@@ -35,21 +33,16 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   if (board.semesters.length === 0) {
     return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
   }
-  const annualBands = annualBandsOf(board)
   return (
     <div className="flex flex-col gap-2">
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
     <div
       role="list"
       aria-label="לוח סמסטרים"
-      className="grid min-w-full"
-      style={{ gridTemplateColumns: `repeat(${board.semesters.length}, minmax(17rem, 1fr))` }}
+      className="grid min-w-full grid-flow-col auto-cols-[minmax(17rem,1fr)]"
     >
-      {annualBands.map((band) => (
-        <AnnualCourseBand key={band.course.id} course={band.course} startIndex={band.startIndex} />
-      ))}
       {board.semesters.map((s, i) => (
-        <div role="listitem" key={s.id} className="min-w-0" style={{ gridColumn: i + 1, gridRow: 2 }}>
+        <div role="listitem" key={s.id} className="min-w-0">
           <SemesterColumn
             semester={s} index={i} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
             onSelectCourse={onSelectCourse}

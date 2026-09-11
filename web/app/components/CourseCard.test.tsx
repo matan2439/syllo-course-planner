@@ -18,3 +18,18 @@ test('a mandatory course has no data-category attribute', () => {
   }} />)
   expect(screen.getByText('יסודות המכניקה').closest('[data-category]')).toBeNull()
 })
+
+test('an annual course renders like any other card (no special layout) but is never draggable, even with 2+ offered semesters', () => {
+  render(<CourseCard course={{
+    id: 'ANN-1', name: 'קורס שנתי לדוגמה', weeklyHours: 4, type: 'mandatory', difficulty: null,
+    syllabusUrl: null, hasWarnings: false, isAnnual: true,
+    offeredSemesters: ['year_3_semester_a', 'year_3_semester_b'],
+  }} onMove={jest.fn()} moveDestinations={[
+    { semesterId: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+    { semesterId: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
+  ]} />)
+  expect(screen.getByText('שנתי (א׳+ב׳)')).toBeInTheDocument()
+  expect(screen.getByText('קורס שנתי לדוגמה').closest('[draggable]')).toHaveAttribute('draggable', 'false')
+  expect(screen.queryByText(/גרור להעברה/)).toBeNull()
+  expect(screen.queryByText(/אפשרויות העברה/)).toBeNull()
+})
