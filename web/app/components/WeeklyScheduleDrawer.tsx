@@ -50,6 +50,8 @@ export default function WeeklyScheduleDrawer({
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<CourseSearchResponse['results']>([])
   const [conflictMessage, setConflictMessage] = useState<string | null>(null)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     saveWeeklyScheduleState(programId, state)
@@ -76,17 +78,24 @@ export default function WeeklyScheduleDrawer({
   useEffect(() => {
     setExtraCourseIds([])
     setConflictMessage(null)
+    setSearchError(null)
   }, [activeSemesterId])
 
   useEffect(() => {
     let live = true
     if (candidateCourseIds.length === 0) {
+      setFetchError(null)
       setScheduleData({ semester: term.semester, courses: [], source: 'bidit', fetchedAt: new Date().toISOString() })
       return
     }
     fetchScheduleGroupsFn(candidateCourseIds, term.semester).then(
-      (data) => { if (live) setScheduleData(data) },
-      () => { if (live) setScheduleData(null) },
+      (data) => { if (live) { setFetchError(null); setScheduleData(data) } },
+      () => {
+        if (live) {
+          setFetchError('טעינת נתוני השעות נכשלה. נסו לרענן או לנסות שוב מאוחר יותר.')
+          setScheduleData(null)
+        }
+      },
     )
     return () => { live = false }
     // candidateCourseIds is intentionally omitted — candidateCourseIdsKey
@@ -217,9 +226,14 @@ export default function WeeklyScheduleDrawer({
   }
 
   const runSearch = async () => {
-    if (!searchText.trim()) { setSearchResults([]); return }
-    const result = await fetchCourseSearchFn(searchText.trim(), term.semester)
-    setSearchResults(result.results)
+    if (!searchText.trim()) { setSearchResults([]); setSearchError(null); return }
+    try {
+      const result = await fetchCourseSearchFn(searchText.trim(), term.semester)
+      setSearchError(null)
+      setSearchResults(result.results)
+    } catch {
+      setSearchError('החיפוש נכשל. נסו שוב.')
+    }
   }
 
   const blocks: GridBlock[] = allSelectedGroups().flatMap(({ courseId, courseName, group }) =>
@@ -274,6 +288,7 @@ export default function WeeklyScheduleDrawer({
           onChange={(e) => setSearchText(e.target.value)}
         />
         <button type="button" onClick={runSearch}>חפש</button>
+        {searchError && <p role="alert">{searchError}</p>}
         {searchResults.map((r) => (
           <button
             key={r.courseId}
@@ -288,6 +303,8 @@ export default function WeeklyScheduleDrawer({
       {conflictMessage && <p role="alert">{conflictMessage}</p>}
 
       <WeeklyScheduleGrid blocks={blocks} />
+
+      {fetchError && <p role="alert">{fetchError}</p>}
 
       <ul>
         {(scheduleData?.courses ?? []).map((course) => (

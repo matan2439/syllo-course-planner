@@ -127,6 +127,23 @@ test('warns when bid-it returned data for a different year than the mapped term'
   expect(await screen.findByText(/2099/)).toBeInTheDocument()
 })
 
+test('a failed search shows an explanatory message instead of failing silently', async () => {
+  const fetchCourseSearchFn = jest.fn().mockRejectedValue(new Error('network down'))
+  renderDrawer({ fetchCourseSearchFn })
+
+  fireEvent.change(screen.getByPlaceholderText('חיפוש קורס להוספה לצפייה'), { target: { value: 'תכן' } })
+  fireEvent.click(screen.getByRole('button', { name: 'חפש' }))
+
+  expect(await screen.findByText(/החיפוש נכשל/)).toBeInTheDocument()
+})
+
+test('a failed schedule-groups fetch shows an error instead of silently rendering an empty list', async () => {
+  const fetchScheduleGroupsFn = jest.fn().mockRejectedValue(new Error('network down'))
+  renderDrawer({ fetchScheduleGroupsFn })
+
+  expect(await screen.findByText(/טעינת נתוני השעות נכשלה/)).toBeInTheDocument()
+})
+
 test('a stale selection that newly conflicts after refetched data is removed, not silently kept', async () => {
   let call = 0
   const fetchScheduleGroupsFn = jest.fn().mockImplementation(async () => {
