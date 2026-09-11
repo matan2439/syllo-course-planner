@@ -4,7 +4,10 @@ import type { TimeSlot } from '../../../shared/planner/schedule'
 
 const DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו'] as const
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i) // 08:00..21:00
-const ROW_HEIGHT = 40 // px per hour
+const ROW_HEIGHT = 48 // px per hour
+const GUTTER_WIDTH = '4rem'
+const GRID_TEMPLATE_COLUMNS = `${GUTTER_WIDTH} repeat(6, minmax(6rem, 1fr))`
+const CELL_BORDER = '1px solid var(--border)'
 
 export interface GridBlock {
   key: string
@@ -26,31 +29,68 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
   return (
     <div className="weekly-grid-wrapper overflow-x-auto">
       <div
-        className="weekly-grid-layout grid"
-        style={{ gridTemplateColumns: '4rem repeat(6, minmax(6rem, 1fr))' }}
+        className="weekly-grid-layout"
+        style={{ minWidth: `calc(${GUTTER_WIDTH} + 6 * 6rem)`, border: CELL_BORDER, borderRadius: '0.5rem', overflow: 'hidden' }}
       >
-        <div aria-hidden="true" />
-        {DAYS.map((day) => (
-          <div key={day} className="text-center text-sm font-semibold py-1">
-            {day}
-          </div>
-        ))}
+        {/* Day-of-week header row. */}
+        <div className="grid" style={{ gridTemplateColumns: GRID_TEMPLATE_COLUMNS }}>
+          <div aria-hidden="true" style={{ borderBottom: CELL_BORDER, background: 'var(--surface)' }} />
+          {DAYS.map((day, i) => (
+            <div
+              key={day}
+              className="text-center text-sm font-semibold py-1.5"
+              style={{
+                borderBottom: CELL_BORDER,
+                borderInlineStart: i > 0 ? CELL_BORDER : 'none',
+                background: 'var(--surface)',
+              }}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Hour × day body: an hour-label gutter plus a fully bordered 6x14 cell grid, with blocks overlaid absolutely on top. */}
         <div
           role="grid"
           aria-label="מערכת שעות שבועית"
-          className="weekly-grid-hours relative"
-          style={{ gridColumn: '1 / -1', height: `${HOURS.length * ROW_HEIGHT}px` }}
+          className="weekly-grid-hours relative grid"
+          style={{
+            gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
+            gridTemplateRows: `repeat(${HOURS.length}, ${ROW_HEIGHT}px)`,
+          }}
         >
           {HOURS.map((hour, i) => (
             <div
-              key={hour}
+              key={`hour-${hour}`}
               aria-hidden="true"
-              className="absolute right-0 text-xs text-[var(--text-muted)]"
-              style={{ top: `${i * ROW_HEIGHT}px` }}
+              className="flex items-start justify-center pt-1 text-xs text-[var(--text-muted)]"
+              style={{
+                gridColumn: 1,
+                gridRow: i + 1,
+                borderBottom: CELL_BORDER,
+              }}
             >
               {`${hour}:00`}
             </div>
           ))}
+
+          {HOURS.map((hour, hourIndex) =>
+            DAYS.map((day, dayIndex) => (
+              <div
+                key={`cell-${day}-${hour}`}
+                aria-hidden="true"
+                className="weekly-grid-cell"
+                style={{
+                  gridColumn: dayIndex + 2,
+                  gridRow: hourIndex + 1,
+                  borderBottom: CELL_BORDER,
+                  borderInlineStart: dayIndex > 0 ? CELL_BORDER : 'none',
+                }}
+              />
+            )),
+          )}
+
           {blocks.map((block) => {
             const dayIndex = DAYS.indexOf(block.slot.day as (typeof DAYS)[number])
             if (dayIndex === -1) return null
@@ -64,12 +104,12 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
                 key={block.key}
                 role="gridcell"
                 aria-label={`${block.courseName}, ${block.kind}, יום ${block.slot.day}, ${block.slot.start}-${block.slot.end}`}
-                className="weekly-grid-block absolute rounded px-1 text-xs overflow-hidden bg-[var(--accent-soft,#c7d2fe)]"
+                className="weekly-grid-block absolute rounded px-1 text-xs overflow-hidden border border-[var(--purple-strong)] bg-[var(--purple)]/15"
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  right: `calc(4rem + ${dayIndex} * (100% - 4rem) / 6)`,
-                  width: `calc((100% - 4rem) / 6)`,
+                  right: `calc(${GUTTER_WIDTH} + ${dayIndex} * (100% - ${GUTTER_WIDTH}) / 6)`,
+                  width: `calc((100% - ${GUTTER_WIDTH}) / 6)`,
                 }}
               >
                 <div className="font-semibold truncate">{block.courseName}</div>

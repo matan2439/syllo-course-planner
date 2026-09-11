@@ -33,3 +33,9 @@ test('renders nothing extra with an empty block list', () => {
   render(<WeeklyScheduleGrid blocks={[]} />);
   expect(screen.queryByRole('gridcell')).toBeNull();
 });
+
+test('renders a fully bordered 6-day x 14-hour cell grid, not just floating labels', () => {
+  const { container } = render(<WeeklyScheduleGrid blocks={[]} />);
+  const cells = container.querySelectorAll('.weekly-grid-cell');
+  expect(cells.length).toBe(6 * 14);
+});
