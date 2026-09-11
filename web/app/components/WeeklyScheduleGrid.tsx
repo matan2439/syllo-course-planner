@@ -68,7 +68,7 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  left: `calc(4rem + ${dayIndex} * (100% - 4rem) / 6)`,
+                  right: `calc(4rem + ${dayIndex} * (100% - 4rem) / 6)`,
                   width: `calc((100% - 4rem) / 6)`,
                 }}
               >
