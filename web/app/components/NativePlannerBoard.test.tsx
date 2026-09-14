@@ -112,6 +112,25 @@ test('uses a continuous horizontally scrollable semester table', () => {
   expect(list.querySelectorAll('[style*="grid-template-columns"]').length).toBeGreaterThan(0)
 })
 
+test('each year-pair retains the width of both semester columns instead of collapsing into the next pair', () => {
+  const fourSemesterBoard = {
+    ...BOARD,
+    semesters: [
+      ...BOARD.semesters,
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(fourSemesterBoard)} />)
+  const pairs = [...container.querySelectorAll('[style*="grid-template-columns"]')] as HTMLElement[]
+
+  expect(pairs).toHaveLength(2)
+  for (const pair of pairs) {
+    expect(pair.style.minWidth).toBe('34rem')
+    expect(pair).toHaveClass('shrink-0')
+  }
+})
+
 test('a repository drop invokes add and never move', () => {
   const onAddCourse = jest.fn()
   const onMoveCourse = jest.fn()

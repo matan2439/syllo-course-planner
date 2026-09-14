@@ -62,8 +62,15 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
         return (
           <div
             key={pair.start}
-            className="grid min-w-0 flex-1"
-            style={{ gridTemplateColumns: `repeat(${pair.semesters.length}, minmax(17rem, 1fr))` }}
+            className="grid shrink-0 flex-1"
+            style={{
+              gridTemplateColumns: `repeat(${pair.semesters.length}, minmax(17rem, 1fr))`,
+              // A flex item is allowed to shrink below its grid tracks unless
+              // it owns an explicit minimum. Keep each year-pair as wide as
+              // its two semester columns; the outer shell then scrolls on
+              // narrow screens instead of allowing paired grids to overlap.
+              minWidth: `${17 * pair.semesters.length}rem`,
+            }}
           >
             {pair.semesters.map((s, j) => {
               const isLastOverall = pair.start + j === board.semesters.length - 1
