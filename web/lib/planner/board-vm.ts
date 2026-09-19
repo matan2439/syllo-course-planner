@@ -63,12 +63,16 @@ export function boardModelToVM(model: BoardModel): BoardVM {
           ...(catalogCourse?.offeredSemesters !== undefined
             ? { offeredSemesters: [...catalogCourse.offeredSemesters] }
             : {}),
-          // Only default a category for a course the catalog actually resolved
-          // — an unresolved/placeholder course (apply-plan.ts's resolve()) must
-          // never have a category fabricated for it.
-          ...(catalogCourse && isElectiveLike
-            ? { categoryId: catalogCourse.programCategoryId ?? GENERAL_ELECTIVE_CATEGORY_ID }
-            : {}),
+          // A resolved category describes the academic area of a course, not
+          // merely its requirement type. Mandatory core courses therefore keep
+          // their category too, so the board can use the same visual language
+          // as the repository. Only a genuinely uncategorized elective gets
+          // the general-elective fallback; placeholders stay unclassified.
+          ...(catalogCourse?.programCategoryId
+            ? { categoryId: catalogCourse.programCategoryId }
+            : catalogCourse && isElectiveLike
+              ? { categoryId: GENERAL_ELECTIVE_CATEGORY_ID }
+              : {}),
           ...(catalogCourse && isAnnualCourse(catalogCourse) ? { isAnnual: true } : {}),
         }
       }),

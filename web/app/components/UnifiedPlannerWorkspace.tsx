@@ -32,7 +32,6 @@ export default function UnifiedPlannerWorkspace({
   const [activeView, setActiveView] = useState<WorkspaceView>('board')
   const [repositoryOpen, setRepositoryOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
-  const [weeklyOpen, setWeeklyOpen] = useState(false)
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
@@ -44,10 +43,6 @@ export default function UnifiedPlannerWorkspace({
   const repositoryWasOpen = useRef(false)
   const agentCloseRef = useRef<HTMLButtonElement | null>(null)
   const agentWasOpen = useRef(false)
-  const weeklyToggleRef = useRef<HTMLButtonElement | null>(null)
-  const weeklyDrawerRef = useRef<HTMLElement | null>(null)
-  const weeklyCloseRef = useRef<HTMLButtonElement | null>(null)
-  const weeklyWasOpen = useRef(false)
 
   const selectView = (view: WorkspaceView) => {
     setActiveView(view)
@@ -78,31 +73,21 @@ export default function UnifiedPlannerWorkspace({
     agentToggleRef.current?.focus()
   }
 
-  const closeWeekly = () => {
-    setWeeklyOpen(false)
-    weeklyToggleRef.current?.focus()
-  }
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       const target = event.target
       const fromRepository = target instanceof Node && repositoryDrawerRef.current?.contains(target)
-      const fromWeekly = target instanceof Node && weeklyDrawerRef.current?.contains(target)
-
-      if (fromWeekly && weeklyOpen) { event.preventDefault(); closeWeekly(); return }
       if (fromRepository && repositoryOpen) { event.preventDefault(); closeRepository(); return }
       // Fallback for Escape pressed somewhere that isn't inside a specific
       // drawer's own DOM (e.g. focus on a toolbar toggle button) — preserves
-      // the repository/agent priority that was already tested before weekly
-      // existed, then falls back to weekly last.
+      // the repository/agent priority.
       if (repositoryOpen && !agentOpen) { event.preventDefault(); closeRepository(); return }
       if (agentOpen) { event.preventDefault(); closeAgent(); return }
-      if (weeklyOpen) { event.preventDefault(); closeWeekly() }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [agentOpen, repositoryOpen, weeklyOpen])
+  }, [agentOpen, repositoryOpen])
 
   useEffect(() => {
     if (repositoryOpen && !repositoryWasOpen.current) repositoryCloseRef.current?.focus()
@@ -113,11 +98,6 @@ export default function UnifiedPlannerWorkspace({
     if (agentOpen && !agentWasOpen.current) agentCloseRef.current?.focus()
     agentWasOpen.current = agentOpen
   }, [agentOpen])
-
-  useEffect(() => {
-    if (weeklyOpen && !weeklyWasOpen.current) weeklyCloseRef.current?.focus()
-    weeklyWasOpen.current = weeklyOpen
-  }, [weeklyOpen])
 
   const toggleRepository = () => {
     if (repositoryOpen) closeRepository()
@@ -133,11 +113,6 @@ export default function UnifiedPlannerWorkspace({
       setAgentOpen(true)
       setActiveView('agent')
     }
-  }
-
-  const toggleWeekly = () => {
-    if (weeklyOpen) closeWeekly()
-    else setWeeklyOpen(true)
   }
 
   return (
@@ -178,18 +153,6 @@ export default function UnifiedPlannerWorkspace({
         >
           <span aria-hidden="true">✦</span>
           <span>עוזר AI</span>
-        </button>
-        <button
-          ref={weeklyToggleRef}
-          type="button"
-          aria-controls="workspace-panel-weekly"
-          aria-expanded={weeklyOpen}
-          aria-label={`${weeklyOpen ? 'הסתר' : 'פתח'} מערכת שעות`}
-          onClick={toggleWeekly}
-          className="planner-drawer-toggle planner-drawer-toggle-weekly"
-        >
-          <span aria-hidden="true">🗓️</span>
-          <span>מערכת שעות</span>
         </button>
       </div>
 
@@ -270,18 +233,14 @@ export default function UnifiedPlannerWorkspace({
       </div>
 
       <section
-        ref={weeklyDrawerRef}
         id="workspace-panel-weekly"
         aria-label="מערכת שעות"
-        hidden={!weeklyOpen}
-        className="planner-weekly-panel mt-4 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+        className="planner-weekly-panel w-full"
       >
         <WeeklyScheduleDrawer
           programId={programId}
           semesterDestinations={semesterDestinations}
           semesterCourses={semesterCourses}
-          onClose={closeWeekly}
-          closeRef={weeklyCloseRef}
         />
       </section>
     </section>

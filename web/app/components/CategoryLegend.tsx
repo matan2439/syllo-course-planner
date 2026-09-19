@@ -4,6 +4,8 @@ const CATEGORIES: Array<{ id: string; label: string; accentVar: string }> = [
   { id: 'solids', label: 'מוצקים', accentVar: '--cat-solids-accent' },
   { id: 'systems', label: 'מערכות', accentVar: '--cat-systems-accent' },
   { id: 'advanced_labs', label: 'מעבדה', accentVar: '--cat-labs-accent' },
+  { id: 'other_specialization', label: 'בחירה כללית', accentVar: '--cat-other-accent' },
+  { id: 'shaar_ruach', label: 'שער רוח', accentVar: '--cat-gateway-accent' },
 ]
 
 /** Small, collapsible color key so the CourseCard category accents are decodable at a glance. */

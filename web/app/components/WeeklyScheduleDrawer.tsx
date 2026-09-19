@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { SemesterDestination } from './UnifiedCourseRepository'
 import WeeklyScheduleGrid, { type GridBlock } from './WeeklyScheduleGrid'
 import { fetchScheduleGroups, fetchCourseSearch } from '../../lib/planner/schedule-client'
@@ -22,20 +22,46 @@ interface SemesterCourses {
   courseIds: string[]
 }
 
+type SelectedScheduleGroup = { courseId: string; courseName: string; group: ScheduleGroup }
+
+/** A lecture and its tutorial are separate choices; parallel groups of the
+ * same kind/mode are alternatives for the student to choose between. */
+function choiceKey(group: ScheduleGroup): string {
+  return `${group.kind}\u0000${group.teachingMode}`
+}
+
+function groupsByChoice(groups: readonly ScheduleGroup[]): ScheduleGroup[][] {
+  const byChoice = new Map<string, ScheduleGroup[]>()
+  for (const group of groups) {
+    const key = choiceKey(group)
+    byChoice.set(key, [...(byChoice.get(key) ?? []), group])
+  }
+  return [...byChoice.values()]
+}
+
+function automaticGroupIds(groups: readonly ScheduleGroup[]): string[] {
+  return groupsByChoice(groups)
+    .filter((choices) => choices.length === 1 && choices[0].slots.length > 0)
+    .map(([group]) => group.groupId)
+}
+
+function groupDescription(group: ScheduleGroup): string {
+  const slot = group.slots[0]
+  return slot
+    ? `${group.kind} · קבוצה ${group.havura || group.groupId} · יום ${slot.day} ${slot.start}–${slot.end}`
+    : `${group.kind} · קבוצה ${group.havura || group.groupId} · ללא שעות`
+}
+
 export default function WeeklyScheduleDrawer({
   programId,
   semesterDestinations,
   semesterCourses,
-  onClose,
-  closeRef,
   fetchScheduleGroupsFn = fetchScheduleGroups,
   fetchCourseSearchFn = fetchCourseSearch,
 }: {
   programId: string
   semesterDestinations: readonly SemesterDestination[]
   semesterCourses: readonly SemesterCourses[]
-  onClose: () => void
-  closeRef: RefObject<HTMLButtonElement | null>
   fetchScheduleGroupsFn?: typeof fetchScheduleGroups
   fetchCourseSearchFn?: typeof fetchCourseSearch
 }) {
@@ -103,14 +129,17 @@ export default function WeeklyScheduleDrawer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateCourseIdsKey, term.semester, fetchScheduleGroupsFn])
 
-  const selectedGroupIds = (courseId: string): string[] =>
+  const persistedGroupIds = (courseId: string): string[] =>
     state.selections[selectionKey(courseId, term)] ?? []
 
-  const allSelectedGroups = (): Array<{ courseId: string; courseName: string; group: ScheduleGroup }> => {
+  const selectedGroupIds = (course: ScheduleGroupsResponse['courses'][number]): string[] =>
+    [...new Set([...automaticGroupIds(course.groups), ...persistedGroupIds(course.courseId)])]
+
+  const allSelectedGroups = (): SelectedScheduleGroup[] => {
     if (!scheduleData) return []
-    const result: Array<{ courseId: string; courseName: string; group: ScheduleGroup }> = []
+    const result: SelectedScheduleGroup[] = []
     for (const course of scheduleData.courses) {
-      for (const groupId of selectedGroupIds(course.courseId)) {
+      for (const groupId of selectedGroupIds(course)) {
         const group = course.groups.find((g) => g.groupId === groupId)
         if (group) result.push({ courseId: course.courseId, courseName: course.nameHe ?? course.courseId, group })
       }
@@ -121,7 +150,15 @@ export default function WeeklyScheduleDrawer({
   useEffect(() => {
     if (!scheduleData) return
 
-    const accepted: Array<{ courseId: string; courseName: string; group: ScheduleGroup }> = []
+    // Automatically placed singleton choices are informational: keep them on
+    // the grid even if two fixed meetings overlap. The student still cannot
+    // choose an optional group that overlaps another course.
+    const accepted = scheduleData.courses.flatMap((course) =>
+      automaticGroupIds(course.groups)
+        .map((groupId) => course.groups.find((group) => group.groupId === groupId))
+        .filter((group): group is ScheduleGroup => group !== undefined)
+        .map((group) => ({ courseId: course.courseId, courseName: course.nameHe ?? course.courseId, group })),
+    )
     const nextSelections = { ...state.selections }
     let changed = false
     const removedSelections: Array<
@@ -140,7 +177,8 @@ export default function WeeklyScheduleDrawer({
     // while iterating the freshly-fetched course list.
     for (const course of scheduleData.courses) {
       const key = selectionKey(course.courseId, term)
-      const selectedIds = state.selections[key] ?? []
+      const automaticIds = new Set(automaticGroupIds(course.groups))
+      const selectedIds = (state.selections[key] ?? []).filter((groupId) => !automaticIds.has(groupId))
       const keptIds: string[] = []
 
       for (const groupId of selectedIds) {
@@ -190,16 +228,9 @@ export default function WeeklyScheduleDrawer({
     }
   }, [scheduleData, state.selections, term])
 
-  const toggleGroup = (courseId: string, courseName: string, group: ScheduleGroup) => {
+  const chooseGroup = (courseId: string, courseName: string, group: ScheduleGroup) => {
     const key = selectionKey(courseId, term)
     const current = state.selections[key] ?? []
-    const isSelected = current.includes(group.groupId)
-
-    if (isSelected) {
-      setState((prev) => ({ ...prev, selections: { ...prev.selections, [key]: current.filter((id) => id !== group.groupId) } }))
-      setConflictMessage(null)
-      return
-    }
 
     const conflict = allSelectedGroups().find(
       (selected) => selected.courseId !== courseId && groupsOverlap(selected.group, group),
@@ -212,7 +243,19 @@ export default function WeeklyScheduleDrawer({
       return
     }
     setConflictMessage(null)
-    setState((prev) => ({ ...prev, selections: { ...prev.selections, [key]: [...current, group.groupId] } }))
+    const currentCourse = scheduleData?.courses.find((course) => course.courseId === courseId)
+    const previousInChoice = new Set(
+      (currentCourse?.groups ?? [])
+        .filter((candidate) => choiceKey(candidate) === choiceKey(group))
+        .map((candidate) => candidate.groupId),
+    )
+    setState((prev) => ({
+      ...prev,
+      selections: {
+        ...prev.selections,
+        [key]: [...current.filter((id) => !previousInChoice.has(id)), group.groupId],
+      },
+    }))
   }
 
   const setTermField = (field: 'year' | 'semester', value: number) => {
@@ -243,9 +286,44 @@ export default function WeeklyScheduleDrawer({
     })),
   )
 
+  const courses = scheduleData?.courses ?? []
+  const coursesWithAlternatives = courses.filter((course) =>
+    groupsByChoice(course.groups).some((choices) => choices.length > 1),
+  )
+
   return (
-    <div>
-      <div role="tablist" aria-label="בחירת סמסטר">
+    <div className="weekly-schedule" dir="rtl">
+      <header className="weekly-schedule-header">
+        <div>
+          <p className="weekly-schedule-eyebrow">תצוגת מערכת</p>
+          <h2 className="weekly-schedule-title">מערכת שעות שבועית</h2>
+          <p className="weekly-schedule-description">קבוצות יחידות מהלוח נבחרות אוטומטית. בחלופות בוחרים את הקבוצה המתאימה.</p>
+        </div>
+        <div className="weekly-term-controls" aria-label="מועד לימודים">
+          <label>
+            <span>שנת לימודים</span>
+            <input
+              aria-label="שנת לימודים"
+              type="number"
+              value={term?.year ?? ''}
+              onChange={(e) => setTermField('year', Number(e.target.value))}
+            />
+          </label>
+          <label>
+            <span>סמסטר</span>
+            <select
+              aria-label="סמסטר"
+              value={term?.semester ?? 1}
+              onChange={(e) => setTermField('semester', Number(e.target.value) as 1 | 2)}
+            >
+              <option value={1}>א׳</option>
+              <option value={2}>ב׳</option>
+            </select>
+          </label>
+        </div>
+      </header>
+
+      <div role="tablist" aria-label="בחירת סמסטר" className="weekly-semester-tabs">
         {semesterDestinations.map((dest) => (
           <button
             key={dest.id}
@@ -259,91 +337,93 @@ export default function WeeklyScheduleDrawer({
         ))}
       </div>
 
-      <div>
-        <label>
-          שנה
-          <input
-            type="number"
-            value={term?.year ?? ''}
-            onChange={(e) => setTermField('year', Number(e.target.value))}
-          />
-        </label>
-        <label>
-          סמסטר
-          <select
-            value={term?.semester ?? 1}
-            onChange={(e) => setTermField('semester', Number(e.target.value) as 1 | 2)}
-          >
-            <option value={1}>א׳</option>
-            <option value={2}>ב׳</option>
-          </select>
-        </label>
+      <div className="weekly-schedule-layout">
+        <section className="weekly-schedule-grid-panel" aria-label="לוח שעות">
+          <WeeklyScheduleGrid blocks={blocks} />
+          {fetchError && <p role="alert" className="weekly-schedule-alert">{fetchError}</p>}
+          {conflictMessage && <p role="alert" className="weekly-schedule-alert">{conflictMessage}</p>}
+          {scheduleData && (
+            <p className="weekly-schedule-provenance">מקור: bid-it (לא רשמי) · עודכן {new Date(scheduleData.fetchedAt).toLocaleTimeString('he-IL')}</p>
+          )}
+        </section>
+
+        <aside className="weekly-group-picker" aria-label="בחירת קבוצות">
+          <div className="weekly-group-picker-heading">
+            <h3>בחירת קבוצות</h3>
+            <span>{coursesWithAlternatives.length} קורסים לבחירה</span>
+          </div>
+          {courses.filter((course) => course.found && !groupsByChoice(course.groups).some((choices) => choices.length > 1)).map((course) => (
+            <p key={course.courseId} className="weekly-auto-course">
+              <strong>{course.nameHe ?? course.courseId}</strong>
+              <span>נבחר אוטומטית</span>
+              {course.cYear !== null && course.cYear !== term.year && (
+                <small role="status">נתוני bid-it הם לשנת {course.cYear}</small>
+              )}
+            </p>
+          ))}
+          {coursesWithAlternatives.map((course) => (
+            <article key={course.courseId} className="weekly-group-course">
+              <div>
+                <h4>{course.nameHe ?? course.courseId}</h4>
+                {course.cYear !== null && course.cYear !== term.year && (
+                  <p role="status">נתוני bid-it הם לשנת {course.cYear}, ולא לשנת {term.year} שנבחרה</p>
+                )}
+              </div>
+              {groupsByChoice(course.groups).filter((choices) => choices.length > 1).map((choices) => (
+                <fieldset key={choiceKey(choices[0])} className="weekly-group-options">
+                  <legend>בחירת {choices[0].teachingMode || choices[0].kind}</legend>
+                  {choices.map((group) => {
+                    const label = `${course.nameHe ?? course.courseId}, ${groupDescription(group)}`
+                    return (
+                      <label key={group.groupId} className="weekly-group-option">
+                        <input
+                          type="radio"
+                          name={`${course.courseId}-${choiceKey(group)}`}
+                          aria-label={label}
+                          checked={persistedGroupIds(course.courseId).includes(group.groupId)}
+                          disabled={group.slots.length === 0}
+                          onChange={() => chooseGroup(course.courseId, course.nameHe ?? course.courseId, group)}
+                        />
+                        <span>{groupDescription(group)}</span>
+                      </label>
+                    )
+                  })}
+                </fieldset>
+              ))}
+            </article>
+          ))}
+          {courses.some((course) => !course.found) && (
+            <p className="weekly-missing-data">לחלק מהקורסים אין עדיין נתוני שעות ב־bid-it.</p>
+          )}
+          {courses.length > 0 && coursesWithAlternatives.length === 0 && (
+            <p className="weekly-picker-empty">כל הקבוצות הייחודיות מהלוח כבר מוצגות במערכת.</p>
+          )}
+
+          <details className="weekly-search-details">
+            <summary>הוספת קורס נוסף לצפייה</summary>
+            <div className="weekly-search-controls">
+              <input
+                type="text"
+                placeholder="חיפוש קורס להוספה לצפייה"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+              <button type="button" onClick={runSearch}>חפש</button>
+            </div>
+            {searchError && <p role="alert" className="weekly-schedule-alert">{searchError}</p>}
+            {searchResults.map((result) => (
+              <button
+                key={result.courseId}
+                type="button"
+                className="weekly-search-result"
+                onClick={() => setExtraCourseIds((previous) => [...new Set([...previous, result.courseId])])}
+              >
+                הוסף {result.nameHe}
+              </button>
+            ))}
+          </details>
+        </aside>
       </div>
-
-      <div>
-        <input
-          type="text"
-          placeholder="חיפוש קורס להוספה לצפייה"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-        <button type="button" onClick={runSearch}>חפש</button>
-        {searchError && <p role="alert">{searchError}</p>}
-        {searchResults.map((r) => (
-          <button
-            key={r.courseId}
-            type="button"
-            onClick={() => setExtraCourseIds((prev) => [...new Set([...prev, r.courseId])])}
-          >
-            הוסף {r.nameHe}
-          </button>
-        ))}
-      </div>
-
-      {conflictMessage && <p role="alert">{conflictMessage}</p>}
-
-      <WeeklyScheduleGrid blocks={blocks} />
-
-      {fetchError && <p role="alert">{fetchError}</p>}
-
-      <ul>
-        {(scheduleData?.courses ?? []).map((course) => (
-          <li key={course.courseId}>
-            <span>{course.nameHe ?? course.courseId}</span>
-            {course.cYear !== null && course.cYear !== term.year && (
-              <span role="status">
-                {' '}נתוני bid-it הם לשנת {course.cYear}, ולא לשנת {term.year} שנבחרה
-              </span>
-            )}
-            {!course.found && <span> אין נתוני שעות</span>}
-            {course.found && course.incompleteData && <span> נתוני שעות חלקיים</span>}
-            {course.found && course.groups.map((group) => {
-              const slot = group.slots[0]
-              const label = slot
-                ? `${course.nameHe ?? course.courseId}, ${group.kind}, יום ${slot.day}, ${slot.start}-${slot.end}`
-                : `${course.nameHe ?? course.courseId}, ${group.kind}, אין נתוני שעות`
-              return (
-                <label key={group.groupId}>
-                  <input
-                    type="checkbox"
-                    aria-label={label}
-                    checked={selectedGroupIds(course.courseId).includes(group.groupId)}
-                    disabled={group.slots.length === 0}
-                    onChange={() => toggleGroup(course.courseId, course.nameHe ?? course.courseId, group)}
-                  />
-                  {label}
-                </label>
-              )
-            })}
-          </li>
-        ))}
-      </ul>
-
-      {scheduleData && (
-        <p>מקור: bid-it (לא רשמי) · עודכן {new Date(scheduleData.fetchedAt).toLocaleTimeString('he-IL')}</p>
-      )}
-
-      <button ref={closeRef} type="button" onClick={onClose}>סגור מערכת שעות</button>
     </div>
   )
 }

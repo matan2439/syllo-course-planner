@@ -55,7 +55,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
     <div
       role="list"
       aria-label="לוח סמסטרים"
-      className="flex min-w-full"
+      className="flex min-w-full items-start"
     >
       {pairs.map((pair) => {
         const band = bandByStartIndex.get(pair.start)

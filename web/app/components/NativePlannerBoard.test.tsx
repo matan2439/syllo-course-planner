@@ -131,6 +131,11 @@ test('each year-pair retains the width of both semester columns instead of colla
   }
 })
 
+test('year-pairs keep independent heights so an annual band cannot create blank space in the next year', () => {
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(container.querySelector('[role="list"]')).toHaveClass('items-start')
+})
+
 test('a repository drop invokes add and never move', () => {
   const onAddCourse = jest.fn()
   const onMoveCourse = jest.fn()
@@ -489,7 +494,7 @@ test('an elective card exposes a clear drag affordance alongside keyboard contro
   expect(screen.getByRole('button', { name: 'העבר קורס בחירה אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
 })
 
-test('the board drag affordance starts a shared move preview before native dragstart', () => {
+test('the board drag affordance waits for native dragstart before publishing a move preview', () => {
   const electiveBoard = {
     ...BOARD,
     semesters: [
@@ -506,6 +511,16 @@ test('the board drag affordance starts a shared move preview before native drags
   const handle = screen.getByLabelText('גרור את קורס בחירה לסמסטר אחר')
   expect(handle).toHaveAttribute('draggable', 'true')
   fireEvent.pointerDown(handle)
+
+  expect(onDragStateChange).not.toHaveBeenCalled()
+
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  fireEvent.dragStart(handle, { dataTransfer: transfer })
 
   expect(onDragStateChange).toHaveBeenCalledWith({
     kind: 'board',

@@ -35,10 +35,9 @@ jest.mock('./UnifiedCourseRepository', () => ({
 
 jest.mock('./WeeklyScheduleDrawer', () => ({
   __esModule: true,
-  default: ({ onClose, closeRef }: any) => (
+  default: () => (
     <div>
       <div role="tablist" aria-label="בחירת סמסטר" />
-      <button ref={closeRef} type="button" onClick={onClose}>סגור מערכת שעות</button>
     </div>
   ),
 }))
@@ -298,30 +297,17 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 })
 
-describe('UnifiedPlannerWorkspace — weekly schedule drawer', () => {
-  test('has its own opening control, separate from repository and agent', () => {
+describe('UnifiedPlannerWorkspace — weekly schedule', () => {
+  test('keeps the weekly schedule visible below the board without a drawer control', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    const toggle = screen.getByRole('button', { name: 'פתח מערכת שעות' })
-    fireEvent.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /מערכת שעות/ })).toBeNull()
   })
 
-  test('closes with Escape from inside its own drawer and returns focus to its toggle', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    const toggle = screen.getByRole('button', { name: 'פתח מערכת שעות' })
-    fireEvent.click(toggle)
-    const closeButton = screen.getByRole('button', { name: 'סגור מערכת שעות' })
-    fireEvent.keyDown(closeButton, { key: 'Escape' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(toggle).toHaveFocus()
-  })
-
-  test('repository, agent and weekly can all stay open independently', () => {
+  test('repository and agent can open while the weekly schedule stays visible', () => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מערכת שעות' }))
     expect(screen.getByTestId('course-repository')).toBeInTheDocument()
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
@@ -329,7 +315,6 @@ describe('UnifiedPlannerWorkspace — weekly schedule drawer', () => {
 
   test('renders the weekly panel below the board, outside the repository rail row', () => {
     const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מערכת שעות' }))
 
     const board = document.getElementById('workspace-panel-journey')
     const weekly = document.getElementById('workspace-panel-weekly')

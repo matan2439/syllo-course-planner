@@ -6,7 +6,7 @@ const repo: RepositoryVM = {
   totalCourses: 3,
   categories: [
     {
-      id: 'control',
+      id: 'systems',
       title: 'בקרה ורובוטיקה',
       courses: [
         { id: '0542-4241', name: 'בקרה מודרנית', weeklyHours: 3, offered: ['A'], difficulty: 'medium', syllabusUrl: null },
@@ -189,7 +189,7 @@ describe('UnifiedCourseRepository', () => {
     expect(card).not.toHaveAttribute('data-dragging', 'true')
   })
 
-  test('announces a pending drag from the visible handle before native dragstart', () => {
+  test('keeps the source interactive until native dragstart establishes a repository drag', () => {
     const onDragStateChange = jest.fn()
     render(
       <UnifiedCourseRepository
@@ -204,11 +204,39 @@ describe('UnifiedCourseRepository', () => {
     const handle = screen.getByLabelText('גרור את בקרה מודרנית ללוח הסמסטרים')
     fireEvent.pointerDown(handle)
 
+    // The workspace makes the open drawer pointer-transparent only after it
+    // receives this state. Publishing it on pointerdown removes the native
+    // drag source before the browser can create its DataTransfer payload.
+    expect(onDragStateChange).not.toHaveBeenCalled()
+    expect(handle).toHaveAttribute('draggable', 'true')
+
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '',
+    }
+    fireEvent.dragStart(handle, { dataTransfer: transfer })
+
     expect(onDragStateChange).toHaveBeenCalledWith({
       kind: 'repository',
       courseId: '0542-4241',
       allowedSemesterIds: ['year_3_semester_a'],
     })
+  })
+
+  test('gives every repository course card its category accent', () => {
+    render(
+      <UnifiedCourseRepository
+        repo={repo}
+        selectedCourseIds={[]}
+        semesterDestinations={semesterDestinations}
+        onRequestAdd={jest.fn()}
+      />,
+    )
+
+    const card = screen.getByText('בקרה מודרנית').closest('[data-drag-card]')
+    expect(card?.querySelector('.card-cat-systems')).toBeInTheDocument()
   })
 
   test('does not advertise a draggable source when no authoritative destination is known', () => {

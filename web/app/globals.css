@@ -15,6 +15,9 @@
   --surface:    rgba(255, 255, 255, 0.72);
   --border:     rgba(17, 24, 39, 0.08);
   --shadow-premium: 0 10px 28px rgba(76, 89, 224, 0.10), 0 2px 6px rgba(17, 24, 39, 0.06);
+  --syllo-logo-shadow: 0 7px 14px rgba(27, 22, 54, 0.18);
+  --syllo-logo-hover-brightness: .84;
+  --syllo-logo-hover-shadow: 0 9px 18px rgba(27, 22, 54, 0.14);
 
   /* Syllo animated background (light) — see ShaderGradientBackground.tsx */
   --syllo-bg-image:
@@ -27,6 +30,7 @@
   --cat-systems-accent: #6D28D9; --cat-systems-bg: rgba(124,58,237,.11);
   --cat-labs-accent:    #047857; --cat-labs-bg:    rgba(5,150,105,.12);
   --cat-other-accent:   #475569; --cat-other-bg:   rgba(100,116,139,.09);
+  --cat-gateway-accent: #BE185D; --cat-gateway-bg: rgba(190,24,93,.10);
 }
 
 /* Dark tokens. Applied two ways so the shell stays in sync with the legacy
@@ -43,6 +47,9 @@
   --surface:    rgba(23, 26, 35, 0.62);
   --border:     rgba(167, 139, 250, 0.16);
   --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
+  --syllo-logo-shadow: 0 7px 16px rgba(0, 0, 0, 0.42);
+  --syllo-logo-hover-brightness: 1.14;
+  --syllo-logo-hover-shadow: 0 10px 22px rgba(167, 139, 250, 0.42);
   --syllo-bg-image:
     radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
     linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
@@ -52,6 +59,7 @@
   --cat-systems-accent: #A78BFA; --cat-systems-bg: rgba(124,58,237,.12);
   --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
   --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
+  --cat-gateway-accent: #F9A8D4; --cat-gateway-bg: rgba(190,24,93,.14);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -64,6 +72,9 @@
     --surface:    rgba(23, 26, 35, 0.62);
     --border:     rgba(167, 139, 250, 0.16);
     --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
+    --syllo-logo-shadow: 0 7px 16px rgba(0, 0, 0, 0.42);
+    --syllo-logo-hover-brightness: 1.14;
+    --syllo-logo-hover-shadow: 0 10px 22px rgba(167, 139, 250, 0.42);
     --syllo-bg-image:
       radial-gradient(ellipse at 62% 52%, rgba(124,92,255,.42) 0%, rgba(96,96,128,.28) 28%, transparent 62%),
       linear-gradient(135deg, #212121 0%, #181A22 46%, #0B0D14 100%);
@@ -73,16 +84,24 @@
     --cat-systems-accent: #A78BFA; --cat-systems-bg: rgba(124,58,237,.12);
     --cat-labs-accent:    #34D399; --cat-labs-bg:    rgba(5,150,105,.12);
     --cat-other-accent:   #94A3B8; --cat-other-bg:   rgba(100,116,139,.08);
+    --cat-gateway-accent: #F9A8D4; --cat-gateway-bg: rgba(190,24,93,.14);
   }
 }
 
-/* ── Category accents (electives only) — ported from the legacy planner's
-      already-validated palette (app/web/semester_board_viewer.html CAT_CSS). ── */
-.card-cat-fluids  { border-inline-end-color: var(--cat-fluids-accent)  !important; background: var(--cat-fluids-bg)  !important; }
-.card-cat-solids  { border-inline-end-color: var(--cat-solids-accent)  !important; background: var(--cat-solids-bg)  !important; }
-.card-cat-systems { border-inline-end-color: var(--cat-systems-accent) !important; background: var(--cat-systems-bg) !important; }
-.card-cat-labs    { border-inline-end-color: var(--cat-labs-accent)    !important; background: var(--cat-labs-bg)    !important; }
-.card-cat-other_specialization { border-inline-end-color: var(--cat-other-accent) !important; background: var(--cat-other-bg) !important; }
+/* ── Category accents — a fine edge marker distinguishes study areas while
+      preserving the planner's quiet, uniform card surface. ── */
+.card-cat-fluids,
+.card-cat-solids,
+.card-cat-systems,
+.card-cat-labs,
+.card-cat-other_specialization,
+.card-cat-shaar_ruach { border-inline-end-width: 3px !important; }
+.card-cat-fluids  { border-inline-end-color: var(--cat-fluids-accent)  !important; }
+.card-cat-solids  { border-inline-end-color: var(--cat-solids-accent)  !important; }
+.card-cat-systems { border-inline-end-color: var(--cat-systems-accent) !important; }
+.card-cat-labs    { border-inline-end-color: var(--cat-labs-accent)    !important; }
+.card-cat-other_specialization { border-inline-end-color: var(--cat-other-accent) !important; }
+.card-cat-shaar_ruach { border-inline-end-color: var(--cat-gateway-accent) !important; }
 
     /* Closed side drawers animate just beyond the viewport. Clip that visual
        exit at the document boundary so the board never gains a phantom
@@ -106,22 +125,25 @@
   width: max-content;
   height: max-content;
   flex: 0 0 auto;
+  line-height: 0;
 }
 .syllo-brand-asset { display: block; width: auto; height: auto; }
+.syllo-brand-hover {
+  filter: drop-shadow(var(--syllo-logo-shadow));
+  transition: transform 180ms ease, filter 180ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .syllo-brand-hover:hover {
+    filter: brightness(var(--syllo-logo-hover-brightness)) drop-shadow(var(--syllo-logo-hover-shadow));
+    transform: translateY(-2px);
+  }
+}
 .syllo-brand-asset-dark { display: none; }
 :root[data-theme='dark'] .syllo-brand-asset-light { display: none; }
 :root[data-theme='dark'] .syllo-brand-asset-dark { display: block; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .syllo-brand-asset-light { display: none; }
   :root:not([data-theme]) .syllo-brand-asset-dark { display: block; }
-}
-.syllo-wordmark {
-  color: var(--text);
-  font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
-  font-size: 1.2rem;
-  font-weight: 500;
-  letter-spacing: .055em;
-  line-height: 1;
 }
 
 body {
@@ -549,6 +571,134 @@ body {
     display: block;
     overflow: visible;
   }
+}
+
+/* ── Weekly timetable: a fixed work surface below the semester plan. The grid
+   carries the visual weight; group choices remain a compact supporting rail. */
+.planner-weekly-panel {
+  margin-top: .25rem;
+  border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border));
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: 0 18px 48px rgb(20 12 52 / 14%);
+  overflow: hidden;
+}
+.weekly-schedule { padding: clamp(1rem, 2vw, 1.5rem); }
+.weekly-schedule-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.weekly-schedule-eyebrow {
+  margin: 0 0 .25rem;
+  color: var(--purple-strong);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.weekly-schedule-title { margin: 0; font-size: clamp(1.1rem, 2vw, 1.35rem); font-weight: 800; letter-spacing: -.02em; }
+.weekly-schedule-description { max-width: 44rem; margin: .3rem 0 0; color: var(--text-muted); font-size: .82rem; line-height: 1.55; }
+.weekly-term-controls { display: flex; flex: 0 0 auto; gap: .5rem; }
+.weekly-term-controls label { display: grid; gap: .25rem; color: var(--text-muted); font-size: .68rem; font-weight: 700; }
+.weekly-term-controls input,
+.weekly-term-controls select,
+.weekly-search-controls input {
+  min-height: 2.35rem;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text);
+  font: inherit;
+  padding: .45rem .6rem;
+}
+.weekly-term-controls input { width: 5.6rem; direction: ltr; text-align: center; }
+.weekly-semester-tabs { display: flex; gap: .45rem; overflow-x: auto; padding: .9rem 0; }
+.weekly-semester-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  padding: .45rem .75rem;
+  font-size: .78rem;
+  font-weight: 750;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.weekly-semester-tabs button[aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--purple) 60%, var(--border));
+  background: color-mix(in srgb, var(--purple) 14%, var(--surface));
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--purple) 16%, transparent);
+}
+.weekly-semester-tabs button:hover { border-color: var(--purple); color: var(--text); transform: translateY(-1px); }
+.weekly-semester-tabs button:focus-visible,
+.weekly-group-option:has(input:focus-visible),
+.weekly-search-controls input:focus-visible,
+.weekly-term-controls input:focus-visible,
+.weekly-term-controls select:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.weekly-schedule-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem); gap: 1rem; align-items: start; }
+.weekly-schedule-grid-panel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  padding: .65rem;
+}
+.weekly-grid-layout { background: color-mix(in srgb, var(--surface) 78%, transparent); box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%); }
+.weekly-grid-hours { background-image: linear-gradient(180deg, color-mix(in srgb, var(--purple) 3%, transparent), transparent 34%); }
+.weekly-grid-block {
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--purple-strong) 75%, var(--border)) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple) 30%, var(--surface)), color-mix(in srgb, var(--purple-strong) 16%, var(--surface))) !important;
+  box-shadow: 0 3px 10px rgb(76 40 170 / 20%);
+  color: var(--text);
+  line-height: 1.35;
+}
+.weekly-group-picker {
+  display: grid;
+  gap: .7rem;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  padding: .85rem;
+}
+.weekly-group-picker-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.weekly-group-picker-heading h3 { margin: 0; font-size: .95rem; font-weight: 800; }
+.weekly-group-picker-heading span { color: var(--text-muted); font-size: .68rem; }
+.weekly-auto-course { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .5rem; margin: 0; border-bottom: 1px solid var(--border); padding-bottom: .5rem; font-size: .75rem; }
+.weekly-auto-course span { border-radius: 999px; background: color-mix(in srgb, rgb(16 185 129) 14%, transparent); color: color-mix(in srgb, rgb(16 185 129) 88%, var(--text)); padding: .18rem .45rem; font-size: .66rem; font-weight: 750; }
+.weekly-auto-course small { width: 100%; color: var(--text-muted); font-size: .66rem; }
+.weekly-group-course { display: grid; gap: .6rem; border: 1px solid color-mix(in srgb, var(--purple) 23%, var(--border)); border-radius: .75rem; background: color-mix(in srgb, var(--purple) 5%, var(--surface)); padding: .7rem; }
+.weekly-group-course h4 { margin: 0; font-size: .82rem; font-weight: 800; }
+.weekly-group-course p { margin: .25rem 0 0; color: var(--text-muted); font-size: .68rem; }
+.weekly-group-options { display: grid; gap: .35rem; min-width: 0; margin: 0; border: 0; padding: 0; }
+.weekly-group-options legend { margin-bottom: .18rem; color: var(--text-muted); font-size: .68rem; font-weight: 700; }
+.weekly-group-option { display: flex; align-items: flex-start; gap: .45rem; border: 1px solid var(--border); border-radius: .55rem; padding: .45rem .5rem; color: var(--text-muted); font-size: .72rem; line-height: 1.35; cursor: pointer; }
+.weekly-group-option:has(input:checked) { border-color: var(--purple); background: color-mix(in srgb, var(--purple) 12%, var(--surface)); color: var(--text); }
+.weekly-group-option input { margin-top: .12rem; accent-color: var(--purple); }
+.weekly-picker-empty,
+.weekly-missing-data,
+.weekly-schedule-provenance,
+.weekly-schedule-alert { margin: 0; color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
+.weekly-schedule-alert { margin-top: .65rem; border-right: 3px solid #f59e0b; padding-right: .55rem; color: var(--text); }
+.weekly-search-details { border-top: 1px solid var(--border); padding-top: .65rem; color: var(--text-muted); font-size: .73rem; }
+.weekly-search-details summary { cursor: pointer; font-weight: 750; }
+.weekly-search-controls { display: flex; gap: .4rem; margin-top: .6rem; }
+.weekly-search-controls input { min-width: 0; width: 100%; }
+.weekly-search-controls button,
+.weekly-search-result { border: 1px solid color-mix(in srgb, var(--purple) 52%, var(--border)); border-radius: .6rem; background: var(--purple); color: white; padding: .45rem .65rem; font-size: .72rem; font-weight: 750; }
+.weekly-search-result { display: block; width: 100%; margin-top: .4rem; background: color-mix(in srgb, var(--purple) 12%, var(--surface)); color: var(--text); text-align: right; }
+
+@media (max-width: 780px) {
+  .weekly-schedule-header { display: grid; }
+  .weekly-term-controls { width: 100%; }
+  .weekly-term-controls label { flex: 1; }
+  .weekly-term-controls input,
+  .weekly-term-controls select { width: 100%; }
+  .weekly-schedule-layout { grid-template-columns: 1fr; }
 }
 
 /* ── Reduced motion: freeze everything, same rule as the planner HTML ── */

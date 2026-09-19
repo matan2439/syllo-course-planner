@@ -42,14 +42,11 @@ function groupsResponse(overrides: Partial<ScheduleGroupsResponse> = {}): Schedu
 function renderDrawer(overrides: Partial<Parameters<typeof WeeklyScheduleDrawer>[0]> = {}) {
   const fetchScheduleGroupsFn = jest.fn().mockResolvedValue(groupsResponse())
   const fetchCourseSearchFn = jest.fn().mockResolvedValue({ results: [], source: 'bidit', fetchedAt: 't' } as CourseSearchResponse)
-  const closeRef = { current: null }
   const utils = render(
     <WeeklyScheduleDrawer
       programId="mechanical_engineering_2027"
       semesterDestinations={DESTINATIONS}
       semesterCourses={SEMESTER_COURSES}
-      onClose={jest.fn()}
-      closeRef={closeRef}
       fetchScheduleGroupsFn={fetchScheduleGroupsFn}
       fetchCourseSearchFn={fetchCourseSearchFn}
       {...overrides}
@@ -65,25 +62,30 @@ test('fetches and lists groups for the active tab’s board-synced courses autom
   await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenCalledWith(
     expect.arrayContaining(['0542-2400', '0512-4266']), 1,
   ))
-  expect(await screen.findByText('תכן מכני (1)')).toBeInTheDocument()
-  expect(await screen.findByText('אבטחה ובטיחות')).toBeInTheDocument()
+  expect((await screen.findAllByText('תכן מכני (1)')).length).toBeGreaterThan(0)
+  expect((await screen.findAllByText('אבטחה ובטיחות')).length).toBeGreaterThan(0)
 })
 
-test('selecting a group renders it on the grid', async () => {
+test('renders the only available course group on the grid automatically', async () => {
   renderDrawer()
-  const checkbox = await screen.findByRole('checkbox', { name: /תכן מכני \(1\).*ראשית.*א.*10:00-12:00/ })
-  fireEvent.click(checkbox)
   expect(await screen.findByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeInTheDocument()
 })
 
-test('selecting a second, time-overlapping group is blocked with an explanatory message', async () => {
-  renderDrawer()
-  const first = await screen.findByRole('checkbox', { name: /תכן מכני \(1\).*ראשית.*א.*10:00-12:00/ })
-  fireEvent.click(first)
-  const second = await screen.findByRole('checkbox', { name: /אבטחה ובטיחות.*ראשית.*א.*11:00-13:00/ })
-  fireEvent.click(second)
-  expect(second).not.toBeChecked()
-  expect(await screen.findByText(/חופף ל.*תכן מכני/)).toBeInTheDocument()
+test('offers a compact group choice only when a course has real alternatives', async () => {
+  const fetchScheduleGroupsFn = jest.fn().mockResolvedValue(groupsResponse({
+    courses: [{
+      ...groupsResponse().courses[0],
+      groups: [
+        { ...groupsResponse().courses[0].groups[0], groupId: '01', havura: '1', kind: 'משנית', teachingMode: 'תרגיל' },
+        { ...groupsResponse().courses[0].groups[0], groupId: '02', havura: '2', kind: 'משנית', teachingMode: 'תרגיל', slots: [{ day: 'ב', start: '12:00', end: '14:00' }] },
+      ],
+    }],
+  }))
+  renderDrawer({ fetchScheduleGroupsFn })
+
+  expect(await screen.findByRole('radio', { name: /תכן מכני \(1\).*קבוצה 1/ })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /תכן מכני \(1\).*קבוצה 2/ })).toBeInTheDocument()
+  expect(screen.queryByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeNull()
 })
 
 test('a course bid-it has no record for shows a missing-data badge, not an empty conflict-free list', async () => {
@@ -94,7 +96,7 @@ test('a course bid-it has no record for shows a missing-data badge, not an empty
     ],
   }))
   renderDrawer({ fetchScheduleGroupsFn })
-  expect(await screen.findByText('אין נתוני שעות')).toBeInTheDocument()
+  expect(await screen.findByText(/לחלק מהקורסים אין עדיין נתוני שעות/)).toBeInTheDocument()
 })
 
 test('switching to a tab with no board-synced courses clears the list without a wasted fetch', async () => {
@@ -103,10 +105,10 @@ test('switching to a tab with no board-synced courses clears the list without a 
   expect(fetchScheduleGroupsFn).toHaveBeenLastCalledWith(
     expect.arrayContaining(['0542-2400', '0512-4266']), 1,
   )
-  expect(await screen.findByText('תכן מכני (1)')).toBeInTheDocument()
+  expect((await screen.findAllByText('תכן מכני (1)')).length).toBeGreaterThan(0)
 
   fireEvent.click(screen.getByRole('tab', { name: 'שנה ג׳ — סמסטר ב׳' }))
-  await waitFor(() => expect(screen.queryByText('תכן מכני (1)')).toBeNull())
+  await waitFor(() => expect(screen.queryAllByText('תכן מכני (1)')).toHaveLength(0))
   // year_3_semester_b has no board-synced courses and nothing was searched in — no call needed.
   expect(fetchScheduleGroupsFn).toHaveBeenCalledTimes(1)
 })
@@ -144,21 +146,33 @@ test('a failed schedule-groups fetch shows an error instead of silently renderin
   expect(await screen.findByText(/טעינת נתוני השעות נכשלה/)).toBeInTheDocument()
 })
 
-test('a stale selection that newly conflicts after refetched data is removed, not silently kept', async () => {
+test('a stale alternative choice that newly conflicts after refetch is removed, not silently kept', async () => {
   let call = 0
   const fetchScheduleGroupsFn = jest.fn().mockImplementation(async () => {
     call += 1
+    const primary = (courseId: string, nameHe: string, groupId: string, day: string, start: string, end: string) => ({
+      courseId, nameHe, cYear: 2026, found: true, incompleteData: false,
+      groups: [
+        { groupId, havura: '1', kind: 'ראשית', teachingMode: 'שיעור', lecturer: null, room: null, slots: [{ day, start, end }] },
+        { groupId: '02', havura: '2', kind: 'ראשית', teachingMode: 'שיעור', lecturer: null, room: null, slots: [{ day: 'ה', start: '14:00', end: '16:00' }] },
+      ],
+    })
     if (call === 1) {
       // first load: the two courses do NOT overlap
       return groupsResponse({
         courses: [
-          groupsResponse().courses[0],
-          { ...groupsResponse().courses[1], groups: [{ ...groupsResponse().courses[1].groups[0], slots: [{ day: 'ב', start: '11:00', end: '13:00' }] }] },
+          primary('0542-2400', 'תכן מכני (1)', '01', 'א', '10:00', '12:00'),
+          primary('0512-4266', 'אבטחה ובטיחות', '01', 'ב', '11:00', '13:00'),
         ],
       })
     }
     // second load (after adding an extra course triggers a refetch): now they DO overlap
-    return groupsResponse()
+    return groupsResponse({
+      courses: [
+        primary('0542-2400', 'תכן מכני (1)', '01', 'א', '10:00', '12:00'),
+        primary('0512-4266', 'אבטחה ובטיחות', '01', 'א', '11:00', '13:00'),
+      ],
+    })
   })
   const fetchCourseSearchFn = jest.fn().mockResolvedValue({
     results: [{ courseId: '9999-9999', nameHe: 'קורס נוסף' }],
@@ -167,9 +181,9 @@ test('a stale selection that newly conflicts after refetched data is removed, no
   } as CourseSearchResponse)
   renderDrawer({ fetchScheduleGroupsFn, fetchCourseSearchFn })
 
-  const first = await screen.findByRole('checkbox', { name: /תכן מכני \(1\).*ראשית.*א.*10:00-12:00/ })
+  const first = await screen.findByRole('radio', { name: /תכן מכני \(1\).*קבוצה 1.*א.*10:00[–-]12:00/ })
   fireEvent.click(first)
-  const second = await screen.findByRole('checkbox', { name: /אבטחה ובטיחות.*ראשית.*ב.*11:00-13:00/ })
+  const second = await screen.findByRole('radio', { name: /אבטחה ובטיחות.*קבוצה 1.*ב.*11:00[–-]13:00/ })
   fireEvent.click(second)
   expect(first).toBeChecked()
   expect(second).toBeChecked()
@@ -189,8 +203,8 @@ test('a stale selection that newly conflicts after refetched data is removed, no
   // ('תכן מכני (1)', index 0) survives the revalidation, and the later one
   // ('אבטחה ובטיחות', index 1) is dropped — per the documented tie-break.
   await waitFor(() => {
-    expect(screen.getByRole('checkbox', { name: /תכן מכני \(1\)/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /אבטחה ובטיחות/ })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: /תכן מכני \(1\).*קבוצה 1/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /אבטחה ובטיחות.*קבוצה 1/ })).not.toBeChecked()
   })
   expect(
     await screen.findByText(/הבחירה ב'אבטחה ובטיחות' הוסרה כי היא חופפת ל'תכן מכני/),
