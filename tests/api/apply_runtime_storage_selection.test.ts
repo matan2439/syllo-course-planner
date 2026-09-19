@@ -15,6 +15,16 @@ describe('planner storage selection', () => {
     expect(plannerDatabaseConfigured(env)).toBe(true);
   });
 
+  test('uses the deployed database connection when a separate planner URL is absent', () => {
+    const env = {
+      VERCEL: '1',
+      DATABASE_URL: 'postgres://shared-production-database',
+    } as NodeJS.ProcessEnv;
+
+    expect(storageKindFor(env)).toBe('postgres');
+    expect(plannerDatabaseConfigured(env)).toBe(true);
+  });
+
   test('keeps explicit local file and deterministic memory modes', () => {
     expect(storageKindFor({ SYLLO_BOARD_STATE_DIR: 'runtime/boards' })).toBe('file');
     expect(storageKindFor({})).toBe('memory');

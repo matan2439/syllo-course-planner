@@ -34,6 +34,7 @@ import {
 /** The env var that switches on the local Preview file adapter. */
 export const BOARD_STATE_DIR_ENV = 'SYLLO_BOARD_STATE_DIR';
 export const PLANNER_DATABASE_URL_ENV = 'SYLLO_PLANNER_DATABASE_URL';
+const SHARED_DATABASE_URL_ENV = 'DATABASE_URL';
 
 export type StorageKind = 'memory' | 'file' | 'postgres';
 
@@ -88,8 +89,15 @@ export function installPostgresPlannerStateFactoryForTests(
   postgresSchemaVerified = false;
 }
 
+function plannerDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const dedicatedUrl = (env[PLANNER_DATABASE_URL_ENV] ?? '').trim();
+  if (dedicatedUrl) return dedicatedUrl;
+  const sharedUrl = (env[SHARED_DATABASE_URL_ENV] ?? '').trim();
+  return sharedUrl || null;
+}
+
 export function plannerDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean((env[PLANNER_DATABASE_URL_ENV] ?? '').trim());
+  return plannerDatabaseUrl(env) !== null;
 }
 
 export function storageKindFor(env: NodeJS.ProcessEnv): StorageKind {
@@ -120,7 +128,7 @@ export function productionStorageConfigured(): boolean {
 
 function initializePostgresState(): PostgresPlannerState {
   if (!postgresState) {
-    const url = process.env[PLANNER_DATABASE_URL_ENV]?.trim();
+    const url = plannerDatabaseUrl();
     if (!url) throw new PlannerStorageError('PLANNER_STORAGE_UNAVAILABLE');
     postgresState = postgresStateFactory(url);
   }
