@@ -16,17 +16,18 @@ export default function Home() {
 
       <div className="flex min-h-screen flex-col">
         <header className="flex items-center gap-3 px-6 py-5 sm:px-10">
-          <BrandLogo size={30} wordmark />
+          <BrandLogo size={30} />
           <ThemeToggle />
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
-          <h1 className="rise max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-            התואר שלך, מתוכנן חכם
-          </h1>
+          <h1 className="sr-only">Syllo — תכנון לימודים חכם</h1>
+          <div className="rise">
+            <BrandLogo variant="wordmark" size="clamp(6.5rem, 15vw, 11rem)" />
+          </div>
 
           <p className="rise rise-1 mt-4 max-w-md text-base leading-relaxed text-[var(--text-muted)]">
-            עוזר AI שבונה איתך את לוח הסמסטרים — אוניברסיטת תל אביב
+            תכנון לימודים פשוט, ברור ומותאם לך.
           </p>
 
           <div className="rise rise-2 mt-9 flex flex-col items-center gap-4">
