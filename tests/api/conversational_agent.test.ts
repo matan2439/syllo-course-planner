@@ -50,6 +50,24 @@ function readyProfile(): PreferenceProfile {
 
 const transcript = [{ role: 'user' as const, text: 'תציע לי תוכנית מאוזנת' }]
 
+test('a simulation tool result reaches the assistant without becoming a proposal', async () => {
+  const worker = createWorker()
+  const before = JSON.parse(JSON.stringify(worker.getPlan()))
+  const result = await runConversationalAgent({ transcript, createWorker: () => worker, preferenceProfile: readyProfile() }, {
+    model: {} as never,
+    generate: async ({ tools }) => {
+      const simulation = await tools.simulate_changes.execute({ changes: [{ kind: 'add_course', courseId: 'E-1', semesterId: SEMESTER }] }, {} as never)
+      expect(simulation.data.status).toBe('simulated')
+      if (simulation.data.status === 'simulated') expect(simulation.data.validation.valid).toBe(true)
+      return { text: 'בדקתי את ההוספה; השינוי עדיין לא הוחל.' }
+    },
+  })
+  expect(result.outcome).toBe('conversation')
+  expect(worker.getPlan()).toEqual(before)
+  expect(result).not.toHaveProperty('draftPlan')
+  expect(result.events).toContainEqual({ type: 'tool_status', tool: 'simulate_changes', status: 'completed' })
+})
+
 test('the model can orchestrate deterministic tools and returns only a draft plan once context is sufficient', async () => {
   const result = await runConversationalAgent({ transcript, createWorker, preferenceProfile: readyProfile() }, {
     model: {} as never,

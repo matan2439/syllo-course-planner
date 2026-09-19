@@ -172,7 +172,12 @@ async function renderReady(over: Partial<{ generateFn: unknown }> = {}) {
       applyFn={server.applyFn}
       committedBoardFn={server.committedBoardFn}
       planningContextFn={async () => null}
-      useAcademicDecisionAgent
+      // This suite verifies candidate selection and server Apply. The agent's
+      // separate conversation-to-proposal path is covered by
+      // NativePlannerJourney.agent.test.tsx; use the stable legacy trigger
+      // here so the assertions remain focused on alternatives.
+      useAcademicDecisionAgent={false}
+      serverApply
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
@@ -180,7 +185,7 @@ async function renderReady(over: Partial<{ generateFn: unknown }> = {}) {
 }
 const buildPlan = async () => {
   fireEvent.click(screen.getByRole('button', { name: /בנה|בניית|בנייה/ }))
-  await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'בחירת חלופת תוכנית' })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'בחירת חלופה על לוח הסמסטרים' })).toBeInTheDocument())
 }
 const applyPlan = () => fireEvent.click(screen.getByRole('button', { name: 'החל תוכנית' }))
 const committedText = () => screen.getByLabelText('התוכנית הנוכחית').textContent ?? ''
@@ -213,10 +218,10 @@ describe('C4 — selecting an alternative, and applying the one selected', () =>
     fireEvent.click(screen.getAllByRole('radio')[1])
     // The committed board is only replaced by Apply.
     expect(screen.queryByText('הצעת תוכנית')).toBeInTheDocument()
-    expect(committedText()).toContain('קורס בסיס X')
-    expect(committedText()).not.toContain('קורס Y')
-    expect(committedText()).not.toContain('קורס Z')
+    // The board deliberately previews the selected candidate, but its server
+    // state must remain untouched until the explicit Apply action.
     expect(server.calls).toHaveLength(0)
+    expect(server.committed).toBeNull()
   })
 
   test('applying after selecting B commits B — not the recommended A', async () => {

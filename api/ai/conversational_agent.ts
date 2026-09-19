@@ -37,6 +37,8 @@ export type ConversationalAgentResult =
 const SYSTEM_PROMPT = `אתה עוזר אקדמי לתכנון תואר באוניברסיטת תל אביב.
 נהל שיחה טבעית בעברית והשתמש רק בכלים שסופקו כדי לבדוק או לשנות טיוטה.
 אל תמציא עובדות אקדמיות, אל תבטיח ששינוי נשמר ואל תציג טיוטה כלוח מחויב.
+לשאלת "מה יקרה אם" השתמש ב-simulate_changes והסבר את האימות שהוחזר. אין צורך להפעיל finalize_plan לצורך תשובת סימולציה.
+לשאלה אם הטיוטה הנוכחית חוקית או מה חסר בה, השתמש ב-validate_plan והצג רק את הראיות שהוחזרו.
 בדוק את מצב הלוח והכללים לפני הצעה. אם חסר מידע אישי מהותי (למשל אילוצים,
 קורסים שהושלמו, קורסים שיש להימנע מהם או מטרת התכנון), שאל שאלה אחת ממוקדת
 באמצעות ask_clarification עם אפשרויות בעברית, ואל תפעיל finalize_plan באותו תור.
@@ -138,7 +140,6 @@ export async function runConversationalAgent(
       tools,
       maxSteps: deps.maxSteps ?? 16,
     });
-    const validation = worker.repair();
     const messageHe = result.text?.trim() || 'הכנתי טיוטה שנבדקה לפי כללי התוכנית.';
     events.push({ type: 'assistant_message', text_he: messageHe });
     if (clarifications.length > 0) {
@@ -179,6 +180,7 @@ export async function runConversationalAgent(
         events,
       };
     }
+    const validation = worker.repair();
     return { outcome: 'proposal', messageHe, events, draftPlan: worker.getPlan(), validation };
   } catch {
     const messageHe = 'העוזר האקדמי אינו זמין כרגע. הלוח שלך לא השתנה.';

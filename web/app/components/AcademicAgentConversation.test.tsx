@@ -207,10 +207,29 @@ test('preserves the selected answer after a send failure so it can be retried', 
   expect(screen.getByRole('button', { name: 'אישור קורס אחד' })).toBeEnabled()
 })
 
-test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hides raw tool payloads', async () => {
+test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and shows a safe audit receipt without raw tool payloads', async () => {
   const sendConversation = jest.fn(async () => ({
     outcome: 'proposal',
     message_he: 'מצאתי חלופה חוקית.',
+    academic_decision: {
+      engine: 'AcademicDecisionAgent',
+      ready_to_plan: true,
+      planned: true,
+      clarification_required: false,
+      explanation: {
+        summary_he: 'הטיוטה עברה אימות חוקיות והשלמת דרישות.',
+        facts_he: ['מגבלות שנבדקו: שעות תואר, קורסי חובה.'],
+        risks_he: [],
+        next_actions_he: ['אפשר לעבור על החלופה בלוח לפני ההחלה.'],
+      },
+      decision: {
+        outcome: 'selected',
+        selected_candidate_id: 'cand_1',
+        evaluated_candidate_ids: ['cand_1'],
+        alternatives_not_selected_ids: [],
+        selection_basis: 'existing_deterministic_ranking',
+      },
+    },
     events: [
       { type: 'tool_status', tool: 'rank_candidates', status: 'completed' },
       { type: 'assistant_message', text_he: 'מצאתי חלופה חוקית.' },
@@ -260,6 +279,12 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and hi
   expect(screen.getByText('אני רוצה עומס מאוזן')).toBeInTheDocument()
   expect(screen.getByText('מצאתי חלופה חוקית.')).toBeInTheDocument()
   expect(screen.getByText('דירוג חלופות — הושלם')).toBeInTheDocument()
+  expect(screen.getByText('יומן בדיקה — השיחה האחרונה')).toBeInTheDocument()
+  expect(screen.getByText('כלים שהופעלו: 1')).toBeInTheDocument()
+  expect(screen.getByText('תוצאה: הצעה מוכנה לבדיקה')).toBeInTheDocument()
+  expect(screen.getByText('ההמלצה נבחרה מתוך 1 חלופות חוקיות לפי הדירוג הדטרמיניסטי.')).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'הסבר מבוסס אימות' })).toHaveTextContent('מגבלות שנבדקו: שעות תואר, קורסי חובה.')
+  expect(screen.getByText('אפשר לעבור על החלופה בלוח לפני ההחלה.')).toBeInTheDocument()
   expect(screen.queryByText('rank_candidates')).not.toBeInTheDocument()
   expect(onProposalReady).toHaveBeenCalledWith(expect.objectContaining({ proposal_id: 'prop_1' }))
 })

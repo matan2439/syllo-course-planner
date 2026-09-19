@@ -46,6 +46,71 @@ function buildModel(): ConstraintModel {
 }
 
 describe('PlannerWorker.rankActions', () => {
+  it('returns the current plan validation evidence without mutating the worker', async () => {
+    const worker = new PlannerWorker(buildModel(), {
+      semesters: {
+        year_3_semester_a: ['MAND'], year_3_semester_b: [],
+        year_4_semester_a: [], year_4_semester_b: [],
+      },
+    });
+    const before = JSON.parse(JSON.stringify(worker.getPlan()));
+    const tools = buildPlannerTools(worker) as unknown as {
+      validate_plan?: { execute: (args: object, options: unknown) => Promise<{ data: unknown; fact: unknown }> };
+    };
+
+    expect(tools.validate_plan).toBeDefined();
+    const result = await tools.validate_plan!.execute({}, undefined);
+
+    expect(result.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 1 }));
+    expect(result.data).toEqual(expect.objectContaining({
+      valid: false,
+      legal: true,
+      complete: false,
+      degreeHours: 5,
+      degreeMet: false,
+      missingMandatory: [],
+      constraintsChecked: expect.arrayContaining(['degree_hours', 'prerequisites', 'offering']),
+    }));
+    expect(worker.getPlan()).toEqual(before);
+  });
+
+  it('reports excluded hypothetical courses as invalid', async () => {
+    const model = buildModel();
+    model.disallowedCourseIds.add('E0');
+    const worker = new PlannerWorker(model);
+    const result = await buildPlannerTools(worker).simulate_changes.execute({ changes: [
+      { kind: 'add_course', courseId: 'E0', semesterId: SEMS[1] },
+    ] }, undefined as any);
+    if (result.data.status !== 'simulated') throw new Error('expected hypothetical candidate');
+    expect(result.data.validation.valid).toBe(false);
+    expect(result.data.validation.violations.map((violation) => violation.message).join('\n')).toContain('E0');
+    expect(result.data.validation.violations).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'CANDIDATE_VALIDATION_REJECTED', severity: 'error' }),
+    ]));
+    expect(result.data.validation.evidence).toEqual(expect.objectContaining({
+      legal: true,
+      complete: false,
+      degreeHours: 4,
+      degreeHoursRequired: 20,
+      degreeMet: false,
+      missingMandatoryCourseIds: ['MAND'],
+      disallowedCourseIds: ['E0'],
+      constraintsChecked: expect.arrayContaining(['degree_hours', 'disallowed']),
+    }));
+    expect(Object.values(worker.getPlan().semesters).flat()).not.toContain('E0');
+  });
+  it('exposes hypothetical edits to the conversation without changing its worker', async () => {
+    const worker = new PlannerWorker(buildModel());
+    const before = JSON.parse(JSON.stringify(worker.getPlan()));
+    const tools = buildPlannerTools(worker);
+    const result = await tools.simulate_changes.execute({ changes: [
+      { kind: 'add_course', courseId: 'E0', semesterId: SEMS[1] },
+    ] }, undefined as any);
+    expect(result.data.status).toBe('simulated');
+    if (result.data.status === 'simulated') expect(result.data.candidate.semesters[SEMS[1]]).toContain('E0');
+    expect(worker.getPlan()).toEqual(before);
+    expect(tools.simulate_changes.parameters.safeParse({ changes: [] }).success).toBe(false);
+  });
   it('returns actions sorted by resulting plan score descending', () => {
     const w = new PlannerWorker(buildModel());
     const ranked = w.rankActions();
