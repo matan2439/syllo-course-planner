@@ -25,6 +25,13 @@ const nextConfig: NextConfig = {
     // Lint is run separately; don't block builds on lint warnings
     ignoreDuringBuilds: true,
   },
+  webpack(config) {
+    // Shared planner contracts live one directory above this app. Vercel's
+    // Next builder installs web/package.json dependencies here (not at the
+    // repository root), so resolve their schema dependency from this app too.
+    config.resolve.alias.zod = path.join(__dirname, 'node_modules', 'zod')
+    return config
+  },
   async rewrites() {
     return plannerApiOrigin
       ? [{ source: '/api/:path*', destination: `${plannerApiOrigin}/api/:path*` }]
