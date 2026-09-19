@@ -31,7 +31,37 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "20/01/2027",
+                "25/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.530Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1003",
@@ -49,7 +79,31 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.344Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1008",
@@ -67,7 +121,37 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "19/07/2027",
+                "17/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.331Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1007",
@@ -86,7 +170,50 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        },
+        "B": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.556Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1013",
@@ -104,7 +231,31 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.389Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1014",
@@ -122,7 +273,31 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.426Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "1880-0901",
@@ -140,7 +315,62 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "24/01/2027",
+                "25/02/2027"
+              ]
+            }
+          ]
+        },
+        "B": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "04/07/2027",
+                "01/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.833Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "1880-0710",
@@ -159,7 +389,62 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "31/01/2027",
+                "28/02/2027"
+              ]
+            }
+          ]
+        },
+        "B": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "11/07/2027",
+                "08/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.904Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1002",
@@ -177,7 +462,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "22/01/2027",
+                "28/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.897Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1011",
@@ -195,7 +511,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "18:00"
+              ],
+              "end_hours": [
+                "20:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:37.962Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1018",
@@ -213,7 +554,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1017",
@@ -232,7 +575,63 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "24/01/2027",
+                "15/02/2027"
+              ]
+            }
+          ]
+        },
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "06/07/2027",
+                "16/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:38.031Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1201",
@@ -250,7 +649,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1225",
@@ -268,7 +669,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1226",
@@ -286,7 +689,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1303",
@@ -304,7 +709,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:38.554Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0612-6041",
@@ -322,7 +752,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0612-6044",
@@ -340,7 +772,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0618-1059",
@@ -358,7 +792,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "03/02/2027",
+                "12/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.206Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0622-1001",
@@ -376,7 +841,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.197Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0627-1010",
@@ -394,7 +884,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "24/01/2027",
+                "21/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.714Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0631-1130",
@@ -412,7 +933,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "04/07/2027",
+                "08/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.312Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0631-2468",
@@ -430,7 +982,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור ותרגיל",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "07/02/2027",
+                "07/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.319Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0631-3496",
@@ -448,7 +1031,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור ותרגיל",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "31/01/2027",
+                "28/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.911Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-1045",
@@ -466,7 +1080,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "26/01/2027",
+                "01/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:39.627Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2215",
@@ -484,7 +1129,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2331",
@@ -502,7 +1149,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2669",
@@ -520,7 +1169,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2670",
@@ -538,7 +1189,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0672-1102",
@@ -556,7 +1209,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.081Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0677-1514",
@@ -574,7 +1252,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "א"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "27/01/2027",
+                "02/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.453Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0687-1113",
@@ -592,7 +1301,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "05/02/2027",
+                "07/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.454Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0687-1115",
@@ -610,7 +1350,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "12/02/2027",
+                "14/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.451Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0616-1311",
@@ -628,7 +1399,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.662Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0672-1109",
@@ -646,7 +1442,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "28/01/2027",
+                "04/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.771Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0723-2047",
@@ -664,7 +1491,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.693Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0723-2022",
@@ -682,7 +1534,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "11/02/2027",
+                "04/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:40.883Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0621-1194",
@@ -700,7 +1583,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0621-1219",
@@ -718,7 +1603,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "20/01/2027",
+                "21/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.057Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0669-6175",
@@ -736,7 +1652,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.243Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-1011",
@@ -754,7 +1695,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.144Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-1757",
@@ -772,7 +1738,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2642",
@@ -790,7 +1758,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2649",
@@ -808,7 +1778,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0608-1110",
@@ -826,7 +1798,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "29/01/2027",
+                "28/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.701Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0608-1177",
@@ -844,7 +1847,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "04/07/2027",
+                "03/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.743Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0608-1152",
@@ -862,7 +1896,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:41.742Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0608-1153",
@@ -880,7 +1939,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0669-6198",
@@ -898,7 +1959,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1006",
@@ -916,7 +1979,37 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "27/01/2027",
+                "23/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.130Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1021",
@@ -934,7 +2027,37 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "01/02/2027",
+                "01/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.197Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1004",
@@ -952,7 +2075,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.241Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1009",
@@ -970,7 +2118,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "09/02/2027",
+                "04/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.410Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1015",
@@ -988,7 +2167,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "א"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.348Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1010",
@@ -1006,7 +2210,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "03/02/2027",
+                "24/02/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.525Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1019",
@@ -1024,7 +2259,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "א"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "26/07/2027",
+                "08/09/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.596Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1020",
@@ -1042,7 +2308,31 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 0,
+          "groups": [
+            {
+              "days": [
+                "---"
+              ],
+              "begin_hours": [
+                "---"
+              ],
+              "end_hours": [
+                "---"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.714Z",
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1209",
@@ -1060,7 +2350,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1211",
@@ -1078,7 +2370,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "סדנה",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.895Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0609-1212",
@@ -1096,7 +2413,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "א"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "28/07/2027",
+                "05/09/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:42.915Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0618-1016",
@@ -1114,7 +2462,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "06/07/2027",
+                "15/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.040Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0618-1042",
@@ -1132,7 +2511,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "14/07/2027",
+                "09/09/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.107Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0622-1004",
@@ -1150,7 +2560,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0622-2001",
@@ -1168,7 +2580,51 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        },
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ג"
+              ],
+              "begin_hours": [
+                "18:00"
+              ],
+              "end_hours": [
+                "20:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.225Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0631-2503",
@@ -1186,7 +2642,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-1031",
@@ -1204,7 +2662,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "11/07/2027",
+                "05/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.356Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-1091",
@@ -1222,7 +2711,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "16:00"
+              ],
+              "end_hours": [
+                "18:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "05/02/2027",
+                "08/03/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.509Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-1130",
@@ -1240,7 +2760,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-1238",
@@ -1258,7 +2780,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "18/07/2027",
+                "08/09/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.632Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2383",
@@ -1276,7 +2829,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2649",
@@ -1294,7 +2849,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:43.891Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-2668",
@@ -1312,7 +2892,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0671-4389",
@@ -1330,7 +2912,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0672-1202",
@@ -1348,7 +2932,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ד"
+              ],
+              "begin_hours": [
+                "12:00"
+              ],
+              "end_hours": [
+                "14:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:44.028Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0672-1557",
@@ -1366,7 +2975,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0677-1283",
@@ -1384,7 +2995,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "1673-4026",
@@ -1402,7 +3015,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0723-2052",
@@ -1420,7 +3035,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ה"
+              ],
+              "begin_hours": [
+                "14:00"
+              ],
+              "end_hours": [
+                "16:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:44.428Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0621-1101",
@@ -1438,7 +3078,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "04/07/2027",
+                "02/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:44.453Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0621-1220",
@@ -1456,7 +3127,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-1180",
@@ -1474,7 +3147,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2253",
@@ -1492,7 +3167,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2615",
@@ -1510,7 +3187,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2620",
@@ -1528,7 +3207,32 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "A": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "10:00"
+              ],
+              "end_hours": [
+                "12:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [],
+              "assessment_dates": []
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:44.895Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2653",
@@ -1546,7 +3250,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0662-2656",
@@ -1564,7 +3270,9 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0608-1010",
@@ -1582,7 +3290,38 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "bidit_schedule_2027": {
+        "B": {
+          "weekly_hours": 2,
+          "groups": [
+            {
+              "days": [
+                "ב"
+              ],
+              "begin_hours": [
+                "08:00"
+              ],
+              "end_hours": [
+                "10:00"
+              ],
+              "teaching_format": "שיעור",
+              "assessment": [
+                "בחינה סופית",
+                "בחינה סופית"
+              ],
+              "assessment_dates": [
+                "12/07/2027",
+                "11/08/2027"
+              ]
+            }
+          ]
+        }
+      },
+      "bidit_checked_at": "2026-09-14T13:11:45.040Z",
+      "weekly_hours": 2,
+      "weekly_hours_verified_from_bidit": true,
+      "weekly_hours_source": "program_requirement"
     },
     {
       "course_id": "0669-6203",
@@ -1600,7 +3339,11 @@
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
-      "does_not_count_as_engineering_elective": true
+      "does_not_count_as_engineering_elective": true,
+      "weekly_hours": 2,
+      "weekly_hours_source": "program_requirement"
     }
-  ]
+  ],
+  "bidit_schedule_source": "http://www.bid-it.appspot.com/ajax/chosen-courses-info/",
+  "bidit_schedule_year": "2026-2027"
 }

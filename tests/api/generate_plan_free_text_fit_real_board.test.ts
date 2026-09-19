@@ -20,7 +20,11 @@ import { join } from 'path';
 import { extractCourseCapabilityEvidence } from '../../api/ai/course_capability_evidence';
 
 const BOARD = JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'boards', 'mechanical_engineering_2027.json'), 'utf8'));
+// This fixture verifies semantic ranking among engineering electives. Mark the
+// separate three-course שער רוח requirement complete so it cannot displace the
+// design comparison under test.
 const PRIOR = 92;
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 const FOCUS = 'אני רוצה להתמקד בתכן';
 const OSC_DESIGN = '0542-4425';     // הדפסת תלת מימד ותכן חלקי פלסטיקה — explicit official-syllabus design evidence
 const OSC_TITLE_ONLY = '0542-4420'; // תורת המכונות — title has "מכונות" but syllabus is machine THEORY (no design evidence)
@@ -34,7 +38,11 @@ const designLevel = (id: string) => extractCourseCapabilityEvidence(byId.get(id)
 function planContext() {
   return {
     semesters: BOARD.semesters.map((s: any) => ({ id: s.semester_id, courses: (s.courses || []).map((c: any) => ({ course_id: c.course_id })) })),
-    personal_status: { completed: [], currently_taking: [], planned: [] },
+    personal_status: {
+      completed: COMPLETED_SHAAR_RUACH.map(course_id => ({ course_id })),
+      currently_taking: [],
+      planned: [],
+    },
     total_hours_progress: { known_completed_hours: PRIOR },
   };
 }

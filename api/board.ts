@@ -83,6 +83,51 @@ export async function queryBoardJson(
   }
 }
 
+/**
+ * Keep the published שער רוח catalog available while an older persisted board
+ * remains in the database. Only this independently-versioned general
+ * requirement is overlaid; semester placements and every other persisted
+ * course record remain database-authoritative.
+ */
+export function mergePublishedGatewayCatalog(
+  board: Record<string, any>,
+  published: Record<string, any> | null,
+): Record<string, any> {
+  const publishedMetadata = published?.metadata;
+  const gatewayCourses = (publishedMetadata?.program_repository_courses ?? [])
+    .filter((course: any) => course?.category_id === 'shaar_ruach');
+  if (!gatewayCourses.length) return board;
+
+  const metadata = board.metadata ?? {};
+  const gatewayIds = new Set(gatewayCourses.map((course: any) => course.course_id));
+  const repositoryCourses = (metadata.program_repository_courses ?? [])
+    .filter((course: any) => course?.category_id !== 'shaar_ruach' && !gatewayIds.has(course?.course_id));
+  const publishedCategories = publishedMetadata?.program_requirements_categories?.categories ?? [];
+  const gatewayCategory = publishedCategories.find((category: any) => category?.category_id === 'shaar_ruach');
+  const requirements = metadata.program_requirements_categories;
+  const categories = (requirements?.categories ?? [])
+    .filter((category: any) => category?.category_id !== 'shaar_ruach');
+
+  return {
+    ...board,
+    metadata: {
+      ...metadata,
+      program_repository_courses: [...repositoryCourses, ...gatewayCourses],
+      ...(gatewayCategory
+        ? {
+            program_requirements_categories: {
+              ...requirements,
+              categories: [...categories, gatewayCategory],
+            },
+          }
+        : {}),
+      ...(publishedMetadata?.board_data_version
+        ? { board_data_version: publishedMetadata.board_data_version }
+        : {}),
+    },
+  };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(
@@ -165,5 +210,5 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     return;
   }
 
-  res.status(200).json(board);
+  res.status(200).json(mergePublishedGatewayCatalog(board, loadLocalBoardJson(rawId)));
 }

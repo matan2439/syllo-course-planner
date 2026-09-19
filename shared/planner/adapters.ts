@@ -15,12 +15,24 @@ type RawCourse = {
   course_type?: string;
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
+  effective_allowed_semesters?: string[] | null;
   // See the matching field comment in wire.ts: repository entries ship
   // category_id, placed entries ship program_category_id — both accepted.
   category_id?: string | null;
   program_category_id?: string | null;
   placement_policy?: string;
   is_annual?: boolean;
+};
+
+type RawSemester = { semester_id: string; courses: RawCourse[] };
+
+type RawBoardPayload = {
+  metadata: {
+    board_data_version: string;
+    program_repository_courses?: RawCourse[];
+    program_requirements_validation?: RawRequirementsValidation;
+  };
+  semesters: RawSemester[];
 };
 
 /**
@@ -62,8 +74,12 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
     halfHours: c.weekly_hours == null ? null : toHalfHours(c.weekly_hours),
     courseType: c.course_type ?? '',
     isMandatory: c.is_mandatory ?? false,
-    ...(c.offered_semesters != null
-      ? { offeredSemesters: normalizeSemesterIds(c.offered_semesters, knownSemesterIds) }
+    // A full effective restriction records the program/policy result for this
+    // exact planning horizon. It must override a bare A/B offering code,
+    // which otherwise means that half in every year and would advertise an
+    // impossible cross-year move in the UI.
+    ...((c.effective_allowed_semesters ?? c.offered_semesters) != null
+      ? { offeredSemesters: normalizeSemesterIds(c.effective_allowed_semesters ?? c.offered_semesters!, knownSemesterIds) }
       : {}),
     ...((c.category_id ?? c.program_category_id) != null
       ? { programCategoryId: (c.category_id ?? c.program_category_id) as string }
@@ -82,7 +98,14 @@ function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsMod
     coreCoursesTotalMin: v.core_courses_total_min,
     coreCoursesSelected: v.core_courses_selected,
     coreCoursesSatisfied: v.core_courses_satisfied,
-    categories: (v.category_results ?? []).map((c) => ({
+    categories: (v.category_results ?? []).map((c: {
+      category_id: string;
+      name_he: string;
+      min_courses: number;
+      selected_count: number;
+      satisfied: boolean;
+      missing_count: number;
+    }) => ({
       categoryId: c.category_id,
       nameHe: c.name_he,
       minCourses: c.min_courses,
@@ -96,7 +119,7 @@ function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsMod
 
 /** Parse + map a raw /api/board response into the canonical BoardModel + catalog. */
 export function boardResponseToModel(raw: unknown): BoardModel {
-  const parsed = boardResponseSchema.parse(raw);
+  const parsed = boardResponseSchema.parse(raw) as RawBoardPayload;
   const knownSemesterIds = parsed.semesters.map((s) => s.semester_id);
 
   const semesters = parsed.semesters.map((s) => ({
@@ -138,8 +161,8 @@ export function boardResponseToModel(raw: unknown): BoardModel {
 export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
   const p = generatePlanResponseSchema.parse(raw);
   return {
-    semesters: p.semesters.map((s) => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
-    moves: p.moves.map((m) => ({ courseId: m.course_id, from: m.from, to: m.to })),
+    semesters: p.semesters.map((s: { semester_id: string; course_ids: string[] }) => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
+    moves: p.moves.map((m: { course_id: string; from: string | null; to: string }) => ({ courseId: m.course_id, from: m.from, to: m.to })),
     warningsHe: p.warnings_he,
     errors: p.errors,
     blocked: p.blocked,

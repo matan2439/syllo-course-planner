@@ -13,8 +13,8 @@
     "scopeConclusion": "course-scoped (multi-group courses publish identical content per group)"
   },
   "universe": {
-    "programCourses": 56,
-    "requiringCategoryCourses": 17,
+    "programCourses": 144,
+    "requiringCategoryCourses": 105,
     "requiringCoursesWithAnyDocument": 5,
     "universeCoursesWithAnyDocument": 13
   },

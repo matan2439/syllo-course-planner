@@ -221,7 +221,12 @@ describe('GET /api/board/[programId] handler', () => {
     const res = makeRes();
     await handler(makeReq('mechanical_engineering_2027'), res);
     const body = (res.json as jest.Mock).mock.calls[0][0] as typeof MOCK_BOARD;
-    expect(body.metadata.program_repository_courses).toHaveLength(56);
+    expect(body.metadata.program_repository_courses).toHaveLength(144);
+    const shaarRuach = body.metadata.program_repository_courses.filter(
+      (course: any) => course.category_id === 'shaar_ruach',
+    );
+    expect(shaarRuach).toHaveLength(88);
+    expect(shaarRuach.every((course: any) => course.weekly_hours === 2)).toBe(true);
   });
 
   it('mandatory courses count is 12 in returned board fixture', async () => {

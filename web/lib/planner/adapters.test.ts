@@ -47,6 +47,24 @@ test('a course offered in only one bare half expands to every semester id of tha
   expect(model.courseCatalog['C-2'].offeredSemesters).toEqual(['year_3_semester_a', 'year_4_semester_a'])
 })
 
+test('a precise effective semester restriction wins over a bare A/B offering code', () => {
+  const board = {
+    ...BASE_BOARD,
+    semesters: [
+      {
+        semester_id: 'year_3_semester_b',
+        courses: [{
+          course_id: 'C-EXACT', name_he: 'קורס מדויק', weekly_hours: 3, course_type: 'mandatory',
+          offered_semesters: ['B'], effective_allowed_semesters: ['year_3_semester_b'],
+        }],
+      },
+      ...BASE_BOARD.semesters.filter((s) => s.semester_id !== 'year_3_semester_b'),
+    ],
+  }
+
+  expect(boardResponseToModel(board).courseCatalog['C-EXACT'].offeredSemesters).toEqual(['year_3_semester_b'])
+})
+
 test('already-full semester ids pass through unchanged, and unknown tokens are dropped', () => {
   const board = {
     ...BASE_BOARD,

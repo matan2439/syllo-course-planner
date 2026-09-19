@@ -38,6 +38,10 @@ export interface CourseProfile {
   course_type: string | null;
   /** 'fixed' | 'flexible' | 'elective' | null. */
   placement_policy: string | null;
+  /** True for a general-requirement course (e.g. קורסי שער רוח) that must
+   *  never be used as arbitrary degree-hour filler beyond its own category's
+   *  requirement — it still counts toward degree hours, but only up to that. */
+  does_not_count_as_engineering_elective?: boolean;
 
   // ── credits / weekly hours ────────────────────────────────────────────────
   hours: number | null;
@@ -219,6 +223,7 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
     is_mandatory: raw.is_mandatory === true || raw.course_type === 'mandatory',
     course_type: raw.course_type ?? (raw.is_mandatory ? 'mandatory' : 'elective'),
     placement_policy: raw.placement_policy ?? null,
+    does_not_count_as_engineering_elective: raw.does_not_count_as_engineering_elective === true,
 
     hours: num(raw.weekly_hours),
 

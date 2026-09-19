@@ -16,6 +16,8 @@ const BOARD = JSON.parse(readFileSync(
 ));
 
 const COMPLETED_BY_CATEGORY = ['0542-4120', '0542-4220', '0542-4420', '0581-4131'];
+// 3 real קורסי שער רוח (2 נק"ז each = the program's 6-נק"ז requirement).
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 const CURRENT_PREREQUISITE = '0542-4621';
 const WANTED_SUCCESSOR = '0542-4624';
 const EXCLUDED_MATERIALS_COURSE = '0542-4425';
@@ -113,6 +115,7 @@ test('one native request composes authoritative progress, current prerequisites,
   }))).toEqual([
     { name: 'מעבדות מתקדמות', remaining: 0, satisfiedBy: ['0581-4131'] },
     { name: 'קורסי ליבה — זורמים', remaining: 0, satisfiedBy: ['0542-4120'] },
+    { name: 'קורסי שער רוח', remaining: 3, satisfiedBy: [] },
     { name: 'קורסי ליבה — מוצקים', remaining: 0, satisfiedBy: ['0542-4220'] },
     { name: 'קורסי ליבה — מערכות', remaining: 0, satisfiedBy: ['0542-4420'] },
   ]);
@@ -226,6 +229,7 @@ test('a mid-degree request plans every remaining real mandatory course without r
   }))).toEqual([
     { name: 'מעבדות מתקדמות', remaining: 1 },
     { name: 'קורסי ליבה — זורמים', remaining: 1 },
+    { name: 'קורסי שער רוח', remaining: 3 },
     { name: 'קורסי ליבה — מוצקים', remaining: 1 },
     { name: 'קורסי ליבה — מערכות', remaining: 1 },
   ]);
@@ -241,7 +245,7 @@ test('a mid-degree request plans every remaining real mandatory course without r
 });
 
 test('a fully completed real degree produces no phantom future courses or reopened requirements', async () => {
-  const completed = [...ALL_MANDATORY, ...COMPLETED_BY_CATEGORY];
+  const completed = [...ALL_MANDATORY, ...COMPLETED_BY_CATEGORY, ...COMPLETED_SHAAR_RUACH];
   const res = makeRes();
   await handler({
     method: 'POST',
@@ -273,7 +277,7 @@ test('a fully completed real degree produces no phantom future courses or reopen
   expect(res._body.errors).toEqual([]);
   expect(res._body.requirements_status.every((requirement: any) => requirement.satisfied)).toBe(true);
   expect(res._body.academicDecision.academicProgress).toMatchObject({
-    recognizedCourseCount: 16,
+    recognizedCourseCount: 19,
     inProgressHours: 0,
     currentlyTakingHours: 0,
     aggregateOnlyHours: 0,

@@ -26,6 +26,8 @@ const boardCourseSchema = z
     course_type: z.string().optional(),
     is_mandatory: z.boolean().optional(),
     offered_semesters: z.array(z.string().min(1)).nullable().optional(),
+    /** Fully-qualified policy result; when present it is narrower than a bare A/B offering code. */
+    effective_allowed_semesters: z.array(z.string().min(1)).nullable().optional(),
     // Elective category (fluids/solids/systems/advanced_labs/other_specialization/…);
     // null/absent for mandatory courses and uncategorized electives. The data
     // generator (app/analysis/semester_board.py) genuinely names this field

@@ -77,7 +77,7 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     expect(summary.inferred + summary.default).toBe(CATALOG_IDS.length);
   });
 
-  test('honest distribution is pinned: 46 inferred, 22 default over the 68-course catalog', () => {
+  test('honest distribution is pinned across the current 156-course catalog', () => {
     // Data-quality regression pin. The defaults are genuinely non-ME electives
     // (EE/CS/OR/ethics/space) or unnamed courses — no topic can be added without
     // fabrication, so the count must NOT silently drift.
@@ -86,8 +86,12 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     // official-syllabus evidence, not the title), moving one machine-only course
     // ("תורת המכונות") from inferred → default. See course_capability_evidence.ts.
     const summary = summarizeCourseTopicProfileSources(getMechanicalEngineering2027TopicProfiles());
-    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 46, default: 22 });
-    expect(summary.inferred + summary.default).toBe(68);
+    // The catalog now also contains 88 שער רוח candidates. Their titles are
+    // intentionally left as default-source profiles until a syllabus supplies
+    // structured topic evidence; that is an honest data-quality signal, not a
+    // reason to drop them from the catalog.
+    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 49, default: 107 });
+    expect(summary.inferred + summary.default).toBe(156);
   });
 
   test('0542-4131 (internal combustion engines) carries no fabricated fluids topic', () => {

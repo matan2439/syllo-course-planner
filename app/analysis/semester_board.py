@@ -1097,7 +1097,7 @@ def _build_category_name_map(program: dict[str, Any]) -> dict[str, str]:
         cid = cat.get("category_id")
         if cid:
             result[cid] = cat.get("name_he") or cid
-    for key in ("advanced_labs", "other_specialization"):
+    for key in ("advanced_labs", "other_specialization", "general_requirements"):
         cat = reqs.get(key)
         if isinstance(cat, dict):
             cid = cat.get("category_id")
@@ -1108,6 +1108,74 @@ def _build_category_name_map(program: dict[str, Any]) -> dict[str, str]:
         if cid and cid not in result:
             result[cid] = cat.get("name_he") or cid
     return result
+
+
+_SHAAR_RUACH_PATH = Path("data/general_courses_shaar_ruach.json")
+_SHAAR_RUACH_SEMESTER_IDS = (
+    "year_3_semester_a", "year_3_semester_b",
+    "year_4_semester_a", "year_4_semester_b",
+)
+
+
+def _build_shaar_ruach_repository_courses(
+    category_id: str,
+    category_name_he: str,
+    path: Path = _SHAAR_RUACH_PATH,
+) -> list[dict[str, Any]]:
+    """
+    Load קורסי שער רוח (TAU humanities "gateway" courses) as repository
+    courses under their own category. This is a separate general degree
+    requirement, not an engineering elective — without a course pool here the
+    planner has no legal way to satisfy it, so the 185 ש"ש degree total
+    becomes structurally unreachable.
+
+    Returns [] if data/general_courses_shaar_ruach.json is missing (never
+    breaks board generation).
+    """
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    courses: list[dict[str, Any]] = []
+    for c in data.get("courses", []):
+        cid = c.get("course_id")
+        if not cid:
+            continue
+        offered = c.get("offered_semesters") or []
+        effective = [
+            s for s in _SHAAR_RUACH_SEMESTER_IDS
+            if (s.endswith("_semester_a") and "A" in offered)
+            or (s.endswith("_semester_b") and "B" in offered)
+        ]
+        courses.append({
+            "course_id":                  cid,
+            "name_he":                    c.get("name_he"),
+            "credits":                    c.get("credits", 2),
+            # The programme requirement defines every שער רוח course as two
+            # weekly hours. BIDIT/syllabus records remain useful evidence for
+            # meeting details, but do not alter this programme-wide workload.
+            "weekly_hours":               2,
+            "offered_semesters":          offered,
+            "offered_in_year":            len(offered) > 1,
+            "category_id":                category_id,
+            "program_category_name_he":   category_name_he,
+            "source":                     "shaar_ruach_general_requirement",
+            "syllabus_url":               c.get("syllabus_url"),
+            "official_details_available": False,
+            "is_mandatory":               False,
+            "placement_policy":           "flexible",
+            "effective_allowed_semesters": effective,
+            "offering_source_confidence": "high",
+            "offering_source_url":        data.get("_source"),
+            # Not a generic engineering elective — the planner must never use
+            # it as arbitrary degree-hour filler beyond this category's own
+            # requirement (mirrors app/analysis/shaar_ruach_import.ts).
+            "does_not_count_as_engineering_elective": True,
+        })
+    return courses
 
 
 def _build_program_repository_courses(
@@ -1254,6 +1322,17 @@ def _build_program_repository_courses(
             "tau_factor_source_url":        db_data.get("tau_factor_source_url"),
             "grade_signal":                 db_data.get("grade_signal"),
         })
+
+    general = program.get("requirements", {}).get("general_requirements")
+    if isinstance(general, dict) and general.get("category_id"):
+        seen_shaar_ruach: set[str] = set()
+        for sr in _build_shaar_ruach_repository_courses(
+            general["category_id"], general.get("name_he") or general["category_id"],
+        ):
+            if sr["course_id"] in seen or sr["course_id"] in seen_shaar_ruach:
+                continue
+            seen_shaar_ruach.add(sr["course_id"])
+            courses.append(sr)
 
     return courses
 
