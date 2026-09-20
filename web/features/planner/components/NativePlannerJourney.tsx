@@ -19,11 +19,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { ConversationProposal } from '../../../../shared/planner/conversation-wire'
-import { ContractError, fromHalfHours, isCatalogStale, normalizeCourseId, proposalBaseRevision } from '../../../../shared/planner/model'
+import { ContractError, fromHalfHours, isCatalogStale, proposalBaseRevision } from '../../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../../shared/planner/model'
 import {
-  applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard, getPlanningContext,
-  sendConversation,
+  applyPlan, editBoard, establishPlanningContext,
   type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type LoadedPlanningContext,
   type ManualBoardEditResult,
 } from '../../../../shared/planner/api-client'
@@ -31,11 +30,9 @@ import { boardModelToVM, semesterTitleHe } from '../../../lib/planner/board-vm'
 import type { CourseVM } from '../../../lib/board'
 import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-details'
 import CourseDetailsPanel from '../../courses/components/CourseDetailsPanel'
-import { buildDraftVM, type DraftCourseVM, type DraftSemesterVM } from '../../../lib/planner/draft-vm'
+import { buildDraftVM } from '../../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../../lib/planner/apply-eligibility'
-import AgentOutcomeDetails from '../../agent/components/AgentOutcomeDetails'
-import GroundedExplanation from '../../agent/components/GroundedExplanation'
 import PreferenceConversation from '../../agent/components/PreferenceConversation'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import CompletedCoursesPanel, {
@@ -51,115 +48,18 @@ import ProgressBadge from './ProgressBadge'
 import { adaptRequirementsFromModel } from '../../../lib/requirements'
 import CourseNamePicker from '../../courses/components/CourseNamePicker'
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
-import { Badge, Card, EmptyState } from '../../../components/ui'
+import { Card } from '../../../components/ui'
+import ProposalView from './ProposalView'
+import { conversationProposalToModel } from '../lib/conversation-proposal'
+import {
+  defaultApply, defaultCommittedBoard, defaultEditBoard, defaultEstablishPlanningContext, defaultGenerate,
+  defaultGetBoard, defaultPlanningContext, defaultSendConversation,
+} from '../lib/api-defaults'
+import type { BoardPhase, ChatMsg, GenPhase, ManualAddIntent, StaleReason } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { getAiSessionToken, uuidv4 } from '../../../lib/ai-session-token'
 
-/** Hebrew labels for the non-'proposal' structured agent outcomes (opt-in path). */
-const AGENT_OUTCOME_LABEL_HE: Record<string, string> = {
-  clarification_required: 'נדרש מידע נוסף לפני החלה',
-  validation_failed: 'נמצאה סתירה בנתונים — נדרשת בדיקה לפני החלה',
-  // Slice 18A — a HARD constraint cannot be satisfied at all (a contradiction
-  // between selections, or an impossibility against an authoritative fact).
-  infeasible: 'לא קיימת תוכנית חוקית שעונה על הדרישות שסימנת — לא ניתן להחיל',
-  blocked: 'הצעה חסומה — לא ניתן להחיל',
-  error: 'אירעה שגיאה פנימית — לא ניתן להחיל',
-}
-
-/** WHY a proposal is stale — the note must name the real cause, never guess. */
-type StaleReason = 'catalog' | 'status' | 'preferences' | 'manual'
-const STALE_MESSAGE_HE: Record<StaleReason, string> = {
-  catalog: 'הקטלוג השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
-  status: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
-  preferences: 'ההעדפות שלך השתנו מאז הבנייה — יש לבנות מחדש לפני החלה.',
-  manual: 'הלוח השתנה בעריכה ידנית — יש לבנות מחדש לפני החלה.',
-}
-
-type BoardPhase = 'loading' | 'ready' | 'error'
-type GenPhase = 'idle' | 'generating' | 'done' | 'error'
-type ChatMsg = { role: 'user' | 'system'; text: string }
-
-function conversationProposalToModel(input: ConversationProposal): GeneratedPlanModel {
-  const alternatives = input.alternatives.map((alternative) => ({
-    candidateId: alternative.candidate_id,
-    normalizedIdentity: alternative.normalized_identity,
-    recommended: alternative.recommended,
-    applyable: alternative.applyable,
-    semesters: alternative.semesters.map((semester) => ({
-      semesterId: semester.semester_id,
-      courseIds: [...semester.course_ids],
-    })),
-    constraintFingerprint: alternative.constraint_fingerprint,
-    profileVersion: alternative.profile_version,
-    snapshotId: alternative.snapshot_id,
-    nonDominated: alternative.non_dominated,
-    composedUtility: alternative.composed_utility,
-    objectiveScores: alternative.objective_scores.map((score) => ({
-      objectiveId: score.objective_id,
-      normalized: score.normalized,
-    })),
-    labelHe: alternative.label_he,
-    differencesHe: [...alternative.differences_he],
-    workload: {
-      peakHours: alternative.workload.peak_hours,
-      totalHours: alternative.workload.total_hours,
-      activePeriods: alternative.workload.active_periods,
-    },
-  }))
-  const selected = alternatives.find((alternative) => alternative.recommended) ?? alternatives[0]
-  return {
-    semesters: selected.semesters.map((semester) => ({
-      semesterId: semester.semesterId,
-      courseIds: [...semester.courseIds],
-    })),
-    moves: [],
-    warningsHe: [],
-    errors: [],
-    blocked: false,
-    agentOutcome: 'proposal',
-    applyEligible: selected.applyable,
-    profileVersion: input.profile_version,
-    proposal: {
-      proposalId: input.proposal_id,
-      candidateIds: [...input.candidate_ids],
-      recommendedCandidateId: input.recommended_candidate_id,
-      baseBoardVersion: input.base_board_version,
-      profileVersion: input.profile_version,
-      academicStatusDigest: input.academic_status_digest,
-      expiresAt: input.expires_at,
-    },
-    alternatives,
-  }
-}
-
-const MARKER_LABEL: Record<DraftCourseVM['marker'], string | null> = {
-  new: 'חדש', moved: 'הוזז', unchanged: null,
-}
-
-// Wrap fetch so calling it as `deps.fetchImpl(...)` doesn't rebind `this` to the
-// deps object — a bare `fetch` reference throws "Illegal invocation" in browsers.
-const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as never
-const defaultGetBoard = (programId: string) =>
-  getBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
-const defaultGenerate = (req: GeneratePlanRequest) =>
-  generatePlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
-const defaultApply = (req: Parameters<typeof applyPlan>[1]) =>
-  applyPlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
-const defaultCommittedBoard = (programId: string) =>
-  getCommittedBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
-const defaultEditBoard = (req: Parameters<typeof editBoard>[1]) =>
-  editBoard({ fetchImpl: browserFetch, baseUrl: '' }, req)
-const defaultEstablishPlanningContext = (req: Parameters<typeof establishPlanningContext>[1]) =>
-  establishPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, req)
-const defaultPlanningContext = (programId: string) =>
-  getPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, programId)
-const defaultSendConversation = (req: Parameters<typeof sendConversation>[1]) =>
-  sendConversation({ fetchImpl: browserFetch, baseUrl: '' }, req)
-
-export interface ManualAddIntent {
-  courseId: string
-  semesterIds: string[]
-}
+export type { ManualAddIntent } from '../types'
 
 export default function NativePlannerJourney({
   programId,
@@ -640,8 +540,6 @@ export default function NativePlannerJourney({
               ? 'manual'
             : null
   const stale = staleReason !== null
-
-
 
   const clearProposal = () => {
     tokenRef.current++ // supersede any in-flight generation so it can't re-open the draft
@@ -1270,167 +1168,3 @@ export default function NativePlannerJourney({
   )
 }
 
-function ProposalView({
-  draft, intentOutcome, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
-}: {
-  draft: ReturnType<typeof buildDraftVM>
-  intentOutcome?: GeneratedPlanModel['intentOutcome']
-  removed: Array<{ id: string; nameHe: string | null }>
-  stale: boolean
-  staleReason: StaleReason | null
-  canApply: boolean
-  /** S5 — a real round-trip is in flight. */
-  applying?: boolean
-  /** S5 — the server's typed refusal, in its own words. */
-  applyError?: string | null
-  onApply: () => void
-  onReject: () => void
-}) {
-  return (
-    <section aria-label="טיוטת תוכנית" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-bold tracking-tight">הצעת תוכנית</h2>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={onReject} className="rounded-full border border-[var(--border)] px-5 py-2 text-sm font-medium">
-            דחה
-          </button>
-          <button
-            type="button"
-            onClick={onApply}
-            disabled={!canApply}
-            aria-busy={applying || undefined}
-            title={canApply ? undefined : 'לא ניתן להחיל הצעה חסומה, שגויה או מיושנת'}
-            className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {/* The label stays STABLE while a request is in flight: a control
-                that renames itself loses its identity for assistive tech, and
-                the live region above already announces the progress. `disabled`
-                + `aria-busy` carry the state. */}
-            החל תוכנית
-          </button>
-        </div>
-      </div>
-
-      {applying && (
-        <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">
-          מחיל את התוכנית…
-        </p>
-      )}
-      {/* The server refused, in its own words. The committed board is unchanged
-          and the draft below is still inspectable, so the student can see
-          exactly what was not applied. */}
-      {applyError && (
-        <p role="alert" className="rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          {applyError}
-        </p>
-      )}
-      {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
-      {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
-        <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>
-      )}
-      {draft.agentOutcome && (
-        <AgentOutcomeDetails
-          outcome={draft.agentOutcome}
-          clarificationItems={draft.agentClarificationItems}
-          validationFindings={draft.agentValidationFindings}
-          errors={draft.errors}
-        />
-      )}
-      {draft.groundedExplanationHe && (
-        <GroundedExplanation
-          explanationHe={draft.groundedExplanationHe}
-          sources={draft.groundedSources ?? []}
-          {...(draft.groundedCoverage ? { coverage: draft.groundedCoverage } : {})}
-          objectiveKind={draft.groundedObjective === 'prefer_topic_alignment' ? 'topic' : 'delivery'}
-        />
-      )}
-      {staleReason && (
-        <p role="note" className="text-sm text-amber-700 dark:text-amber-300">
-          {STALE_MESSAGE_HE[staleReason]}
-        </p>
-      )}
-      {draft.errors.length > 0 && (
-        <ul aria-label="שגיאות" className="flex flex-col gap-1 text-sm text-red-700 dark:text-red-300">
-          {draft.errors.map((e, i) => <li key={i}>{e}</li>)}
-        </ul>
-      )}
-      {draft.warningsHe.length > 0 && (
-        <ul aria-label="אזהרות" className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-          {draft.warningsHe.map((w, i) => <li key={i}>{w}</li>)}
-        </ul>
-      )}
-      {intentOutcome &&
-        (intentOutcome.honored.length > 0 || intentOutcome.partiallyHonored.length > 0 || intentOutcome.unmet.length > 0 || intentOutcome.notesHe.length > 0) && (
-          <section aria-label="מה נלקח מהבקשה" className="rounded-lg border border-[var(--border)] px-3.5 py-3 text-sm">
-            <h3 className="mb-1.5 text-sm font-bold tracking-tight">מה נלקח מהבקשה שלך</h3>
-            {intentOutcome.honored.map((t, i) => (
-              <p key={`h${i}`} className="text-emerald-700 dark:text-emerald-300">✓ {t}</p>
-            ))}
-            {intentOutcome.partiallyHonored.map((t, i) => (
-              <p key={`p${i}`} className="text-amber-700 dark:text-amber-300">◐ {t}</p>
-            ))}
-            {intentOutcome.unmet.map((t, i) => (
-              <p key={`u${i}`} className="text-red-700 dark:text-red-300">✕ {t}</p>
-            ))}
-            {intentOutcome.notesHe.map((t, i) => (
-              <p key={`n${i}`} className="text-[var(--text-muted)]">• {t}</p>
-            ))}
-          </section>
-        )}
-
-      {removed.length > 0 && (
-        <div aria-label="קורסים שהוסרו" className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
-          <span className="font-semibold">הוסרו: </span>
-          {removed.map((c, i) => (
-            <span key={c.id}>{i > 0 ? ', ' : ''}{c.nameHe ?? c.id}</span>
-          ))}
-        </div>
-      )}
-
-      <div role="list" aria-label="טיוטה — סמסטרים" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {draft.semesters.map((s) => (
-          <div role="listitem" key={s.id} className="min-w-0"><DraftSemester semester={s} /></div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function DraftSemester({ semester }: { semester: DraftSemesterVM }) {
-  return (
-    <section aria-label={semester.title} className="flex min-w-0 flex-col gap-2.5">
-      <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
-        <h3 className="text-sm font-bold tracking-tight">{semester.title}</h3>
-        {semester.totalComplete
-          ? <Badge>{semester.totalWeeklyHours} ש״ש</Badge>
-          : <Badge variant="warn">סכום חלקי</Badge>}
-      </header>
-      {semester.courses.length === 0
-        ? <EmptyState>אין קורסים בטיוטה</EmptyState>
-        : semester.courses.map((c) => <DraftCourse key={c.id} course={c} />)}
-    </section>
-  )
-}
-
-function DraftCourse({ course }: { course: DraftCourseVM }) {
-  const markerLabel = MARKER_LABEL[course.marker]
-  return (
-    <Card className="px-3.5 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-semibold leading-snug">
-          {course.nameHe ? course.nameHe : <span className="text-[var(--text-muted)]">פרטי הקורס אינם זמינים</span>}
-        </h4>
-        {markerLabel && <Badge variant="purple">{markerLabel}</Badge>}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {course.isMandatory != null && (
-          <Badge variant={course.isMandatory ? 'purple' : 'neutral'}>{course.isMandatory ? 'חובה' : 'בחירה'}</Badge>
-        )}
-        {course.weeklyHours != null && <Badge>{course.weeklyHours} ש״ש</Badge>}
-      </div>
-      <div className="mt-2 text-[11px] text-[var(--text-muted)]">
-        <span dir="ltr" className="font-mono tracking-tight">{course.id}</span>
-      </div>
-    </Card>
-  )
-}
