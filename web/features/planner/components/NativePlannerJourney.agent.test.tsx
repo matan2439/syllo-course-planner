@@ -214,6 +214,32 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(within(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })).getByText('קורס בסיס X')).toBeInTheDocument()
   })
 
+  test('a rejected manual edit does not poison the next edit with the same operation key', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const edit = jest.fn(async (_req: { operation_id: string }) => ({ ok: false as const, code: 'PLAN_INVALID', messageHe: 'השרת דחה את ההעברה' }))
+    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+      getBoardFn={async () => boardResponseToModel({ ...BOARD, semesters: [
+        { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }] },
+        BOARD.semesters[1],
+      ] })}
+      planningContextFn={async () => ({ academicStatusDigest: 'as_chat', preferenceDigest: 'pref_chat',
+        personalStatus: { completed: [], currently_taking: [] }, preferences: {} })}
+      editBoardFn={edit} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('אפשרויות העברה עבור קורס בסיס X'))
+    const move = () => fireEvent.click(screen.getByRole('button', { name: 'העבר קורס בסיס X אל שנה ג׳ — סמסטר ב׳' }))
+
+    move()
+    await waitFor(() => expect(edit).toHaveBeenCalledTimes(1))
+    await screen.findByText('השרת דחה את ההעברה')
+    move()
+    await waitFor(() => expect(edit).toHaveBeenCalledTimes(2))
+
+    const [first, second] = edit.mock.calls.map(([req]) => req.operation_id)
+    expect(first).toBeTruthy()
+    expect(second).not.toBe(first)
+  })
+
   test('sends confirmed panel completion with the next chat turn, only until accepted', async () => {
     const send = jest.fn().mockResolvedValue(offerBuildResponse())
     await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: send })

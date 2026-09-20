@@ -304,8 +304,10 @@ export async function editBoard(
       operationId: parsed.data.operation_id, board: parsed.data.board,
     };
   }
+  // Absent means "the server said nothing about the version" (e.g. a rule rejection), which must NOT
+  // reach the caller as null: null is a real answer ("no committed board") and would wipe the client's version.
   return {
     ok: false, code: parsed.data.code, messageHe: parsed.data.message_he,
-    currentBoardVersion: parsed.data.currentBoardVersion ?? null,
+    ...(parsed.data.currentBoardVersion !== undefined ? { currentBoardVersion: parsed.data.currentBoardVersion } : {}),
   };
 }
