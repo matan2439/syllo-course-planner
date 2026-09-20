@@ -102,11 +102,9 @@ export default async function ProgramsPage({
 
   return (
     <ProductShell
-      active="programs"
       title="בחירת תוכנית"
       subtitle="איזו תוכנית מתכננים?"
       width="narrow"
-      programId={currentId}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {families.map((f, i) => (

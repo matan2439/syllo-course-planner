@@ -6,10 +6,10 @@ jest.mock('./ShaderGradientBackground', () => ({
   default: () => <div aria-hidden="true" />,
 }))
 
-describe('ProductShell responsive navigation', () => {
+describe('ProductShell header', () => {
   test('wraps the header navigation so every control can remain inside a narrow viewport', () => {
     render(
-      <ProductShell active="plan">
+      <ProductShell>
         <div>תוכן</div>
       </ProductShell>,
     )
@@ -18,14 +18,26 @@ describe('ProductShell responsive navigation', () => {
     expect(screen.getByRole('navigation')).toHaveClass('w-full', 'flex-wrap')
   })
 
-  test('keeps one planner entry when the AI planner opens the same workspace', () => {
+  test('shows the current program as a chip that links to the program picker', () => {
     render(
-      <ProductShell active="plan">
+      <ProductShell programId="mechanical_engineering_2025">
         <div>תוכן</div>
       </ProductShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'תכנון' })).toHaveAttribute('href', '/planner')
-    expect(screen.queryByRole('link', { name: 'תכנון עם AI' })).not.toBeInTheDocument()
+    const chip = screen.getByRole('link', { name: /החלפת תוכנית/ })
+    expect(chip).toHaveAttribute('href', '/programs?program=mechanical_engineering_2025')
+    expect(chip).toHaveTextContent('הנדסה מכנית · 2025')
+  })
+
+  test('renders no chip without a program and renders the progress slot', () => {
+    render(
+      <ProductShell progress={<span>שעות 84/160</span>}>
+        <div>תוכן</div>
+      </ProductShell>,
+    )
+
+    expect(screen.queryByRole('link', { name: /החלפת תוכנית/ })).not.toBeInTheDocument()
+    expect(screen.getByText('שעות 84/160')).toBeInTheDocument()
   })
 })

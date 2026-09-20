@@ -1,16 +1,9 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { programQuery } from '../../../lib/programs'
+import { getProgram, programQuery } from '../../../lib/programs'
 import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
 import ThemeToggle from './ThemeToggle'
-
-const NAV_ITEMS = [
-  { key: 'plan', href: '/planner', label: 'תכנון' },
-  { key: 'programs', href: '/programs', label: 'תוכניות' },
-] as const
-
-export type ShellSection = (typeof NAV_ITEMS)[number]['key']
 
 /**
  * Shared product frame for planner-facing Next pages: gradient background,
@@ -18,21 +11,22 @@ export type ShellSection = (typeof NAV_ITEMS)[number]['key']
  * /programs visually continuous.
  */
 export default function ProductShell({
-  active,
   title,
   subtitle,
   width = 'wide',
   programId,
   fullBleed = false,
+  progress,
   preferLightweightBackground,
   children,
 }: {
-  active?: ShellSection
   title?: string
   subtitle?: string
   width?: 'wide' | 'narrow'
-  /** Non-default selections are preserved across section navigation. */
+  /** Shows the program chip (links to /programs to switch). */
   programId?: string
+  /** Slot next to the program chip, e.g. the requirements progress strip. */
+  progress?: ReactNode
   /** Edge-to-edge, viewport-height frame (embedded legacy planner). No title
    *  block or max-width container; the child fills the remaining height. */
   fullBleed?: boolean
@@ -43,6 +37,10 @@ export default function ProductShell({
   children: ReactNode
 }) {
   const query = programQuery(programId)
+  const program = programId ? getProgram(programId) : null
+  const programLabel = program
+    ? [program.name, program.track, program.year].filter(Boolean).join(' · ')
+    : ''
   const lightweightBg = preferLightweightBackground ?? fullBleed
   return (
     <>
@@ -67,21 +65,17 @@ export default function ProductShell({
             <BrandLogo size={26} />
           </Link>
 
-          <nav className="flex w-full flex-wrap items-center justify-start gap-1 sm:w-auto sm:flex-nowrap">
-            {NAV_ITEMS.map((item) => (
+          <nav className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-nowrap">
+            {programId && (
               <Link
-                key={item.key}
-                href={`${item.href}${query}`}
-                aria-current={item.key === active ? 'page' : undefined}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] ${
-                  item.key === active
-                    ? 'bg-purple-600/10 text-purple-700 dark:bg-purple-400/10 dark:text-purple-300'
-                    : 'text-[var(--text-muted)] hover:text-[var(--purple)]'
-                }`}
+                href={`/programs${query}`}
+                aria-label={`תוכנית: ${programLabel}. החלפת תוכנית`}
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
               >
-                {item.label}
+                {programLabel} <span aria-hidden="true">▾</span>
               </Link>
-            ))}
+            )}
+            {progress}
             <ThemeToggle />
           </nav>
         </header>

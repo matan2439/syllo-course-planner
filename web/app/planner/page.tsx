@@ -25,7 +25,6 @@ export default async function PlannerPage({
 
   return (
     <ProductShell
-      active="plan"
       programId={program.id}
       preferLightweightBackground={false}
     >
