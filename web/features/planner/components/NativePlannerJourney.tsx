@@ -50,6 +50,9 @@ import CourseNamePicker from '../../courses/components/CourseNamePicker'
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
 import { Card } from '../../../components/ui'
 import ProposalView from './ProposalView'
+import { useCommittedBoard } from '../hooks/use-committed-board'
+import { useDropHighlights } from '../hooks/use-drop-highlights'
+import { useManualBoardEdits } from '../hooks/use-manual-board-edits'
 import { conversationProposalToModel } from '../lib/conversation-proposal'
 import {
   defaultApply, defaultCommittedBoard, defaultEditBoard, defaultEstablishPlanningContext, defaultGenerate,
@@ -57,7 +60,7 @@ import {
 } from '../lib/api-defaults'
 import type { BoardPhase, ChatMsg, GenPhase, ManualAddIntent, StaleReason } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
-import { getAiSessionToken, uuidv4 } from '../../../lib/ai-session-token'
+import { getAiSessionToken } from '../../../lib/ai-session-token'
 
 export type { ManualAddIntent } from '../types'
 
@@ -119,98 +122,15 @@ export default function NativePlannerJourney({
   serverApply?: boolean
 }) {
   // ── current plan ──────────────────────────────────────────────────────────
-  const [boardPhase, setBoardPhase] = useState<BoardPhase>('loading')
-  const [current, setCurrent] = useState<BoardModel | null>(null)
-  /**
-   * S5 — the server's version of the committed board. `null` means this session
-   * has never applied one, which is a legitimate expected value for a first
-   * Apply rather than a missing field.
-   */
-  const [boardVersion, setBoardVersion] = useState<string | null>(null)
-  const [manualRevision, setManualRevision] = useState(0)
+  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion } = useCommittedBoard({
+    programId, getBoardFn, committedBoardFn, serverApply, onCommittedCourseIdsChange, onSemestersChange,
+  })
   const [capturedManualRevision, setCapturedManualRevision] = useState<number | null>(null)
-  const [manualEditPhase, setManualEditPhase] = useState<'idle' | 'saving'>('idle')
-  const [manualEditError, setManualEditError] = useState<string | null>(null)
-  // A server refusal happens after the browser's local drag preview has
-  // disappeared. Keep the rejected target highlighted briefly so the user can
-  // connect the written explanation with the semester they attempted.
-  const [rejectedDrop, setRejectedDrop] = useState<{ semesterId: string; key: number } | null>(null)
-  const rejectedDropTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Mirrors rejectedDrop for the success case: briefly flash the semester a
-  // manual add/move actually landed in, so the confirmation is legible.
-  const [justPlaced, setJustPlaced] = useState<{ semesterId: string; key: number } | null>(null)
-  const justPlacedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { rejectedDrop, justPlaced, showRejectedDrop, showJustPlaced } = useDropHighlights()
   // Read-only details panel (with the per-course AI chat) for a course already on the board.
   const [selectedBoardCourse, setSelectedBoardCourse] = useState<CourseDetailsVM | null>(null)
   const selectBoardCourse = (course: CourseVM) =>
     setSelectedBoardCourse(buildCourseDetails({ ...course, offered: course.offeredSemesters ?? [] }))
-  const manualEditKeyRef = useRef<string | null>(null)
-
-  const showRejectedDrop = useCallback((semesterId: string) => {
-    if (rejectedDropTimerRef.current) clearTimeout(rejectedDropTimerRef.current)
-    const key = Date.now()
-    setRejectedDrop({ semesterId, key })
-    rejectedDropTimerRef.current = setTimeout(() => {
-      setRejectedDrop((current) => current?.key === key ? null : current)
-      rejectedDropTimerRef.current = null
-    }, 1100)
-  }, [])
-
-  useEffect(() => () => {
-    if (rejectedDropTimerRef.current) clearTimeout(rejectedDropTimerRef.current)
-  }, [])
-
-  const showJustPlaced = useCallback((semesterId: string) => {
-    if (justPlacedTimerRef.current) clearTimeout(justPlacedTimerRef.current)
-    const key = Date.now()
-    setJustPlaced({ semesterId, key })
-    justPlacedTimerRef.current = setTimeout(() => {
-      setJustPlaced((current) => current?.key === key ? null : current)
-      justPlacedTimerRef.current = null
-    }, 500)
-  }, [])
-
-  useEffect(() => () => {
-    if (justPlacedTimerRef.current) clearTimeout(justPlacedTimerRef.current)
-  }, [])
-
-  useEffect(() => {
-    let live = true
-    setBoardPhase('loading')
-    // The CATALOG is program data (course universe, names, hours); the
-    // COMMITTED board is this session's own state. Both are needed, and only
-    // the second is user data — so a failure to read it must not hide the
-    // catalog, but it must also never be replaced by a silent default.
-    const committed = serverApply ? committedBoardFn(programId).catch((e) => {
-      console.error('[NativePlannerJourney] committed board load failed:', e)
-      return null
-    }) : Promise.resolve(null)
-
-    Promise.all([getBoardFn(programId), committed]).then(
-      ([catalog, saved]) => {
-        if (!live) return
-        setCurrent(saved ? applyGeneratedToBoard({ semesters: saved.semesters } as GeneratedPlanModel, catalog) : catalog)
-        setBoardVersion(saved?.version ?? null)
-        setBoardPhase('ready')
-      },
-      (e) => { if (live) { console.error('[NativePlannerJourney] board load failed:', e); setBoardPhase('error') } },
-    )
-    return () => { live = false }
-  }, [programId, getBoardFn, committedBoardFn, serverApply])
-
-  useEffect(() => {
-    if (!current) return
-    onCommittedCourseIdsChange?.([...new Set(current.semesters.flatMap((semester) =>
-      semester.courses.map((course) => course.courseId)))])
-  }, [current, onCommittedCourseIdsChange])
-
-  useEffect(() => {
-    if (!current) return
-    onSemestersChange?.(current.semesters.map((semester) => ({
-      semesterId: semester.semesterId,
-      courseIds: semester.courses.map((course) => course.courseId),
-    })))
-  }, [current, onSemestersChange])
 
   // ── conversation + preferences (recorded; never auto-generate) ─────────────
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -432,6 +352,14 @@ export default function NativePlannerJourney({
   }, [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent,
     academicStatus, catalogHoursById,
       applyAcademicStatus, exclusionsNoneConfirmed])
+
+  const {
+    manualRevision, manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove,
+  } = useManualBoardEdits({
+    programId, current, setCurrent, boardVersion, setBoardVersion, manualAddIntent,
+    loadedAcademicContext, proposal, buildRequest, convProfileRef, establishPlanningContextFn, editBoardFn,
+    showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled,
+  })
 
   const refreshAcademicContext = useCallback(() => {
     if (!useAcademicDecisionAgent) return
@@ -713,133 +641,6 @@ export default function NativePlannerJourney({
   const alternativeBoard = selectedAlternative
     ? applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current)
     : null
-
-  const commitManualAdd = async (semesterId: string, requestedCourseId?: string) => {
-    const courseId = requestedCourseId ?? manualAddIntent?.courseId
-    if (!courseId || manualEditPhase === 'saving') return
-    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
-    manualEditKeyRef.current = operationId
-    setManualEditPhase('saving')
-    setManualEditError(null)
-    let result: ManualBoardEditResult
-    try {
-      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
-      if (!academicStatusDigest) {
-        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
-        const synced = await establishPlanningContextFn({
-          program_id: programId,
-          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
-          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
-        })
-        academicStatusDigest = synced.academicStatusDigest
-      }
-      result = await editBoardFn({
-        operation: 'add_course', program_id: programId,
-        expected_board_version: boardVersion, operation_id: operationId,
-        course_id: courseId, semester_id: semesterId,
-        academic_status_digest: academicStatusDigest,
-      })
-    } catch {
-      setManualEditPhase('idle')
-      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
-      return
-    }
-    setManualEditPhase('idle')
-    if (!result.ok) {
-      setManualEditError(result.messageHe)
-      showRejectedDrop(semesterId)
-      if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
-      return
-    }
-    setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
-    showJustPlaced(semesterId)
-    setBoardVersion(result.board.version)
-    setManualRevision((value) => value + 1)
-    manualEditKeyRef.current = null
-    setMessages((items) => [...items, { role: 'system', text: 'הקורס נוסף ללוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
-    onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
-    onManualAddSettled?.()
-  }
-
-  const commitManualRemove = async (courseId: string) => {
-    if (manualEditPhase === 'saving') return
-    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
-    manualEditKeyRef.current = operationId
-    setManualEditPhase('saving')
-    setManualEditError(null)
-    try {
-      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
-      if (!academicStatusDigest) {
-        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
-        academicStatusDigest = (await establishPlanningContextFn({
-          program_id: programId,
-          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
-          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
-        })).academicStatusDigest
-      }
-      const result = await editBoardFn({
-        operation: 'remove_course', program_id: programId,
-        expected_board_version: boardVersion, operation_id: operationId,
-        course_id: courseId, academic_status_digest: academicStatusDigest,
-      })
-      setManualEditPhase('idle')
-      if (!result.ok) {
-        setManualEditError(result.messageHe)
-        if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
-        return
-      }
-      setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
-      setBoardVersion(result.board.version)
-      setManualRevision((value) => value + 1)
-      manualEditKeyRef.current = null
-      setMessages((items) => [...items, { role: 'system', text: 'הקורס הוסר מהלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
-      onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
-    } catch {
-      setManualEditPhase('idle')
-      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
-    }
-  }
-
-  const commitManualMove = async (courseId: string, semesterId: string) => {
-    if (manualEditPhase === 'saving') return
-    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
-    manualEditKeyRef.current = operationId
-    setManualEditPhase('saving')
-    setManualEditError(null)
-    try {
-      let academicStatusDigest = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
-      if (!academicStatusDigest) {
-        const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
-        academicStatusDigest = (await establishPlanningContextFn({
-          program_id: programId,
-          plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContext>[1]['plan_context'],
-          preferences: contextRequest.preferences as Parameters<typeof establishPlanningContext>[1]['preferences'],
-        })).academicStatusDigest
-      }
-      const result = await editBoardFn({
-        operation: 'move_course', program_id: programId,
-        expected_board_version: boardVersion, operation_id: operationId,
-        course_id: courseId, semester_id: semesterId,
-        academic_status_digest: academicStatusDigest,
-      })
-      setManualEditPhase('idle')
-      if (!result.ok) {
-        setManualEditError(result.messageHe)
-        if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
-        return
-      }
-      setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
-      showJustPlaced(semesterId)
-      setBoardVersion(result.board.version)
-      setManualRevision((value) => value + 1)
-      manualEditKeyRef.current = null
-      setMessages((items) => [...items, { role: 'system', text: 'הקורס הועבר בלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.' }])
-      onCommittedCourseIdsChange?.(result.board.semesters.flatMap((semester) => semester.courseIds))
-    } catch {
-      setManualEditPhase('idle')
-      setManualEditError('שמירת העריכה נכשלה. הלוח הנוכחי לא השתנה.')
-    }
-  }
 
   const preferenceContent = useAcademicDecisionAgent ? (
     <div className="flex flex-col gap-3">
