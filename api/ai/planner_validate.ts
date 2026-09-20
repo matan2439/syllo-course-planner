@@ -10,7 +10,11 @@
 import { validatePlanProposal, type PlanValidationContext, type PlanProposal } from './plan_validation';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { type ConstraintModel, type PlanState, placedCourseIds } from './planner_types';
-import { degreeHours as computeDegreeHours } from './planner_goals';
+import { assessCompleteness, missingMustIncludeCourseIds } from './planner_goals';
+// Type-only — erased at compile time, so this does NOT create a runtime
+// circular import back from planner_policy.ts (which imports validatePlanState
+// and buildValidationContext from this file for TauPolicyProvider.validate).
+import type { PolicyProvider } from './planner_policy';
 
 export function buildValidationContext(
   model: ConstraintModel,
@@ -27,14 +31,26 @@ export function buildValidationContext(
       prerequisites: p.prerequisites,
       missing_prerequisites: [],
       is_mandatory: p.is_mandatory,
+      is_annual: p.is_annual,
+      spans_semesters: p.spans_semesters,
     };
   }
   return {
     completedCourseIds: model.completedCourseIds,
+    currentlyPlannedCourseIds: model.currentlyPlannedCourseIds,
     courses,
     maxHoursPerSemester: model.maxHoursPerSemester,
     pinnedCourseIds: model.pinnedCourseIds,
     currentSemesterByCourseId: pinnedHome,
+    // Same source of truth as assessCompleteness's overload override, so
+    // validate() and isGoal/assessCompleteness never disagree.
+    overloadAccepted: model.overloadAccepted,
+    overloadConfirmedAt: model.overloadConfirmedAt,
+    // Phase 1b — same source of truth as assessCompleteness's load-cap
+    // thresholds, so validate() and isGoal/assessCompleteness never disagree.
+    hardCap: model.hardCap,
+    softLoadMax: model.softLoadMax,
+    absoluteMaxReasonable: model.absoluteMaxReasonable,
   };
 }
 
@@ -48,6 +64,7 @@ export function validatePlanState(
   state: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string> = {},
+  ctx?: PlanValidationContext,
 ): StateValidation {
   const proposal: PlanProposal = {
     semesters: model.knownSemesterIds
@@ -58,7 +75,7 @@ export function validatePlanState(
     rationale_he: '',
     requirements_status: [],
   };
-  const res = validatePlanProposal(proposal, buildValidationContext(model, pinnedHome));
+  const res = validatePlanProposal(proposal, ctx ?? buildValidationContext(model, pinnedHome));
   return { valid: res.errors.length === 0, errors: res.errors, warnings: res.warnings };
 }
 
@@ -84,31 +101,143 @@ export interface CandidateReport {
   unsatisfiedCategories: string[];
   disallowedPlaced: string[];
   overCapSemesters: string[];
+  /**
+   * Slice 18A — hard-included (`must_include`) course ids the plan does not
+   * satisfy. Non-empty ⇒ `valid` is false, unconditionally: a hard user
+   * inclusion is a retention gate, never a score term that a better-looking
+   * plan can trade away.
+   */
+  missingMustInclude: string[];
+}
+
+/**
+ * Stable prefix of the disallowed-placed error message, shared by every
+ * producer (below, and generate-plan.ts's disallowedGate) and consumer
+ * (academic_decision_runtime.ts's buildAcademicDecision, which needs to tell
+ * this cause apart from an overload block to explain/suggest the right fix)
+ * so detection never drifts from the message text that's actually emitted.
+ */
+export const DISALLOWED_PLACED_ERROR_PREFIX = 'קורס לא-זמין שובץ בתוכנית:';
+
+/**
+ * Stable prefix/sentinel for the other two blockingErrors producers in
+ * generate-plan.ts (annualCompletenessGate, and the PLANNER_STEP_LIMIT
+ * cutoff) — same sharing reason as DISALLOWED_PLACED_ERROR_PREFIX above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell these
+ * causes apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance (a real bug found via the Agent
+ * Diagnosis Loop — see academic_decision_runtime.ts for the fix).
+ */
+export const ANNUAL_INCOMPLETE_ERROR_PREFIX = 'קורס שנתי (';
+export const STEP_LIMIT_ERROR = 'PLANNER_STEP_LIMIT';
+
+/**
+ * Stable prefix for generate-plan.ts's legalityGate, covering every
+ * validatePlanState legality-violation category that has no dedicated gate
+ * of its own (prerequisite strict-timing, duplicate placement, completed/
+ * currently-taking course reuse, pinned-course "don't move," illegal
+ * offering-semester placement) — same sharing reason as
+ * DISALLOWED_PLACED_ERROR_PREFIX/ANNUAL_INCOMPLETE_ERROR_PREFIX above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell this
+ * cause apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance (the exact bug class PR #44
+ * fixed for two other causes — see that file's own doc comment on
+ * hasOverloadError anticipating a "fifth" cause needing this same treatment).
+ */
+export const LEGALITY_VIOLATION_ERROR_PREFIX = 'הפרת חוקיות בתוכנית:';
+
+/**
+ * Stable prefix for generate-plan.ts's missingMandatoryGate — a mandatory
+ * course the search could not (or, on a pre-existing client-supplied state,
+ * did not) end up placing. Unlike disallowedGate/annualCompletenessGate/
+ * legalityGate above, this can genuinely originate from the search itself
+ * (e.g. a permanent prerequisite-ordering deadlock, or a beam-search budget
+ * that converges on an incomplete state a different strategy would have
+ * avoided — see missingMandatoryGate's own doc comment for the Agent
+ * Diagnosis Loop finding that motivated this), not only an inherited
+ * violation — but the disclosure requirement is the same: "no successful
+ * plan may violate mandatory requirements" (this routine's own product
+ * policy), so it must surface as a blocking error, never a silent warning.
+ * Same sharing reason as the other *_ERROR_PREFIX constants above:
+ * academic_decision_runtime.ts's buildAcademicDecision needs to tell this
+ * cause apart from a genuine overload block so it can name the actual cause
+ * instead of defaulting to overload guidance.
+ */
+export const MISSING_MANDATORY_ERROR_PREFIX = 'קורס חובה לא שובץ בתוכנית:';
+
+/**
+ * Stable prefix for generate-plan.ts's degreeHoursGate — a genuinely
+ * unrecoverable degree-hours shortfall: every mandatory course and category
+ * requirement is satisfied, the plan is otherwise legal, yet total credited
+ * hours still fall short of model.degreeRequiredHours and no further legal
+ * action (ADD, REPLACE, or MOVE-then-ADD — see canRecoverViaUnwantedElective/
+ * canRecoverMoreHours in generate-plan.ts) can close the gap, because the
+ * visible planning window's catalog is genuinely exhausted.
+ *
+ * Agent Diagnosis Loop finding (2026-07-22): toProposal already computed this
+ * exact condition (see its own "מיצית את כל הקורסים הזמינים" warnings_he
+ * message) but only ever pushed it as a soft warning, never a blockingErrors
+ * entry — so a plan could report blocked:false and (on the
+ * use_academic_decision_agent path) academicDecision.validation.valid:true
+ * while academicDecision.explanation.whyThisPlan admitted, in the same
+ * response, that the plan does not complete degree hours. Same
+ * "computed-but-discarded validation signal" bug class as
+ * disallowedGate/annualCompletenessGate/legalityGate/missingMandatoryGate
+ * above — this routine's own product policy is explicit that "no incomplete
+ * plan may be presented as complete," and a structural, unrecoverable hours
+ * shortfall is exactly that. Same sharing reason as the other
+ * *_ERROR_PREFIX constants above: academic_decision_runtime.ts's
+ * buildAcademicDecision needs to tell this cause apart from a genuine
+ * overload block (its hasOverloadError catch-all) so it can name the actual
+ * cause and suggest a fix a rebuild can't provide (the catalog itself is the
+ * constraint, not the search), instead of defaulting to overload guidance.
+ */
+export const DEGREE_HOURS_SHORTFALL_ERROR_PREFIX = 'פער שעות תואר שאינו ניתן להשלמה מתוך הקטלוג הזמין:';
+
+/**
+ * Slice 18A — stable prefix for a HARD user inclusion (`must_include`) the plan
+ * does not satisfy. Same sharing reason as the other *_ERROR_PREFIX constants
+ * above: academic_decision_runtime.ts's buildAcademicDecision must be able to
+ * name this exact cause rather than falling through to generic overload
+ * guidance. Product policy is explicit that a missing hard-wanted course can
+ * never be silently accepted, so this is a blocking error, never a warning.
+ */
+export const MUST_INCLUDE_ERROR_PREFIX = 'קורס שביקשת במפורש לא שובץ בתוכנית:';
+
+/**
+ * Which of the given placed course ids are hard-excluded by the model (either
+ * an explicit disallowed/strongly-avoided id, or a catalog-level exclusion).
+ * Shared by validateCandidate below and by generate-plan.ts's post-planning
+ * hard-avoid gate, so both agree on exactly what counts as "disallowed".
+ */
+export function disallowedPlacedCourseIds(placedIds: Iterable<string>, model: ConstraintModel): string[] {
+  return [...placedIds].filter(
+    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
+  );
 }
 
 export function validateCandidate(
   state: PlanState,
   model: ConstraintModel,
   pinnedHome: Record<string, string> = {},
+  /**
+   * Only the assessCompleteness method is needed here, so the parameter is
+   * duck-typed against that one capability rather than the full PolicyProvider —
+   * a real PolicyProvider instance (e.g. TauPolicyProvider) satisfies this too.
+   * Defaults to the standalone assessCompleteness function directly, matching
+   * TauPolicyProvider's own delegation — not a `new TauPolicyProvider()` default,
+   * which would require a value import from planner_policy.ts and reintroduce
+   * the cycle the type-only import above avoids.
+   */
+  policy: Pick<PolicyProvider, 'assessCompleteness'> = { assessCompleteness },
 ): CandidateReport {
   const legality = validatePlanState(state, model, pinnedHome);
   const placed = new Set(placedCourseIds(state));
 
-  const degreeHours = computeDegreeHours(state, model);
-  const degreeMet = degreeHours >= model.degreeRequiredHours;
+  const { degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, overCapSemesters } =
+    policy.assessCompleteness(state, model);
 
-  const missingMandatory = model.requiredMandatoryCourseIds.filter(
-    id => !placed.has(id) && !model.completedCourseIds.has(id),
-  );
-  const unsatisfiedCategories = model.categories
-    .filter(cat => cat.candidateIds.filter(id => placed.has(id)).length < cat.required)
-    .map(cat => cat.id);
-  const disallowedPlaced = [...placed].filter(
-    id => model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true,
-  );
-  const overCapSemesters = model.knownSemesterIds.filter(
-    sem => (state.semesters[sem] ?? []).reduce((s, c) => s + (model.profiles.get(c)?.hours ?? 0), 0) > model.hardCap,
-  );
+  const disallowedPlaced = disallowedPlacedCourseIds(placed, model);
 
   const errors = [...legality.errors];
   if (!degreeMet) {
@@ -119,16 +248,25 @@ export function validateCandidate(
     const cat = model.categories.find(c => c.id === cid);
     errors.push(`דרישת קטגוריה לא מולאה: ${cat?.name ?? cid}.`);
   }
-  for (const id of disallowedPlaced) errors.push(`קורס לא-זמין שובץ בתוכנית: ${model.profiles.get(id)?.name_he ?? id}.`);
+  for (const id of disallowedPlaced) errors.push(`${DISALLOWED_PLACED_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`);
+
+  // Slice 18A — the HARD-inclusion retention gate. Computed from the model
+  // directly (not via the injected policy) so it holds for every caller,
+  // including a custom PolicyProvider: a proposal missing a must_include course
+  // is invalid regardless of how well it scores.
+  const missingMustInclude = missingMustIncludeCourseIds(state, model);
+  for (const id of missingMustInclude) {
+    errors.push(`${MUST_INCLUDE_ERROR_PREFIX} ${model.profiles.get(id)?.name_he ?? id}.`);
+  }
 
   const legal = legality.valid;
   const complete = degreeMet && missingMandatory.length === 0 && unsatisfiedCategories.length === 0;
-  const valid = legal && complete && disallowedPlaced.length === 0;
+  const valid = legal && complete && disallowedPlaced.length === 0 && missingMustInclude.length === 0;
 
   return {
     valid, legal, complete,
     errors, warnings: legality.warnings,
-    constraintsChecked: ['degree_hours', 'mandatory', 'category', 'prerequisites', 'semester_load', 'offering', 'disallowed', 'duplicates'],
-    degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, disallowedPlaced, overCapSemesters,
+    constraintsChecked: ['degree_hours', 'mandatory', 'category', 'prerequisites', 'semester_load', 'offering', 'disallowed', 'must_include', 'duplicates'],
+    degreeHours, degreeMet, missingMandatory, unsatisfiedCategories, disallowedPlaced, overCapSemesters, missingMustInclude,
   };
 }

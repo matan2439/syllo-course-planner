@@ -112,6 +112,9 @@ def _make_annual(board: dict, cid: str) -> None:
         "is_annual": True,
         "spans_semesters": [SEM_A, SEM_B],
         "count_hours_once": True,
+        # Both placements share this course_id (buildCourseProfiles merges same-
+        # course_id placements into one CourseProfile), so the root is the id itself.
+        "root_course_id": cid,
         "semester_load_hours_by_semester": {SEM_A: weekly, SEM_B: weekly},
         "placement_policy": "annual",
         "annual_note": (
@@ -287,21 +290,25 @@ _HALF_TO_SEMS = {
 
 # course_id -> {"halves": [...], "source": "...", "confidence": "high"}
 _REPOSITORY_OFFERING_RESOLUTION = {
-    "0542-4120": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4123": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4320": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4352": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4220": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4221": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4224": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4420": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4422": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4455": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4622": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4391": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4624": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
-    "0581-4131": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "high"},
-    "0542-4094": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "high"},
+    "0542-4120": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4123": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4320": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4352": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    # Authoritative TAU multi-group listing (year תשפ"ו 2025/2026): the board's
+    # self-referenced half-code was INVERTED for these two. 4220 group 01 is סמסטר ב'
+    # (B-only); 4224 group 01 is סמסטר א' (A-only). Both are independently corroborated
+    # by the course's own exam/prereq URL semester code.
+    "0542-4220": {"halves": ["B"], "source": "tau_listing:search_l.aspx?course_num=05424220&year=2025 (קב' 01 סמסטר ב')", "confidence": "high"},
+    "0542-4221": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4224": {"halves": ["A"], "source": "tau_listing:search_l.aspx?course_num=05424224&year=2025 (קב' 01 סמסטר א')", "confidence": "high"},
+    "0542-4420": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4422": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4455": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4622": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4391": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4624": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
+    "0581-4131": {"halves": ["A"], "source": "board.offered_semesters", "confidence": "low"},
+    "0542-4094": {"halves": ["B"], "source": "board.offered_semesters", "confidence": "low"},
     "0542-4125": {"halves": ["A"], "source": "parsed_json/course_05424125_2025.json", "confidence": "high"},
     "0542-4425": {"halves": ["B"], "source": "parsed_json/course_05424425_2025.json", "confidence": "high"},
     "0542-4524": {"halves": ["A"], "source": "parsed_json/course_05424524_2025.json", "confidence": "high"},

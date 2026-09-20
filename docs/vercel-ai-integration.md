@@ -6,7 +6,7 @@ The AI assistant is built on the **Vercel AI SDK** (`ai` package) with a
 configurable backend: **OpenAI**, **Anthropic Claude**, or **Google Gemini**.
 
 The backend is a single Edge Function at `api/ai/course-planner.ts`.
-The frontend (`app/web/semester_board_viewer.html`) calls it with a condensed
+The frontend (the Next.js app in `web/`) calls it with a condensed
 plan context and streams the response text back to the UI.
 
 ---
@@ -38,9 +38,9 @@ npm run dev
 
 This starts on `http://localhost:3000`.
 
-Open the viewer at:
+Start the Next frontend (`cd web && npm run dev`) and open:
 ```
-http://localhost:3000/app/web/semester_board_viewer.html
+http://localhost:3001/planner
 ```
 
 The AI assistant panel in the sidebar and the "שיחה עם AI" tab in course
@@ -86,8 +86,7 @@ No code changes or database changes are required to switch providers.
    add `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`).
 4. Redeploy.
 
-The static HTML viewer is served at `/app/web/semester_board_viewer.html`
-and the API at `/api/ai/course-planner`.
+The Next.js app is served at `/` and the API at `/api/ai/course-planner`.
 
 ---
 

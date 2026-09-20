@@ -18,6 +18,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import postgres from 'postgres';
+import { loadLocalBoardJson } from './ai/board_loader';
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,51 @@ export async function queryBoardJson(
   }
 }
 
+/**
+ * Keep the published שער רוח catalog available while an older persisted board
+ * remains in the database. Only this independently-versioned general
+ * requirement is overlaid; semester placements and every other persisted
+ * course record remain database-authoritative.
+ */
+export function mergePublishedGatewayCatalog(
+  board: Record<string, any>,
+  published: Record<string, any> | null,
+): Record<string, any> {
+  const publishedMetadata = published?.metadata;
+  const gatewayCourses = (publishedMetadata?.program_repository_courses ?? [])
+    .filter((course: any) => course?.category_id === 'shaar_ruach');
+  if (!gatewayCourses.length) return board;
+
+  const metadata = board.metadata ?? {};
+  const gatewayIds = new Set(gatewayCourses.map((course: any) => course.course_id));
+  const repositoryCourses = (metadata.program_repository_courses ?? [])
+    .filter((course: any) => course?.category_id !== 'shaar_ruach' && !gatewayIds.has(course?.course_id));
+  const publishedCategories = publishedMetadata?.program_requirements_categories?.categories ?? [];
+  const gatewayCategory = publishedCategories.find((category: any) => category?.category_id === 'shaar_ruach');
+  const requirements = metadata.program_requirements_categories;
+  const categories = (requirements?.categories ?? [])
+    .filter((category: any) => category?.category_id !== 'shaar_ruach');
+
+  return {
+    ...board,
+    metadata: {
+      ...metadata,
+      program_repository_courses: [...repositoryCourses, ...gatewayCourses],
+      ...(gatewayCategory
+        ? {
+            program_requirements_categories: {
+              ...requirements,
+              categories: [...categories, gatewayCategory],
+            },
+          }
+        : {}),
+      ...(publishedMetadata?.board_data_version
+        ? { board_data_version: publishedMetadata.board_data_version }
+        : {}),
+    },
+  };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(
@@ -123,7 +169,18 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   }
 
   const dbUrl = process.env.DATABASE_URL ?? '';
+
+  // DB OUTAGE fallback: a missing DATABASE_URL or a failed DB connection (e.g.
+  // the Supabase pooler returning ENOTFOUND when the free-tier project is
+  // paused) must NOT block board display when the identical board_json is
+  // committed at data/boards/<programId>.json — the SAME loadLocalBoardJson
+  // resilience api/ai/generate-plan.ts already relies on. This keeps the board
+  // display consistent with generation (both plan over that local universe when
+  // the DB is down). A DB that is REACHABLE but simply has no such program is a
+  // genuine 404 below — it does not fall back.
   if (!dbUrl) {
+    const local = loadLocalBoardJson(rawId);
+    if (local) { res.status(200).json(local); return; }
     res.status(503).json({
       error: 'DATABASE_URL is not configured on this server.',
       code: 'NO_DATABASE_URL',
@@ -135,6 +192,8 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   try {
     board = await queryBoardJson(dbUrl, parsed.base, parsed.year);
   } catch (err) {
+    const local = loadLocalBoardJson(rawId);
+    if (local) { res.status(200).json(local); return; }
     res.status(503).json({
       error: 'Database query failed.',
       code: 'DB_ERROR',
@@ -151,5 +210,5 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     return;
   }
 
-  res.status(200).json(board);
+  res.status(200).json(mergePublishedGatewayCatalog(board, loadLocalBoardJson(rawId)));
 }

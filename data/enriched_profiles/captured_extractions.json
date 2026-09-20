@@ -1,0 +1,24 @@
+{
+  "_note": "CAPTURED, real-source-grounded semantic extraction claims — reviewed by hand against the official TAU syllabus text (syllabus_summary_he) committed in data/boards/mechanical_engineering_2027.json. This is NOT a live model result: no runtime model provider (OPENAI/ANTHROPIC/GOOGLE key) is configured in this repo, so the semantic-model step is captured/deferred. Every excerpt below is verbatim from the named course's official syllabus; the deterministic grounding validator (semantic_extraction_validator.ts) independently re-verifies each excerpt against the snapshot before any claim is accepted. Model confidences here are intentionally optimistic to demonstrate that the deterministic confidence policy bounds them. Courses with an empty claim list were reviewed and found to carry NO design evidence (validated absence).",
+  "extractorName": "captured-review-v1",
+  "capability": "mechanical_design",
+  "claims": {
+    "0542-4425": [
+      { "capability": "mechanical_design", "inferenceLevel": "explicit", "strength": 0.9, "confidence": 0.95, "rationale": "Official syllabus states the course teaches plastic-part design methods and advanced design with CAD/FEA tooling.", "excerpts": ["שיטות התכן", "לתכן מתקדם"] }
+    ],
+    "0542-2400": [
+      { "capability": "mechanical_design", "inferenceLevel": "explicit", "strength": 0.9, "confidence": 0.95, "rationale": "Official syllabus states the course teaches various machine-element design methods and advanced design topics.", "excerpts": ["שיטות תכן שונות", "נושאים מתקדמים בתכן"] }
+    ],
+    "0542-4722": [
+      { "capability": "mechanical_design", "inferenceLevel": "explicit", "strength": 0.9, "confidence": 0.9, "rationale": "Official syllabus states the course teaches MEMS design principles and detailed device design.", "excerpts": ["עקרונות תכן וייצור", "תכן מפורט"] }
+    ],
+    "0571-4174": [
+      { "capability": "mechanical_design", "inferenceLevel": "derived", "strength": 0.6, "confidence": 0.9, "rationale": "Semantic paraphrase: the official syllabus frames the course around producing creative, feasible engineering solutions to real problems (inventive/design thinking) — no explicit design-methodology phrase, so DERIVED.", "excerpts": ["פתרונות יצירתיים וישימים"] }
+    ],
+    "0542-4226": [
+      { "capability": "mechanical_design", "inferenceLevel": "derived", "strength": 0.6, "confidence": 0.9, "rationale": "Semantic paraphrase: the official syllabus places simulation work from the early design stages through final validation — design-process activity expressed without the exact manual phrases, so DERIVED.", "excerpts": ["משלבי התכן הראשוניים"] }
+    ],
+    "0542-4420": [],
+    "0542-4351": []
+  }
+}

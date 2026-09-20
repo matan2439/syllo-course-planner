@@ -1,0 +1,1018 @@
+/**
+ * candidate_set.ts — Slice 18B: retain multiple genuinely distinct, validated,
+ * deterministic COURSE/PERIOD COMBINATIONS produced by the SAME stable planner
+ * under ONE fixed user policy.
+ *
+ * Product policy this file implements (binding):
+ *   1. `balanced` / `compact` / `neutral` CONFIGURE scoring and search — they are
+ *      never the alternatives shown to the user. One confirmed profile resolves
+ *      to one fixed planning policy, and every candidate for a request uses that
+ *      same policy, the same hard constraints, the same catalog and the same
+ *      academic rules.
+ *   2. Candidate diversity therefore comes from different LEGAL course/period
+ *      combinations inside that one fixed problem — never from swapping the
+ *      user's stated policy.
+ *   3. The balanced-vs-compact dual run survives ONLY as an internal ELICITATION
+ *      probe (`probeBalanceImpact`), used to decide whether asking the
+ *      `semester_balance` question could still change the plan. It retains no
+ *      candidates and is never a user-facing alternative set.
+ *
+ * ── Search mechanism (why this one) ──────────────────────────────────────────
+ * The repository already has exactly one stable planner (`PlannerWorker`, the
+ * Observe→Reason→Act→Validate loop) and exactly one place where a single winner
+ * is chosen: `step()` commits the FIRST action, among the already-legal,
+ * already-validated, already-ranked candidates, that advances the plan. Every
+ * other action at that step was legal and merely lost the ranking.
+ *
+ * So the smallest mechanism that can retain more than the single greedy winner
+ * is a BOUNDED DETERMINISTIC DEVIATION: re-run the same planner with
+ * `deviation: { atStep, rank }`, which commits the rank-th advancing action at
+ * exactly one step and then continues greedily. No second planner, no random
+ * variation, no paid provider, no re-plan from a different starting state, and
+ * the run count is bounded by `maxRuns` up front.
+ *
+ * (A beam-search strategy also exists — `planner_search_beam.ts` — but it drives
+ * the separate `PlannerAgent` path, not the production `PlannerWorker` used by
+ * `generate-plan.ts`. Retaining its beam survivors would have meant switching
+ * production planning engines, which is precisely what "do not create a second
+ * planner" rules out.)
+ *
+ * ── Meaningful-distance rule (documented) ────────────────────────────────────
+ * Two candidates are meaningfully different IFF their NORMALIZED ACADEMIC
+ * IDENTITY differs. That identity is the set of (course_id → period) pairs,
+ * sorted by course id — so it is invariant to object key order, array order,
+ * equivalent section ordering, candidate ids, explanation text, and generation
+ * order. It captures exactly the differences product policy calls meaningful
+ * (elective/content composition, semester assignment, and thus workload
+ * distribution). Because every candidate shares ONE resolved policy, "balanced
+ * vs compact" can no longer appear as a difference at all.
+ *
+ * ── Ranking ──────────────────────────────────────────────────────────────────
+ * Hard constraints and legality are a RETENTION GATE, not score terms: a plan is
+ * only ever admitted to the set after `validateCandidate` (degree completion,
+ * mandatory courses, categories, prerequisites, load caps, `must_exclude`, and
+ * `must_include`) passes. Retained candidates are then ordered by the existing
+ * lexicographic `scorePlan` vector — degree completion, requirements, legality,
+ * the confirmed distribution preference, soft interests, difficulty — with the
+ * normalized identity as a stable final tie-break. The primary recommendation is
+ * simply rank 0. No claim of global optimality is made or implied: this is a
+ * bounded deterministic search, not a proof.
+ */
+import { PlannerWorker } from './planner_worker';
+import { scorePlan, compareScore, applyMutation } from './planner_goals';
+import { validateCandidate } from './planner_validate';
+import { legalSemestersFor } from './planner_actions';
+import { placedCourseIds, type ConstraintModel, type PlanState, type DistributionPolicy } from './planner_types';
+import {
+  scoreCandidateOnObjective,
+  type TopicIndex,
+  type FeatureIndex,
+  type GroundedObjective,
+  type GroundedScore,
+} from './grounded_objectives';
+import {
+  scoreObjective,
+  dominates,
+  composedUtility,
+  objectiveRankKey,
+  compareObjectiveKeys,
+  RANK_EPS,
+  type ResolvedObjective,
+  type ObjectiveScoreComponent,
+  type ObjectiveSelectionReason,
+} from './grounded_objective_set';
+
+/** Production worker configuration — identical to generate-plan.ts's own. */
+const WORKER_OPTS = { topN: 6, rolloutSteps: 80 } as const;
+
+/** Bounded search defaults. Deliberately small: candidate count, not runtime, is the product need. */
+export const DEFAULT_MAX_CANDIDATES = 3;
+export const DEFAULT_MAX_RUNS = 8;
+
+// ── difference facts ─────────────────────────────────────────────────────────
+
+/** A factual, plan-derived difference between a candidate and the primary. */
+export interface CandidateDifference {
+  kind: 'course_added' | 'course_removed' | 'course_moved' | 'peak_load' | 'active_periods';
+  courseId?: string;
+  /** Value in the primary candidate. */
+  primary?: number | string;
+  /** Value in this candidate. */
+  candidate?: number | string;
+}
+
+/** Legacy balanced-vs-compact fact — used ONLY by the elicitation probe. */
+export interface DiffFact {
+  kind: 'peak_load' | 'spread' | 'active_periods' | 'course_moved';
+  balanced?: number | string;
+  compact?: number | string;
+  courseId?: string;
+}
+
+// ── candidate ────────────────────────────────────────────────────────────────
+
+export interface PlanCandidate {
+  /** Deterministic id derived from the normalized academic identity (never array position). */
+  id: string;
+  /** The ONE resolved user policy — identical on every candidate in a set. */
+  policy: DistributionPolicy;
+  state: PlanState;
+  /** Always true: only candidates passing the authoritative validator are retained. */
+  valid: boolean;
+  validationErrors: string[];
+  scoreVector: number[];
+  /** Canonical course→period identity (sorted, order-invariant). */
+  normalizedIdentity: string;
+  /** 0-based position after ranking. 0 = the primary recommendation. */
+  rank: number;
+  /** How this combination was reached — deterministic provenance, not a label. */
+  provenance: string;
+  /** Factual differences against the primary. Empty on the primary itself. */
+  differences: CandidateDifference[];
+  profileVersion: number;
+  /** The stable planner's own Hebrew explanation for this plan. */
+  rationaleHe: string;
+  /**
+   * K4 — the confirmed grounded soft objective's evidence-backed score for this
+   * candidate. Present only when such an objective was supplied; absent
+   * otherwise, so the legacy ordering is untouched.
+   */
+  groundedScore?: GroundedScore;
+  /**
+   * M2 — one INDEPENDENT, bounded, comparable score per active objective. The
+   * full vector is retained: nothing is collapsed before Pareto dominance is
+   * evaluated.
+   */
+  objectiveScores?: ObjectiveScoreComponent[];
+  /** M4 — the composed utility this candidate was ranked on. */
+  composedUtility?: number;
+  /**
+   * C1 — whether NO other comparable candidate Pareto-dominates this one. Only
+   * non-dominated candidates may be offered to the user as alternatives: a
+   * dominated plan is worse on some confirmed preference and better on none, so
+   * showing it would invite a strictly worse choice.
+   */
+  nonDominated?: boolean;
+}
+
+export interface CandidateSet {
+  /** The single resolved policy every candidate was planned under. */
+  policy: DistributionPolicy;
+  /** Ranked, deduplicated, fully validated. Empty ⇒ no legal solution was found. */
+  candidates: PlanCandidate[];
+  outcome: 'proposal' | 'infeasible';
+  /** False whenever no candidate survived the authoritative validator. */
+  applyEligible: boolean;
+  /** Canonical identity of the plain greedy (no-deviation) run under this policy. */
+  legacyIdentity: string;
+  /** The raw greedy PlanState — the proposal fallback when nothing validates. */
+  legacyState: PlanState;
+  /** What the bounded search was actually allowed to do. */
+  searchBudget: { maxCandidates: number; maxRuns: number; runsExecuted: number };
+  /** M3/M4 — how the active objective set decided this ranking. */
+  composition?: GroundedComposition;
+}
+
+/**
+ * M3/M4 — a truthful account of how several confirmed objectives were combined.
+ * Every field is derived from the objective vectors and the one evidence
+ * snapshot; none of it is a claim about what the student said beyond the
+ * preferences they confirmed.
+ */
+export interface GroundedComposition {
+  /** Active objective ids, in the same order as every candidate's vector. */
+  objectiveIds: string[];
+  reason: ObjectiveSelectionReason;
+  /** Candidates that no other candidate dominates. */
+  nonDominatedCount: number;
+  dominatedCount: number;
+  /**
+   * True when at least two non-dominated candidates genuinely trade off — each
+   * strictly better on a different objective. Retained and reported rather than
+   * silently resolved by precedence.
+   */
+  unresolvedTradeoff: boolean;
+  /** Present when explicit relative importance was supplied by the student. */
+  prioritySource?: 'explicit_preference';
+}
+
+export type SelectionReason = 'confirmed_balanced' | 'confirmed_compact' | 'legacy_default';
+
+// ── canonical identity ───────────────────────────────────────────────────────
+
+/** Course→period map, sorted by course id — invariant to insertion/display order. */
+function normalizeIdentity(state: PlanState): string {
+  const pairs: Array<[string, string]> = [];
+  for (const [period, ids] of Object.entries(state.semesters)) {
+    for (const id of ids) pairs.push([id, period]);
+  }
+  pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : 1));
+  return JSON.stringify(pairs);
+}
+
+/** Small deterministic string hash (FNV-1a) — stable across runs, no randomness. */
+function hashId(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return 'cand_' + (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function loads(state: PlanState, model: ConstraintModel): number[] {
+  return model.knownSemesterIds.map((s) =>
+    (state.semesters[s] ?? []).reduce((h, id) => h + (model.profiles.get(id)?.hours ?? 0), 0),
+  );
+}
+function peak(ls: number[]): number { return ls.length ? Math.max(...ls) : 0; }
+function activePeriods(ls: number[]): number { return ls.filter((h) => h > 0).length; }
+function spreadOf(ls: number[]): number {
+  const active = ls.filter((h) => h > 0);
+  return active.length > 1 ? Math.max(...active) - Math.min(...active) : 0;
+}
+
+/** Period of each placed course — the comparison basis for `course_moved`. */
+function periodByCourse(state: PlanState): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [period, ids] of Object.entries(state.semesters)) for (const id of ids) out.set(id, period);
+  return out;
+}
+
+/**
+ * Factual differences of `candidate` against `primary`: which courses were
+ * swapped in/out, which moved period, and the resulting load shape. Derived
+ * entirely from the two plan states, so a summary can never describe a
+ * difference the plans do not actually have.
+ */
+function describeDifferences(primary: PlanState, candidate: PlanState, model: ConstraintModel): CandidateDifference[] {
+  const a = periodByCourse(primary);
+  const b = periodByCourse(candidate);
+  const out: CandidateDifference[] = [];
+
+  for (const id of [...b.keys()].sort()) {
+    if (!a.has(id)) out.push({ kind: 'course_added', courseId: id, candidate: b.get(id) });
+    else if (a.get(id) !== b.get(id)) out.push({ kind: 'course_moved', courseId: id, primary: a.get(id), candidate: b.get(id) });
+  }
+  for (const id of [...a.keys()].sort()) {
+    if (!b.has(id)) out.push({ kind: 'course_removed', courseId: id, primary: a.get(id) });
+  }
+
+  const la = loads(primary, model);
+  const lb = loads(candidate, model);
+  if (peak(la) !== peak(lb)) out.push({ kind: 'peak_load', primary: peak(la), candidate: peak(lb) });
+  if (activePeriods(la) !== activePeriods(lb)) {
+    out.push({ kind: 'active_periods', primary: activePeriods(la), candidate: activePeriods(lb) });
+  }
+  return out;
+}
+
+// ── generation ───────────────────────────────────────────────────────────────
+
+export interface GenerateCandidateSetInput {
+  /**
+   * Builds the model for THIS request. Called once per run and must be
+   * deterministic — every run must see the same catalog, academic rules, hard
+   * constraints, workload limits and distribution policy.
+   */
+  buildModel: (policy: DistributionPolicy) => ConstraintModel;
+  /** The single resolved user policy. */
+  policy: DistributionPolicy;
+  initialState: PlanState;
+  profileVersion: number;
+  pinnedHome?: Record<string, string>;
+  /** How many distinct combinations to retain. Default DEFAULT_MAX_CANDIDATES. */
+  maxCandidates?: number;
+  /** Hard bound on planner runs (runtime guard). Default DEFAULT_MAX_RUNS. */
+  maxRuns?: number;
+  /**
+   * Optional snapshot used only to diversify neutral alternative discovery.
+   * It never scores or changes the primary recommendation; it breaks ties
+   * between equally admissible swap probes so retained alternatives can expose
+   * a real evidence-backed choice to the impact state machine.
+   */
+  diversityEvidence?: {
+    features: FeatureIndex;
+    topics?: TopicIndex;
+  };
+  /**
+   * K4 — a CONFIRMED grounded soft objective, plus the ONE evidence snapshot
+   * every candidate is scored against. Omitted (the default) ⇒ ranking is
+   * byte-identical to before this feature existed.
+   */
+  groundedObjective?: {
+    objective: GroundedObjective;
+    features: FeatureIndex;
+    /**
+     * T4 — course-level supported topics from the SAME snapshot. Required only
+     * by `prefer_topic_alignment`; omitted, that objective scores zero for every
+     * candidate and ranking is unchanged.
+     */
+    topics?: TopicIndex;
+  };
+  /**
+   * M1/M2 — EVERY confirmed objective, scored independently against the SAME
+   * snapshot. Supersedes `groundedObjective`, which is kept as sugar for a
+   * one-element set so existing callers are untouched. There is no objective
+   * precedence: composition is symmetric (see grounded_objective_set.ts).
+   */
+  groundedObjectives?: {
+    objectives: readonly ResolvedObjective[];
+    snapshotId: string;
+    features: FeatureIndex;
+    topics?: TopicIndex;
+  };
+}
+
+/**
+ * How far into the lexicographic scoreVector the HARD/legality/distribution
+ * terms run: [g1 completion, g2a mandatory+must_include, g2b categories,
+ * g3 legality, g4a/g4b distribution]. Everything from index 6 on is soft
+ * (preferences, interest fit, difficulty). The grounded objective is compared
+ * strictly AFTER this prefix and strictly BEFORE the soft remainder, which is
+ * what makes it unable to trade away completion, legality, hard constraints or
+ * the user's confirmed distribution policy.
+ */
+export const HARD_AND_POLICY_PREFIX = 6;
+
+/**
+ * The minimum a candidate must expose to be RANKED — so the identical ordering
+ * can be replayed under a hypothetical priority without re-planning anything.
+ */
+export interface RankableCandidate {
+  scoreVector: number[];
+  normalizedIdentity: string;
+  /** Normalized per-objective scores, in the active objective set's order. */
+  vector: readonly number[];
+}
+
+/**
+ * THE ranking order, in one place.
+ *
+ * Lexicographic, in the documented priority order:
+ *   a. hard constraints + legality + the confirmed distribution policy
+ *      (the scoreVector's first HARD_AND_POLICY_PREFIX terms);
+ *   b. the confirmed grounded objectives, composed by `objectiveRankKey` —
+ *      the equal-importance mean, or, with an explicit priority, the
+ *      prioritized objective first and the rest as a tie-break;
+ *   c. the remaining existing soft terms (preferences, interest fit, difficulty);
+ *   d. normalized identity — a stable, deterministic final tie-break.
+ *
+ * (a) is compared BEFORE (b), which is why an explicit priority can never trade
+ * away completion, legality, a hard wanted/avoided course, a workload cap or
+ * the confirmed distribution policy. It only ever reorders plans that are
+ * already equal on all of them.
+ *
+ * Returns a negative number when `a` should come FIRST.
+ */
+export function compareRankable(
+  a: RankableCandidate,
+  b: RankableCandidate,
+  priorities?: readonly (number | undefined)[],
+): number {
+  return (
+    compareScore(b.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), a.scoreVector.slice(0, HARD_AND_POLICY_PREFIX)) ||
+    (a.vector.length
+      ? compareObjectiveKeys(objectiveRankKey(b.vector, priorities), objectiveRankKey(a.vector, priorities))
+      : 0) ||
+    compareScore(b.scoreVector, a.scoreVector) ||
+    (a.normalizedIdentity < b.normalizedIdentity ? -1 : a.normalizedIdentity > b.normalizedIdentity ? 1 : 0)
+  );
+}
+
+export function generateCandidateSet(input: GenerateCandidateSetInput): CandidateSet {
+  const maxCandidates = Math.max(1, input.maxCandidates ?? DEFAULT_MAX_CANDIDATES);
+  const maxRuns = Math.max(1, input.maxRuns ?? DEFAULT_MAX_RUNS);
+  const pinnedHome = input.pinnedHome ?? {};
+
+  // Resolve the objective set before generation as well as ranking: it may
+  // guide a bounded set of post-completion elective swaps. This is the same
+  // evidence and the same objective definition ranking uses below.
+  const grounded = input.groundedObjective;
+  const objectiveSet: readonly ResolvedObjective[] = input.groundedObjectives
+    ? input.groundedObjectives.objectives
+    : grounded
+      ? [{
+          id: grounded.objective.id,
+          preferenceId: 'legacy',
+          kind: grounded.objective.id === 'prefer_topic_alignment' ? 'topic' : 'delivery',
+          target: grounded.objective.id,
+          ...(grounded.objective.topicIds?.length ? { topicIds: [...grounded.objective.topicIds] } : {}),
+          source: 'legacy',
+          profileVersion: input.profileVersion,
+        } as ResolvedObjective]
+      : [];
+  const evidence = input.groundedObjectives ?? (grounded
+    ? { snapshotId: grounded.objective.snapshotId, features: grounded.features, topics: grounded.topics }
+    : undefined);
+
+  type Raw = {
+    model: ConstraintModel;
+    state: PlanState;
+    report: ReturnType<typeof validateCandidate>;
+    identity: string;
+    scoreVector: number[];
+    rationaleHe: string;
+    provenance: string;
+  };
+
+  const evaluate = (model: ConstraintModel, state: PlanState, provenance: string, rationaleHe: string): Raw => ({
+    model,
+    state,
+    report: validateCandidate(state, model, pinnedHome),
+    identity: normalizeIdentity(state),
+    scoreVector: scorePlan(state, model),
+    rationaleHe,
+    provenance,
+  });
+
+  // All deviation workers use the same immutable request/model policy and
+  // revisit a large common prefix of states. Rollout scoring is pure, so one
+  // request-scoped memo preserves exact decisions while avoiding duplicate
+  // greedy completions across runs.
+  const sharedLookaheadCache = new Map<string, number[]>();
+
+  const run = (deviation?: { atStep: number; rank: number }) => {
+    const model = input.buildModel(input.policy);
+    const worker = new PlannerWorker(model, structuredClone(input.initialState), {
+      ...WORKER_OPTS,
+      sharedLookaheadCache,
+      ...(deviation ? { deviation } : {}),
+    });
+    worker.run(500, 'greedy');
+    const state = worker.getPlan();
+    return evaluate(
+      model,
+      state,
+      deviation ? `deviation:${deviation.atStep}:${deviation.rank}` : 'greedy_baseline',
+      worker.explain().summary_he,
+    );
+  };
+
+  // 1. The plain greedy run under the resolved policy — the legacy single-plan
+  //    result, and the proposal fallback if nothing validates.
+  const baseline = run();
+  let runsExecuted = 1;
+
+  const byIdentity = new Map<string, Raw>();
+  if (baseline.report.valid) byIdentity.set(baseline.identity, baseline);
+
+  // A completed worker has no advancing action, so deviations can vary only
+  // earlier choices (and on a mature real board often converge to the same
+  // course set). When a confirmed grounded objective exists, try a bounded,
+  // deterministic ONE-elective swap from the valid baseline. This is candidate
+  // discovery, not a validation shortcut: every result passes the exact same
+  // authoritative validator before retention, and all attempts consume the
+  // existing maxRuns budget.
+  if (baseline.report.valid && objectiveSet.length && evidence && maxCandidates > 1) {
+    const placed = new Set(placedCourseIds(baseline.state));
+    const potential = (courseId: string) => composedUtility(
+      objectiveSet.map((o) => scoreObjective([courseId], o, evidence.snapshotId, evidence.features, evidence.topics).normalized),
+    );
+    const incoming = [...baseline.model.profiles.keys()]
+      .filter((id) => !placed.has(id) && !baseline.model.completedCourseIds.has(id)
+        && !baseline.model.currentlyPlannedCourseIds?.has(id) && !baseline.model.disallowedCourseIds.has(id))
+      .sort((a, b) => potential(b) - potential(a) || (a < b ? -1 : a > b ? 1 : 0));
+    const outgoing = [...placed]
+      .filter((id) => !baseline.model.profiles.get(id)?.is_mandatory
+        && !baseline.model.mustIncludeCourseIds?.has(id) && pinnedHome[id] === undefined)
+      .sort((a, b) => potential(a) - potential(b) || (a < b ? -1 : a > b ? 1 : 0));
+
+    type SwapOption = {
+      inId: string;
+      outId: string;
+      semesterId: string;
+      gain: number;
+      sameHome: boolean;
+      sameHours: boolean;
+      sameCategory: boolean;
+    };
+    const homeSemesters = (courseId: string) => Object.entries(baseline.state.semesters)
+      .filter(([, ids]) => ids.includes(courseId))
+      .map(([semesterId]) => semesterId);
+    const swapOptions: SwapOption[] = [];
+    for (const inId of incoming) {
+      // A zero-potential course cannot make the active objective more
+      // expressive than the baseline; leave generic non-objective diversity to
+      // the existing deviation mechanism.
+      if (potential(inId) <= 0) break;
+      for (const outId of outgoing) {
+        const gain = potential(inId) - potential(outId);
+        if (gain <= 0) continue;
+        const inProfile = baseline.model.profiles.get(inId);
+        const outProfile = baseline.model.profiles.get(outId);
+        const homes = homeSemesters(outId);
+        for (const semesterId of legalSemestersFor(baseline.model, inId)) {
+          swapOptions.push({
+            inId,
+            outId,
+            semesterId,
+            gain,
+            sameHome: homes.includes(semesterId),
+            sameHours: inProfile?.hours != null && inProfile.hours === outProfile?.hours,
+            sameCategory: inProfile?.category_id != null && inProfile.category_id === outProfile?.category_id,
+          });
+        }
+      }
+    }
+    // Discovery order is an admissible-search heuristic, never a relaxation:
+    // try swaps most likely to preserve the higher-priority score prefix before
+    // spending the bounded validation budget. Every option is still evaluated
+    // and authoritatively validated. Canonical ids make this independent of
+    // catalog/object iteration order.
+    swapOptions.sort((a, b) =>
+      Number(b.sameHome) - Number(a.sameHome)
+      || Number(b.sameHours) - Number(a.sameHours)
+      || Number(b.sameCategory) - Number(a.sameCategory)
+      || b.gain - a.gain
+      || (a.inId < b.inId ? -1 : a.inId > b.inId ? 1 : 0)
+      || (a.outId < b.outId ? -1 : a.outId > b.outId ? 1 : 0)
+      || (a.semesterId < b.semesterId ? -1 : a.semesterId > b.semesterId ? 1 : 0));
+
+    type SwapProposal = {
+      swaps: SwapOption[];
+      courseSetKey: string;
+      gain: number;
+      allSameHome: boolean;
+      allSameHours: boolean;
+      allSameCategory: boolean;
+      canonicalKey: string;
+    };
+    const proposalOf = (swaps: SwapOption[]): SwapProposal => ({
+      swaps,
+      courseSetKey: [...placed]
+        .filter((id) => !swaps.some((swap) => swap.outId === id))
+        .concat(swaps.map((swap) => swap.inId))
+        .sort()
+        .join('|'),
+      gain: swaps.reduce((sum, swap) => sum + swap.gain, 0),
+      allSameHome: swaps.every((swap) => swap.sameHome),
+      allSameHours: swaps.every((swap) => swap.sameHours),
+      allSameCategory: swaps.every((swap) => swap.sameCategory),
+      canonicalKey: swaps
+        .map((swap) => `${swap.inId}:${swap.outId}:${swap.semesterId}`)
+        .sort()
+        .join('+'),
+    });
+    const proposals = swapOptions.map((swap) => proposalOf([swap]));
+    // A completed baseline may need more than one course-set change for a real
+    // multi-objective improvement. Explore pairs only when multiple grounded
+    // objectives exist, and keep them inside the SAME maxRuns budget and
+    // authoritative validation path as single swaps. Pair construction itself
+    // is bounded too: use the first canonical placement for at most 2×maxRuns
+    // unique single-swap course sets, rather than materializing a catalog-sized
+    // Cartesian square that the validation budget could never consume.
+    if (objectiveSet.length > 1) {
+      const seenSingleCourseSets = new Set<string>();
+      const pairSource: SwapOption[] = [];
+      for (const swap of swapOptions) {
+        const key = proposalOf([swap]).courseSetKey;
+        if (seenSingleCourseSets.has(key)) continue;
+        seenSingleCourseSets.add(key);
+        pairSource.push(swap);
+        if (pairSource.length >= maxRuns * 2) break;
+      }
+      for (let i = 0; i < pairSource.length; i++) {
+        for (let j = i + 1; j < pairSource.length; j++) {
+          const a = pairSource[i];
+          const b = pairSource[j];
+          if (a.inId === b.inId || a.outId === b.outId) continue;
+          proposals.push(proposalOf([a, b]));
+        }
+      }
+    }
+    proposals.sort((a, b) =>
+      Number(b.allSameHome) - Number(a.allSameHome)
+      || Number(b.allSameHours) - Number(a.allSameHours)
+      || Number(b.allSameCategory) - Number(a.allSameCategory)
+      || b.gain - a.gain
+      || (a.canonicalKey < b.canonicalKey ? -1 : a.canonicalKey > b.canonicalKey ? 1 : 0));
+
+    const retainedSwapCourseSets = new Set<string>();
+    for (const proposal of proposals) {
+      if (runsExecuted >= maxRuns) break;
+      // This slice discovers COURSE-SET alternatives. Once the best-priority
+      // legal placement for a set has survived, later semester permutations of
+      // that exact set add no grounded choice and can manufacture duplicate
+      // comparison cards. Generic deviation search remains responsible for
+      // genuinely useful placement alternatives.
+      if (retainedSwapCourseSets.has(proposal.courseSetKey)) continue;
+      runsExecuted++;
+      let state: PlanState | null = baseline.state;
+      for (const { inId, outId, semesterId } of proposal.swaps) {
+        state = applyMutation(state, { type: 'REPLACE_COURSE', outId, inId, semesterId });
+        if (!state) break;
+      }
+      if (!state) continue;
+      const candidate = evaluate(
+        baseline.model,
+        state,
+        `grounded_swap:${proposal.canonicalKey}`,
+        baseline.rationaleHe,
+      );
+      if (candidate.report.valid && !byIdentity.has(candidate.identity)) {
+        byIdentity.set(candidate.identity, candidate);
+        retainedSwapCourseSets.add(proposal.courseSetKey);
+      }
+    }
+  }
+
+  // With no confirmed grounded objective, early worker deviations on a mature
+  // board commonly discover only semester permutations of the same completed
+  // course set. Use the same bounded run budget to probe canonical one-elective
+  // replacements as genuine academic alternatives. Every proposal is still
+  // resolved from the authoritative model, validated normally, and retained
+  // only when it ties the baseline on the complete hard/policy prefix.
+  const discoverNeutralAlternatives = () => {
+    if (!(baseline.report.valid && objectiveSet.length === 0 && maxCandidates > 1)) return;
+    const placed = new Set(placedCourseIds(baseline.state));
+    const homesOf = (courseId: string) => Object.entries(baseline.state.semesters)
+      .filter(([, ids]) => ids.includes(courseId))
+      .map(([semesterId]) => semesterId);
+    const incoming = [...baseline.model.profiles.keys()]
+      .filter((id) => {
+        const profile = baseline.model.profiles.get(id);
+        return !placed.has(id) && !profile?.is_mandatory
+          && !baseline.model.completedCourseIds.has(id)
+          && !baseline.model.currentlyPlannedCourseIds?.has(id)
+          && !baseline.model.disallowedCourseIds.has(id);
+      })
+      .sort();
+    const outgoing = [...placed]
+      .filter((id) => !baseline.model.profiles.get(id)?.is_mandatory
+        && !baseline.model.mustIncludeCourseIds?.has(id)
+        && pinnedHome[id] === undefined
+        && homesOf(id).length === 1)
+      .sort();
+    const semanticSignature = (courseId: string): Set<string> => {
+      const signature = new Set<string>();
+      const features = input.diversityEvidence?.features.get(courseId);
+      if (features?.laboratory.value === true) signature.add('delivery:laboratory');
+      if (features?.projectDelivery.value === true || features?.project.value === true) {
+        signature.add('delivery:project');
+      }
+      for (const topic of input.diversityEvidence?.topics?.get(courseId)?.topicIds ?? []) {
+        signature.add(`topic:${topic}`);
+      }
+      return signature;
+    };
+    const semanticDistance = (a: string, b: string): number => {
+      const left = semanticSignature(a);
+      const right = semanticSignature(b);
+      return [...left].filter((value) => !right.has(value)).length
+        + [...right].filter((value) => !left.has(value)).length;
+    };
+    const options = incoming.flatMap((inId) => outgoing.flatMap((outId) => {
+      const inProfile = baseline.model.profiles.get(inId);
+      const outProfile = baseline.model.profiles.get(outId);
+      const outHome = homesOf(outId)[0];
+      return legalSemestersFor(baseline.model, inId).map((semesterId) => ({
+        inId,
+        outId,
+        semesterId,
+        sameHome: semesterId === outHome,
+        sameHours: inProfile?.hours != null && inProfile.hours === outProfile?.hours,
+        sameCategory: inProfile?.category_id != null && inProfile.category_id === outProfile?.category_id,
+        semanticDistance: semanticDistance(inId, outId),
+      }));
+    }));
+    options.sort((a, b) =>
+      Number(b.sameHome) - Number(a.sameHome)
+      || Number(b.sameHours) - Number(a.sameHours)
+      || Number(b.sameCategory) - Number(a.sameCategory)
+      || b.semanticDistance - a.semanticDistance
+      || (a.inId < b.inId ? -1 : a.inId > b.inId ? 1 : 0)
+      || (a.outId < b.outId ? -1 : a.outId > b.outId ? 1 : 0)
+      || (a.semesterId < b.semesterId ? -1 : a.semesterId > b.semesterId ? 1 : 0));
+
+    const baselinePrefix = baseline.scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
+    const retainedCourseSets = new Set<string>();
+    for (const option of options) {
+      if (runsExecuted >= maxRuns || retainedCourseSets.size >= maxCandidates - 1) break;
+      const state = applyMutation(baseline.state, {
+        type: 'REPLACE_COURSE',
+        outId: option.outId,
+        inId: option.inId,
+        semesterId: option.semesterId,
+      });
+      if (!state) continue;
+      runsExecuted++;
+      const candidate = evaluate(
+        baseline.model,
+        state,
+        `neutral_swap:${option.inId}:${option.outId}:${option.semesterId}`,
+        baseline.rationaleHe,
+      );
+      const courseSet = [...new Set(placedCourseIds(candidate.state))].sort().join('|');
+      if (candidate.report.valid
+        && compareScore(candidate.scoreVector.slice(0, HARD_AND_POLICY_PREFIX), baselinePrefix) === 0
+        && !byIdentity.has(candidate.identity)
+        && !retainedCourseSets.has(courseSet)) {
+        byIdentity.set(candidate.identity, candidate);
+        retainedCourseSets.add(courseSet);
+      }
+    }
+  };
+
+  // 2. Bounded deterministic deviations. Deviating EARLY changes which course
+  //    enters the plan first and so reshapes the whole combination; deviating at
+  //    increasing depths reaches progressively more of the space. Fixed order ⇒
+  //    identical candidates, ids and ranking on every run.
+  const neutralRunReserve = objectiveSet.length === 0 && maxCandidates > 1
+    ? Math.min(maxCandidates - 1, Math.max(0, maxRuns - runsExecuted))
+    : 0;
+  for (let atStep = 0;
+    runsExecuted < maxRuns - neutralRunReserve
+      && (objectiveSet.length > 0 || byIdentity.size < maxCandidates);
+    atStep++) {
+    const r = run({ atStep, rank: 1 });
+    runsExecuted++;
+    if (r.report.valid && !byIdentity.has(r.identity)) byIdentity.set(r.identity, r);
+    // ponytail: no early-exit heuristic — maxRuns already bounds this, and a
+    // deviation that reproduces the baseline is simply collapsed by identity.
+  }
+
+  // Keep the established planner recommendation authoritative. Neutral probes
+  // enrich the comparison set from the remaining budget; discovering one must
+  // not silently replace the recommendation that existed before enrichment.
+  const preservedNeutralPrimaryIdentity = objectiveSet.length === 0
+    ? [...byIdentity.values()].sort((a, b) => compareRankable(
+        { scoreVector: a.scoreVector, normalizedIdentity: a.identity, vector: [] },
+        { scoreVector: b.scoreVector, normalizedIdentity: b.identity, vector: [] },
+      ))[0]?.identity
+    : undefined;
+  discoverNeutralAlternatives();
+
+  // 3. Rank. Lexicographic, in the documented priority order:
+  //      a. hard constraints + legality + the confirmed distribution policy
+  //         (the scoreVector's first HARD_AND_POLICY_PREFIX terms);
+  //      b. the confirmed GROUNDED soft objective (K4), when one is supplied;
+  //      c. the remaining existing soft terms (explicit preferences, interest
+  //         fit, difficulty);
+  //      d. normalized identity — a stable, deterministic final tie-break.
+  //    With no grounded objective, (b) is a constant 0 for every candidate and
+  //    the ordering is byte-identical to the legacy comparison.
+  // M1 — one uniform path. A legacy single `groundedObjective` becomes a
+  // one-element set, so there is exactly ONE ranking implementation and no
+  // "if single / else composed" branch anywhere.
+  const componentsOf = (r: Raw): ObjectiveScoreComponent[] =>
+    evidence
+      ? objectiveSet.map((o) =>
+          scoreObjective([...new Set(placedCourseIds(r.state))], o, evidence.snapshotId, evidence.features, evidence.topics))
+      : [];
+
+  const scored = [...byIdentity.values()].map((r) => {
+    const components = componentsOf(r);
+    return {
+      raw: r,
+      components,
+      vector: components.map((c) => c.normalized),
+      // Legacy view: the first objective's score, so existing consumers and
+      // their proofs observe exactly what they observed before.
+      grounded: components.length
+        ? ({
+            score: components[0].raw,
+            contributions: components[0].contributions,
+            unknownCourseIds: components[0].unknownCourseIds,
+            variesBySectionCourseIds: components[0].variesBySectionCourseIds,
+          } satisfies GroundedScore)
+        : undefined,
+    };
+  });
+
+  const priorities = objectiveSet.map((o) => o.priority);
+  /**
+   * The exposed `composedUtility` keeps its documented meaning — the
+   * EQUAL-IMPORTANCE composition — even when an explicit priority is ranking
+   * the candidates. The two are genuinely different statements, and reporting
+   * the equal-importance value is what lets an explanation say truthfully that
+   * a plan was chosen on the prioritized objective while another remains
+   * stronger overall on equal terms.
+   */
+  const utilityOf = (v: readonly number[]) => (v.length ? composedUtility(v) : 0);
+  const EPS = RANK_EPS;
+
+  const sorted = scored.sort((a, b) => compareRankable(
+      { scoreVector: a.raw.scoreVector, normalizedIdentity: a.raw.identity, vector: a.vector },
+      { scoreVector: b.raw.scoreVector, normalizedIdentity: b.raw.identity, vector: b.vector },
+      priorities,
+    ));
+
+  /**
+   * Discovery is bounded by maxRuns, not by the number of first-found valid
+   * identities: Pareto status is unknowable until candidates have objective
+   * vectors. Otherwise a dominated early discovery can consume one of the
+   * product's three slots and hide a later reachable frontier plan.
+   *
+   * Retention remains lexicographic across hard/policy prefixes. Only WITHIN an
+   * identical prefix group do non-dominated plans move ahead of dominated ones;
+   * no soft diversity can leapfrog legality, completion, hard constraints or a
+   * confirmed distribution policy.
+   */
+  const allVectors = sorted.map((x) => x.vector);
+  const allPrefixes = sorted.map((x) => x.raw.scoreVector.slice(0, HARD_AND_POLICY_PREFIX));
+  const globallyDominated = objectiveSet.length
+    ? allVectors.map((v, i) => allVectors.some((w, j) =>
+        j !== i && compareScore(allPrefixes[i], allPrefixes[j]) === 0 && dominates(w, v)))
+    : sorted.map(() => false);
+  const originalRank = new Map(sorted.map((x, i) => [x.raw.identity, i]));
+  const contributionSignature = (x: (typeof sorted)[number]) => x.components
+    .flatMap((component) => component.contributions.map((contribution) =>
+      `${component.objectiveId}:${contribution.courseId}:${contribution.feature}:${contribution.topicId ?? ''}`))
+    .sort()
+    .join('|');
+  const contributionGroupKey = (index: number, candidate: (typeof sorted)[number]) =>
+    `${allPrefixes[index].join(',')}::${contributionSignature(candidate)}`;
+  const firstContributionRank = new Map<string, number>();
+  for (let i = 0; i < sorted.length; i++) {
+    const groupKey = contributionGroupKey(i, sorted[i]);
+    if (!firstContributionRank.has(groupKey)) firstContributionRank.set(groupKey, i);
+  }
+  const courseSetKey = (candidate: (typeof sorted)[number]) =>
+    [...new Set(placedCourseIds(candidate.raw.state))].sort().join('|');
+  const courseSetGroupKey = (index: number, candidate: (typeof sorted)[number]) =>
+    `${allPrefixes[index].join(',')}::${courseSetKey(candidate)}`;
+  const firstCourseSetRank = new Map<string, number>();
+  for (let i = 0; i < sorted.length; i++) {
+    const groupKey = courseSetGroupKey(i, sorted[i]);
+    if (!firstCourseSetRank.has(groupKey)) firstCourseSetRank.set(groupKey, i);
+  }
+  const frontierOrdered = sorted.slice().sort((a, b) => {
+    const ai = originalRank.get(a.raw.identity)!;
+    const bi = originalRank.get(b.raw.identity)!;
+    if (compareScore(allPrefixes[ai], allPrefixes[bi]) !== 0) return ai - bi;
+    const aPreservedPrimary = a.raw.identity === preservedNeutralPrimaryIdentity;
+    const bPreservedPrimary = b.raw.identity === preservedNeutralPrimaryIdentity;
+    if (aPreservedPrimary !== bPreservedPrimary) return aPreservedPrimary ? -1 : 1;
+    if (globallyDominated[ai] !== globallyDominated[bi]) return globallyDominated[ai] ? 1 : -1;
+    const aFirstContribution = firstContributionRank.get(contributionGroupKey(ai, a)) === ai;
+    const bFirstContribution = firstContributionRank.get(contributionGroupKey(bi, b)) === bi;
+    if (aFirstContribution !== bFirstContribution) return aFirstContribution ? -1 : 1;
+    // Comparison cards should expose a different academic choice before a
+    // second timetable permutation of a course set already represented. This
+    // only reorders alternatives within an identical hard/policy prefix; rank
+    // zero remains the lexicographic recommendation and no weaker hard result
+    // can leapfrog a stronger one.
+    const aFirstCourseSet = firstCourseSetRank.get(courseSetGroupKey(ai, a)) === ai;
+    const bFirstCourseSet = firstCourseSetRank.get(courseSetGroupKey(bi, b)) === bi;
+    if (aFirstCourseSet !== bFirstCourseSet) return aFirstCourseSet ? -1 : 1;
+    return ai - bi;
+  });
+
+  const ranked = frontierOrdered
+    .slice(0, maxCandidates)
+    .map((x) => ({
+      ...x.raw,
+      groundedScore: x.grounded,
+      ...(objectiveSet.length ? { objectiveScores: x.components, composedUtility: utilityOf(x.vector) } : {}),
+    }));
+
+  // M3 — dominance is evaluated on the FULL vector, before any aggregation, and
+  // only among candidates that already tie on every hard/legality/distribution
+  // component. A dominated candidate can never outrank its dominator: the
+  // composed utility is monotone in every component, so this is a property of
+  // the ranking rather than a second pass over it.
+  const vectors = ranked.map((r) => r.objectiveScores?.map((c) => c.normalized) ?? []);
+  const prefixOf = (i: number) => ranked[i].scoreVector.slice(0, HARD_AND_POLICY_PREFIX);
+  const comparable = (i: number, j: number) => compareScore(prefixOf(i), prefixOf(j)) === 0;
+  /** C1 — retained per candidate, so the exposed alternative set can filter on it. */
+  const isDominated = objectiveSet.length
+    ? vectors.map((v, i) => vectors.some((w, j) => j !== i && comparable(i, j) && dominates(w, v)))
+    : ranked.map(() => false);
+
+  const composition: GroundedComposition | undefined = objectiveSet.length
+    ? (() => {
+        const nonDominated = isDominated.filter((d) => !d).length;
+        const tradesOff = (a: readonly number[], b: readonly number[]) =>
+          a.some((x, i) => x > b[i]) && b.some((y, i) => y > a[i]);
+        const unresolvedTradeoff = vectors.some((v, i) =>
+          !isDominated[i] && vectors.some((w, j) => j !== i && !isDominated[j] && comparable(i, j) && tradesOff(v, w)));
+        const anyPriority = objectiveSet.some((o) => typeof o.priority === 'number');
+        const best = vectors[0] ?? [];
+        const allEqual = vectors.every((v) => v.every((x, i) => Math.abs(x - best[i]) <= EPS));
+        const reason: ObjectiveSelectionReason =
+          allEqual && best.every((x) => x === 0) ? 'no_distinguishing_evidence'
+            : allEqual ? 'canonical_tie_break'
+            : objectiveSet.length === 1 ? 'single_objective'
+            : anyPriority ? 'explicit_priority'
+            : unresolvedTradeoff ? 'equal_confirmed_preferences'
+            : 'dominates_all_objectives';
+        return {
+          objectiveIds: objectiveSet.map((o) => o.id),
+          reason,
+          nonDominatedCount: nonDominated,
+          dominatedCount: isDominated.length - nonDominated,
+          unresolvedTradeoff,
+          ...(anyPriority ? { prioritySource: 'explicit_preference' as const } : {}),
+        };
+      })()
+    : undefined;
+
+  const primary = ranked[0];
+  const candidates: PlanCandidate[] = ranked.map((r, i) => ({
+    id: hashId(r.identity),
+    policy: input.policy,
+    state: r.state,
+    valid: true,
+    validationErrors: r.report.errors,
+    scoreVector: r.scoreVector,
+    normalizedIdentity: r.identity,
+    rank: i,
+    provenance: r.provenance,
+    differences: i === 0 ? [] : describeDifferences(primary.state, r.state, r.model),
+    profileVersion: input.profileVersion,
+    rationaleHe: r.rationaleHe,
+    ...(r.groundedScore !== undefined ? { groundedScore: r.groundedScore } : {}),
+    ...(r.objectiveScores !== undefined ? { objectiveScores: r.objectiveScores } : {}),
+    ...(r.composedUtility !== undefined ? { composedUtility: r.composedUtility } : {}),
+    nonDominated: !isDominated[i],
+  }));
+
+  return {
+    policy: input.policy,
+    candidates,
+    outcome: candidates.length ? 'proposal' : 'infeasible',
+    applyEligible: candidates.length > 0,
+    legacyIdentity: baseline.identity,
+    legacyState: baseline.state,
+    searchBudget: { maxCandidates, maxRuns, runsExecuted },
+    ...(composition ? { composition } : {}),
+  };
+}
+
+/**
+ * The primary recommendation: the highest-ranked retained candidate. The user's
+ * policy was already applied to EVERY candidate during generation, so selection
+ * no longer chooses between policies — it only reads rank 0.
+ */
+export function selectCandidate(set: CandidateSet): PlanCandidate | undefined {
+  return set.candidates[0];
+}
+
+/** Truthful provenance of the policy the whole set was planned under. */
+export function selectionReason(set: CandidateSet): SelectionReason {
+  if (set.policy === 'balanced') return 'confirmed_balanced';
+  if (set.policy === 'compact') return 'confirmed_compact';
+  return 'legacy_default';
+}
+
+// ── elicitation probe ────────────────────────────────────────────────────────
+
+export interface BalanceImpactProbe {
+  /** True when balanced and compact would produce materially different legal plans. */
+  materiallyDifferent: boolean;
+  /** The factual differences behind that judgment. Empty when they converge. */
+  differenceSummary: DiffFact[];
+}
+
+/**
+ * INTERNAL elicitation only. Runs the same stable planner under `balanced` and
+ * `compact` purely to answer "could the `semester_balance` answer still change
+ * the plan?". It retains NO candidates and produces no user-facing alternative:
+ * once the user has confirmed a policy, `generateCandidateSet` plans every
+ * candidate under that one policy and the opposing plan is never kept.
+ */
+export function probeBalanceImpact(input: {
+  buildModel: (policy: DistributionPolicy) => ConstraintModel;
+  initialState: PlanState;
+  pinnedHome?: Record<string, string>;
+}): BalanceImpactProbe {
+  const pinnedHome = input.pinnedHome ?? {};
+  const runPolicy = (policy: DistributionPolicy) => {
+    const model = input.buildModel(policy);
+    const worker = new PlannerWorker(model, structuredClone(input.initialState), WORKER_OPTS);
+    worker.run(500, 'greedy');
+    const state = worker.getPlan();
+    return { model, state, report: validateCandidate(state, model, pinnedHome), identity: normalizeIdentity(state) };
+  };
+
+  const bal = runPolicy('balanced');
+  const com = runPolicy('compact');
+  if (bal.identity === com.identity) return { materiallyDifferent: false, differenceSummary: [] };
+
+  const lb = loads(bal.state, bal.model);
+  const lc = loads(com.state, com.model);
+  const differenceSummary = ([
+    { kind: 'peak_load', balanced: peak(lb), compact: peak(lc) },
+    { kind: 'spread', balanced: spreadOf(lb), compact: spreadOf(lc) },
+    { kind: 'active_periods', balanced: activePeriods(lb), compact: activePeriods(lc) },
+  ] as DiffFact[]).filter((f) => f.balanced !== f.compact);
+
+  return { materiallyDifferent: differenceSummary.length > 0, differenceSummary };
+}
+
+/**
+ * Ask the single balance question ONLY when the answer could change the plan:
+ * the two policies produce materially different legal plans and the topic is not
+ * already answered. Answering never generates a plan by itself — the caller
+ * decides when to plan.
+ */
+export function shouldAskBalanceQuestion(probe: BalanceImpactProbe, opts: { alreadyAnswered: boolean }): boolean {
+  if (opts.alreadyAnswered) return false;
+  return probe.materiallyDifferent;
+}
+
+/** Course ids placed in a candidate — small helper for callers building lean summaries. */
+export function candidateCourseIds(candidate: PlanCandidate): string[] {
+  return [...new Set(placedCourseIds(candidate.state))].sort();
+}

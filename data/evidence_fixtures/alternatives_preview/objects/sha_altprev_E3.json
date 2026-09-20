@@ -1,0 +1,17 @@
+{
+  "institutionId": "tau.ac.il",
+  "courseId": "E3",
+  "academicYear": 2027,
+  "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=altprevE3&year=2027",
+  "contentHash": "sha_altprev_E3",
+  "retrievedAt": "2026-08-15T00:00:00.000Z",
+  "labeledFields": {
+    "מספר קורס": [
+      "E3"
+    ],
+    "אופן ההוראה": [
+      "שיעור"
+    ]
+  },
+  "text": "אופן ההוראה שיעור תוכן הקורס ומטרתו תכן הנדסי, הכרת זרוע רובוטית, קינמטיקה ישירה והפוכה, זיהוי מערכת, משוב כוח. מטלות הקורס"
+}

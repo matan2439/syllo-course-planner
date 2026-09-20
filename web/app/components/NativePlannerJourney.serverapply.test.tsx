@@ -1,0 +1,453 @@
+/**
+ * S5 — the journey's Apply is a SERVER action.
+ *
+ * The properties that matter are the ones the old client-only Apply could not
+ * have: the committed board changes only after the server says so, a refusal
+ * leaves it untouched, a refresh reads the server's board back, and the request
+ * carries a candidate NAME rather than a plan.
+ */
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import NativePlannerJourney from './NativePlannerJourney'
+import { boardResponseToModel } from '../../../shared/planner/adapters'
+import { createServerApplyStub } from './serverApplyStub'
+import type { GeneratePlanRequest, CommittedBoardState, ManualBoardEditResult } from '../../../shared/planner/api-client'
+import type { GeneratedPlanModel } from '../../../shared/planner/model'
+import { writeRepositoryDrag } from '../../lib/planner/drag-payload'
+
+const SEM_A = 'year_3_semester_a'
+const SEM_B = 'year_3_semester_b'
+const PROPOSAL_ID = 'prop_server_apply'
+const REC = 'cand_rec'
+const OTHER = 'cand_other'
+
+const BOARD = {
+  metadata: {
+    board_data_version: 'rev-1',
+    program_repository_courses: [
+      { course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 4, is_mandatory: false, offered_semesters: [SEM_A, SEM_B] },
+      { course_id: 'Z-1', name_he: 'קורס Z', weekly_hours: 4, is_mandatory: false, offered_semesters: [SEM_A, SEM_B] },
+    ],
+  },
+  semesters: [
+    { semester_id: SEM_A, courses: [{ course_id: 'X-1', name_he: 'קורס בסיס X', weekly_hours: 4, course_type: 'mandatory', is_mandatory: true }] },
+    { semester_id: SEM_B, courses: [] },
+  ],
+}
+
+const PLAN_REC = [{ semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] }]
+const PLAN_OTHER = [{ semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Z-1'] }]
+
+const alt = (candidateId: string, semesters: typeof PLAN_REC, recommended: boolean, labelHe: string) => ({
+  candidateId, normalizedIdentity: `id_${candidateId}`, recommended, applyable: true, semesters,
+  constraintFingerprint: 'cf_same', profileVersion: 1, snapshotId: 'snap_same', nonDominated: true,
+  composedUtility: 0.5, objectiveScores: [{ objectiveId: 'prefer_project_courses', normalized: 0.5 }],
+  labelHe, differencesHe: [], workload: { peakHours: 4, totalHours: 8, activePeriods: 2 },
+})
+
+function proposal(req: GeneratePlanRequest): GeneratedPlanModel {
+  const version = (req as unknown as { preference_profile?: { version: number } }).preference_profile?.version
+  return {
+    semesters: PLAN_REC,
+    moves: [], warningsHe: [], errors: [], blocked: false,
+    agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
+    alternatives: [alt(REC, PLAN_REC, true, 'המומלצת'), alt(OTHER, PLAN_OTHER, false, 'החלופה השנייה')],
+    proposal: {
+      proposalId: PROPOSAL_ID,
+      candidateIds: [REC, OTHER],
+      recommendedCandidateId: REC,
+      baseBoardVersion: null,
+      profileVersion: version ?? 0,
+      academicStatusDigest: 'as_test',
+      expiresAt: Date.now() + 3_600_000,
+    },
+  }
+}
+
+type Stub = ReturnType<typeof createServerApplyStub>
+
+async function renderReady(over: {
+  stub?: Stub
+  committedBoardFn?: (programId: string) => Promise<CommittedBoardState | null>
+  manualAddIntent?: { courseId: string; semesterIds: string[] } | null
+  onManualAddCancelled?: () => void
+  editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
+  establishPlanningContextFn?: (request: any) => Promise<{ academicStatusDigest: string }>
+  planningContextFn?: (programId: string) => Promise<any>
+  generateFn?: (request: GeneratePlanRequest) => Promise<GeneratedPlanModel>
+} = {}) {
+  const server = over.stub ?? createServerApplyStub({
+    proposalId: PROPOSAL_ID,
+    candidates: [
+      { candidateId: REC, semesters: PLAN_REC },
+      { candidateId: OTHER, semesters: PLAN_OTHER },
+    ],
+  })
+  render(
+    <NativePlannerJourney
+      programId="mechanical_engineering_2027"
+      getBoardFn={async () => boardResponseToModel(BOARD)}
+      generateFn={over.generateFn ?? (async (req: GeneratePlanRequest) => proposal(req))}
+      applyFn={server.applyFn}
+      committedBoardFn={over.committedBoardFn ?? server.committedBoardFn}
+      useAcademicDecisionAgent={false}
+      serverApply
+      manualAddIntent={over.manualAddIntent}
+      onManualAddCancelled={over.onManualAddCancelled}
+      editBoardFn={over.editBoardFn}
+      establishPlanningContextFn={over.establishPlanningContextFn}
+      planningContextFn={over.planningContextFn ?? (async () => null)}
+    />,
+  )
+  await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+  return server
+}
+
+const build = async () => {
+  fireEvent.click(screen.getByRole('button', { name: /^בנה תוכנית$/ }))
+  await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
+}
+const applyBtn = () => screen.getByRole('button', { name: /החל/ })
+const committed = () => screen.queryByLabelText('התוכנית הנוכחית')?.textContent ?? ''
+
+describe('S5 — Apply goes to the server, and only the server commits', () => {
+  test('manual add destination picker can be cancelled without a server edit', async () => {
+    const onManualAddCancelled = jest.fn()
+    const editBoardFn = jest.fn(async (): Promise<ManualBoardEditResult> => {
+      throw new Error('cancel must not edit the board')
+    })
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      onManualAddCancelled,
+      editBoardFn,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'ביטול הוספת קורס' }))
+
+    expect(onManualAddCancelled).toHaveBeenCalledTimes(1)
+    expect(editBoardFn).not.toHaveBeenCalled()
+  })
+
+  test('repository drop commits the chosen semester only through server authority', async () => {
+    let resolveEdit!: (result: ManualBoardEditResult) => void
+    const editBoardFn = jest.fn(() => new Promise<ManualBoardEditResult>((resolve) => { resolveEdit = resolve }))
+    await renderReady({
+      editBoardFn,
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_drop' }),
+    })
+    const transfer = {
+      values: new Map<string, string>(),
+      setData(type: string, value: string) { this.values.set(type, value) },
+      getData(type: string) { return this.values.get(type) ?? '' },
+      effectAllowed: '', dropEffect: '',
+    }
+    writeRepositoryDrag(transfer, 'Y-1', [SEM_A])
+
+    fireEvent.drop(screen.getByRole('region', { name: 'שנה ג׳ — סמסטר א׳' }), { dataTransfer: transfer })
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(editBoardFn).toHaveBeenCalledWith(expect.objectContaining({
+      operation: 'add_course', course_id: 'Y-1', semester_id: SEM_A,
+      expected_board_version: null, academic_status_digest: 'as_drop',
+    }))
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('קורס Y')
+
+    resolveEdit({
+      ok: true, replayed: false, operationId: 'edit_drop',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_drop', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    })
+    await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y'))
+  })
+
+  test('manual add before the first Build syncs context but never Generates', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const establishPlanningContextFn = jest.fn(async () => ({ academicStatusDigest: 'as_synced' }))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true, replayed: false, operationId: 'edit_prebuild',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    }))
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      generateFn, establishPlanningContextFn, editBoardFn,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(establishPlanningContextFn).toHaveBeenCalledTimes(1)
+    expect(generateFn).not.toHaveBeenCalled()
+    expect(editBoardFn.mock.calls[0][0].academic_status_digest).toBe('as_synced')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+  })
+
+  test('a server-rejected manual add returns visible invalid-drop feedback to the target semester', async () => {
+    const editBoardFn = jest.fn(async (): Promise<ManualBoardEditResult> => ({
+      ok: false,
+      code: 'SEMESTER_RULE_VIOLATION',
+      messageHe: 'הקורס אינו עומד בתנאי הסמסטר הזה.',
+      currentBoardVersion: null,
+    }))
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_B] },
+      editBoardFn,
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_rejected' }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר ב׳/ }))
+
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    const target = screen.getByRole('region', { name: 'שנה ג׳ — סמסטר ב׳' })
+    expect(target).toHaveAttribute('data-drop-state', 'rejected')
+    expect(within(target).getByRole('status')).toHaveTextContent('לא ניתן לשחרר כאן')
+    expect(screen.getByRole('alert')).toHaveTextContent('הקורס אינו עומד בתנאי הסמסטר הזה')
+  })
+
+  test('manual add commits the server board, sends no Generate, and stales the visible proposal', async () => {
+    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+    const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
+      ok: true as const, replayed: false, operationId: 'edit_test',
+      board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+        { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+      ] },
+    }))
+    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] }, editBoardFn, generateFn })
+    await build()
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+    await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
+    expect(generateFn).toHaveBeenCalledTimes(1)
+    expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
+      course_id: 'Y-1', semester_id: SEM_A, academic_status_digest: 'as_test',
+      expected_board_version: null,
+    }))
+    expect(JSON.stringify(editBoardFn.mock.calls[0][0])).not.toMatch(/semesters|owner/)
+    await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
+    expect(applyBtn()).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'בנה מחדש' }))
+    await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(2))
+    const rebuiltContext = generateFn.mock.calls[1][0].plan_context as any
+    expect(rebuiltContext.semesters.find((semester: any) => semester.id === SEM_A).courses)
+      .toEqual(expect.arrayContaining([{ course_id: 'Y-1' }]))
+    fireEvent.click(screen.getByRole('button', { name: 'דחה' }))
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+  })
+
+  test('manual remove is unavailable while an alternative is previewed on the board', async () => {
+    await renderReady({
+      committedBoardFn: async () => ({
+        programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+          { semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Y-1'] },
+        ],
+      }),
+    })
+    await build()
+
+    expect(screen.queryByRole('button', { name: 'הסר קורס Y מהלוח' })).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(applyBtn()).not.toBeDisabled()
+  })
+
+  test('keyboard move controls are unavailable while an alternative is previewed', async () => {
+    await renderReady({
+      committedBoardFn: async () => ({
+        programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
+          { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
+        ],
+      }),
+    })
+    await build()
+
+    expect(screen.queryByText('אפשרויות העברה עבור קורס Y')).toBeNull()
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(applyBtn()).not.toBeDisabled()
+  })
+
+  test('the request names a candidate and carries NO plan', async () => {
+    const server = await renderReady()
+    await build()
+    fireEvent.click(applyBtn())
+    await waitFor(() => expect(server.calls).toHaveLength(1))
+
+    const sent = server.calls[0]
+    expect(sent.proposal_id).toBe(PROPOSAL_ID)
+    expect(sent.candidate_id).toBe(REC)
+    expect(sent.expected_board_version).toBeNull()
+    expect(typeof sent.idempotency_key).toBe('string')
+    // Structurally incapable of choosing the committed content.
+    expect(JSON.stringify(sent)).not.toMatch(/courseIds|semesterId|X-1|Y-1/)
+  })
+
+  test('the committed board becomes the SERVER’s board, and its version is adopted', async () => {
+    const server = await renderReady()
+    await build()
+    fireEvent.click(applyBtn())
+
+    await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toBeInTheDocument())
+    expect(committed()).toContain('קורס Y')
+    expect(server.committed?.version).toBe('bv_1')
+
+    // A SECOND build+apply must send the version the server actually minted.
+    await build()
+    fireEvent.click(applyBtn())
+    await waitFor(() => expect(server.calls).toHaveLength(2))
+    expect(server.calls[1].expected_board_version).toBe('bv_1')
+  })
+
+  test('selecting B then applying commits the SERVER’s copy of B', async () => {
+    const server = await renderReady()
+    await build()
+    fireEvent.click(screen.getAllByRole('radio')[1])
+    await waitFor(() => expect(screen.getByLabelText('טיוטת תוכנית')).toHaveTextContent('קורס Z'))
+    fireEvent.click(applyBtn())
+
+    await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toBeInTheDocument())
+    expect(server.calls[0].candidate_id).toBe(OTHER)
+    expect(committed()).toContain('קורס Z')
+    expect(committed()).not.toContain('קורס Y')
+  })
+
+  test('selecting an alternative sends NOTHING to the server', async () => {
+    const server = await renderReady()
+    await build()
+    fireEvent.click(screen.getAllByRole('radio')[1])
+    fireEvent.click(screen.getAllByRole('radio')[0])
+    expect(server.calls).toHaveLength(0)
+  })
+
+  test('a pending Apply is announced and cannot be double-submitted', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const inner = createServerApplyStub({
+      proposalId: PROPOSAL_ID,
+      candidates: [{ candidateId: REC, semesters: PLAN_REC }, { candidateId: OTHER, semesters: PLAN_OTHER }],
+    })
+    const server: Stub = {
+      ...inner,
+      applyFn: async (req) => { await gate; return inner.applyFn(req) },
+      get calls() { return inner.calls },
+      get committed() { return inner.committed },
+    } as Stub
+
+    await renderReady({ stub: server })
+    await build()
+    fireEvent.click(applyBtn())
+
+    await waitFor(() => expect(screen.getByText('מחיל את התוכנית…')).toBeInTheDocument())
+    expect(applyBtn()).toBeDisabled()
+    fireEvent.click(applyBtn())     // a second click while in flight
+    release()
+    await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toBeInTheDocument())
+    expect(inner.calls).toHaveLength(1)
+  })
+})
+
+describe('S5 — a refusal leaves the committed board alone', () => {
+  test('shows a manual drop refusal at the top of the board feedback area', async () => {
+    await renderReady({
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_drop' }),
+      editBoardFn: async (): Promise<ManualBoardEditResult> => ({
+        ok: false, code: 'PLAN_INVALID', messageHe: 'הקורס אינו חוקי בסמסטר שנבחר.',
+      }),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('הקורס אינו חוקי בסמסטר שנבחר.')
+    expect(alert).toHaveClass('planner-board-feedback')
+    expect(Boolean(alert.compareDocumentPosition(screen.getByLabelText('התוכנית הנוכחית')) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+  })
+
+  test('a typed server refusal is shown and nothing is committed', async () => {
+    const server = createServerApplyStub({
+      proposalId: PROPOSAL_ID,
+      candidates: [{ candidateId: REC, semesters: PLAN_REC }],
+      reject: { code: 'PROPOSAL_SUPERSEDED', messageHe: 'נבנתה הצעה חדשה יותר. יש לבנות מחדש ולבחור שוב.' },
+    })
+    await renderReady({ stub: server })
+    await build()
+    fireEvent.click(applyBtn())
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('נבנתה הצעה חדשה יותר'))
+    // The board was never optimistically replaced.
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(screen.getByLabelText('טיוטת תוכנית')).toBeInTheDocument() // still inspectable
+    expect(server.committed).toBeNull()
+  })
+
+  test('a NETWORK failure leaves the committed board unchanged and says so', async () => {
+    const server = createServerApplyStub({
+      proposalId: PROPOSAL_ID,
+      candidates: [{ candidateId: REC, semesters: PLAN_REC }],
+      throwOnApply: true,
+    })
+    await renderReady({ stub: server })
+    await build()
+    fireEvent.click(applyBtn())
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/שגיאת רשת/))
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
+    expect(server.committed).toBeNull()
+    // …and it can be retried, because nothing was consumed.
+    expect(applyBtn()).not.toBeDisabled()
+  })
+
+  test('no rejection exposes a stack trace or an internal id', async () => {
+    const server = createServerApplyStub({
+      proposalId: PROPOSAL_ID,
+      candidates: [{ candidateId: REC, semesters: PLAN_REC }],
+      reject: { code: 'BOARD_VERSION_CONFLICT', messageHe: 'התוכנית הנוכחית התעדכנה בינתיים.' },
+    })
+    await renderReady({ stub: server })
+    await build()
+    fireEvent.click(applyBtn())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    const text = screen.getByRole('alert').textContent ?? ''
+    expect(text).not.toMatch(/Error|stack|prop_|cand_|at Object/)
+  })
+})
+
+describe('S5 — refresh reads the server’s board back', () => {
+  test('a session that already committed sees its board on mount, not the catalog default', async () => {
+    // Models a page reload: the server already holds a committed board.
+    const saved: CommittedBoardState = {
+      programId: 'mechanical_engineering_2027', version: 'bv_7', semesters: PLAN_OTHER,
+    }
+    await renderReady({ committedBoardFn: async () => saved })
+
+    // The committed board is the SERVER's, not the catalog's original placement.
+    await waitFor(() => expect(screen.getByText('קורס Z')).toBeInTheDocument())
+    expect(screen.queryByText('קורס Y')).toBeNull()
+  })
+
+  test('the restored version is what a later Apply sends as its base', async () => {
+    const server = createServerApplyStub({
+      proposalId: PROPOSAL_ID,
+      candidates: [{ candidateId: REC, semesters: PLAN_REC }],
+    })
+    await renderReady({
+      stub: server,
+      committedBoardFn: async () => ({
+        programId: 'mechanical_engineering_2027', version: 'bv_7', semesters: PLAN_OTHER,
+      }),
+    })
+    await build()
+    fireEvent.click(applyBtn())
+    await waitFor(() => expect(server.calls).toHaveLength(1))
+    expect(server.calls[0].expected_board_version).toBe('bv_7')
+  })
+
+  test('a session with NO committed board falls back to the catalog honestly', async () => {
+    await renderReady({ committedBoardFn: async () => null })
+    expect(screen.getByText('קורס בסיס X')).toBeInTheDocument()
+    expect(screen.queryByText('קורס Z')).toBeNull()
+  })
+
+  test('a failure to read the committed board does not hide the catalog', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    await renderReady({ committedBoardFn: async () => { throw new Error('offline') } })
+    expect(screen.getByText('קורס בסיס X')).toBeInTheDocument()
+    spy.mockRestore()
+  })
+})

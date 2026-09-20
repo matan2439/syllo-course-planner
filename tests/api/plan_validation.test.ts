@@ -338,6 +338,69 @@ describe('validatePlanProposal', () => {
     expect(result.warnings.filter(w => w.includes('שעות שבועיות'))).toEqual([]);
   });
 
+  // Phase 1b — hardCap/softLoadMax/absoluteMaxReasonable are now sourced from
+  // ctx (populated from ConstraintModel), falling back to load_constants.ts's
+  // defaults when ctx omits them — so a different PolicyProvider/program can
+  // override thresholds without editing this shared file.
+  it('Phase 1b — a raised ctx.hardCap lets 27h through (no longer blocks at the default 26)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      hardCap: 40,
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('Phase 1b — a raised ctx.absoluteMaxReasonable lets 31h through (no longer always-blocking at the default 30)', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      hardCap: 40, absoluteMaxReasonable: 50,
+      overloadAccepted: true, overloadConfirmedAt: Date.now(),
+      courses: { A: { hours: 31 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('Phase 1b — a lowered ctx.softLoadMax produces the mild-overload warning earlier than the default 22', () => {
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      softLoadMax: 5,
+      courses: { A: { hours: 10 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some(w => w.includes('10') && w.includes('מעל הטווח המומלץ'))).toBe(true);
+  });
+
+  it('Phase 1b — omitting hardCap/softLoadMax/absoluteMaxReasonable from ctx falls back to load_constants.ts defaults (no behavior change)', () => {
+    // Identical scenario to "27h blocks without overload acceptance" above, with ctx
+    // omitting the new fields entirely — pins that the default path is unchanged.
+    const ctx: PlanValidationContext = {
+      completedCourseIds: new Set(),
+      courses: { A: { hours: 27 } },
+    };
+    const proposal: PlanProposal = {
+      ...BASE_PROPOSAL,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['A'] }],
+    };
+    const result = validatePlanProposal(proposal, ctx);
+    expect(result.errors.some(e => e.includes('27') && e.includes('המגבלה הקשיחה'))).toBe(true);
+  });
+
   it('rejects a plan that omits not-completed mandatory courses', () => {
     const ctx: PlanValidationContext = {
       ...BASE_CTX,
@@ -618,5 +681,65 @@ describe('Request A PART E — "אפשר חריגה בעומס" override (overlo
     expect(result.errors).toEqual([]);
     // the configured cap itself is untouched — only the error→warning downgrade changed
     expect(ctx.maxHoursPerSemester).toBe(14);
+  });
+});
+
+// ── Dynamic semester IDs ──────────────────────────────────────────────────────
+
+describe('normalizePlanProposal — knownSemesterIds option', () => {
+  it('keeps a non-KNOWN semester when it is in knownSemesterIds', () => {
+    const proposal: PlanProposal = {
+      semesters: [{ semester_id: 'year_2_semester_a', course_ids: ['EARLY'] }],
+      moves: [], warnings_he: [], rationale_he: '', requirements_status: [],
+    };
+    const { proposal: norm, dropped } = normalizePlanProposal(proposal, { knownSemesterIds: ['year_2_semester_a', 'year_3_semester_a'] });
+    expect(dropped).toHaveLength(0);
+    const sem = norm.semesters.find(s => s.semester_id === 'year_2_semester_a');
+    expect(sem).toBeDefined();
+    expect(sem?.course_ids).toContain('EARLY');
+  });
+
+  it('drops a course in a semester not in knownSemesterIds', () => {
+    const proposal: PlanProposal = {
+      semesters: [{ semester_id: 'year_2_semester_a', course_ids: ['EARLY'] }],
+      moves: [], warnings_he: [], rationale_he: '', requirements_status: [],
+    };
+    // default knownSemesterIds = KNOWN_SEMESTER_IDS (years 3-4 only)
+    const { dropped } = normalizePlanProposal(proposal);
+    expect(dropped.map(d => d.course_id)).toContain('EARLY');
+  });
+});
+
+describe('validatePlanState — dynamic knownSemesterIds via model', () => {
+  it('validates courses in year_2_semester_a when model includes that semester', () => {
+    // This test exercises the planner_validate path — import buildValidationContext
+    // and validatePlanState directly to confirm year_2 semester is not silently dropped.
+    const { validatePlanState, buildValidationContext } = require('../../api/ai/planner_validate');
+    const { emptyState } = require('../../api/ai/planner_types');
+
+    const knownSemesterIds = ['year_2_semester_a', 'year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b'];
+    const profiles = new Map();
+    profiles.set('EARLY', {
+      course_id: 'EARLY', hours: 3, is_mandatory: true, prerequisites: [],
+      effective_allowed_semesters: ['year_2_semester_a'],
+    });
+
+    const model: any = {
+      profiles, knownSemesterIds,
+      completedCourseIds: new Set(),
+      requiredMandatoryCourseIds: ['EARLY'],
+      categories: [], degreeRequiredHours: 3, priorHours: 0,
+      maxHoursPerSemester: 22, hardCap: 26,
+      disallowedCourseIds: new Set(), pinnedCourseIds: new Set(), wantedCourseIds: new Set(),
+    };
+
+    const state = emptyState(knownSemesterIds);
+    state.semesters['year_2_semester_a'] = ['EARLY'];
+
+    // Without dynamic semester IDs, validatePlanState would not check year_2_semester_a courses.
+    // With the fix, the proposal built from model.knownSemesterIds includes year_2_semester_a.
+    const result = validatePlanState(state, model, {});
+    // EARLY is placed in its only legal semester — no errors expected
+    expect(result.errors).toHaveLength(0);
   });
 });

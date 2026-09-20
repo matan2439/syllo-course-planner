@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "contentHash": "sha_topicpreview_E1",
+      "courseId": "E1",
+      "academicYear": 2027,
+      "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=topicpreviewE1&year=2027",
+      "retrievedAt": "2026-08-15T00:00:00.000Z",
+      "institutionId": "tau.ac.il",
+      "extractionVersion": "1.0.0"
+    },
+    {
+      "contentHash": "sha_topicpreview_E2",
+      "courseId": "E2",
+      "academicYear": 2027,
+      "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=topicpreviewE2&year=2027",
+      "retrievedAt": "2026-08-15T00:00:00.000Z",
+      "institutionId": "tau.ac.il",
+      "extractionVersion": "1.0.0"
+    },
+    {
+      "contentHash": "sha_topicpreview_E3",
+      "courseId": "E3",
+      "academicYear": 2027,
+      "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=topicpreviewE3&year=2027",
+      "retrievedAt": "2026-08-15T00:00:00.000Z",
+      "institutionId": "tau.ac.il",
+      "extractionVersion": "1.0.0"
+    },
+    {
+      "contentHash": "sha_topicpreview_E4",
+      "courseId": "E4",
+      "academicYear": 2027,
+      "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=topicpreviewE4&year=2027",
+      "retrievedAt": "2026-08-15T00:00:00.000Z",
+      "institutionId": "tau.ac.il",
+      "extractionVersion": "1.0.0"
+    }
+  ]
+}

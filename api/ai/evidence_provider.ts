@@ -1,0 +1,336 @@
+/**
+ * K9B — the KnowledgeCapability boundary that PREPARES evidence for one Generate
+ * request, before any planning starts.
+ *
+ * The whole point of this module is ownership. Generate calls `prepareEvidence`
+ * exactly once, and the resulting immutable snapshot is handed to candidate
+ * generation. Candidates never acquire, resolve or refresh evidence themselves,
+ * so:
+ *   - every candidate in a request is scored against the SAME snapshotId;
+ *   - no network call can occur inside PlannerWorker.step, a rollout, a score
+ *     comparison, candidate ranking, or Apply — this boundary is the only place
+ *     acquisition could ever happen, and it runs strictly before all of them;
+ *   - a run is reproducible from the snapshot alone.
+ *
+ * The default provider performs NO acquisition. It reads whatever prepared
+ * evidence a caller supplies (K6 backs this with a durable cache; K7 populates
+ * that cache out-of-band). With nothing supplied it returns an EMPTY snapshot,
+ * which is inert by construction — so the feature is default-off and a request
+ * without evidence behaves exactly as it did before this module existed.
+ *
+ * ── Coverage is not a signal ────────────────────────────────────────────────
+ * A course having a syllabus on file must never, by itself, make a candidate
+ * rank higher. `scoreCandidateOnObjective` (grounded_objectives.ts) only counts
+ * a feature that is affirmatively TRUE, so a covered course whose feature is
+ * `false` scores exactly the same as an uncovered course: zero. This module
+ * reports coverage truthfully for disclosure, and coverage never enters a score.
+ */
+
+import { buildEvidenceSnapshot, type EvidenceSnapshot, type SyllabusDocument } from './syllabus_source';
+import { aggregateCourseLevelFeature, groupIdOfDocument } from './feature_applicability';
+import { RuleBasedFeatureExtractor, FEATURE_EXTRACTION_VERSION, type CourseFeatures, type FeatureExtractor } from './course_features';
+import { extractCourseTopics, supportedTopics, type TopicId } from './course_topics';
+import type { CourseTopicSupport } from './grounded_objectives';
+
+/**
+ * Product-owned policy for DESCRIPTIVE official-syllabus evidence only.
+ * Administrative program facts never flow through this provider.
+ */
+export const RECENT_OFFICIAL_SYLLABUS_POLICY = Object.freeze({ maxPriorAcademicYears: 2 });
+
+/** Truthful, disclosure-only summary of what the snapshot does and does not cover. */
+export interface EvidenceCoverage {
+  snapshotId: string;
+  extractionVersion: string;
+  /** Academic years present in the snapshot. */
+  academicYears: Array<number | string>;
+  /** Course ids the request asked about. */
+  requestedCourseCount: number;
+  /** Of those, how many have an official document in the snapshot. */
+  coveredCourseCount: number;
+  /** Requested course ids with no document at all. */
+  missingCourseIds: string[];
+  /** Covered courses whose grounded feature is genuinely unknown. */
+  unknownFeatureCourseIds: string[];
+  /** Course ids whose evidence is stale for the requested year. */
+  staleCourseIds: string[];
+  /** Descriptive evidence intentionally sourced from an allowed prior year. */
+  historicalCourseIds: string[];
+  /** Course ids with an unresolved authoritative conflict. */
+  conflictingCourseIds: string[];
+  /**
+   * K7.5 — courses whose observed sections genuinely disagree on the feature.
+   * Disclosed truthfully; contributes NOTHING to ranking, because the candidate
+   * does not select a section.
+   */
+  variesBySectionCourseIds: string[];
+  /**
+   * T4 — courses whose official content section yields no normalized topic.
+   * Disclosed so the absence is visible; it never biases ranking.
+   */
+  topicUnknownCourseIds: string[];
+}
+
+export interface PreparedEvidence {
+  snapshot: EvidenceSnapshot;
+  /**
+   * COURSE-LEVEL features, safely aggregated across sections — the only view
+   * ranking may consult, because a candidate selects a course and a period, not
+   * a group.
+   */
+  features: Map<string, CourseFeatures>;
+  /**
+   * K7.5 — the underlying SECTION-level facts, retained in full. Not used for
+   * ranking today; a future section-selecting planner binds evidence to the
+   * exact chosen group from here.
+   */
+  sectionFeatures: Map<string, SectionFeature[]>;
+  /**
+   * T4 — COURSE-LEVEL supported topics, from the official content section.
+   *
+   * No group aggregation is applied, and deliberately so: the acquired corpus
+   * publishes an identical content section for every group of a course, so the
+   * fact is course-scoped by measurement (see the T2 coverage matrix). Should a
+   * future corpus contradict that, the conflict surfaces here as a union rather
+   * than as a silent per-group override.
+   */
+  topics: Map<string, CourseTopicSupport>;
+  coverage: EvidenceCoverage;
+}
+
+export interface PrepareEvidenceInput {
+  /** The courses this request could possibly place. */
+  courseIds: string[];
+  /** The academic year the plan is for — evidence for another year is stale. */
+  academicYear: number | string;
+  /** Explicit opt-in for descriptive-only use of recent prior-year syllabi. */
+  descriptiveFreshnessPolicy?: { maxPriorAcademicYears: number };
+  /**
+   * Already-acquired official documents. Supplied by the durable cache (K6) or
+   * by a test. This function performs NO acquisition of its own.
+   */
+  documents?: SyllabusDocument[];
+  /** Course ids known to carry an unresolved authoritative conflict. */
+  conflictingCourseIds?: string[];
+  extractor?: FeatureExtractor;
+  /**
+   * K7.5 — the AUTHORITATIVE complete group/section list per course, from the
+   * official timetable source. Without it, section-level evidence can never be
+   * aggregated to a course-level `true`/`false`, because completeness cannot be
+   * established. Absent ⇒ every multi-section course resolves to unknown or
+   * varies_by_section, which is the safe direction.
+   */
+  groupUniverse?: Record<string, string[]>;
+}
+
+/** One section's extracted facts, retained for a future section-selecting planner. */
+export interface SectionFeature {
+  groupId: string;
+  laboratory: string;
+  /** K8 — the project/design reading of the same official delivery-mode field. */
+  projectDelivery: string;
+  contentHash: string;
+  sourceUrl: string;
+}
+
+const EMPTY_EXTRACTOR = new RuleBasedFeatureExtractor();
+
+/**
+ * Build the one immutable evidence snapshot for a request, plus the features
+ * derived from it and a truthful coverage summary.
+ *
+ * Stale handling: a document whose academic year differs from the request's is
+ * NOT used for features — it is counted as stale and its course is treated as
+ * uncovered. An older syllabus can never silently apply to another year.
+ */
+export function prepareEvidence(input: PrepareEvidenceInput): PreparedEvidence {
+  const extractor = input.extractor ?? EMPTY_EXTRACTOR;
+  const requested = [...new Set(input.courseIds)].sort();
+  const requestedSet = new Set(requested);
+  const all = input.documents ?? [];
+
+  // Only documents for a REQUESTED course are relevant. Exact-year evidence is
+  // preferred. A caller may explicitly permit recent PRIOR-year syllabi for
+  // this descriptive evidence boundary; future years and invalid years never
+  // apply, and no administrative fact is read in this module.
+  const relevant = all.filter((d) => requestedSet.has(d.courseId));
+  const targetYear = Number(input.academicYear);
+  const maxPriorYears = input.descriptiveFreshnessPolicy?.maxPriorAcademicYears;
+  const applicable: SyllabusDocument[] = [];
+  const historicalCourseIds: string[] = [];
+  for (const courseId of requested) {
+    const docs = relevant.filter((d) => d.courseId === courseId);
+    const exact = docs.filter((d) => String(d.academicYear) === String(input.academicYear));
+    if (exact.length) {
+      applicable.push(...exact);
+      continue;
+    }
+    if (!Number.isFinite(targetYear) || !Number.isInteger(maxPriorYears) || maxPriorYears! < 0) continue;
+    const eligibleYears = docs
+      .map((d) => Number(d.academicYear))
+      .filter((year) => Number.isFinite(year) && year < targetYear && targetYear - year <= maxPriorYears!);
+    if (!eligibleYears.length) continue;
+    const selectedYear = Math.max(...eligibleYears);
+    applicable.push(...docs.filter((d) => Number(d.academicYear) === selectedYear));
+    historicalCourseIds.push(courseId);
+  }
+  const applicableSet = new Set(applicable);
+  const staleCourseIds = [
+    ...new Set(relevant.filter((d) => !applicableSet.has(d)).map((d) => d.courseId)),
+  ].sort();
+
+  const conflicting = [...new Set(input.conflictingCourseIds ?? [])].sort();
+  const conflictingSet = new Set(conflicting);
+
+  // A conflicting course's evidence is retained in the snapshot for disclosure
+  // but never turned into a feature — an unresolved authoritative conflict must
+  // not silently bias ranking in either direction.
+  const usable = applicable.filter((d) => !conflictingSet.has(d.courseId));
+
+  const snapshot = buildEvidenceSnapshot(applicable);
+
+  // K7.5 — group documents by course, extract EACH section faithfully, then
+  // aggregate to the course level under the safe rules. Previously the last (or
+  // first) document simply won, which let one favourable group define the whole
+  // course — the exact defect the live acquisition exposed.
+  const byCourse = new Map<string, SyllabusDocument[]>();
+  for (const d of usable) {
+    const list = byCourse.get(d.courseId) ?? [];
+    list.push(d);
+    byCourse.set(d.courseId, list);
+  }
+
+  const features = new Map<string, CourseFeatures>();
+  const sectionFeatures = new Map<string, SectionFeature[]>();
+  const variesBySectionCourseIds: string[] = [];
+
+  for (const [courseId, docs] of byCourse) {
+    const extracted = docs.map((d) => ({ doc: d, features: extractor.extract(d), groupId: groupIdOfDocument(d) }));
+
+    sectionFeatures.set(
+      courseId,
+      extracted
+        .filter((e) => e.groupId !== undefined)
+        .map((e) => ({
+          groupId: e.groupId!,
+          laboratory: String(e.features.laboratory.value),
+          projectDelivery: String(e.features.projectDelivery.value),
+          contentHash: e.doc.contentHash,
+          sourceUrl: e.doc.sourceUrl,
+        }))
+        .sort((a, b) => (a.groupId < b.groupId ? -1 : 1)),
+    );
+
+    // Every delivery-derived feature is aggregated under the SAME K7.5 rules, so
+    // a second objective can never acquire weaker applicability than the first.
+    const aggregateOf = (pick: (f: CourseFeatures) => CourseFeatures['laboratory']) =>
+      aggregateCourseLevelFeature({
+        observations: extracted.map((e) => ({
+          ...(e.groupId !== undefined ? { groupId: e.groupId } : {}),
+          value: pick(e.features).value,
+        })),
+        ...(input.groupUniverse?.[courseId] ? { groupUniverse: input.groupUniverse[courseId] } : {}),
+      });
+
+    const aggregated = aggregateOf((f) => f.laboratory);
+    const aggregatedProject = aggregateOf((f) => f.projectDelivery);
+    const aggregatedAssessmentProject = aggregateOf((f) => f.project);
+
+    if (
+      aggregated.value === 'varies_by_section'
+      || aggregatedProject.value === 'varies_by_section'
+      || aggregatedAssessmentProject.value === 'varies_by_section'
+    ) {
+      variesBySectionCourseIds.push(courseId);
+    }
+
+    // The course-level view carries the AGGREGATED value. Only an unambiguous
+    // `true` can ever contribute to ranking (grounded_objectives.ts), so
+    // 'varies_by_section' and 'unknown' are both inert by construction.
+    const base = extracted[0].features;
+    /** Replace a feature with its safely-aggregated course-level value. */
+    const applied = (
+      f: CourseFeatures['laboratory'],
+      agg: ReturnType<typeof aggregateCourseLevelFeature>,
+    ): CourseFeatures['laboratory'] => ({
+      ...f,
+      value: agg.value as CourseFeatures['laboratory']['value'],
+      // An aggregate that is not a definite boolean supports no claim at all.
+      ...(agg.value === true || agg.value === false ? {} : { confidence: 0, evidence: [] }),
+      rule: `${f.rule}+aggregate:${agg.reason}`,
+    });
+
+    features.set(courseId, {
+      ...base,
+      laboratory: applied(base.laboratory, aggregated),
+      projectDelivery: applied(base.projectDelivery, aggregatedProject),
+      project: applied(base.project, aggregatedAssessmentProject),
+    });
+  }
+
+  // T4 — topics from the SAME usable documents, so features and topics can never
+  // come from different snapshots.
+  const topics = new Map<string, CourseTopicSupport>();
+  for (const [courseId, docs] of byCourse) {
+    const extractions = docs.map((d) => extractCourseTopics(d, { academicYear: d.academicYear }));
+    const ids: ReadonlySet<TopicId> = supportedTopics(extractions);
+    const anchor = docs.find((d) => extractions[docs.indexOf(d)].contentAvailable) ?? docs[0];
+    const evidenceByTopic = new Map<TopicId, { sourceRef: string; academicYear: number | string; rawWording: string }>();
+    const assertions = docs.flatMap((doc, index) =>
+      extractions[index].assertions
+        .filter((assertion) => assertion.status === 'current' && !assertion.ambiguous)
+        .map((assertion) => ({ assertion, doc })),
+    ).sort((a, b) =>
+      a.assertion.topicId < b.assertion.topicId ? -1
+        : a.assertion.topicId > b.assertion.topicId ? 1
+          : a.doc.sourceUrl < b.doc.sourceUrl ? -1
+            : a.doc.sourceUrl > b.doc.sourceUrl ? 1
+              : a.assertion.rawWording < b.assertion.rawWording ? -1
+                : a.assertion.rawWording > b.assertion.rawWording ? 1 : 0,
+    );
+    for (const { assertion, doc } of assertions) {
+      if (evidenceByTopic.has(assertion.topicId)) continue;
+      evidenceByTopic.set(assertion.topicId, {
+        sourceRef: doc.sourceUrl,
+        academicYear: doc.academicYear,
+        rawWording: assertion.rawWording,
+      });
+    }
+    topics.set(courseId, {
+      topicIds: ids,
+      sourceRef: anchor.sourceUrl,
+      academicYear: anchor.academicYear,
+      evidenceByTopic,
+    });
+  }
+  const topicUnknownCourseIds = [...topics.entries()].filter(([, t]) => t.topicIds.size === 0).map(([id]) => id).sort();
+
+  const unknownFeatureCourseIds = [...features.entries()]
+    .filter(([, f]) => f.laboratory.value === 'unknown' && f.projectDelivery.value === 'unknown')
+    .map(([id]) => id)
+    .sort();
+
+  const coveredIds = new Set(snapshot.byCourseId.keys());
+  const missingCourseIds = requested.filter((id) => !coveredIds.has(id));
+
+  return {
+    snapshot,
+    features,
+    sectionFeatures,
+    topics,
+    coverage: {
+      snapshotId: snapshot.snapshotId,
+      extractionVersion: FEATURE_EXTRACTION_VERSION,
+      academicYears: [...new Set(snapshot.documents.map((d) => d.academicYear))].sort(),
+      requestedCourseCount: requested.length,
+      coveredCourseCount: coveredIds.size,
+      missingCourseIds,
+      unknownFeatureCourseIds,
+      staleCourseIds,
+      historicalCourseIds: historicalCourseIds.sort(),
+      conflictingCourseIds: conflicting,
+      variesBySectionCourseIds: variesBySectionCourseIds.sort(),
+      topicUnknownCourseIds,
+    },
+  };
+}

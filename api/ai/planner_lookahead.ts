@@ -18,6 +18,7 @@
 import { scorePlan, compareScore, applyMutation, degreeHours as computeDegreeHours } from './planner_goals';
 import { enumerateActions, legalSemestersFor, isExcluded } from './planner_actions';
 import { validatePlanState } from './planner_validate';
+import type { PlanValidationContext } from './plan_validation';
 import {
   type ConstraintModel,
   type PlanState,
@@ -87,7 +88,12 @@ export function projectFeasibility(state: PlanState, model: ConstraintModel): Fe
  * trace, no lookahead) — this is the rollout used to estimate a reachable final
  * plan. Does NOT itself recurse into lookahead, so it is cheap and terminating.
  */
-export function greedyComplete(state: PlanState, model: ConstraintModel, maxSteps = 200): PlanState {
+export function greedyComplete(
+  state: PlanState,
+  model: ConstraintModel,
+  maxSteps = 200,
+  validationContext?: PlanValidationContext,
+): PlanState {
   let cur = cloneState(state);
   for (let i = 0; i < maxSteps; i++) {
     const current = scorePlan(cur, model);
@@ -96,7 +102,7 @@ export function greedyComplete(state: PlanState, model: ConstraintModel, maxStep
     for (const mut of enumerateActions(cur, model)) {
       const next = applyMutation(cur, mut);
       if (!next) continue;
-      if (!validatePlanState(next, model).valid) continue; // legal results only
+      if (!validatePlanState(next, model, {}, validationContext).valid) continue; // legal results only
       const vec = scorePlan(next, model);
       if (compareScore(vec, bestVec) > 0) {
         best = next;
@@ -110,6 +116,11 @@ export function greedyComplete(state: PlanState, model: ConstraintModel, maxStep
 }
 
 /** The lexicographic score of the best plan reachable from `state` via greedy rollout. */
-export function estimateFinalScore(state: PlanState, model: ConstraintModel, maxSteps = 200): number[] {
-  return scorePlan(greedyComplete(state, model, maxSteps), model);
+export function estimateFinalScore(
+  state: PlanState,
+  model: ConstraintModel,
+  maxSteps = 200,
+  validationContext?: PlanValidationContext,
+): number[] {
+  return scorePlan(greedyComplete(state, model, maxSteps, validationContext), model);
 }

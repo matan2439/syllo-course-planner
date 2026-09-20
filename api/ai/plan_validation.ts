@@ -12,6 +12,34 @@ import { z } from 'zod';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE, SOFT_LOAD_MAX } from './load_constants';
 
+/**
+ * Stable substrings of this file's own overload/annual-partial-placement
+ * error messages (items 5 and 5b below), shared with generate-plan.ts's
+ * legalityGate so it can exclude these two categories from the errors it
+ * re-surfaces (they already have their own independently-worded,
+ * longer-standing gates — overloadGate/annualCompletenessGate) without
+ * hand-duplicating the message text and risking drift.
+ */
+export const OVERLOAD_ERROR_MARKER = 'שעות שבועיות';
+export const ANNUAL_PARTIAL_PLACEMENT_MARKER = 'שנתי המשובץ בחלק';
+
+/**
+ * Stable substring of this file's "currently_taking/planned course must not
+ * be (re-)proposed" message (item 2a below) — shared with generate-plan.ts's
+ * legalityGate so it can exclude this category too. Unlike the other
+ * legality checks that gate re-derives, this one fires on entirely normal,
+ * expected client state: the real board legitimately keeps a currently-taking
+ * course visible in its placed semester slot (buildPlanContext in
+ * the retired single-file planner filters completed courses out of plan_context
+ * before sending, but deliberately keeps currently-taking ones so they still
+ * render on the board) while also reporting it in
+ * personal_status.currently_taking. That combination is not a planner
+ * mistake — it is how every actively-enrolled student's board looks — so
+ * treating it as a blocking legality violation would false-positive-block an
+ * applicable plan for essentially any current student (Codex review, PR #48).
+ */
+export const CURRENTLY_TAKING_REUSE_ERROR_MARKER = 'כבר מתוכנן/נלמד כעת על ידי המשתמש';
+
 export const planMoveSchema = z.object({
   course_id: z.string(),
   from: z.string().nullable().optional(),
@@ -95,15 +123,21 @@ export function normalizeSemesterId(raw: string | null | undefined): string | nu
  * reported via the returned `dropped` list, so the caller can surface a
  * Hebrew warning and treat those courses as unplaced.
  */
-export function normalizePlanProposal(proposal: PlanProposal): {
+export function normalizePlanProposal(
+  proposal: PlanProposal,
+  opts?: { knownSemesterIds?: string[] },
+): {
   proposal: PlanProposal;
   dropped: Array<{ course_id: string; raw_semester_id: string }>;
 } {
+  const knownIds: readonly string[] = opts?.knownSemesterIds ?? KNOWN_SEMESTER_IDS;
   const dropped: Array<{ course_id: string; raw_semester_id: string }> = [];
   const bySemester = new Map<string, string[]>();
 
   for (const sem of proposal.semesters) {
-    const normalized = normalizeSemesterId(sem.semester_id);
+    // First try canonical normalization; if that fails, check if raw id is in knownIds directly.
+    const normalized = normalizeSemesterId(sem.semester_id) ??
+      (knownIds.includes(sem.semester_id.trim()) ? sem.semester_id.trim() : null);
     if (!normalized) {
       for (const cid of sem.course_ids) dropped.push({ course_id: cid, raw_semester_id: sem.semester_id });
       continue;
@@ -123,7 +157,7 @@ export function normalizePlanProposal(proposal: PlanProposal): {
   return {
     proposal: {
       ...proposal,
-      semesters: KNOWN_SEMESTER_IDS
+      semesters: knownIds
         .filter(id => bySemester.has(id))
         .map(id => ({ semester_id: id, course_ids: bySemester.get(id)! })),
       moves: proposal.moves.map(m => ({ ...m, from: normalizeSide(m.from), to: normalizeSide(m.to) ?? m.to })),
@@ -145,6 +179,10 @@ export interface PlanValidationCourseInfo {
   prerequisites?: string[];
   /** True if this is a mandatory (חובה) course. */
   is_mandatory?: boolean;
+  /** True for a year-long course that occupies every one of spans_semesters together (never a duplicate). */
+  is_annual?: boolean;
+  /** The semester ids an is_annual course spans together. */
+  spans_semesters?: string[] | null;
 }
 
 export interface PlanValidationContext {
@@ -152,8 +190,10 @@ export interface PlanValidationContext {
   completedCourseIds: Set<string>;
   /**
    * course_ids the user is currently_taking or has planned (personal_status).
-   * Such courses are already accounted for as prior progress and must not be
-   * (re-)proposed by the planner (Phase 1 proposal-dedup).
+   * Such courses are already accounted for as prior progress: they must not be
+   * (re-)proposed by the planner (Phase 1 proposal-dedup, rule 2a) and they
+   * satisfy prerequisites of proposed courses like completed courses do
+   * (rule 4 — strictly earlier than every proposal semester by construction).
    */
   currentlyPlannedCourseIds?: Set<string>;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
@@ -166,6 +206,12 @@ export interface PlanValidationContext {
   overloadAccepted?: boolean;
   /** Phase 2C — timestamp at which the user confirmed the overload. Required (alongside overloadAccepted) to actually downgrade > HARD_LOAD_CAP from error to warning. */
   overloadConfirmedAt?: number | null;
+  /** Phase 1b — per-semester blocking cap override (from ConstraintModel.hardCap). Defaults to load_constants.ts's HARD_LOAD_CAP. */
+  hardCap?: number;
+  /** Phase 1b — preferred-range ceiling override (from ConstraintModel.softLoadMax). Defaults to load_constants.ts's SOFT_LOAD_MAX. */
+  softLoadMax?: number;
+  /** Phase 1b — never-overridable blocking ceiling override (from ConstraintModel.absoluteMaxReasonable). Defaults to load_constants.ts's ABSOLUTE_MAX_REASONABLE. */
+  absoluteMaxReasonable?: number;
   /** Elective/category requirements: name -> required count/hours, used to compute unmet requirements. */
   categoryRequirements?: Array<{ name: string; required: number; availableElectiveIds?: string[] }>;
   /** course_ids of not-completed mandatory courses that must appear somewhere in the plan. */
@@ -203,6 +249,23 @@ function semesterLabel(semesterId: string, labels?: Record<string, string>): str
 }
 
 /**
+ * The semester set an `is_annual` course is expected to occupy, for the
+ * duplicate/pinned-home/completeness checks below: its declared
+ * `spans_semesters` when present, otherwise `effective_allowed_semesters` —
+ * the same confident legal-semester data `addCourseActionsFor`
+ * (planner_actions.ts) falls back to when generating the atomic add action
+ * for a board that omits `spans_semesters`. When neither is known (legality
+ * itself wasn't confident), returns `[]` so these checks stay silent rather
+ * than guess a wrong required set and hard-block a plan — mirrors check 3's
+ * own "only restrict when effective_allowed_semesters is present" rule.
+ */
+function annualSpansFor(info?: PlanValidationCourseInfo): string[] {
+  if (!info?.is_annual) return [];
+  if (info.spans_semesters?.length) return info.spans_semesters;
+  return info.effective_allowed_semesters?.length ? info.effective_allowed_semesters : [];
+}
+
+/**
  * Turn the `dropped` list from `normalizePlanProposal` into readable Hebrew
  * warnings — used when the AI returned a semester_id that couldn't be mapped
  * to a real semester, so the affected courses were left unplaced.
@@ -231,11 +294,12 @@ export interface PlanValidationResult {
 export function validatePlanProposal(
   proposal: PlanProposal,
   ctx: PlanValidationContext,
+  opts?: { knownSemesterIds?: string[] },
 ): PlanValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const seen = new Map<string, string>(); // course_id -> semester_id
+  const seenSemesters = new Map<string, string[]>(); // course_id -> semester_ids seen so far, in order
   const placedCourseIds = new Set<string>();
 
   // Issue 4 — chronological order of semesters in the proposal + each course's
@@ -256,16 +320,34 @@ export function validatePlanProposal(
 
     for (const courseId of sem.course_ids) {
       const cName = courseLabel(courseId, ctx.courseNames);
+      const info = ctx.courses[courseId];
 
-      // 1. duplicate placement across semesters
-      if (seen.has(courseId)) {
-        const firstSemName = semesterLabel(seen.get(courseId)!, ctx.semesterLabels);
-        errors.push(
-          `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
-        );
-      } else {
-        seen.set(courseId, sem.semester_id);
+      // 1. duplicate placement across semesters — except an is_annual course
+      // legitimately occupying every one of its spans_semesters together
+      // (e.g. a year-long lab meeting in both halves of the year). That is
+      // not a duplicate: it's counted once toward degree hours (see
+      // planner_goals.ts's placedHours) but must appear in each spanned
+      // semester's own weekly load. Anything beyond that exact expected
+      // set — a repeat within the same semester, a semester outside
+      // spans_semesters, or more occurrences than spans_semesters has — is
+      // still a genuine duplicate error.
+      const priorSems = seenSemesters.get(courseId) ?? [];
+      if (priorSems.length > 0) {
+        const spans = annualSpansFor(info);
+        const isExpectedAnnualSpan =
+          spans.length > 0 &&
+          spans.includes(sem.semester_id) &&
+          !priorSems.includes(sem.semester_id) &&
+          priorSems.every(s => spans.includes(s)) &&
+          priorSems.length < spans.length;
+        if (!isExpectedAnnualSpan) {
+          const firstSemName = semesterLabel(priorSems[0], ctx.semesterLabels);
+          errors.push(
+            `קורס ${cName} משובץ פעמיים — גם ב${firstSemName} וגם ב${semName}.`,
+          );
+        }
       }
+      seenSemesters.set(courseId, [...priorSems, sem.semester_id]);
       placedCourseIds.add(courseId);
 
       // 2. completed course must not be (re-)scheduled
@@ -276,18 +358,23 @@ export function validatePlanProposal(
       // 2a. currently_taking/planned course must not be (re-)proposed — it is
       // already accounted for as prior progress (Phase 1 proposal-dedup).
       else if (ctx.currentlyPlannedCourseIds?.has(courseId)) {
-        errors.push(`קורס ${cName} כבר מתוכנן/נלמד כעת על ידי המשתמש ולא ניתן להציע אותו שוב (ב${semName}).`);
+        errors.push(`קורס ${cName} ${CURRENTLY_TAKING_REUSE_ERROR_MARKER} ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
-      // 2b. pinned course must remain in its current semester
+      // 2b. pinned course must remain in its current semester. An is_annual
+      // course pinned across its full spans_semesters is never "moved" by
+      // appearing in each of them — currentSemesterByCourseId only records
+      // one representative home semester per pinned id (buildPinnedHome
+      // stops at the first match), so for an annual course any of its own
+      // spans is equally "home," not a move away from it.
       if (ctx.pinnedCourseIds?.has(courseId)) {
         const currentSem = ctx.currentSemesterByCourseId?.[courseId];
-        if (currentSem && currentSem !== sem.semester_id) {
+        const spans = annualSpansFor(info);
+        const isAnnualHome = spans.length > 0 && spans.includes(sem.semester_id) && (!currentSem || spans.includes(currentSem));
+        if (currentSem && currentSem !== sem.semester_id && !isAnnualHome) {
           errors.push(`הקורס ${cName} מסומן כ'אל תזיז' ולכן לא ניתן להזיז אותו.`);
         }
       }
-
-      const info = ctx.courses[courseId];
 
       // 3. placement must be within effective_allowed_semesters
       if (info?.effective_allowed_semesters && info.effective_allowed_semesters.length > 0) {
@@ -310,7 +397,10 @@ export function validatePlanProposal(
       ]);
       const targetIdx = semOrder.get(sem.semester_id)!;
       for (const prereq of prereqUnion) {
-        if (ctx.completedCourseIds.has(prereq)) continue;
+        // A currently-taking course is prior progress: rule 2a guarantees it can
+        // never appear in the proposal, so it is strictly earlier than every
+        // proposed semester and satisfies the prereq like a completed course.
+        if (ctx.completedCourseIds.has(prereq) || ctx.currentlyPlannedCourseIds?.has(prereq)) continue;
         const pIdx = courseSemIdx.get(prereq);
         if (pIdx === undefined) {
           errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);
@@ -325,40 +415,72 @@ export function validatePlanProposal(
 
     // 5. Phase 2C unified overload policy (single source of truth — must
     // match load_constants.ts and the client-side validatePlanProposalLocal):
-    //   - hrs > ABSOLUTE_MAX_REASONABLE (30): always blocking ERROR.
-    //   - hrs > HARD_LOAD_CAP (26): blocking ERROR unless user explicitly
+    //   - hrs > absoluteMaxReasonable (default 30): always blocking ERROR.
+    //   - hrs > hardCap (default 26): blocking ERROR unless user explicitly
     //     confirmed overload (overloadAccepted && overloadConfirmedAt); then
     //     downgraded to a WARNING containing "חריגה בעומס שאושרה ידנית".
-    //   - hrs > SOFT_LOAD_MAX (22) and ≤ HARD_LOAD_CAP: WARNING.
-    //   - hrs ≤ SOFT_LOAD_MAX: no message.
-    if (semHours > ABSOLUTE_MAX_REASONABLE) {
+    //   - hrs > softLoadMax (default 22) and ≤ hardCap: WARNING.
+    //   - hrs ≤ softLoadMax: no message.
+    // Phase 1b — thresholds are sourced from ctx (populated from
+    // ConstraintModel), falling back to load_constants.ts when ctx omits them,
+    // so any existing caller that never sets these fields sees no change.
+    const hardCap = ctx.hardCap ?? HARD_LOAD_CAP;
+    const softLoadMax = ctx.softLoadMax ?? SOFT_LOAD_MAX;
+    const absoluteMaxReasonable = ctx.absoluteMaxReasonable ?? ABSOLUTE_MAX_REASONABLE;
+    if (semHours > absoluteMaxReasonable) {
       errors.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — חריגה לא סבירה מעל ${ABSOLUTE_MAX_REASONABLE} ש"ש. לא ניתן להחיל את התוכנית.`,
+        `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — חריגה לא סבירה מעל ${absoluteMaxReasonable} ש"ש. לא ניתן להחיל את התוכנית.`,
       );
-    } else if (semHours > HARD_LOAD_CAP) {
+    } else if (semHours > hardCap) {
       const userConfirmed = ctx.overloadAccepted === true && !!ctx.overloadConfirmedAt;
       if (userConfirmed) {
         warnings.push(
-          `ב${semName} יש ${semHours} שעות שבועיות (מעל המגבלה הקשיחה ${HARD_LOAD_CAP}) — חריגה בעומס שאושרה ידנית.`,
+          `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} (מעל המגבלה הקשיחה ${hardCap}) — חריגה בעומס שאושרה ידנית.`,
         );
       } else {
         errors.push(
-          `ב${semName} יש ${semHours} שעות שבועיות — חריגה מהמגבלה הקשיחה (${HARD_LOAD_CAP} ש"ש). נדרש אישור חריגה מפורש.`,
+          `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — חריגה מהמגבלה הקשיחה (${hardCap} ש"ש). נדרש אישור חריגה מפורש.`,
         );
       }
-    } else if (semHours > SOFT_LOAD_MAX) {
+    } else if (semHours > softLoadMax) {
       warnings.push(
-        `ב${semName} יש ${semHours} שעות שבועיות — מעל הטווח המומלץ (${SOFT_LOAD_MAX} ש"ש).`,
+        `ב${semName} יש ${semHours} ${OVERLOAD_ERROR_MARKER} — מעל הטווח המומלץ (${softLoadMax} ש"ש).`,
+      );
+    }
+  }
+
+  // 5b. annual (year-long) course completeness — an is_annual course must
+  // appear in EVERY one of its spans_semesters, never just some of them. The
+  // duplicate-placement check above (1) only fires when a *repeat* is seen,
+  // so it cannot catch the opposite failure — a plan (e.g. one produced by a
+  // MOVE_COURSE/REPLACE_COURSE/REMOVE_COURSE call that isn't routed through
+  // the annual-aware ADD_COURSE path) where the course was split down to
+  // just one semester. Without this, such a plan would be reported valid
+  // and complete while silently under-reporting the missing semester's load.
+  for (const [courseId, sems] of seenSemesters) {
+    const info = ctx.courses[courseId];
+    if (!info?.is_annual) continue;
+    const spans = annualSpansFor(info);
+    if (!spans.length) continue;
+    const missing = spans.filter(s => !sems.includes(s));
+    if (missing.length > 0) {
+      const cName = courseLabel(courseId, ctx.courseNames);
+      const missingNames = missing.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
+      errors.push(
+        `קורס ${cName} הוא קורס ${ANNUAL_PARTIAL_PLACEMENT_MARKER} מהסמסטרים בלבד — חסר גם ב${missingNames}.`,
       );
     }
   }
 
   // 6. partial-plan check — every not-completed mandatory course must appear,
   // reported with the exact missing course IDs/names (PART C) — never a
-  // generic "missing mandatory" message without a concrete list.
+  // generic "missing mandatory" message without a concrete list. A
+  // currently-taking course is already accounted for (rule 2a forbids
+  // re-proposing it), so its absence from the proposal is not a gap.
   if (ctx.requiredMandatoryCourseIds) {
     const missingMandatory = ctx.requiredMandatoryCourseIds.filter(
-      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid),
+      cid => !placedCourseIds.has(cid) && !ctx.completedCourseIds.has(cid) &&
+        !ctx.currentlyPlannedCourseIds?.has(cid),
     );
     for (const cid of missingMandatory) {
       errors.push(`קורס חובה חסר: ${courseLabel(cid, ctx.courseNames)}.`);

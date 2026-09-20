@@ -8,11 +8,14 @@ An interactive drag-and-drop course planning board with Hebrew-first RTL UI.
 
 ### How to open
 
+The planner is the Next.js app in `web/` (see `web/README.md`):
+
 ```bash
-python -m http.server 8080
+cd web && npm install && npm run dev
 ```
 
-Then navigate to: `http://localhost:8080/app/web/semester_board_viewer.html`
+Then open `http://localhost:3001/planner`. Start `vercel dev` in the repo root
+first if you need the `/api/*` endpoints (board, AI planning).
 
 ### Features
 
@@ -55,12 +58,12 @@ python -m app.analysis.semester_board \
 app/
   analysis/
     semester_board.py     # Board generation logic + CLI
-  web/
-    semester_board_viewer.html  # Interactive planning UI
 data/
   programs/               # Program structure JSONs (mandatory courses)
   parsed_json/            # Generated board and audit JSONs
   raw/                    # Raw scraped data
+web/                      # Next.js frontend (planner UI)
+api/                      # Vercel serverless functions (board, AI planning)
 tests/
   test_semester_board.py  # 76 tests for board generation logic
 ```

@@ -1,0 +1,505 @@
+{
+  "generatedAt": "2026-08-14T19:47:29.272Z",
+  "normalizerVersion": "group-universe/1.0.0",
+  "source": "data/raw_html/course_details (git-ignored, regenerable)",
+  "pages": 25,
+  "applicability": {
+    "applicable": 17,
+    "courseMismatch": 0,
+    "yearMismatch": 0,
+    "unidentified": 8
+  },
+  "completeness": {
+    "complete": 17,
+    "incomplete": 0,
+    "conflicting": 0,
+    "unknown": 8
+  },
+  "authoritativeCourses": 17,
+  "totalAuthoritativeGroups": 34,
+  "effect": {
+    "academicYear": 2025,
+    "corpusCourses": 7,
+    "resolvedByUniverse": [
+      "0509-4010",
+      "0542-4010",
+      "0542-4020"
+    ],
+    "stillUnknown": [
+      "0542-3112",
+      "0542-3780",
+      "0542-3791"
+    ],
+    "noUniverseRecorded": [
+      "0542-3780",
+      "0542-3792"
+    ],
+    "perCourse": [
+      {
+        "courseId": "0509-4010",
+        "authoritativeGroups": [
+          "01"
+        ],
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "false"
+      },
+      {
+        "courseId": "0542-3112",
+        "authoritativeGroups": [
+          "01",
+          "02"
+        ],
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "unknown"
+      },
+      {
+        "courseId": "0542-3780",
+        "authoritativeGroups": null,
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "unknown"
+      },
+      {
+        "courseId": "0542-3791",
+        "authoritativeGroups": [
+          "01",
+          "02",
+          "03",
+          "04",
+          "05",
+          "06",
+          "07",
+          "08",
+          "09",
+          "10"
+        ],
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "unknown"
+      },
+      {
+        "courseId": "0542-3792",
+        "authoritativeGroups": null,
+        "deliveryBefore": "varies_by_section",
+        "deliveryAfter": "varies_by_section"
+      },
+      {
+        "courseId": "0542-4010",
+        "authoritativeGroups": [
+          "01"
+        ],
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "false"
+      },
+      {
+        "courseId": "0542-4020",
+        "authoritativeGroups": [
+          "01"
+        ],
+        "deliveryBefore": "unknown",
+        "deliveryAfter": "false"
+      }
+    ]
+  },
+  "anomalies": [],
+  "universes": [
+    {
+      "courseId": "0509-4010",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "שיעור"
+      ],
+      "contentHash": "sha_23fca9e5a8b4ace97c494377ade6e4b9",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05094010_2025.html"
+    },
+    {
+      "courseId": "0542-3112",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'",
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "פרוייקט"
+      ],
+      "contentHash": "sha_8a4f341682fd40d71a278fcd4b896d60",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05423112_2025.html"
+    },
+    {
+      "courseId": "0542-3791",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'",
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10"
+      ],
+      "groupTypes": [
+        "מעבדה"
+      ],
+      "contentHash": "sha_d1386f649f9a5b6f6248d2434fe6b8fd",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05423791_2025.html"
+    },
+    {
+      "courseId": "0542-4010",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "פרוייקט"
+      ],
+      "contentHash": "sha_3c2bb5766975050b7a91d2e2a4c9be5f",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424010_2025.html"
+    },
+    {
+      "courseId": "0542-4011",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "פרוייקט"
+      ],
+      "contentHash": "sha_f9773c693b225239811748cc405442e3",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424011_2025.html"
+    },
+    {
+      "courseId": "0542-4012",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "פרוייקט"
+      ],
+      "contentHash": "sha_812c0e72ed299f9978d8c80d1442fe66",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424012_2025.html"
+    },
+    {
+      "courseId": "0542-4020",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "פרוייקט"
+      ],
+      "contentHash": "sha_2a342ef51bed63cdb803727002d7d441",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424020_2025.html"
+    },
+    {
+      "courseId": "0542-4093",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_397707c2ca2e902ec48b77fc6a12f419",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424093_2025.html"
+    },
+    {
+      "courseId": "0542-4094",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "מעבדה"
+      ],
+      "contentHash": "sha_3d79db52c2b374fede98f6e9d0bababd",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424094_2025.html"
+    },
+    {
+      "courseId": "0542-4124",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_e3bc61e657434c8a302588ceec15bb3b",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424124_2025.html"
+    },
+    {
+      "courseId": "0542-4125",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "שיעור ותרגיל"
+      ],
+      "contentHash": "sha_3c722f5596d20955b243cfcc0348c40e",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424125_2025.html"
+    },
+    {
+      "courseId": "0542-4131",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_69d9c1e08161ea6912b663fc088f8bf4",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424131_2025.html"
+    },
+    {
+      "courseId": "0542-4132",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_df3a93c30a5bf5aa14af4ea01629881f",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424132_2025.html"
+    },
+    {
+      "courseId": "0542-4135",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_d4092a1b9d9e5b4ddce81701c796cfd1",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424135_2025.html"
+    },
+    {
+      "courseId": "0542-4191",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_2a4be0e26db4d1924d946658849e1273",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424191_2025.html"
+    },
+    {
+      "courseId": "0542-4321",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_d5bfd9c62798f3c0b7546d9d3a5d5246",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424321_2025.html"
+    },
+    {
+      "courseId": "0542-4322",
+      "academicYear": 2025,
+      "applicability": "unidentified",
+      "completeness": "unknown",
+      "semesters": [],
+      "groupIds": [],
+      "groupTypes": [],
+      "contentHash": "sha_f1fedcc1e6c5f93cbd9c8348ad380255",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424322_2025.html"
+    },
+    {
+      "courseId": "0542-4391",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "שיעור",
+        "מעבדה"
+      ],
+      "contentHash": "sha_0fb0f714ba546c790ff738414769c772",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424391_2025.html"
+    },
+    {
+      "courseId": "0542-4422",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01"
+      ],
+      "groupTypes": [
+        "שיעור ותרגיל"
+      ],
+      "contentHash": "sha_86a53a45ae987fb48ab1144e19c28f29",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424422_2025.html"
+    },
+    {
+      "courseId": "0542-4425",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "שיעור",
+        "תרגיל"
+      ],
+      "contentHash": "sha_931ee09c3b9073006646a9459b2ec8e4",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424425_2025.html"
+    },
+    {
+      "courseId": "0542-4559",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "מעבדה"
+      ],
+      "contentHash": "sha_70a82dec57afdd09ae6ad0c2dea4ec08",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424559_2025.html"
+    },
+    {
+      "courseId": "0542-4624",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "מעבדה"
+      ],
+      "contentHash": "sha_2066e22c4ca36ad20a5f02b03f672749",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05424624_2025.html"
+    },
+    {
+      "courseId": "0555-4000",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "שיעור",
+        "תרגיל"
+      ],
+      "contentHash": "sha_d53e9d36e926dda0f0589eb448e6fb5e",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05554000_2025.html"
+    },
+    {
+      "courseId": "0555-4432",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "ב'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "שיעור",
+        "תרגיל"
+      ],
+      "contentHash": "sha_b30fb42545fcff0907080a980fc1147a",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05554432_2025.html"
+    },
+    {
+      "courseId": "0581-4131",
+      "academicYear": 2025,
+      "applicability": "applicable",
+      "completeness": "complete",
+      "semesters": [
+        "א'"
+      ],
+      "groupIds": [
+        "01",
+        "02"
+      ],
+      "groupTypes": [
+        "מעבדה"
+      ],
+      "contentHash": "sha_7f9cd26232ac088fe8d38eeecf6db3ec",
+      "sourceRef": "recorded:data/raw_html/course_details/course_05814131_2025.html"
+    }
+  ]
+}

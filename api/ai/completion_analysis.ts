@@ -7,7 +7,7 @@
  * Used by:
  *  - api/ai/generate-plan.ts (server) — to build the "משימת השלמת תואר
  *    מחושבת" prompt section (PART C).
- *  - app/web/semester_board_viewer.html (client, mirrored manually) — to
+ *  - the retired single-file planner (client, mirrored manually) — to
  *    decide whether a returned proposal is a "complete plan" (PART B/E) and
  *    to deterministically insert missing electives (PART D).
  */
@@ -23,6 +23,7 @@ import {
   type PreferenceTerms,
   type CourseLike,
 } from './relevance';
+import { mapOfferedToKnownSemesters } from './semester_availability';
 
 /**
  * Issue 4 — estimate a bounded 0–5 difficulty/workload value for a course when
@@ -687,7 +688,7 @@ export interface DegreeProgress {
 
 /**
  * PART C — single source of truth for degree-hour progress (TS mirror of
- * computeDegreeProgress in app/web/semester_board_viewer.html). Used by
+ * computeDegreeProgress in the retired single-file planner). Used by
  * both the status-chip render and the draft-summary render so all UI
  * surfaces show the same numbers.
  *
@@ -1882,11 +1883,21 @@ export interface LegalSemestersResult {
  *  - elective: effective_allowed_semesters / offered_semesters if known,
  *    else any remaining known semester (not confident — warning, not block).
  */
+/**
+ * offered_semesters records term-of-year letters ("A"/"B") while the board's
+ * semester ids are full ids (year_3_semester_a …). Map each offered value onto
+ * the known ids: an exact known-id match passes through; a term letter expands
+ * to every known id whose trailing _-segment is that letter; anything else is
+ * kept verbatim (vocabularies that don't use term letters behave as before).
+ */
 export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: string[] = []): LegalSemestersResult {
   const effective = course.effective_allowed_semesters?.length ? course.effective_allowed_semesters : null;
   const program = course.program_allowed_semesters?.length
     ? course.program_allowed_semesters
     : (course.allowed_semesters?.length ? course.allowed_semesters : null);
+  const offered = course.offered_semesters?.length
+    ? mapOfferedToKnownSemesters(course.offered_semesters, knownSemesterIds)
+    : null;
 
   if (course.placement_policy === 'fixed') {
     const fixed = course.recommended_semester
@@ -1898,13 +1909,13 @@ export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: 
   if (course.placement_policy === 'flexible' || course.course_type === 'mandatory') {
     if (effective) return { semesters: effective, confident: true };
     if (program) return { semesters: program, confident: true };
-    if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+    if (offered) return { semesters: offered, confident: false };
     return { semesters: knownSemesterIds, confident: false };
   }
 
   // elective
   if (effective) return { semesters: effective, confident: true };
-  if (course.offered_semesters?.length) return { semesters: course.offered_semesters, confident: false };
+  if (offered) return { semesters: offered, confident: false };
   return { semesters: knownSemesterIds, confident: false };
 }
 
@@ -2026,7 +2037,7 @@ function _balanceWeight(info: LoadBalanceCourseInfo | undefined): number {
  * semesters into the least-loaded legal semester, preferring electives
  * first (most flexible), then other movable courses. Stops when no semester
  * exceeds `max` or no legal move remains. Mirrored client-side in
- * app/web/semester_board_viewer.html (repairPlanLoad), kept in sync manually.
+ * the retired single-file planner (repairPlanLoad), kept in sync manually.
  */
 export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: LoadBalanceContext): RepairLoadResult<P> {
   const max = ctx.maxHoursPerSemester;

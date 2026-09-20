@@ -40,6 +40,8 @@ const requestSchema = z.object({
     unwanted_course_ids: z.array(z.string()).optional(),
     disallowed_course_ids: z.array(z.string()).optional(),
     pinned_course_ids: z.array(z.string()).optional(),
+    overload_accepted: z.boolean().optional(),
+    overload_confirmed_at: z.number().nullish(),
   }).optional(),
   /** Dev-only: supply the board when there is no DATABASE_URL (dev bypass). */
   board_json: z.any().optional(),
@@ -54,8 +56,12 @@ function toSelectedPlan(state: PlanState, knownSemesterIds: string[]) {
   };
 }
 
-function buildModelFromRequest(boardJson: any, body: z.infer<typeof requestSchema>): ConstraintModel {
+export function buildModelFromRequest(boardJson: any, body: z.infer<typeof requestSchema>): ConstraintModel {
   const prefs = body.preferences ?? {};
+  // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
+  // already used above to route the board_json lookup, reused here for the
+  // model's programId/catalogYear. No institutionId source exists yet.
+  const pv = parseProgramVersionId(body.program_id);
   return buildConstraintModel(boardJson, {
     completedCourseIds: body.completed_course_ids,
     wantedCourseIds: prefs.wanted_course_ids,
@@ -64,6 +70,10 @@ function buildModelFromRequest(boardJson: any, body: z.infer<typeof requestSchem
     pinnedCourseIds: prefs.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
     priorHours: body.prior_hours,
+    overloadAccepted: prefs.overload_accepted,
+    overloadConfirmedAt: prefs.overload_confirmed_at,
+    programId: pv?.base,
+    catalogYear: pv?.year,
   });
 }
 

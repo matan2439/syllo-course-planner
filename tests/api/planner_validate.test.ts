@@ -94,6 +94,14 @@ describe('validateCandidate', () => {
     expect(r.valid).toBe(false);
   });
 
+  it('rejects a plan that re-proposes a currently-taking/in-progress course (currentlyPlannedCourseIds propagation)', () => {
+    const m = model({ currentlyPlannedCourseIds: new Set(['FLU1']) });
+    const r = validateCandidate(completePlan(), m);
+    expect(r.legal).toBe(false);
+    expect(r.errors.some(e => e.includes('FLU1'))).toBe(true);
+    expect(r.valid).toBe(false);
+  });
+
   it('rejects a plan with a semester over the hard cap as illegal (test 7)', () => {
     const s = emptyState(SEMS);
     // 7 electives * 4 = 28h in one semester > hardCap 26

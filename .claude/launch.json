@@ -4,8 +4,48 @@
     {
       "name": "viewer",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765"
+      ],
       "port": 8765
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:web"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "api-topic-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "scripts/dev_api_server_topic_preview.ts"
+      ],
+      "port": 3002
+    },
+    {
+      "name": "api-multi-objective-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "scripts/dev_api_server_multi_objective_preview.ts"
+      ],
+      "port": 3002
+    },
+    {
+      "name": "api-alternatives-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "tsx",
+        "scripts/dev_api_server_alternatives_preview.ts"
+      ],
+      "port": 3002
     }
   ]
 }

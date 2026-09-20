@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Mapping, Optional
 
 import requests
 
@@ -21,9 +23,118 @@ GRAPHQL_QUERY = (
     "query results($apiUrl:String!,$filters:JSON!)"
     "{results(apiUrl:$apiUrl,filters:$filters){body}}"
 )
+PROGRAM_INDEX_QUERY = """
+query getPrograms($search: JSON!,$from:Int,$size:Int) {
+  getPrograms(search: $search, from: $from, size: $size) {
+    total
+    results {
+      tclongkey shana teurshana teur title toar tcid faculta betsefer
+      pail showtochnit
+    }
+  }
+}
+"""
 
 _TIMEOUT = 20
 _USER_AGENT = "TAU-Course-Planner/0.1 (educational research project)"
+
+
+@dataclass(frozen=True)
+class ProgramIndexEntry:
+    """Lean authoritative identity returned by TAU's program index."""
+
+    tcid: str
+    tclongkey: str
+    title_he: str
+    degree_level: str
+    faculty_code: str
+    school_code: str
+    academic_year: str
+    academic_year_he: str
+    active: bool
+    visible: bool
+
+
+class ProgramSelectionError(ValueError):
+    """Raised when an authoritative program lookup is missing or ambiguous."""
+
+
+def _program_index_entry(raw: Mapping[str, object]) -> ProgramIndexEntry | None:
+    tcid = str(raw.get("tcid") or "").strip()
+    title = str(raw.get("teur") or raw.get("title") or "").strip()
+    if not tcid or not title:
+        return None
+    return ProgramIndexEntry(
+        tcid=tcid,
+        tclongkey=str(raw.get("tclongkey") or "").strip(),
+        title_he=title,
+        degree_level=str(raw.get("toar") or "").strip(),
+        faculty_code=str(raw.get("faculta") or "").strip(),
+        school_code=str(raw.get("betsefer") or "").strip(),
+        academic_year=str(raw.get("shana") or "").strip(),
+        academic_year_he=str(raw.get("teurshana") or "").strip(),
+        active=str(raw.get("pail") or "") == "1",
+        visible=str(raw.get("showtochnit") or "") == "1",
+    )
+
+
+def search_program_index(
+    search: Mapping[str, object],
+    *,
+    start: int = 0,
+    size: int = 100,
+    timeout: int = _TIMEOUT,
+) -> list[ProgramIndexEntry]:
+    """Read TAU's official program index without guessing a ``tcid``."""
+    payload = {
+        "query": PROGRAM_INDEX_QUERY,
+        "variables": {"search": dict(search), "from": start, "size": size},
+    }
+    try:
+        response = requests.post(
+            GRAPHQL_URL,
+            json=payload,
+            headers={"Content-Type": "application/json", "User-Agent": _USER_AGENT},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        raw_results = response.json()["data"]["getPrograms"]["results"]
+        if not isinstance(raw_results, list) or not all(
+            isinstance(raw, Mapping) for raw in raw_results
+        ):
+            raise TypeError("TAU program index returned malformed results")
+    except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, TypeError) as exc:
+        logger.warning("Program-index request failed: %s", exc)
+        return []
+    return [entry for raw in raw_results if (entry := _program_index_entry(raw)) is not None]
+
+
+def find_unique_program(
+    results: Iterable[ProgramIndexEntry | Mapping[str, object]],
+    *,
+    title_he: str,
+    degree_level: str,
+    school_code: str,
+) -> ProgramIndexEntry:
+    """Select one exact program identity, failing closed on zero or many."""
+    expected_title = re.sub(r"\s+", " ", title_he).strip()
+    entries = [
+        item if isinstance(item, ProgramIndexEntry) else _program_index_entry(item)
+        for item in results
+    ]
+    matches = [
+        entry for entry in entries
+        if entry is not None
+        and re.sub(r"\s+", " ", entry.title_he).strip() == expected_title
+        and entry.degree_level == degree_level
+        and entry.school_code == school_code
+    ]
+    if len(matches) != 1:
+        raise ProgramSelectionError(
+            f"Expected exactly one authoritative program for title={expected_title!r}, "
+            f"degree={degree_level!r}, school={school_code!r}; found {len(matches)}"
+        )
+    return matches[0]
 
 
 # ---------------------------------------------------------------------------

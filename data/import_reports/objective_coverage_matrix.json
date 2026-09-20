@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-08-14T18:09:35.153Z",
+  "corpus": {
+    "cacheRoot": "data/evidence_cache (git-ignored, regenerable)",
+    "documents": 8,
+    "distinctCourses": 7,
+    "corruptedObjects": 0,
+    "academicYears": [
+      2025
+    ],
+    "sectionsObserved": 8
+  },
+  "fieldCoverage": {
+    "deliveryMode": "8/8",
+    "assignments": "0/8",
+    "explicitTopicList": "2/8",
+    "learningOutcomes": "0/8",
+    "dayAndTime": "7/8"
+  },
+  "matrix": [
+    {
+      "priority": 1,
+      "objective": "course content / topic alignment with confirmed interests",
+      "officialSource": "official syllabus — explicit \"נושאי לימוד\" list / learning outcomes",
+      "attemptedCourses": 7,
+      "documentsApplicable": 2,
+      "known": 1,
+      "unknown": 6,
+      "conflictingOrSectionVarying": 0,
+      "coverageRate": "1/7 courses",
+      "distinguishingCandidatePairs": 0,
+      "selectionChangeFeasible": false,
+      "decision": "REJECT",
+      "reason": "only 1 of 7 distinct courses publish an explicit topic list (2/8 documents), and learning outcomes are absent entirely (0/8). With one topic-bearing course there is no pair of candidates the feature can separate, so no selection change is possible. Mining narrative prose or the course TITLE instead would be inference, not official evidence."
+    },
+    {
+      "priority": 2,
+      "objective": "final-exam / assessment preference",
+      "officialSource": "official syllabus — \"מטלות הקורס\" assessment field",
+      "attemptedCourses": 7,
+      "documentsApplicable": 0,
+      "known": 0,
+      "unknown": 8,
+      "conflictingOrSectionVarying": 0,
+      "coverageRate": "0/8 documents",
+      "distinguishingCandidatePairs": 0,
+      "selectionChangeFeasible": false,
+      "decision": "REJECT",
+      "reason": "the assessment field carries a LABEL but no values on every acquired document (0/8). Absence is not falsehood: turning a missing \"מטלות הקורס\" into \"no final exam\" is exactly the inference this pipeline forbids. No alternative authoritative assessment source is wired."
+    },
+    {
+      "priority": 3,
+      "objective": "project / design-based learning",
+      "officialSource": "official syllabus — \"אופן ההוראה\" enumerated delivery-mode field",
+      "attemptedCourses": 7,
+      "documentsApplicable": 8,
+      "known": 8,
+      "unknown": 0,
+      "conflictingOrSectionVarying": 0,
+      "coverageRate": "8/8 documents",
+      "distinguishingCandidatePairs": 12,
+      "selectionChangeFeasible": true,
+      "decision": "IMPLEMENT",
+      "reason": "the delivery-mode field is SCHEMA-COMPLETE and present on every acquired document (8/8); \"פרוייקט\" appears as a real enumerated value, so the feature normalizes deterministically, and unambiguous project vs non-project courses form 12 distinguishing pairs — a selection change is achievable."
+    },
+    {
+      "priority": 4,
+      "objective": "timetable / day / time preference",
+      "officialSource": "official syllabus — \"יום\" / \"שעות\" (section-scoped)",
+      "attemptedCourses": 7,
+      "documentsApplicable": 7,
+      "known": 7,
+      "unknown": 1,
+      "conflictingOrSectionVarying": 1,
+      "coverageRate": "7/8 documents",
+      "distinguishingCandidatePairs": 0,
+      "selectionChangeFeasible": false,
+      "decision": "DEFER",
+      "reason": "day/time coverage is good (7/8) but the values are SECTION-scoped: 1 course(s) already show different meeting times across groups. The planner selects a course and a period, never a section, so per K7.5 these facts cannot label a course-level candidate. ARCHITECTURAL PREREQUISITE: section-level selection plus an authoritative timetable source mapping course+section+semester+day+time+year."
+    }
+  ],
+  "selected": "project / design-based learning"
+}

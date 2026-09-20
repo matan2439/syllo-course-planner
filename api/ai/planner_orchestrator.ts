@@ -71,8 +71,31 @@ export class LlmOrchestrator implements Orchestrator {
 
     // Guarantee a valid, complete plan regardless of what the model did: the
     // deterministic worker loop finishes/repairs whatever the LLM left.
-    if (!worker.validateCandidate().valid) {
-      worker.run(500, 'greedy');
-    }
+    //
+    // Unconditional, not gated on validateCandidate().valid (issue #67): the
+    // model's own finalize_plan tool call already runs this same finishing
+    // pass (worker.repair() -> run(500,'greedy')), but finalize_plan does not
+    // terminate the tool-calling loop — nothing stops the model from mutating
+    // further afterward (e.g. removing a wanted course finalize_plan had just
+    // placed) with no later finalize_plan call to recover it. validateCandidate()
+    // checks legality/degree-hours/mandatory/category completion only — zero
+    // wantedCourseIds or balance awareness — so that kind of post-finalize
+    // regression can leave the plan "valid" while silently worse than what the
+    // model had already legally achieved. Always re-running the same
+    // deterministic loop closes that gap unconditionally: it only ever takes
+    // further LEGAL actions (the same ground truth the rest of the system
+    // trusts), so it can never corrupt the plan or reintroduce an error the
+    // model's own choices avoided. It is NOT guaranteed to leave every one of
+    // the model's own placements untouched, though (Codex finding on PR #76's
+    // docs recap: an earlier version of this comment overclaimed that it
+    // could) — enumerateActions' group 6 (REPLACE_COURSE) can still swap out
+    // one of the model's own validly-placed, movable courses for a
+    // higher-preference alternative when that improves the score, the same
+    // way it always could via finalize_plan's own repair() call. Cost is not
+    // free either: even an already-converged plan still costs one full
+    // step() call to confirm nothing legal advances before it stops; a
+    // valid-but-not-fully-optimized plan can cost up to the full 500-iteration
+    // budget re-converging. Neither cost has been profiled.
+    worker.run(500, 'greedy');
   }
 }

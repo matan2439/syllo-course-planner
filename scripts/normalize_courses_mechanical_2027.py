@@ -256,12 +256,29 @@ def normalizeCourse(course_id: str, repo_entry: dict) -> dict:
 
 # ── Step 6: writeNormalizedCourseData ────────────────────────────────────────
 
-def writeNormalizedCourseData() -> dict:
+def defaultNormalizedOutputPath() -> Path:
     """
-    Normalize all repo electives and write the result to
-    data/import_reports/normalized_courses_mechanical_2027.json.
+    The production output target: data/import_reports/normalized_courses_mechanical_2027.json.
+
+    This file is TRACKED in git and is read as fixture input by
+    tests/test_supabase_normalize.py, so it must only ever be written by a
+    deliberate pipeline run — never as a test side effect.
+    """
+    return BASE / 'data/import_reports/normalized_courses_mechanical_2027.json'
+
+
+def writeNormalizedCourseData(out_path: Path | None = None) -> dict:
+    """
+    Normalize all repo electives and write the result to `out_path`
+    (default: defaultNormalizedOutputPath(), the production target).
 
     Returns the full audit dict (before + after + courses).
+
+    `out_path` exists for TEST ISOLATION. The default target is a tracked file
+    that another suite reads as its fixture input, so a test that needs the
+    pipeline's output must inject a temporary path (e.g. pytest's `tmp_path`)
+    rather than rewriting repo state. Passing nothing preserves the original
+    CLI/production behavior exactly.
     """
     backup_path = BASE / 'supabase_board_backup_2027_pre_sync.json'
     backup = json.loads(backup_path.read_text(encoding='utf-8'))
@@ -308,9 +325,9 @@ def writeNormalizedCourseData() -> dict:
         'courses': normalized,
     }
 
-    out_path = BASE / 'data/import_reports/normalized_courses_mechanical_2027.json'
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(audit, ensure_ascii=False, indent=2), encoding='utf-8')
+    target = Path(out_path) if out_path is not None else defaultNormalizedOutputPath()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(audit, ensure_ascii=False, indent=2), encoding='utf-8')
     return audit
 
 
@@ -341,5 +358,6 @@ if __name__ == '__main__':
             print(f"    {cid}")
 
     print()
-    out = BASE / 'data/import_reports/normalized_courses_mechanical_2027.json'
-    print(f"  Output written to: {out}")
+    # Same source of truth as the write above, so the reported path can never
+    # drift from the path actually written.
+    print(f"  Output written to: {defaultNormalizedOutputPath()}")

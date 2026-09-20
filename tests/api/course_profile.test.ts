@@ -171,3 +171,83 @@ describe('buildCourseProfiles — profile coverage & fields (test 2)', () => {
     }
   });
 });
+
+// ── Catalog integrity (test 3) ────────────────────────────────────────────────
+// A course that lacks an AUTHORITATIVE Hebrew name has no valid catalog record
+// to display or validate against. It must never be silently placed into an
+// applicable proposal (which would render a "פרטי הקורס אינם זמינים" card the
+// student could then Apply). It is kept in the universe (never dropped, so the
+// trace can still explain it) but flagged excluded so isExcluded() keeps it out
+// of every ADD/REPLACE candidate — the same mechanism explicit user exclusion
+// already uses. A required (mandatory/category) course flagged this way surfaces
+// through the existing missing-mandatory / unsatisfied-category gates, i.e. it
+// BLOCKS rather than silently placing an unnamed card.
+describe('buildCourseProfiles — catalog integrity (test 3)', () => {
+  it('flags a name-less repository elective excluded WITHOUT any user exclusion', () => {
+    const profiles = buildCourseProfiles(TINY_BOARD as any, {}); // no disallow at all
+    const x = profiles.get('0542-9999') as CourseProfile;
+    expect(x).toBeDefined();            // kept in the universe, never dropped
+    expect(x.excluded).toBe(true);      // …but not a legal ADD candidate
+    expect(typeof x.exclusion_reason).toBe('string');
+    expect((x.exclusion_reason ?? '').length).toBeGreaterThan(0);
+  });
+
+  it('leaves a fully-named elective addable (excluded=false)', () => {
+    const profiles = buildCourseProfiles(TINY_BOARD as any, {});
+    const e = profiles.get('0542-4123') as CourseProfile;
+    expect(e.excluded).toBe(false);
+  });
+
+  it('a user-disallowed course keeps its explicit-exclusion reason (precedence over catalog gate)', () => {
+    const profiles = buildCourseProfiles(TINY_BOARD as any, { disallowedCourseIds: ['0542-4123'] });
+    const e = profiles.get('0542-4123') as CourseProfile;
+    expect(e.excluded).toBe(true);
+    expect(e.exclusion_reason).toMatch(/חריגה|לא-זמין/); // the user-exclusion wording, not the catalog one
+  });
+
+  it('marks EVERY name-less OR hours-less universe course excluded on the real ME-2027 board', () => {
+    const profiles = buildCourseProfiles(REAL_BOARD, {});
+    let checked = 0;
+    for (const p of profiles.values()) {
+      const named = typeof p.name_he === 'string' && p.name_he.trim().length > 0;
+      const houred = typeof p.hours === 'number' && Number.isFinite(p.hours);
+      if (!named || !houred) {
+        expect(p.excluded).toBe(true);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0); // fixture really does contain such courses
+  });
+
+  it('a course with no authoritative weekly-hours is excluded even when it HAS a name', () => {
+    const board = {
+      semesters: [{ semester_id: 'year_3_semester_a', courses: [] }],
+      metadata: {
+        program_repository_courses: [
+          { course_id: 'HRS', name_he: 'קורס עם שם בלי שעות', weekly_hours: null, source: 'elective' },
+        ],
+        program_requirements_categories: { categories: [] },
+      },
+    };
+    const p = buildCourseProfiles(board as any, {}).get('HRS') as CourseProfile;
+    expect(p.name_he).toBe('קורס עם שם בלי שעות'); // name kept for the trace
+    expect(p.excluded).toBe(true);                 // …but not a legal ADD candidate
+    expect(p.exclusion_reason).toMatch(/שעות|נקודות/);
+  });
+
+  it('a course with no canonical course ID never becomes a profile', () => {
+    const board = {
+      semesters: [{ semester_id: 'year_3_semester_a', courses: [{ name_he: 'ללא מזהה', weekly_hours: 3 }] }],
+      metadata: { program_requirements_categories: { categories: [] } },
+    };
+    const profiles = buildCourseProfiles(board as any, {});
+    expect(profiles.size).toBe(0); // a non-string/absent course_id is skipped, never planned over
+  });
+
+  it('an authoritative EMPTY prerequisites list ([] = "no prerequisites") never excludes a course', () => {
+    // TINY_BOARD's 0542-4123 has no prerequisites key → parsed as [] → must stay addable.
+    const e = buildCourseProfiles(TINY_BOARD as any, {}).get('0542-4123') as CourseProfile;
+    expect(e.prerequisites).toEqual([]); // authoritative "no prerequisites", not missing metadata
+    expect(e.excluded).toBe(false);      // a valid, applicable course
+  });
+});

@@ -1,0 +1,38 @@
+{
+  "semesters": [
+    {
+      "semester_id": "year_3_semester_a",
+      "courses": [
+        { "course_id": "MAND", "name_he": "חובה", "weekly_hours": 4, "is_mandatory": true, "course_type": "mandatory", "placement_policy": "fixed", "effective_allowed_semesters": ["year_3_semester_a"], "prerequisites": [] }
+      ]
+    },
+    {
+      "semester_id": "year_3_semester_b",
+      "courses": []
+    },
+    {
+      "semester_id": "year_4_semester_a",
+      "courses": [
+        { "course_id": "FILLER", "name_he": "ממלא", "weekly_hours": 22, "is_mandatory": true, "course_type": "mandatory", "placement_policy": "fixed", "effective_allowed_semesters": ["year_4_semester_a"], "prerequisites": [] }
+      ]
+    },
+    { "semester_id": "year_4_semester_b", "courses": [] }
+  ],
+  "metadata": {
+    "completed_course_ids": [],
+    "program_requirements_categories": {
+      "total_required_hours": 185,
+      "categories": [
+        { "category_id": "fluids", "name_he": "זורמים", "min_courses": 1, "course_ids": ["FLU_SMALL"] },
+        { "category_id": "solids", "name_he": "מוצקים", "min_courses": 1, "course_ids": ["SOL"] }
+      ]
+    },
+    "program_repository_courses": [
+      { "course_id": "MAND",      "name_he": "חובה",   "weekly_hours": 4,  "is_mandatory": true,  "course_type": "mandatory", "placement_policy": "fixed",    "effective_allowed_semesters": ["year_3_semester_a"], "prerequisites": [] },
+      { "course_id": "FILLER",    "name_he": "ממלא",   "weekly_hours": 22, "is_mandatory": true,  "course_type": "mandatory", "placement_policy": "fixed",    "effective_allowed_semesters": ["year_4_semester_a"], "prerequisites": [] },
+      { "course_id": "FLU_SMALL", "name_he": "זורם קטן","weekly_hours": 1, "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "effective_allowed_semesters": ["year_4_semester_a"], "program_category_id": "fluids", "prerequisites": [] },
+      { "course_id": "BIG",       "name_he": "גדול",   "weekly_hours": 4,  "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "effective_allowed_semesters": ["year_4_semester_a"], "prerequisites": [] },
+      { "course_id": "SOL",       "name_he": "מוצק",   "weekly_hours": 4,  "is_mandatory": false, "course_type": "elective",  "placement_policy": "elective", "effective_allowed_semesters": ["year_3_semester_b"], "program_category_id": "solids", "prerequisites": [] }
+    ]
+  }
+}

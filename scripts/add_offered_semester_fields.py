@@ -16,9 +16,16 @@ import sys
 from pathlib import Path
 
 OFFERED_SEMESTERS_OVERRIDES: dict[str, dict] = {
+    # 0542-3620 מעבר חם is offered in BOTH semesters. The authoritative TAU
+    # course listing (search_l.aspx?course_num=05423620, year 2025/2026) lists
+    # five groups: 01,02 in Semester א (A) and 05,06,07 in Semester ב (B). The
+    # original single-group override (group 01 syllabus only) recorded ["A"] and
+    # dropped the Semester-B groups — a "one group treated as the whole offering"
+    # bug. Corrected to the UNION of the authoritative groups' semesters, sourced
+    # from the multi-group listing rather than one group's syllabus.
     "0542-3620": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
+        "offered_semesters": ["A", "B"],
+        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2025",
         "offering_source_confidence": "high",
     },
     # 0542-3780 / 0542-3791: syllabus evidence shows these are offered in Semester

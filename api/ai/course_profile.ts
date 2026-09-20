@@ -38,6 +38,10 @@ export interface CourseProfile {
   course_type: string | null;
   /** 'fixed' | 'flexible' | 'elective' | null. */
   placement_policy: string | null;
+  /** True for a general-requirement course (e.g. קורסי שער רוח) that must
+   *  never be used as arbitrary degree-hour filler beyond its own category's
+   *  requirement — it still counts toward degree hours, but only up to that. */
+  does_not_count_as_engineering_elective?: boolean;
 
   // ── credits / weekly hours ────────────────────────────────────────────────
   hours: number | null;
@@ -69,6 +73,16 @@ export interface CourseProfile {
   // ── relation to user preferences ──────────────────────────────────────────
   is_wanted: boolean;
   is_unwanted: boolean;
+
+  // ── annual course deduplication ───────────────────────────────────────────
+  /** True for a year-long course physically placed in more than one semester. */
+  is_annual?: boolean;
+  /** The semester ids this annual course spans (e.g. both halves of the year). */
+  spans_semesters?: string[];
+  /** Shared ID for annual course pairs (e.g. semester A + semester B of the same course). */
+  root_course_id?: string;
+  /** When true, only one of the paired annual courses counts toward degree hours. */
+  count_hours_once?: boolean;
 
   // ── exclusion / disallowed status (never dropped — flagged) ───────────────
   excluded: boolean;
@@ -171,11 +185,33 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
   const isDisallowed = disallowed.has(id);
   const isUnwanted = unwanted.has(id);
 
+  // Catalog integrity: a course must carry the fields authoritative planning and
+  // validation depend on — a verified Hebrew NAME (to display / validate) and a
+  // verified weekly-HOURS credit value (to account for per-semester and degree
+  // load). Missing EITHER means the course has no sound catalog record, so it
+  // stays in the universe (never dropped — the trace can still explain it) but is
+  // flagged excluded: it can never be silently ADDed into an applicable proposal
+  // (a name-less "פרטי הקורס אינם זמינים" card, or an hours-less card that breaks
+  // the semester total). Only genuinely-missing REQUIRED metadata is gated here —
+  // an authoritative empty prerequisites list ([] = "no prerequisites") and
+  // optional descriptive fields (syllabus, difficulty, …) never exclude a course.
+  // If such a course is a required mandatory/category course, the existing
+  // completion gates surface it as a BLOCK rather than a silent placement (see
+  // generate-plan.ts missingMandatoryGate / degreeHoursGate).
+  const hasAuthoritativeName = typeof raw.name_he === 'string' && raw.name_he.trim().length > 0;
+  const hasAuthoritativeHours = num(raw.weekly_hours) != null;
+
   let excluded = false;
   let exclusion_reason: string | null = null;
   if (isDisallowed) {
     excluded = true;
     exclusion_reason = 'הקורס סומן כלא-זמין (חריגה מפורשת / קורס מצטיינים / חופף).';
+  } else if (!hasAuthoritativeName) {
+    excluded = true;
+    exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר שם קורס מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';
+  } else if (!hasAuthoritativeHours) {
+    excluded = true;
+    exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר ערך שעות/נקודות מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';
   }
 
   return {
@@ -187,6 +223,7 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
     is_mandatory: raw.is_mandatory === true || raw.course_type === 'mandatory',
     course_type: raw.course_type ?? (raw.is_mandatory ? 'mandatory' : 'elective'),
     placement_policy: raw.placement_policy ?? null,
+    does_not_count_as_engineering_elective: raw.does_not_count_as_engineering_elective === true,
 
     hours: num(raw.weekly_hours),
 
@@ -212,6 +249,11 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
 
     is_wanted: wanted.has(id),
     is_unwanted: isUnwanted,
+
+    is_annual: raw.is_annual === true ? true : undefined,
+    spans_semesters: Array.isArray(raw.spans_semesters) ? strArr(raw.spans_semesters) : undefined,
+    root_course_id: typeof raw.root_course_id === 'string' ? raw.root_course_id : undefined,
+    count_hours_once: raw.count_hours_once === true ? true : undefined,
 
     excluded,
     exclusion_reason,

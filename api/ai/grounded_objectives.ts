@@ -1,0 +1,561 @@
+/**
+ * K4 — ONE narrow, source-grounded soft optimization objective.
+ *
+ * Implemented objective: `prefer_laboratory_courses` — "מעדיף קורסים עם מעבדה".
+ *
+ * Why this one, after investigating what the official sources actually support:
+ * the institution's syllabus template carries `אופן ההוראה` (delivery mode) as a
+ * SCHEMA-COMPLETE enumerated field — always published, always naming the mode.
+ * That makes "this course has a laboratory component" the single best-evidenced
+ * feature available (see course_features.ts), which is exactly the requirement
+ * for a grounded objective: strong official evidence, not inference.
+ *
+ * Semantics — deliberately SOFT:
+ *   - it RANKS candidates that are already legal and already retained; it never
+ *     requires that every selected course have a laboratory;
+ *   - it cannot override degree completion, legality, hard include/exclude
+ *     constraints, load caps, or the confirmed distribution policy — those are
+ *     compared strictly ahead of it (see candidate_set.ts's ranking);
+ *   - only a CONFIRMED, active preference contributes anything at all;
+ *   - `unknown` evidence, missing evidence and unsupported features contribute
+ *     exactly ZERO — an absent fact is never read as a negative, and never as a
+ *     positive;
+ *   - a course whose feature is genuinely `false` also contributes zero. This is
+ *     a preference FOR something, not a penalty AGAINST its absence.
+ *
+ * All candidates in a request are scored against ONE `EvidenceSnapshot`, so a
+ * ranking difference can only ever come from the candidates' own course
+ * composition — never from one candidate seeing fresher data than another.
+ */
+
+import type { AcademicEvidence } from './academic_evidence';
+import type { CourseFeatures } from './course_features';
+import type { TopicId } from './course_topics';
+
+export type GroundedObjectiveId =
+  | 'prefer_laboratory_courses'
+  | 'prefer_project_courses'
+  /**
+   * T4 — content/topic alignment with confirmed interests. Unlike the two
+   * delivery objectives, this one is PARAMETERISED by the topics the student
+   * confirmed, and it reads a different evidence field (`תוכן הקורס ומטרתו`)
+   * whose semantics are weaker: a topic is affirmed or unknown, never false,
+   * because prose that omits a subject does not establish its absence.
+   */
+  | 'prefer_topic_alignment'
+  | 'avoid_topic_exposure';
+
+/**
+ * The primary extracted feature each delivery objective reads. The project
+ * objective also accepts an explicit project from the official assignments
+ * field; this is the same student preference, not a separate objective, and a
+ * course supported by both fields still contributes once.
+ */
+const OBJECTIVE_FEATURE: Record<'prefer_laboratory_courses' | 'prefer_project_courses', { key: 'laboratory' | 'projectDelivery'; labelHe: string }> = {
+  prefer_laboratory_courses: { key: 'laboratory', labelHe: 'מעבדה' },
+  prefer_project_courses: { key: 'projectDelivery', labelHe: 'פרויקט' },
+};
+
+/**
+ * Student-facing Hebrew names for the topic vocabulary. The internal id is never
+ * shown; these are the words the official documents themselves use, so the
+ * explanation stays recognisable and auditable.
+ */
+const TOPIC_LABEL_HE: Record<TopicId, string> = {
+  engineering_design: 'תכן ועיצוב הנדסי',
+  finite_element_analysis: 'ניתוח אלמנטים סופיים',
+  solid_mechanics: 'מכניקת מוצקים',
+  robotics: 'רובוטיקה',
+  control: 'בקרה',
+  manufacturing: 'ייצור ועיבוד',
+  materials: 'חומרים',
+  thermofluids: 'זרימה ומעבר חום',
+  energy_systems: 'מערכות אנרגיה',
+  programming_electronics: 'תכנות ואלקטרוניקה',
+};
+
+/**
+ * C5 — the student-facing NAME of an objective, for a question that asks which
+ * objective matters more. Derived from the supported objective vocabulary and
+ * the confirmed topics, never authored per pair: an objective that is not
+ * implemented has no name here, so it can never be offered as a choice.
+ *
+ * The internal objective id is the machine vocabulary and is never returned.
+ */
+export function objectiveSubjectHe(
+  objectiveId: GroundedObjectiveId,
+  topicIds: readonly TopicId[] = [],
+): string | undefined {
+  if (objectiveId === 'prefer_laboratory_courses') return 'קורסים עם מעבדה';
+  if (objectiveId === 'prefer_project_courses') return 'קורסים מבוססי פרויקט';
+  if (objectiveId === 'prefer_topic_alignment') {
+    const names = [...new Set(topicIds)].sort().map((t) => TOPIC_LABEL_HE[t]).filter(Boolean);
+    return names.length ? `תחום התוכן: ${names.join(', ')}` : undefined;
+  }
+  if (objectiveId === 'avoid_topic_exposure') {
+    const names = [...new Set(topicIds)].sort().map((t) => TOPIC_LABEL_HE[t]).filter(Boolean);
+    return names.length ? `הימנעות מתוכן בתחום ${names.join(', ')}` : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * One course's affirmatively-supported topics, with the official document they
+ * came from. Provenance travels WITH the fact so an explanation can cite it
+ * without re-deriving anything.
+ */
+export interface CourseTopicSupport {
+  topicIds: ReadonlySet<TopicId>;
+  sourceRef: string;
+  academicYear: number | string;
+  /** Exact source fact for each asserted topic; absent on legacy/test adapters. */
+  evidenceByTopic?: ReadonlyMap<TopicId, {
+    sourceRef: string;
+    academicYear: number | string;
+    rawWording: string;
+  }>;
+}
+
+/** Courses' supported topics, keyed by course id — one snapshot's worth. */
+export type TopicIndex = ReadonlyMap<string, CourseTopicSupport>;
+
+type CourseLabels = ReadonlyMap<string, string>;
+
+function displayCourse(courseId: string, labels?: CourseLabels): string {
+  const name = labels?.get(courseId)?.trim();
+  return name && name !== courseId ? `${name} (${courseId})` : courseId;
+}
+
+/**
+ * A confirmed, active grounded preference. Constructing one is the ONLY way to
+ * make the objective contribute; an unanswered, indifferent or merely-inferred
+ * preference must not produce this value.
+ */
+export interface GroundedObjective {
+  id: GroundedObjectiveId;
+  /** Literal true — an unconfirmed preference has no place in ranking. */
+  confirmed: true;
+  /** The evidence snapshot every candidate in this request is scored against. */
+  snapshotId: string;
+  /**
+   * T4 — the confirmed topics, for `prefer_topic_alignment` only. Absent or
+   * empty makes the objective inert rather than an error.
+   */
+  topicIds?: readonly TopicId[];
+}
+
+/** One course's evidence-backed contribution to the objective. */
+export interface ObjectiveContribution {
+  courseId: string;
+  feature: 'laboratory' | 'projectDelivery' | 'project' | 'topic';
+  /** Present for `feature: 'topic'` — which confirmed topic this course supports. */
+  topicId?: TopicId;
+  /** Official source the claim rests on. */
+  sourceRef: string;
+  academicYear: number | string;
+  /** Short copyright-safe quote from the official page. */
+  excerpt?: string;
+}
+
+export interface GroundedScore {
+  /** Higher is better. Zero when nothing is supported by evidence. */
+  score: number;
+  /** Exactly the courses that contributed, with their provenance. */
+  contributions: ObjectiveContribution[];
+  /** Courses whose feature is genuinely unknown — disclosed, never counted. */
+  unknownCourseIds: string[];
+  /**
+   * K7.5 — courses whose official sections genuinely DISAGREE on the feature
+   * (e.g. group 05 is a laboratory, group 01 is not). Disclosed, never counted:
+   * the candidate selects a course and a period, not a group, so the plan does
+   * not establish which format the student would actually get.
+   */
+  variesBySectionCourseIds: string[];
+}
+
+/** A course's extracted features, keyed by course id — one snapshot's worth. */
+export type FeatureIndex = ReadonlyMap<string, CourseFeatures>;
+
+function firstEvidence(features: CourseFeatures, key: 'laboratory' | 'projectDelivery' | 'project'): AcademicEvidence | undefined {
+  return features[key].evidence[0];
+}
+
+/**
+ * Score ONE candidate's course set on the objective.
+ *
+ * Counts only courses whose relevant feature is confirmed `true` by official
+ * evidence. The project objective accepts either project delivery or an
+ * explicit project assessment, once per course. `false` and `'unknown'` both
+ * contribute zero, and missing evidence is neutral.
+ */
+export function scoreCandidateOnObjective(
+  courseIds: readonly string[],
+  objective: GroundedObjective,
+  features: FeatureIndex,
+  topics?: TopicIndex,
+): GroundedScore {
+  const contributions: ObjectiveContribution[] = [];
+  const unknownCourseIds: string[] = [];
+  const variesBySectionCourseIds: string[] = [];
+
+  if (objective.id === 'prefer_topic_alignment' || objective.id === 'avoid_topic_exposure') {
+    return scoreTopicAlignment(courseIds, objective, features, topics);
+  }
+
+  for (const courseId of [...courseIds].sort()) {
+    const f = features.get(courseId);
+    if (!f) continue; // no evidence at all — no bias in either direction
+    const keys: Array<'laboratory' | 'projectDelivery' | 'project'> = objective.id === 'prefer_project_courses'
+      ? ['projectDelivery', 'project']
+      : ['laboratory'];
+    const key = keys.find((candidate) => f[candidate].value === true) ?? keys[0];
+    const feature = f[key];
+    const values = keys.map((candidate) => f[candidate].value as unknown);
+    // K7.5 — the sections disagree. Neither true nor false applies to a
+    // course-level candidate, so this is disclosed and contributes nothing.
+    if (!values.includes(true) && values.includes('varies_by_section')) {
+      variesBySectionCourseIds.push(courseId);
+      continue;
+    }
+    if (!values.includes(true) && values.includes('unknown')) {
+      unknownCourseIds.push(courseId);
+      continue; // disclosed, never counted
+    }
+    if (!values.includes(true)) continue; // genuinely false — a preference FOR, not a penalty
+    const e = firstEvidence(f, key);
+    contributions.push({
+      courseId,
+      feature: key,
+      sourceRef: e?.sourceRef ?? '',
+      academicYear: e?.academicYear ?? f.academicYear,
+      ...(e?.excerpt !== undefined ? { excerpt: e.excerpt } : {}),
+    });
+  }
+
+  return { score: contributions.length, contributions, unknownCourseIds, variesBySectionCourseIds };
+}
+
+/**
+ * T4 — score a candidate on confirmed CONTENT/TOPIC alignment.
+ *
+ * One contribution per (course, confirmed topic) the course affirmatively
+ * supports. Because `supportedTopics` already collapses repeated wording and
+ * multiple documents into a set, a topic stated three times — or in three
+ * documents — is one contribution, never three.
+ *
+ * A course with no topic evidence is DISCLOSED and adds zero. It is never
+ * penalised: topic prose that omits a subject does not establish the course
+ * lacks it, so unknown is genuinely unknown, and a candidate can neither gain
+ * nor lose from missing coverage.
+ */
+function scoreTopicAlignment(
+  courseIds: readonly string[],
+  objective: GroundedObjective,
+  features: FeatureIndex,
+  topics?: TopicIndex,
+): GroundedScore {
+  const contributions: ObjectiveContribution[] = [];
+  const unknownCourseIds: string[] = [];
+  const wanted = [...new Set(objective.topicIds ?? [])].sort();
+
+  for (const courseId of [...courseIds].sort()) {
+    const support = topics?.get(courseId);
+    if (!support || support.topicIds.size === 0) {
+      // No official content statement for this course — disclosed, never counted.
+      if (topics?.has(courseId) || features.has(courseId)) unknownCourseIds.push(courseId);
+      continue;
+    }
+    for (const topicId of wanted) {
+      if (!support.topicIds.has(topicId)) continue;
+      const evidence = support.evidenceByTopic?.get(topicId);
+      contributions.push({
+        courseId,
+        feature: 'topic',
+        topicId,
+        sourceRef: evidence?.sourceRef ?? support.sourceRef,
+        academicYear: evidence?.academicYear ?? support.academicYear,
+        ...(evidence?.rawWording ? { excerpt: evidence.rawWording } : {}),
+      });
+    }
+  }
+
+  return { score: contributions.length, contributions, unknownCourseIds, variesBySectionCourseIds: [] };
+}
+
+/**
+ * A concise, factual Hebrew explanation of the objective's effect. States which
+ * confirmed preference applied, which course feature supported it, and the
+ * official source and year — and, when a lower-ranked candidate is supplied, why
+ * that alternative scored lower ON THIS SOFT OBJECTIVE ONLY.
+ *
+ * Deliberately never claims a course is objectively better, only that it matches
+ * a preference the user confirmed.
+ */
+export function explainGroundedRanking(input: {
+  objective: GroundedObjective;
+  selected: GroundedScore;
+  alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
+}): string {
+  const { selected, alternative } = input;
+  if (input.objective.id === 'prefer_topic_alignment') return explainTopicAlignment(input);
+  if (input.objective.id === 'avoid_topic_exposure') return explainAvoidedTopicExposure(input);
+  const label = OBJECTIVE_FEATURE[input.objective.id].labelHe;
+  const evidenceFields = input.objective.id === 'prefer_project_courses'
+    ? 'אופן ההוראה או במטלות הקורס'
+    : 'אופן ההוראה';
+  if (selected.contributions.length === 0 && (!alternative || alternative.contributions.length === 0)) {
+    const varying = selected.variesBySectionCourseIds?.length
+      ? ` עבור חלק מהקורסים המידע הרשמי על ${evidenceFields} משתנה בין קבוצות, ולכן לא ניתן לייחס אותו לקורס כולו.`
+      : '';
+    return `לא נמצאה עדות רשמית ב${evidenceFields} שתומכת בהעדפה שסימנת, ולכן ההעדפה לא השפיעה על הדירוג.` + varying;
+  }
+  const names = selected.contributions.map((c) => displayCourse(c.courseId, input.courseLabels)).join(', ');
+  const src = selected.contributions[0];
+  const head = selected.contributions.length
+    ? `לפי ההעדפה שאישרת (קורסים עם ${label}), התוכנית הנבחרת כוללת ${selected.contributions.length} קורס/ים עם רכיב ${label}: ${names}.`
+    : `ההעדפה שאישרת (קורסים עם ${label}) לא נתמכה בעדות רשמית עבור התוכנית הנבחרת.`;
+  const provenance = src
+    ? ` המקור: ${src.feature === 'project' ? 'מטלות הקורס' : 'אופן ההוראה'} בסילבוס הרשמי משנת ${src.academicYear}.`
+    : '';
+  const compare = alternative
+    ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} קורס/ים עם ${label}), ולא מסיבה אקדמית אחרת.`
+    : '';
+  const unknown = selected.unknownCourseIds.length
+    ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא קיימת עדות רשמית ב${evidenceFields}, ולכן הם לא נספרו לכאן ולא לכאן.`
+    : '';
+  // K7.5 — a course whose sections disagree is described AS varying. It is never
+  // called a laboratory course on the strength of one group.
+  const varies = selected.variesBySectionCourseIds?.length
+    ? ` עבור ${selected.variesBySectionCourseIds.length} קורס/ים המידע הרשמי על ${evidenceFields} משתנה בין קבוצות, ולכן הם לא השפיעו על הדירוג.`
+    : '';
+  return head + provenance + compare + unknown + varies;
+}
+
+/**
+ * T4 — the topic-alignment explanation.
+ *
+ * States which content interest was confirmed, which selected courses officially
+ * cover it, the official source and year, and — crucially — that courses without
+ * a published statement were NOT counted against anything. It never claims the
+ * selected plan is better, only that it matches a confirmed interest.
+ */
+function explainTopicAlignment(input: {
+  objective: GroundedObjective;
+  selected: GroundedScore;
+  alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
+}): string {
+  const { objective, selected, alternative } = input;
+  const wanted = [...new Set(objective.topicIds ?? [])].sort();
+  const names = wanted.map((t) => TOPIC_LABEL_HE[t]).join(', ');
+
+  if (selected.contributions.length === 0) {
+    return `לא נמצאה עדות רשמית שתומכת בתחומי התוכן שסימנת (${names}) בתוכנית הנבחרת, ולכן ההעדפה לא השפיעה על הדירוג.`;
+  }
+
+  const byCourse = new Map<string, TopicId[]>();
+  for (const c of selected.contributions) {
+    byCourse.set(c.courseId, [...(byCourse.get(c.courseId) ?? []), c.topicId!]);
+  }
+  const perCourse = [...byCourse.entries()]
+    .map(([courseId, ts]) => `${displayCourse(courseId, input.courseLabels)} (${[...new Set(ts)].map((t) => TOPIC_LABEL_HE[t]).join(', ')})`)
+    .join('; ');
+  const src = selected.contributions[0];
+
+  const head = `לפי תחומי התוכן שאישרת (${names}), התוכנית הנבחרת כוללת ${byCourse.size} קורס/ים שהתוכן הרשמי שלהם מציין אותם: ${perCourse}.`;
+  const wording = src.excerpt ? ` הניסוח הרשמי: "${src.excerpt}".` : '';
+  const provenance = ` המקור: שדה "תוכן הקורס ומטרתו" בסילבוס הרשמי משנת ${src.academicYear}.${wording}`;
+  const compare = alternative
+    ? ` חלופה חוקית אחרת דורגה נמוך יותר בהעדפה הרכה הזו בלבד (${alternative.contributions.length} התאמות תוכן), ולא מסיבה אקדמית אחרת.`
+    : '';
+  // Coverage limitation, always stated: silence in the official text is not a
+  // statement that the course lacks the topic.
+  const unknown = selected.unknownCourseIds.length
+    ? ` עבור ${selected.unknownCourseIds.length} קורס/ים לא פורסם תוכן רשמי שניתן להשוות, ולכן הם לא נספרו לכאן ולא לכאן.`
+    : ' יש לשים לב שהיעדר אזכור בתוכן הרשמי אינו קביעה שהנושא לא נלמד בקורס.';
+  return head + provenance + compare + unknown;
+}
+
+/** Explain only PROVEN exposure; silence remains explicitly unknown/neutral. */
+function explainAvoidedTopicExposure(input: {
+  objective: GroundedObjective;
+  selected: GroundedScore;
+  alternative?: GroundedScore;
+  courseLabels?: CourseLabels;
+}): string {
+  const avoided = [...new Set(input.objective.topicIds ?? [])].sort();
+  const names = avoided.map((t) => TOPIC_LABEL_HE[t]).join(', ');
+  const exposedCourses = [...new Set(input.selected.contributions.map((c) => c.courseId))];
+  const head = exposedCourses.length
+    ? `בתוכנית הנבחרת נותרו ${exposedCourses.length} קורס/ים עם אזכור רשמי לתחומים שביקשת להימנע מהם (${names}): ${exposedCourses.map((id) => displayCourse(id, input.courseLabels)).join(', ')}.`
+    : `לא נמצאה בתוכנית הנבחרת עדות רשמית לתחומים שביקשת להימנע מהם (${names}).`;
+  const compare = input.alternative
+    ? ` בחלופה חוקית אחרת נמצאו ${input.alternative.contributions.length} התאמות מוכחות לתחומים האלה.`
+    : '';
+  const limit = ' היעדר אזכור בסילבוס אינו הוכחה שהנושא אינו נלמד; קורסים ללא ראיה נשארו ניטרליים ולא סומנו כבטוחים.';
+  return head + compare + limit;
+}
+
+/**
+ * M6 — explain EVERY active objective that influenced the ranking.
+ *
+ * Each objective is described with its own already-proven wording, so nothing
+ * about the single-objective explanation changes. With exactly one active
+ * objective this returns byte-identical text to `explainGroundedRanking`.
+ *
+ * With several, the per-objective sentences are followed by ONE sentence naming
+ * how they were combined. That sentence is derived from the objective vectors,
+ * never asserted: when no candidate is best on everything, the trade-off is
+ * stated plainly rather than hidden behind a precedence rule, and the
+ * equal-importance default is described as this system's ranking policy — not
+ * as something the student said.
+ */
+export function explainGroundedComposition(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId; topicIds?: readonly TopicId[] }>;
+  snapshotId: string;
+  selected: readonly GroundedScore[];
+  alternative?: readonly GroundedScore[];
+  /** Every other legal, non-dominated alternative still available to choose. */
+  alternatives?: readonly (readonly GroundedScore[])[];
+  reason:
+    | 'single_objective'
+    | 'dominates_all_objectives'
+    | 'equal_confirmed_preferences'
+    | 'explicit_priority'
+    | 'canonical_tie_break'
+    | 'no_distinguishing_evidence';
+  /**
+   * C5 — the objective the student explicitly named as mattering more. Supplied
+   * ONLY when they genuinely said so; its absence is why the equal-importance
+   * wording has always described itself as the SYSTEM's policy rather than the
+   * student's statement.
+   */
+  primaryObjectiveId?: GroundedObjectiveId;
+  /** Authoritative catalog labels for user-readable course references. */
+  courseLabels?: CourseLabels;
+}): string {
+  const { objectives, selected, alternative, snapshotId } = input;
+  if (objectives.length === 0 || selected.length === 0) return '';
+
+  const available = input.alternatives?.length
+    ? input.alternatives
+    : alternative ? [alternative] : [];
+  const comparison = input.reason === 'explicit_priority'
+    ? selectGroundedExplanationAlternative({
+        objectives,
+        selected,
+        alternatives: available,
+        primaryObjectiveId: input.primaryObjectiveId,
+      })
+    : available[0];
+
+  const per = objectives.map((o, i) =>
+    explainGroundedRanking({
+      objective: {
+        id: o.id,
+        confirmed: true,
+        snapshotId,
+        ...(o.topicIds?.length ? { topicIds: o.topicIds } : {}),
+      },
+      selected: selected[i],
+      ...(comparison?.[i] ? { alternative: comparison[i] } : {}),
+      ...(input.courseLabels ? { courseLabels: input.courseLabels } : {}),
+    }),
+  );
+
+  // One objective ⇒ exactly the text this produced before composition existed.
+  if (objectives.length === 1) return per[0];
+
+  const combined: Record<typeof input.reason, string> = {
+    single_objective: '',
+    dominates_all_objectives:
+      ' התוכנית הנבחרת מתאימה לכל ההעדפות שאישרת לפחות כמו כל חלופה חוקית אחרת שנבדקה, ועדיפה על חלקן בלפחות העדפה אחת.',
+    equal_confirmed_preferences:
+      ' אין חלופה חוקית שמצטיינת בכל ההעדפות שאישרת בו-זמנית. לא ציינת מה חשוב יותר, ולכן כל ההעדפות נשקלו במשקל שווה — זו מדיניות הדירוג של המערכת, לא קביעה שלך.',
+    explicit_priority: explicitPrioritySentence({ ...input, alternative: comparison }),
+    canonical_tie_break:
+      ' כל החלופות החוקיות התאימו להעדפות שאישרת באותה מידה, ולכן נשמרה תוכנית ברירת המחדל.',
+    no_distinguishing_evidence:
+      ' לא נמצאה עדות רשמית שמבדילה בין החלופות עבור ההעדפות שאישרת, ולכן הן לא השפיעו על הדירוג.',
+  };
+
+  return per.join(' ') + (combined[input.reason] ?? '');
+}
+
+/**
+ * Select the available plan whose evidence most clearly demonstrates the cost
+ * of the student's explicit priority. Shared by explanation text and source
+ * disclosure so a comparative sentence can never cite only the selected plan.
+ */
+export function selectGroundedExplanationAlternative(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId }>;
+  selected: readonly GroundedScore[];
+  alternatives: readonly (readonly GroundedScore[])[];
+  primaryObjectiveId?: GroundedObjectiveId;
+}): readonly GroundedScore[] | undefined {
+  const primaryIndex = input.primaryObjectiveId
+    ? input.objectives.findIndex((objective) => objective.id === input.primaryObjectiveId)
+    : -1;
+  if (primaryIndex < 0) return input.alternatives[0];
+  const advantage = (candidate: readonly GroundedScore[], index: number) => {
+    const candidateScore = candidate[index]?.score ?? 0;
+    const selectedScore = input.selected[index]?.score ?? 0;
+    return input.objectives[index]?.id === 'avoid_topic_exposure'
+      ? selectedScore - candidateScore
+      : candidateScore - selectedScore;
+  };
+  return input.alternatives
+    .map((candidate, order) => ({
+      candidate,
+      order,
+      gain: Math.max(0, ...input.objectives.map((_, index) =>
+        index === primaryIndex ? 0 : advantage(candidate, index))),
+    }))
+    .sort((a, b) => b.gain - a.gain || a.order - b.order)[0]?.candidate;
+}
+
+/**
+ * C5 — what an explicit priority actually did, stated factually.
+ *
+ * It names the objective the student chose, says that is why this plan was
+ * recommended, and — crucially — names the objective a different legal plan is
+ * still stronger on. Suppressing that would turn a trade-off the student
+ * resolved by preference into an implied claim of superiority, which it is not.
+ */
+function explicitPrioritySentence(input: {
+  objectives: ReadonlyArray<{ id: GroundedObjectiveId; topicIds?: readonly TopicId[] }>;
+  selected: readonly GroundedScore[];
+  alternative?: readonly GroundedScore[];
+  primaryObjectiveId?: GroundedObjectiveId;
+}): string {
+  const { objectives, selected, alternative, primaryObjectiveId } = input;
+  const k = objectives.findIndex((o) => o.id === primaryObjectiveId);
+  if (k < 0) {
+    // Reason says a priority decided, but we were not told which. Say only what
+    // is supported rather than naming an objective on a guess.
+    return ' הבחירה נעשתה לפי סדר החשיבות שציינת בין ההעדפות.';
+  }
+  const primaryName = objectiveSubjectHe(objectives[k].id, objectives[k].topicIds ?? []);
+  const head = ` ציינת ש${primaryName} חשוב לך יותר, ולכן ההמלצה נבחרה לפי ההעדפה הזו ולא לפי שקלול שווה של כולן.`;
+
+  // The objective a rejected legal alternative is still stronger on.
+  const strongerElsewhere = alternative
+    ? objectives
+        .map((o, i) => ({ o, i }))
+        .find(({ o, i }) => {
+          if (i === k) return false;
+          const a = alternative[i]?.score ?? 0;
+          const s = selected[i]?.score ?? 0;
+          // For avoidance, fewer proven matches is stronger; every other
+          // objective remains higher-is-better on its raw score.
+          return o.id === 'avoid_topic_exposure' ? a < s : a > s;
+        })
+    : undefined;
+  const tradeoff = strongerElsewhere
+    ? ` חלופה חוקית אחרת עדיין מתאימה יותר ל${objectiveSubjectHe(strongerElsewhere.o.id, strongerElsewhere.o.topicIds ?? [])}, והיא נשארת זמינה לבחירה.`
+    : '';
+  const scope =
+    ' כל החלופות המוצגות עומדות באותן דרישות ומגבלות — סדר החשיבות שציינת השפיע רק על ההמלצה, לא על מה שמותר.';
+  return head + tradeoff + scope;
+}

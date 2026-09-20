@@ -1,0 +1,18 @@
+[
+  { "courseId": "0542-4422", "year": 2025, "group": "01", "why": "ENGINEERING DESIGN — 'תכן הנדסי: מבוא ושיטות'; the design-topic case" },
+  { "courseId": "0542-4391", "year": 2025, "group": "01", "why": "NUMERICAL SIMULATION of flow and heat transfer — FEA/CFD + thermofluids case" },
+  { "courseId": "0542-4391", "year": 2025, "group": "02", "why": "same course, second authoritative group — completeness + content-scope probe" },
+  { "courseId": "0542-4624", "year": 2025, "group": "01", "why": "ROBOTICS AND CONTROL laboratory" },
+  { "courseId": "0542-4624", "year": 2025, "group": "02", "why": "same course, second authoritative group — completeness + content-scope probe" },
+  { "courseId": "0542-4559", "year": 2025, "group": "01", "why": "MECHATRONICS laboratory — control/electronics case" },
+  { "courseId": "0581-4131", "year": 2025, "group": "01", "why": "ENGINEERING MATERIALS laboratory — materials case, different faculty prefix" },
+  { "courseId": "0581-4131", "year": 2025, "group": "02", "why": "same course, second authoritative group — completeness probe" },
+  { "courseId": "0542-4425", "year": 2025, "group": "01", "why": "3D PRINTING AND PLASTIC PART DESIGN — manufacturing + design case" },
+  { "courseId": "0542-4094", "year": 2025, "group": "01", "why": "ADVANCED FLOW AND ENERGY SYSTEMS laboratory — thermofluids case" },
+  { "courseId": "0555-4432", "year": 2025, "group": "01", "why": "BIOMEDICAL SYSTEMS DESIGN — design outside mechanical, generality probe" },
+  { "courseId": "0542-4125", "year": 2025, "group": "01", "why": "ENVIRONMENTAL ENGINEERING introduction — breadth, non-lab lecture" },
+  { "courseId": "0555-4000", "year": 2025, "group": "01", "why": "ETHICS — deliberate OFF-DOMAIN control; must yield NO engineering topics" },
+  { "courseId": "0542-4011", "year": 2025, "group": "01", "why": "RESEARCH PROJECT for honours students — project course contrast" },
+  { "courseId": "0542-3112", "year": 2025, "group": "02", "why": "second group of an ALREADY-ACQUIRED course — completes its group universe" },
+  { "courseId": "0542-4093", "year": 2025, "group": "01", "why": "course-details page returns NO results — expected missing/sparse case" }
+]

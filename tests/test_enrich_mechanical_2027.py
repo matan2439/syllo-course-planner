@@ -326,11 +326,21 @@ def test_enrich_links_adds_syllabus_to_mandatory_from_fixture(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_repo_syllabus_url_implies_pending_ai_status(repo):
-    """When syllabus_url exists, syllabus_ai_analysis_status must be 'pending'."""
+    """When syllabus_url exists, syllabus_ai_analysis_status must be one of the
+    real pipeline's terminal/queued states.
+
+    app/pipeline/fetch_syllabus_summaries.py (which actually fetches and
+    parses the real TAU syllabus pages — see its real syllabus_summary_he /
+    syllabus_prerequisites_he / syllabus_last_fetched_at content on the
+    checked-in board) sets 'done' on success and 'failed' on failure; only
+    courses it hasn't processed yet stay 'pending'. 'complete' is never
+    produced by any code path — it was an early placeholder name that the
+    real implementation didn't end up using.
+    """
     bad = [
         r["course_id"] for r in repo
         if r.get("syllabus_url")
-        and r.get("syllabus_ai_analysis_status") not in ("pending", "complete")
+        and r.get("syllabus_ai_analysis_status") not in ("pending", "done", "failed")
     ]
     assert not bad, f"Courses with syllabus_url but wrong ai_status: {bad}"
 
@@ -461,16 +471,31 @@ def test_board_mandatory_not_in_repo():
 
 
 def test_board_mandatory_not_duplicated():
+    """No mandatory course_id may appear more than once per semester slot,
+    EXCEPT real annual courses (is_annual=True), which are legitimately
+    placed once in each semester they span (spans_semesters) — e.g.
+    0542-3792, a real ME-2027 annual course placed in both year_3_semester_a
+    and year_3_semester_b (see commit 45286c5, "populate root_course_id at
+    extraction, fixing annual-dedup double-count"). Those are deduplicated
+    for HOURS purposes via root_course_id/count_hours_once elsewhere
+    (buildCourseProfiles/placedHours), not by suppressing the second board
+    placement."""
     board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
-    mandatory_ids = [
-        c["course_id"]
+    mandatory = [
+        c
         for sem in board["semesters"]
         for c in sem.get("courses", [])
         if c.get("course_type") == "mandatory"
     ]
-    counts = Counter(mandatory_ids)
-    dupes = {cid: n for cid, n in counts.items() if n > 1}
-    assert not dupes, f"Duplicate mandatory courses: {dupes}"
+    annual_ids = {c["course_id"] for c in mandatory if c.get("is_annual")}
+    counts = Counter(c["course_id"] for c in mandatory)
+    dupes = {cid: n for cid, n in counts.items() if n > 1 and cid not in annual_ids}
+    assert not dupes, f"Duplicate mandatory courses (non-annual): {dupes}"
+    # Annual courses must duplicate by exactly the number of semesters they span.
+    for cid in annual_ids:
+        spans = next(c["spans_semesters"] for c in mandatory if c["course_id"] == cid)
+        assert counts[cid] == len(spans), \
+            f"Annual course {cid} appears {counts[cid]} times, expected {len(spans)} (spans_semesters)"
 
 
 def test_board_mandatory_locked_by_default():
@@ -507,14 +532,19 @@ def test_board_spec_courses_use_enriched_hours(repo):
 
 
 def test_planned_mandatory_count():
-    """Planned mandatory count after enrichment must be >= 12 (full extraction)."""
+    """Planned mandatory count after enrichment must be 12 UNIQUE mandatory
+    courses (full extraction). The raw per-semester-slot placement count is
+    13, because one of the 12 (0542-3792) is a real annual course placed
+    once in each of the 2 semesters it spans (see
+    test_board_mandatory_not_duplicated / commit 45286c5)."""
     board = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
     mandatory = [
         c for sem in board["semesters"]
         for c in sem.get("courses", [])
         if c.get("course_type") == "mandatory"
     ]
-    assert len(mandatory) == 12, f"Expected 12 mandatory, got {len(mandatory)}"
+    unique_ids = {c["course_id"] for c in mandatory}
+    assert len(unique_ids) == 12, f"Expected 12 unique mandatory courses, got {len(unique_ids)}"
 
 
 def test_planned_elective_count_zero():

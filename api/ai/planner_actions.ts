@@ -7,7 +7,14 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
-import { degreeHours as computeDegreeHours } from './planner_goals';
+import {
+  degreeHours as computeDegreeHours,
+  scorePlan,
+  compareScore,
+  isFullyPlaced,
+  requiredButUnplacedCourseIds,
+  requiredCourseSemesterBoundaries,
+} from './planner_goals';
 import {
   type ConstraintModel,
   type PlanState,
@@ -15,6 +22,22 @@ import {
   placedCourseIds,
   semesterOf,
 } from './planner_types';
+
+/**
+ * Large general-requirement catalogs (such as שער רוח) contain many
+ * interchangeable options. Bound their automatic search frontier; explicitly
+ * wanted courses are considered separately below and are never hidden by this
+ * optimization.
+ */
+const MAX_AUTOMATIC_GENERAL_CATEGORY_CANDIDATES = 1;
+
+function preferenceScore(model: ConstraintModel, id: string): number {
+  const p = model.profiles.get(id);
+  if (!p) return 0;
+  if (p.is_wanted) return 1;
+  if (p.is_unwanted) return -1;
+  return 0;
+}
 
 export function isExcluded(model: ConstraintModel, id: string): boolean {
   return model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true;
@@ -24,6 +47,12 @@ export function isMovable(model: ConstraintModel, id: string): boolean {
   if (model.pinnedCourseIds.has(id)) return false;
   const p = model.profiles.get(id);
   if (!p) return false;
+  // Annual (year-long) courses occupy every spanned semester together and are
+  // never split — moving or replacing them out of one semester only would
+  // break that pairing, contradicting the placement this same course's
+  // profile already asserts elsewhere (course_profile.ts's "לא ניתן
+  // להזזה/פיצול" LLM-facing note).
+  if (p.is_annual) return false;
   return p.placement_policy !== 'fixed';
 }
 
@@ -32,6 +61,48 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
   if (!p) return model.knownSemesterIds;
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
   return semesters.length ? semesters : model.knownSemesterIds;
+}
+
+/**
+ * ADD_COURSE action(s) for a candidate course. An `is_annual` course spans
+ * multiple semesters together (e.g. a year-long lab meeting in both
+ * halves) and must be placed in all of them atomically as a single action —
+ * treating each spanned semester as a separate, mutually-exclusive
+ * alternative (the default below) would let the search place it in only
+ * one, silently under-reporting the true weekly load of the other. Every
+ * other course keeps the prior one-action-per-legal-semester behavior.
+ *
+ * The atomic bundle only ever targets a CONFIDENT span set — the course's
+ * own declared `spans_semesters`, or `getLegalSemesters`'s result when it
+ * says `confident: true` (this year's actual effective/program offering).
+ * When neither is known (an annual flag with no other legality data at
+ * all), we can't guess how many semesters the course really spans — bundling
+ * it into every known semester on the board would silently overload/
+ * misrepresent the plan. Falling through to the single-semester-per-legal-
+ * semester behavior below (same as any other course) is the same safe
+ * default this codebase used for `is_annual` courses before atomic bundling
+ * existed, and matches `isFullyPlaced`'s (planner_goals.ts) identical
+ * confident-or-fall-through rule and `plan_validation.ts`'s
+ * `annualSpansFor`'s "stay silent when not confident" rule.
+ */
+export function addCourseActionsFor(model: ConstraintModel, id: string): PlannerMutation[] {
+  const p = model.profiles.get(id);
+  if (p?.is_annual) {
+    let spans: string[] | null = p.spans_semesters?.length ? p.spans_semesters : null;
+    if (!spans) {
+      const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
+      if (legal.confident) spans = legal.semesters;
+    }
+    if (spans) {
+      const filtered = spans.filter(sem => model.knownSemesterIds.includes(sem));
+      if (!filtered.length) return [];
+      const [semesterId, ...alsoSemesterIds] = filtered;
+      return [{ type: 'ADD_COURSE', courseId: id, semesterId, ...(alsoSemesterIds.length ? { alsoSemesterIds } : {}) }];
+    }
+    // No confident span data — fall through to the per-legal-semester
+    // behavior below, same as a non-annual course.
+  }
+  return legalSemestersFor(model, id).map(sem => ({ type: 'ADD_COURSE', courseId: id, semesterId: sem }));
 }
 
 function loadOf(state: PlanState, model: ConstraintModel, sem: string): number {
@@ -58,35 +129,154 @@ export function bestLegalSemester(state: PlanState, model: ConstraintModel, id: 
 export function enumerateActions(state: PlanState, model: ConstraintModel): PlannerMutation[] {
   const placed = new Set(placedCourseIds(state));
   const actions: PlannerMutation[] = [];
+  // An is_annual course only counts as "placed" (and so excluded from
+  // further consideration) once it occupies EVERY one of its
+  // spans_semesters — a partial placement (e.g. stale data predating atomic
+  // annual handling, or any other split) must still be repairable.
   const consider = (id: string) =>
-    !placed.has(id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
+    !isFullyPlaced(state, model, placed, id) && !model.completedCourseIds.has(id) && !isExcluded(model, id);
 
-  // 1. required mandatory still unplaced — every legal semester.
+  // 0. annual-elective-completeness repair — unconditional, independent of
+  // degree-hour fill (group 4). A partially-placed is_annual course that is
+  // NOT mandatory, NOT a category candidate, and NOT wanted (a plain
+  // elective) is only otherwise reachable through group 4, which only runs
+  // while degree hours are short; but placedHours already counts the
+  // partial placement's full hours once it's in `placed` at all, so once
+  // the hour target is met that gate never re-opens, leaving the course
+  // permanently stuck half-placed and flagged invalid by validation with no
+  // way to ever repair it. Mandatory/category/wanted annual courses already
+  // get this for free below via `consider` — skipping them here avoids
+  // proposing the same atomic action twice.
+  const classifiedElsewhere = (id: string) =>
+    model.requiredMandatoryCourseIds.includes(id) ||
+    model.wantedCourseIds.has(id) ||
+    model.categories.some(cat => cat.candidateIds.includes(id));
+  for (const [id, p] of model.profiles) {
+    if (!p.is_annual || !placed.has(id) || isFullyPlaced(state, model, placed, id)) continue;
+    if (classifiedElsewhere(id)) continue;
+    actions.push(...addCourseActionsFor(model, id));
+  }
+
+  // requiredCourseSemesterBoundaries (planner_goals.ts, mirrors
+  // isMandatoryCourseReachable's own beforeIndex logic) gives the latest
+  // USEFUL semester index per required-but-unplaced course; a missing entry
+  // means no boundary data was computable, so — bias-toward-reachable, the
+  // same default this whole mechanism follows — every legal semester stays
+  // offered rather than being wrongly filtered to nothing. Computed once,
+  // up front, since both group 1 and group 1b need it.
+  const boundaries = requiredCourseSemesterBoundaries(state, model);
+  const withinBoundary = (a: PlannerMutation, boundary: number | undefined): boolean => {
+    if (boundary === undefined || a.type !== 'ADD_COURSE') return true;
+    return [a.semesterId, ...(a.alsoSemesterIds ?? [])]
+      .every(sem => model.knownSemesterIds.indexOf(sem) < boundary);
+  };
+
+  // 1. required mandatory still unplaced — every legal semester, filtered to
+  // whatever boundary this course has as someone ELSE's prerequisite.
+  //
+  // Codex finding on this PR (round 23): when a required mandatory course
+  // (M1) is ALSO a prerequisite of another required mandatory course (M2),
+  // requiredCourseSemesterBoundaries DOES compute a real boundary for M1
+  // (its top-level loop recurses into M2's prerequisites, which includes
+  // M1) — but this group offered M1 at every legal semester unfiltered,
+  // since M1 is a top-level mandatory id itself. An earlier version's
+  // comment assumed "group 1 already covers them" was enough, which is only
+  // true for a plain top-level mandatory course with NO downstream
+  // dependent — a shared M1 could still be placed at a semester that
+  // satisfies its OWN requirement but permanently blocks M2's strict-timing
+  // ordering, exactly the bug class already fixed for ordinary (non-
+  // mandatory) shared prerequisites via group 1b's boundary filter.
   for (const id of model.requiredMandatoryCourseIds) {
     if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    const boundary = boundaries.get(id);
+    actions.push(...addCourseActionsFor(model, id).filter(a => withinBoundary(a, boundary)));
+  }
+
+  // 1b. unplaced PREREQUISITES of a reachable-but-unplaced mandatory course
+  // — unconditional, like group 1, NOT gated on group 4's "degree-hour fill,
+  // only while short" condition. A prerequisite that's just an ordinary
+  // elective on paper is still a structurally required stepping stone (the
+  // mandatory course it unlocks can't be legally added until it's placed),
+  // not a discretionary filler — Codex finding on this PR: gating it behind
+  // group 4 meant a client-supplied initial state that already meets the
+  // raw degree-hour target (a real, reachable case — an existing board with
+  // enough elective hours but a missing mandatory course) would never even
+  // offer this prerequisite as a candidate ADD action, permanently stuck.
+  // requiredButUnplacedCourseIds (planner_goals.ts) already includes the
+  // mandatory course ids themselves — skip those, group 1 (above) already
+  // covers them, WITH the same boundary filter, now that round 23's finding
+  // is fixed.
+  const requiredButUnplaced = requiredButUnplacedCourseIds(state, model);
+  for (const id of requiredButUnplaced) {
+    if (model.requiredMandatoryCourseIds.includes(id)) continue;
+    if (!consider(id)) continue;
+    const boundary = boundaries.get(id);
+    actions.push(...addCourseActionsFor(model, id).filter(a => withinBoundary(a, boundary)));
   }
 
   // 2. candidates for not-yet-satisfied categories — every legal semester.
+  //
+  // Codex finding on this PR (round 22): a category candidate that's ALSO a
+  // required-but-unplaced prerequisite (group 1b) must not get a second,
+  // UNFILTERED proposal here — this loop has no awareness of
+  // requiredCourseSemesterBoundaries, so it could offer (and the search
+  // could take) an ADD at a semester group 1b's boundary filter deliberately
+  // excludes, fully placing the course at a useless semester and
+  // permanently blocking the dependent mandatory course, even though the
+  // correctly-filtered, useful option was ALSO offered by group 1b in the
+  // very same step. Same exclusion group 4 (degree-hour fill) already
+  // applies, for the same reason — group 1b already unconditionally
+  // proposes every boundary-respecting option for these ids.
   for (const cat of model.categories) {
-    const got = cat.candidateIds.filter(id => placed.has(id)).length;
+    const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) continue;
-    for (const id of cat.candidateIds) {
-      if (!consider(id)) continue;
-      for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    const eligibleIds = cat.candidateIds.filter(id => consider(id) && !requiredButUnplaced.has(id));
+    const isGeneralRequirement = eligibleIds.some(id => model.profiles.get(id)?.does_not_count_as_engineering_elective);
+    const candidateIds = isGeneralRequirement
+      ? eligibleIds
+        .sort((a, b) => preferenceScore(model, b) - preferenceScore(model, a) || a.localeCompare(b))
+        .slice(0, MAX_AUTOMATIC_GENERAL_CATEGORY_CANDIDATES)
+      : eligibleIds;
+    for (const id of candidateIds) {
+      actions.push(...addCourseActionsFor(model, id));
     }
   }
 
   // 3. wanted courses — every legal semester.
+  //
+  // Same exclusion as group 2, same reason — a wanted course that's also a
+  // required-but-unplaced prerequisite is already fully covered by group
+  // 1b's boundary-respecting proposals.
   for (const id of model.wantedCourseIds) {
-    if (!consider(id)) continue;
-    for (const sem of legalSemestersFor(model, id)) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
+    if (!consider(id) || requiredButUnplaced.has(id)) continue;
+    actions.push(...addCourseActionsFor(model, id));
   }
 
   // 4. degree-hour fill — only while short; each elective at its best semester.
+  //
+  // Codex finding on this PR: a course already covered by group 1b (a
+  // required-but-unplaced prerequisite) must NOT also get an unconstrained
+  // proposal here. `bestLegalSemester` picks the lowest-LOAD legal
+  // semester with no awareness of `requiredCourseSemesterBoundaries` — for
+  // a prerequisite legal in both a useful (before its dependent) and a
+  // useless (after it) semester, if the useless one happens to have lower
+  // load, this loop would propose exactly the ADD group 1b's boundary
+  // filter was built to exclude. Once that useless placement is taken,
+  // `consider()`'s `isFullyPlaced` check removes the course from
+  // consideration entirely, permanently blocking the dependent mandatory
+  // course even though the correctly-filtered, useful option was ALSO
+  // offered (by group 1b) in the very same step. Excluding these ids here
+  // is sufficient — group 1b already unconditionally proposes every
+  // boundary-respecting option for them, degree-fill has nothing
+  // additional and correct left to add.
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
-      if (!consider(id) || p.is_mandatory) continue;
+      if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0 || p.is_unwanted) continue;
+      // A general-requirement course (e.g. קורסי שער רוח) is never generic
+      // filler — it only reaches the plan via group 2 (its own category).
+      if (p.does_not_count_as_engineering_elective) continue;
+      if (requiredButUnplaced.has(id)) continue;
+      if (p.is_annual) { actions.push(...addCourseActionsFor(model, id)); continue; }
       const sem = bestLegalSemester(state, model, id);
       if (sem) actions.push({ type: 'ADD_COURSE', courseId: id, semesterId: sem });
     }
@@ -98,6 +288,34 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
     const here = semesterOf(state, id);
     for (const sem of legalSemestersFor(model, id)) {
       if (sem !== here) actions.push({ type: 'MOVE_COURSE', courseId: id, toSemester: sem });
+    }
+  }
+
+  // 6. replace — swap a low-preference placed course for a higher-preference unplaced one.
+  //    Only for the top-3 worst-scoring placed movable courses; top-3 replacements each.
+  const scoredPlaced = [...placed]
+    .filter(id => isMovable(model, id))
+    .map(id => ({ id, pref: preferenceScore(model, id) }))
+    .sort((a, b) => a.pref - b.pref)  // worst first
+    .slice(0, 3);
+
+  for (const { id: outId, pref: outPref } of scoredPlaced) {
+    const sem = semesterOf(state, outId);
+    if (!sem) continue;
+    const candidates = [...model.profiles.entries()]
+      .filter(([inId, p]) =>
+        !placed.has(inId) &&
+        !model.completedCourseIds.has(inId) &&
+        !isExcluded(model, inId) &&
+        !p.does_not_count_as_engineering_elective &&
+        preferenceScore(model, inId) > outPref &&
+        legalSemestersFor(model, inId).includes(sem),
+      )
+      .sort((a, b) => preferenceScore(model, b[0]) - preferenceScore(model, a[0]))
+      .slice(0, 3);
+
+    for (const [inId] of candidates) {
+      actions.push({ type: 'REPLACE_COURSE', outId, inId, semesterId: sem });
     }
   }
 
