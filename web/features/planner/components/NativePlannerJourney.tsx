@@ -19,37 +19,39 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { ConversationProposal } from '../../../../shared/planner/conversation-wire'
-import { ContractError, fromHalfHours, isCatalogStale, proposalBaseRevision } from '../../../../shared/planner/model'
+import { ContractError, fromHalfHours, proposalBaseRevision } from '../../../../shared/planner/model'
 import type { ProposalBaseRevision } from '../../../../shared/planner/model'
 import {
   applyPlan, editBoard, establishPlanningContext,
   type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type LoadedPlanningContext,
   type ManualBoardEditResult,
 } from '../../../../shared/planner/api-client'
-import { boardModelToVM, semesterTitleHe } from '../../../lib/planner/board-vm'
+import { boardModelToVM } from '../../../lib/planner/board-vm'
 import type { CourseVM } from '../../../lib/board'
 import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-details'
 import CourseDetailsPanel from '../../courses/components/CourseDetailsPanel'
 import { buildDraftVM } from '../../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../../lib/planner/apply-eligibility'
-import PreferenceConversation from '../../agent/components/PreferenceConversation'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
-import CompletedCoursesPanel, {
+import {
   EMPTY_ACADEMIC_STATUS,
   academicStatusDraftFromPersonalStatus,
   completedCourseIdsOf,
   type AcademicStatusDraft,
 } from '../../courses/components/CompletedCoursesPanel'
 import { emptyProfile, type PreferenceProfile } from '../../../../api/ai/preference_model'
-import { earlyYearCoursesFor, earlyYearHoursById } from '../../../../shared/planner/early_year_courses'
+import { earlyYearCoursesFor } from '../../../../shared/planner/early_year_courses'
 import NativePlannerBoard from './NativePlannerBoard'
 import ProgressBadge from './ProgressBadge'
 import { adaptRequirementsFromModel } from '../../../lib/requirements'
-import CourseNamePicker from '../../courses/components/CourseNamePicker'
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
-import { Card } from '../../../components/ui'
 import ProposalView from './ProposalView'
+import { BoardError, BoardLoading } from './BoardStatus'
+import ManualAddPrompt from './ManualAddPrompt'
+import PlannerChatCard from './PlannerChatCard'
+import PlannerPreferencesCard from './PlannerPreferencesCard'
+import AgentPreferencePanel from './AgentPreferencePanel'
 import { buildGeneratePlanRequest } from '../lib/build-plan-request'
 import { computeStaleReason } from '../lib/stale-reason'
 import { useCommittedBoard } from '../hooks/use-committed-board'
@@ -60,7 +62,7 @@ import {
   defaultApply, defaultCommittedBoard, defaultEditBoard, defaultEstablishPlanningContext, defaultGenerate,
   defaultGetBoard, defaultPlanningContext, defaultSendConversation,
 } from '../lib/api-defaults'
-import type { BoardPhase, ChatMsg, GenPhase, ManualAddIntent, StaleReason } from '../types'
+import type { ChatMsg, GenPhase, ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 
@@ -503,43 +505,8 @@ export default function NativePlannerJourney({
     clearProposal()
   }
 
-  if (boardPhase === 'loading') {
-    return (
-      <section aria-label="התוכנית הנוכחית" className="planner-board-region flex flex-col gap-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="text-sm font-bold tracking-tight">לוח הסמסטרים</h2>
-          <p role="status" aria-live="polite" className="mt-2 text-sm text-[var(--text-muted)]">
-            טוען את התוכנית הנוכחית…
-          </p>
-          <div aria-hidden="true" className="mt-4 grid min-h-40 grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-px overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--border)]">
-            {[
-              { id: 'year-3-a', label: 'שנה ג׳ — סמסטר א׳' },
-              { id: 'year-3-b', label: 'שנה ג׳ — סמסטר ב׳' },
-              { id: 'year-4-a', label: 'שנה ד׳ — סמסטר א׳' },
-              { id: 'year-4-b', label: 'שנה ד׳ — סמסטר ב׳' },
-            ].map((semester) => (
-              <div key={semester.id} className="animate-pulse bg-[var(--surface)] p-3">
-                <div className="h-4 w-20 rounded bg-black/[.06] dark:bg-white/[.08]" />
-                <div className="mt-5 h-20 rounded-lg bg-black/[.04] dark:bg-white/[.05]" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
-  if (boardPhase === 'error' || !current) {
-    return (
-      <section aria-label="התוכנית הנוכחית" className="planner-board-region flex flex-col gap-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <h2 className="text-sm font-bold tracking-tight">לוח הסמסטרים</h2>
-          <p role="alert" className="mt-2 rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-            טעינת התוכנית הנוכחית נכשלה. נא לרענן או לנסות שוב מאוחר יותר.
-          </p>
-        </div>
-      </section>
-    )
-  }
+  if (boardPhase === 'loading') return <BoardLoading />
+  if (boardPhase === 'error' || !current) return <BoardError />
 
   /**
    * C3/C4 — the draft actually shown and applied. Selecting an alternative does
@@ -563,73 +530,22 @@ export default function NativePlannerJourney({
     : null
 
   const preferenceContent = useAcademicDecisionAgent ? (
-    <div className="flex flex-col gap-3">
-      <details>
-        <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
-        <div className="mt-3 flex flex-col gap-3">
-          <p className="text-xs text-[var(--text-muted)]">אפשר להשלים כאן פרטים שיעזרו לשיחה. הסוכן יאשר אותם מולכם — ואין כאן בנייה אוטומטית.</p>
-          <CompletedCoursesPanel
-            programId={programId}
-            catalogCourses={pickerCourses}
-            catalogHoursById={catalogHoursById}
-            value={academicStatus}
-            onChange={updateAcademicStatus}
-          />
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            מגבלת שעות שבועיות (אם יש לך העדפה ברורה)
-            <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
-              onChange={(e) => { setMaxHours(e.target.value); updatePreferenceVersion() }}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            שעות שכבר הושלמו (רק אם אינן מופיעות ברשימה)
-            <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
-              onChange={(e) => { setPriorHours(e.target.value); updatePreferenceVersion() }}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
-          <CourseNamePicker inputName="wanted-course-search" label="קורסים שחשוב לך לשלב" placeholder="חיפוש לפי שם קורס…"
-            courses={pickerCourses} selectedIds={wantIds}
-            onChange={(ids) => { setWantIds(ids); updatePreferenceVersion() }} />
-          <div id="excluded-courses-control">
-            <CourseNamePicker inputName="excluded-course-search" label="קורסים שתרצה להימנע מהם" placeholder="חיפוש לפי שם קורס…"
-              courses={pickerCourses} selectedIds={excludeIds}
-              onChange={(ids) => { setExcludeIds(ids); updatePreferenceVersion() }} />
-            {excludeIds.length === 0 && (
-              <button
-                type="button"
-                aria-pressed={exclusionsNoneConfirmed}
-                onClick={() => { setExclusionsNoneConfirmed((v) => !v); updatePreferenceVersion() }}
-                className={`mt-2 self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
-                  exclusionsNoneConfirmed
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
-                }`}
-              >
-                אין קורסים שאני רוצה להימנע מהם
-              </button>
-            )}
-          </div>
-          <PreferenceConversation
-            onBuild={() => undefined}
-            onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
-            showBuild={false}
-            showInitialQuestion={false}
-            // Server-provided impact signals only refine which question is useful.
-            elicitationContext={{
-              ...(proposal && proposal.balanceAlternativesMaterial === false ? { irrelevantTopicIds: ['semester_balance'] } : {}),
-              ...(proposal?.groundedQuestionImpact ? { groundedFeatureImpact: proposal.groundedQuestionImpact } : {}),
-              ...(proposal?.topicQuestionImpact ? { topicInterestImpact: proposal.topicQuestionImpact } : {}),
-              ...(proposal?.priorityQuestionImpact && !stale ? {
-                objectivePriorityImpact: {
-                  eligible: proposal.priorityQuestionImpact.eligible,
-                  options: proposal.priorityQuestionImpact.options.map((o) => ({ value: o.value, labelHe: o.labelHe })),
-                },
-              } : {}),
-            }}
-          />
-        </div>
-      </details>
-    </div>
+    <AgentPreferencePanel
+      programId={programId}
+      pickerCourses={pickerCourses}
+      catalogHoursById={catalogHoursById}
+      academicStatus={academicStatus}
+      updateAcademicStatus={updateAcademicStatus}
+      maxHours={maxHours} setMaxHours={setMaxHours}
+      priorHours={priorHours} setPriorHours={setPriorHours}
+      wantIds={wantIds} setWantIds={setWantIds}
+      excludeIds={excludeIds} setExcludeIds={setExcludeIds}
+      exclusionsNoneConfirmed={exclusionsNoneConfirmed} setExclusionsNoneConfirmed={setExclusionsNoneConfirmed}
+      updatePreferenceVersion={updatePreferenceVersion}
+      onProfileChange={(profile) => { convProfileRef.current = profile; setConvProfileVersion(profile.version) }}
+      proposal={proposal}
+      stale={stale}
+    />
   ) : null
 
   return (
@@ -646,31 +562,13 @@ export default function NativePlannerJourney({
           </p>
         )}
         {manualAddIntent && (
-          <Card className="flex flex-col gap-3 p-4" aria-live="polite">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-bold">הוספת {current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}</h2>
-              <button
-                type="button"
-                aria-label="ביטול הוספת קורס"
-                onClick={onManualAddCancelled}
-                disabled={manualEditPhase === 'saving'}
-                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
-              >
-                ביטול
-              </button>
-            </div>
-            {manualAddIntent.semesterIds.length ? (
-              <div className="flex flex-wrap gap-2">
-                {manualAddIntent.semesterIds.map((semesterId) => (
-                  <button key={semesterId} type="button" disabled={manualEditPhase === 'saving'}
-                    onClick={() => commitManualAdd(semesterId)}
-                    className="rounded-full border border-[var(--border)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
-                    הוסף אל {semesterTitleHe(semesterId)}
-                  </button>
-                ))}
-              </div>
-            ) : <p className="text-sm text-[var(--text-muted)]">לא נמצא סמסטר מוצע סמכותי לקורס זה.</p>}
-          </Card>
+          <ManualAddPrompt
+            intent={manualAddIntent}
+            courseName={current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}
+            saving={manualEditPhase === 'saving'}
+            onCancel={onManualAddCancelled}
+            onPick={commitManualAdd}
+          />
         )}
         <section aria-label="התוכנית הנוכחית">
           <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -747,35 +645,9 @@ export default function NativePlannerJourney({
             × <span>סגור עוזר</span>
           </button>
         )}
-        {!useAcademicDecisionAgent && <Card className="flex flex-col gap-3 p-4">
-          <h2 className="text-sm font-bold tracking-tight">עוזר התכנון</h2>
-          <div aria-label="שיחה" className="flex max-h-56 flex-col gap-2 overflow-y-auto">
-            {messages.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)]">כתבו העדפות או בקשות. שליחת הודעה לא מייצרת תוכנית — לחצו "בנה תוכנית".</p>
-            ) : (
-              messages.map((m, i) => (
-                <p key={i} className={m.role === 'user' ? 'text-sm' : 'text-xs text-[var(--text-muted)]'}>
-                  <span aria-hidden="true">{m.role === 'user' ? '🧑 ' : 'ℹ️ '}</span>
-                  <span>{m.text}</span>
-                </p>
-              ))
-            )}
-          </div>
-          <div className="flex gap-2">
-            <input
-              name="planner-message"
-              aria-label="הודעה / בקשה / העדפה"
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage() } }}
-              placeholder="כתבו העדפה או בקשה…"
-              className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm"
-            />
-            <button type="button" onClick={sendMessage} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium">
-              שלח
-            </button>
-          </div>
-        </Card>}
+        {!useAcademicDecisionAgent && (
+          <PlannerChatCard messages={messages} draftText={draftText} setDraftText={setDraftText} sendMessage={sendMessage} />
+        )}
 
         {useAcademicDecisionAgent && (
           <AcademicAgentConversation
@@ -819,45 +691,16 @@ export default function NativePlannerJourney({
           </p>
         )}
 
-        {!useAcademicDecisionAgent && <Card className="flex flex-col gap-3 p-4">
-          <h2 className="text-sm font-bold tracking-tight">העדפות</h2>
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            מגבלת שעות שבועיות לסמסטר
-            <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours}
-              onChange={(e) => { setMaxHours(e.target.value); updatePreferenceVersion() }}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-            שעות שהושלמו (שנים א׳–ב׳, מחוץ ללוח)
-            <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours}
-              onChange={(e) => { setPriorHours(e.target.value); updatePreferenceVersion() }}
-              className="rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]" />
-          </label>
-          <CourseNamePicker inputName="wanted-course-search" label="קורסים להוספה (חיפוש לפי שם)" placeholder="הקלידו שם קורס להוספה…"
-            courses={pickerCourses} selectedIds={wantIds}
-            onChange={(ids) => { setWantIds(ids); updatePreferenceVersion() }} />
-          <div id="excluded-courses-control">
-            <CourseNamePicker inputName="excluded-course-search" label="קורסים להחריג (לא יופיעו בתוכנית)" placeholder="הקלידו שם קורס להחרגה…"
-              courses={pickerCourses} selectedIds={excludeIds}
-              onChange={(ids) => { setExcludeIds(ids); updatePreferenceVersion() }} />
-            {/* An empty selection is only an ANSWER once the student says so —
-                untouched stays unknown, so it is never silently read as "none". */}
-            {useAcademicDecisionAgent && excludeIds.length === 0 && (
-              <button
-                type="button"
-                aria-pressed={exclusionsNoneConfirmed}
-                onClick={() => { setExclusionsNoneConfirmed((v) => !v); updatePreferenceVersion() }}
-                className={`self-start rounded-full border px-4 py-1.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
-                  exclusionsNoneConfirmed
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-dashed border-[var(--border)] text-[var(--text-muted)]'
-                }`}
-              >
-                אין קורסים שאני רוצה להימנע מהם
-              </button>
-            )}
-          </div>
-        </Card>}
+        {!useAcademicDecisionAgent && (
+          <PlannerPreferencesCard
+            maxHours={maxHours} setMaxHours={setMaxHours}
+            priorHours={priorHours} setPriorHours={setPriorHours}
+            wantIds={wantIds} setWantIds={setWantIds}
+            excludeIds={excludeIds} setExcludeIds={setExcludeIds}
+            pickerCourses={pickerCourses}
+            updatePreferenceVersion={updatePreferenceVersion}
+          />
+        )}
 
         <div className="flex items-center gap-3">
           {/* Flag-off: the standalone Build. Flag-on: the mounted conversation's
