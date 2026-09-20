@@ -204,9 +204,22 @@ export default function NativePlannerJourney({
     : null
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
-  const alternativeBoard = selectedAlternative
+  const draft = effectiveProposal ? buildDraftVM(effectiveProposal, current) : null
+  // The proposal is previewed on the board itself (read-only, changed cards marked) while it is still
+  // valid to apply. A stale or blocked proposal leaves the committed board editable and untouched.
+  // A selected alternative stays previewed (that is how the switcher shows it), even when stale.
+  const previewBoard = selectedAlternative
     ? applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current)
-    : null
+    : effectiveProposal && draft && !stale && !draft.blocked
+        && effectiveProposal.semesters.some((semester) => semester.courseIds.length > 0)
+      ? applyGeneratedToBoard(effectiveProposal, current)
+      : null
+  const diffMarkers: Record<string, 'new' | 'moved'> = {}
+  for (const semester of draft?.semesters ?? []) {
+    for (const course of semester.courses) {
+      if (course.marker !== 'unchanged') diffMarkers[`${semester.id}|${course.id}`] = course.marker
+    }
+  }
 
   const preferenceContent = useAcademicDecisionAgent ? (
     <AgentPreferencePanel
@@ -255,7 +268,8 @@ export default function NativePlannerJourney({
         )}
         <CurrentPlanSection
           current={current}
-          alternativeBoard={alternativeBoard}
+          previewBoard={previewBoard}
+          diffMarkers={diffMarkers}
           alternatives={proposal?.alternatives}
           selectedAlternativeId={selectedAlternativeId}
           onSelectAlternative={setSelectedAlternativeId}
@@ -275,7 +289,7 @@ export default function NativePlannerJourney({
         {genPhase === 'done' && proposal && (
           <>
           <ProposalView
-            draft={buildDraftVM(effectiveProposal ?? proposal, current)}
+            draft={draft ?? buildDraftVM(proposal, current)}
             intentOutcome={proposal.intentOutcome}
             removed={removed}
             stale={stale}

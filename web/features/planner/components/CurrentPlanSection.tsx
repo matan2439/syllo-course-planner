@@ -9,18 +9,35 @@ import ProgressBadge from './ProgressBadge'
 
 type Highlight = { semesterId: string; key: number } | null
 
+function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Readonly<Record<string, 'new' | 'moved'>>) {
+  if (!markers) return board
+  return {
+    ...board,
+    semesters: board.semesters.map((semester) => ({
+      ...semester,
+      courses: semester.courses.map((course) => {
+        const diffMarker = markers[`${semester.id}|${course.id}`]
+        return diffMarker ? { ...course, diffMarker } : course
+      }),
+    })),
+  }
+}
+
 /**
  * The board with its progress badge and, when a proposal offers several plans, the switcher.
- * While an alternative is being previewed the board is read-only and nothing is saved.
+ * While a proposal or one of its alternatives is previewed the board is read-only, changed cards carry a
+ * marker, and nothing is saved.
  */
 export default function CurrentPlanSection({
-  current, alternativeBoard, alternatives, selectedAlternativeId, onSelectAlternative, stale,
+  current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
   activeDrag, rejectedDrop, justPlaced, onDragStateChange,
 }: {
   current: BoardModel
-  /** The selected alternative applied to the current board, or null when none is being previewed. */
-  alternativeBoard: BoardModel | null
+  /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
+  previewBoard: BoardModel | null
+  /** `${semesterId}|${courseId}` → how that placement differs from the committed plan (preview only). */
+  diffMarkers?: Readonly<Record<string, 'new' | 'moved'>>
   alternatives: GeneratedPlanModel['alternatives']
   selectedAlternativeId: string | null
   onSelectAlternative: (candidateId: string) => void
@@ -42,7 +59,7 @@ export default function CurrentPlanSection({
           <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
           <ProgressBadge requirements={adaptRequirementsFromModel(current)} />
         </div>
-        {alternativeBoard && <span className="text-xs text-[var(--text-muted)]">לא נשמר עד לאישור מפורש</span>}
+        {previewBoard && <span className="text-xs text-[var(--text-muted)]">תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש</span>}
       </div>
       {(alternatives?.length ?? 0) >= 2 && (
         <AlternativeBoardSwitcher
@@ -56,19 +73,19 @@ export default function CurrentPlanSection({
         />
       )}
       <NativePlannerBoard
-        board={boardModelToVM(alternativeBoard ?? current)}
-        onRemoveCourse={alternativeBoard ? undefined : commitManualRemove}
-        onAddCourse={alternativeBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
-        onMoveCourse={alternativeBoard ? undefined : commitManualMove}
+        board={withDiffMarkers(boardModelToVM(previewBoard ?? current), previewBoard ? diffMarkers : undefined)}
+        onRemoveCourse={previewBoard ? undefined : commitManualRemove}
+        onAddCourse={previewBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
+        onMoveCourse={previewBoard ? undefined : commitManualMove}
         onSelectCourse={selectBoardCourse}
-        mutationPending={alternativeBoard || manualEditPhase === 'saving' ? true : false}
-        activeDrag={alternativeBoard ? null : activeDrag}
-        rejectedSemesterId={alternativeBoard ? null : rejectedDrop?.semesterId}
-        rejectedDropKey={alternativeBoard ? null : rejectedDrop?.key}
-        justPlacedSemesterId={alternativeBoard ? null : justPlaced?.semesterId}
-        justPlacedKey={alternativeBoard ? null : justPlaced?.key}
-        onDragStateChange={alternativeBoard ? undefined : onDragStateChange}
-        readOnly={Boolean(alternativeBoard)}
+        mutationPending={previewBoard || manualEditPhase === 'saving' ? true : false}
+        activeDrag={previewBoard ? null : activeDrag}
+        rejectedSemesterId={previewBoard ? null : rejectedDrop?.semesterId}
+        rejectedDropKey={previewBoard ? null : rejectedDrop?.key}
+        justPlacedSemesterId={previewBoard ? null : justPlaced?.semesterId}
+        justPlacedKey={previewBoard ? null : justPlaced?.key}
+        onDragStateChange={previewBoard ? undefined : onDragStateChange}
+        readOnly={Boolean(previewBoard)}
       />
     </section>
 

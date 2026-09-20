@@ -3,9 +3,8 @@ import { Badge } from '../../../components/ui'
 import type { buildDraftVM } from '../../../lib/planner/draft-vm'
 import AgentOutcomeDetails from '../../agent/components/AgentOutcomeDetails'
 import GroundedExplanation from '../../agent/components/GroundedExplanation'
-import { AGENT_OUTCOME_LABEL_HE, STALE_MESSAGE_HE } from '../constants'
+import { AGENT_OUTCOME_LABEL_HE, MARKER_LABEL, STALE_MESSAGE_HE } from '../constants'
 import type { StaleReason } from '../types'
-import DraftSemester from './DraftSemester'
 
 export default function ProposalView({
   draft, intentOutcome, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
@@ -23,9 +22,11 @@ export default function ProposalView({
   onApply: () => void
   onReject: () => void
 }) {
+  const changes = draft.semesters.flatMap((semester) =>
+    semester.courses.filter((course) => course.marker !== 'unchanged').map((course) => ({ ...course, semester: semester.title })))
   return (
     <section aria-label="טיוטת תוכנית" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm backdrop-blur">
         <h2 className="text-sm font-bold tracking-tight">הצעת תוכנית</h2>
         <div className="flex items-center gap-2">
           <button type="button" onClick={onReject} className="rounded-full border border-[var(--border)] px-5 py-2 text-sm font-medium">
@@ -124,10 +125,21 @@ export default function ProposalView({
         </div>
       )}
 
-      <div role="list" aria-label="טיוטה — סמסטרים" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {draft.semesters.map((s) => (
-          <div role="listitem" key={s.id} className="min-w-0"><DraftSemester semester={s} /></div>
-        ))}
+      {/* The proposal itself is previewed on the board above; this lists what it would change. */}
+      <div aria-label="שינויים בהצעה" className="rounded-lg border border-[var(--border)] px-3.5 py-3 text-sm">
+        <h3 className="mb-1.5 text-sm font-bold tracking-tight">מה ישתנה בלוח</h3>
+        {changes.length === 0 ? (
+          <p className="text-[var(--text-muted)]">ההצעה זהה לתוכנית הנוכחית.</p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {changes.map((c) => (
+              <li key={`${c.semester}|${c.id}`}>
+                <span className="font-semibold">{MARKER_LABEL[c.marker]}: </span>
+                {c.nameHe ?? c.id} <span className="text-[var(--text-muted)]">← {c.semester}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   )

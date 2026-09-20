@@ -5,7 +5,7 @@
  * proposal + diff → reject / safe apply (blocked & stale can never apply) →
  * applied plan becomes the visible current board.
  */
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel, generatePlanResponseToModel } from '../../../../shared/planner/adapters'
 import type { GeneratePlanRequest } from '../../../../shared/planner/api-client'
@@ -135,17 +135,38 @@ test('dev injection: useAcademicDecisionAgent replaces the legacy Build with the
 test('the proposal is shown with an added-course diff marker and apply/reject controls', async () => {
   await renderReady()
   fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getByText('קורס Y')).toBeInTheDocument())
-  expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument()
-  expect(screen.getByText('חדש')).toBeInTheDocument() // added marker
+  await waitFor(() => expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument())
+  // The proposal is previewed ON the board, the changed card carries the marker...
+  const board = screen.getByRole('region', { name: 'התוכנית הנוכחית' })
+  expect(within(board).getByText('קורס Y')).toBeInTheDocument()
+  expect(within(board).getByText('חדש')).toBeInTheDocument() // added marker
+  // ...and the draft region lists what would change.
+  expect(within(screen.getByRole('region', { name: /טיוט/ })).getByLabelText('שינויים בהצעה')).toHaveTextContent('קורס Y')
   expect(screen.getByRole('button', { name: /החל/ })).toBeEnabled()
   expect(screen.getByRole('button', { name: /דחה/ })).toBeInTheDocument()
+})
+
+test('a proposal is previewed on the board with a label and marker; rejecting restores the committed board', async () => {
+  await renderReady()
+  const board = () => screen.getByRole('region', { name: 'התוכנית הנוכחית' })
+  expect(board()).not.toHaveTextContent('תצוגה מקדימה של ההצעה')
+
+  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
+  await waitFor(() => expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument())
+  expect(board()).toHaveTextContent('תצוגה מקדימה של ההצעה')
+  expect(within(board()).getByText('חדש')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /דחה/ }))
+  await waitFor(() => expect(screen.queryByRole('region', { name: /טיוט/ })).toBeNull())
+  expect(board()).not.toHaveTextContent('תצוגה מקדימה של ההצעה')
+  expect(within(board()).queryByText('חדש')).toBeNull()
+  expect(within(board()).queryByText('קורס Y')).toBeNull()
 })
 
 test('reject discards the proposal and restores the current plan', async () => {
   await renderReady()
   fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getByText('קורס Y')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getAllByText('קורס Y').length).toBeGreaterThan(0))
   fireEvent.click(screen.getByRole('button', { name: /דחה/ }))
   await waitFor(() => expect(screen.queryByRole('region', { name: /טיוט/ })).toBeNull())
   expect(screen.queryByText('קורס Y')).toBeNull() // added course gone
@@ -155,7 +176,7 @@ test('reject discards the proposal and restores the current plan', async () => {
 test('applying a valid proposal makes it the visible current plan', async () => {
   await renderReady()
   fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getByText('קורס Y')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getAllByText('קורס Y').length).toBeGreaterThan(0))
   fireEvent.click(screen.getByRole('button', { name: /החל/ }))
   await waitFor(() => expect(screen.queryByRole('region', { name: /טיוט/ })).toBeNull())
   // Y-1 is now on the CURRENT board (persisted into the applied plan), and a
