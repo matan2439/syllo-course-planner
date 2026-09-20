@@ -7,11 +7,12 @@ import UnifiedCourseRepository, { type SemesterDestination } from '../../courses
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 
-type RailTab = 'courses' | 'agent'
+type RailTab = 'courses' | 'agent' | 'profile'
 
 const TABS: ReadonlyArray<{ id: RailTab; label: string; icon: string; noun: string }> = [
   { id: 'courses', label: 'קורסים', icon: '☰', noun: 'מאגר קורסים' },
   { id: 'agent', label: 'עוזר AI', icon: '✦', noun: 'עוזר AI' },
+  { id: 'profile', label: 'הפרופיל שלי', icon: '◎', noun: 'הפרופיל שלי' },
 ]
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
@@ -42,7 +43,8 @@ export default function UnifiedPlannerWorkspace({
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
   // The assistant lives in the journey (it owns the planning state) and renders into this slot.
   const [agentSlot, setAgentSlot] = useState<HTMLDivElement | null>(null)
-  const toggleRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ courses: null, agent: null })
+  const [profileSlot, setProfileSlot] = useState<HTMLDivElement | null>(null)
+  const toggleRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ courses: null, agent: null, profile: null })
   const railCloseRef = useRef<HTMLButtonElement | null>(null)
   const lastTab = useRef<RailTab>('courses')
   const railWasOpen = useRef(false)
@@ -104,7 +106,7 @@ export default function UnifiedPlannerWorkspace({
             aria-expanded={railTab === tab.id}
             aria-label={`${railTab === tab.id ? 'סגור' : 'פתח'} ${tab.noun}`}
             onClick={() => toggleTab(tab.id)}
-            className={`planner-drawer-toggle planner-drawer-toggle-${tab.id === 'courses' ? 'repository' : 'agent'}`}
+            className={`planner-drawer-toggle planner-drawer-toggle-${tab.id}`}
           >
             <span aria-hidden="true">{tab.icon}</span>
             <span>{tab.label}</span>
@@ -144,6 +146,7 @@ export default function UnifiedPlannerWorkspace({
             onSemestersChange={setSemesterCourses}
             agentOpen={railTab === 'agent'}
             agentPortalTarget={agentSlot}
+            profilePortalTarget={profileSlot}
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
           />
@@ -208,6 +211,14 @@ export default function UnifiedPlannerWorkspace({
             aria-labelledby="workspace-tab-agent"
             hidden={railTab !== 'agent'}
             ref={setAgentSlot}
+            className="planner-rail-body"
+          />
+          <div
+            id="workspace-panel-profile"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-profile"
+            hidden={railTab !== 'profile'}
+            ref={setProfileSlot}
             className="planner-rail-body"
           />
         </aside>

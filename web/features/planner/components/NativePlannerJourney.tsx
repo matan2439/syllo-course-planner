@@ -83,6 +83,7 @@ export default function NativePlannerJourney({
   agentCloseRef,
   agentOpen,
   agentPortalTarget,
+  profilePortalTarget,
   activeDrag,
   onDragStateChange,
 }: {
@@ -109,6 +110,8 @@ export default function NativePlannerJourney({
   agentOpen?: boolean
   /** When set, the assistant panel renders into this element (the workspace rail) instead of beside the board. */
   agentPortalTarget?: HTMLElement | null
+  /** When set, the profile/preferences panel renders into this element (the workspace profile tab), always open. */
+  profilePortalTarget?: HTMLElement | null
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /**
@@ -221,6 +224,7 @@ export default function NativePlannerJourney({
       onProfileChange={onProfileChange}
       proposal={proposal}
       stale={stale}
+      alwaysOpen={profilePortalTarget !== undefined}
     />
   ) : null
 
@@ -286,6 +290,8 @@ export default function NativePlannerJourney({
         )}
       </div>
 
+      {profilePortalTarget && preferenceContent ? createPortal(preferenceContent, profilePortalTarget) : null}
+
       {/* ── assistant + preferences + build ───────────────────────────────── */}
       {wrapAgent(<aside
         id="workspace-agent-drawer"
@@ -331,7 +337,7 @@ export default function NativePlannerJourney({
               ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
               ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
             ])}
-            preferenceContent={preferenceContent}
+            preferenceContent={profilePortalTarget === undefined ? preferenceContent : undefined}
           />
         )}
 

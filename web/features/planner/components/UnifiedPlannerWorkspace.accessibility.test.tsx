@@ -186,3 +186,20 @@ test('the rail is inert and absent from accessible navigation while closed', asy
   expect(screen.queryByRole('complementary', RAIL)).toBeNull()
   expect(toggle).toHaveFocus()
 })
+
+test('the profile tab shows the student inputs open, and the chat no longer nests them', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
+  await screen.findByText('תכן מכני (1)')
+
+  fireEvent.click(screen.getByRole('button', { name: 'פתח הפרופיל שלי' }))
+
+  const profile = screen.getByRole('region', { name: 'הפרופיל שלי' })
+  expect(within(profile).getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
+  expect(within(profile).getByRole('textbox', { name: 'שעות שהושלמו' })).toBeVisible()
+  expect(screen.queryByText('מה חשוב לעוזר לדעת? (אופציונלי)')).toBeNull()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
+  expect(screen.queryByTestId('academic-agent-context')).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'הפרופיל שלי' }))
+  expect(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
+})

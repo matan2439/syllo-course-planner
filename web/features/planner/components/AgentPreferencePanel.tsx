@@ -5,11 +5,14 @@ import PreferenceConversation from '../../agent/components/PreferenceConversatio
 import CompletedCoursesPanel, { type AcademicStatusDraft } from '../../courses/components/CompletedCoursesPanel'
 import CourseNamePicker, { type PickerCourse } from '../../courses/components/CourseNamePicker'
 
-/** The optional "what matters to the assistant" section shown inside the agent conversation. */
+/**
+ * What the assistant (and the progress view) needs to know. Inside the agent conversation it is a
+ * collapsed optional section; as `alwaysOpen` (the workspace profile tab) it is a first-class panel.
+ */
 export default function AgentPreferencePanel({
   programId, pickerCourses, catalogHoursById, academicStatus, updateAcademicStatus,
   maxHours, setMaxHours, priorHours, setPriorHours, wantIds, setWantIds, excludeIds, setExcludeIds,
-  exclusionsNoneConfirmed, setExclusionsNoneConfirmed, updatePreferenceVersion, onProfileChange, proposal, stale,
+  exclusionsNoneConfirmed, setExclusionsNoneConfirmed, updatePreferenceVersion, onProfileChange, proposal, stale, alwaysOpen = false,
 }: {
   programId: string
   pickerCourses: PickerCourse[]
@@ -31,11 +34,9 @@ export default function AgentPreferencePanel({
   onProfileChange: (profile: PreferenceProfile) => void
   proposal: GeneratedPlanModel | null
   stale: boolean
+  alwaysOpen?: boolean
 }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <details>
-        <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
+  const body = (
         <div className="mt-3 flex flex-col gap-3">
           <p className="text-xs text-[var(--text-muted)]">אפשר להשלים כאן פרטים שיעזרו לשיחה. הסוכן יאשר אותם מולכם — ואין כאן בנייה אוטומטית.</p>
           <CompletedCoursesPanel
@@ -98,6 +99,20 @@ export default function AgentPreferencePanel({
             }}
           />
         </div>
+  )
+  if (alwaysOpen) {
+    return (
+      <section aria-label="הפרופיל שלי" className="flex flex-col gap-3">
+        <h2 className="text-sm font-bold">הפרופיל שלי</h2>
+        {body}
+      </section>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <details>
+        <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
+        {body}
       </details>
     </div>
   )
