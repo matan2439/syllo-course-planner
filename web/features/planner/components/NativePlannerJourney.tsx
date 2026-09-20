@@ -23,20 +23,18 @@ import {
   type ApplyPlanResult, type CommittedBoardState, type GeneratePlanRequest, type LoadedPlanningContext,
   type ManualBoardEditResult,
 } from '../../../../shared/planner/api-client'
-import { boardModelToVM } from '../../../lib/planner/board-vm'
 import type { CourseVM } from '../../../lib/board'
 import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-details'
 import CourseDetailsPanel from '../../courses/components/CourseDetailsPanel'
 import { buildDraftVM } from '../../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
-import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 import { earlyYearCoursesFor } from '../../../../shared/planner/early_year_courses'
-import NativePlannerBoard from './NativePlannerBoard'
-import ProgressBadge from './ProgressBadge'
-import { adaptRequirementsFromModel } from '../../../lib/requirements'
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
 import ProposalView from './ProposalView'
+import AgentContextStatus from './AgentContextStatus'
+import BuildControls from './BuildControls'
+import CurrentPlanSection from './CurrentPlanSection'
 import { BoardError, BoardLoading } from './BoardStatus'
 import ManualAddPrompt from './ManualAddPrompt'
 import PlannerChatCard from './PlannerChatCard'
@@ -244,41 +242,23 @@ export default function NativePlannerJourney({
             onPick={commitManualAdd}
           />
         )}
-        <section aria-label="התוכנית הנוכחית">
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
-              <ProgressBadge requirements={adaptRequirementsFromModel(current)} />
-            </div>
-            {alternativeBoard && <span className="text-xs text-[var(--text-muted)]">לא נשמר עד לאישור מפורש</span>}
-          </div>
-          {(proposal?.alternatives?.length ?? 0) >= 2 && (
-            <AlternativeBoardSwitcher
-              alternatives={proposal!.alternatives!}
-              selectedId={selectedAlternativeId ?? ''}
-              onSelect={setSelectedAlternativeId}
-              courseNameById={Object.fromEntries(
-                Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe || null]),
-              )}
-              disabled={stale}
-            />
-          )}
-          <NativePlannerBoard
-            board={boardModelToVM(alternativeBoard ?? current)}
-            onRemoveCourse={alternativeBoard ? undefined : commitManualRemove}
-            onAddCourse={alternativeBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
-            onMoveCourse={alternativeBoard ? undefined : commitManualMove}
-            onSelectCourse={selectBoardCourse}
-            mutationPending={alternativeBoard || manualEditPhase === 'saving' ? true : false}
-            activeDrag={alternativeBoard ? null : activeDrag}
-            rejectedSemesterId={alternativeBoard ? null : rejectedDrop?.semesterId}
-            rejectedDropKey={alternativeBoard ? null : rejectedDrop?.key}
-            justPlacedSemesterId={alternativeBoard ? null : justPlaced?.semesterId}
-            justPlacedKey={alternativeBoard ? null : justPlaced?.key}
-            onDragStateChange={alternativeBoard ? undefined : onDragStateChange}
-            readOnly={Boolean(alternativeBoard)}
-          />
-        </section>
+        <CurrentPlanSection
+          current={current}
+          alternativeBoard={alternativeBoard}
+          alternatives={proposal?.alternatives}
+          selectedAlternativeId={selectedAlternativeId}
+          onSelectAlternative={setSelectedAlternativeId}
+          stale={stale}
+          commitManualRemove={commitManualRemove}
+          commitManualAdd={commitManualAdd}
+          commitManualMove={commitManualMove}
+          selectBoardCourse={selectBoardCourse}
+          manualEditPhase={manualEditPhase}
+          activeDrag={activeDrag}
+          rejectedDrop={rejectedDrop}
+          justPlaced={justPlaced}
+          onDragStateChange={onDragStateChange}
+        />
         <CourseDetailsPanel course={selectedBoardCourse} onClose={() => setSelectedBoardCourse(null)} programId={programId} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
         {genPhase === 'done' && proposal && (
@@ -348,22 +328,7 @@ export default function NativePlannerJourney({
           />
         )}
 
-        {useAcademicDecisionAgent && messages.filter((message) => message.role === 'system').slice(-1).map((message) => (
-          <p key={message.text} role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
-            {message.text}
-          </p>
-        ))}
-
-        {useAcademicDecisionAgent && academicContextPhase === 'loading' && (
-          <p role="status" aria-live="polite" className="text-xs text-[var(--text-muted)]">
-            טוען את הסטטוס האקדמי השמור…
-          </p>
-        )}
-        {useAcademicDecisionAgent && academicContextPhase === 'error' && (
-          <p role="alert" className="text-xs text-red-600">
-            לא ניתן לטעון את הסטטוס האקדמי השמור. הבנייה חסומה כדי לא לדרוס אותו.
-          </p>
-        )}
+        {useAcademicDecisionAgent && <AgentContextStatus messages={messages} academicContextPhase={academicContextPhase} />}
 
         {!useAcademicDecisionAgent && (
           <PlannerPreferencesCard
@@ -376,31 +341,13 @@ export default function NativePlannerJourney({
           />
         )}
 
-        <div className="flex items-center gap-3">
-          {/* Flag-off: the standalone Build. Flag-on: the mounted conversation's
-              Build is the single generation trigger (sends the typed profile). */}
-          {!useAcademicDecisionAgent && (
-            <button
-              type="button"
-              onClick={() => build()}
-              disabled={genPhase === 'generating'}
-              className="rounded-full bg-[var(--purple-strong)] px-6 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[var(--purple)] disabled:opacity-60"
-            >
-              {proposal || genPhase === 'error' ? 'בנה מחדש' : 'בנה תוכנית'}
-            </button>
-          )}
-          {genPhase === 'generating' && (
-            <span role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">בונה תוכנית…</span>
-          )}
-        </div>
-
-        {genPhase === 'error' && (
-          <div role="alert" className="rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-            {errKind === 'contract'
-              ? 'תשובת השרת לא תקינה — לא ניתן להציג טיוטה.'
-              : 'בקשת הבנייה נכשלה (שגיאת רשת). אפשר לנסות שוב.'}
-          </div>
-        )}
+        <BuildControls
+          useAcademicDecisionAgent={useAcademicDecisionAgent}
+          genPhase={genPhase}
+          hasProposal={Boolean(proposal)}
+          errKind={errKind}
+          onBuild={() => build()}
+        />
       </aside>
     </div>
   )
