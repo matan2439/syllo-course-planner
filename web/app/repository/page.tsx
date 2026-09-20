@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation'
 import { programSubtitle, readBoardForProgram, readBoardForProgramId } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
-import ProductShell from '../components/ProductShell'
-import RepositoryExplorer from '../components/RepositoryExplorer'
-import { EmptyState } from '../components/ui'
+import ProductShell from '../../features/shell/components/ProductShell'
+import RepositoryExplorer from '../../features/courses/components/RepositoryExplorer'
+import { EmptyState } from '../../components/ui'
 
 export const metadata = { title: 'מאגר קורסים — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'

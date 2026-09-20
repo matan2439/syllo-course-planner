@@ -16,6 +16,32 @@ light/dark via `prefers-color-scheme`.
 The single-file HTML planner that used to live at `app/web/` has been removed.
 Planner rules (legality, scoring, repair) live server-side in `api/ai/*`.
 
+## Structure
+
+Code is grouped by feature. `app/` holds only Next.js routes (pages and layouts);
+everything a page renders lives in `features/` or `components/`.
+
+```
+app/                     routes only: page.tsx, layout.tsx, globals.css
+components/ui.tsx        shared primitives (Card, Badge, EmptyState)
+features/
+  planner/               the board and the planning journey
+    components/          NativePlannerJourney (orchestrator), NativePlannerBoard, ProposalView,
+                         SemesterColumn, CourseCard, UnifiedPlannerWorkspace, ...
+    hooks/               use-committed-board, use-manual-board-edits, use-drop-highlights
+    lib/                 pure logic: build-plan-request, stale-reason, conversation-proposal, api-defaults
+    constants.ts, types.ts
+  agent/                 the AI assistant: conversation, preference questions, explanations
+  courses/               repository, course details, completed courses, course AI chat
+  schedule/              weekly timetable
+  shell/                 page frame: ProductShell, brand logo, theme toggle, animated background
+lib/                     data adapters and view models shared across features
+                         (board.ts, repository.ts, programs.ts, planner/*)
+```
+
+Tests sit next to the code they cover. Tailwind scans `app/`, `components/` and
+`features/` (see `tailwind.config.ts`), so new folders under those roots need no config.
+
 ## Running locally
 
 ```bash
@@ -39,9 +65,9 @@ Server rules are tested from the repo root: `npx jest --testPathPattern=tests/ap
 ## Conventions
 
 - **Brand assets:** `public/brand/logo-light.svg` + `public/brand/logo-dark.svg`,
-  switched natively by `app/components/BrandLogo.tsx` (`<picture>` +
+  switched natively by `features/shell/components/BrandLogo.tsx` (`<picture>` +
   `prefers-color-scheme`, zero JS).
-- **Animated background:** `app/components/ShaderGradientBackground.tsx` — CSS
+- **Animated background:** `features/shell/components/ShaderGradientBackground.tsx` — CSS
   port of the canonical Syllo ShaderGradient config (documented in that file). A future `@shadergradient/react` integration should use the
   same `color1/2/3` values so there is no visual jump. `.syllo-bg` is a
   viewport-exact (`inset:0`), `overflow:hidden` clip boundary; the drift

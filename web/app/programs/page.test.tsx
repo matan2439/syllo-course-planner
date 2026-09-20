@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import ProgramsPage from './page'
 
-jest.mock('../components/ProductShell', () => ({
+jest.mock('../../features/shell/components/ProductShell', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))

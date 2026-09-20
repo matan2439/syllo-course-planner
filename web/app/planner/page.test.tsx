@@ -3,14 +3,14 @@ import { render, screen } from '@testing-library/react'
 const notFound = jest.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 jest.mock('next/navigation', () => ({ notFound: () => notFound() }))
 
-jest.mock('../components/ProductShell', () => ({
+jest.mock('../../features/shell/components/ProductShell', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="product-shell">{children}</div>
   ),
 }))
 
-jest.mock('../components/UnifiedPlannerWorkspace', () => ({
+jest.mock('../../features/planner/components/UnifiedPlannerWorkspace', () => ({
   __esModule: true,
   default: ({ programId, repo }: { programId: string; repo: unknown }) => (
     <div data-testid="unified-workspace">{programId}:{JSON.stringify(repo)}</div>

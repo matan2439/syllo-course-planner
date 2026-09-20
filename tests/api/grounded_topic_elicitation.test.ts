@@ -105,7 +105,7 @@ describe('T6/W2 — the topic question requires its OWN server signal', () => {
    * server-side but had no browser acceptance, so the question had to be
    * unreachable. W1/W2 replaced that with real exposure, proven end to end by
    * `tests/api/topic_impact_wire.test.ts` (handler → wire → adapter → draft view
-   * model) and `web/app/components/PreferenceConversation.topic.test.tsx` (the
+   * model) and `web/features/agent/components/PreferenceConversation.topic.test.tsx` (the
    * mounted conversation renders it).
    *
    * The guard is kept, not deleted, because the underlying invariant outlived
