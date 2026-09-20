@@ -16,7 +16,8 @@
  * beyond the anonymous quota session token. Transport is injected so this is
  * fully testable without a live backend; browser defaults hit the real routes.
  */
-import { useCallback, useState, type RefObject } from 'react'
+import { useCallback, useState, type ReactElement, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import {
   applyPlan, editBoard,
@@ -81,6 +82,7 @@ export default function NativePlannerJourney({
   onCloseAgent,
   agentCloseRef,
   agentOpen,
+  agentPortalTarget,
   activeDrag,
   onDragStateChange,
 }: {
@@ -105,6 +107,8 @@ export default function NativePlannerJourney({
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
   agentOpen?: boolean
+  /** When set, the assistant panel renders into this element (the workspace rail) instead of beside the board. */
+  agentPortalTarget?: HTMLElement | null
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /**
@@ -220,6 +224,9 @@ export default function NativePlannerJourney({
     />
   ) : null
 
+  const wrapAgent = (aside: ReactElement) =>
+    agentPortalTarget === undefined ? aside : agentPortalTarget ? createPortal(aside, agentPortalTarget) : null
+
   return (
     <div className="planner-journey grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       {/* ── board / proposal ──────────────────────────────────────────────── */}
@@ -280,7 +287,7 @@ export default function NativePlannerJourney({
       </div>
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
-      <aside
+      {wrapAgent(<aside
         id="workspace-agent-drawer"
         aria-label="עוזר אקדמי"
         aria-hidden={agentOpen === false}
@@ -348,7 +355,7 @@ export default function NativePlannerJourney({
           errKind={errKind}
           onBuild={() => build()}
         />
-      </aside>
+      </aside>)}
     </div>
   )
 }

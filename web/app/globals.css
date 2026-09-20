@@ -189,7 +189,9 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
-.route-fade { animation: route-fade 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+/* backwards, not both: a forwards-filled transform animation keeps the wrapper a
+   containing block, which anchors every position:fixed panel to the page instead of the viewport. */
+.route-fade { animation: route-fade 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) backwards; }
 
 /* ── Course details modal: one subtle scale+fade entrance (Emil restraint for
       a productivity surface); frozen by the reduced-motion rule below. ── */
@@ -206,50 +208,55 @@ body {
 .planner-board-canvas { min-width: 0; width: 100%; }
 .planner-board-canvas .planner-journey { display: block; }
 .planner-board-canvas .planner-board-region { width: 100%; }
-.planner-repository-rail,
-.planner-board-canvas .planner-agent-region {
+.planner-rail {
   position: fixed;
   z-index: 40;
-  top: 5.25rem;
+  top: 11.5rem;
   bottom: 1rem;
+  left: 1rem;
   width: min(24rem, calc(100vw - 2rem));
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  direction: rtl;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
   background: color-mix(in srgb, var(--surface) 96%, transparent);
   box-shadow: 0 24px 70px rgb(20 12 52 / 32%);
-  padding: 1rem;
   backdrop-filter: blur(18px);
-  transition: transform 240ms cubic-bezier(.2,.7,.3,1), opacity 180ms ease, box-shadow 180ms ease;
+  transition: transform 240ms cubic-bezier(.2,.7,.3,1), opacity 180ms ease;
   will-change: transform, opacity;
 }
-.planner-repository-rail { right: 1rem; }
-.planner-repository-rail[data-open="true"] { display: block !important; }
-.planner-board-canvas .planner-agent-region { left: 1rem; }
-.planner-workbench[data-repository-open="false"] .planner-repository-rail {
+.planner-rail[data-open="false"] {
   opacity: 0;
-  pointer-events: none;
-  transform: translateX(calc(100% + 2rem));
-}
-.planner-workbench[data-agent-open="false"] .planner-agent-region {
-  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateX(calc(-100% - 2rem));
 }
-/* During an active drag the board is the destination, even when a drawer is
-   visually above it. Let pointer hit-testing pass through the temporary tool
-   surface so the rightmost/leftmost semester columns remain real drop targets. */
-.planner-workbench[data-drag-active="true"] .planner-repository-rail,
-.planner-workbench[data-drag-active="true"] .planner-agent-region {
-  pointer-events: none;
+.planner-rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--border);
 }
-/* The toolbar is part of the normal page flow while the drawers are fixed or
-   sticky surfaces. Keep every drawer's first interactive row below it so a
-   click on an inner drawer control can never hit the toolbar behind it. */
-.planner-workbench[data-drawer-interaction="below-toolbar"] .planner-repository-rail,
-.planner-workbench[data-drawer-interaction="below-toolbar"] .planner-agent-region {
-  top: 11.5rem;
+.planner-rail-tab {
+  border-radius: 999px;
+  padding: .35rem .8rem;
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-weight: 700;
 }
+.planner-rail-tab[aria-selected="true"] {
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+  color: var(--purple-strong);
+}
+.planner-rail-tab:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.planner-rail-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem; }
+.planner-rail-body[hidden] { display: none; }
+/* While a drag is heading for the board, let hit-testing pass through a floating rail. */
+.planner-workbench[data-drag-active="true"] .planner-rail { pointer-events: none; }
 .planner-drawer-controls {
   position: sticky;
   z-index: 60;
@@ -447,130 +454,52 @@ body {
   :root:not([data-theme]) .planner-drop-feedback-invalid { color: #fecaca; }
 }
 
-@keyframes planner-drawer-in-right {
-  from { opacity: 0; transform: translateX(18px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 @keyframes planner-drawer-in-left {
   from { opacity: 0; transform: translateX(-18px); }
   to { opacity: 1; transform: translateX(0); }
 }
-.planner-repository-rail[data-open="true"] { animation: planner-drawer-in-right 240ms cubic-bezier(.2,.7,.3,1) both; }
-.planner-agent-region[data-open="true"] { animation: planner-drawer-in-left 240ms cubic-bezier(.2,.7,.3,1) both; }
+.planner-rail[data-open="true"] { animation: planner-drawer-in-left 240ms cubic-bezier(.2,.7,.3,1) both; }
 
-@media (min-width: 1024px) {
-  .planner-workbench {
-    display: block;
-    direction: ltr;
+/* Wide screens: the rail docks beside the board (nothing covers a semester
+   column); the board keeps scrolling horizontally inside its own frame. */
+@media (min-width: 1280px) {
+  .planner-workbench[data-rail-open="true"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    gap: 1rem;
+    align-items: start;
   }
-  /* Drawers float above the workbench; the semester table keeps the full
-     central width even when both side surfaces are open. This mirrors the
-     product metaphor: the board is the workspace, the rails are temporary
-     tools around it. */
-  .planner-board-canvas {
-    display: block;
-    width: 100%;
+  .planner-workbench[data-rail-open="true"] .planner-rail {
+    position: sticky;
+    top: 5rem;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    max-height: calc(100dvh - 6rem);
+    transform: none;
+    animation: none;
   }
-  .planner-board-canvas .planner-journey {
-    display: block;
-  }
-  .planner-board-canvas .planner-board-region {
-    width: 100%;
-    min-width: 0;
-    direction: rtl;
-  }
-  .planner-repository-rail {
-    position: fixed;
-    top: 11.5rem;
-    bottom: 1rem;
-    right: 1rem;
-    width: min(24rem, calc(100vw - 2rem));
-    max-height: none;
-    direction: rtl;
-  }
-  .planner-board-canvas .planner-agent-region { direction: rtl; }
-  .planner-workbench[data-repository-open="false"] .planner-repository-rail { display: none !important; }
+  .planner-workbench[data-rail-open="true"][data-drag-active="true"] .planner-rail { pointer-events: auto; }
 }
 
+/* Phones and small tablets: a bottom sheet over the board. */
 @media (max-width: 1023px) {
   .planner-drawer-controls { top: 4rem; }
-  .planner-board-canvas .planner-board-region { display: flex !important; }
-  .planner-workbench[data-mobile-surface="board"] .planner-repository-rail,
-  .planner-workbench[data-mobile-surface="board"] .planner-agent-region,
-  .planner-workbench[data-mobile-surface="repository"] .planner-agent-region,
-  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail {
-    display: none !important;
-  }
-
-  /* Keep the board as the central workspace while a drawer is open. Drawers
-     overlay the board on narrow screens instead of reflowing it into a second
-     horizontal page that focus can scroll out of view. */
-  .planner-workbench[data-layout="drawer-split"] {
-    display: block;
-    overflow: visible;
-    padding-bottom: .75rem;
-    direction: ltr;
-  }
-  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas {
-    width: 100%;
-    min-width: 0;
-    direction: rtl;
-    /* Keep the board a concrete layout box while a drawer is open. The
-       desktop grid can use display: contents to place the board and agent in
-       separate workbench areas, but mobile/tablet drag interactions need a
-       stable parent that can receive pointer and HTML5 drag hit-testing. */
-    display: block !important;
-    position: relative;
-    visibility: visible;
-    z-index: 1;
-  }
-  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-journey {
-    display: grid !important;
-  }
-  .planner-workbench[data-layout="drawer-split"] .planner-repository-rail {
-    position: fixed;
-    top: 11.5rem;
-    right: 1rem;
-    bottom: 1rem;
-    min-width: 0;
-    width: min(22rem, calc(100vw - 2rem));
-    max-height: calc(100dvh - 12.5rem);
-    transform: none;
-    opacity: 1;
-    pointer-events: auto;
-    display: block !important;
-    direction: rtl;
-  }
-  .planner-workbench[data-layout="drawer-split"] .planner-board-canvas .planner-agent-region {
-    position: fixed;
-    top: 11.5rem;
-    left: 1rem;
-    bottom: 1rem;
-    width: min(22rem, calc(100vw - 2rem));
-    max-height: calc(100dvh - 12.5rem);
+  .planner-rail {
+    top: auto;
+    left: .5rem;
+    right: .5rem;
+    bottom: .5rem;
+    width: auto;
+    max-height: 70dvh;
     transform: none;
   }
-
-  /* Only the selected drawer is visible on a narrow screen. The board stays
-     mounted underneath either surface, so keyboard and pointer users retain a
-     predictable central destination. */
-  .planner-workbench[data-mobile-surface="agent"] .planner-repository-rail,
-  .planner-workbench[data-mobile-surface="board"] .planner-repository-rail {
-    display: none !important;
-  }
-  .planner-workbench[data-mobile-surface="repository"] .planner-board-canvas .planner-agent-region,
-  .planner-workbench[data-mobile-surface="board"] .planner-board-canvas .planner-agent-region {
-    display: none !important;
-  }
+  .planner-rail[data-open="false"] { transform: translateY(calc(100% + 1rem)); }
+  .planner-rail[data-open="true"] { animation-name: planner-sheet-in; }
 }
-
-@media (max-width: 575px) {
-  /* Keep the overlay model on very narrow phones too. The board remains a
-     full-width surface and the drawer remains a contained, closable panel. */
-  .planner-workbench[data-layout="drawer-split"] {
-    display: block;
-    overflow: visible;
-  }
+@keyframes planner-sheet-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Weekly timetable: a fixed work surface below the semester plan. The grid

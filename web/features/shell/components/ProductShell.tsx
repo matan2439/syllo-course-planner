@@ -22,7 +22,7 @@ export default function ProductShell({
 }: {
   title?: string
   subtitle?: string
-  width?: 'wide' | 'narrow'
+  width?: 'wide' | 'narrow' | 'full'
   /** Shows the program chip (links to /programs to switch). */
   programId?: string
   /** Slot next to the program chip, e.g. the requirements progress strip. */
@@ -53,7 +53,7 @@ export default function ProductShell({
               // whole-page double-scroll when 100vh exceeds the client area)
               'flex h-[100dvh] flex-col overflow-hidden px-4 sm:px-6'
             : `mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
-                width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
+                width === 'full' ? 'max-w-[1680px]' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
               }`
         }
       >

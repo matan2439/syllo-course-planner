@@ -40,6 +40,7 @@ export default async function AgentPreviewPage({
 
   return (
     <ProductShell
+      width="full"
       programId={programId}
       preferLightweightBackground={false}
     >
