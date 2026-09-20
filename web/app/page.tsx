@@ -38,10 +38,10 @@ export default function Home() {
               התחלת תכנון עם AI
             </Link>
             <Link
-              href="/plan"
+              href="/programs"
               className="text-sm text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
             >
-              צפייה בתוכנית
+              בחירת תוכנית לימודים
             </Link>
           </div>
 

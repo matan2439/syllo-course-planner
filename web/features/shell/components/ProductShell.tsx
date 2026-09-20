@@ -6,17 +6,16 @@ import ShaderGradientBackground from './ShaderGradientBackground'
 import ThemeToggle from './ThemeToggle'
 
 const NAV_ITEMS = [
-  { key: 'plan', href: '/plan', label: 'תכנון' },
-  { key: 'board', href: '/board', label: 'לוח סמסטרים' },
-  { key: 'repository', href: '/repository', label: 'מאגר קורסים' },
+  { key: 'plan', href: '/planner', label: 'תכנון' },
+  { key: 'programs', href: '/programs', label: 'תוכניות' },
 ] as const
 
 export type ShellSection = (typeof NAV_ITEMS)[number]['key']
 
 /**
  * Shared product frame for planner-facing Next pages: gradient background,
- * brand header, section navigation, page container. Keeps /, /plan, /board
- * and /repository visually continuous.
+ * brand header, section navigation, page container. Keeps /, /planner and
+ * /programs visually continuous.
  */
 export default function ProductShell({
   active,

@@ -25,7 +25,7 @@ describe('ProductShell responsive navigation', () => {
       </ProductShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'תכנון' })).toHaveAttribute('href', '/plan')
+    expect(screen.getByRole('link', { name: 'תכנון' })).toHaveAttribute('href', '/planner')
     expect(screen.queryByRole('link', { name: 'תכנון עם AI' })).not.toBeInTheDocument()
   })
 })

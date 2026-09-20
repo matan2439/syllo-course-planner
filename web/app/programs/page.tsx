@@ -10,7 +10,7 @@ import {
 import ProductShell from '../../features/shell/components/ProductShell'
 import { Badge, Card } from '../../components/ui'
 
-export const metadata = { title: 'בחירת תוכנית — מתכנן לימודים' }
+export const metadata = { title: 'בחירת תוכנית — Syllo' }
 
 function ProgramFamilyCard({
   family,
@@ -102,6 +102,7 @@ export default async function ProgramsPage({
 
   return (
     <ProductShell
+      active="programs"
       title="בחירת תוכנית"
       subtitle="איזו תוכנית מתכננים?"
       width="narrow"
