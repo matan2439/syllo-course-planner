@@ -15,8 +15,8 @@ during an AI chat request.
 2. `scripts/update-board-json.mjs` pushes that local board JSON into
    Supabase's `program_versions.board_json` for a given program/year.
 3. `/api/board/[programId]` serves `board_json` as-is, and
-   `buildCourseContext()` / `buildPlanContext()` in
-   `app/web/semester_board_viewer.html` surface the new fields to the AI.
+   the server-side context builders in `api/ai/_context.ts` surface the
+   new fields to the AI.
 
 ## 1. Run syllabus enrichment for all courses
 
