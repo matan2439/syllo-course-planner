@@ -19,10 +19,10 @@ drift guard), `shader_background_gating`, `shader_background_viewport_safety`,
 ## GAP - rule exists only in the HTML (port to the server planner or drop deliberately)
 | Legacy test | Rule | Server evidence (probed) |
 |---|---|---|
-| `plan_grade_safety_gate` | courses with grade-risk >= 0.9 are never used as plain hours filler; taken only if they satisfy an unmet category minimum | `grade_average` is only a target-score bonus (`completion_analysis.ts:1150`); no filler exclusion |
-| `plan_overshoot_minimization` | soft-match courses must not all be added past the hours gap; hard must-includes bypass the budget | PARTLY COVERED: `completion_analysis.ts` ranks exact fit > smallest overshoot (lines 1230-1264, 1630); needs a test for the 9-hour-gap scenario |
+| `plan_grade_safety_gate` | courses with grade-risk >= 0.9 are never used as plain hours filler | DECIDED: ported as a SOFT penalty, not a hard gate (23 of 42 graded courses are >= 0.9, a hard gate would leave plans short of 185 h). `planner_goals.ts` `comfortCost`/`gradeRisk` feed the difficulty_comfort tiebreak; test in `planner_goals.test.ts` |
+| `plan_overshoot_minimization` | soft-match courses must not all be added past the hours gap | COVERED: `pickBestCandidateForGap`; regression test `tests/api/gap_fill_overshoot.test.ts` |
 | ~~`plan_nameless_course_data_quality`~~ | RETRACTED - covered: `course_profile.ts` `toProfile` excludes any course without an authoritative name (`hasAuthoritativeName`), tested in `course_profile.test.ts`/`planner_actions.test.ts` | keyword probe missed it |
-| `plan_no_exam_unknown_data_label` | under "prefer no final exam", unknown-exam courses are labelled "missing data", never a clean match | server has a `finalExam` feature (`course_features.ts`) but no preference; the native UI has no way to set it (0 matches in `web/`) |
+| `plan_no_exam_unknown_data_label` | DECIDED: deliberately dropped (unreachable in native UI). Original rule: under "prefer no final exam", unknown-exam courses are labelled "missing data", never a clean match | server has a `finalExam` feature (`course_features.ts`) but no preference; the native UI has no way to set it (0 matches in `web/`) |
 | `plan_completed_source_workload_thermal` (F5, F9, F8) | high-risk course loses to easier equal-relevance one; missing-field audit surfaced in summary | `thermal` exists server-side; grade-risk tie-break absent |
 
 ## Covered by server/web suites (topic match, confirm on read)

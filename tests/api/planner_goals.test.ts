@@ -145,6 +145,18 @@ describe('scorePlan — goal priority is lexicographic', () => {
     expect(compareScore(scorePlan(easy, m), scorePlan(hard, m))).toBeGreaterThan(0);
   });
 
+  it('grade risk is a soft tiebreak: a low-average course loses to a safe one, but is not barred', () => {
+    const m = model({ degreeRequiredHours: 4, categories: [] });
+    m.profiles.set('safe', profile('safe', { hours: 4, grade_average: 88, difficulty_score: 5 }));
+    m.profiles.set('risky', profile('risky', { hours: 4, grade_average: 55, difficulty_score: 1 }));
+    const safe = withCourses('year_3_semester_a', ['safe']);
+    const risky = withCourses('year_3_semester_a', ['risky']);
+    // Known grade wins over the difficulty estimate, so safe beats risky.
+    expect(compareScore(scorePlan(safe, m), scorePlan(risky, m))).toBeGreaterThan(0);
+    // Completion still dominates: the risky course reaches the hours target, an empty plan does not.
+    expect(compareScore(scorePlan(risky, m), scorePlan(withCourses('year_3_semester_a', []), m))).toBeGreaterThan(0);
+  });
+
   it('compareScore returns 0 for identical plans', () => {
     const m = model();
     const a = withCourses('year_3_semester_a', ['e0', 'e1']);
