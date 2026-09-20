@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import { readBoardForProgramId } from '../../lib/board-data'
 import {
   getProgram,
   listProgramFamilies,
   programQuery,
   type ProgramFamilyVM,
+  type ProgramVM,
 } from '../../lib/programs'
 import ProductShell from '../components/ProductShell'
 import { Badge, Card } from '../components/ui'
@@ -82,7 +84,21 @@ export default async function ProgramsPage({
 }) {
   const { program: programParam } = await searchParams
   const currentId = getProgram(programParam).id
-  const families = listProgramFamilies()
+  // Only offer programs /planner can actually open (its board file must ship).
+  const hasBoard = async (p: ProgramVM) => (await readBoardForProgramId(p.id)) !== null
+  const families = (
+    await Promise.all(
+      listProgramFamilies().map(async (f) => ({
+        ...f,
+        available: await hasBoard(f.defaultProgram),
+        archivePrograms: (
+          await Promise.all(
+            f.archivePrograms.map(async (p) => ((await hasBoard(p)) ? p : null)),
+          )
+        ).filter((p): p is ProgramVM => p !== null),
+      })),
+    )
+  ).filter((f) => f.available)
 
   return (
     <ProductShell
