@@ -11,14 +11,12 @@ const plannerApiOrigin = process.env.PLANNER_API_ORIGIN
 
 const nextConfig: NextConfig = {
   // Option C serves this Next app from the tau-course-planner project (repo root).
-  // The /planner/legacy and /data route handlers readFile() assets that live
-  // OUTSIDE web/, so trace from the repo root and explicitly bundle those assets
-  // into each route's serverless function (otherwise the reads 404 at runtime).
+  // The /data route handler readFile()s assets that live OUTSIDE web/, so trace
+  // from the repo root and explicitly bundle those assets into the route's
+  // serverless function (otherwise the reads 404 at runtime).
   outputFileTracingRoot: path.join(process.cwd(), '..'),
   outputFileTracingIncludes: {
-    // /planner/legacy reads the canonical single-file legacy planner HTML.
-    '/planner/legacy': ['../app/web/semester_board_viewer.html'],
-    // /data/[dir]/[file] serves the board + program JSON the embedded planner loads.
+    // /data/[dir]/[file] serves the board + program JSON.
     '/data/[dir]/[file]': ['../data/parsed_json/**', '../data/programs/**'],
   },
   eslint: {

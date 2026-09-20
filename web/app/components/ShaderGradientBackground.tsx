@@ -29,7 +29,7 @@ const ShaderScene = dynamic(() => import('./ShaderScene'), { ssr: false })
 function useEffectiveTheme(): 'dark' | 'light' {
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   useEffect(() => {
-    // Resolve the shell theme the same way layout/LegacyPlannerFrame do:
+    // Resolve the shell theme the same way layout/the root layout does:
     // explicit data-theme (seeded from tau_theme) → tau_theme → OS preference.
     const read = (): 'dark' | 'light' => {
       const attr = document.documentElement.dataset.theme

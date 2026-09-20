@@ -43,10 +43,6 @@
       "use": "@vercel/node"
     },
     {
-      "src": "app/web/semester_board_viewer.html",
-      "use": "@vercel/static"
-    },
-    {
       "src": "data/**",
       "use": "@vercel/static"
     }

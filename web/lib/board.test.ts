@@ -5,7 +5,7 @@
  * mapping; no planner logic, no credit/hour calculation (totals come
  * from the data).
  */
-import { adaptBoard, planOverview, SEMESTER_ORDER } from '../../web/lib/board';
+import { adaptBoard, planOverview, SEMESTER_ORDER } from './board';
 
 const rawBoard = {
   semesters: [

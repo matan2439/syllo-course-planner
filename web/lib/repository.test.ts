@@ -3,7 +3,7 @@
  * → grouped view model for the Next-native read-only repository surface.
  * Pure presentation mapping; no selection/eligibility logic.
  */
-import { adaptRepository } from '../../web/lib/repository';
+import { adaptRepository } from './repository';
 
 const rawBoard = {
   semesters: [],

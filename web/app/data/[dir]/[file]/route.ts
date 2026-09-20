@@ -3,7 +3,7 @@ import path from 'node:path'
 
 // The planner HTML loads static JSON relative to its own path — board/audit
 // from ../../data/parsed_json/ and the program definition from
-// ../../data/programs/ (see semester_board_viewer.html). Served through Next
+// ../../data/programs/ (see the retired single-file planner). Served through Next
 // at /planner those URLs resolve to /data/<dir>/<file>, so this route exposes
 // exactly those two directories read-only and keeps /planner functional
 // without `vercel dev`. Assumes cwd = web/.

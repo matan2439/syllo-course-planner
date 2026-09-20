@@ -6,7 +6,7 @@
  * schedules (Year 3+): the Years 1–2 mandatory courses are deliberately absent
  * from `program_repository_courses`, so there is no catalog field to derive them
  * from. The legacy planner solved this with an inline `YEAR_1_2_MANDATORY_COURSES`
- * constant (app/web/semester_board_viewer.html); this module preserves that
+ * constant (the retired single-file planner); this module preserves that
  * authoritative data while removing it from UI logic — components look courses up
  * generically by program id and never contain course ids of their own, so another
  * degree or institution is added here as data, not by touching a component.

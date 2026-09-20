@@ -3,7 +3,7 @@
  * JSON → view model for the /plan progress panel. Strictly a pass-through of
  * shipped numbers and labels — no requirement recalculation, no inference.
  */
-import { adaptRequirements } from '../../web/lib/requirements';
+import { adaptRequirements } from './requirements';
 
 const rawBoard = {
   semesters: [],

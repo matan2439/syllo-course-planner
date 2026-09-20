@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ── Design tokens — same palette as the canonical planner theme in
-      app/web/semester_board_viewer.html, keyed off the OS scheme here. ── */
+      the retired single-file planner, keyed off the OS scheme here. ── */
 :root {
   color-scheme: light dark;
 

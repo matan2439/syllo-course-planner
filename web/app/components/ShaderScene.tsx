@@ -5,7 +5,7 @@ import { ShaderGradient, ShaderGradientCanvas } from '@shadergradient/react'
 
 /**
  * The real WebGL ShaderGradient scene — the canonical sylloGradientConfig
- * documented in ShaderGradientBackground.tsx / semester_board_viewer.html,
+ * documented in ShaderGradientBackground.tsx / the retired single-file planner,
  * ported 1:1 so there is no visual jump from the CSS placeholder.
  *
  * Loaded only on the client (three.js/@react-three/fiber need window + WebGL),

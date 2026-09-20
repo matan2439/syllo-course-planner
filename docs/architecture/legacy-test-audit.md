@@ -1,7 +1,7 @@
 # Legacy `tests/ui` audit (pre-deletion)
 
-Scope: the 78 files in `tests/ui/`. 65 load `app/web/semester_board_viewer.html` and
-exercise its client-side "shadow planner"; 13 do not. Deleting the HTML deletes the
+Scope: the 78 files in `tests/ui/`. 71 loaded `app/web/semester_board_viewer.html` (or the
+legacy embed code) and exercised its client-side "shadow planner"; 7 did not. Deleting the HTML deletes the
 65, so each needs a verdict: **covered** (server/web test already asserts the rule),
 **UI-only** (DOM of the retired page, no rule to keep) or **GAP** (rule lives only in
 the HTML and has no server equivalent).
@@ -10,11 +10,21 @@ Confidence: verdicts marked *probed* were checked against server source and
 `tests/api` by keyword (see "Evidence"). The rest are classified by topic from file
 names and titles and still need a per-file read before deletion.
 
-## Keep (13, no HTML dependency) - move to `web/`
-`board_adapter`, `chip_status_adapter`, `course_details_adapter`,
-`repository_adapter`, `requirements_adapter`, `programs_adapter` (drop its HTML
-drift guard), `shader_background_gating`, `shader_background_viewport_safety`,
-`web_next_wiring` (rewrite: assert Next is root, no legacy route).
+## Kept and moved to `web/` (done)
+`board`, `course_details`, `repository`, `requirements.adapter`, `programs` (HTML drift
+guard dropped), `shader_background_gating`, `shader_background_viewport_safety`.
+Deleted with the legacy code they covered: `chip_status_adapter` (chip-status.ts had no
+live consumer), `web_next_wiring`, `planner_legacy_embed`, `tests/api/board_diff`
+(extracted `computeDraftDiff` out of the HTML), `tests/test_viewer_structure.py`,
+`tests/test_board_iteration_ux.py`.
+
+## Known behaviour differences accepted with the deletion
+- Legacy strict/draft "offering tier" (`plan_offering_tier`): the legacy planner blocked plans
+  containing courses with missing offering data in strict mode. The server treats missing
+  offering data as unrestricted (fail-open, with a `confident` flag). Not ported.
+- `catalog_reliability_audit` (`auditCourseCatalogForPlannerReliability`): a legacy-only
+  diagnostic, no server equivalent. Not ported.
+- Grade-safety: soft tiebreak instead of the legacy hard filler gate (see GAP table).
 
 ## GAP - rule exists only in the HTML (port to the server planner or drop deliberately)
 | Legacy test | Rule | Server evidence (probed) |

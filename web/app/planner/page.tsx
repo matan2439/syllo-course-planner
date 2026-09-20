@@ -10,8 +10,7 @@ export const metadata = { title: 'המתכנן המלא — מתכנן לימו�
 export const dynamic = 'force-dynamic'
 
 // Canonical public planner: one React workspace owns the board, repository and
-// Academic Decision Agent. The raw legacy document remains available only at
-// /planner/legacy as a rollback reference until the separate retirement gate.
+// Academic Decision Agent.
 export default async function PlannerPage({
   searchParams,
 }: {

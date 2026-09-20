@@ -117,7 +117,7 @@ describe('generate-plan — a pre-placed course whose prerequisite was never com
   // Codex review finding on this PR: the real board legitimately keeps a
   // currently-taking course visible in its own placed semester slot (only
   // completed courses are filtered out of plan_context before sending — see
-  // buildPlanContext in semester_board_viewer.html) while ALSO reporting it
+  // buildPlanContext in the retired single-file planner) while ALSO reporting it
   // in personal_status.currently_taking. legalityGate must not treat that
   // normal, expected combination — true for essentially any actively-enrolled
   // student — as a blocking legality violation.

@@ -41,7 +41,7 @@ type RawBoardPayload = {
  * or Hebrew "א"/"ב") meaning "that half of ANY year in this board". Expand
  * bare codes against the board's own known semester ids so downstream
  * movable/drop-target checks (which compare against full ids) work. Mirrors
- * the legacy normalizeLegalSemesterIdsLocal (app/web/semester_board_viewer.html).
+ * the legacy normalizeLegalSemesterIdsLocal (the retired single-file planner).
  */
 function normalizeSemesterIds(raw: string[], knownSemesterIds: string[]): string[] {
   const knownSet = new Set(knownSemesterIds);

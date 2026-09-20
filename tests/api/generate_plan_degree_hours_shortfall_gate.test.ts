@@ -738,7 +738,7 @@ describe('generate-plan — genuinely unrecoverable degree-hours shortfall is a 
   });
 
   test('19. Codex-caught regression (round 15): a placed currently-taking course must not erase unrelated off-board aggregate credit', async () => {
-    // The live buildPlanContext (semester_board_viewer.html) computes
+    // The live buildPlanContext (the retired single-file planner) computes
     // total_hours_progress.currently_planned_hours by summing
     // currently_taking/planned entries AFTER filtering OUT any course
     // already placed on the submitted board — the real aggregate NEVER

@@ -1,18 +1,14 @@
 /**
- * Program registry for the Next picker — mirrors the canonical PROGRAM_LIST /
- * PROGRAM_FAMILIES embedded in app/web/semester_board_viewer.html (the static
- * planner's program modal). Pure data + resolution helpers; no planner logic.
- * The drift test keeps the mirror honest against the canonical file.
+ * Program registry for the Next picker (web/lib/programs.ts): pure data +
+ * resolution helpers; no planner logic.
  */
-import * as fs from 'fs';
-import * as path from 'path';
 import {
   DEFAULT_PROGRAM_ID,
   getProgram,
   listProgramFamilies,
   programQuery,
   resolveProgram,
-} from '../../web/lib/programs';
+} from './programs';
 
 test('families expose shipped Hebrew names, tracks and default versions', () => {
   const families = listProgramFamilies();
@@ -59,16 +55,4 @@ test('programQuery is empty for the default and a query string otherwise', () =>
   expect(programQuery('mechanical_engineering_2025')).toBe(
     '?program=mechanical_engineering_2025'
   );
-});
-
-test('every mirrored program id exists in the canonical HTML registry (drift guard)', () => {
-  const html = fs.readFileSync(
-    path.resolve(__dirname, '..', '..', 'app', 'web', 'semester_board_viewer.html'),
-    'utf8'
-  );
-  for (const family of listProgramFamilies()) {
-    for (const p of [family.defaultProgram, ...family.archivePrograms]) {
-      expect(html).toContain(`'${p.id}'`);
-    }
-  }
 });

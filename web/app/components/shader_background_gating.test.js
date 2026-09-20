@@ -3,7 +3,7 @@
  *
  * The shader renders on the visible app-shell/content routes, but the
  * fullBleed legacy embeds stay lightweight, while the canonical unified
- * planner explicitly keeps the visible product background. /planner/legacy
+ * planner explicitly keeps the visible product background. 
  * has no ProductShell at all.
  *
  * These are source-level wiring assertions (no board fixture needed), matching
@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..', '..');
+const ROOT = path.resolve(__dirname, '..', '..', '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 test('ProductShell derives a lightweight-background flag from fullBleed and passes it down', () => {

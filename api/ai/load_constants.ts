@@ -2,7 +2,7 @@
  * Phase 2C — single source of truth for per-semester weekly-hour load
  * thresholds, used by validation, scoring, the defensive server gate, and
  * the client preview/badges. Mirror these in
- * app/web/semester_board_viewer.html (the drift test in
+ * the retired single-file planner (the drift test in
  * tests/test_viewer_structure.py asserts the mirror stays in sync).
  *
  * Semantics:

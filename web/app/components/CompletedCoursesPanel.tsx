@@ -2,7 +2,7 @@
 
 /**
  * CompletedCoursesPanel — the native replacement for the legacy "הקורסים שלי"
- * modal (app/web/semester_board_viewer.html: openMyCoursesModal /
+ * modal (the retired single-file planner: openMyCoursesModal /
  * _renderMyCoursesGrid). Same domain semantics, rebuilt as an accessible React
  * component; no legacy DOM code is carried over.
  *

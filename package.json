@@ -5,7 +5,7 @@
   "scripts": {
     "dev:web": "cd web && npm run dev",
     "typecheck": "tsc --noEmit",
-    "test": "jest --testPathPattern=tests/api && jest --config jest.ui.config.js",
+    "test": "jest --testPathPattern=tests/api",
     "build:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --build",
     "audit:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --audit",
     "sync:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --audit --sync",

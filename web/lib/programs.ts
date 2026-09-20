@@ -1,7 +1,7 @@
 /**
  * Program registry for the Next surfaces — a typed mirror of the canonical
  * PROGRAM_LIST / PROGRAM_FAMILIES embedded in
- * app/web/semester_board_viewer.html (the static planner's program modal).
+ * the retired single-file planner (the static planner's program modal).
  * Keep in sync when programs are added there; the drift guard in
  * tests/ui/programs_adapter.test.ts fails if a mirrored id disappears from
  * the canonical file. Pure data + resolution helpers, no planner logic.

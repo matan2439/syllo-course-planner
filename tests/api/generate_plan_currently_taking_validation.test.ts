@@ -7,7 +7,7 @@
  * Originally flag-gated (AI_USE_ACADEMIC_CLARIFICATION_PREFLIGHT) only; since
  * the "honor currently_taking on the default path" epic this is an explicitly
  * approved default-behavior change: personal_status.currently_taking is
- * already sent by the live frontend (app/web/semester_board_viewer.html) on
+ * already sent by the live frontend (the retired single-file planner) on
  * every request, and ignoring it caused incorrect prerequisite/eligibility
  * behavior. generate-plan.ts's handler now computes currentlyPlannedCourseIds
  * unconditionally (from effectivePlanContext, so clarification_answers still

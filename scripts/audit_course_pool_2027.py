@@ -22,7 +22,7 @@ SHAAR_RUACH     = ROOT / "data" / "general_courses_shaar_ruach.json"
 OUT_DIR         = ROOT / "data" / "import_reports"
 OUT_DIR.mkdir(exist_ok=True)
 
-# ── COURSE_DATA_OVERRIDES from semester_board_viewer.html ─────────────────────
+# ── COURSE_DATA_OVERRIDES from the retired single-file planner ─────────────────────
 # These are the client-side corrections applied at runtime.
 COURSE_DATA_OVERRIDES = {
     '0542-4220': ['B'],

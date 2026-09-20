@@ -6,7 +6,7 @@
  * rewrite when the live selection bridge lands. Pure presentation mapping — no
  * selection, eligibility, scoring or board logic.
  */
-import { buildCourseDetails } from '../../web/lib/course-details';
+import { buildCourseDetails } from './course-details';
 
 test('maps a full legacy courseMap-style (snake_case) entry', () => {
   const vm = buildCourseDetails({
