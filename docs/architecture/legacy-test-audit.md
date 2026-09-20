@@ -20,9 +20,9 @@ drift guard), `shader_background_gating`, `shader_background_viewport_safety`,
 | Legacy test | Rule | Server evidence (probed) |
 |---|---|---|
 | `plan_grade_safety_gate` | courses with grade-risk >= 0.9 are never used as plain hours filler; taken only if they satisfy an unmet category minimum | `grade_average` is only a target-score bonus (`completion_analysis.ts:1150`); no filler exclusion |
-| `plan_overshoot_minimization` | soft-match courses must not all be added past the hours gap; hard must-includes bypass the budget | 1 src mention of "overshoot"; behaviour differs, verify |
-| `plan_nameless_course_data_quality` | nameless courses never become candidates, cards, or count toward hours | `course_catalog.ts` keeps them with `nameHe: null`; no exclusion rule |
-| `plan_no_exam_unknown_data_label` | under "prefer no final exam", unknown-exam courses are labelled "missing data", never a clean match | no exam-preference code on the server |
+| `plan_overshoot_minimization` | soft-match courses must not all be added past the hours gap; hard must-includes bypass the budget | PARTLY COVERED: `completion_analysis.ts` ranks exact fit > smallest overshoot (lines 1230-1264, 1630); needs a test for the 9-hour-gap scenario |
+| ~~`plan_nameless_course_data_quality`~~ | RETRACTED - covered: `course_profile.ts` `toProfile` excludes any course without an authoritative name (`hasAuthoritativeName`), tested in `course_profile.test.ts`/`planner_actions.test.ts` | keyword probe missed it |
+| `plan_no_exam_unknown_data_label` | under "prefer no final exam", unknown-exam courses are labelled "missing data", never a clean match | server has a `finalExam` feature (`course_features.ts`) but no preference; the native UI has no way to set it (0 matches in `web/`) |
 | `plan_completed_source_workload_thermal` (F5, F9, F8) | high-risk course loses to easier equal-relevance one; missing-field audit surfaced in summary | `thermal` exists server-side; grade-risk tie-break absent |
 
 ## Covered by server/web suites (topic match, confirm on read)
@@ -52,5 +52,8 @@ Web component tests already cover the native equivalents
 (`CompletedCoursesPanel`, `CourseAiChat`, `NativePlannerDraft`, `AgentOutcomeDetails`).
 
 ## Evidence (keyword probe, src = api+shared, tests = tests/api)
-nameless 0/0; grade-risk 0/0; prefer_no_exam 0/0; workload trim 0/0;
+nameless keyword 0/0 (but handled as name-missing exclusion in `toProfile`); grade-risk 0/0; prefer_no_exam 0/0; workload trim 0/0;
 hard-avoid/exclusion 11/19; filler 5/13; thermal 3/3; overshoot 1/2.
+
+## Data check (2027 mechanical board)
+23 of the 42 courses with a known TAU grade have grade-risk >= 0.9 (avg <= 63). A hard filler gate would remove over half the graded electives from hours filling.
