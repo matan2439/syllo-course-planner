@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import ThemeAwareFavicon from './components/ThemeAwareFavicon'
+import ThemeAwareFavicon from '../features/shell/components/ThemeAwareFavicon'
 
 export const metadata: Metadata = {
   title: 'מתכנן לימודים — אוניברסיטת תל אביב',

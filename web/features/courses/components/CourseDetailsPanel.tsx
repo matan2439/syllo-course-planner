@@ -1,0 +1,197 @@
+'use client'
+
+import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import type { CourseDetailsVM } from '../../../lib/course-details'
+import { Badge } from '../../../components/ui'
+import CourseAiChat from './CourseAiChat'
+
+const SEMESTER_LABELS: Record<string, string> = {
+  A: 'סמ׳ א׳',
+  B: 'סמ׳ ב׳',
+}
+
+/**
+ * Next-native, read-only course-details modal. Self-contained and decoupled:
+ * it holds no reference to the legacy planner frame or its board state, so
+ * opening or closing it can never mutate the canonical planner. Fed a
+ * CourseDetailsVM (see lib/course-details.ts) — from the repository surface
+ * today, from a same-origin selection bridge later. Null course renders nothing.
+ *
+ * Motion: a single subtle scale+fade entrance (~160ms, Emil-restraint for a
+ * productivity surface). The global `prefers-reduced-motion` rule in globals.css
+ * freezes it — no per-component opt-out (see web/README.md).
+ */
+export default function CourseDetailsPanel({
+  course,
+  onClose,
+  programId,
+}: {
+  course: CourseDetailsVM | null
+  onClose: () => void
+  /** Required to ask the per-course AI chat; omit only where no AI context exists yet. */
+  programId?: string
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  // Keep focus changes tied to the dialog lifecycle, not callback identities.
+  useEffect(() => {
+    if (!course) return
+    const trigger = document.activeElement
+    closeRef.current?.focus()
+    return () => {
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus()
+    }
+  }, [course])
+
+  if (!course || typeof document === 'undefined') return null
+
+  // Escape transformed/scrolling drawers and stay above their sticky controls.
+  return createPortal(
+    <div
+      className="course-detail-overlay fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="פרטי קורס"
+        dir="rtl"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            onClose()
+            return
+          }
+          if (event.key !== 'Tab') return
+          // The dialog contains close buttons and an optional syllabus link.
+          const controls = event.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')
+          const first = controls[0]
+          const last = controls[controls.length - 1]
+          if (first && last && document.activeElement === (event.shiftKey ? first : last)) {
+            event.preventDefault()
+            const nextFocus = event.shiftKey ? last : first
+            nextFocus.focus()
+          }
+        }}
+        className="course-detail-panel relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] backdrop-blur-sm shadow-[var(--shadow-premium)]"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold leading-snug">{course.name}</h2>
+            <span
+              dir="ltr"
+              className="mt-0.5 block font-mono text-[11px] tracking-tight text-[var(--text-muted)]"
+            >
+              {course.id}
+            </span>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="סגור"
+            className="shrink-0 rounded-full px-2 py-1 text-sm text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4 text-sm">
+          {(course.weeklyHours != null ||
+            course.credits != null ||
+            course.offered.length > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {course.weeklyHours != null && (
+                <Badge>{course.weeklyHours} ש״ש</Badge>
+              )}
+              {course.credits != null && (
+                <Badge>{course.credits} נ״ז</Badge>
+              )}
+              {course.offered.map((s) => (
+                <Badge key={s} variant="purple">
+                  {SEMESTER_LABELS[s] ?? s}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {course.category && (
+            <Field label="קטגוריה">
+              <span className="text-[var(--text-muted)]">{course.category}</span>
+            </Field>
+          )}
+
+          <Field label="דרישות קדם">
+            {course.prerequisites.length === 0 ? (
+              <span className="text-[var(--text-muted)]">אין דרישות קדם</span>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {course.prerequisites.map((p) => (
+                  <span
+                    key={p.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-black/[.04] px-2 py-0.5 text-[11px] text-[var(--text-muted)] dark:bg-white/[.06]"
+                  >
+                    {p.name ?? p.id}
+                    {p.name && (
+                      <span dir="ltr" className="font-mono opacity-60">
+                        {p.id}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </Field>
+
+          {programId && <CourseAiChat programId={programId} course={course} />}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3">
+          {course.syllabusUrl ? (
+            <a
+              href={course.syllabusUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-xs font-medium text-[var(--purple)] transition-opacity duration-150 hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+            >
+              סילבוס ↗
+            </a>
+          ) : (
+            <span className="text-xs text-[var(--text-muted)]">
+              אין קישור סילבוס
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+          >
+            סגור
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-1 text-xs font-semibold text-[var(--text)]">
+        {label}
+      </div>
+      {children}
+    </div>
+  )
+}

@@ -106,7 +106,7 @@ rg -n "LegacyPlannerFrame|NativePlannerJourney|RepositoryExplorer|redirect\(|not
 rg -n "dragstart|dragover|drop|moveCourse|removeCourseFromBoard" app/web/semester_board_viewer.html tests/ui web
 rg -n "generate-plan|apply-plan|BoardRepository|ProposalStore|session" api shared web tests/api
 Test-Path web/app/planner/page.tsx
-Test-Path web/app/components/NativePlannerJourney.tsx
+Test-Path web/features/planner/components/NativePlannerJourney.tsx
 Test-Path app/web/semester_board_viewer.html
 Test-Path api/ai/apply-plan.ts
 Test-Path api/ai/board_repository.ts

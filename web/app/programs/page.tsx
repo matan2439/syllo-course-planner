@@ -7,8 +7,8 @@ import {
   type ProgramFamilyVM,
   type ProgramVM,
 } from '../../lib/programs'
-import ProductShell from '../components/ProductShell'
-import { Badge, Card } from '../components/ui'
+import ProductShell from '../../features/shell/components/ProductShell'
+import { Badge, Card } from '../../components/ui'
 
 export const metadata = { title: 'בחירת תוכנית — מתכנן לימודים' }
 

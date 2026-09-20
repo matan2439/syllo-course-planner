@@ -3,8 +3,8 @@ import { readBoardForProgramId } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
 import { semesterTitleHe } from '../../lib/planner/board-vm'
-import ProductShell from '../components/ProductShell'
-import UnifiedPlannerWorkspace from '../components/UnifiedPlannerWorkspace'
+import ProductShell from '../../features/shell/components/ProductShell'
+import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPlannerWorkspace'
 
 export const metadata = { title: 'המתכנן המלא — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'

@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation'
 import { readBoardForProgramId } from '../../../../lib/board-data'
 import { getProgram } from '../../../../lib/programs'
 import { adaptRepository } from '../../../../lib/repository'
-import ProductShell from '../../../components/ProductShell'
-import UnifiedPlannerWorkspace from '../../../components/UnifiedPlannerWorkspace'
+import ProductShell from '../../../../features/shell/components/ProductShell'
+import UnifiedPlannerWorkspace from '../../../../features/planner/components/UnifiedPlannerWorkspace'
 
 export const metadata = { title: 'מתכנן חכם — תצוגת בדיקה (Agent) — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'

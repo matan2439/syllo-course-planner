@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import BrandLogo from './components/BrandLogo'
-import ShaderGradientBackground from './components/ShaderGradientBackground'
-import ThemeToggle from './components/ThemeToggle'
+import BrandLogo from '../features/shell/components/BrandLogo'
+import ShaderGradientBackground from '../features/shell/components/ShaderGradientBackground'
+import ThemeToggle from '../features/shell/components/ThemeToggle'
 
 const FEATURES = [
   'עוזר AI שבונה תוכנית מלאה',

@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation'
 import { adaptBoard } from '../../lib/board'
 import { programSubtitle, readBoardForProgram } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
-import ProductShell from '../components/ProductShell'
-import SemesterColumn from '../components/SemesterColumn'
-import { EmptyState } from '../components/ui'
+import ProductShell from '../../features/shell/components/ProductShell'
+import SemesterColumn from '../../features/planner/components/SemesterColumn'
+import { EmptyState } from '../../components/ui'
 
 export const metadata = { title: 'לוח סמסטרים — מתכנן לימודים' }
 export const dynamic = 'force-dynamic'
