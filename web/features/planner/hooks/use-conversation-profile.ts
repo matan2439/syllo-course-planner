@@ -12,7 +12,7 @@ import { emptyProfile, type PreferenceProfile } from '../../../../api/ai/prefere
 export function useConversationProfile() {
   const [convProfileVersion, setConvProfileVersion] = useState<number | undefined>(undefined)
   const convProfileRef = useRef<PreferenceProfile>(emptyProfile())
-  // Deliberately a fresh function each render (as it was inline), not memoised.
+  // Deliberately a fresh function each render (as before), not memoised.
   const onProfileChange = (profile: PreferenceProfile) => {
     convProfileRef.current = profile
     setConvProfileVersion(profile.version)
