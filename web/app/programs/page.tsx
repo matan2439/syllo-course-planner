@@ -26,7 +26,7 @@ function ProgramFamilyCard({
   return (
     <div className={`rise ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}>
       <Link
-        href={`/plan${programQuery(family.defaultProgram.id)}`}
+        href={`/planner${programQuery(family.defaultProgram.id)}`}
         className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
       >
         <Card className="px-5 py-5 transition-[transform,box-shadow,border-color] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-purple-500/40 group-hover:shadow-[var(--shadow-premium)]">
@@ -61,7 +61,7 @@ function ProgramFamilyCard({
           {family.archivePrograms.map((p) => (
             <Link
               key={p.id}
-              href={`/plan${programQuery(p.id)}`}
+              href={`/planner${programQuery(p.id)}`}
               className="text-xs text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
             >
               גרסה קודמת · {p.year}
@@ -73,8 +73,8 @@ function ProgramFamilyCard({
   )
 }
 
-// Next-native replacement candidate for the static planner's program modal.
-// Families and versions mirror the canonical registry (see lib/programs.ts).
+// Native program picker: each card opens the full planner for that program.
+// Families and versions come from lib/programs.ts.
 export default async function ProgramsPage({
   searchParams,
 }: {
