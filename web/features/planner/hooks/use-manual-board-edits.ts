@@ -16,13 +16,13 @@ const SAVE_FAILED_HE = 'שמירת העריכה נכשלה. הלוח הנוכח�
  *
  * The committed board changes only with what the server returns after it
  * accepts the edit; a refusal is shown as-is and leaves the board untouched.
- * Every accepted edit bumps `manualRevision`, which is what marks an open
+ * Every accepted edit calls `onEditCommitted`, which is what marks an open
  * proposal stale ("the board changed by hand").
  */
 export function useManualBoardEdits({
   programId, current, setCurrent, boardVersion, setBoardVersion, manualAddIntent,
   loadedAcademicContext, proposal, buildRequest, convProfileRef, establishPlanningContextFn, editBoardFn,
-  showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled,
+  showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled, onEditCommitted,
 }: {
   programId: string
   current: BoardModel | null
@@ -41,8 +41,9 @@ export function useManualBoardEdits({
   setMessages: Dispatch<SetStateAction<ChatMsg[]>>
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onManualAddSettled?: () => void
+  /** Called once per edit the server accepted. */
+  onEditCommitted: () => void
 }) {
-  const [manualRevision, setManualRevision] = useState(0)
   const [manualEditPhase, setManualEditPhase] = useState<'idle' | 'saving'>('idle')
   const [manualEditError, setManualEditError] = useState<string | null>(null)
   const manualEditKeyRef = useRef<string | null>(null)
@@ -76,7 +77,7 @@ export function useManualBoardEdits({
   ) => {
     setCurrent(applyGeneratedToBoard({ semesters: board.semesters } as GeneratedPlanModel, base))
     setBoardVersion(board.version)
-    setManualRevision((value) => value + 1)
+    onEditCommitted()
     manualEditKeyRef.current = null
     setMessages((items) => [...items, { role: 'system', text: noteHe }])
     onCommittedCourseIdsChange?.(board.semesters.flatMap((semester) => semester.courseIds))
@@ -160,5 +161,5 @@ export function useManualBoardEdits({
     }
   }
 
-  return { manualRevision, manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove }
+  return { manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove }
 }
