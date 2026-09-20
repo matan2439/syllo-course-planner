@@ -1,5 +1,6 @@
 import { applyGeneratedToBoard, removedCourseIds } from './apply-plan'
 import { boardResponseToModel, generatePlanResponseToModel } from '../../../shared/planner/adapters'
+import { catalogRevision } from '../../../shared/planner/model'
 
 const base = () => boardResponseToModel({
   metadata: {
@@ -48,4 +49,19 @@ test('removedCourseIds is empty when every placed course survives', () => {
     moves: [], warnings_he: [], errors: [], blocked: false,
   })
   expect(removedCourseIds(base(), gen)).toEqual([])
+})
+
+test('requirementsValidation survives a manual-edit merge unchanged (never recomputed client-side)', () => {
+  const base = {
+    catalogRevision: catalogRevision('rev-1'),
+    courseCatalog: {},
+    semesters: [{ semesterId: 'year_3_semester_a', courses: [] }],
+    requirementsValidation: {
+      valid: false, totalRequiredHours: 185, plannedHours: 128.5, remainingHours: 56.5,
+      coreCoursesTotalMin: 6, coreCoursesSelected: 0, coreCoursesSatisfied: false,
+      categories: [], warnings: [],
+    },
+  }
+  const result = applyGeneratedToBoard({ semesters: [], moves: [], warningsHe: [], errors: [], blocked: false }, base)
+  expect(result.requirementsValidation).toBe(base.requirementsValidation)
 })

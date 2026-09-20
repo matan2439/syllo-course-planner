@@ -11,8 +11,8 @@
  * Direct module imports (not the shared barrel): model.ts is pure TS (no zod),
  * so this view-model pulls no runtime schema code into the client bundle.
  */
-import { SEMESTER_ORDER, type BoardVM } from '../board'
-import { fromHalfHours } from '../../../shared/planner/model'
+import { SEMESTER_ORDER, GENERAL_ELECTIVE_CATEGORY_ID, type BoardVM } from '../board'
+import { fromHalfHours, isAnnualCourse } from '../../../shared/planner/model'
 import type { BoardModel } from '../../../shared/planner/model'
 
 const YEAR_HE: Record<string, string> = {
@@ -48,6 +48,10 @@ export function boardModelToVM(model: BoardModel): BoardVM {
       warnings: [],
       courses: s.courses.map((c) => {
         const catalogCourse = model.courseCatalog[c.courseId]
+        // Stricter than a bare courseType check (course_type is documented as
+        // free-form, never a closed enum): combine it with the authoritative
+        // isMandatory boolean, matching the legacy viewer's own combined check.
+        const isElectiveLike = c.courseType !== 'mandatory' && !c.isMandatory
         return {
           id: c.courseId,
           name: c.nameHe,
@@ -59,6 +63,17 @@ export function boardModelToVM(model: BoardModel): BoardVM {
           ...(catalogCourse?.offeredSemesters !== undefined
             ? { offeredSemesters: [...catalogCourse.offeredSemesters] }
             : {}),
+          // A resolved category describes the academic area of a course, not
+          // merely its requirement type. Mandatory core courses therefore keep
+          // their category too, so the board can use the same visual language
+          // as the repository. Only a genuinely uncategorized elective gets
+          // the general-elective fallback; placeholders stay unclassified.
+          ...(catalogCourse?.programCategoryId
+            ? { categoryId: catalogCourse.programCategoryId }
+            : catalogCourse && isElectiveLike
+              ? { categoryId: GENERAL_ELECTIVE_CATEGORY_ID }
+              : {}),
+          ...(catalogCourse && isAnnualCourse(catalogCourse) ? { isAnnual: true } : {}),
         }
       }),
     }))

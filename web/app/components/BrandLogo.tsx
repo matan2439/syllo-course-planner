@@ -1,40 +1,58 @@
-/**
- * Theme-aware brand lockup. The two supplied Syllo marks stay in the DOM so
- * explicit `data-theme` choices and the OS default can both select the right
- * contrast without a hydration-time flash or a second logo implementation.
- */
-export default function BrandLogo({ size = 28, wordmark = false }: { size?: number; wordmark?: boolean }) {
-  const markWidth = Math.round(size * 2)
+export type BrandLogoVariant = 'mark' | 'wordmark'
+
+const assets = {
+  mark: {
+    light: '/brand/syllo-mark-light.png',
+    dark: '/brand/syllo-mark-dark.png',
+    width: 920,
+    height: 568,
+  },
+  wordmark: {
+    light: '/brand/syllo-wordmark-light.png',
+    dark: '/brand/syllo-wordmark-dark.png',
+    width: 1210,
+    height: 600,
+  },
+} as const
+
+/** Theme-aware Syllo mark or wordmark, cropped directly from the supplied artwork. */
+export default function BrandLogo({
+  size = 28,
+  variant = 'mark',
+}: {
+  size?: number | string
+  variant?: BrandLogoVariant
+}) {
+  const asset = assets[variant]
+  const height = typeof size === 'number' ? `${size}px` : size
+
   return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        role="img"
-        aria-label="Syllo"
-        data-theme-aware="true"
-        className="syllo-brand-mark"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo-light.svg"
-          alt=""
-          aria-hidden="true"
-          width={markWidth}
-          height={size}
-          style={{ width: `${markWidth}px`, height: `${size}px` }}
-          className="syllo-brand-asset syllo-brand-asset-light"
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/logo-dark.svg"
-          alt=""
-          aria-hidden="true"
-          width={markWidth}
-          height={size}
-          style={{ width: `${markWidth}px`, height: `${size}px` }}
-          className="syllo-brand-asset syllo-brand-asset-dark"
-        />
-      </span>
-      {wordmark && <span data-testid="syllo-wordmark" aria-hidden="true" className="syllo-wordmark">Syllo</span>}
+    <span
+      role="img"
+      aria-label="Syllo"
+      data-theme-aware="true"
+      className={`syllo-brand-mark syllo-brand-${variant} syllo-brand-hover`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={asset.light}
+        alt=""
+        aria-hidden="true"
+        width={asset.width}
+        height={asset.height}
+        style={{ width: 'auto', height }}
+        className="syllo-brand-asset syllo-brand-asset-light"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={asset.dark}
+        alt=""
+        aria-hidden="true"
+        width={asset.width}
+        height={asset.height}
+        style={{ width: 'auto', height }}
+        className="syllo-brand-asset syllo-brand-asset-dark"
+      />
     </span>
   )
 }

@@ -7,7 +7,7 @@
  * and small typos.
  *
  * Pure + dependency-free so the legacy vanilla-JS picker can mirror the same
- * normalize/score rules (see semester_board_viewer.html normalizeCourseSearch).
+ * normalize/score rules (see the retired single-file planner normalizeCourseSearch).
  */
 
 /** Strip nikkud/cantillation + punctuation, collapse whitespace, lowercase. "פיזיקה (2)'" → "פיזיקה 2". */

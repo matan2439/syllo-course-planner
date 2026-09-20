@@ -11,19 +11,27 @@ const plannerApiOrigin = process.env.PLANNER_API_ORIGIN
 
 const nextConfig: NextConfig = {
   // Option C serves this Next app from the tau-course-planner project (repo root).
-  // The /planner/legacy and /data route handlers readFile() assets that live
-  // OUTSIDE web/, so trace from the repo root and explicitly bundle those assets
-  // into each route's serverless function (otherwise the reads 404 at runtime).
+  // Server components readFile() board JSON that lives OUTSIDE web/ (see
+  // lib/board-data.ts), so trace from the repo root and explicitly bundle the
+  // data into each page's serverless function (otherwise the reads 404 at
+  // runtime, because the paths are computed and the tracer cannot see them).
   outputFileTracingRoot: path.join(process.cwd(), '..'),
-  outputFileTracingIncludes: {
-    // /planner/legacy reads the canonical single-file legacy planner HTML.
-    '/planner/legacy': ['../app/web/semester_board_viewer.html'],
-    // /data/[dir]/[file] serves the board + program JSON the embedded planner loads.
-    '/data/[dir]/[file]': ['../data/parsed_json/**', '../data/programs/**'],
-  },
+  outputFileTracingIncludes: Object.fromEntries(
+    ['/planner', '/board', '/repository', '/programs'].map((route) => [
+      route,
+      ['../data/boards/**', '../data/parsed_json/**'],
+    ]),
+  ),
   eslint: {
     // Lint is run separately; don't block builds on lint warnings
     ignoreDuringBuilds: true,
+  },
+  webpack(config) {
+    // Shared planner contracts live one directory above this app. Vercel's
+    // Next builder installs web/package.json dependencies here (not at the
+    // repository root), so resolve their schema dependency from this app too.
+    config.resolve.alias.zod = path.join(__dirname, 'node_modules', 'zod')
+    return config
   },
   async rewrites() {
     return plannerApiOrigin

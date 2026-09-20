@@ -35,12 +35,12 @@
       "use": "@vercel/node"
     },
     {
-      "src": "api/board.ts",
+      "src": "api/ai/schedule-groups.ts",
       "use": "@vercel/node"
     },
     {
-      "src": "app/web/semester_board_viewer.html",
-      "use": "@vercel/static"
+      "src": "api/board.ts",
+      "use": "@vercel/node"
     },
     {
       "src": "data/**",
@@ -83,6 +83,10 @@
     {
       "source": "/api/ai/conversation",
       "destination": "/api/ai/conversation.ts"
+    },
+    {
+      "source": "/api/ai/schedule-groups",
+      "destination": "/api/ai/schedule-groups.ts"
     },
     {
       "source": "/",

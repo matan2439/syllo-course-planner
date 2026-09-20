@@ -106,7 +106,7 @@ function RepositoryCategoryGroup({
   )
 }
 
-export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
+export default function RepositoryExplorer({ repo, programId }: { repo: RepositoryVM; programId?: string }) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<CourseDetailsVM | null>(null)
 
@@ -144,7 +144,7 @@ export default function RepositoryExplorer({ repo }: { repo: RepositoryVM }) {
         ))
       )}
 
-      <CourseDetailsPanel course={selected} onClose={() => setSelected(null)} />
+      <CourseDetailsPanel course={selected} onClose={() => setSelected(null)} programId={programId} />
     </div>
   )
 }

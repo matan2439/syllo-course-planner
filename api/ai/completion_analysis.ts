@@ -7,7 +7,7 @@
  * Used by:
  *  - api/ai/generate-plan.ts (server) — to build the "משימת השלמת תואר
  *    מחושבת" prompt section (PART C).
- *  - app/web/semester_board_viewer.html (client, mirrored manually) — to
+ *  - the retired single-file planner (client, mirrored manually) — to
  *    decide whether a returned proposal is a "complete plan" (PART B/E) and
  *    to deterministically insert missing electives (PART D).
  */
@@ -688,7 +688,7 @@ export interface DegreeProgress {
 
 /**
  * PART C — single source of truth for degree-hour progress (TS mirror of
- * computeDegreeProgress in app/web/semester_board_viewer.html). Used by
+ * computeDegreeProgress in the retired single-file planner). Used by
  * both the status-chip render and the draft-summary render so all UI
  * surfaces show the same numbers.
  *
@@ -2037,7 +2037,7 @@ function _balanceWeight(info: LoadBalanceCourseInfo | undefined): number {
  * semesters into the least-loaded legal semester, preferring electives
  * first (most flexible), then other movable courses. Stops when no semester
  * exceeds `max` or no legal move remains. Mirrored client-side in
- * app/web/semester_board_viewer.html (repairPlanLoad), kept in sync manually.
+ * the retired single-file planner (repairPlanLoad), kept in sync manually.
  */
 export function repairPlanLoad<P extends RepairProposalShape>(proposal: P, ctx: LoadBalanceContext): RepairLoadResult<P> {
   const max = ctx.maxHoursPerSemester;

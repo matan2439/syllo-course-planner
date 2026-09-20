@@ -123,14 +123,13 @@ test('default: Build does NOT send use_academic_decision_agent (feature off in P
   expect('use_academic_decision_agent' in (captured as any)).toBe(false)
 })
 
-test('dev injection: useAcademicDecisionAgent prop makes Build send use_academic_decision_agent:true', async () => {
-  let captured: GeneratePlanRequest | null = null
-  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
+test('dev injection: useAcademicDecisionAgent replaces the legacy Build with the agent conversation', async () => {
+  const generateFn = jest.fn(async () => PROPOSAL())
   render(<NativePlannerJourney {...deps({ generateFn })} useAcademicDecisionAgent />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(generateFn).toHaveBeenCalled())
-  expect((captured as any).use_academic_decision_agent).toBe(true)
+  expect(screen.getByTestId('academic-agent-conversation')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /בנה תוכנית/ })).toBeNull()
+  expect(generateFn).not.toHaveBeenCalled()
 })
 
 test('the proposal is shown with an added-course diff marker and apply/reject controls', async () => {

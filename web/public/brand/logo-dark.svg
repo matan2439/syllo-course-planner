@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 32" fill="none">
-  <path d="M7 16C7 8 16 4 24 12L40 20C48 28 57 24 57 16C57 8 48 4 40 12L24 20C16 28 7 24 7 16Z" stroke="#DDE0E6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M51 4L52.2 7.2L55.5 8.5L52.2 9.7L51 13L49.8 9.7L46.5 8.5L49.8 7.2L51 4Z" fill="#B7A7FF"/>
+  <defs>
+    <!-- Keep a deliberate breathing gap between the infinity stroke and the plus. -->
+    <mask id="plus-cut-dark">
+      <rect width="64" height="32" fill="white"/>
+      <path d="M24.5 16H39.5M32 8.5V23.5" stroke="black" stroke-width="8" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M7 16C7 8 16 4 24 12L40 20C48 28 57 24 57 16C57 8 48 4 40 12L24 20C16 28 7 24 7 16Z" stroke="#DDE0E6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" mask="url(#plus-cut-dark)"/>
+  <path d="M24.5 16H39.5M32 8.5V23.5" stroke="#C4B5FD" stroke-width="5" stroke-linecap="round"/>
 </svg>

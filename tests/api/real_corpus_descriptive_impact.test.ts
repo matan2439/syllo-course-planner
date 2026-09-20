@@ -14,13 +14,23 @@ const CACHE = join(process.cwd(), 'data', 'evidence_cache');
 const BOARD = JSON.parse(readFileSync(join(process.cwd(), 'data', 'boards', `${PROGRAM}.json`), 'utf8'));
 const SELECTED_MATERIALS_COURSE = '0542-4425';
 const ALTERNATIVE_MATERIALS_COURSE = '0581-4131';
+// This corpus test measures how an engineering-materials preference changes
+// alternatives. Declare the independent שער רוח requirement complete rather
+// than relying on candidates whose weekly workload is deliberately withheld
+// until syllabus verification.
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
 const planContext = () => ({
   semesters: BOARD.semesters.map((s: any) => ({
     id: s.semester_id,
     courses: (s.courses ?? []).map((c: any) => ({ course_id: c.course_id })),
   })),
-  personal_status: { completed: [], currently_taking: [], planned: [] },
+  personal_status: {
+    completed: COMPLETED_SHAAR_RUACH.map((course_id) => ({ course_id })),
+    currently_taking: [],
+    planned: [],
+  },
+  // The independent שער רוח requirement is already marked complete above.
   total_hours_progress: { known_completed_hours: 92 },
 });
 

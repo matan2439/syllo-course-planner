@@ -1,9 +1,9 @@
 'use client'
 
-import type { SemesterVM } from '../../lib/board'
+import type { CourseVM, SemesterVM } from '../../lib/board'
 import { useEffect, useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
-import { Badge, EmptyState } from './ui'
+import { EmptyState } from './ui'
 import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 export default function SemesterColumn({
@@ -12,11 +12,14 @@ export default function SemesterColumn({
   onRemoveCourse,
   onAddCourse,
   onMoveCourse,
+  onSelectCourse,
   moveDestinations,
   mutationPending,
   activeDrag,
   rejected = false,
   rejectedKey,
+  justPlaced = false,
+  justPlacedKey,
   onDragStateChange,
 }: {
   semester: SemesterVM
@@ -24,11 +27,17 @@ export default function SemesterColumn({
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
+  /** Opens the read-only details panel (with the per-course AI chat) for a board course. */
+  onSelectCourse?: (course: CourseVM) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
   activeDrag?: PlannerDragPayload | null
   rejected?: boolean
   rejectedKey?: string | number | null
+  /** True immediately after a manual add/move successfully lands in this semester. */
+  justPlaced?: boolean
+  /** Changes on every successful placement so the confirmation animation restarts. */
+  justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
@@ -80,10 +89,16 @@ export default function SemesterColumn({
   const feedbackState = rejected ? 'invalid' : visibleDragState
   const feedbackKey = rejected ? `rejected-${rejectedKey ?? 'latest'}` : feedbackState
 
+  // Annual courses render once, spanning both semester columns of their year
+  // (rendered by NativePlannerBoard, between the shared header row and the
+  // per-semester course lists) — never as a second, independent card here.
+  const bodyCourses = semester.courses.filter((c) => !c.isAnnual)
+
   return (
     <section
       aria-label={semester.title}
       data-drop-state={rejected ? 'rejected' : visibleDragState ?? undefined}
+      data-just-placed={justPlaced ? 'true' : undefined}
       onDragEnter={updateDragState}
       onDragOver={updateDragState}
       onDragLeave={(event) => {
@@ -103,26 +118,15 @@ export default function SemesterColumn({
           onMoveCourse(payload.courseId, semester.id)
         }
       }}
-      className={`rise flex min-h-[28rem] min-w-0 flex-col gap-2.5 border-l border-[var(--border)] p-3 last:border-l-0 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''}`}
+      className={`rise relative flex min-h-[28rem] min-w-0 flex-col gap-2.5 p-3 ${index > 0 ? `rise-${Math.min(index, 3)}` : ''} ${visibleDragState === 'allowed' ? 'planner-drop-target-active' : ''} ${visibleDragState === 'invalid' ? 'planner-drop-target-invalid' : ''} ${visibleDragState === 'unknown' ? 'planner-drop-target-pending' : ''} ${rejected ? 'planner-drop-target-rejected' : ''}`}
     >
-      <header className="flex items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2">
-        <h2 className="text-sm font-bold tracking-tight">{semester.title}</h2>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {semester.courses.length > 0 && (
-            <span className="text-[11px] text-[var(--text-muted)]">
-              {semester.courses.length} קורסים
-            </span>
-          )}
-          {semester.totalWeeklyHours != null && (
-            <Badge>{semester.totalWeeklyHours} ש״ש</Badge>
-          )}
-          {semester.warnings.length > 0 && (
-            <span title={semester.warnings.join(' · ')} className="cursor-help">
-              <Badge variant="warn">{semester.warnings.length} אזהרות</Badge>
-            </span>
-          )}
-        </div>
-      </header>
+      {/* Keyed on justPlacedKey (not the whole column) so the pulse replays on
+          each new placement without unmounting SemesterColumn/CourseCard —
+          a full-column remount here would also restart the entrance `.rise`
+          animation and could interrupt an in-progress drag in this column. */}
+      {justPlaced && (
+        <div key={justPlacedKey} aria-hidden="true" className="pointer-events-none absolute inset-0 planner-drop-target-placed" />
+      )}
 
       {feedbackState && (
         <p
@@ -146,11 +150,13 @@ export default function SemesterColumn({
         </p>
       )}
 
+      {/* semester.courses (not bodyCourses) so an annual-only semester — shown
+          via the spanning card above, not here — never falsely reports empty. */}
       {semester.courses.length === 0 ? (
         <EmptyState>אין קורסים משובצים</EmptyState>
       ) : (
-        semester.courses.map((c) => <CourseCard
-          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse}
+        bodyCourses.map((c) => <CourseCard
+          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse} onSelect={onSelectCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
           onDragStateChange={onDragStateChange}
         />)

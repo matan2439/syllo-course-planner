@@ -72,7 +72,9 @@ const toolStatusEventSchema = z.object({
     'get_course_details',
     'get_offerings',
     'check_prerequisites',
+    'validate_plan',
     'simulate_move',
+    'simulate_changes',
     'compare_candidates',
     'explain_constraint',
     'ask_clarification',
@@ -149,6 +151,26 @@ const academicDecisionSummarySchema = z.object({
   ready_to_plan: z.boolean(),
   planned: z.boolean(),
   clarification_required: z.boolean(),
+  explanation: z.object({
+    summary_he: boundedText,
+    facts_he: z.array(boundedText).max(16),
+    risks_he: z.array(boundedText).max(16),
+    next_actions_he: z.array(boundedText).max(16),
+  }).strict().optional(),
+  decision: z.discriminatedUnion('outcome', [
+    z.object({
+      outcome: z.literal('selected'),
+      selected_candidate_id: z.string().trim().min(1).max(256),
+      evaluated_candidate_ids: z.array(z.string().trim().min(1).max(256)).min(1).max(12),
+      alternatives_not_selected_ids: z.array(z.string().trim().min(1).max(256)).max(11),
+      selection_basis: z.literal('existing_deterministic_ranking'),
+    }).strict(),
+    z.object({
+      outcome: z.literal('infeasible'),
+      evaluated_candidate_ids: z.array(z.string()).length(0),
+      selection_basis: z.literal('no_eligible_candidate'),
+    }).strict(),
+  ]).optional(),
 }).strict()
 
 const conversationContextUpdateSchema = z.object({

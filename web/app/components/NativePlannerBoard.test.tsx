@@ -104,10 +104,36 @@ test('an entirely empty board renders the truthful board-unavailable state', () 
 
 test('uses a continuous horizontally scrollable semester table', () => {
   const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
-  const grid = container.querySelector('[role="list"]') as HTMLElement
-  expect(grid.parentElement?.className).toMatch(/overflow-x-auto/)
-  expect(grid.className).toMatch(/grid-flow-col/)
-  expect(grid.className).toMatch(/auto-cols-\[minmax\(17rem,1fr\)\]/)
+  const list = container.querySelector('[role="list"]') as HTMLElement
+  expect(list.parentElement?.className).toMatch(/overflow-x-auto/)
+  // Each year-pair is its own small grid (so an annual course's spanning
+  // card can sit between the pair's headers and its two course lists); the
+  // outer list itself just lays those pair-grids side by side.
+  expect(list.querySelectorAll('[style*="grid-template-columns"]').length).toBeGreaterThan(0)
+})
+
+test('each year-pair retains the width of both semester columns instead of collapsing into the next pair', () => {
+  const fourSemesterBoard = {
+    ...BOARD,
+    semesters: [
+      ...BOARD.semesters,
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(fourSemesterBoard)} />)
+  const pairs = [...container.querySelectorAll('[style*="grid-template-columns"]')] as HTMLElement[]
+
+  expect(pairs).toHaveLength(2)
+  for (const pair of pairs) {
+    expect(pair.style.minWidth).toBe('34rem')
+    expect(pair).toHaveClass('shrink-0')
+  }
+})
+
+test('year-pairs keep independent heights so an annual band cannot create blank space in the next year', () => {
+  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(container.querySelector('[role="list"]')).toHaveClass('items-start')
 })
 
 test('a repository drop invokes add and never move', () => {
@@ -353,9 +379,13 @@ test('a repository drop outside its offering fails closed', () => {
 
 test('mandatory courses do not advertise a move that authoritative validation must reject', () => {
   const onMoveCourse = jest.fn()
-  const { container } = render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  const card = screen.getByText('קורס לדוגמה').closest('[draggable]')
   expect(screen.getByText('קורס לדוגמה').closest('[draggable="true"]')).toBeNull()
-  expect(container.querySelector('details')).toBeNull()
+  // Scoped to the card itself — the board also renders an unrelated <details>
+  // (CategoryLegend's color key), which must not be mistaken for this card's
+  // own "move options" details dropdown.
+  expect(card?.querySelector('details')).toBeNull()
 })
 
 test('dragging an elective onto another semester invokes the same authoritative move intent', () => {
@@ -464,7 +494,7 @@ test('an elective card exposes a clear drag affordance alongside keyboard contro
   expect(screen.getByRole('button', { name: 'העבר קורס בחירה אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
 })
 
-test('the board drag affordance starts a shared move preview before native dragstart', () => {
+test('the board drag affordance waits for native dragstart before publishing a move preview', () => {
   const electiveBoard = {
     ...BOARD,
     semesters: [
@@ -481,6 +511,16 @@ test('the board drag affordance starts a shared move preview before native drags
   const handle = screen.getByLabelText('גרור את קורס בחירה לסמסטר אחר')
   expect(handle).toHaveAttribute('draggable', 'true')
   fireEvent.pointerDown(handle)
+
+  expect(onDragStateChange).not.toHaveBeenCalled()
+
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    effectAllowed: '', dropEffect: '',
+  }
+  fireEvent.dragStart(handle, { dataTransfer: transfer })
 
   expect(onDragStateChange).toHaveBeenCalledWith({
     kind: 'board',
@@ -512,6 +552,31 @@ test('an elective advertises only semesters listed by the authoritative catalog'
 
   expect(screen.getByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ג׳ — סמסטר ב׳' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'העבר בחירה מוגבלת אל שנה ד׳ — סמסטר א׳' })).toBeNull()
+})
+
+test('an annual course renders once, as one card spanning both of its year\'s semester columns, styled like any other card and never draggable', () => {
+  const annualBoard = {
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [
+      {
+        semester_id: 'year_3_semester_a',
+        courses: [{ course_id: 'ANN-1', name_he: 'קורס שנתי', weekly_hours: 4, course_type: 'mandatory', is_mandatory: true, is_annual: true }],
+      },
+      {
+        semester_id: 'year_3_semester_b',
+        courses: [{ course_id: 'ANN-1', name_he: 'קורס שנתי', weekly_hours: 4, course_type: 'mandatory', is_mandatory: true, is_annual: true }],
+      },
+      { semester_id: 'year_4_semester_a', courses: [] },
+      { semester_id: 'year_4_semester_b', courses: [] },
+    ],
+  }
+  render(<NativePlannerBoard board={vmFromPayload(annualBoard)} onMoveCourse={jest.fn()} />)
+  // Rendered once (not once per semester) — a single wide card, using the
+  // exact same CourseCard as everything else, spanning both columns of its
+  // year, positioned right under the headers rather than in a separate block.
+  expect(screen.getAllByText('קורס שנתי')).toHaveLength(1)
+  expect(screen.getByText('שנתי (א׳+ב׳)')).toBeInTheDocument()
+  expect(screen.getByText('קורס שנתי').closest('[draggable]')).toHaveAttribute('draggable', 'false')
 })
 
 test('dropping an elective outside its catalog offering does not send a move intent', () => {

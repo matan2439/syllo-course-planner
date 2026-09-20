@@ -3,8 +3,9 @@
  * exact (throws on unsupported precision, never rounds). Runtime-neutral.
  */
 import { boardResponseSchema, generatePlanResponseSchema } from './wire';
+import type { RawRequirementsValidation } from './wire';
 import { toHalfHours, catalogRevision, normalizeCourseId } from './model';
-import type { BoardModel, BoardCourseModel, GeneratedPlanModel } from './model';
+import type { BoardModel, BoardCourseModel, BoardRequirementsModel, GeneratedPlanModel } from './model';
 
 /** Raw course shape shared by placed courses and program_repository_courses. */
 type RawCourse = {
@@ -14,27 +15,116 @@ type RawCourse = {
   course_type?: string;
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
+  effective_allowed_semesters?: string[] | null;
+  // See the matching field comment in wire.ts: repository entries ship
+  // category_id, placed entries ship program_category_id — both accepted.
+  category_id?: string | null;
+  program_category_id?: string | null;
+  placement_policy?: string;
+  is_annual?: boolean;
 };
 
+type RawSemester = { semester_id: string; courses: RawCourse[] };
+
+type RawBoardPayload = {
+  metadata: {
+    board_data_version: string;
+    program_repository_courses?: RawCourse[];
+    program_requirements_validation?: RawRequirementsValidation;
+  };
+  semesters: RawSemester[];
+};
+
+/**
+ * Board data encodes a legal-semester "half" two ways: a full semester id
+ * ("year_3_semester_a") or a bare offering code ("A"/"B", case-insensitive,
+ * or Hebrew "א"/"ב") meaning "that half of ANY year in this board". Expand
+ * bare codes against the board's own known semester ids so downstream
+ * movable/drop-target checks (which compare against full ids) work. Mirrors
+ * the legacy normalizeLegalSemesterIdsLocal (the retired single-file planner).
+ */
+function normalizeSemesterIds(raw: string[], knownSemesterIds: string[]): string[] {
+  const knownSet = new Set(knownSemesterIds);
+  // Expansion order is deterministic (sorted), independent of the board's own
+  // semester array order, so a course's expanded ids come out year-ascending.
+  const sortedKnown = [...knownSemesterIds].sort();
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (id: string) => { if (!seen.has(id)) { seen.add(id); out.push(id); } };
+  for (const tok of raw) {
+    if (tok == null) continue;
+    const s = String(tok).trim();
+    if (!s) continue;
+    if (knownSet.has(s)) { push(s); continue; }
+    const low = s.toLowerCase();
+    let half: '_semester_a' | '_semester_b' | null = null;
+    if (low === 'a' || s === 'א') half = '_semester_a';
+    else if (low === 'b' || s === 'ב') half = '_semester_b';
+    if (!half) continue; // unknown token — can never match a real placement
+    for (const id of sortedKnown) if (id.endsWith(half)) push(id);
+  }
+  return out;
+}
+
 /** Map one raw course (from either source) to the canonical model. Half-hour exact. */
-function courseToModel(c: RawCourse): BoardCourseModel {
+function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseModel {
   return {
     courseId: normalizeCourseId(c.course_id),
     nameHe: c.name_he ?? '',
     halfHours: c.weekly_hours == null ? null : toHalfHours(c.weekly_hours),
     courseType: c.course_type ?? '',
     isMandatory: c.is_mandatory ?? false,
-    ...(c.offered_semesters != null ? { offeredSemesters: [...c.offered_semesters] } : {}),
+    // A full effective restriction records the program/policy result for this
+    // exact planning horizon. It must override a bare A/B offering code,
+    // which otherwise means that half in every year and would advertise an
+    // impossible cross-year move in the UI.
+    ...((c.effective_allowed_semesters ?? c.offered_semesters) != null
+      ? { offeredSemesters: normalizeSemesterIds(c.effective_allowed_semesters ?? c.offered_semesters!, knownSemesterIds) }
+      : {}),
+    ...((c.category_id ?? c.program_category_id) != null
+      ? { programCategoryId: (c.category_id ?? c.program_category_id) as string }
+      : {}),
+    ...(c.placement_policy != null ? { placementPolicy: c.placement_policy } : {}),
+    ...(c.is_annual != null ? { isAnnual: c.is_annual } : {}),
+  };
+}
+
+function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsModel {
+  return {
+    valid: v.valid,
+    totalRequiredHours: v.total_required_hours,
+    plannedHours: v.planned_hours,
+    remainingHours: v.remaining_hours,
+    coreCoursesTotalMin: v.core_courses_total_min,
+    coreCoursesSelected: v.core_courses_selected,
+    coreCoursesSatisfied: v.core_courses_satisfied,
+    categories: (v.category_results ?? []).map((c: {
+      category_id: string;
+      name_he: string;
+      min_courses: number;
+      selected_count: number;
+      satisfied: boolean;
+      missing_count: number;
+    }) => ({
+      categoryId: c.category_id,
+      nameHe: c.name_he,
+      minCourses: c.min_courses,
+      selectedCount: c.selected_count,
+      satisfied: c.satisfied,
+      missingCount: c.missing_count,
+    })),
+    warnings: v.warnings ?? [],
   };
 }
 
 /** Parse + map a raw /api/board response into the canonical BoardModel + catalog. */
 export function boardResponseToModel(raw: unknown): BoardModel {
-  const parsed = boardResponseSchema.parse(raw);
+  const parsed = boardResponseSchema.parse(raw) as RawBoardPayload;
+  const knownSemesterIds = parsed.semesters.map((s) => s.semester_id);
 
   const semesters = parsed.semesters.map((s) => ({
     semesterId: s.semester_id,
-    courses: s.courses.map(courseToModel),
+    courses: s.courses.map((c) => courseToModel(c, knownSemesterIds)),
   }));
 
   // courseCatalog = placed ∪ program_repository_courses, keyed by normalized id.
@@ -43,11 +133,11 @@ export function boardResponseToModel(raw: unknown): BoardModel {
   // placement-only `courseType` (repo entries carry none) is retained.
   const placedIndex: Record<string, BoardCourseModel> = {};
   for (const s of parsed.semesters) {
-    for (const c of s.courses) placedIndex[normalizeCourseId(c.course_id)] = courseToModel(c);
+    for (const c of s.courses) placedIndex[normalizeCourseId(c.course_id)] = courseToModel(c, knownSemesterIds);
   }
   const repoIndex: Record<string, BoardCourseModel> = {};
   for (const c of parsed.metadata.program_repository_courses ?? []) {
-    repoIndex[normalizeCourseId(c.course_id)] = courseToModel(c);
+    repoIndex[normalizeCourseId(c.course_id)] = courseToModel(c, knownSemesterIds);
   }
   const courseCatalog: Record<string, BoardCourseModel> = {};
   for (const id of new Set([...Object.keys(placedIndex), ...Object.keys(repoIndex)])) {
@@ -61,6 +151,9 @@ export function boardResponseToModel(raw: unknown): BoardModel {
     catalogRevision: catalogRevision(parsed.metadata.board_data_version),
     semesters,
     courseCatalog,
+    ...(parsed.metadata.program_requirements_validation
+      ? { requirementsValidation: requirementsToModel(parsed.metadata.program_requirements_validation) }
+      : {}),
   };
 }
 
@@ -68,8 +161,8 @@ export function boardResponseToModel(raw: unknown): BoardModel {
 export function generatePlanResponseToModel(raw: unknown): GeneratedPlanModel {
   const p = generatePlanResponseSchema.parse(raw);
   return {
-    semesters: p.semesters.map((s) => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
-    moves: p.moves.map((m) => ({ courseId: m.course_id, from: m.from, to: m.to })),
+    semesters: p.semesters.map((s: { semester_id: string; course_ids: string[] }) => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
+    moves: p.moves.map((m: { course_id: string; from: string | null; to: string }) => ({ courseId: m.course_id, from: m.from, to: m.to })),
     warningsHe: p.warnings_he,
     errors: p.errors,
     blocked: p.blocked,

@@ -108,8 +108,59 @@ export interface KnowledgeCapability {
  * validateState closure injected into SearchDeps, and to run the full
  * CandidateReport gate on terminal beam states.
  */
+/** A safe, user-visible finding from deterministic validation — never model reasoning. */
+export interface ConstraintViolation {
+  /** Stable identifier supplied by the validator/adapter, not prose parsing. */
+  code: string;
+  /** Present for structured findings. Omitted only by the legacy single-reason fallback. */
+  severity?: 'error' | 'warning';
+  message?: string;
+  /** Related course ids when the validator can identify them without guessing. */
+  courseIds?: string[];
+}
+
+/**
+ * Structured facts about a validation pass. Every field is optional because
+ * low-level state validators may only know legality; full candidate validation
+ * can additionally disclose completion evidence without recomputing rules.
+ */
+export interface ValidationEvidence {
+  legal?: boolean;
+  complete?: boolean;
+  constraintsChecked?: string[];
+  degreeHours?: number;
+  degreeHoursRequired?: number;
+  degreeMet?: boolean;
+  missingMandatoryCourseIds?: string[];
+  unsatisfiedCategoryIds?: string[];
+  disallowedCourseIds?: string[];
+  overCapSemesterIds?: string[];
+  missingMustIncludeCourseIds?: string[];
+  warnings?: string[];
+}
+
+/**
+ * The shared validation contract used by planning and simulation. Existing
+ * simple validators remain valid: `reason`, structured `violations`, and
+ * `evidence` are additive. A future ValidationCapability owns populating
+ * these fields; consumers never infer academic facts from error text.
+ */
+export type ValidationResult =
+  | {
+      valid: true;
+      reason?: undefined;
+      violations?: ConstraintViolation[];
+      evidence?: ValidationEvidence;
+    }
+  | {
+      valid: false;
+      reason?: string;
+      violations?: ConstraintViolation[];
+      evidence?: ValidationEvidence;
+    };
+
 export interface ValidationCapability {
-  validateState(state: unknown): { valid: boolean; reason?: string };
+  validateState(state: unknown): ValidationResult;
 }
 
 /**

@@ -542,7 +542,7 @@ function annualCompletenessGate(
  * fires on entirely normal, expected client state — the real board
  * legitimately keeps a currently-taking course visible in its placed
  * semester slot while also reporting it in personal_status.currently_taking
- * (buildPlanContext in semester_board_viewer.html filters completed courses
+ * (buildPlanContext in the retired single-file planner filters completed courses
  * out before sending, but deliberately keeps currently-taking ones so they
  * still render). Treating that combination as a blocking legality violation
  * would false-positive-block an applicable plan for essentially any

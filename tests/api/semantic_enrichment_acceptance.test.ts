@@ -25,12 +25,19 @@ for (const c of (BOARD.metadata?.program_repository_courses || [])) byId.set(c.c
 const SEMANTIC_ONLY = ['0571-4174', '0542-4226']; // legacy misses; semantic catches
 const DESIGN_EXPLICIT = '0542-4425';
 const NO_DESIGN = '0542-4420'; // machine theory — validated absence
+// Isolate semantic ranking from the separate, satisfied three-course שער רוח
+// requirement.
 const PRIOR = 92;
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
 function planContext() {
   return {
     semesters: BOARD.semesters.map((s: any) => ({ id: s.semester_id, courses: (s.courses || []).map((c: any) => ({ course_id: c.course_id })) })),
-    personal_status: { completed: [], currently_taking: [], planned: [] },
+    personal_status: {
+      completed: COMPLETED_SHAAR_RUACH.map(course_id => ({ course_id })),
+      currently_taking: [],
+      planned: [],
+    },
     total_hours_progress: { known_completed_hours: PRIOR },
   };
 }

@@ -6,6 +6,7 @@ from app.parsing.tau_curriculum_document import (
     CurriculumSource,
     CurriculumSourceMismatch,
     CurriculumTextPage,
+    restore_rtl_pdf_line,
     parse_curriculum_document,
 )
 
@@ -16,6 +17,7 @@ SOURCE = CurriculumSource(
     academic_year_he='תשפ"ה',
     source_url="https://www.tau.ac.il/tochniot/pdf/2024/heb/051211010000.pdf",
     printed_on="21/07/25",
+    academic_year=2024,
 )
 
 
@@ -272,3 +274,41 @@ def test_conflicting_official_selection_rules_remain_unresolved() -> None:
         SOURCE.source_url,
         "https://engineering.tau.ac.il/frontpage?page=73&tab=0",
     )
+
+
+def test_restores_rtl_pdf_text_without_reversing_ltr_numbers_or_course_ids() -> None:
+    extracted = (
+        '- "הביל סרוק" םירדגומ םיסרוק העברא תוחפל םכותמש '
+        ')תודבעמ ללוכ אל( םיסרוק 12 כ"הס רובצל שי הריחבה ילולסמב'
+    )
+
+    restored = restore_rtl_pdf_line(extracted)
+
+    assert restored == (
+        'במסלולי הבחירה יש לצבור סה"כ 12 קורסים (לא כולל מעבדות) '
+        'שמתוכם לפחות ארבעה קורסים מוגדרים "קורס ליבה" -'
+    )
+    assert restore_rtl_pdf_line("0512-4264 תיטסיטטס הנוכמ תדימלל אובמ") == (
+        "מבוא ללמידת מכונה סטטיסטית 0512-4264"
+    )
+
+
+def test_newer_academic_year_rule_supersedes_older_official_rule() -> None:
+    old_rule = parse_curriculum_document(_official_excerpt_pages(), SOURCE).selection_rule
+    current_rule = old_rule.__class__(
+        total_track_courses=12,
+        minimum_core_courses=4,
+        minimum_distinct_core_tracks=4,
+        advanced_labs_required=2,
+        minimum_distinct_lab_tracks=2,
+        labs_require_prerequisites=True,
+        source_pages=(60,),
+        source_url="https://www.tau.ac.il/tochniot/pdf/2025/heb/051211010000.pdf",
+        academic_year=2025,
+    )
+
+    resolution = old_rule.reconcile(current_rule)
+
+    assert resolution.resolved_rule == current_rule
+    assert resolution.reason == "newer_academic_year_authority"
+    assert resolution.source_urls == (SOURCE.source_url, current_rule.source_url)

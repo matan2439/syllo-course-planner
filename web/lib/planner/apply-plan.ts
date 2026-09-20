@@ -20,6 +20,7 @@ export function applyGeneratedToBoard(generated: GeneratedPlanModel, base: Board
   return {
     catalogRevision: base.catalogRevision,
     courseCatalog: base.courseCatalog,
+    requirementsValidation: base.requirementsValidation,
     semesters: generated.semesters.map((s) => ({
       semesterId: s.semesterId,
       courses: s.courseIds.map((id) => resolve(base, id)),

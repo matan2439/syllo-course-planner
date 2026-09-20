@@ -6,11 +6,9 @@ The project deploys to Vercel as a **zero-config serverless + static** site:
 
 | Path | Served by |
 |---|---|
-| `/` | `app/web/semester_board_viewer.html` (static, via rewrite) |
-| `/app/web/semester_board_viewer.html` | `app/web/semester_board_viewer.html` (static) |
+| `/` and every page route | The Next.js app in `web/` (`@vercel/next`) |
 | `/api/board/:programId` | `api/board.ts` (Node.js serverless function, reads from Supabase) |
 | `/api/ai/course-planner` | `api/ai/course-planner.ts` (Node.js serverless function, AI streaming) |
-| `/data/...` | Static files (local dev only — these are gitignored) |
 
 ---
 
@@ -70,28 +68,19 @@ Every `git push` to a non-production branch creates a preview deployment at a un
 
 ## Local Development
 
-### Full stack (API + static files)
+### Full stack (API + Next frontend)
 
 ```bash
-# Requires DATABASE_URL and optionally ANTHROPIC_API_KEY in .env
+# Terminal 1 - API. Requires DATABASE_URL and optionally ANTHROPIC_API_KEY in .env
 npx vercel dev
 # → http://localhost:3000
+
+# Terminal 2 - Next frontend (proxies /api/* to :3000 via PLANNER_API_ORIGIN)
+cd web && PLANNER_API_ORIGIN=http://localhost:3000 npm run dev
+# → http://localhost:3001/planner
 ```
 
 Board data is loaded from Supabase via `/api/board/mechanical_engineering_2027`.
-The browser console logs: `[board] source: api | program: ... | repo: 56`
-
-### Static fallback (no database needed)
-
-```bash
-python -m http.server 8080
-# → http://localhost:8080/app/web/semester_board_viewer.html
-```
-
-Board data is loaded from `data/parsed_json/mechanical_semester_board_2027.json`.
-The browser console logs: `[board] source: static-json | program: ... | repo: 56`
-
-Note: the AI assistant and board API endpoint are not available in this mode.
 
 ---
 
@@ -148,25 +137,8 @@ DIRECT_DATABASE_URL=postgresql://... alembic current
 
 ## Vercel configuration reference (`vercel.json`)
 
-```json
-{
-  "version": 2,
-  "framework": null,
-  "rewrites": [
-    { "source": "/api/board/:programId", "destination": "/api/board?programId=:programId" },
-    { "source": "/",                     "destination": "/app/web/semester_board_viewer.html" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin",  "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
-      ]
-    }
-  ]
-}
-```
+See `vercel.json` at the repo root. It builds `web/` with `@vercel/next`, builds each
+`api/**/*.ts` function with `@vercel/node`, rewrites `/api/...` to those functions and
+everything else to the Next app, and adds CORS headers on `/api/*`.
 
 `"framework": null` is required to prevent Vercel from auto-detecting the Python pipeline (`app/main.py` + `requirements.txt`) as a FastAPI application, which would crash on Windows due to a Vercel CLI path-escaping bug.

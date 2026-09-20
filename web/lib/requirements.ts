@@ -5,6 +5,7 @@
  * requirement recalculation, no inference, no mutation.
  */
 import type { RawBoard } from './board'
+import type { BoardModel } from '../../shared/planner/model'
 
 type RawCategoryResult = {
   category_id: string
@@ -74,5 +75,28 @@ export function adaptRequirements(raw: RawBoard): RequirementsVM | null {
     })),
     warnings: v.warnings ?? [],
     explanation: v.explanation ?? null,
+  }
+}
+
+/**
+ * Same RequirementsVM shape as adaptRequirements, sourced from the canonical
+ * BoardModel (used by /planner/native) instead of the raw board JSON (used
+ * by /plan). Both paths pass through shipped numbers only — never recomputed.
+ */
+export function adaptRequirementsFromModel(model: BoardModel): RequirementsVM | null {
+  const v = model.requirementsValidation
+  if (!v) return null
+  return {
+    valid: v.valid,
+    plannedHours: v.plannedHours,
+    totalRequiredHours: v.totalRequiredHours,
+    remainingHours: v.remainingHours,
+    core: { selected: v.coreCoursesSelected, min: v.coreCoursesTotalMin, satisfied: v.coreCoursesSatisfied },
+    categories: v.categories.map((c) => ({
+      id: c.categoryId, title: c.nameHe, minCourses: c.minCourses,
+      selectedCount: c.selectedCount, satisfied: c.satisfied, missingCount: c.missingCount,
+    })),
+    warnings: v.warnings,
+    explanation: null,
   }
 }

@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { RepoCourseVM, RepositoryVM } from '../../lib/repository'
 import { buildCourseDetails, type CourseDetailsVM } from '../../lib/course-details'
 import CourseDetailsPanel from './CourseDetailsPanel'
 import { filterRepository, repositoryStatus } from './RepositoryExplorer'
 import { Badge, Card, EmptyState } from './ui'
 import { writeRepositoryDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
+import { categoryAccentClass } from './course-category'
 
 export type SemesterDestination = { id: string; label: string }
 
@@ -20,6 +21,7 @@ function allowedDestinations(course: RepoCourseVM, destinations: readonly Semest
 
 export default function UnifiedCourseRepository({
   repo,
+  programId,
   selectedCourseIds,
   semesterDestinations = [],
   onRequestAdd,
@@ -27,6 +29,8 @@ export default function UnifiedCourseRepository({
   onDragStateChange,
 }: {
   repo: RepositoryVM
+  /** Required to ask the per-course AI chat; omit only where no AI context exists yet. */
+  programId?: string
   selectedCourseIds: readonly string[]
   semesterDestinations?: readonly SemesterDestination[]
   onRequestAdd: (courseId: string, semesterId?: string) => void
@@ -36,7 +40,6 @@ export default function UnifiedCourseRepository({
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState<CourseDetailsVM | null>(null)
   const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null)
-  const nativeDragStarted = useRef(false)
   const selected = useMemo(() => new Set(selectedCourseIds), [selectedCourseIds])
   const filtered = useMemo(() => filterRepository(repo, query), [query, repo])
   const status = repositoryStatus(repo, filtered, query)
@@ -47,12 +50,6 @@ export default function UnifiedCourseRepository({
   const announceDragPreview = (courseId: string, allowedSemesterIds: string[]) => {
     onDragStateChange?.({ kind: 'repository', courseId, allowedSemesterIds })
     setDraggingCourseId(courseId)
-  }
-
-  const clearPendingDragPreview = () => {
-    if (nativeDragStarted.current) return
-    onDragStateChange?.(null)
-    setDraggingCourseId(null)
   }
 
   const showDetails = (course: RepoCourseVM, category: string) => {
@@ -115,17 +112,15 @@ export default function UnifiedCourseRepository({
                       return
                     }
                     event.dataTransfer.effectAllowed = 'copy'
-                    nativeDragStarted.current = true
                     writeRepositoryDrag(event.dataTransfer, course.id, allowedSemesterIds)
                     announceDragPreview(course.id, allowedSemesterIds)
                   }}
                   onDragEnd={() => {
-                    nativeDragStarted.current = false
                     onDragStateChange?.(null)
                     setDraggingCourseId(null)
                   }}
                 >
-                <Card className="flex flex-col gap-3 px-3.5 py-3">
+                <Card className={`flex flex-col gap-3 px-3.5 py-3 ${categoryAccentClass(category.id)}`}>
                   <div>
                     <h4 className="text-sm font-semibold">{course.name}</h4>
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -138,12 +133,6 @@ export default function UnifiedCourseRepository({
                       <span
                         data-drag-handle
                         draggable={draggable}
-                        onPointerDown={() => {
-                          nativeDragStarted.current = false
-                          announceDragPreview(course.id, allowedSemesterIds)
-                        }}
-                        onPointerUp={clearPendingDragPreview}
-                        onPointerCancel={clearPendingDragPreview}
                         title="גררו מכאן ללוח"
                         aria-label={`גרור את ${course.name} ללוח הסמסטרים`}
                         className="planner-drag-handle self-center text-[11px] text-[var(--text-muted)]"
@@ -201,7 +190,7 @@ export default function UnifiedCourseRepository({
         </section>
       ))}
 
-      {!onRequestDetails && <CourseDetailsPanel course={details} onClose={() => setDetails(null)} />}
+      {!onRequestDetails && <CourseDetailsPanel course={details} onClose={() => setDetails(null)} programId={programId} />}
     </section>
   )
 }

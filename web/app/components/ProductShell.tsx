@@ -65,7 +65,7 @@ export default function ProductShell({
             href="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
           >
-            <BrandLogo size={26} wordmark />
+            <BrandLogo size={26} />
           </Link>
 
           <nav className="flex w-full flex-wrap items-center justify-start gap-1 sm:w-auto sm:flex-nowrap">
@@ -83,12 +83,6 @@ export default function ProductShell({
                 {item.label}
               </Link>
             ))}
-            <Link
-              href={`/planner${query}`}
-              className="ms-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1.5 text-xs font-medium transition-colors duration-150 hover:border-purple-500/40 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
-            >
-              תכנון עם AI
-            </Link>
             <ThemeToggle />
           </nav>
         </header>

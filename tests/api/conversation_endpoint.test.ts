@@ -259,6 +259,19 @@ test('configured conversation runs the AcademicDecisionAgent pipeline over the a
   expect(res.body.academic_decision).toEqual(expect.objectContaining({
     engine: 'AcademicDecisionAgent',
     ready_to_plan: true,
+    explanation: expect.objectContaining({
+      summary_he: 'הטיוטה עברה אימות חוקיות והשלמת דרישות.',
+      facts_he: [],
+      risks_he: [],
+      next_actions_he: ['אפשר לעבור על החלופה בלוח לפני ההחלה.'],
+    }),
+    decision: expect.objectContaining({
+      outcome: 'selected',
+      selected_candidate_id: expect.any(String),
+      evaluated_candidate_ids: [expect.any(String)],
+      alternatives_not_selected_ids: [],
+      selection_basis: 'existing_deterministic_ranking',
+    }),
   }))
 })
 

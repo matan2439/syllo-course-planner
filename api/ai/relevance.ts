@@ -20,7 +20,7 @@
  *      from actual matched facts (no static topic-specific strings).
  *
  * Pure TypeScript: no Node-only deps so it can be mirrored 1:1 in the
- * inline-script client (semester_board_viewer.html) following the existing
+ * inline-script client (the retired single-file planner) following the existing
  * `_xxxLocal` duplication pattern.
  */
 

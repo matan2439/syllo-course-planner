@@ -1,22 +1,28 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useEffect } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, onManualAddCancelled, agentCloseRef }: any) => (
-    <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
-      data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
-      <div className="planner-board-region">לוח פעיל</div>
-      {manualAddIntent && (
-        <button type="button" aria-label="ביטול הוספת קורס" onClick={onManualAddCancelled}>ביטול</button>
-      )}
-      <aside className="planner-agent-region" aria-label="עוזר אקדמי">
-        <button ref={agentCloseRef} type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
-        עוזר פעיל
-      </aside>
-    </div>
-  ),
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, onManualAddCancelled, agentCloseRef, onSemestersChange }: any) => {
+    useEffect(() => {
+      onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
+    }, [onSemestersChange])
+    return (
+      <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
+        data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
+        <div className="planner-board-region">לוח פעיל</div>
+        {manualAddIntent && (
+          <button type="button" aria-label="ביטול הוספת קורס" onClick={onManualAddCancelled}>ביטול</button>
+        )}
+        <aside className="planner-agent-region" aria-label="עוזר אקדמי">
+          <button ref={agentCloseRef} type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
+          עוזר פעיל
+        </aside>
+      </div>
+    )
+  },
 }))
 
 jest.mock('./UnifiedCourseRepository', () => ({
@@ -25,6 +31,15 @@ jest.mock('./UnifiedCourseRepository', () => ({
     <button type="button" draggable onDragStart={() => onDragStateChange?.({ kind: 'repository', courseId: 'C1', allowedSemesterIds: ['year_3_semester_a'] })} onDragEnd={() => onDragStateChange?.(null)}>גרירה לדוגמה</button>
     <button type="button" onClick={() => onRequestAdd('C1')}>בקש הוספה</button>
   </div>,
+}))
+
+jest.mock('./WeeklyScheduleDrawer', () => ({
+  __esModule: true,
+  default: () => (
+    <div>
+      <div role="tablist" aria-label="בחירת סמסטר" />
+    </div>
+  ),
 }))
 
 const repo: RepositoryVM = { categories: [], totalCourses: 0 }
@@ -279,5 +294,40 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByTestId('agent-journey')).toHaveAttribute(
       'data-manual-semesters', 'year_1_semester_a,year_3_semester_a',
     )
+  })
+})
+
+describe('UnifiedPlannerWorkspace — weekly schedule', () => {
+  test('keeps the weekly schedule visible below the board without a drawer control', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /מערכת שעות/ })).toBeNull()
+  })
+
+  test('repository and agent can open while the weekly schedule stays visible', () => {
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+    expect(screen.getByTestId('course-repository')).toBeInTheDocument()
+    expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+  })
+
+  test('renders the weekly panel below the board, outside the repository rail row', () => {
+    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+
+    const board = document.getElementById('workspace-panel-journey')
+    const weekly = document.getElementById('workspace-panel-weekly')
+    const workbench = container.querySelector('.planner-workbench')
+    expect(board).not.toBeNull()
+    expect(weekly).not.toBeNull()
+    expect(workbench).not.toBeNull()
+
+    // Weekly is not inside the board+repository-rail row at all.
+    expect(workbench?.contains(weekly as Node)).toBe(false)
+    // It comes after that row in document order, i.e. below it.
+    expect(
+      (board?.compareDocumentPosition(weekly as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })

@@ -9133,3 +9133,151 @@ conversation draft persistence or durable writes. No model calls, source changes
 remote data writes, Production promotion, alias/domain/environment-setting changes
 or protection changes. Unrelated working files remain untouched. The weekly Bidit
 UI and timetable-aware assistant are still not implemented by this modal slice.
+
+## 2026-09-10 — concurrent-edit boundary (no code changes by this heartbeat)
+
+Read-only inspection found a truthfulness defect: the repository VM omits
+prerequisites, while the details panel renders its normalized empty list as
+"אין דרישות קדם". Missing evidence must not imply confirmed absence. No regression
+or fix has been written yet. Before editing, a fresh git check found HEAD had
+advanced externally from `c940227` to `eb60055` (new timetable/design commits),
+along with overlapping unstaged changes to CourseDetailsPanel, both repositories,
+the journey/workspace, plus shared/API and protected source-data changes. Those
+changes belong to the other active work and were not staged, edited or discarded.
+
+Task-owner discovery through list_threads failed with "Transport closed". This
+heartbeat stops before overlapping code edits, verification or deployment and asks
+the user where development should be coordinated. Only this progress note is left
+unstaged; there is no new commit or Preview. Do not repeat an unchanged concurrency
+notification on later heartbeats. Recheck actual ownership/state first, and do not
+infer from this older log that the externally advancing timetable work is absent
+or approved for this runner to take over.
+
+## 2026-09-11 — weekly timetable (Bidit-style schedule) shipped
+
+This is the externally-advancing timetable work the heartbeat above deferred to.
+Built via Claude Code's subagent-driven-development skill: fresh implementer
+subagent per task, then a spec-compliance reviewer, then a code-quality reviewer,
+for every task — never self-approved. Spec:
+`docs/superpowers/specs/2026-09-10-weekly-timetable-design.md`. Plan (10 tasks):
+`docs/superpowers/plans/2026-09-10-weekly-timetable.md`.
+
+Shipped: `shared/planner/schedule.ts` (wire types, hard `hasOverlap`/`groupsOverlap`,
+`defaultTermMapping`) — `api/ai/schedule-groups.ts`, a server-side proxy to bid-it's
+public, unauthenticated group/course-search endpoints (bid-it is NOT an official TAU
+authority; every response carries `source`/`fetchedAt`) — `web/lib/planner/
+schedule-client.ts` + `schedule-storage.ts` — `NativePlannerJourney` now emits
+per-semester course ids (`onSemestersChange`) so the weekly view stays board-synced
+automatically, no manual re-entry — `WeeklyScheduleGrid` (presentational) —
+`WeeklyScheduleDrawer` (fetches groups for the active board semester's courses,
+enforces the hard no-overlap rule at selection time, re-validates existing
+selections after any data refresh instead of silently keeping a now-stale
+conflict, flags missing/incomplete bid-it data and course/term-year mismatches
+rather than reading them as conflict-free) — wired into `UnifiedPlannerWorkspace`
+as a third drawer sharing one side rail with the course repository (mutually
+exclusive; the AI assistant drawer stays independent), full Escape/focus parity
+with the existing two drawers.
+
+Two real defects were caught by review (not by the author) and fixed before
+merge: the weekly grid's day columns used a hardcoded physical `left` offset that
+would have rendered blocks under the mirrored/wrong day once mounted inside the
+app's `dir="rtl"` ancestor (CSS Grid's RTL auto-flow correctly reorders the header
+row; absolute-positioned `left` does not follow `dir`) — fixed to a `right`
+offset. And two gaps against this plan's own explicit text: no warning when
+bid-it's returned year didn't match the board column's mapped term, and no
+re-validation of existing selections after a data refresh (a stale selection that
+newly conflicts must be surfaced, never silently kept) — both closed, with tests
+proving the specific failure mode each fix closes.
+
+A third defect was caught by live manual browser testing specifically (not by any
+automated test): the free-course-search call had no error handling — a network
+failure produced an unhandled promise rejection and zero user feedback. Fixed;
+both that path and the main schedule-fetch failure path now surface a visible
+`role="alert"` message instead of failing silently, with regression tests using
+real rejected-promise mocks.
+
+Verification: 65 automated tests across 8 files (22 API-side node tests + 43
+web/jsdom tests), all green; `tsc --noEmit` clean. The actual shipped
+`api/ai/schedule-groups.ts` code (not a mock) was run directly against the real,
+live bid-it endpoints — confirmed correct multi-slot-per-group normalization
+(a lecture group meeting Sunday AND Wednesday came back as one group with two
+slots, as designed) and correct course-search results. The real `/planner`
+workspace was driven live in a browser: the weekly-schedule drawer opens/closes,
+shares its rail with the repository drawer correctly in both directions, computes
+the correct default term mapping for today's date, and the fixed search-error
+path was reproduced and confirmed fixed live (visible alert, no console
+exception). The repository and AI-assistant drawers were re-checked and are
+unaffected. NOT verified live: the board-synced fetch path itself (this
+environment's `next dev` has no `PLANNER_API_ORIGIN` proxy configured, so
+`/api/board` 500s locally and the drawer's candidate-course list is empty) — that
+path is covered only by automated tests with realistic DI'd data, not a live
+end-to-end run. No Production, deployment, or protected data changes; no Preview
+was created for this slice.
+
+### Follow-up — final holistic review, HTTP-handler gap closed
+
+A final cross-task review (after all 10 tasks) found the earlier live check had
+only exercised `fetchGroupsFromBidit`/`normalizeGroupsResponse` directly in Node,
+never the actual exported `handler` through a real HTTP request — so
+`VercelRequest.query` parsing and status/JSON marshaling were unverified. Closed:
+a throwaway local Node HTTP server wrapped the real `handler` and received real
+requests. `GET ?semester=1&courses=0542-2400,0512-4266` → 200 with correct
+normalized data from live bid-it (including the two-slot group again). `GET
+?search=מכני&semester=1` → 200, 18 real results. `GET` with no params → 400
+`INVALID_SEMESTER`. `POST` → 405. Script and output were not committed (one-off
+verification, not part of the app). The review also confirmed the one failing
+test in a full-suite run (`NativePlannerJourney.test.tsx`, `בנה תוכנית` button not
+found) is caused by unrelated concurrent work on this branch (commit `7ce228f`,
+annual-course-band rendering in `NativePlannerBoard.tsx`) — zero commits touched
+`NativePlannerJourney.tsx`/its test since this feature's last commit, and the
+weekly-timetable test suite (65 tests, 8 files) is unaffected. Not this feature's
+regression; noted here so it isn't mis-attributed later.
+
+## 2026-09-11 — weekly timetable: real UI complaint fixed (readability + placement)
+
+User tested the shipped feature live and reported it "looks like a column, very
+unclear," and asked for it to appear below the semester board — not beside it in
+the narrow side rail, and not replacing the board. Both were real defects, not
+polish, and both fixed with the same implement→review rigor as the rest of this
+feature:
+
+1. `WeeklyScheduleGrid.tsx` (commit `303ef19`) had zero visual grid structure —
+   day headers rendered, but the hour/day body below was just floating hour-number
+   labels and a few absolutely-positioned colored blocks with no borders, no
+   gridlines, nothing showing day/hour boundaries. Redesigned into an actual
+   bordered 6×14 calendar (84 real cells), using this app's real design tokens
+   (`--border`, `--text-muted`, `--purple`/`--purple-strong` — not invented ones).
+   The RTL-correct block positioning from the earlier `a47b3de` fix was re-verified
+   intact against the new structure (dayIndex 0/5 traced by hand against the new
+   grid-template). Public interface (`GridBlock`, `WeeklyScheduleGrid` props)
+   unchanged, so `WeeklyScheduleDrawer` needed no changes.
+
+2. `UnifiedPlannerWorkspace.tsx` (commit `68eaf05`) had the weekly panel squeezed
+   into the same ~24rem `position:fixed` side rail the repository drawer uses —
+   far too narrow for a 6-day grid regardless of the grid's own fix. Moved it
+   completely out of that system: `'weekly'` removed from `WorkspaceView`/the
+   mobile single-surface-exclusivity system, repository and weekly are no longer
+   mutually exclusive (that exclusivity, added in `11a2a64`, existed only to solve
+   the now-gone shared-rail cramping), and the panel now renders as a plain
+   `hidden={!weeklyOpen}` full-width `<section>` sibling AFTER the board+repository
+   row, in normal document flow. Escape-handling was restructured to a form
+   verified by hand-trace to reduce to the EXACT pre-existing repository/agent
+   behavior when weekly is closed, while correctly prioritizing an Escape pressed
+   inside the weekly panel itself. Dead rail-sharing CSS removed from
+   `globals.css`. 24/24 tests pass in the workspace suite (up from 22 — two new:
+   independence of the three panels, and a structural DOM-order assertion that
+   weekly renders after/outside the board+rail row).
+
+Live-verified in a real browser (`/planner`, dev server): screenshots are
+unavailable in this environment (`computer{action:"screenshot"}` times out with
+"window minimized or hidden" — a known, pre-existing Browser-pane driver
+limitation, not a product defect; see
+`reference-browser-pane-driver-limits` memory). Verified instead via DOM/computed-
+style evidence: `getBoundingClientRect()` showed the weekly panel at 1104px wide
+(was ~380px in the old rail) positioned below the scrolled-past board section;
+`getComputedStyle()` on an actual cell showed a real rendered border
+(`0.8px rgba(167, 139, 250, 0.16)`, matching the `--border` token exactly) and a
+genuine 7-column `grid-template-columns` (64px hour gutter + six ~167px day
+columns) — concrete proof the grid is a real wide calendar now, not a narrow
+column of floating numbers. All 6 test suites for this feature still pass; `tsc
+--noEmit` clean. No Production, deployment, or protected data changes.

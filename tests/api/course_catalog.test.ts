@@ -105,10 +105,12 @@ describe('extractCatalogCourses', () => {
 });
 
 describe('loadMechanicalEngineering2027Catalog', () => {
-  test('loads the full 68-course TAU Mechanical Engineering 2027 universe', () => {
+  test('loads the full 156-course TAU Mechanical Engineering 2027 universe', () => {
+    // 12 placed mandatory-core + 56 engineering electives + 88 קורסי שער רוח
+    // (general degree requirement, added so the planner can legally satisfy it).
     const catalog = loadMechanicalEngineering2027Catalog();
-    expect(catalog.length).toBe(68);
-    expect(new Set(catalog.map((c) => c.courseId)).size).toBe(68);
+    expect(catalog.length).toBe(156);
+    expect(new Set(catalog.map((c) => c.courseId)).size).toBe(156);
   });
 
   test('includes both repository electives and placed mandatory-core courses', () => {

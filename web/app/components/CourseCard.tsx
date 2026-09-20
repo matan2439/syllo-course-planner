@@ -1,7 +1,8 @@
 import type { CourseVM } from '../../lib/board'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Badge, Card } from './ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../lib/planner/drag-payload'
+import { categoryAccentClass } from './course-category'
 
 const TYPE_LABELS: Record<string, string> = {
   mandatory: 'חובה',
@@ -15,21 +16,25 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   very_hard: 'קשה מאוד',
 }
 
-export default function CourseCard({ course, onRemove, onMove, moveDestinations, mutationPending = false, onDragStateChange }: {
+export default function CourseCard({ course, onRemove, onMove, onSelect, moveDestinations, mutationPending = false, onDragStateChange }: {
   course: CourseVM
   onRemove?: (courseId: string) => void
   onMove?: (courseId: string, semesterId: string) => void
+  /** Opens the read-only details panel (with the per-course AI chat) for this course. */
+  onSelect?: (course: CourseVM) => void
   moveDestinations?: Array<{ semesterId: string; label: string }>
   mutationPending?: boolean
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
   const [dragging, setDragging] = useState(false)
-  const nativeDragStarted = useRef(false)
   // Missing offering data is an unknown academic fact, not permission to move
   // everywhere. Keep the card keyboard-readable, but fail closed until the
-  // authoritative catalog names at least one destination.
+  // authoritative catalog names at least one destination. An annual course
+  // spans both halves of its year as one atomic placement — it lists both as
+  // "offered" (so each half's card is individually legal), but it must never
+  // be independently moved or split, so it never advertises a destination.
   const offeredSemesters = course.offeredSemesters
-  const availableMoveDestinations = offeredSemesters === undefined
+  const availableMoveDestinations = course.isAnnual || offeredSemesters === undefined
     ? []
     : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
   const movable = Boolean(onMove) &&
@@ -40,16 +45,27 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
     onDragStateChange?.({ kind: 'board', courseId: course.id, allowedSemesterIds })
   }
 
-  const clearPendingDragPreview = () => {
-    if (nativeDragStarted.current) return
-    onDragStateChange?.(null)
-  }
-
   return (
     <div
       draggable={movable}
-      className={movable ? 'planner-drag-source' : undefined}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-label={onSelect ? `פרטים על ${course.name}` : undefined}
+      className={[movable ? 'planner-drag-source' : '', onSelect ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] rounded-xl' : ''].filter(Boolean).join(' ') || undefined}
       data-dragging={dragging ? 'true' : undefined}
+      data-category={course.categoryId ?? undefined}
+      onClick={(event) => {
+        if (!onSelect) return
+        if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select,[data-drag-handle]')) return
+        onSelect(course)
+      }}
+      onKeyDown={(event) => {
+        if (!onSelect) return
+        if (event.target !== event.currentTarget) return
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onSelect(course)
+      }}
       onDragStart={(event) => {
         if (!movable) return
         if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select')) {
@@ -57,18 +73,16 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           return
         }
         setDragging(true)
-        nativeDragStarted.current = true
         event.dataTransfer.effectAllowed = 'move'
         writeBoardDrag(event.dataTransfer, course.id, allowedSemesterIds)
         announceDragPreview()
       }}
       onDragEnd={() => {
-        nativeDragStarted.current = false
         setDragging(false)
         onDragStateChange?.(null)
       }}
     >
-    <Card className="group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)]">
+    <Card className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''} ${categoryAccentClass(course.categoryId)}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
         {course.hasWarnings && (
@@ -84,6 +98,9 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
         <Badge variant={course.type === 'mandatory' ? 'purple' : 'neutral'}>
           {TYPE_LABELS[course.type] ?? course.type}
         </Badge>
+        {course.isAnnual && (
+          <Badge variant="purple">שנתי (א׳+ב׳)</Badge>
+        )}
         {course.weeklyHours != null && (
           <Badge>{course.weeklyHours} ש״ש</Badge>
         )}
@@ -114,12 +131,6 @@ export default function CourseCard({ course, onRemove, onMove, moveDestinations,
           <span
             data-drag-handle
             draggable={movable}
-            onPointerDown={() => {
-              nativeDragStarted.current = false
-              announceDragPreview()
-            }}
-            onPointerUp={clearPendingDragPreview}
-            onPointerCancel={clearPendingDragPreview}
             title="גררו את הקורס לסמסטר אחר"
             aria-label={`גרור את ${course.name} לסמסטר אחר`}
             className="planner-drag-handle text-[11px] text-[var(--text-muted)]"

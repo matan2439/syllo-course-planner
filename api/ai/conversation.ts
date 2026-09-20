@@ -37,6 +37,8 @@ import type { AcademicContextStore } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
 import type { PreferenceProfile } from './preference_model';
 import { applyConversationClarificationAnswers } from './conversation_clarification';
+import { DeterministicProposalExplanationCapability } from './proposal_explanation';
+import { DeterministicCandidateDecisionCapability } from './candidate_decision';
 
 type ConversationEndpointDeps = {
   resolveModel?: () => ModelConfig | null;
@@ -215,9 +217,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         disallowedCourseIds: resolveHardExcludedCourseIds(preferences as { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] }),
         maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
       };
-      const clarification = await clarifyForAcademicDecision(
-        extractClarificationContext(contextWithStatus, preferences, undefined),
-      );
+      const clarificationContext = extractClarificationContext(contextWithStatus, preferences, undefined);
+      const clarification = await clarifyForAcademicDecision(clarificationContext);
       const committedContext = board
         ? {
             ...context,
@@ -241,6 +242,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           // domain boundary explicit because the remote Zod version infers
           // `z.any()` object properties more narrowly than the local build.
           preferenceProfile: parsed.data.preference_profile as PreferenceProfile | undefined,
+          // Confirmed panel state, not conversational text — stops the agent
+          // (fallback and LLM prompt alike) from re-asking what's already known.
+          knownFacts: { completedCoursesConfirmed: clarificationContext.completedCoursesKnown },
         },
         { model: modelConfig.model },
       );
@@ -342,6 +346,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
 
+      const explanation = new DeterministicProposalExplanationCapability().explain({
+        validation: agent.validation,
+      });
+
       const proposalId = newProposalId();
       const profileVersion = parsed.data.preference_profile?.version
         ?? Number(preferences.profile_version ?? preferences.version ?? 0);
@@ -442,7 +450,15 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         // when an injected or partial model cannot produce comparisons.
       }
       const recommended = wireAlternatives.find((alternative) => alternative.recommended) ?? wireAlternatives[0];
-      const candidateId = recommended.candidate_id;
+      const decision = new DeterministicCandidateDecisionCapability().decide({
+        candidates: wireAlternatives.map((alternative) => ({
+          candidateId: alternative.candidate_id,
+          recommended: alternative.recommended,
+        })),
+      });
+      const candidateId = decision.outcome === 'selected'
+        ? decision.selectedCandidateId
+        : recommended.candidate_id;
       const now = Date.now();
       const record: ProposalRecord = {
         proposalId,
@@ -485,6 +501,23 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           ready_to_plan: true,
           planned: academicDecision.orchestration.planned,
           clarification_required: hasCriticalMissingInput(academicDecision.clarification),
+          explanation: {
+            summary_he: explanation.summaryHe,
+            facts_he: explanation.factsHe,
+            risks_he: explanation.risksHe,
+            next_actions_he: explanation.nextActionsHe,
+          },
+          decision: decision.outcome === 'selected' ? {
+            outcome: decision.outcome,
+            selected_candidate_id: decision.selectedCandidateId,
+            evaluated_candidate_ids: decision.evaluatedCandidateIds,
+            alternatives_not_selected_ids: decision.alternativesNotSelectedIds,
+            selection_basis: decision.selectionBasis,
+          } : {
+            outcome: decision.outcome,
+            evaluated_candidate_ids: decision.evaluatedCandidateIds,
+            selection_basis: decision.selectionBasis,
+          },
         } : undefined,
         ...(contextUpdate ? { context_update: contextUpdate } : {}),
         proposal_id: proposalId,

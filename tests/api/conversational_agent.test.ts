@@ -50,6 +50,24 @@ function readyProfile(): PreferenceProfile {
 
 const transcript = [{ role: 'user' as const, text: 'תציע לי תוכנית מאוזנת' }]
 
+test('a simulation tool result reaches the assistant without becoming a proposal', async () => {
+  const worker = createWorker()
+  const before = JSON.parse(JSON.stringify(worker.getPlan()))
+  const result = await runConversationalAgent({ transcript, createWorker: () => worker, preferenceProfile: readyProfile() }, {
+    model: {} as never,
+    generate: async ({ tools }) => {
+      const simulation = await tools.simulate_changes.execute({ changes: [{ kind: 'add_course', courseId: 'E-1', semesterId: SEMESTER }] }, {} as never)
+      expect(simulation.data.status).toBe('simulated')
+      if (simulation.data.status === 'simulated') expect(simulation.data.validation.valid).toBe(true)
+      return { text: 'בדקתי את ההוספה; השינוי עדיין לא הוחל.' }
+    },
+  })
+  expect(result.outcome).toBe('conversation')
+  expect(worker.getPlan()).toEqual(before)
+  expect(result).not.toHaveProperty('draftPlan')
+  expect(result.events).toContainEqual({ type: 'tool_status', tool: 'simulate_changes', status: 'completed' })
+})
+
 test('the model can orchestrate deterministic tools and returns only a draft plan once context is sufficient', async () => {
   const result = await runConversationalAgent({ transcript, createWorker, preferenceProfile: readyProfile() }, {
     model: {} as never,
@@ -126,6 +144,40 @@ test('does not offer plan building after one shallow request without enough pers
   expect(result.events).toEqual(expect.arrayContaining([
     expect.objectContaining({ type: 'clarification' }),
   ]))
+})
+
+test('the fallback clarification omits the completed-courses option once the panel already confirmed it', async () => {
+  const result = await runConversationalAgent({
+    transcript: [],
+    createWorker,
+    knownFacts: { completedCoursesConfirmed: true },
+  }, {
+    model: {} as never,
+    generate: async () => ({ text: 'כדי להתאים את התכנון אליך אני צריך עוד מידע.' }),
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  const clarification = result.events.find((event) => event.type === 'clarification')
+  expect(clarification).toBeDefined()
+  if (clarification?.type !== 'clarification') throw new Error('expected a clarification event')
+  expect((clarification.options_he ?? []).join(' ')).not.toContain('קורסים כבר השלמתי')
+})
+
+test('confirmed completed-courses knowledge plus one substantive turn is enough context to skip the generic fallback question', async () => {
+  const result = await runConversationalAgent({
+    transcript: [{ role: 'user', text: 'אני מעוניין בקורסים בתחום האנרגיה' }],
+    createWorker,
+    knownFacts: { completedCoursesConfirmed: true },
+  }, {
+    model: {} as never,
+    generate: async () => ({ text: 'הבנתי, בוא נמשיך.' }),
+  })
+
+  expect(result.outcome).toBe('conversation')
+  if (result.outcome !== 'conversation') throw new Error('expected conversation')
+  expect(result.nextAction).toBe('offer_build')
+  expect(result.events.some((event) => event.type === 'clarification')).toBe(false)
 })
 
 test('provider failure discards the isolated draft and returns truthful unavailability', async () => {

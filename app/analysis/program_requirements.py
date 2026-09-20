@@ -160,6 +160,13 @@ def _get_unified_categories(program_requirements: dict[str, Any]) -> list[dict[s
     if isinstance(other, dict):
         cats.append(dict(other))
 
+    # General degree requirements outside the engineering elective pool (e.g.
+    # קורסי שער רוח) — same shape as advanced_labs/other_specialization, kept
+    # under its own key so it's never mixed into the engineering categories.
+    general = reqs.get("general_requirements")
+    if isinstance(general, dict):
+        cats.append(dict(general))
+
     return cats
 
 

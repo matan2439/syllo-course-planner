@@ -8,7 +8,7 @@
  * signal). Previously the ONLY disclosure was the generic
  * "התוכנית משלימה X/Y ש"ש" line — identical wording to an ordinary,
  * still-fixable shortfall. A real user (and the live frontend's decision
- * text, semester_board_viewer.html's postPlanChangeSummary) can't tell
+ * text, the retired single-file planner's postPlanChangeSummary) can't tell
  * "more course selection would help" apart from "the visible planning
  * window is structurally too small; nothing left to add". This is
  * misleading, not just incomplete: the frontend currently suggests

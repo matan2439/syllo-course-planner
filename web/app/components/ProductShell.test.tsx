@@ -17,4 +17,15 @@ describe('ProductShell responsive navigation', () => {
     expect(screen.getByRole('banner')).toHaveClass('flex-wrap')
     expect(screen.getByRole('navigation')).toHaveClass('w-full', 'flex-wrap')
   })
+
+  test('keeps one planner entry when the AI planner opens the same workspace', () => {
+    render(
+      <ProductShell active="plan">
+        <div>תוכן</div>
+      </ProductShell>,
+    )
+
+    expect(screen.getByRole('link', { name: 'תכנון' })).toHaveAttribute('href', '/plan')
+    expect(screen.queryByRole('link', { name: 'תכנון עם AI' })).not.toBeInTheDocument()
+  })
 })

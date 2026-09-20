@@ -949,12 +949,31 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   let gFit = 0;
   if (model.courseFitById) for (const cid of placed) gFit += model.courseFitById.get(cid) ?? 0;
 
-  // 6. difficulty / comfort — lower total difficulty preferred (tiebreaker).
+  // 6. difficulty / comfort — lower total comfort cost preferred (tiebreaker;
+  //    grade-risky courses lose ties but are never barred from filling hours).
   let totalDifficulty = 0;
-  for (const cid of placed) totalDifficulty += model.profiles.get(cid)?.difficulty_score ?? 0;
+  for (const cid of placed) totalDifficulty += comfortCost(model.profiles.get(cid));
   const g6 = -totalDifficulty;
 
   return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, gFit, g6];
+}
+
+/**
+ * Grade risk in [0..1] (0 = safe) from the TAU average grade: 90 or above is
+ * safe, 60 or below is fully risky. Null when the grade is unknown.
+ */
+export function gradeRisk(p: { grade_average?: number | null } | undefined): number | null {
+  const g = p?.grade_average;
+  return typeof g === 'number' && g > 0 ? Math.max(0, Math.min(1, (90 - g) / 30)) : null;
+}
+
+/**
+ * Per-course comfort cost on the 1..5 difficulty scale. A known grade wins
+ * over the difficulty estimate (no double counting): risk 0 -> 1, risk 1 -> 5.
+ */
+export function comfortCost(p: { grade_average?: number | null; difficulty_score?: number | null } | undefined): number {
+  const risk = gradeRisk(p);
+  return risk != null ? 1 + 4 * risk : p?.difficulty_score ?? 0;
 }
 
 export interface CompletenessAssessment {

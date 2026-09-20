@@ -22,6 +22,7 @@ const BOARD = JSON.parse(
 );
 const THERMO2 = '0542-4120'; // תרמודינמיקה (2)
 const EXCLUDE_SENTENCE = 'אל תשבץ תרמודינמיקה 2';
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
 /** Browser-shaped plan_context (NativePlannerJourney): semesters with course_ids + prior hours. */
 function planContext(extraPlaced: string[] = []) {
@@ -34,7 +35,13 @@ function planContext(extraPlaced: string[] = []) {
   }
   return {
     semesters,
-    personal_status: { completed: [], currently_taking: [], planned: [] },
+    // Keep this exclusion acceptance case independent of the already-satisfied
+    // three-course general requirement.
+    personal_status: {
+      completed: COMPLETED_SHAAR_RUACH.map(course_id => ({ course_id })),
+      currently_taking: [],
+      planned: [],
+    },
     total_hours_progress: { known_completed_hours: 90 },
   };
 }

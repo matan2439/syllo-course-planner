@@ -58,7 +58,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_course_details: 'בדיקת פרטי קורס',
   get_offerings: 'בדיקת היצע וסמסטרים',
   check_prerequisites: 'בדיקת תנאי קדם',
+  validate_plan: 'אימות הטיוטה הנוכחית',
   simulate_move: 'סימולציית העברת קורס',
+  simulate_changes: 'בדיקת שינויים בתוכנית',
   compare_candidates: 'השוואת מועמדים',
   explain_constraint: 'הסבר אילוץ אקדמי',
   ask_clarification: 'שאלת המשך',
@@ -144,11 +146,11 @@ export default function AcademicAgentConversation({
       : undefined
   }
 
-  const submit = async (text: string, explicitAnswer?: ClarificationAnswer) => {
+  const submit = async (text: string, explicitAnswer?: ClarificationAnswer, opts?: { skipReview?: boolean }) => {
     const trimmed = text.trim()
     if (!trimmed || pending || contextConflict || !conversationReady) return
     const answer = explicitAnswer ?? clarificationAnswerFromText(trimmed)
-    if (!answer && responseContextVersion === localContextVersion && activeClarification?.question_id === 'completed_courses') {
+    if (!opts?.skipReview && !answer && responseContextVersion === localContextVersion && activeClarification?.question_id === 'completed_courses') {
       const review = reviewCourseText(trimmed, courseNameById ?? {})
       if (review) { setCourseReview(review); setDraft(''); return }
     }
@@ -221,6 +223,14 @@ export default function AcademicAgentConversation({
   const readiness = responseCurrent && lastResponse && lastResponse.outcome !== 'assistant_unavailable'
     ? lastResponse.academic_decision
     : undefined
+  const auditToolEvents = responseCurrent && lastResponse && lastResponse.outcome !== 'assistant_unavailable'
+    ? lastResponse.events.filter((event) => event.type === 'tool_status')
+    : []
+  const auditOutcome = lastResponse?.outcome === 'proposal'
+    ? 'הצעה מוכנה לבדיקה'
+    : lastResponse?.outcome === 'clarification_required'
+      ? 'נדרשת הבהרה נוספת'
+      : 'המשך שיחה'
 
   return (
     <div dir="rtl" data-testid="academic-agent-conversation">
@@ -268,16 +278,50 @@ export default function AcademicAgentConversation({
       </div>
 
       {lastResponse && !unavailable && (
-        <div aria-label="פעילות העוזר" className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
-          {lastResponse.events.filter((event) => event.type === 'tool_status').map((event, index) => (
-            <p key={`${event.tool}-${index}`}>
-              {TOOL_LABELS[event.tool] ?? 'בדיקה אקדמית'} — {TOOL_STATUS_LABELS[event.status] ?? 'עודכן'}
+        <section aria-label="יומן בדיקה של הסוכן" className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--text-muted)]">
+          <h3 className="font-semibold text-[var(--text)]">יומן בדיקה — השיחה האחרונה</h3>
+          <p className="mt-1">כלים שהופעלו: {auditToolEvents.length}</p>
+          <p>תוצאה: {auditOutcome}</p>
+          {readiness?.decision?.outcome === 'selected' && (
+            <p className="mt-1 font-semibold text-[var(--purple)]">
+              ההמלצה נבחרה מתוך {readiness.decision.evaluated_candidate_ids.length} חלופות חוקיות לפי הדירוג הדטרמיניסטי.
             </p>
+          )}
+          {auditToolEvents.length > 0 && (
+            <ol className="mt-2 flex list-decimal flex-col gap-1 pr-4" aria-label="שלבי כלי הסוכן">
+          {auditToolEvents.map((event, index) => (
+            <li key={`${event.tool}-${index}`}>
+              {TOOL_LABELS[event.tool] ?? 'בדיקה אקדמית'} — {TOOL_STATUS_LABELS[event.status] ?? 'עודכן'}
+            </li>
           ))}
+            </ol>
+          )}
+          {readiness?.explanation && (
+            <section aria-label="הסבר מבוסס אימות" className="mt-3 rounded-md border border-[var(--border)]/80 bg-[var(--background)]/30 p-3 text-[var(--text)]">
+              <h4 className="font-semibold">הסבר מבוסס אימות</h4>
+              <p className="mt-1 text-[var(--text-muted)]">{readiness.explanation.summary_he}</p>
+              {readiness.explanation.facts_he.length > 0 && (
+                <ul className="mt-2 flex list-disc flex-col gap-1 pr-4 text-[var(--text-muted)]" aria-label="עובדות מאומתות">
+                  {readiness.explanation.facts_he.map((fact) => <li key={fact}>{fact}</li>)}
+                </ul>
+              )}
+              {readiness.explanation.risks_he.length > 0 && (
+                <ul className="mt-2 flex list-disc flex-col gap-1 pr-4 text-amber-700 dark:text-amber-300" aria-label="סיכונים או הסתייגויות">
+                  {readiness.explanation.risks_he.map((risk) => <li key={risk}>{risk}</li>)}
+                </ul>
+              )}
+              {readiness.explanation.next_actions_he.length > 0 && (
+                <ul className="mt-2 flex list-disc flex-col gap-1 pr-4 text-[var(--text-muted)]" aria-label="הצעדים הבאים">
+                  {readiness.explanation.next_actions_he.map((action) => <li key={action}>{action}</li>)}
+                </ul>
+              )}
+            </section>
+          )}
           {lastResponse.events.some((event) => event.type === 'alternatives_ready') && (
             <p className="font-semibold text-[var(--purple)]">החלופה מוכנה לבדיקה בלוח.</p>
           )}
-        </div>
+          <p className="mt-2 text-[11px]">היומן מציג פעולות ותוצאות מאומתות בלבד; הוא אינו מציג תוכן חשיבה פנימי.</p>
+        </section>
       )}
 
       {readiness && (readiness.clarification_required || readiness.ready_to_plan) && (
@@ -317,7 +361,8 @@ export default function AcademicAgentConversation({
             <CourseAnswerReview key={courseReview.text} review={courseReview} names={courseNameById ?? {}} scopes={courseScopes}
               disabled={pending || contextConflict || !conversationReady}
               onConfirm={(ids, text) => void submit(text, { question_id: 'completed_courses', value: ids })}
-              onCancel={() => { setDraft(courseReview.text); setCourseReview(null) }} />
+              onCancel={() => { setDraft(courseReview.text); setCourseReview(null) }}
+              onSendRaw={() => { const text = courseReview.text; setCourseReview(null); void submit(text, undefined, { skipReview: true }) }} />
           ) : event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id) && (
             <CourseClarificationAnswer
               questionId={event.question_id}

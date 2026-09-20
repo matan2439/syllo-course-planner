@@ -1,0 +1,50 @@
+import { useState } from 'react'
+import type { RequirementsVM } from '../../lib/requirements'
+import { Badge } from './ui'
+
+/**
+ * Small always-visible header badge showing degree-progress at a glance
+ * (hours placed/required + per-category coverage), expandable for detail.
+ * Reuses the same RequirementsVM RequirementsProgressPanel (/plan) renders —
+ * this is a compact trigger for the same data, not a second computation.
+ */
+export default function ProgressBadge({ requirements }: { requirements: RequirementsVM | null }) {
+  const [open, setOpen] = useState(false)
+  if (!requirements) return null
+  const satisfied = requirements.remainingHours <= 0
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={`התקדמות בתוכנית — ${requirements.plannedHours} מתוך ${requirements.totalRequiredHours} ש״ש`}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
+      >
+        <span
+          aria-hidden="true"
+          className={`size-2 rounded-full ${satisfied ? 'bg-emerald-500' : 'bg-amber-400'}`}
+        />
+        {requirements.plannedHours}/{requirements.totalRequiredHours} ש״ש
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-2 w-72 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-premium)] backdrop-blur-sm">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold">נותרו {requirements.remainingHours} ש״ש</span>
+            <span className="text-[var(--text-muted)]">קורסי ליבה: {requirements.core.selected}/{requirements.core.min}</span>
+          </div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {requirements.categories.map((c) => (
+              <div key={c.id} className="flex items-center justify-between text-xs">
+                <span>{c.title}</span>
+                {c.satisfied
+                  ? <Badge variant="success">הושלם</Badge>
+                  : <Badge variant="warn">{c.selectedCount}/{c.minCourses}</Badge>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository, { type SemesterDestination } from './UnifiedCourseRepository'
+import WeeklyScheduleDrawer from './WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../lib/planner/drag-payload'
 
 type WorkspaceView = 'board' | 'repository' | 'agent'
@@ -31,6 +32,7 @@ export default function UnifiedPlannerWorkspace({
   const [activeView, setActiveView] = useState<WorkspaceView>('board')
   const [repositoryOpen, setRepositoryOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
+  const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
@@ -74,15 +76,14 @@ export default function UnifiedPlannerWorkspace({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
-      const fromRepository = event.target instanceof Node && repositoryDrawerRef.current?.contains(event.target)
-      // Both drawers can stay open; Escape belongs to the drawer receiving it.
-      if (repositoryOpen && (!agentOpen || fromRepository)) {
-        event.preventDefault()
-        closeRepository()
-      } else if (agentOpen) {
-        event.preventDefault()
-        closeAgent()
-      }
+      const target = event.target
+      const fromRepository = target instanceof Node && repositoryDrawerRef.current?.contains(target)
+      if (fromRepository && repositoryOpen) { event.preventDefault(); closeRepository(); return }
+      // Fallback for Escape pressed somewhere that isn't inside a specific
+      // drawer's own DOM (e.g. focus on a toolbar toggle button) — preserves
+      // the repository/agent priority.
+      if (repositoryOpen && !agentOpen) { event.preventDefault(); closeRepository(); return }
+      if (agentOpen) { event.preventDefault(); closeAgent(); return }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -195,6 +196,7 @@ export default function UnifiedPlannerWorkspace({
             onManualAddSettled={() => setManualAddIntent(null)}
             onManualAddCancelled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
+            onSemestersChange={setSemesterCourses}
             agentOpen={agentOpen}
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
@@ -221,6 +223,7 @@ export default function UnifiedPlannerWorkspace({
           </button>
           <UnifiedCourseRepository
             repo={repo}
+            programId={programId}
             selectedCourseIds={committedCourseIds}
             semesterDestinations={semesterDestinations}
             onRequestAdd={requestAdd}
@@ -228,6 +231,18 @@ export default function UnifiedPlannerWorkspace({
           />
         </aside>
       </div>
+
+      <section
+        id="workspace-panel-weekly"
+        aria-label="מערכת שעות"
+        className="planner-weekly-panel w-full"
+      >
+        <WeeklyScheduleDrawer
+          programId={programId}
+          semesterDestinations={semesterDestinations}
+          semesterCourses={semesterCourses}
+        />
+      </section>
     </section>
   )
 }

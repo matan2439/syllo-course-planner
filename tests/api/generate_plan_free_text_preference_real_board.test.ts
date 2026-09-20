@@ -28,6 +28,7 @@ const OSC = '0542-4220';    // תורת התנודות — authoritative offerin
 const PREFER_SENTENCE = 'שבץ לי את תורת התנודות';
 const EXCLUDE_SENTENCE = 'אל תשבץ תורת התנודות';
 const B_SEMESTER = /_semester_b$/i;
+const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
 /** Browser-shaped plan_context (NativePlannerJourney): semesters with course_ids + prior hours. */
 function planContext() {
@@ -36,7 +37,13 @@ function planContext() {
       id: s.semester_id,
       courses: (s.courses || []).map((c: any) => ({ course_id: c.course_id })),
     })),
-    personal_status: { completed: [], currently_taking: [], planned: [] },
+    // Isolate the engineering-preference acceptance case from the independent
+    // three-course general requirement.
+    personal_status: {
+      completed: COMPLETED_SHAAR_RUACH.map(course_id => ({ course_id })),
+      currently_taking: [],
+      planned: [],
+    },
     total_hours_progress: { known_completed_hours: 90 },
   };
 }

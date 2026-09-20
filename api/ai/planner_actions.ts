@@ -23,6 +23,14 @@ import {
   semesterOf,
 } from './planner_types';
 
+/**
+ * Large general-requirement catalogs (such as שער רוח) contain many
+ * interchangeable options. Bound their automatic search frontier; explicitly
+ * wanted courses are considered separately below and are never hidden by this
+ * optimization.
+ */
+const MAX_AUTOMATIC_GENERAL_CATEGORY_CANDIDATES = 1;
+
 function preferenceScore(model: ConstraintModel, id: string): number {
   const p = model.profiles.get(id);
   if (!p) return 0;
@@ -222,8 +230,14 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   for (const cat of model.categories) {
     const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     if (got >= cat.required) continue;
-    for (const id of cat.candidateIds) {
-      if (!consider(id) || requiredButUnplaced.has(id)) continue;
+    const eligibleIds = cat.candidateIds.filter(id => consider(id) && !requiredButUnplaced.has(id));
+    const isGeneralRequirement = eligibleIds.some(id => model.profiles.get(id)?.does_not_count_as_engineering_elective);
+    const candidateIds = isGeneralRequirement
+      ? eligibleIds
+        .sort((a, b) => preferenceScore(model, b) - preferenceScore(model, a) || a.localeCompare(b))
+        .slice(0, MAX_AUTOMATIC_GENERAL_CATEGORY_CANDIDATES)
+      : eligibleIds;
+    for (const id of candidateIds) {
       actions.push(...addCourseActionsFor(model, id));
     }
   }
@@ -258,6 +272,9 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   if (computeDegreeHours(state, model) < model.degreeRequiredHours) {
     for (const [id, p] of model.profiles) {
       if (!consider(id) || p.is_mandatory || p.hours == null || p.hours === 0 || p.is_unwanted) continue;
+      // A general-requirement course (e.g. קורסי שער רוח) is never generic
+      // filler — it only reaches the plan via group 2 (its own category).
+      if (p.does_not_count_as_engineering_elective) continue;
       if (requiredButUnplaced.has(id)) continue;
       if (p.is_annual) { actions.push(...addCourseActionsFor(model, id)); continue; }
       const sem = bestLegalSemester(state, model, id);
@@ -290,6 +307,7 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
         !placed.has(inId) &&
         !model.completedCourseIds.has(inId) &&
         !isExcluded(model, inId) &&
+        !p.does_not_count_as_engineering_elective &&
         preferenceScore(model, inId) > outPref &&
         legalSemestersFor(model, inId).includes(sem),
       )

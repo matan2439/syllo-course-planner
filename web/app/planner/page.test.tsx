@@ -10,11 +10,6 @@ jest.mock('../components/ProductShell', () => ({
   ),
 }))
 
-jest.mock('../components/LegacyPlannerFrame', () => ({
-  __esModule: true,
-  default: () => <iframe title="legacy-planner" />,
-}))
-
 jest.mock('../components/UnifiedPlannerWorkspace', () => ({
   __esModule: true,
   default: ({ programId, repo }: { programId: string; repo: unknown }) => (

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { CourseDetailsVM } from '../../lib/course-details'
 import { Badge } from './ui'
+import CourseAiChat from './CourseAiChat'
 
 const SEMESTER_LABELS: Record<string, string> = {
   A: 'סמ׳ א׳',
@@ -24,9 +25,12 @@ const SEMESTER_LABELS: Record<string, string> = {
 export default function CourseDetailsPanel({
   course,
   onClose,
+  programId,
 }: {
   course: CourseDetailsVM | null
   onClose: () => void
+  /** Required to ask the per-course AI chat; omit only where no AI context exists yet. */
+  programId?: string
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
 
@@ -142,6 +146,8 @@ export default function CourseDetailsPanel({
               </div>
             )}
           </Field>
+
+          {programId && <CourseAiChat programId={programId} course={course} />}
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3">

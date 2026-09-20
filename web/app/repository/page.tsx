@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { programSubtitle, readBoardForProgram } from '../../lib/board-data'
+import { programSubtitle, readBoardForProgram, readBoardForProgramId } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
 import ProductShell from '../components/ProductShell'
@@ -10,7 +10,11 @@ export const metadata = { title: 'מאגר קורסים — מתכנן לימו�
 export const dynamic = 'force-dynamic'
 
 // Read-only Next-native repository over the same board JSON the canonical
-// planner consumes (metadata.program_repository_courses).
+// planner consumes (metadata.program_repository_courses). Prefer the
+// data/boards/<id>.json snapshot readBoardForProgramId(program.id) uses on
+// /planner — some programs (e.g. mechanical_engineering_2027) only get their
+// full repository (incl. קורסי שער רוח) there; the data/parsed_json fallback
+// stays for programs without that snapshot yet.
 export default async function RepositoryPage({
   searchParams,
 }: {
@@ -19,7 +23,7 @@ export default async function RepositoryPage({
   const { program: programParam } = await searchParams
   const program = resolveProgram(programParam)
   if (!program) notFound()
-  const raw = await readBoardForProgram(program)
+  const raw = (await readBoardForProgramId(program.id)) ?? (await readBoardForProgram(program))
 
   return (
     <ProductShell
@@ -30,7 +34,7 @@ export default async function RepositoryPage({
       programId={program.id}
     >
       {raw ? (
-        <RepositoryExplorer repo={adaptRepository(raw)} />
+        <RepositoryExplorer repo={adaptRepository(raw)} programId={program.id} />
       ) : (
         <EmptyState>מאגר הקורסים לתוכנית זו עדיין לא זמין כאן</EmptyState>
       )}

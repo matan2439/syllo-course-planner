@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import { readBoardForProgramId } from '../../lib/board-data'
 import {
   getProgram,
   listProgramFamilies,
   programQuery,
   type ProgramFamilyVM,
+  type ProgramVM,
 } from '../../lib/programs'
 import ProductShell from '../components/ProductShell'
 import { Badge, Card } from '../components/ui'
@@ -26,7 +28,7 @@ function ProgramFamilyCard({
   return (
     <div className={`rise ${index > 0 ? `rise-${Math.min(index, 3)}` : ''}`}>
       <Link
-        href={`/plan${programQuery(family.defaultProgram.id)}`}
+        href={`/planner${programQuery(family.defaultProgram.id)}`}
         className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
       >
         <Card className="px-5 py-5 transition-[transform,box-shadow,border-color] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-purple-500/40 group-hover:shadow-[var(--shadow-premium)]">
@@ -61,7 +63,7 @@ function ProgramFamilyCard({
           {family.archivePrograms.map((p) => (
             <Link
               key={p.id}
-              href={`/plan${programQuery(p.id)}`}
+              href={`/planner${programQuery(p.id)}`}
               className="text-xs text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
             >
               גרסה קודמת · {p.year}
@@ -73,8 +75,8 @@ function ProgramFamilyCard({
   )
 }
 
-// Next-native replacement candidate for the static planner's program modal.
-// Families and versions mirror the canonical registry (see lib/programs.ts).
+// Native program picker: each card opens the full planner for that program.
+// Families and versions come from lib/programs.ts.
 export default async function ProgramsPage({
   searchParams,
 }: {
@@ -82,7 +84,21 @@ export default async function ProgramsPage({
 }) {
   const { program: programParam } = await searchParams
   const currentId = getProgram(programParam).id
-  const families = listProgramFamilies()
+  // Only offer programs /planner can actually open (its board file must ship).
+  const hasBoard = async (p: ProgramVM) => (await readBoardForProgramId(p.id)) !== null
+  const families = (
+    await Promise.all(
+      listProgramFamilies().map(async (f) => ({
+        ...f,
+        available: await hasBoard(f.defaultProgram),
+        archivePrograms: (
+          await Promise.all(
+            f.archivePrograms.map(async (p) => ((await hasBoard(p)) ? p : null)),
+          )
+        ).filter((p): p is ProgramVM => p !== null),
+      })),
+    )
+  ).filter((f) => f.available)
 
   return (
     <ProductShell

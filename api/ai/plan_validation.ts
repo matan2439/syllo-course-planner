@@ -30,7 +30,7 @@ export const ANNUAL_PARTIAL_PLACEMENT_MARKER = 'שנתי המשובץ בחלק';
  * legality checks that gate re-derives, this one fires on entirely normal,
  * expected client state: the real board legitimately keeps a currently-taking
  * course visible in its placed semester slot (buildPlanContext in
- * semester_board_viewer.html filters completed courses out of plan_context
+ * the retired single-file planner filters completed courses out of plan_context
  * before sending, but deliberately keeps currently-taking ones so they still
  * render on the board) while also reporting it in
  * personal_status.currently_taking. That combination is not a planner

@@ -10,11 +10,14 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import type { PlannerWorker, MutationResult } from './planner_worker';
 import { cloneState, placedCourseIds, semesterOf } from './planner_types';
+import { DeterministicWhatIfSimulationCapability } from './what_if_simulation';
+import { validateCandidate, type CandidateReport } from './planner_validate';
+import type { ValidationEvidence, ValidationResult } from './planner_capabilities';
 
 export type PlannerToolName = 'get_state' | 'rank_candidates' | 'add_course' | 'remove_course' |
   'move_course' | 'replace_course' | 'finalize_plan' | 'ask_clarification' |
   'get_academic_status' | 'get_requirements_gap' | 'get_course_details' | 'get_offerings' |
-  'check_prerequisites' | 'simulate_move' | 'compare_candidates' | 'explain_constraint';
+  'check_prerequisites' | 'validate_plan' | 'simulate_move' | 'simulate_changes' | 'compare_candidates' | 'explain_constraint';
 export type PlannerToolStatus = 'started' | 'completed' | 'rejected';
 export type PlannerToolObserver = (event: { tool: PlannerToolName; status: PlannerToolStatus }) => void;
 export type PlannerClarificationObserver = (event: { questionHe: string; optionsHe: string[] }) => void;
@@ -72,6 +75,42 @@ function fact(source = 'planner_model', confidence = 1, sourceUrl?: string | nul
 
 function grounded<T>(data: T, meta: FactMeta = fact()) {
   return { data, fact: meta };
+}
+
+/**
+ * Adapts the authoritative CandidateReport into the shared validation
+ * capability contract. It copies already-computed findings only: this layer
+ * neither adds rules nor parses error text to infer academic facts.
+ */
+function simulationValidationFromCandidateReport(
+  report: CandidateReport,
+  degreeHoursRequired: number,
+): ValidationResult {
+  const evidence: ValidationEvidence = {
+    legal: report.legal,
+    complete: report.complete,
+    constraintsChecked: [...report.constraintsChecked],
+    degreeHours: report.degreeHours,
+    degreeHoursRequired,
+    degreeMet: report.degreeMet,
+    missingMandatoryCourseIds: [...report.missingMandatory],
+    unsatisfiedCategoryIds: [...report.unsatisfiedCategories],
+    disallowedCourseIds: [...report.disallowedPlaced],
+    overCapSemesterIds: [...report.overCapSemesters],
+    missingMustIncludeCourseIds: [...report.missingMustInclude],
+    warnings: [...report.warnings],
+  };
+  if (report.valid) return { valid: true, violations: [], evidence };
+  return {
+    valid: false,
+    reason: report.errors.join('\n') || undefined,
+    violations: report.errors.map((message) => ({
+      code: 'CANDIDATE_VALIDATION_REJECTED',
+      severity: 'error' as const,
+      message,
+    })),
+    evidence,
+  };
 }
 
 function profileFor(worker: PlannerWorker, courseId: string) {
@@ -218,6 +257,36 @@ export function buildPlannerTools(
       execute: async ({ courseId, targetSemester }) => run('check_prerequisites', () => grounded(
         prerequisiteStatus(worker, courseId, targetSemester),
       )),
+    }),
+
+    validate_plan: tool({
+      description: 'בדוק את הטיוטה הנוכחית מול כללי החוקיות והשלמת דרישות התואר. פעולה לקריאה בלבד; מחזיר ראיות מובנות ואינו משנה את הטיוטה.',
+      parameters: z.object({}),
+      execute: async () => run('validate_plan', () => grounded(worker.validateCandidate())),
+    }),
+
+    simulate_changes: tool({
+      description: 'בדוק מה יקרה אם נוסיף, נסיר או נעביר קורסים. מחזיר תוכנית היפותטית ואימות; אינו משנה את הטיוטה. הסבר את התוצאה בלי לטעון שהשינוי הוחל.',
+      parameters: z.object({ changes: z.array(z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('add_course'), courseId: z.string().trim().min(1).max(128), semesterId: z.string().trim().min(1).max(128), alsoSemesterIds: z.array(z.string().trim().min(1).max(128)).max(12).optional() }),
+        z.object({ kind: z.literal('remove_course'), courseId: z.string().trim().min(1).max(128) }),
+        z.object({ kind: z.literal('move_course'), courseId: z.string().trim().min(1).max(128), toSemester: z.string().trim().min(1).max(128) }),
+      ])).min(1).max(20) }),
+      execute: async ({ changes }) => run('simulate_changes', async () => {
+        const baseline = cloneState(worker.getPlan());
+        const model = worker.getModel();
+        const pinnedHome = Object.fromEntries([...model.pinnedCourseIds].flatMap(id => {
+          const semester = semesterOf(baseline, id);
+          return semester ? [[id, semester]] : [];
+        }));
+        const simulation = new DeterministicWhatIfSimulationCapability({
+          validateState: state => {
+            const report = validateCandidate(state as typeof baseline, model, pinnedHome);
+            return simulationValidationFromCandidateReport(report, model.degreeRequiredHours);
+          },
+        });
+        return grounded(await simulation.simulate({ baseline, changes }));
+      }),
     }),
 
     simulate_move: tool({
