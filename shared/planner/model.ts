@@ -230,6 +230,8 @@ export interface GeneratedPlanModel {
     labelHe: string
     differencesHe: string[]
     workload: { peakHours: number; totalHours: number; activePeriods: number }
+    /** Degree requirements recomputed by the server for this alternative's plan. */
+    requirementsValidation?: BoardRequirementsModel
   }>
   /**
    * M7 — how several confirmed grounded objectives were combined for this

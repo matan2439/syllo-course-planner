@@ -13,6 +13,7 @@ import {
   prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove,
   type ManualAddFailureCode, type ManualRemoveFailureCode,
 } from './manual_board_edit_service';
+import { committedBoardView } from './committed_board_view';
 import { resolveOwner } from './session_owner';
 
 type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode
@@ -42,13 +43,7 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   INTERNAL_ERROR: 'אירעה שגיאה פנימית.',
 };
 
-const boardView = (board: CommittedBoard) => ({
-  programId: board.programId,
-  version: board.version,
-  semesters: board.semesters.map((semester) => ({
-    semesterId: semester.semesterId, courseIds: [...semester.courseIds],
-  })),
-});
+const boardView = committedBoardView;
 
 function reject(res: VercelResponse, code: FailureCode, currentBoardVersion?: string | null): void {
   const body: ManualBoardEditResponse = {

@@ -315,6 +315,23 @@ def test_get_program_categories_for_frontend_includes_all_categories():
         assert cid in cat_ids
 
 
+def test_get_program_categories_for_frontend_marks_core_categories():
+    prog   = _load_pdf_program()
+    result = get_program_categories_for_frontend(prog)
+    core = {c["category_id"] for c in result["categories"] if c["is_core"]}
+    assert core == {"fluids", "solids", "systems"}
+    assert all(isinstance(c["is_core"], bool) for c in result["categories"])
+
+
+def test_get_program_categories_for_frontend_lists_inline_mandatory_course_ids():
+    prog   = _load_pdf_program()
+    result = get_program_categories_for_frontend(prog)
+    assert result["mandatory_course_ids"] == [
+        normalize_course_id(c)
+        for c in prog["requirements"].get("mandatory_courses", {}).get("course_ids", [])
+    ]
+
+
 def test_get_program_categories_for_frontend_has_other_category_label():
     prog   = _load_pdf_program()
     result = get_program_categories_for_frontend(prog)

@@ -66,7 +66,7 @@ const boardRequirementCategoryResultSchema = z
   })
   .passthrough();
 
-const boardRequirementsValidationSchema = z
+export const boardRequirementsValidationSchema = z
   .object({
     valid: z.boolean(),
     total_required_hours: z.number(),
@@ -80,6 +80,14 @@ const boardRequirementsValidationSchema = z
   })
   .passthrough();
 export type RawRequirementsValidation = z.infer<typeof boardRequirementsValidationSchema>;
+
+/** A committed board's placements. `requirements_validation` is recomputed by the server for THIS plan. */
+const committedBoardShape = {
+  programId: z.string(),
+  version: z.string().min(1),
+  semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
+  requirements_validation: boardRequirementsValidationSchema.optional(),
+};
 
 export const boardResponseSchema = z
   .object({
@@ -291,11 +299,7 @@ export const applyPlanResponseSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
     replayed: z.boolean(),
-    board: z.object({
-      programId: z.string(),
-      version: z.string().min(1),
-      semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
-    }),
+    board: z.object(committedBoardShape),
     appliedCandidateId: z.string(),
     appliedProposalId: z.string(),
   }),
@@ -311,13 +315,7 @@ export type ApplyPlanResponse = z.infer<typeof applyPlanResponseSchema>;
 export const committedBoardResponseSchema = z
   .object({
     ok: z.literal(true),
-    board: z
-      .object({
-        programId: z.string(),
-        version: z.string().min(1),
-        semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
-      })
-      .nullable(),
+    board: z.object(committedBoardShape).nullable(),
     /** Truthful disclosure of what this deployment can actually promise. */
     storage: z.string().optional(),
   })
@@ -353,9 +351,9 @@ export const manualBoardEditResponseSchema = z.discriminatedUnion('ok', [
     replayed: z.boolean(),
     operation_id: z.string().min(1),
     board: z.object({
+      ...committedBoardShape,
       programId: z.string().min(1),
       version: z.string().regex(/^bv_\d+$/),
-      semesters: z.array(z.object({ semesterId: z.string(), courseIds: z.array(z.string()) })),
     }),
   }).strict(),
   z.object({

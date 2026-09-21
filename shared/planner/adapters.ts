@@ -89,7 +89,7 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
   };
 }
 
-function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsModel {
+export function requirementsToModel(v: RawRequirementsValidation): BoardRequirementsModel {
   return {
     valid: v.valid,
     totalRequiredHours: v.total_required_hours,

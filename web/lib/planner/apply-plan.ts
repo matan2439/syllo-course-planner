@@ -8,6 +8,7 @@
  * exactly like draft-vm's unresolved-course handling.
  */
 import { normalizeCourseId } from '../../../shared/planner/model'
+import type { CommittedBoardState } from '../../../shared/planner/api-client'
 import type { BoardCourseModel, BoardModel, GeneratedPlanModel } from '../../../shared/planner/model'
 
 function resolve(base: BoardModel, rawId: string): BoardCourseModel {
@@ -46,4 +47,14 @@ export function removedCourseIds(
     }
   }
   return out
+}
+
+/**
+ * Adopt a board the SERVER committed. Placements come from it, and so do the degree requirements the
+ * server recomputed for that plan; when it sent none (no base snapshot to refresh) the base board's
+ * numbers are kept. Requirements are never recomputed here.
+ */
+export function applyCommittedBoard(committed: CommittedBoardState, base: BoardModel): BoardModel {
+  const board = applyGeneratedToBoard({ semesters: committed.semesters } as GeneratedPlanModel, base)
+  return committed.requirementsValidation ? { ...board, requirementsValidation: committed.requirementsValidation } : board
 }

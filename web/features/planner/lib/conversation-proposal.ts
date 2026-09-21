@@ -1,4 +1,5 @@
 import type { GeneratedPlanModel } from '../../../../shared/planner/model'
+import { requirementsToModel } from '../../../../shared/planner/adapters'
 import type { ConversationProposal } from '../../../../shared/planner/conversation-wire'
 
 /** Converts the conversation endpoint's wire proposal into the planner's model. */
@@ -28,6 +29,8 @@ export function conversationProposalToModel(input: ConversationProposal): Genera
       totalHours: alternative.workload.total_hours,
       activePeriods: alternative.workload.active_periods,
     },
+    ...(alternative.requirements_validation
+      ? { requirementsValidation: requirementsToModel(alternative.requirements_validation) } : {}),
   }))
   const selected = alternatives.find((alternative) => alternative.recommended) ?? alternatives[0]
   return {

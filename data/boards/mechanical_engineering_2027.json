@@ -1371,6 +1371,7 @@
       "total_required_hours": 185,
       "program_name_he": "הנדסה מכנית",
       "core_courses_total_min": 6,
+      "mandatory_course_ids": [],
       "other_category_label": "קורסים באישור מיוחד",
       "categories": [
         {
@@ -1378,6 +1379,7 @@
           "name_he": "קורסי ליבה — זורמים",
           "min_courses": 1,
           "needs_review": false,
+          "is_core": true,
           "course_ids": [
             "0542-4120",
             "0542-4123",
@@ -1390,6 +1392,7 @@
           "name_he": "קורסי ליבה — מוצקים",
           "min_courses": 1,
           "needs_review": false,
+          "is_core": true,
           "course_ids": [
             "0542-4220",
             "0542-4221",
@@ -1402,6 +1405,7 @@
           "name_he": "קורסי ליבה — מערכות",
           "min_courses": 1,
           "needs_review": false,
+          "is_core": true,
           "course_ids": [
             "0542-4420",
             "0542-4422",
@@ -1414,6 +1418,7 @@
           "name_he": "מעבדות מתקדמות",
           "min_courses": 1,
           "needs_review": false,
+          "is_core": false,
           "course_ids": [
             "0542-4391",
             "0542-4624",
@@ -1427,6 +1432,7 @@
           "name_he": "קורסי התמחות / בחירה נוספים",
           "min_courses": 0,
           "needs_review": false,
+          "is_core": false,
           "course_ids": [
             "0542-4124",
             "0542-4125",
@@ -1474,6 +1480,7 @@
           "name_he": "קורסי שער רוח",
           "min_courses": 3,
           "needs_review": false,
+          "is_core": false,
           "course_ids": [
             "0609-1005",
             "0609-1003",

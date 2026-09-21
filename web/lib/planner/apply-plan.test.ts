@@ -1,4 +1,4 @@
-import { applyGeneratedToBoard, removedCourseIds } from './apply-plan'
+import { applyCommittedBoard, applyGeneratedToBoard, removedCourseIds } from './apply-plan'
 import { boardResponseToModel, generatePlanResponseToModel } from '../../../shared/planner/adapters'
 import { catalogRevision } from '../../../shared/planner/model'
 
@@ -64,4 +64,24 @@ test('requirementsValidation survives a manual-edit merge unchanged (never recom
   }
   const result = applyGeneratedToBoard({ semesters: [], moves: [], warningsHe: [], errors: [], blocked: false }, base)
   expect(result.requirementsValidation).toBe(base.requirementsValidation)
+})
+
+describe('applyCommittedBoard', () => {
+  const requirements = {
+    valid: true, totalRequiredHours: 185, plannedHours: 48, remainingHours: 137,
+    coreCoursesTotalMin: 6, coreCoursesSelected: 6, coreCoursesSatisfied: true, categories: [], warnings: [],
+  }
+  const semesters = [{ semesterId: 'year_3_semester_a', courseIds: ['X-1', 'Y-1'] }]
+
+  test('adopts the requirements the server recomputed for the committed plan', () => {
+    const board = applyCommittedBoard({ programId: 'p', version: 'bv_1', semesters, requirementsValidation: requirements }, base())
+    expect(board.requirementsValidation).toEqual(requirements)
+    expect(board.semesters[0].courses.map((c) => c.courseId)).toEqual(['X-1', 'Y-1'])
+  })
+
+  test('keeps the base numbers when the server sent none (no base snapshot to refresh)', () => {
+    const withBase = { ...base(), requirementsValidation: { ...requirements, plannedHours: 45 } }
+    const board = applyCommittedBoard({ programId: 'p', version: 'bv_1', semesters }, withBase)
+    expect(board.requirementsValidation?.plannedHours).toBe(45)
+  })
 })

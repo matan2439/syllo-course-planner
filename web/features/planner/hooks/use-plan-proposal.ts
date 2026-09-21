@@ -4,7 +4,7 @@ import type { ConversationProposal } from '../../../../shared/planner/conversati
 import { ContractError, proposalBaseRevision } from '../../../../shared/planner/model'
 import type { applyPlan, ApplyPlanResult, GeneratePlanRequest } from '../../../../shared/planner/api-client'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
-import { applyGeneratedToBoard } from '../../../lib/planner/apply-plan'
+import { applyCommittedBoard, applyGeneratedToBoard } from '../../../lib/planner/apply-plan'
 import { isProposalApplyable } from '../../../lib/planner/apply-eligibility'
 import { conversationProposalToModel } from '../lib/conversation-proposal'
 import { computeStaleReason } from '../lib/stale-reason'
@@ -212,7 +212,7 @@ export function usePlanProposal({
       return
     }
 
-    setCurrent(applyGeneratedToBoard({ semesters: result.board.semesters } as GeneratedPlanModel, current))
+    setCurrent(applyCommittedBoard(result.board, current))
     setBoardVersion(result.board.version)
     setApplyPhase('idle')
     applyKeyRef.current = null

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { CommittedBoardState } from '../../../../shared/planner/api-client'
-import { applyGeneratedToBoard } from '../../../lib/planner/apply-plan'
+import { applyCommittedBoard } from '../../../lib/planner/apply-plan'
 import type { BoardPhase } from '../types'
 
 type SemesterCourseIds = Array<{ semesterId: string; courseIds: string[] }>
@@ -45,7 +45,7 @@ export function useCommittedBoard({
     Promise.all([getBoardFn(programId), committed]).then(
       ([catalog, saved]) => {
         if (!live) return
-        setCurrent(saved ? applyGeneratedToBoard({ semesters: saved.semesters } as GeneratedPlanModel, catalog) : catalog)
+        setCurrent(saved ? applyCommittedBoard(saved, catalog) : catalog)
         setBoardVersion(saved?.version ?? null)
         setBoardPhase('ready')
       },
