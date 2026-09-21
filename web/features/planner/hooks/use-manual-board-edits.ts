@@ -61,7 +61,11 @@ export function useManualBoardEdits({
     return synced.academicStatusDigest
   }
 
-  /** One key per edit attempt, held until the edit succeeds so a retry is recognised as the same work. */
+  /**
+   * One key per edit attempt. It is held across a thrown (network) failure so a retry is recognised as
+   * the same work, but dropped on a definitive server rejection: nothing was committed, and reusing the
+   * key for the NEXT, different edit makes the server answer IDEMPOTENCY_CONFLICT (409).
+   */
   const beginEdit = (): string => {
     const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
     manualEditKeyRef.current = operationId
@@ -103,6 +107,7 @@ export function useManualBoardEdits({
     }
     setManualEditPhase('idle')
     if (!result.ok) {
+      manualEditKeyRef.current = null
       setManualEditError(result.messageHe)
       showRejectedDrop(semesterId)
       if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
@@ -125,6 +130,7 @@ export function useManualBoardEdits({
       })
       setManualEditPhase('idle')
       if (!result.ok) {
+        manualEditKeyRef.current = null
         setManualEditError(result.messageHe)
         if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
         return
@@ -149,6 +155,7 @@ export function useManualBoardEdits({
       })
       setManualEditPhase('idle')
       if (!result.ok) {
+        manualEditKeyRef.current = null
         setManualEditError(result.messageHe)
         if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
         return

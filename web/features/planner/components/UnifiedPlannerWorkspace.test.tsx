@@ -1,14 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onCloseAgent, onManualAddCancelled, agentCloseRef, onSemestersChange }: any) => {
+  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget }: any) => {
     useEffect(() => {
       onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
     }, [onSemestersChange])
+    const agent = <aside className="planner-agent-region" aria-label="עוזר אקדמי">עוזר פעיל</aside>
     return (
       <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
         data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
@@ -16,10 +18,7 @@ jest.mock('./NativePlannerJourney', () => ({
         {manualAddIntent && (
           <button type="button" aria-label="ביטול הוספת קורס" onClick={onManualAddCancelled}>ביטול</button>
         )}
-        <aside className="planner-agent-region" aria-label="עוזר אקדמי">
-          <button ref={agentCloseRef} type="button" aria-label="סגור סרגל עוזר AI" onClick={onCloseAgent}>סגור עוזר</button>
-          עוזר פעיל
-        </aside>
+        {agentPortalTarget ? createPortal(agent, agentPortalTarget) : null}
       </div>
     )
   },
@@ -49,9 +48,12 @@ const repoWithCourse: RepositoryVM = { totalCourses: 1, categories: [{
   }],
 }] }
 
+const renderWorkspace = (props: Partial<Parameters<typeof UnifiedPlannerWorkspace>[0]> = {}) =>
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} {...props} />)
+
 describe('UnifiedPlannerWorkspace', () => {
-  test('has a single opening control per drawer and returns focus on Escape', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('has one opening control per tool and returns focus on Escape', () => {
+    renderWorkspace()
     expect(screen.queryByRole('tab', { name: 'עוזר אקדמי' })).toBeNull()
     const toggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
     fireEvent.click(toggle)
@@ -61,120 +63,71 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(toggle).toHaveFocus()
   })
 
-  test('renders one Agent and one repository in one iframe-free RTL workspace', () => {
-    const { container } = render(
-      <UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />,
-    )
+  test('renders one journey, one repository and one rail in one iframe-free RTL workspace', () => {
+    const { container } = renderWorkspace()
 
     expect(screen.getAllByRole('heading', { name: 'מרחב התכנון' })).toHaveLength(1)
     expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-agent', 'true')
     expect(screen.getAllByTestId('course-repository')).toHaveLength(1)
+    expect(container.querySelectorAll('.planner-rail')).toHaveLength(1)
     expect(screen.getByRole('region', { name: 'מרחב תכנון מאוחד' })).toHaveAttribute('dir', 'rtl')
     expect(container.querySelector('iframe')).not.toBeInTheDocument()
   })
 
-  test('switches drawers without duplicating journey state or hiding the board region', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
+  test('opens one tool at a time in the same rail without hiding the board', () => {
+    const { container } = renderWorkspace()
+    const workbench = container.querySelector('.planner-workbench')
     const repoToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
     const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
+
     fireEvent.click(repoToggle)
     expect(repoToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByTestId('agent-journey')).toBeInTheDocument()
-    expect(screen.getByTestId('course-repository')).toBeInTheDocument()
-    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
+    expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
+    expect(screen.getByRole('tab', { name: 'קורסים' })).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(agentToggle)
     expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(repoToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
     expect(screen.getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
-
+    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
     expect(screen.getByRole('region', { name: 'לוח סמסטרים פעיל' })).toBeVisible()
-  })
-
-  test('marks the desktop repository rail and shared journey surfaces structurally', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    expect(container.querySelector('.planner-workbench')).not.toBeNull()
-    expect(container.querySelector('.planner-repository-rail')).not.toBeNull()
-    expect(container.querySelector('.planner-agent-drawer')).not.toBeNull()
-  })
-
-  test('keeps the semester board central while course and AI drawers open independently', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
-    expect(container.querySelector('.planner-board-canvas')).not.toBeNull()
-    expect(container.querySelector('.planner-board-region')).toBeVisible()
-    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
-
-    fireEvent.click(repositoryToggle)
-    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-repository-open', 'true')
-    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-layout', 'drawer-split')
-    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'false')
-    expect(container.querySelector('.planner-board-region')).toBeVisible()
-
-    expect(container.querySelector('.planner-board-canvas')).not.toHaveClass('hidden')
 
     fireEvent.click(agentToggle)
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-agent-open', 'true')
-    expect(container.querySelector('.planner-board-region')).toBeVisible()
-
-    fireEvent.click(repositoryToggle)
-    expect(document.getElementById('workspace-panel-repository')).toHaveAttribute('aria-hidden', 'true')
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
   })
 
-  test('keeps both side drawers overlaid so the central board does not shrink', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-
-    const workbench = container.querySelector('.planner-workbench')
-    expect(workbench).toHaveClass('planner-drawers-overlay')
-    expect(container.querySelector('.planner-board-canvas')).toHaveAttribute('data-board-layout', 'stable')
-    expect(container.querySelector('.planner-board-canvas')).toBeVisible()
-  })
-
-  test('reserves a clear interaction layer between drawer surfaces and toolbar controls', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    expect(container.querySelector('.planner-workbench')).toHaveAttribute(
-      'data-drawer-interaction', 'below-toolbar',
-    )
-  })
-
-  test('keeps the board drop target mounted when the repository drawer is open', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
+  test('tabs inside the rail switch tools', () => {
+    renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
-    const boardCanvas = container.querySelector('.planner-board-canvas')
-    expect(boardCanvas).toBeInTheDocument()
-    expect(boardCanvas).not.toHaveClass('hidden')
-    expect(boardCanvas).toHaveAttribute('data-board-surface', 'persistent-drop-target')
-    expect(boardCanvas).toHaveAttribute('aria-label', 'לוח סמסטרים פעיל')
-    expect(container.querySelector('.planner-board-region')).toBeVisible()
+    fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
+    expect(screen.getByRole('tab', { name: 'עוזר AI' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: 'סגור עוזר AI' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'קורסים' }))
+    expect(screen.getByRole('button', { name: 'סגור מאגר קורסים' })).toBeInTheDocument()
   })
 
-  test('keeps a stable board shell and active drop surface beside the open repository', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('keeps a stable board shell and active drop surface beside the open rail', () => {
+    const { container } = renderWorkspace()
 
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
     const boardCanvas = container.querySelector('.planner-board-canvas')
     expect(boardCanvas).toHaveClass('planner-board-canvas-stable')
     expect(boardCanvas).toHaveAttribute('data-board-layout', 'stable')
+    expect(boardCanvas).toHaveAttribute('data-board-surface', 'persistent-drop-target')
     expect(boardCanvas).toHaveAttribute('data-drop-surface', 'semester-table')
+    expect(boardCanvas).toHaveAttribute('aria-label', 'לוח סמסטרים פעיל')
     expect(boardCanvas).not.toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
-  test('explains that the visible board accepts a repository drag while the drawer is open', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('explains that the visible board accepts a repository drag while courses are open', () => {
+    renderWorkspace()
 
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
@@ -182,8 +135,8 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByRole('status')).toHaveTextContent('לחלופין, השתמשו ב״הוסף לסמסטר״')
   })
 
-  test('passes through an open drawer while a drag is heading for the board', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('passes through a floating rail while a drag is heading for the board', () => {
+    const { container } = renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
 
     const workbench = container.querySelector('.planner-workbench')
@@ -192,84 +145,43 @@ describe('UnifiedPlannerWorkspace', () => {
     fireEvent.dragStart(screen.getByRole('button', { name: 'גרירה לדוגמה' }))
 
     expect(workbench).toHaveAttribute('data-drag-active', 'true')
-    expect(container.querySelector('.planner-repository-rail')).toHaveAttribute('data-drag-pass-through', 'true')
+    expect(container.querySelector('.planner-rail')).toHaveAttribute('data-drag-pass-through', 'true')
 
     fireEvent.dragEnd(screen.getByRole('button', { name: 'גרירה לדוגמה' }))
     expect(workbench).toHaveAttribute('data-drag-active', 'false')
   })
 
-  test('lets each open drawer close from inside its own surface', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('closes from inside the rail and moves focus into it when it opens', () => {
+    renderWorkspace()
 
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-    fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' }))
-    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'סגור סרגל כלים' })).toHaveFocus()
 
-    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-    fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל עוזר AI' }))
-    expect(screen.getByRole('button', { name: 'פתח עוזר AI' })).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל כלים' }))
+    const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
   })
 
-  test('closes the active drawer with Escape without unmounting the board', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
+  test('closes with Escape without unmounting the board', () => {
+    const { container } = renderWorkspace()
 
     fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-    expect(screen.getByRole('button', { name: 'סגור מאגר קורסים' })).toBeInTheDocument()
-
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(repositoryToggle).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
-  test('moves focus into the repository drawer when it opens', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-
-    expect(screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' })).toHaveFocus()
-  })
-
-  test('moves focus into the academic assistant drawer when it opens', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-
-    expect(screen.getByRole('button', { name: 'סגור סרגל עוזר AI' })).toHaveFocus()
-  })
-
-  test('tracks the active drawer surface so narrow layouts never show two rails over the board', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    const workbench = container.querySelector('.planner-workbench')
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-    expect(workbench).toHaveAttribute('data-mobile-surface', 'repository')
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-    expect(workbench).toHaveAttribute('data-mobile-surface', 'agent')
-  })
-
-  test('marks open drawers as overlays so the central board stays the mobile workspace', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    const workbench = container.querySelector('.planner-workbench')
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
-
-    expect(workbench).toHaveAttribute('data-drawer-mode', 'overlay')
-    expect(container.querySelector('[data-board-surface="persistent-drop-target"]')).toBeVisible()
-  })
-
   test('routes a repository add intent to the single journey with authoritative offered semesters', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
+    renderWorkspace({ repo: repoWithCourse })
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
   })
 
   test('clears a pending repository add intent when the student cancels it', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repoWithCourse} />)
+    renderWorkspace({ repo: repoWithCourse })
 
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
@@ -279,16 +191,13 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 
   test('routes add intent against the actual board semester destinations', () => {
-    render(
-      <UnifiedPlannerWorkspace
-        programId="mechanical_engineering_2027"
-        repo={repoWithCourse}
-        semesterDestinations={[
-          { id: 'year_1_semester_a', label: 'שנה א׳ — סמסטר א׳' },
-          { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
-        ]}
-      />,
-    )
+    renderWorkspace({
+      repo: repoWithCourse,
+      semesterDestinations: [
+        { id: 'year_1_semester_a', label: 'שנה א׳ — סמסטר א׳' },
+        { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
+      ],
+    })
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
 
     expect(screen.getByTestId('agent-journey')).toHaveAttribute(
@@ -297,37 +206,41 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 })
 
-describe('UnifiedPlannerWorkspace — weekly schedule', () => {
-  test('keeps the weekly schedule visible below the board without a drawer control', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /מערכת שעות/ })).toBeNull()
+describe('UnifiedPlannerWorkspace — weekly schedule tab', () => {
+  test('the board is the default view and the schedule is one tab away', () => {
+    renderWorkspace()
+    expect(screen.getByRole('tab', { name: 'לוח סמסטרים' })).toHaveAttribute('aria-selected', 'true')
+    expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
+    expect(document.getElementById('workspace-panel-weekly')).toHaveAttribute('hidden')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeVisible()
+    expect(document.getElementById('workspace-panel-journey')).toHaveAttribute('hidden')
   })
 
-  test('repository and agent can open while the weekly schedule stays visible', () => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  test('both views stay mounted so the journey state survives a tab switch', () => {
+    renderWorkspace()
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('tab', { name: 'לוח סמסטרים' }))
+    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
+    // hidden, not unmounted: the timetable keeps its state (role queries skip hidden panels)
+    expect(document.getElementById('workspace-panel-weekly')?.querySelector('[role="tablist"]')).not.toBeNull()
+  })
+
+  test('the tools rail can be open beside either view', () => {
+    renderWorkspace()
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
-    expect(screen.getByTestId('course-repository')).toBeInTheDocument()
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeVisible()
   })
 
-  test('renders the weekly panel below the board, outside the repository rail row', () => {
-    const { container } = render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} />)
-
-    const board = document.getElementById('workspace-panel-journey')
-    const weekly = document.getElementById('workspace-panel-weekly')
-    const workbench = container.querySelector('.planner-workbench')
-    expect(board).not.toBeNull()
-    expect(weekly).not.toBeNull()
-    expect(workbench).not.toBeNull()
-
-    // Weekly is not inside the board+repository-rail row at all.
-    expect(workbench?.contains(weekly as Node)).toBe(false)
-    // It comes after that row in document order, i.e. below it.
-    expect(
-      (board?.compareDocumentPosition(weekly as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+  test('adding a course from the repository switches back to the board where the prompt lives', () => {
+    renderWorkspace({ repo: repoWithCourse })
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
+    expect(screen.getByRole('tab', { name: 'לוח סמסטרים' })).toHaveAttribute('aria-selected', 'true')
+    expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
   })
 })

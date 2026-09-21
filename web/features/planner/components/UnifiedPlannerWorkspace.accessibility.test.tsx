@@ -3,7 +3,7 @@ import * as plannerApi from '../../../../shared/planner/api-client'
 import { boardResponseToModel } from '../../../../shared/planner/adapters'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
-// Keep the workspace, drawers and conversation real; only server I/O is controlled.
+// Keep the workspace, rail and conversation real; only server I/O is controlled.
 beforeEach(() => {
   jest.spyOn(plannerApi, 'getBoard').mockResolvedValue(boardResponseToModel({
     metadata: { board_data_version: 'rev-drawer' },
@@ -29,32 +29,33 @@ const repositoryWithDetails = {
   }] }],
 }
 
-test('course details escapes the scrolling drawer so its backdrop covers the workspace', async () => {
+const RAIL = { name: 'סרגל כלים' }
+const emptyRepo = { categories: [], totalCourses: 0 }
+
+test('course details escapes the scrolling rail so its backdrop covers the workspace', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
   fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
   const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
   trigger.focus()
   fireEvent.click(trigger)
-  const drawer = screen.getByRole('complementary', { name: 'מאגר קורסים' })
+  const rail = screen.getByRole('complementary', RAIL)
   const dialog = screen.getByRole('dialog', { name: 'פרטי קורס' })
 
-  // A transformed scrolling drawer contains/clips fixed descendants in Chrome.
-  expect(drawer).not.toContainElement(dialog)
+  // A transformed scrolling rail contains/clips fixed descendants in Chrome.
+  expect(rail).not.toContainElement(dialog)
   expect(dialog.parentElement?.parentElement).toBe(document.body)
   fireEvent.click(dialog.parentElement!)
   expect(screen.queryByRole('dialog', { name: 'פרטי קורס' })).toBeNull()
   expect(trigger).toHaveFocus()
 })
 
-test('an Escape already handled by a nested surface does not close either drawer', async () => {
+test('an Escape already handled by a nested surface does not close the rail', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
-  const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
   const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-  fireEvent.click(agentToggle)
   fireEvent.click(repositoryToggle)
-  const close = screen.getByRole('button', { name: 'סגור סרגל מאגר קורסים' })
+  const close = screen.getByRole('button', { name: 'סגור סרגל כלים' })
   // Next's document-root event delegation can deliver an already-handled event
   // to another document listener; cancelling a dialog must not dismiss its owner.
   const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
@@ -63,7 +64,6 @@ test('an Escape already handled by a nested surface does not close either drawer
   fireEvent(close, escape)
 
   expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
-  expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
   expect(close).toHaveFocus()
 })
 
@@ -86,13 +86,11 @@ test.each([false, true])('course details wraps Tab inside the dialog (shift=%s)'
 })
 
 test.each(['Escape', 'close button', 'backdrop'] as const)(
-  'closing course details with %s preserves the open drawers and restores its trigger',
+  'closing course details with %s preserves the open rail and restores its trigger',
   async (method) => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
     await screen.findByText('תכן מכני (1)')
-    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
     const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-    fireEvent.click(agentToggle)
     fireEvent.click(repositoryToggle)
     const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
     trigger.focus()
@@ -107,51 +105,32 @@ test.each(['Escape', 'close button', 'backdrop'] as const)(
 
     expect(screen.queryByRole('dialog', { name: 'פרטי קורס' })).toBeNull()
     expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
     expect(trigger).toHaveFocus()
     expect(screen.getByRole('region', { name: 'לוח סמסטרים פעיל' })).toBeInTheDocument()
   },
 )
 
-test.each(['agent-first', 'repository-first'] as const)(
-  'Escape closes the focused repository, not the other open drawer (%s)',
-  async (openingOrder) => {
-    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
-      repo={{ categories: [], totalCourses: 0 }} />)
-    await screen.findByText('תכן מכני (1)')
-    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
-    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-    const toggles = openingOrder === 'agent-first'
-      ? [agentToggle, repositoryToggle] : [repositoryToggle, agentToggle]
-    toggles.forEach((toggle) => fireEvent.click(toggle))
-    const search = within(screen.getByRole('complementary', { name: 'מאגר קורסים' })).getByRole('searchbox')
-    fireEvent.change(search, { target: { value: 'תכן' } })
-    search.focus()
+test('switching tabs keeps both panels mounted, so search text survives', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
+  await screen.findByText('תכן מכני (1)')
+  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  const search = within(screen.getByRole('complementary', RAIL)).getByRole('searchbox')
+  fireEvent.change(search, { target: { value: 'תכן' } })
 
-    fireEvent.keyDown(search, { key: 'Escape' })
+  fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
+  expect(screen.getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
+  expect(screen.queryByRole('searchbox')).toBeNull()
 
-    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(repositoryToggle).toHaveFocus()
-    fireEvent.click(repositoryToggle)
-    expect(search).toHaveValue('תכן')
+  fireEvent.click(screen.getByRole('tab', { name: 'קורסים' }))
+  expect(within(screen.getByRole('complementary', RAIL)).getByRole('searchbox')).toHaveValue('תכן')
+})
 
-    const agentClose = screen.getByRole('button', { name: 'סגור סרגל עוזר AI' })
-    agentClose.focus()
-    fireEvent.keyDown(agentClose, { key: 'Escape' })
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
-    expect(repositoryToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(agentToggle).toHaveFocus()
-  },
-)
-
-test('Escape closes the repository without also invoking the native search clear action', async () => {
-  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
-    repo={{ categories: [], totalCourses: 0 }} />)
+test('Escape closes the rail without also invoking the native search clear action', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
   const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
   fireEvent.click(toggle)
-  const search = within(screen.getByRole('complementary', { name: 'מאגר קורסים' })).getByRole('searchbox')
+  const search = within(screen.getByRole('complementary', RAIL)).getByRole('searchbox')
   fireEvent.change(search, { target: { value: 'תכן' } })
 
   // JSDOM does not run the native <input type="search"> Escape default action.
@@ -165,52 +144,62 @@ test('Escape closes the repository without also invoking the native search clear
   expect(search).toHaveValue('תכן')
 })
 
-test('the agent toggle identifies its actual drawer throughout opening and closing', async () => {
-  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
-    repo={{ categories: [], totalCourses: 0 }} />)
+test('both toggles control the one rail, and the assistant renders inside it', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  const toggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+  const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+  const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
 
-  fireEvent.click(toggle)
+  fireEvent.click(agentToggle)
 
-  const drawer = screen.getByRole('complementary', { name: 'עוזר אקדמי' })
-  expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBe(drawer)
-  expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  expect(screen.getByRole('button', { name: 'סגור סרגל עוזר AI' })).toHaveFocus()
+  const rail = screen.getByRole('complementary', RAIL)
+  expect(document.getElementById(agentToggle.getAttribute('aria-controls')!)).toBe(rail)
+  expect(document.getElementById(repositoryToggle.getAttribute('aria-controls')!)).toBe(rail)
+  expect(within(rail).getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
+  expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
+  expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.getByRole('button', { name: 'סגור סרגל כלים' })).toHaveFocus()
 
   fireEvent.keyDown(document, { key: 'Escape' })
 
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBe(drawer)
+  expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
+  expect(agentToggle).toHaveFocus()
+})
+
+test('the rail is inert and absent from accessible navigation while closed', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
+  await screen.findByText('תכן מכני (1)')
+  const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  const rail = document.getElementById(toggle.getAttribute('aria-controls')!)!
+
+  expect(rail).toHaveAttribute('inert')
+  expect(screen.queryByRole('complementary', RAIL)).toBeNull()
+
+  fireEvent.click(toggle)
+
+  expect(screen.getByRole('complementary', RAIL)).toBe(rail)
+  expect(rail).not.toHaveAttribute('inert')
+
+  fireEvent.keyDown(document, { key: 'Escape' })
+
+  expect(rail).toHaveAttribute('inert')
+  expect(screen.queryByRole('complementary', RAIL)).toBeNull()
   expect(toggle).toHaveFocus()
 })
 
-test.each([
-  { opener: 'פתח עוזר AI', drawerName: 'עוזר אקדמי' },
-  { opener: 'פתח מאגר קורסים', drawerName: 'מאגר קורסים' },
-])('$drawerName is inert and absent from accessible navigation while closed', async ({ opener, drawerName }) => {
-  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027"
-    repo={{ categories: [], totalCourses: 0 }} />)
+test('the profile tab shows the student inputs open, and the chat no longer nests them', async () => {
+  render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  const toggle = screen.getByRole('button', { name: opener })
-  const drawer = document.getElementById(toggle.getAttribute('aria-controls')!)!
 
-  expect(drawer).toHaveAttribute('inert')
-  expect(screen.queryByRole('complementary', { name: drawerName })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'פתח הפרופיל שלי' }))
 
-  fireEvent.click(toggle)
+  const profile = screen.getByRole('region', { name: 'הפרופיל שלי' })
+  expect(within(profile).getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
+  expect(within(profile).getByRole('textbox', { name: 'שעות שהושלמו' })).toBeVisible()
+  expect(screen.queryByText('מה חשוב לעוזר לדעת? (אופציונלי)')).toBeNull()
 
-  expect(screen.getByRole('complementary', { name: drawerName })).toBe(drawer)
-  expect(drawer).not.toHaveAttribute('inert')
-
-  fireEvent.keyDown(document, { key: 'Escape' })
-
-  expect(drawer).toHaveAttribute('inert')
-  expect(screen.queryByRole('complementary', { name: drawerName })).toBeNull()
-  expect(toggle).toHaveFocus()
-
-  fireEvent.click(toggle)
-
-  expect(screen.getByRole('complementary', { name: drawerName })).toBe(drawer)
-  expect(drawer).not.toHaveAttribute('inert')
+  fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
+  expect(screen.queryByTestId('academic-agent-context')).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'הפרופיל שלי' }))
+  expect(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
 })

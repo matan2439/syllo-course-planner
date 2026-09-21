@@ -16,7 +16,8 @@
  * beyond the anonymous quota session token. Transport is injected so this is
  * fully testable without a live backend; browser defaults hit the real routes.
  */
-import { useCallback, useState, type RefObject } from 'react'
+import { useCallback, useState, type ReactElement, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import {
   applyPlan, editBoard,
@@ -81,6 +82,8 @@ export default function NativePlannerJourney({
   onCloseAgent,
   agentCloseRef,
   agentOpen,
+  agentPortalTarget,
+  profilePortalTarget,
   activeDrag,
   onDragStateChange,
 }: {
@@ -105,6 +108,10 @@ export default function NativePlannerJourney({
   onCloseAgent?: () => void
   agentCloseRef?: RefObject<HTMLButtonElement | null>
   agentOpen?: boolean
+  /** When set, the assistant panel renders into this element (the workspace rail) instead of beside the board. */
+  agentPortalTarget?: HTMLElement | null
+  /** When set, the profile/preferences panel renders into this element (the workspace profile tab), always open. */
+  profilePortalTarget?: HTMLElement | null
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /**
@@ -197,9 +204,22 @@ export default function NativePlannerJourney({
     : null
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
-  const alternativeBoard = selectedAlternative
+  const draft = effectiveProposal ? buildDraftVM(effectiveProposal, current) : null
+  // The proposal is previewed on the board itself (read-only, changed cards marked) while it is still
+  // valid to apply. A stale or blocked proposal leaves the committed board editable and untouched.
+  // A selected alternative stays previewed (that is how the switcher shows it), even when stale.
+  const previewBoard = selectedAlternative
     ? applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current)
-    : null
+    : effectiveProposal && draft && !stale && !draft.blocked
+        && effectiveProposal.semesters.some((semester) => semester.courseIds.length > 0)
+      ? applyGeneratedToBoard(effectiveProposal, current)
+      : null
+  const diffMarkers: Record<string, 'new' | 'moved'> = {}
+  for (const semester of draft?.semesters ?? []) {
+    for (const course of semester.courses) {
+      if (course.marker !== 'unchanged') diffMarkers[`${semester.id}|${course.id}`] = course.marker
+    }
+  }
 
   const preferenceContent = useAcademicDecisionAgent ? (
     <AgentPreferencePanel
@@ -217,8 +237,12 @@ export default function NativePlannerJourney({
       onProfileChange={onProfileChange}
       proposal={proposal}
       stale={stale}
+      alwaysOpen={profilePortalTarget !== undefined}
     />
   ) : null
+
+  const wrapAgent = (aside: ReactElement) =>
+    agentPortalTarget === undefined ? aside : agentPortalTarget ? createPortal(aside, agentPortalTarget) : null
 
   return (
     <div className="planner-journey grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -244,7 +268,8 @@ export default function NativePlannerJourney({
         )}
         <CurrentPlanSection
           current={current}
-          alternativeBoard={alternativeBoard}
+          previewBoard={previewBoard}
+          diffMarkers={diffMarkers}
           alternatives={proposal?.alternatives}
           selectedAlternativeId={selectedAlternativeId}
           onSelectAlternative={setSelectedAlternativeId}
@@ -264,7 +289,7 @@ export default function NativePlannerJourney({
         {genPhase === 'done' && proposal && (
           <>
           <ProposalView
-            draft={buildDraftVM(effectiveProposal ?? proposal, current)}
+            draft={draft ?? buildDraftVM(proposal, current)}
             intentOutcome={proposal.intentOutcome}
             removed={removed}
             stale={stale}
@@ -279,8 +304,10 @@ export default function NativePlannerJourney({
         )}
       </div>
 
+      {profilePortalTarget && preferenceContent ? createPortal(preferenceContent, profilePortalTarget) : null}
+
       {/* ── assistant + preferences + build ───────────────────────────────── */}
-      <aside
+      {wrapAgent(<aside
         id="workspace-agent-drawer"
         aria-label="עוזר אקדמי"
         aria-hidden={agentOpen === false}
@@ -324,7 +351,7 @@ export default function NativePlannerJourney({
               ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
               ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
             ])}
-            preferenceContent={preferenceContent}
+            preferenceContent={profilePortalTarget === undefined ? preferenceContent : undefined}
           />
         )}
 
@@ -348,7 +375,7 @@ export default function NativePlannerJourney({
           errKind={errKind}
           onBuild={() => build()}
         />
-      </aside>
+      </aside>)}
     </div>
   )
 }

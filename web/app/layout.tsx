@@ -3,7 +3,7 @@ import './globals.css'
 import ThemeAwareFavicon from '../features/shell/components/ThemeAwareFavicon'
 
 export const metadata: Metadata = {
-  title: 'מתכנן לימודים — אוניברסיטת תל אביב',
+  title: 'Syllo — תכנון לימודים, אוניברסיטת תל אביב',
   description: 'תכנון מערכת לימודים חכם עם עוזר AI — אוניברסיטת תל אביב',
 }
 

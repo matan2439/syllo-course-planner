@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Badge, Card } from '../../../components/ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { categoryAccentClass } from '../../courses/components/course-category'
+import { MARKER_LABEL } from '../constants'
 
 const TYPE_LABELS: Record<string, string> = {
   mandatory: 'חובה',
@@ -98,6 +99,9 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         <Badge variant={course.type === 'mandatory' ? 'purple' : 'neutral'}>
           {TYPE_LABELS[course.type] ?? course.type}
         </Badge>
+        {course.diffMarker && (
+          <Badge variant="warn">{MARKER_LABEL[course.diffMarker]}</Badge>
+        )}
         {course.isAnnual && (
           <Badge variant="purple">שנתי (א׳+ב׳)</Badge>
         )}

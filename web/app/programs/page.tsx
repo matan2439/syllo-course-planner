@@ -10,7 +10,7 @@ import {
 import ProductShell from '../../features/shell/components/ProductShell'
 import { Badge, Card } from '../../components/ui'
 
-export const metadata = { title: 'בחירת תוכנית — מתכנן לימודים' }
+export const metadata = { title: 'בחירת תוכנית — Syllo' }
 
 function ProgramFamilyCard({
   family,
@@ -105,7 +105,6 @@ export default async function ProgramsPage({
       title="בחירת תוכנית"
       subtitle="איזו תוכנית מתכננים?"
       width="narrow"
-      programId={currentId}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {families.map((f, i) => (

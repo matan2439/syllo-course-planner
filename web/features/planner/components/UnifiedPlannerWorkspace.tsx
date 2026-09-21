@@ -7,7 +7,19 @@ import UnifiedCourseRepository, { type SemesterDestination } from '../../courses
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 
-type WorkspaceView = 'board' | 'repository' | 'agent'
+type RailTab = 'courses' | 'agent' | 'profile'
+type MainTab = 'board' | 'schedule'
+
+const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string }> = [
+  { id: 'board', label: 'לוח סמסטרים' },
+  { id: 'schedule', label: 'מערכת שעות' },
+]
+
+const TABS: ReadonlyArray<{ id: RailTab; label: string; icon: string; noun: string }> = [
+  { id: 'courses', label: 'קורסים', icon: '☰', noun: 'מאגר קורסים' },
+  { id: 'agent', label: 'עוזר AI', icon: '✦', noun: 'עוזר AI' },
+  { id: 'profile', label: 'הפרופיל שלי', icon: '◎', noun: 'הפרופיל שלי' },
+]
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
   { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
@@ -29,26 +41,21 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd?: (courseId: string) => void
   semesterDestinations?: readonly SemesterDestination[]
 }) {
-  const [activeView, setActiveView] = useState<WorkspaceView>('board')
-  const [repositoryOpen, setRepositoryOpen] = useState(false)
-  const [agentOpen, setAgentOpen] = useState(false)
+  // One rail, one open tab. `null` = closed, board only.
+  const [railTab, setRailTab] = useState<RailTab | null>(null)
+  const [mainTab, setMainTab] = useState<MainTab>('board')
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
-  const repositoryToggleRef = useRef<HTMLButtonElement | null>(null)
-  const repositoryDrawerRef = useRef<HTMLElement | null>(null)
-  const agentToggleRef = useRef<HTMLButtonElement | null>(null)
-  const repositoryCloseRef = useRef<HTMLButtonElement | null>(null)
-  const repositoryWasOpen = useRef(false)
-  const agentCloseRef = useRef<HTMLButtonElement | null>(null)
-  const agentWasOpen = useRef(false)
-
-  const selectView = (view: WorkspaceView) => {
-    setActiveView(view)
-    if (view === 'repository') setRepositoryOpen(true)
-    if (view === 'agent') setAgentOpen(true)
-  }
+  // The assistant lives in the journey (it owns the planning state) and renders into this slot.
+  const [agentSlot, setAgentSlot] = useState<HTMLDivElement | null>(null)
+  const [profileSlot, setProfileSlot] = useState<HTMLDivElement | null>(null)
+  const toggleRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ courses: null, agent: null, profile: null })
+  const railCloseRef = useRef<HTMLButtonElement | null>(null)
+  const lastTab = useRef<RailTab>('courses')
+  const railWasOpen = useRef(false)
+  if (railTab) lastTab.current = railTab
 
   const requestAdd = (courseId: string, semesterId?: string) => {
     const course = repo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
@@ -57,63 +64,31 @@ export default function UnifiedPlannerWorkspace({
       .map(({ id }) => id)
       .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
     setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
+    setMainTab('board') // the semester prompt lives on the board
     onRequestAdd(courseId)
-    selectView('board')
   }
 
-  const closeRepository = () => {
-    setRepositoryOpen(false)
-    setActiveView(agentOpen ? 'agent' : 'board')
-    repositoryToggleRef.current?.focus()
+  const closeRail = () => {
+    setRailTab(null)
+    toggleRefs.current[lastTab.current]?.focus()
   }
 
-  const closeAgent = () => {
-    setAgentOpen(false)
-    setActiveView(repositoryOpen ? 'repository' : 'board')
-    agentToggleRef.current?.focus()
-  }
+  const toggleTab = (tab: RailTab) => (railTab === tab ? closeRail() : setRailTab(tab))
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return
-      const target = event.target
-      const fromRepository = target instanceof Node && repositoryDrawerRef.current?.contains(target)
-      if (fromRepository && repositoryOpen) { event.preventDefault(); closeRepository(); return }
-      // Fallback for Escape pressed somewhere that isn't inside a specific
-      // drawer's own DOM (e.g. focus on a toolbar toggle button) — preserves
-      // the repository/agent priority.
-      if (repositoryOpen && !agentOpen) { event.preventDefault(); closeRepository(); return }
-      if (agentOpen) { event.preventDefault(); closeAgent(); return }
+      if (event.key !== 'Escape' || event.defaultPrevented || !railTab) return
+      event.preventDefault()
+      closeRail()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [agentOpen, repositoryOpen])
+  }, [railTab])
 
   useEffect(() => {
-    if (repositoryOpen && !repositoryWasOpen.current) repositoryCloseRef.current?.focus()
-    repositoryWasOpen.current = repositoryOpen
-  }, [repositoryOpen])
-
-  useEffect(() => {
-    if (agentOpen && !agentWasOpen.current) agentCloseRef.current?.focus()
-    agentWasOpen.current = agentOpen
-  }, [agentOpen])
-
-  const toggleRepository = () => {
-    if (repositoryOpen) closeRepository()
-    else {
-      setRepositoryOpen(true)
-      setActiveView('repository')
-    }
-  }
-
-  const toggleAgent = () => {
-    if (agentOpen) closeAgent()
-    else {
-      setAgentOpen(true)
-      setActiveView('agent')
-    }
-  }
+    if (railTab && !railWasOpen.current) railCloseRef.current?.focus()
+    railWasOpen.current = railTab !== null
+  }, [railTab])
 
   return (
     <section
@@ -130,58 +105,58 @@ export default function UnifiedPlannerWorkspace({
       </div>
 
       <div className="planner-drawer-controls" aria-label="כלי תכנון">
-        <button
-          ref={repositoryToggleRef}
-          type="button"
-          aria-controls="workspace-panel-repository"
-          aria-expanded={repositoryOpen}
-          aria-label={`${repositoryOpen ? 'סגור' : 'פתח'} מאגר קורסים`}
-          onClick={toggleRepository}
-          className="planner-drawer-toggle planner-drawer-toggle-repository"
-        >
-          <span aria-hidden="true">☰</span>
-          <span>קורסים</span>
-        </button>
-        <button
-          ref={agentToggleRef}
-          type="button"
-          aria-controls="workspace-agent-drawer"
-          aria-expanded={agentOpen}
-          aria-label={`${agentOpen ? 'סגור' : 'פתח'} עוזר AI`}
-          onClick={toggleAgent}
-          className="planner-drawer-toggle planner-drawer-toggle-agent"
-        >
-          <span aria-hidden="true">✦</span>
-          <span>עוזר AI</span>
-        </button>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            ref={(el) => { toggleRefs.current[tab.id] = el }}
+            type="button"
+            aria-controls="workspace-rail"
+            aria-expanded={railTab === tab.id}
+            aria-label={`${railTab === tab.id ? 'סגור' : 'פתח'} ${tab.noun}`}
+            onClick={() => toggleTab(tab.id)}
+            className={`planner-drawer-toggle planner-drawer-toggle-${tab.id}`}
+          >
+            <span aria-hidden="true">{tab.icon}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       <div
-        className="planner-workbench planner-drawers-overlay min-w-0"
-        data-mobile-surface={activeView}
-        data-layout={repositoryOpen || agentOpen ? 'drawer-split' : 'board'}
-        data-drawer-mode="overlay"
-        data-repository-open={repositoryOpen}
-        data-agent-open={agentOpen}
+        className="planner-workbench min-w-0"
+        data-rail-open={railTab !== null}
+        data-rail-tab={railTab ?? 'none'}
         data-drag-active={activeDrag ? 'true' : 'false'}
-        data-drawer-interaction="below-toolbar"
       >
+        <div className="planner-main min-w-0">
+        <div role="tablist" aria-label="תצוגת תכנון" className="planner-main-tabs">
+          {MAIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`workspace-main-tab-${tab.id}`}
+              aria-selected={mainTab === tab.id}
+              aria-controls={tab.id === 'board' ? 'workspace-panel-journey' : 'workspace-panel-weekly'}
+              onClick={() => setMainTab(tab.id)}
+              className="planner-rail-tab"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <div
           id="workspace-panel-journey"
           role="region"
-          data-mobile-surface={activeView}
+          hidden={mainTab !== 'board'}
           data-board-surface="persistent-drop-target"
           data-board-layout="stable"
           data-drop-surface="semester-table"
           aria-label="לוח סמסטרים פעיל"
-          className="planner-board-canvas planner-board-canvas-stable planner-agent-drawer min-w-0"
+          className="planner-board-canvas planner-board-canvas-stable min-w-0"
         >
-          {repositoryOpen && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="planner-board-drop-hint"
-            >
+          {railTab === 'courses' && (
+            <p role="status" aria-live="polite" className="planner-board-drop-hint">
               גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין,
               השתמשו ב״הוסף לסמסטר״.
             </p>
@@ -190,59 +165,105 @@ export default function UnifiedPlannerWorkspace({
             programId={programId}
             useAcademicDecisionAgent
             initializePlanningContext
-            onCloseAgent={closeAgent}
-            agentCloseRef={agentCloseRef}
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
             onManualAddCancelled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
             onSemestersChange={setSemesterCourses}
-            agentOpen={agentOpen}
+            agentOpen={railTab === 'agent'}
+            agentPortalTarget={agentSlot}
+            profilePortalTarget={profileSlot}
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
           />
         </div>
-          <aside
-          ref={repositoryDrawerRef}
-          id="workspace-panel-repository"
-          aria-label="מאגר קורסים"
-            data-open={repositoryOpen}
-            data-drag-pass-through={activeDrag ? 'true' : 'false'}
-            aria-hidden={!repositoryOpen}
-            inert={!repositoryOpen}
-          className={`${activeView === 'repository' ? '' : 'hidden lg:block'} planner-repository-rail min-w-0`}
+
+        {/* Kept mounted (hidden) so the chosen groups survive switching back to the board. */}
+        <section
+          id="workspace-panel-weekly"
+          aria-label="מערכת שעות"
+          hidden={mainTab !== 'schedule'}
+          className="planner-weekly-panel w-full"
         >
-          <button
-            ref={repositoryCloseRef}
-            type="button"
-            aria-label="סגור סרגל מאגר קורסים"
-            onClick={closeRepository}
-            className="planner-drawer-close mb-3"
-          >
-            × <span>סגור מאגר</span>
-          </button>
-          <UnifiedCourseRepository
-            repo={repo}
+          <WeeklyScheduleDrawer
             programId={programId}
-            selectedCourseIds={committedCourseIds}
             semesterDestinations={semesterDestinations}
-            onRequestAdd={requestAdd}
-            onDragStateChange={setActiveDrag}
+            semesterCourses={semesterCourses}
+          />
+        </section>
+        </div>
+
+        <aside
+          id="workspace-rail"
+          aria-label="סרגל כלים"
+          data-open={railTab !== null}
+          data-drag-pass-through={activeDrag ? 'true' : 'false'}
+          aria-hidden={railTab === null}
+          inert={railTab === null}
+          className="planner-rail min-w-0"
+        >
+          <div className="planner-rail-header">
+            <div role="tablist" aria-label="כלי תכנון" className="flex gap-1">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`workspace-tab-${tab.id}`}
+                  aria-selected={railTab === tab.id}
+                  aria-controls={`workspace-panel-${tab.id}`}
+                  onClick={() => setRailTab(tab.id)}
+                  className="planner-rail-tab"
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <button
+              ref={railCloseRef}
+              type="button"
+              aria-label="סגור סרגל כלים"
+              onClick={closeRail}
+              className="planner-drawer-close"
+            >
+              × <span>סגור</span>
+            </button>
+          </div>
+
+          <div
+            id="workspace-panel-courses"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-courses"
+            hidden={railTab !== 'courses'}
+            className="planner-rail-body"
+          >
+            <UnifiedCourseRepository
+              repo={repo}
+              programId={programId}
+              selectedCourseIds={committedCourseIds}
+              semesterDestinations={semesterDestinations}
+              onRequestAdd={requestAdd}
+              onDragStateChange={setActiveDrag}
+            />
+          </div>
+          <div
+            id="workspace-panel-agent"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-agent"
+            hidden={railTab !== 'agent'}
+            ref={setAgentSlot}
+            className="planner-rail-body"
+          />
+          <div
+            id="workspace-panel-profile"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-profile"
+            hidden={railTab !== 'profile'}
+            ref={setProfileSlot}
+            className="planner-rail-body"
           />
         </aside>
       </div>
-
-      <section
-        id="workspace-panel-weekly"
-        aria-label="מערכת שעות"
-        className="planner-weekly-panel w-full"
-      >
-        <WeeklyScheduleDrawer
-          programId={programId}
-          semesterDestinations={semesterDestinations}
-          semesterCourses={semesterCourses}
-        />
-      </section>
     </section>
   )
 }

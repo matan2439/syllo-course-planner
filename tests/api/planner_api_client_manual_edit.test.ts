@@ -69,4 +69,13 @@ describe('R2 — manual edit API client', () => {
       ok: false, code: 'BOARD_VERSION_CONFLICT', messageHe: 'הלוח השתנה.', currentBoardVersion: 'bv_2',
     });
   });
+
+  test('a rule rejection that omits the board version does not report a null version', async () => {
+    const fetchImpl = jest.fn(async () => ({ ok: false, status: 422, json: async () => ({
+      ok: false, code: 'PLAN_INVALID', message_he: 'ההוספה אינה חוקית.',
+    }) }));
+    const result = await editBoard({ fetchImpl, baseUrl: '' }, request);
+    expect(result).toEqual({ ok: false, code: 'PLAN_INVALID', messageHe: 'ההוספה אינה חוקית.' });
+    expect('currentBoardVersion' in result).toBe(false);
+  });
 });

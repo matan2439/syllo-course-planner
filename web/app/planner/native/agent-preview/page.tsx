@@ -5,7 +5,7 @@ import { adaptRepository } from '../../../../lib/repository'
 import ProductShell from '../../../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../../../features/planner/components/UnifiedPlannerWorkspace'
 
-export const metadata = { title: 'מתכנן חכם — תצוגת בדיקה (Agent) — מתכנן לימודים' }
+export const metadata = { title: 'מתכנן חכם — תצוגת בדיקה (Agent) — Syllo' }
 export const dynamic = 'force-dynamic'
 
 /**
@@ -40,7 +40,7 @@ export default async function AgentPreviewPage({
 
   return (
     <ProductShell
-      active="plan"
+      width="full"
       programId={programId}
       preferLightweightBackground={false}
     >

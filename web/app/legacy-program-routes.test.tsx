@@ -1,19 +1,28 @@
 import BoardPage from './board/page'
 import RepositoryPage from './repository/page'
-import { readBoardForProgram } from '../lib/board-data'
 
+const redirect = jest.fn((url: string) => { throw new Error(`NEXT_REDIRECT:${url}`) })
 const notFound = jest.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 
-jest.mock('next/navigation', () => ({ notFound: () => notFound() }))
-jest.mock('../lib/board-data', () => ({
-  readBoardForProgram: jest.fn(async () => null),
-  programSubtitle: jest.fn(() => 'תוכנית'),
+jest.mock('next/navigation', () => ({
+  redirect: (url: string) => redirect(url),
+  notFound: () => notFound(),
 }))
 
-describe('legacy read-only program routes', () => {
+describe('retired read-only routes', () => {
   beforeEach(() => {
+    redirect.mockClear()
     notFound.mockClear()
-    jest.mocked(readBoardForProgram).mockClear()
+  })
+
+  test.each([
+    ['board', BoardPage],
+    ['repository', RepositoryPage],
+  ])('%s redirects to the planner and keeps a registered program', async (_name, Page) => {
+    await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_REDIRECT:/planner')
+    await expect(Page({
+      searchParams: Promise.resolve({ program: 'mechanical_engineering_2025' }),
+    })).rejects.toThrow('NEXT_REDIRECT:/planner?program=mechanical_engineering_2025')
   })
 
   test.each([
@@ -24,7 +33,6 @@ describe('legacy read-only program routes', () => {
       searchParams: Promise.resolve({ program: 'electrical_engineering_2027' }),
     })).rejects.toThrow('NEXT_NOT_FOUND')
 
-    expect(notFound).toHaveBeenCalledTimes(1)
-    expect(readBoardForProgram).not.toHaveBeenCalled()
+    expect(redirect).not.toHaveBeenCalled()
   })
 })

@@ -6,7 +6,7 @@ import { semesterTitleHe } from '../../lib/planner/board-vm'
 import ProductShell from '../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPlannerWorkspace'
 
-export const metadata = { title: 'המתכנן המלא — מתכנן לימודים' }
+export const metadata = { title: 'מרחב התכנון — Syllo' }
 export const dynamic = 'force-dynamic'
 
 // Canonical public planner: one React workspace owns the board, repository and
@@ -25,7 +25,7 @@ export default async function PlannerPage({
 
   return (
     <ProductShell
-      active="plan"
+      width="full"
       programId={program.id}
       preferLightweightBackground={false}
     >

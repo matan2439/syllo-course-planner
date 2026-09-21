@@ -71,7 +71,8 @@ const server = createServer(async (req, res) => {
       for await (const c of req) chunks.push(c as Buffer)
       const raw = Buffer.concat(chunks).toString('utf8')
       ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
-      ;(req as unknown as { query: unknown }).query = {}
+      // GET /api/ai/planning-context?program_id=… reads its program from the query string.
+      ;(req as unknown as { query: unknown }).query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
       await planningContextHandler(req as never, r as never)
       return
     }
