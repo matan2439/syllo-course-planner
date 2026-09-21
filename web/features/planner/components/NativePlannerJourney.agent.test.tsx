@@ -576,4 +576,28 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     await waitFor(() => expect(screen.queryByRole('region', { name: 'טיוטת תוכנית' })).toBeNull())
     expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 3 מתוך 185 ש״ש')
   })
+  test('the progress badge moves into the shell top bar when the page provides the slot', async () => {
+    const slot = document.createElement('span')
+    slot.id = 'shell-progress-slot'
+    document.body.appendChild(slot)
+    try {
+      render(
+        <NativePlannerJourney
+          {...deps({ useAcademicDecisionAgent: true })}
+          getBoardFn={async () => boardResponseToModel({
+            ...BOARD,
+            metadata: { ...BOARD.metadata, program_requirements_validation: {
+              valid: false, total_required_hours: 185, planned_hours: 3, remaining_hours: 182,
+              core_courses_total_min: 6, core_courses_selected: 0, core_courses_satisfied: false, category_results: [], warnings: [],
+            } },
+          })}
+          planningContextFn={async () => ({ academicStatusDigest: 'as_test', preferenceDigest: 'pref_test', personalStatus: {}, preferences: {} })}
+        />,
+      )
+      await waitFor(() => expect(within(slot).getByLabelText(/^התקדמות בתוכנית/)).toBeInTheDocument())
+      expect(within(screen.getByRole('region', { name: 'התוכנית הנוכחית' })).queryByLabelText(/^התקדמות בתוכנית/)).toBeNull()
+    } finally {
+      slot.remove()
+    }
+  })
 })

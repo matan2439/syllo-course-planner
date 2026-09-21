@@ -484,6 +484,24 @@ body {
   .planner-workbench[data-rail-open="true"][data-drag-active="true"] .planner-rail { pointer-events: auto; }
 }
 
+/* First-visit setup card. */
+.planner-setup-card {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem;
+  margin-bottom: .75rem; padding: .85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--purple) 30%, var(--border)); border-radius: 1rem;
+  background: color-mix(in srgb, var(--purple) 7%, var(--surface));
+}
+.planner-setup-primary, .planner-setup-secondary, .planner-setup-dismiss {
+  border-radius: 999px; padding: .4rem .9rem; font-size: .8rem; font-weight: 700;
+}
+.planner-setup-primary { background: var(--purple-strong); color: #fff; }
+.planner-setup-secondary { border: 1px solid var(--border); background: var(--surface); }
+.planner-setup-dismiss { color: var(--text-muted); }
+.planner-setup-primary:focus-visible, .planner-setup-secondary:focus-visible, .planner-setup-dismiss:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* Phone bottom tab bar (hidden on larger screens). */
+.planner-bottom-bar { display: none; }
+
 /* Phones and small tablets: a bottom sheet over the board. */
 @media (max-width: 1023px) {
   .planner-drawer-controls { top: 4rem; }
@@ -498,6 +516,20 @@ body {
   }
   .planner-rail[data-open="false"] { transform: translateY(calc(100% + 1rem)); }
   .planner-rail[data-open="true"] { animation-name: planner-sheet-in; }
+  /* Keep the sheet and the page content clear of the bottom bar. */
+  .planner-rail { bottom: 3.75rem; max-height: calc(70dvh - 3.25rem); }
+  .planner-bottom-bar {
+    position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
+    display: flex; gap: .25rem; padding: .4rem .75rem calc(.4rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px);
+  }
+  .planner-bottom-tab { flex: 1; border-radius: .75rem; padding: .55rem .25rem; font-size: .8rem; font-weight: 700; color: var(--text-muted); }
+  .planner-bottom-tab[aria-current="page"] { background: color-mix(in srgb, var(--purple) 14%, transparent); color: var(--purple-strong); }
+  .planner-bottom-tab:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+  /* The toolbar and the main tabs are replaced by the bottom bar on phones. */
+  .planner-drawer-controls, .planner-main-tabs { display: none; }
+  .planner-workbench { padding-bottom: 4rem; }
 }
 @keyframes planner-sheet-in {
   from { opacity: 0; transform: translateY(18px); }
