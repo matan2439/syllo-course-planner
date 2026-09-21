@@ -232,6 +232,8 @@ export interface GeneratedPlanModel {
     workload: { peakHours: number; totalHours: number; activePeriods: number }
     /** Degree requirements recomputed by the server for this alternative's plan. */
     requirementsValidation?: BoardRequirementsModel
+    /** Weekly hours per semester with the server's cap verdicts. */
+    semesterLoads?: Array<{ semesterId: string; hours: number; overUserCap: boolean; overHardCap: boolean }>
   }>
   /**
    * M7 — how several confirmed grounded objectives were combined for this

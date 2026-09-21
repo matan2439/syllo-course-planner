@@ -401,7 +401,6 @@ test('conversation persists a structured clarification answer and returns refres
 })
 
 test('each proposal alternative carries the degree requirements it would leave, recomputed by the server', async () => {
-  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
   const board = {
     semesters: [{ semester_id: 'semester_a', courses: [] }],
     metadata: {
@@ -414,7 +413,8 @@ test('each proposal alternative carries the degree requirements it would leave, 
       program_repository_courses: [{ course_id: 'COURSE-1', name_he: 'קורס', weekly_hours: 3, is_mandatory: false }],
     },
   }
-  const run = async (programBoard: unknown) => {
+  const run = async (programBoard: unknown, maxWeeklyHours = 22) => {
+    const preferences = { max_weekly_hours: maxWeeklyHours, disallowed_course_ids: [] }
     const handler = createConversationHandler({
       resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
       loadBoard: async () => null,
@@ -441,9 +441,20 @@ test('each proposal alternative carries the degree requirements it would leave, 
 
   const withSnapshot = await run(board)
   expect(withSnapshot.statusCode).toBe(200)
+  // The same alternative also reports its per-semester load with the server's cap verdicts.
+  expect(withSnapshot.body.proposal.alternatives[0].semester_loads).toEqual([
+    { semester_id: 'semester_a', hours: 3, over_user_cap: false, over_hard_cap: false },
+  ])
   expect(withSnapshot.body.proposal.alternatives[0].requirements_validation).toEqual(expect.objectContaining({
     planned_hours: 3, remaining_hours: 7, core_courses_selected: 1, core_courses_satisfied: true, valid: true,
   }))
+
+  // A student cap below the plan's load is flagged by the server, not guessed by the client.
+  const overCap = await run(board, 2)
+  expect(overCap.statusCode).toBe(200)
+  expect(overCap.body.proposal.alternatives[0].semester_loads[0]).toEqual(
+    expect.objectContaining({ semester_id: 'semester_a', hours: 3, over_user_cap: true }),
+  )
 
   const withoutSnapshot = await run({ semesters: [], metadata: {} })
   expect(withoutSnapshot.statusCode).toBe(200)

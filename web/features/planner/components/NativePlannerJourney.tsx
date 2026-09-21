@@ -296,6 +296,7 @@ export default function NativePlannerJourney({
           <ProposalView
             draft={draft ?? buildDraftVM(proposal, current)}
             intentOutcome={proposal.intentOutcome}
+            semesterLoads={selectedAlternative?.semesterLoads}
             removed={removed}
             stale={stale}
             staleReason={staleReason}

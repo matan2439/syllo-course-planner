@@ -545,6 +545,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
           objective_scores: [], label_he: 'הצעת העוזר', differences_he: [],
           workload: { peak_hours: 6.5, total_hours: 6.5, active_periods: 1 },
           requirements_validation: requirements(6.5),
+          semester_loads: [{ semester_id: 'year_3_semester_a', hours: 6.5, over_user_cap: true, over_hard_cap: false }],
         }],
       },
     } as unknown as ConversationResponse))
@@ -567,6 +568,9 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     fireEvent.keyDown(composer, { key: 'Enter' })
     await waitFor(() => expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toBeInTheDocument())
     expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 6.5 מתוך 185 ש״ש')
+    const loads = screen.getByLabelText('עומס לפי סמסטר')
+    expect(loads).toHaveTextContent('6.5 ש״ש')
+    expect(loads).toHaveTextContent('מעל התקרה שהגדרת')
 
     fireEvent.click(screen.getByRole('button', { name: /דחה/ }))
     await waitFor(() => expect(screen.queryByRole('region', { name: 'טיוטת תוכנית' })).toBeNull())
