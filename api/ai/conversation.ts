@@ -456,7 +456,15 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const requirements = recomputeRequirements(programBoard, alternative.semesters.map((semester) => ({
           semesterId: semester.semester_id, courseIds: semester.course_ids,
         })));
-        return requirements ? { ...alternative, requirements_validation: requirements } : alternative;
+        // Per-semester load and the server's cap verdicts (the student's own cap and the hard cap).
+        const semesterLoads = alternative.semesters.map((semester) => {
+          const hours = [...new Set(semester.course_ids)].reduce((sum, courseId) => sum + hoursFor(courseId), 0);
+          return {
+            semester_id: semester.semester_id, hours,
+            over_user_cap: hours > model.maxHoursPerSemester, over_hard_cap: hours > model.hardCap,
+          };
+        });
+        return { ...alternative, semester_loads: semesterLoads, ...(requirements ? { requirements_validation: requirements } : {}) };
       });
       const recommended = wireAlternatives.find((alternative) => alternative.recommended) ?? wireAlternatives[0];
       const decision = new DeterministicCandidateDecisionCapability().decide({

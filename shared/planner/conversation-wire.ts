@@ -135,6 +135,13 @@ const conversationAlternativeSchema = z.object({
   }).strict(),
   /** Degree requirements recomputed for THIS alternative (absent when the board ships no base snapshot). */
   requirements_validation: boardRequirementsValidationSchema.optional(),
+  /** Weekly hours per semester for this alternative, with the server's cap verdicts. */
+  semester_loads: z.array(z.object({
+    semester_id: z.string().trim().min(1).max(256),
+    hours: z.number().nonnegative(),
+    over_user_cap: z.boolean(),
+    over_hard_cap: z.boolean(),
+  }).strict()).max(64).optional(),
 }).strict()
 
 const conversationProposalSchema = z.object({

@@ -5,12 +5,15 @@ import AgentOutcomeDetails from '../../agent/components/AgentOutcomeDetails'
 import GroundedExplanation from '../../agent/components/GroundedExplanation'
 import { AGENT_OUTCOME_LABEL_HE, MARKER_LABEL, STALE_MESSAGE_HE } from '../constants'
 import type { StaleReason } from '../types'
+import { semesterTitleHe } from '../../../lib/planner/board-vm'
 
 export default function ProposalView({
-  draft, intentOutcome, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
+  draft, intentOutcome, semesterLoads, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
 }: {
   draft: ReturnType<typeof buildDraftVM>
   intentOutcome?: GeneratedPlanModel['intentOutcome']
+  /** Weekly hours per semester with the server's cap verdicts (agent proposals). */
+  semesterLoads?: NonNullable<NonNullable<GeneratedPlanModel['alternatives']>[number]['semesterLoads']>
   removed: Array<{ id: string; nameHe: string | null }>
   stale: boolean
   staleReason: StaleReason | null
@@ -122,6 +125,25 @@ export default function ProposalView({
           {removed.map((c, i) => (
             <span key={c.id}>{i > 0 ? ', ' : ''}{c.nameHe ?? c.id}</span>
           ))}
+        </div>
+      )}
+
+      {semesterLoads && semesterLoads.some((load) => load.hours > 0) && (
+        <div aria-label="עומס לפי סמסטר" className="rounded-lg border border-[var(--border)] px-3.5 py-3 text-sm">
+          <h3 className="mb-1.5 text-sm font-bold tracking-tight">עומס לפי סמסטר</h3>
+          <ul className="flex flex-col gap-1">
+            {semesterLoads.filter((load) => load.hours > 0).map((load) => (
+              <li key={load.semesterId} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-semibold">{semesterTitleHe(load.semesterId)}</span>
+                <span>{load.hours} ש״ש</span>
+                {load.overHardCap ? (
+                  <span className="text-red-700 dark:text-red-300">מעל התקרה המוחלטת</span>
+                ) : load.overUserCap ? (
+                  <span className="text-amber-700 dark:text-amber-300">מעל התקרה שהגדרת</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -29,6 +29,11 @@ export function conversationProposalToModel(input: ConversationProposal): Genera
       totalHours: alternative.workload.total_hours,
       activePeriods: alternative.workload.active_periods,
     },
+    ...(alternative.semester_loads ? {
+      semesterLoads: alternative.semester_loads.map((load) => ({
+        semesterId: load.semester_id, hours: load.hours, overUserCap: load.over_user_cap, overHardCap: load.over_hard_cap,
+      })),
+    } : {}),
     ...(alternative.requirements_validation
       ? { requirementsValidation: requirementsToModel(alternative.requirements_validation) } : {}),
   }))
