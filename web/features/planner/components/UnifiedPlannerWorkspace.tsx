@@ -6,6 +6,7 @@ import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourn
 import UnifiedCourseRepository, { type SemesterDestination } from '../../courses/components/UnifiedCourseRepository'
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
+import { LAST_PROGRAM_KEY } from '../../shell/last-program'
 
 type RailTab = 'courses' | 'agent' | 'profile'
 type MainTab = 'board' | 'schedule'
@@ -44,6 +45,20 @@ export default function UnifiedPlannerWorkspace({
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
   const [mainTab, setMainTab] = useState<MainTab>('board')
+  // First-visit setup card: shown until the student acts on it or dismisses it (remembered per program).
+  const setupKey = `syllo_setup_done_${programId}`
+  const [showSetup, setShowSetup] = useState(false)
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_PROGRAM_KEY, programId) // lets the landing page resume this plan
+      setShowSetup(localStorage.getItem(setupKey) !== '1')
+    } catch { /* storage unavailable: no card, no memory */ }
+  }, [programId, setupKey])
+  const finishSetup = (tab?: RailTab) => {
+    setShowSetup(false)
+    try { localStorage.setItem(setupKey, '1') } catch { /* best effort */ }
+    if (tab) setRailTab(tab)
+  }
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
@@ -129,6 +144,21 @@ export default function UnifiedPlannerWorkspace({
         data-drag-active={activeDrag ? 'true' : 'false'}
       >
         <div className="planner-main min-w-0">
+        {showSetup && mainTab === 'board' && (
+          <section aria-label="הגדרה ראשונית" className="planner-setup-card">
+            <div>
+              <h2 className="text-sm font-bold">בואו נתחיל: איפה אתם בתואר?</h2>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                ככל שהעוזר יודע יותר (קורסים שהשלמתם, שעות שבועיות, מה לשלב או להימנע) כך התוכנית מדויקת יותר. אפשר גם לדלג ולגרור קורסים ישר ללוח.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => finishSetup('agent')} className="planner-setup-primary">ספרו לעוזר</button>
+              <button type="button" onClick={() => finishSetup('profile')} className="planner-setup-secondary">סמנו קורסים שהשלמתי</button>
+              <button type="button" onClick={() => finishSetup()} className="planner-setup-dismiss">לא עכשיו</button>
+            </div>
+          </section>
+        )}
         <div role="tablist" aria-label="תצוגת תכנון" className="planner-main-tabs">
           {MAIN_TABS.map((tab) => (
             <button
@@ -264,6 +294,26 @@ export default function UnifiedPlannerWorkspace({
           />
         </aside>
       </div>
+
+      {/* Phones: the four working views one thumb away (the tabs above and the toolbar are for larger screens). */}
+      <nav aria-label="ניווט תכנון" className="planner-bottom-bar">
+        {[
+          { key: 'board', label: 'לוח', active: mainTab === 'board' && railTab === null, go: () => { setMainTab('board'); setRailTab(null) } },
+          { key: 'schedule', label: 'מערכת', active: mainTab === 'schedule' && railTab === null, go: () => { setMainTab('schedule'); setRailTab(null) } },
+          { key: 'courses', label: 'קורסים', active: railTab === 'courses', go: () => setRailTab('courses') },
+          { key: 'agent', label: 'עוזר', active: railTab === 'agent', go: () => setRailTab('agent') },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={item.go}
+            aria-current={item.active ? 'page' : undefined}
+            className="planner-bottom-tab"
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
     </section>
   )
 }

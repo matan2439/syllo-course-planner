@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import { boardModelToVM } from '../../../lib/planner/board-vm'
 import type { CourseVM } from '../../../lib/board'
@@ -52,12 +54,16 @@ export default function CurrentPlanSection({
   justPlaced: Highlight
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
+  // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
+  const [progressSlot, setProgressSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => { setProgressSlot(document.getElementById('shell-progress-slot')) }, [])
+  const badge = <ProgressBadge requirements={adaptRequirementsFromModel(previewBoard ?? current)} />
   return (
     <section aria-label="התוכנית הנוכחית">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
-          <ProgressBadge requirements={adaptRequirementsFromModel(previewBoard ?? current)} />
+          {progressSlot ? createPortal(badge, progressSlot) : badge}
         </div>
         {previewBoard && <span className="text-xs text-[var(--text-muted)]">תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש</span>}
       </div>

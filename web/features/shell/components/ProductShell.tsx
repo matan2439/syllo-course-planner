@@ -64,6 +64,8 @@ export default function ProductShell({
                 {programLabel} <span aria-hidden="true">▾</span>
               </Link>
             )}
+            {/* The planner portals its live requirements badge here (see CurrentPlanSection). */}
+            {programId && <span id="shell-progress-slot" className="contents" />}
             {progress}
             <ThemeToggle />
           </nav>

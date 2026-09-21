@@ -51,6 +51,8 @@ const repoWithCourse: RepositoryVM = { totalCourses: 1, categories: [{
 const renderWorkspace = (props: Partial<Parameters<typeof UnifiedPlannerWorkspace>[0]> = {}) =>
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repo} {...props} />)
 
+beforeEach(() => localStorage.clear())
+
 describe('UnifiedPlannerWorkspace', () => {
   test('has one opening control per tool and returns focus on Escape', () => {
     renderWorkspace()
@@ -242,5 +244,58 @@ describe('UnifiedPlannerWorkspace — weekly schedule tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
     expect(screen.getByRole('tab', { name: 'לוח סמסטרים' })).toHaveAttribute('aria-selected', 'true')
     expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
+  })
+})
+
+describe('UnifiedPlannerWorkspace — first visit and phones', () => {
+  test('remembers the program so the landing page can resume it', () => {
+    renderWorkspace()
+    expect(localStorage.getItem('syllo_last_program')).toBe('mechanical_engineering_2027')
+  })
+
+  test('a first visit shows the setup card; "ספרו לעוזר" opens the assistant and the card stays gone', () => {
+    const { unmount } = renderWorkspace()
+    const card = screen.getByRole('region', { name: 'הגדרה ראשונית' })
+    expect(card).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'ספרו לעוזר' }))
+    expect(screen.queryByRole('region', { name: 'הגדרה ראשונית' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'עוזר AI' })).toHaveAttribute('aria-selected', 'true')
+
+    unmount()
+    renderWorkspace()
+    expect(screen.queryByRole('region', { name: 'הגדרה ראשונית' })).toBeNull()
+  })
+
+  test('"סמנו קורסים שהשלמתי" opens the profile and "לא עכשיו" just dismisses', () => {
+    const { unmount } = renderWorkspace()
+    fireEvent.click(screen.getByRole('button', { name: 'סמנו קורסים שהשלמתי' }))
+    expect(screen.getByRole('tab', { name: 'הפרופיל שלי' })).toHaveAttribute('aria-selected', 'true')
+    unmount()
+
+    localStorage.clear()
+    const second = renderWorkspace()
+    fireEvent.click(screen.getByRole('button', { name: 'לא עכשיו' }))
+    expect(screen.queryByRole('region', { name: 'הגדרה ראשונית' })).toBeNull()
+    expect(second.container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'false')
+  })
+
+  test('the phone bottom bar reaches all four working views', () => {
+    const { container } = renderWorkspace()
+    const bar = screen.getByRole('navigation', { name: 'ניווט תכנון' })
+    const workbench = container.querySelector('.planner-workbench')!
+    const tab = (name: string) => Array.from(bar.querySelectorAll('button')).find((b) => b.textContent === name)!
+
+    fireEvent.click(tab('עוזר'))
+    expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
+    fireEvent.click(tab('קורסים'))
+    expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
+    fireEvent.click(tab('מערכת'))
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
+    expect(document.getElementById('workspace-panel-weekly')).not.toHaveAttribute('hidden')
+    expect(tab('מערכת')).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(tab('לוח'))
+    expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
+    expect(tab('לוח')).toHaveAttribute('aria-current', 'page')
   })
 })

@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import BrandLogo from '../features/shell/components/BrandLogo'
 import ShaderGradientBackground from '../features/shell/components/ShaderGradientBackground'
+import LandingCtas from '../features/shell/components/LandingCtas'
 import ThemeToggle from '../features/shell/components/ThemeToggle'
 
 const FEATURES = [
@@ -31,18 +31,7 @@ export default function Home() {
           </p>
 
           <div className="rise rise-2 mt-9 flex flex-col items-center gap-4">
-            <Link
-              href="/programs"
-              className="inline-block rounded-full bg-[var(--purple-strong)] px-8 py-3.5 text-base font-semibold text-white shadow-[var(--shadow-premium)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
-            >
-              בנו תוכנית
-            </Link>
-            <Link
-              href="/planner"
-              className="text-sm text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"
-            >
-              המשך לתוכנית שלי
-            </Link>
+            <LandingCtas />
           </div>
 
           <ul className="rise rise-3 mt-12 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm text-[var(--text-muted)]">
