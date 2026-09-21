@@ -1,0 +1,1042 @@
+{
+  "block": {
+    "total_required_hours": 185,
+    "program_name_he": "הנדסה מכנית",
+    "core_courses_total_min": 6,
+    "mandatory_course_ids": [],
+    "other_category_label": "קורסים באישור מיוחד",
+    "categories": [
+      {
+        "category_id": "fluids",
+        "name_he": "קורסי ליבה — זורמים",
+        "min_courses": 1,
+        "needs_review": false,
+        "is_core": true,
+        "course_ids": [
+          "0542-4120",
+          "0542-4123",
+          "0542-4320",
+          "0542-4352"
+        ]
+      },
+      {
+        "category_id": "solids",
+        "name_he": "קורסי ליבה — מוצקים",
+        "min_courses": 1,
+        "needs_review": false,
+        "is_core": true,
+        "course_ids": [
+          "0542-4220",
+          "0542-4221",
+          "0542-4223",
+          "0542-4224"
+        ]
+      },
+      {
+        "category_id": "systems",
+        "name_he": "קורסי ליבה — מערכות",
+        "min_courses": 1,
+        "needs_review": false,
+        "is_core": true,
+        "course_ids": [
+          "0542-4420",
+          "0542-4422",
+          "0542-4455",
+          "0542-4622"
+        ]
+      },
+      {
+        "category_id": "advanced_labs",
+        "name_he": "מעבדות מתקדמות",
+        "min_courses": 1,
+        "needs_review": false,
+        "is_core": false,
+        "course_ids": [
+          "0542-4391",
+          "0542-4624",
+          "0581-4131",
+          "0542-4093",
+          "0542-4094"
+        ]
+      },
+      {
+        "category_id": "other_specialization",
+        "name_he": "קורסי התמחות / בחירה נוספים",
+        "min_courses": 0,
+        "needs_review": false,
+        "is_core": false,
+        "course_ids": [
+          "0542-4124",
+          "0542-4125",
+          "0542-4131",
+          "0542-4132",
+          "0542-4135",
+          "0542-4179",
+          "0542-4191",
+          "0542-4226",
+          "0542-4275",
+          "0542-4321",
+          "0542-4322",
+          "0542-4351",
+          "0542-4425",
+          "0542-4524",
+          "0542-4527",
+          "0542-4559",
+          "0542-4621",
+          "0542-4722",
+          "0509-4010",
+          "0512-1203",
+          "0512-1202",
+          "0512-2508",
+          "0512-4200",
+          "0512-4362",
+          "0512-4700",
+          "0512-4702",
+          "0571-1818",
+          "0571-3802",
+          "0571-4174",
+          "0555-4000",
+          "0555-4432",
+          "0555-4555",
+          "0555-4562",
+          "0555-3160",
+          "0555-4630",
+          "0555-4550",
+          "0542-4011",
+          "0542-4012",
+          "0542-3112"
+        ]
+      },
+      {
+        "category_id": "shaar_ruach",
+        "name_he": "קורסי שער רוח",
+        "min_courses": 3,
+        "needs_review": false,
+        "is_core": false,
+        "course_ids": [
+          "0609-1005",
+          "0609-1003",
+          "0609-1008",
+          "0609-1007",
+          "0609-1013",
+          "0609-1014",
+          "1880-0901",
+          "1880-0710",
+          "0609-1002",
+          "0609-1011",
+          "0609-1018",
+          "0609-1017",
+          "0609-1201",
+          "0609-1225",
+          "0609-1226",
+          "0609-1303",
+          "0612-6041",
+          "0612-6044",
+          "0618-1059",
+          "0622-1001",
+          "0627-1010",
+          "0631-1130",
+          "0631-2468",
+          "0631-3496",
+          "0671-1045",
+          "0671-2215",
+          "0671-2331",
+          "0671-2669",
+          "0671-2670",
+          "0672-1102",
+          "0677-1514",
+          "0687-1113",
+          "0687-1115",
+          "0616-1311",
+          "0672-1109",
+          "0723-2047",
+          "0723-2022",
+          "0621-1194",
+          "0621-1219",
+          "0669-6175",
+          "0662-1011",
+          "0662-1757",
+          "0662-2642",
+          "0662-2649",
+          "0608-1110",
+          "0608-1177",
+          "0608-1152",
+          "0608-1153",
+          "0669-6198",
+          "0609-1006",
+          "0609-1021",
+          "0609-1004",
+          "0609-1009",
+          "0609-1015",
+          "0609-1010",
+          "0609-1019",
+          "0609-1020",
+          "0609-1209",
+          "0609-1211",
+          "0609-1212",
+          "0618-1016",
+          "0618-1042",
+          "0622-1004",
+          "0622-2001",
+          "0631-2503",
+          "0671-1031",
+          "0671-1091",
+          "0671-1130",
+          "0671-1238",
+          "0671-2383",
+          "0671-2649",
+          "0671-2668",
+          "0671-4389",
+          "0672-1202",
+          "0672-1557",
+          "0677-1283",
+          "1673-4026",
+          "0723-2052",
+          "0621-1101",
+          "0621-1220",
+          "0662-1180",
+          "0662-2253",
+          "0662-2615",
+          "0662-2620",
+          "0662-2653",
+          "0662-2656",
+          "0608-1010",
+          "0669-6203"
+        ]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "shipped board as-is",
+      "completed_course_ids": [],
+      "semesters": [
+        {
+          "semester_id": "year_3_semester_a",
+          "courses": [
+            {
+              "course_id": "0512-1204",
+              "weekly_hours": 3.5
+            },
+            {
+              "course_id": "0542-2400",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-2500",
+              "weekly_hours": 5
+            },
+            {
+              "course_id": "0542-3243",
+              "weekly_hours": 5.5
+            },
+            {
+              "course_id": "0542-3620",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            }
+          ]
+        },
+        {
+          "semester_id": "year_3_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3780",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-3791",
+              "weekly_hours": 2
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_a",
+          "courses": [
+            {
+              "course_id": "0542-4010",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4092",
+              "weekly_hours": 2
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-4020",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4091",
+              "weekly_hours": 2
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "valid": false,
+        "total_required_hours": 185,
+        "planned_hours": 45.0,
+        "unknown_hours_courses": 0,
+        "remaining_hours": 140.0,
+        "core_courses_total_min": 6,
+        "core_courses_selected": 0,
+        "core_courses_satisfied": false,
+        "category_results": [
+          {
+            "category_id": "fluids",
+            "name_he": "קורסי ליבה — זורמים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "solids",
+            "name_he": "קורסי ליבה — מוצקים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "systems",
+            "name_he": "קורסי ליבה — מערכות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "advanced_labs",
+            "name_he": "מעבדות מתקדמות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "other_specialization",
+            "name_he": "קורסי התמחות / בחירה נוספים",
+            "min_courses": 0,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "shaar_ruach",
+            "name_he": "קורסי שער רוח",
+            "min_courses": 3,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 3
+          }
+        ],
+        "missing_mandatory_courses": [],
+        "missing_required_categories": [
+          "fluids",
+          "solids",
+          "systems",
+          "advanced_labs",
+          "shaar_ruach",
+          "core_total"
+        ],
+        "warnings": [
+          "קטגוריה לא הושלמה: קורסי ליבה — זורמים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מוצקים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מערכות",
+          "קטגוריה לא הושלמה: מעבדות מתקדמות",
+          "קטגוריה לא הושלמה: קורסי שער רוח",
+          "נדרשים לפחות 6 קורסי ליבה; נבחרו 0"
+        ],
+        "explanation": "דרישות לא מסופקות: 5 קטגוריות לא הושלמו; קורסי ליבה: 0/6"
+      }
+    },
+    {
+      "name": "empty plan",
+      "completed_course_ids": [],
+      "semesters": [
+        {
+          "semester_id": "year_3_semester_a",
+          "courses": []
+        }
+      ],
+      "expected": {
+        "valid": false,
+        "total_required_hours": 185,
+        "planned_hours": 0.0,
+        "unknown_hours_courses": 0,
+        "remaining_hours": 185.0,
+        "core_courses_total_min": 6,
+        "core_courses_selected": 0,
+        "core_courses_satisfied": false,
+        "category_results": [
+          {
+            "category_id": "fluids",
+            "name_he": "קורסי ליבה — זורמים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "solids",
+            "name_he": "קורסי ליבה — מוצקים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "systems",
+            "name_he": "קורסי ליבה — מערכות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "advanced_labs",
+            "name_he": "מעבדות מתקדמות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "other_specialization",
+            "name_he": "קורסי התמחות / בחירה נוספים",
+            "min_courses": 0,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "shaar_ruach",
+            "name_he": "קורסי שער רוח",
+            "min_courses": 3,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 3
+          }
+        ],
+        "missing_mandatory_courses": [],
+        "missing_required_categories": [
+          "fluids",
+          "solids",
+          "systems",
+          "advanced_labs",
+          "shaar_ruach",
+          "core_total"
+        ],
+        "warnings": [
+          "קטגוריה לא הושלמה: קורסי ליבה — זורמים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מוצקים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מערכות",
+          "קטגוריה לא הושלמה: מעבדות מתקדמות",
+          "קטגוריה לא הושלמה: קורסי שער רוח",
+          "נדרשים לפחות 6 קורסי ליבה; נבחרו 0"
+        ],
+        "explanation": "דרישות לא מסופקות: 5 קטגוריות לא הושלמו; קורסי ליבה: 0/6"
+      }
+    },
+    {
+      "name": "core electives satisfy the core total",
+      "completed_course_ids": [],
+      "semesters": [
+        {
+          "semester_id": "year_3_semester_a",
+          "courses": [
+            {
+              "course_id": "0512-1204",
+              "weekly_hours": 3.5
+            },
+            {
+              "course_id": "0542-2400",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-2500",
+              "weekly_hours": 5
+            },
+            {
+              "course_id": "0542-3243",
+              "weekly_hours": 5.5
+            },
+            {
+              "course_id": "0542-3620",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-4120",
+              "weekly_hours": 3.5
+            },
+            {
+              "course_id": "0542-4220",
+              "weekly_hours": 4.0
+            }
+          ]
+        },
+        {
+          "semester_id": "year_3_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3780",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-3791",
+              "weekly_hours": 2
+            },
+            {
+              "course_id": "0542-4420",
+              "weekly_hours": 3.0
+            },
+            {
+              "course_id": "0542-4123",
+              "weekly_hours": 3.5
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_a",
+          "courses": [
+            {
+              "course_id": "0542-4010",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4092",
+              "weekly_hours": 2
+            },
+            {
+              "course_id": "0542-4221",
+              "weekly_hours": 4.5
+            },
+            {
+              "course_id": "0542-4422",
+              "weekly_hours": 3.0
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-4020",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4091",
+              "weekly_hours": 2
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "valid": false,
+        "total_required_hours": 185,
+        "planned_hours": 66.5,
+        "unknown_hours_courses": 0,
+        "remaining_hours": 118.5,
+        "core_courses_total_min": 6,
+        "core_courses_selected": 6,
+        "core_courses_satisfied": true,
+        "category_results": [
+          {
+            "category_id": "fluids",
+            "name_he": "קורסי ליבה — זורמים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4120",
+              "0542-4123"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "solids",
+            "name_he": "קורסי ליבה — מוצקים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4220",
+              "0542-4221"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "systems",
+            "name_he": "קורסי ליבה — מערכות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4420",
+              "0542-4422"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "advanced_labs",
+            "name_he": "מעבדות מתקדמות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "other_specialization",
+            "name_he": "קורסי התמחות / בחירה נוספים",
+            "min_courses": 0,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "shaar_ruach",
+            "name_he": "קורסי שער רוח",
+            "min_courses": 3,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 3
+          }
+        ],
+        "missing_mandatory_courses": [],
+        "missing_required_categories": [
+          "advanced_labs",
+          "shaar_ruach"
+        ],
+        "warnings": [
+          "קטגוריה לא הושלמה: מעבדות מתקדמות",
+          "קטגוריה לא הושלמה: קורסי שער רוח"
+        ],
+        "explanation": "דרישות לא מסופקות: 2 קטגוריות לא הושלמו"
+      }
+    },
+    {
+      "name": "gateway courses, labs and an unknown-hours course",
+      "completed_course_ids": [],
+      "semesters": [
+        {
+          "semester_id": "year_3_semester_a",
+          "courses": [
+            {
+              "course_id": "0512-1204",
+              "weekly_hours": 3.5
+            },
+            {
+              "course_id": "0542-2400",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-2500",
+              "weekly_hours": 5
+            },
+            {
+              "course_id": "0542-3243",
+              "weekly_hours": 5.5
+            },
+            {
+              "course_id": "0542-3620",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            }
+          ]
+        },
+        {
+          "semester_id": "year_3_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3780",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-3791",
+              "weekly_hours": 2
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_a",
+          "courses": [
+            {
+              "course_id": "0542-4010",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4092",
+              "weekly_hours": 2
+            },
+            {
+              "course_id": "0609-1005",
+              "weekly_hours": 2.0
+            },
+            {
+              "course_id": "0609-1003",
+              "weekly_hours": 2.0
+            },
+            {
+              "course_id": "0609-1008",
+              "weekly_hours": 2.0
+            },
+            {
+              "course_id": "0542-4391",
+              "weekly_hours": 4.0
+            },
+            {
+              "course_id": "0542-4124",
+              "weekly_hours": null
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-4020",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4091",
+              "weekly_hours": 2
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "valid": false,
+        "total_required_hours": 185,
+        "planned_hours": 55.0,
+        "unknown_hours_courses": 1,
+        "remaining_hours": 130.0,
+        "core_courses_total_min": 6,
+        "core_courses_selected": 0,
+        "core_courses_satisfied": false,
+        "category_results": [
+          {
+            "category_id": "fluids",
+            "name_he": "קורסי ליבה — זורמים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "solids",
+            "name_he": "קורסי ליבה — מוצקים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "systems",
+            "name_he": "קורסי ליבה — מערכות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 1
+          },
+          {
+            "category_id": "advanced_labs",
+            "name_he": "מעבדות מתקדמות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4391"
+            ],
+            "selected_count": 1,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "other_specialization",
+            "name_he": "קורסי התמחות / בחירה נוספים",
+            "min_courses": 0,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4124"
+            ],
+            "selected_count": 1,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "shaar_ruach",
+            "name_he": "קורסי שער רוח",
+            "min_courses": 3,
+            "needs_review": false,
+            "selected_courses": [
+              "0609-1003",
+              "0609-1005",
+              "0609-1008"
+            ],
+            "selected_count": 3,
+            "satisfied": true,
+            "missing_count": 0
+          }
+        ],
+        "missing_mandatory_courses": [],
+        "missing_required_categories": [
+          "fluids",
+          "solids",
+          "systems",
+          "core_total"
+        ],
+        "warnings": [
+          "חלק מהשעות אינן ידועות ולכן חישוב המכסה חלקי (1 קורסים ללא שעות)",
+          "קטגוריה לא הושלמה: קורסי ליבה — זורמים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מוצקים",
+          "קטגוריה לא הושלמה: קורסי ליבה — מערכות",
+          "נדרשים לפחות 6 קורסי ליבה; נבחרו 0"
+        ],
+        "explanation": "דרישות לא מסופקות: 3 קטגוריות לא הושלמו; קורסי ליבה: 0/6"
+      }
+    },
+    {
+      "name": "completed courses count toward categories",
+      "completed_course_ids": [
+        "0542-4120",
+        "0542-4220",
+        "0542-4420",
+        "0542-4123",
+        "0542-4221",
+        "0542-4422",
+        "0542-4391"
+      ],
+      "semesters": [
+        {
+          "semester_id": "year_3_semester_a",
+          "courses": [
+            {
+              "course_id": "0512-1204",
+              "weekly_hours": 3.5
+            },
+            {
+              "course_id": "0542-2400",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-2500",
+              "weekly_hours": 5
+            },
+            {
+              "course_id": "0542-3243",
+              "weekly_hours": 5.5
+            },
+            {
+              "course_id": "0542-3620",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            }
+          ]
+        },
+        {
+          "semester_id": "year_3_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-3792",
+              "weekly_hours": 4
+            },
+            {
+              "course_id": "0542-3780",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-3791",
+              "weekly_hours": 2
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_a",
+          "courses": [
+            {
+              "course_id": "0542-4010",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4092",
+              "weekly_hours": 2
+            }
+          ]
+        },
+        {
+          "semester_id": "year_4_semester_b",
+          "courses": [
+            {
+              "course_id": "0542-4020",
+              "weekly_hours": 3
+            },
+            {
+              "course_id": "0542-4091",
+              "weekly_hours": 2
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "valid": false,
+        "total_required_hours": 185,
+        "planned_hours": 45.0,
+        "unknown_hours_courses": 0,
+        "remaining_hours": 140.0,
+        "core_courses_total_min": 6,
+        "core_courses_selected": 6,
+        "core_courses_satisfied": true,
+        "category_results": [
+          {
+            "category_id": "fluids",
+            "name_he": "קורסי ליבה — זורמים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4120",
+              "0542-4123"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "solids",
+            "name_he": "קורסי ליבה — מוצקים",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4220",
+              "0542-4221"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "systems",
+            "name_he": "קורסי ליבה — מערכות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4420",
+              "0542-4422"
+            ],
+            "selected_count": 2,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "advanced_labs",
+            "name_he": "מעבדות מתקדמות",
+            "min_courses": 1,
+            "needs_review": false,
+            "selected_courses": [
+              "0542-4391"
+            ],
+            "selected_count": 1,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "other_specialization",
+            "name_he": "קורסי התמחות / בחירה נוספים",
+            "min_courses": 0,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": true,
+            "missing_count": 0
+          },
+          {
+            "category_id": "shaar_ruach",
+            "name_he": "קורסי שער רוח",
+            "min_courses": 3,
+            "needs_review": false,
+            "selected_courses": [],
+            "selected_count": 0,
+            "satisfied": false,
+            "missing_count": 3
+          }
+        ],
+        "missing_mandatory_courses": [],
+        "missing_required_categories": [
+          "shaar_ruach"
+        ],
+        "warnings": [
+          "קטגוריה לא הושלמה: קורסי שער רוח"
+        ],
+        "explanation": "דרישות לא מסופקות: 1 קטגוריות לא הושלמו"
+      }
+    }
+  ]
+}

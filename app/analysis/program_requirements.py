@@ -274,11 +274,16 @@ def get_program_categories_for_frontend(
     """
     reqs = program_requirements.get("requirements", {}) if isinstance(program_requirements.get("requirements"), dict) else {}
     cats = _get_unified_categories(program_requirements)
+    # Inputs validate_program_plan reads from the program file but the frontend block used to omit; the
+    # TypeScript port (shared/planner/requirements.ts) needs them to recompute requirements for any plan.
+    core_cat_ids = {c.get("category_id") for c in reqs.get("core_categories", [])}
+    mandatory = reqs.get("mandatory_courses", {})
 
     result: dict[str, Any] = {
         "total_required_hours":  program_requirements.get("total_required_hours"),
         "program_name_he":       program_requirements.get("program_name_he"),
         "core_courses_total_min": reqs.get("core_courses_total_min"),
+        "mandatory_course_ids":  [normalize_course_id(c) for c in mandatory.get("course_ids", [])],
         "other_category_label":  program_requirements.get("ui", {}).get(
             "other_category_label", "לא משויך לתוכנית הנבחרת"
         ),
@@ -288,6 +293,7 @@ def get_program_categories_for_frontend(
                 "name_he":      cat.get("name_he", ""),
                 "min_courses":  cat.get("min_courses", 1),
                 "needs_review": bool(cat.get("needs_review", False)),
+                "is_core":      cat.get("category_id") in core_cat_ids,
                 "course_ids":   resolve_category_course_ids(cat),
             }
             for cat in cats
