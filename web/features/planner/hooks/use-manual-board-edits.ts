@@ -1,10 +1,11 @@
 import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
+import type { CommittedBoardState } from '../../../../shared/planner/api-client'
 import type {
   editBoard, GeneratePlanRequest, LoadedPlanningContext, ManualBoardEditResult,
 } from '../../../../shared/planner/api-client'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
-import { applyGeneratedToBoard } from '../../../lib/planner/apply-plan'
+import { applyCommittedBoard } from '../../../lib/planner/apply-plan'
 import { uuidv4 } from '../../../lib/ai-session-token'
 import type { defaultEstablishPlanningContext } from '../lib/api-defaults'
 import type { ChatMsg, ManualAddIntent } from '../types'
@@ -76,10 +77,10 @@ export function useManualBoardEdits({
 
   const adoptCommittedBoard = (
     base: BoardModel,
-    board: { semesters: Array<{ semesterId: string; courseIds: string[] }>; version: string },
+    board: CommittedBoardState,
     noteHe: string,
   ) => {
-    setCurrent(applyGeneratedToBoard({ semesters: board.semesters } as GeneratedPlanModel, base))
+    setCurrent(applyCommittedBoard(board, base))
     setBoardVersion(board.version)
     onEditCommitted()
     manualEditKeyRef.current = null

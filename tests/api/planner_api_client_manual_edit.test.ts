@@ -61,6 +61,27 @@ describe('R2 — manual edit API client', () => {
     expect(init.body).not.toMatch(/semesters|owner_id|new_board_version/);
   });
 
+  test('maps the server-recomputed requirements into the committed board state', async () => {
+    const snapshot = {
+      valid: true, total_required_hours: 10, planned_hours: 3, remaining_hours: 7,
+      core_courses_total_min: 1, core_courses_selected: 1, core_courses_satisfied: true,
+      category_results: [{ category_id: 'core_a', name_he: 'ליבה', min_courses: 1, selected_count: 1, satisfied: true, missing_count: 0 }],
+      warnings: [],
+    };
+    const fetchImpl = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({
+      ok: true, replayed: false, operation_id: request.operation_id,
+      board: { programId: request.program_id, version: 'bv_1', semesters: [], requirements_validation: snapshot },
+    }) }));
+    const result = await editBoard({ fetchImpl, baseUrl: '' }, request) as any;
+    expect(result.board.requirementsValidation).toEqual({
+      valid: true, totalRequiredHours: 10, plannedHours: 3, remainingHours: 7,
+      coreCoursesTotalMin: 1, coreCoursesSelected: 1, coreCoursesSatisfied: true,
+      categories: [{ categoryId: 'core_a', nameHe: 'ליבה', minCourses: 1, selectedCount: 1, satisfied: true, missingCount: 0 }],
+      warnings: [],
+    });
+    expect(result.board).not.toHaveProperty('requirements_validation');
+  });
+
   test('returns a typed rejection without turning it into a transport error', async () => {
     const fetchImpl = jest.fn(async () => ({ ok: false, status: 409, json: async () => ({
       ok: false, code: 'BOARD_VERSION_CONFLICT', message_he: 'הלוח השתנה.', currentBoardVersion: 'bv_2',

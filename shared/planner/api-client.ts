@@ -5,7 +5,7 @@
  * from any consumer. Malformed responses fail truthfully with ContractError;
  * missing identifiers/flags are never silently coerced.
  */
-import { boardResponseToModel, generatePlanResponseToModel } from './adapters';
+import { boardResponseToModel, generatePlanResponseToModel, requirementsToModel } from './adapters';
 import {
   applyPlanResponseSchema, committedBoardResponseSchema, manualBoardEditResponseSchema,
   loadedPlanningContextResponseSchema, planningContextResponseSchema,
@@ -19,7 +19,7 @@ import {
   type ConversationContextConflictResponse,
 } from './conversation-wire';
 import { ContractError } from './model';
-import type { BoardModel, GeneratedPlanModel } from './model';
+import type { BoardModel, BoardRequirementsModel, GeneratedPlanModel } from './model';
 
 /** Minimal fetch shape (subset of the DOM/undici Response we rely on). */
 export interface FetchResponseLike {
@@ -102,6 +102,21 @@ export interface CommittedBoardState {
   programId: string;
   version: string;
   semesters: Array<{ semesterId: string; courseIds: string[] }>;
+  /**
+   * Degree requirements recomputed by the server for THIS plan. Absent when the program ships no
+   * base snapshot to refresh; callers then keep the base board's numbers.
+   */
+  requirementsValidation?: BoardRequirementsModel;
+}
+
+/** Wire board -> client state: the recomputed snapshot is mapped like the base board's one. */
+function toCommittedBoardState(raw: {
+  programId: string; version: string;
+  semesters: Array<{ semesterId: string; courseIds: string[] }>;
+  requirements_validation?: Parameters<typeof requirementsToModel>[0];
+}): CommittedBoardState {
+  const { requirements_validation: requirements, ...board } = raw;
+  return requirements ? { ...board, requirementsValidation: requirementsToModel(requirements) } : board;
 }
 
 export type ApplyPlanResult =
@@ -141,7 +156,7 @@ export async function applyPlan(deps: ClientDeps, req: ApplyPlanRequest): Promis
     return {
       ok: true,
       replayed: parsed.data.replayed,
-      board: parsed.data.board,
+      board: toCommittedBoardState(parsed.data.board),
       appliedCandidateId: parsed.data.appliedCandidateId,
     };
   }
@@ -165,7 +180,7 @@ export async function getCommittedBoard(
   const body = await readJson(res);
   const parsed = committedBoardResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed committed-board response', parsed.error);
-  return parsed.data.board;
+  return parsed.data.board ? toCommittedBoardState(parsed.data.board) : null;
 }
 
 /** A conversation was refused because its captured planning context is stale. */
@@ -301,7 +316,7 @@ export async function editBoard(
   if (parsed.data.ok) {
     return {
       ok: true, replayed: parsed.data.replayed,
-      operationId: parsed.data.operation_id, board: parsed.data.board,
+      operationId: parsed.data.operation_id, board: toCommittedBoardState(parsed.data.board),
     };
   }
   // Absent means "the server said nothing about the version" (e.g. a rule rejection), which must NOT

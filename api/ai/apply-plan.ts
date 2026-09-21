@@ -15,6 +15,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
+import { committedBoardView } from './committed_board_view';
 import { resolveOwner } from './session_owner';
 import {
   academicStatusDigest,
@@ -122,11 +123,7 @@ export interface ApplyPlanFailure {
   currentBoardVersion?: string | null;
 }
 
-const boardView = (board: CommittedBoard) => ({
-  programId: board.programId,
-  version: board.version,
-  semesters: board.semesters.map((s) => ({ semesterId: s.semesterId, courseIds: [...s.courseIds] })),
-});
+const boardView = committedBoardView;
 
 function reject(res: VercelResponse, code: ApplyRejectionCode, extra: Partial<ApplyPlanFailure> = {}): void {
   const body: ApplyPlanFailure = { ok: false, code, message_he: REASON_HE[code], ...extra };
