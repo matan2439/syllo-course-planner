@@ -9,17 +9,16 @@ import { useEffect, useState } from 'react'
  * Two layers, one box:
  *  - The `.syllo-bg` CSS gradient (globals.css) is ALWAYS rendered. It is the
  *    instant first paint, the prefers-reduced-motion freeze, the WebGL-absent
- *    fallback, and the lightweight background used behind the fullBleed
- *    embedded planner. `.syllo-bg` is also the fixed, viewport-exact, clipped
+ *    fallback, and the lightweight background. `.syllo-bg` is also the fixed, viewport-exact, clipped
  *    box that prevents phantom scroll (see shader_background_viewport_safety).
  *  - The real WebGL ShaderGradient (ShaderScene) mounts INSIDE that clip box,
  *    above the CSS layer, only when appropriate.
  *
  * Canonical ShaderGradient editor config lives in ShaderScene.tsx.
  *
- * `lightweight` (set by ProductShell for fullBleed /planner) skips WebGL
- * entirely and shows only the CSS gradient — the iframe covers the background
- * there anyway, so running three.js behind it just wastes GPU.
+ * `lightweight` (set by ProductShell via preferLightweightBackground) skips WebGL
+ * entirely and shows only the CSS gradient, for routes whose content covers the
+ * background anyway.
  */
 
 // Client-only: three.js / @react-three/fiber need window + a WebGL context, so

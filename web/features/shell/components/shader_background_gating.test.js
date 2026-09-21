@@ -1,10 +1,9 @@
 /**
  * Route gating for the real WebGL ShaderGradient background.
  *
- * The shader renders on the visible app-shell/content routes, but the
- * fullBleed legacy embeds stay lightweight, while the canonical unified
- * planner explicitly keeps the visible product background. 
- * has no ProductShell at all.
+ * The shader renders on the visible app-shell/content routes; a route can opt into the
+ * lightweight CSS-only background via ProductShell's preferLightweightBackground, and the
+ * canonical unified planner explicitly keeps the visible product background.
  *
  * These are source-level wiring assertions (no board fixture needed), matching
  * the style of web_next_wiring / shader_background_viewport_safety.
@@ -15,9 +14,9 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
-test('ProductShell derives a lightweight-background flag from fullBleed and passes it down', () => {
+test('ProductShell derives a lightweight-background flag from the route preference and passes it down', () => {
   const shell = read('web/features/shell/components/ProductShell.tsx');
-  expect(shell).toMatch(/preferLightweightBackground\s*\?\?\s*fullBleed/);
+  expect(shell).toMatch(/preferLightweightBackground\s*\?\?\s*false/);
   expect(shell).toMatch(/<ShaderGradientBackground\s+lightweight=\{/);
 });
 

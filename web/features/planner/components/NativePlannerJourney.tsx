@@ -1,20 +1,21 @@
 'use client'
 
 /**
- * MVP vertical slice — the smallest COMPLETE native planner journey, composed
- * over the existing shared infra (Slices 0–2), nothing rebuilt:
+ * The planner journey: the one owner of planning state, composed over the shared client
+ * (shared/planner) with every rule enforced server-side.
  *
- *   load current board (GET /api/board → shared adapters → BoardModel)
- *   → chat + preferences (recorded locally; NEVER auto-generate)
- *   → explicit "Build/Rebuild" → real POST /api/ai/generate-plan
- *   → proposal on the board with added/removed/moved diff + warnings/errors
- *   → reject, or safely apply (blocked / stale / errored proposals can't apply)
- *   → the applied plan becomes the visible current board.
+ *   load the base board + the session's committed board
+ *   → the student edits by hand (add / move / remove, each validated and committed by the server)
+ *     and/or talks to the Academic Decision Agent (conversation, preferences, completed courses)
+ *   → a proposal is previewed ON the board with added/moved markers and the progress it would leave
+ *   → reject, or Apply: the SERVER commits the exact candidate (blocked / stale / errored proposals
+ *     cannot apply) and its committed board, with recomputed requirements, becomes the current one.
  *
- * Apply is client-side only (the accepted proposal replaces the visible current
- * plan — the wire.ts `workspace.applied` model). No server write, no persistence
- * beyond the anonymous quota session token. Transport is injected so this is
- * fully testable without a live backend; browser defaults hit the real routes.
+ * `useAcademicDecisionAgent` selects the conversation UI (production, set by UnifiedPlannerWorkspace);
+ * without it the older Build-button variant runs, which the journey tests still exercise. The
+ * assistant and profile panels can render into slots owned by the workspace rail (agentPortalTarget /
+ * profilePortalTarget) while their state stays here. Transport is injected so the journey is fully
+ * testable without a backend; browser defaults hit the real routes.
  */
 import { useCallback, useState, type ReactElement, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
