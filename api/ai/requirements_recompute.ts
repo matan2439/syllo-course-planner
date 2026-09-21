@@ -12,7 +12,8 @@
  * check needs - e.g. a board generated before `is_core` / `mandatory_course_ids` were emitted.
  */
 
-export interface RecomputedRequirements {
+// A type alias (not an interface) so it is assignable to the wire schema's passthrough shape.
+export type RecomputedRequirements = {
   valid: boolean;
   total_required_hours: number;
   planned_hours: number;
@@ -35,7 +36,7 @@ export interface RecomputedRequirements {
   missing_required_categories: string[];
   warnings: string[];
   explanation: string;
-}
+};
 
 interface CategoryBlock {
   category_id: string;

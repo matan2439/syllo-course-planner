@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { boardRequirementsValidationSchema } from './wire'
 import type { PreferenceProfile } from '../../api/ai/preference_model'
 
 const boundedText = z.string().trim().min(1).max(4_000)
@@ -132,6 +133,8 @@ const conversationAlternativeSchema = z.object({
     total_hours: z.number().nonnegative(),
     active_periods: z.number().int().nonnegative(),
   }).strict(),
+  /** Degree requirements recomputed for THIS alternative (absent when the board ships no base snapshot). */
+  requirements_validation: boardRequirementsValidationSchema.optional(),
 }).strict()
 
 const conversationProposalSchema = z.object({

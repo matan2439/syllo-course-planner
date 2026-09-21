@@ -35,6 +35,7 @@ import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
 import type { AcademicContextStore } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
+import { recomputeRequirements } from './requirements_recompute';
 import type { PreferenceProfile } from './preference_model';
 import { applyConversationClarificationAnswers } from './conversation_clarification';
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
@@ -449,6 +450,14 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         // Keep the LLM's validated draft usable as one server-owned proposal
         // when an injected or partial model cannot produce comparisons.
       }
+      // Each alternative carries the degree requirements it would leave the student with, so the board
+      // preview shows real progress instead of the base board's numbers.
+      wireAlternatives = wireAlternatives.map((alternative) => {
+        const requirements = recomputeRequirements(programBoard, alternative.semesters.map((semester) => ({
+          semesterId: semester.semester_id, courseIds: semester.course_ids,
+        })));
+        return requirements ? { ...alternative, requirements_validation: requirements } : alternative;
+      });
       const recommended = wireAlternatives.find((alternative) => alternative.recommended) ?? wireAlternatives[0];
       const decision = new DeterministicCandidateDecisionCapability().decide({
         candidates: wireAlternatives.map((alternative) => ({

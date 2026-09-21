@@ -57,7 +57,7 @@ export default function CurrentPlanSection({
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
-          <ProgressBadge requirements={adaptRequirementsFromModel(current)} />
+          <ProgressBadge requirements={adaptRequirementsFromModel(previewBoard ?? current)} />
         </div>
         {previewBoard && <span className="text-xs text-[var(--text-muted)]">תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש</span>}
       </div>

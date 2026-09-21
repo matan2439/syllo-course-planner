@@ -66,7 +66,7 @@ const boardRequirementCategoryResultSchema = z
   })
   .passthrough();
 
-const boardRequirementsValidationSchema = z
+export const boardRequirementsValidationSchema = z
   .object({
     valid: z.boolean(),
     total_required_hours: z.number(),

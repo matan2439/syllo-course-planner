@@ -399,3 +399,53 @@ test('conversation persists a structured clarification answer and returns refres
     preference_digest: preferenceDigest({ max_weekly_hours: 22, disallowed_course_ids: [] }),
   })
 })
+
+test('each proposal alternative carries the degree requirements it would leave, recomputed by the server', async () => {
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const board = {
+    semesters: [{ semester_id: 'semester_a', courses: [] }],
+    metadata: {
+      completed_course_ids: [],
+      program_requirements_validation: { valid: false },
+      program_requirements_categories: {
+        total_required_hours: 10, core_courses_total_min: 1, mandatory_course_ids: [],
+        categories: [{ category_id: 'core_a', name_he: 'ליבה', min_courses: 1, needs_review: false, is_core: true, course_ids: ['COURSE-1'] }],
+      },
+      program_repository_courses: [{ course_id: 'COURSE-1', name_he: 'קורס', weekly_hours: 3, is_mandatory: false }],
+    },
+  }
+  const run = async (programBoard: unknown) => {
+    const handler = createConversationHandler({
+      resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+      loadBoard: async () => null,
+      loadAcademicContext: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+        personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+        planContext: {}, preferences, updatedAt: 1,
+      }),
+      loadProgramBoard: () => programBoard as any,
+      runAgent: async () => ({
+        outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.',
+        events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
+        draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
+      } as any),
+      putProposal: jest.fn(async (record: any) => record),
+    })
+    const res = response()
+    await handler({
+      method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+      body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+    } as any, res)
+    return res
+  }
+
+  const withSnapshot = await run(board)
+  expect(withSnapshot.statusCode).toBe(200)
+  expect(withSnapshot.body.proposal.alternatives[0].requirements_validation).toEqual(expect.objectContaining({
+    planned_hours: 3, remaining_hours: 7, core_courses_selected: 1, core_courses_satisfied: true, valid: true,
+  }))
+
+  const withoutSnapshot = await run({ semesters: [], metadata: {} })
+  expect(withoutSnapshot.statusCode).toBe(200)
+  expect(withoutSnapshot.body.proposal.alternatives[0]).not.toHaveProperty('requirements_validation')
+})

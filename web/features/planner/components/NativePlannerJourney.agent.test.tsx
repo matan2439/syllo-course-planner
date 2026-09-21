@@ -527,4 +527,49 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toHaveTextContent('קורס Y')
     expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument()
   })
+  test('the progress badge shows what the previewed alternative would leave, and returns after rejecting it', async () => {
+    const requirements = (planned: number) => ({
+      valid: false, total_required_hours: 185, planned_hours: planned, remaining_hours: 185 - planned,
+      core_courses_total_min: 6, core_courses_selected: 0, core_courses_satisfied: false,
+      category_results: [], warnings: [],
+    })
+    const sendConversation = jest.fn(async () => ({
+      outcome: 'proposal', message_he: 'מצאתי טיוטה חוקית לבדיקה.', events: [],
+      proposal: {
+        proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+        base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+        alternatives: [{
+          candidate_id: SINGLE_CANDIDATE, normalized_identity: 'conversation-plan', recommended: true, applyable: true,
+          semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+          constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+          objective_scores: [], label_he: 'הצעת העוזר', differences_he: [],
+          workload: { peak_hours: 6.5, total_hours: 6.5, active_periods: 1 },
+          requirements_validation: requirements(6.5),
+        }],
+      },
+    } as unknown as ConversationResponse))
+    render(
+      <NativePlannerJourney
+        {...deps({ useAcademicDecisionAgent: true })}
+        getBoardFn={async () => boardResponseToModel({
+          ...BOARD, metadata: { ...BOARD.metadata, program_requirements_validation: requirements(3) },
+        })}
+        planningContextFn={async () => ({ academicStatusDigest: 'as_test', preferenceDigest: 'pref_test', personalStatus: {}, preferences: {} })}
+        sendConversationFn={sendConversation}
+      />,
+    )
+    await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
+    const badge = () => screen.getByLabelText(/^התקדמות בתוכנית/)
+    expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 3 מתוך 185 ש״ש')
+
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'בנה לי טיוטה' } })
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    await waitFor(() => expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toBeInTheDocument())
+    expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 6.5 מתוך 185 ש״ש')
+
+    fireEvent.click(screen.getByRole('button', { name: /דחה/ }))
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'טיוטת תוכנית' })).toBeNull())
+    expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 3 מתוך 185 ש״ש')
+  })
 })

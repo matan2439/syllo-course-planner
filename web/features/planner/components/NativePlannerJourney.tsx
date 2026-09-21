@@ -209,7 +209,11 @@ export default function NativePlannerJourney({
   // valid to apply. A stale or blocked proposal leaves the committed board editable and untouched.
   // A selected alternative stays previewed (that is how the switcher shows it), even when stale.
   const previewBoard = selectedAlternative
-    ? applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current)
+    ? {
+        ...applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current),
+        // Progress the student would have AFTER applying this alternative (server-recomputed).
+        ...(selectedAlternative.requirementsValidation ? { requirementsValidation: selectedAlternative.requirementsValidation } : {}),
+      }
     : effectiveProposal && draft && !stale && !draft.blocked
         && effectiveProposal.semesters.some((semester) => semester.courseIds.length > 0)
       ? applyGeneratedToBoard(effectiveProposal, current)
