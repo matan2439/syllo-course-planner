@@ -27,9 +27,8 @@ export default function RootLayout({
           sizes="920x568"
           href="/brand/syllo-mark-light.png"
         />
-        {/* Seed the shell theme from the same tau_theme the legacy planner
-            owns, before paint, so an explicit choice made inside /planner
-            survives reload and the shell never desyncs from the iframe.
+        {/* Seed the theme from the stored tau_theme before paint, so an explicit
+            choice survives reload without a flash of the wrong theme.
             No stored choice → the CSS media query follows the OS. */}
         <script
           dangerouslySetInnerHTML={{

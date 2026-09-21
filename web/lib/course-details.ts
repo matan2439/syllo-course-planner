@@ -2,10 +2,9 @@
  * View model for the Next-native read-only course-details panel.
  *
  * `buildCourseDetails` normalizes a loose raw course into a stable shape,
- * tolerating both the Next repository VM (camelCase) and a legacy `courseMap`
- * entry (snake_case). Feeding from the repository VM is the live path today;
- * the snake_case branch is the seam for the future same-origin selection bridge
- * off the legacy iframe — so the panel needs no rewrite when that lands.
+ * tolerating both the Next repository VM (camelCase) and a `courseMap`-style
+ * entry (snake_case). Feeding from the repository VM is the live path; the
+ * snake_case branch is kept for raw catalog entries.
  *
  * Pure presentation mapping: no selection, eligibility, scoring or board logic.
  */

@@ -5,8 +5,8 @@ import { Badge } from '../../../components/ui'
 /**
  * Small always-visible header badge showing degree-progress at a glance
  * (hours placed/required + per-category coverage), expandable for detail.
- * Reuses the same RequirementsVM RequirementsProgressPanel (/plan) renders —
- * this is a compact trigger for the same data, not a second computation.
+ * Renders the RequirementsVM the server computed (see lib/requirements.ts) —
+ * never a second computation here.
  */
 export default function ProgressBadge({ requirements }: { requirements: RequirementsVM | null }) {
   const [open, setOpen] = useState(false)

@@ -13,10 +13,9 @@ const SEMESTER_LABELS: Record<string, string> = {
 
 /**
  * Next-native, read-only course-details modal. Self-contained and decoupled:
- * it holds no reference to the legacy planner frame or its board state, so
- * opening or closing it can never mutate the canonical planner. Fed a
- * CourseDetailsVM (see lib/course-details.ts) — from the repository surface
- * today, from a same-origin selection bridge later. Null course renders nothing.
+ * it holds no reference to the planner's board state, so opening or closing it
+ * can never mutate the canonical planner. Fed a CourseDetailsVM (see
+ * lib/course-details.ts) from the repository or a board card. Null course renders nothing.
  *
  * Motion: a single subtle scale+fade entrance (~160ms, Emil-restraint for a
  * productivity surface). The global `prefers-reduced-motion` rule in globals.css

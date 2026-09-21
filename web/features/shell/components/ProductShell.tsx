@@ -15,7 +15,6 @@ export default function ProductShell({
   subtitle,
   width = 'wide',
   programId,
-  fullBleed = false,
   progress,
   preferLightweightBackground,
   children,
@@ -27,12 +26,8 @@ export default function ProductShell({
   programId?: string
   /** Slot next to the program chip, e.g. the requirements progress strip. */
   progress?: ReactNode
-  /** Edge-to-edge, viewport-height frame (embedded legacy planner). No title
-   *  block or max-width container; the child fills the remaining height. */
-  fullBleed?: boolean
-  /** Force the cheap CSS-only background (no WebGL shader). Defaults to
-   *  fullBleed: the embedded /planner iframe covers the background, so running
-   *  three.js behind it just wastes GPU. Explicit + per-route overridable. */
+  /** Force the cheap CSS-only background (no WebGL shader). Off by default; a route whose content
+   *  covers the background can opt in to save the GPU. */
   preferLightweightBackground?: boolean
   children: ReactNode
 }) {
@@ -41,21 +36,15 @@ export default function ProductShell({
   const programLabel = program
     ? [program.name, program.track, program.year].filter(Boolean).join(' · ')
     : ''
-  const lightweightBg = preferLightweightBackground ?? fullBleed
+  const lightweightBg = preferLightweightBackground ?? false
   return (
     <>
       <ShaderGradientBackground lightweight={lightweightBg} />
 
       <div
-        className={
-          fullBleed
-            ? // dynamic viewport height + clip so only the iframe scrolls (no
-              // whole-page double-scroll when 100vh exceeds the client area)
-              'flex h-[100dvh] flex-col overflow-hidden px-4 sm:px-6'
-            : `mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
-                width === 'full' ? 'max-w-[1680px]' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
-              }`
-        }
+        className={`mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
+          width === 'full' ? 'max-w-[1680px]' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
+        }`}
       >
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-5">
           <Link
@@ -80,23 +69,19 @@ export default function ProductShell({
           </nav>
         </header>
 
-        {fullBleed ? (
-          <main className="flex min-h-0 flex-1 flex-col">{children}</main>
-        ) : (
-          <main className="flex-1 pb-16">
-            {title && (
-              <div className="rise mb-6">
-                <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-                {subtitle && (
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">
-                    {subtitle}
-                  </p>
-                )}
-              </div>
-            )}
-            {children}
-          </main>
-        )}
+        <main className="flex-1 pb-16">
+          {title && (
+            <div className="rise mb-6">
+              <h1 className="text-xl font-bold tracking-tight">{title}</h1>
+              {subtitle && (
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </>
   )
