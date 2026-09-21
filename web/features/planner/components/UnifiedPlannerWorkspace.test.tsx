@@ -206,29 +206,41 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 })
 
-describe('UnifiedPlannerWorkspace — weekly schedule', () => {
-  test('keeps the weekly schedule visible below the board without a drawer control', () => {
+describe('UnifiedPlannerWorkspace — weekly schedule tab', () => {
+  test('the board is the default view and the schedule is one tab away', () => {
     renderWorkspace()
-    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /מערכת שעות/ })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'לוח סמסטרים' })).toHaveAttribute('aria-selected', 'true')
+    expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
+    expect(document.getElementById('workspace-panel-weekly')).toHaveAttribute('hidden')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeVisible()
+    expect(document.getElementById('workspace-panel-journey')).toHaveAttribute('hidden')
   })
 
-  test('the rail can be open while the weekly schedule stays visible', () => {
+  test('both views stay mounted so the journey state survives a tab switch', () => {
     renderWorkspace()
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('tab', { name: 'לוח סמסטרים' }))
+    expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
+    // hidden, not unmounted: the timetable keeps its state (role queries skip hidden panels)
+    expect(document.getElementById('workspace-panel-weekly')?.querySelector('[role="tablist"]')).not.toBeNull()
+  })
+
+  test('the tools rail can be open beside either view', () => {
+    renderWorkspace()
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
     fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeVisible()
   })
 
-  test('renders the weekly panel below the board and rail row', () => {
-    const { container } = renderWorkspace()
-
-    const board = document.getElementById('workspace-panel-journey')
-    const weekly = document.getElementById('workspace-panel-weekly')
-    const workbench = container.querySelector('.planner-workbench')
-    expect(workbench?.contains(weekly as Node)).toBe(false)
-    expect(
-      (board?.compareDocumentPosition(weekly as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+  test('adding a course from the repository switches back to the board where the prompt lives', () => {
+    renderWorkspace({ repo: repoWithCourse })
+    fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
+    fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה', hidden: true }))
+    expect(screen.getByRole('tab', { name: 'לוח סמסטרים' })).toHaveAttribute('aria-selected', 'true')
+    expect(document.getElementById('workspace-panel-journey')).not.toHaveAttribute('hidden')
   })
 })

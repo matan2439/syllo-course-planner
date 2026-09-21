@@ -8,6 +8,12 @@ import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 
 type RailTab = 'courses' | 'agent' | 'profile'
+type MainTab = 'board' | 'schedule'
+
+const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string }> = [
+  { id: 'board', label: 'לוח סמסטרים' },
+  { id: 'schedule', label: 'מערכת שעות' },
+]
 
 const TABS: ReadonlyArray<{ id: RailTab; label: string; icon: string; noun: string }> = [
   { id: 'courses', label: 'קורסים', icon: '☰', noun: 'מאגר קורסים' },
@@ -37,6 +43,7 @@ export default function UnifiedPlannerWorkspace({
 }) {
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
+  const [mainTab, setMainTab] = useState<MainTab>('board')
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
@@ -57,6 +64,7 @@ export default function UnifiedPlannerWorkspace({
       .map(({ id }) => id)
       .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
     setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
+    setMainTab('board') // the semester prompt lives on the board
     onRequestAdd(courseId)
   }
 
@@ -120,9 +128,27 @@ export default function UnifiedPlannerWorkspace({
         data-rail-tab={railTab ?? 'none'}
         data-drag-active={activeDrag ? 'true' : 'false'}
       >
+        <div className="planner-main min-w-0">
+        <div role="tablist" aria-label="תצוגת תכנון" className="planner-main-tabs">
+          {MAIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`workspace-main-tab-${tab.id}`}
+              aria-selected={mainTab === tab.id}
+              aria-controls={tab.id === 'board' ? 'workspace-panel-journey' : 'workspace-panel-weekly'}
+              onClick={() => setMainTab(tab.id)}
+              className="planner-rail-tab"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <div
           id="workspace-panel-journey"
           role="region"
+          hidden={mainTab !== 'board'}
           data-board-surface="persistent-drop-target"
           data-board-layout="stable"
           data-drop-surface="semester-table"
@@ -150,6 +176,21 @@ export default function UnifiedPlannerWorkspace({
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
           />
+        </div>
+
+        {/* Kept mounted (hidden) so the chosen groups survive switching back to the board. */}
+        <section
+          id="workspace-panel-weekly"
+          aria-label="מערכת שעות"
+          hidden={mainTab !== 'schedule'}
+          className="planner-weekly-panel w-full"
+        >
+          <WeeklyScheduleDrawer
+            programId={programId}
+            semesterDestinations={semesterDestinations}
+            semesterCourses={semesterCourses}
+          />
+        </section>
         </div>
 
         <aside
@@ -223,18 +264,6 @@ export default function UnifiedPlannerWorkspace({
           />
         </aside>
       </div>
-
-      <section
-        id="workspace-panel-weekly"
-        aria-label="מערכת שעות"
-        className="planner-weekly-panel w-full"
-      >
-        <WeeklyScheduleDrawer
-          programId={programId}
-          semesterDestinations={semesterDestinations}
-          semesterCourses={semesterCourses}
-        />
-      </section>
     </section>
   )
 }
