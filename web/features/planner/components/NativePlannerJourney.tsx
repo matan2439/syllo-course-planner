@@ -11,9 +11,7 @@
  *   → reject, or Apply: the SERVER commits the exact candidate (blocked / stale / errored proposals
  *     cannot apply) and its committed board, with recomputed requirements, becomes the current one.
  *
- * `useAcademicDecisionAgent` selects the conversation UI (production, set by UnifiedPlannerWorkspace);
- * without it the older Build-button variant runs, which the journey tests still exercise. The
- * assistant and profile panels can render into slots owned by the workspace rail (agentPortalTarget /
+ * The assistant and profile panels can render into slots owned by the workspace rail (agentPortalTarget /
  * profilePortalTarget) while their state stays here. Transport is injected so the journey is fully
  * testable without a backend; browser defaults hit the real routes.
  */
@@ -35,12 +33,9 @@ import { earlyYearCoursesFor } from '../../../../shared/planner/early_year_cours
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
 import ProposalView from './ProposalView'
 import AgentContextStatus from './AgentContextStatus'
-import BuildControls from './BuildControls'
 import CurrentPlanSection from './CurrentPlanSection'
 import { BoardError, BoardLoading } from './BoardStatus'
 import ManualAddPrompt from './ManualAddPrompt'
-import PlannerChatCard from './PlannerChatCard'
-import PlannerPreferencesCard from './PlannerPreferencesCard'
 import AgentPreferencePanel from './AgentPreferencePanel'
 import { buildGeneratePlanRequest } from '../lib/build-plan-request'
 import { useCommittedBoard } from '../hooks/use-committed-board'
@@ -53,7 +48,7 @@ import { useInitialPlanningContext } from '../hooks/use-initial-planning-context
 import { usePlanProposal } from '../hooks/use-plan-proposal'
 import { usePlannerInputs } from '../hooks/use-planner-inputs'
 import {
-  defaultApply, defaultCommittedBoard, defaultEditBoard, defaultEstablishPlanningContext, defaultGenerate,
+  defaultApply, defaultCommittedBoard, defaultEditBoard, defaultEstablishPlanningContext,
   defaultGetBoard, defaultPlanningContext, defaultSendConversation,
 } from '../lib/api-defaults'
 import type { ManualAddIntent } from '../types'
@@ -65,11 +60,8 @@ export type { ManualAddIntent } from '../types'
 export default function NativePlannerJourney({
   programId,
   getBoardFn = defaultGetBoard,
-  generateFn = defaultGenerate,
   applyFn = defaultApply,
   committedBoardFn = defaultCommittedBoard,
-  useAcademicDecisionAgent = false,
-  serverApply = useAcademicDecisionAgent,
   manualAddIntent = null,
   editBoardFn = defaultEditBoard,
   establishPlanningContextFn = defaultEstablishPlanningContext,
@@ -90,7 +82,6 @@ export default function NativePlannerJourney({
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
-  generateFn?: (req: GeneratePlanRequest) => Promise<GeneratedPlanModel>
   /** S5 — the authoritative server Apply. Injected so tests need no backend. */
   applyFn?: (req: Parameters<typeof applyPlan>[1]) => Promise<ApplyPlanResult>
   /** S5 — the session's committed board, read on mount and after Apply. */
@@ -115,19 +106,10 @@ export default function NativePlannerJourney({
   profilePortalTarget?: HTMLElement | null
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
-  /**
-   * Development/diagnostic-only: when true, Build sends
-   * `use_academic_decision_agent: true`. Injectable via prop (not a Production UI
-   * toggle) so the default-off feature never leaks into the ordinary Production
-   * journey — the native page never sets it. Default false/absent.
-   */
-  useAcademicDecisionAgent?: boolean
-  /** Enable server-authoritative Apply independently of the conversation UI. */
-  serverApply?: boolean
 }) {
   // ── the board ─────────────────────────────────────────────────────────────
   const { boardPhase, current, setCurrent, boardVersion, setBoardVersion } = useCommittedBoard({
-    programId, getBoardFn, committedBoardFn, serverApply, onCommittedCourseIdsChange, onSemestersChange,
+    programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
   })
   const { rejectedDrop, justPlaced, showRejectedDrop, showJustPlaced } = useDropHighlights()
   // Read-only details panel (with the per-course AI chat) for a course already on the board.
@@ -137,7 +119,7 @@ export default function NativePlannerJourney({
 
   // ── what the student entered (recorded; never auto-generate) ───────────────
   const {
-    messages, setMessages, draftText, setDraftText, sendMessage, maxHours, setMaxHours, priorHours, setPriorHours,
+    messages, setMessages, maxHours, setMaxHours, priorHours, setPriorHours,
     wantIds, setWantIds, excludeIds, setExcludeIds, exclusionsNoneConfirmed, setExclusionsNoneConfirmed,
     preferenceVersion, updatePreferenceVersion,
   } = usePlannerInputs()
@@ -147,29 +129,28 @@ export default function NativePlannerJourney({
   const {
     academicStatus, updateAcademicStatus, academicContextPhase, loadedAcademicContext, statusVersion,
     applyAcademicStatus, refreshAcademicContext, handleAcademicContextUpdated, sendConversationWithPanelStatus,
-  } = useAcademicContext({ programId, useAcademicDecisionAgent, planningContextFn, sendConversationFn })
+  } = useAcademicContext({ programId, planningContextFn, sendConversationFn })
   const { convProfileVersion, convProfileRef, onProfileChange } = useConversationProfile()
 
   const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest =>
     buildGeneratePlanRequest(base, profile, {
-      messages, draftText, maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
-      useAcademicDecisionAgent, academicStatus, catalogHoursById, applyAcademicStatus,
+      maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
+      academicStatus, catalogHoursById, applyAcademicStatus,
     }),
-  [messages, draftText, maxHours, priorHours, wantIds, excludeIds, programId, useAcademicDecisionAgent,
-    academicStatus, catalogHoursById,
-      applyAcademicStatus, exclusionsNoneConfirmed])
+  [maxHours, priorHours, wantIds, excludeIds, programId, academicStatus, catalogHoursById,
+    applyAcademicStatus, exclusionsNoneConfirmed])
 
   // ── proposals, and manual edits that make them stale ──────────────────────
   // The revision counter lives here because both hooks need it: a manual edit moves it,
   // and a proposal built before that move is stale.
   const [manualRevision, setManualRevision] = useState(0)
   const {
-    genPhase, proposal, selectedAlternativeId, setSelectedAlternativeId, errKind, applyPhase, applyError,
-    build, staleReason, stale, clearProposal, acceptConversationProposal, canApply, apply,
+    genPhase, proposal, selectedAlternativeId, setSelectedAlternativeId, applyPhase, applyError,
+    staleReason, stale, clearProposal, acceptConversationProposal, canApply, apply,
   } = usePlanProposal({
-    programId, current, setCurrent, boardVersion, setBoardVersion, buildRequest, generateFn, applyFn,
-    serverApply, useAcademicDecisionAgent, statusVersion, preferenceVersion, manualRevision, convProfileVersion,
-    applyAcademicStatus, refreshAcademicContext, setMessages,
+    programId, current, setCurrent, boardVersion, setBoardVersion, applyFn,
+    statusVersion, preferenceVersion, manualRevision, convProfileVersion,
+    applyAcademicStatus, setMessages,
   })
   const {
     manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove,
@@ -180,7 +161,7 @@ export default function NativePlannerJourney({
     onEditCommitted: () => setManualRevision((value) => value + 1),
   })
   useInitialPlanningContext({
-    enabled: initializePlanningContext, useAcademicDecisionAgent, current, academicContextPhase,
+    enabled: initializePlanningContext, current, academicContextPhase,
     loadedAcademicContext, buildRequest, convProfileRef, establishPlanningContextFn, programId,
     refreshAcademicContext,
   })
@@ -226,7 +207,7 @@ export default function NativePlannerJourney({
     }
   }
 
-  const preferenceContent = useAcademicDecisionAgent ? (
+  const preferenceContent = (
     <AgentPreferencePanel
       programId={programId}
       pickerCourses={pickerCourses}
@@ -244,7 +225,7 @@ export default function NativePlannerJourney({
       stale={stale}
       alwaysOpen={profilePortalTarget !== undefined}
     />
-  ) : null
+  )
 
   const wrapAgent = (aside: ReactElement) =>
     agentPortalTarget === undefined ? aside : agentPortalTarget ? createPortal(aside, agentPortalTarget) : null
@@ -332,55 +313,30 @@ export default function NativePlannerJourney({
             × <span>סגור עוזר</span>
           </button>
         )}
-        {!useAcademicDecisionAgent && (
-          <PlannerChatCard messages={messages} draftText={draftText} setDraftText={setDraftText} sendMessage={sendMessage} />
-        )}
-
-        {useAcademicDecisionAgent && (
-          <AcademicAgentConversation
-            programId={programId}
-            sessionToken={getAiSessionToken()}
-            boardVersion={boardVersion}
-            academicStatusDigest={loadedAcademicContext?.academicStatusDigest ?? 'academic_context_loading'}
-            preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
-            preferenceProfile={convProfileRef.current}
-            conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
-            sendConversationFn={sendConversationWithPanelStatus}
-            localContextVersion={statusVersion + preferenceVersion}
-            courseScopes={[
-              { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
-              { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },
-            ].filter((scope) => scope.courseIds.length > 0)}
-            onAcademicContextUpdated={handleAcademicContextUpdated}
-            onProposalReady={acceptConversationProposal}
-            courseNameById={Object.fromEntries([
-              ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
-              ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
-            ])}
-            preferenceContent={profilePortalTarget === undefined ? preferenceContent : undefined}
-          />
-        )}
-
-        {useAcademicDecisionAgent && <AgentContextStatus messages={messages} academicContextPhase={academicContextPhase} />}
-
-        {!useAcademicDecisionAgent && (
-          <PlannerPreferencesCard
-            maxHours={maxHours} setMaxHours={setMaxHours}
-            priorHours={priorHours} setPriorHours={setPriorHours}
-            wantIds={wantIds} setWantIds={setWantIds}
-            excludeIds={excludeIds} setExcludeIds={setExcludeIds}
-            pickerCourses={pickerCourses}
-            updatePreferenceVersion={updatePreferenceVersion}
-          />
-        )}
-
-        <BuildControls
-          useAcademicDecisionAgent={useAcademicDecisionAgent}
-          genPhase={genPhase}
-          hasProposal={Boolean(proposal)}
-          errKind={errKind}
-          onBuild={() => build()}
+        <AcademicAgentConversation
+          programId={programId}
+          sessionToken={getAiSessionToken()}
+          boardVersion={boardVersion}
+          academicStatusDigest={loadedAcademicContext?.academicStatusDigest ?? 'academic_context_loading'}
+          preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
+          preferenceProfile={convProfileRef.current}
+          conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
+          sendConversationFn={sendConversationWithPanelStatus}
+          localContextVersion={statusVersion + preferenceVersion}
+          courseScopes={[
+            { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
+            { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },
+          ].filter((scope) => scope.courseIds.length > 0)}
+          onAcademicContextUpdated={handleAcademicContextUpdated}
+          onProposalReady={acceptConversationProposal}
+          courseNameById={Object.fromEntries([
+            ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
+            ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
+          ])}
+          preferenceContent={profilePortalTarget === undefined ? preferenceContent : undefined}
         />
+
+        <AgentContextStatus messages={messages} academicContextPhase={academicContextPhase} />
       </aside>)}
     </div>
   )

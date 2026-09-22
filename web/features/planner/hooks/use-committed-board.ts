@@ -12,12 +12,11 @@ type SemesterCourseIds = Array<{ semesterId: string; courseIds: string[] }>
  * Also tells the parent which courses/semesters are on the board.
  */
 export function useCommittedBoard({
-  programId, getBoardFn, committedBoardFn, serverApply, onCommittedCourseIdsChange, onSemestersChange,
+  programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
 }: {
   programId: string
   getBoardFn: (programId: string) => Promise<BoardModel>
   committedBoardFn: (programId: string) => Promise<CommittedBoardState | null>
-  serverApply: boolean
   onCommittedCourseIdsChange?: (courseIds: string[]) => void
   onSemestersChange?: (semesters: SemesterCourseIds) => void
 }) {
@@ -37,10 +36,10 @@ export function useCommittedBoard({
     // COMMITTED board is this session's own state. Both are needed, and only
     // the second is user data — so a failure to read it must not hide the
     // catalog, but it must also never be replaced by a silent default.
-    const committed = serverApply ? committedBoardFn(programId).catch((e) => {
+    const committed = committedBoardFn(programId).catch((e) => {
       console.error('[NativePlannerJourney] committed board load failed:', e)
       return null
-    }) : Promise.resolve(null)
+    })
 
     Promise.all([getBoardFn(programId), committed]).then(
       ([catalog, saved]) => {
@@ -52,7 +51,7 @@ export function useCommittedBoard({
       (e) => { if (live) { console.error('[NativePlannerJourney] board load failed:', e); setBoardPhase('error') } },
     )
     return () => { live = false }
-  }, [programId, getBoardFn, committedBoardFn, serverApply])
+  }, [programId, getBoardFn, committedBoardFn])
 
   useEffect(() => {
     if (!current) return

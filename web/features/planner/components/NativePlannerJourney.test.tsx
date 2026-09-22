@@ -1,22 +1,20 @@
 /**
- * MVP vertical slice — the full native planner journey composed over the
- * EXISTING shared infra (real adapters here; transport/generation injected):
- * load current board → chat/preferences (no auto-generate) → explicit Build →
- * proposal + diff → reject / safe apply (blocked & stale can never apply) →
- * applied plan becomes the visible current board.
+ * The native planner journey composed over the EXISTING shared infra (real
+ * adapters here; transport injected): load current board → the assistant
+ * conversation offers a proposal → it is previewed on the board with a diff
+ * marker → reject / safe apply (blocked can never apply) → the applied plan
+ * becomes the visible current board.
  */
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
-import { boardResponseToModel, generatePlanResponseToModel } from '../../../../shared/planner/adapters'
-import type { GeneratePlanRequest } from '../../../../shared/planner/api-client'
+import { boardResponseToModel } from '../../../../shared/planner/adapters'
+import type { ConversationResponse } from '../../../../shared/planner/conversation-wire'
 
 const BOARD = {
   metadata: {
     board_data_version: 'rev-1',
     program_repository_courses: [
       { course_id: 'Y-1', name_he: 'קורס Y', weekly_hours: 3.5, is_mandatory: false },
-      // Selectable in the exclude/want name-pickers (course-name → id resolution).
-      { course_id: 'THERMO-2', name_he: 'תרמודינמיקה 2', weekly_hours: 3.0, is_mandatory: false },
     ],
   },
   semesters: [
@@ -26,31 +24,66 @@ const BOARD = {
 }
 const board = () => boardResponseToModel(BOARD)
 
-// Proposal that ADDS Y-1 alongside the existing X-1 (a truthful "new" diff).
-const PROPOSAL = () => generatePlanResponseToModel({
-  semesters: [
-    { semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] },
-    { semester_id: 'year_3_semester_b', course_ids: [] },
-  ],
-  moves: [{ course_id: 'Y-1', from: null, to: 'year_3_semester_a' }],
-  warnings_he: ['אזהרת תחום'], errors: [], blocked: false,
-})
-const BLOCKED = () => generatePlanResponseToModel({
-  semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1'] }],
-  moves: [], warnings_he: [], errors: ['סמסטר עמוס מדי — לא ניתן להחיל את התוכנית.'], blocked: true,
-})
+const PROPOSAL_ID = 'prop_main'
+const CANDIDATE = 'cand_main'
 
-const deps = (over: Partial<{ getBoardFn: any; generateFn: any }> = {}) => ({
+// A proposal that ADDS Y-1 alongside the existing X-1 (a truthful "new" diff).
+const proposalResponse = (): ConversationResponse => ({
+  outcome: 'proposal',
+  message_he: 'הכנתי הצעה.',
+  events: [],
+  proposal: {
+    proposal_id: PROPOSAL_ID, candidate_ids: [CANDIDATE], recommended_candidate_id: CANDIDATE,
+    base_board_version: null, profile_version: 1, academic_status_digest: 'as_test',
+    expires_at: Date.now() + 3_600_000,
+    alternatives: [{
+      candidate_id: CANDIDATE, normalized_identity: 'id_main', recommended: true, applyable: true,
+      semesters: [
+        { semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] },
+        { semester_id: 'year_3_semester_b', course_ids: [] },
+      ],
+      constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true,
+      composed_utility: 0, objective_scores: [], label_he: 'המומלצת', differences_he: [],
+      workload: { peak_hours: 6.5, total_hours: 6.5, active_periods: 1 },
+    }],
+  },
+} as unknown as ConversationResponse)
+
+// The server marks the recommended candidate not-applyable (e.g. it would overload a semester).
+const notApplyableResponse = (): ConversationResponse => ({
+  outcome: 'proposal',
+  message_he: 'הצעה זו חוסמת את הסמסטר.',
+  events: [],
+  proposal: {
+    proposal_id: PROPOSAL_ID, candidate_ids: [CANDIDATE], recommended_candidate_id: CANDIDATE,
+    base_board_version: null, profile_version: 1, academic_status_digest: 'as_test',
+    expires_at: Date.now() + 3_600_000,
+    alternatives: [{
+      candidate_id: CANDIDATE, normalized_identity: 'id_blocked', recommended: true, applyable: false,
+      semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1'] }],
+      constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true,
+      composed_utility: 0, objective_scores: [], label_he: 'המומלצת', differences_he: [],
+      workload: { peak_hours: 3, total_hours: 3, active_periods: 1 },
+    }],
+  },
+} as unknown as ConversationResponse)
+
+const deps = (over: Partial<{ getBoardFn: any; sendConversationFn: any }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
-  generateFn: over.generateFn ?? (async () => PROPOSAL()),
   planningContextFn: async () => null,
+  sendConversationFn: over.sendConversationFn ?? (async () => proposalResponse()),
 })
 
 async function renderReady(over = {}) {
   const view = render(<NativePlannerJourney {...deps(over)} />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
   return view
+}
+
+const askAgent = async (text = 'בנה לי תוכנית') => {
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: text } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
 }
 
 test('loads and shows the current semester plan', async () => {
@@ -75,66 +108,9 @@ test('a board load failure is shown truthfully (no silent blank)', async () => {
   expect(screen.getByRole('heading', { name: 'לוח הסמסטרים' })).toBeInTheDocument()
 })
 
-test('sending a chat message does NOT generate a plan', async () => {
-  const generateFn = jest.fn(async () => PROPOSAL())
-  await renderReady({ generateFn })
-  fireEvent.change(screen.getByRole('textbox', { name: /הודעה|בקשה|העדפה/ }), { target: { value: 'אני מעדיף פחות מעבדות' } })
-  fireEvent.click(screen.getByRole('button', { name: /שלח/ }))
-  await waitFor(() => expect(screen.getByText('אני מעדיף פחות מעבדות')).toBeInTheDocument())
-  expect(generateFn).not.toHaveBeenCalled()
-})
-
-test('explicit Build calls the real endpoint once with the conversation + board as plan_context', async () => {
-  let captured: GeneratePlanRequest | null = null
-  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
-  await renderReady({ generateFn })
-  fireEvent.change(screen.getByRole('textbox', { name: /הודעה|בקשה|העדפה/ }), { target: { value: 'תעדיף בוקר' } })
-  fireEvent.click(screen.getByRole('button', { name: /שלח/ }))
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(1))
-  const req = captured! as GeneratePlanRequest
-  expect(req.program_id).toBe('mechanical_engineering_2027')
-  expect(String(req.session_token)).toMatch(/^[0-9a-f-]{36}$/i) // a real UUID for quota
-  const ctx = req.plan_context as any
-  expect(ctx.semesters.find((s: any) => s.id === 'year_3_semester_a').courses[0].course_id).toBe('X-1')
-  expect((req.preferences as any).extra_request_he).toContain('תעדיף בוקר')
-})
-
-test('an excluded course (picked by name) is sent as a hard exclusion (disallowed), never a soft hint', async () => {
-  let captured: GeneratePlanRequest | null = null
-  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
-  await renderReady({ generateFn })
-  // The exclude control is a name-picker (commit 92f473a): type the course NAME,
-  // then select the ranked match — that resolves the name to its canonical id.
-  fireEvent.change(screen.getByRole('textbox', { name: /להחריג|להוציא|exclude/i }), { target: { value: 'תרמודינמיקה' } })
-  fireEvent.click(await screen.findByRole('button', { name: /THERMO-2/ }))
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(generateFn).toHaveBeenCalled())
-  // Intent preserved: a user exclusion reaches the planner as a HARD disallow.
-  expect((captured! as GeneratePlanRequest).preferences as any).toMatchObject({ disallowed_course_ids: ['THERMO-2'] })
-})
-
-test('default: Build does NOT send use_academic_decision_agent (feature off in Production)', async () => {
-  let captured: GeneratePlanRequest | null = null
-  const generateFn = jest.fn(async (req: GeneratePlanRequest) => { captured = req; return PROPOSAL() })
-  await renderReady({ generateFn })
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(generateFn).toHaveBeenCalled())
-  expect('use_academic_decision_agent' in (captured as any)).toBe(false)
-})
-
-test('dev injection: useAcademicDecisionAgent replaces the legacy Build with the agent conversation', async () => {
-  const generateFn = jest.fn(async () => PROPOSAL())
-  render(<NativePlannerJourney {...deps({ generateFn })} useAcademicDecisionAgent />)
-  await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
-  expect(screen.getByTestId('academic-agent-conversation')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /בנה תוכנית/ })).toBeNull()
-  expect(generateFn).not.toHaveBeenCalled()
-})
-
-test('the proposal is shown with an added-course diff marker and apply/reject controls', async () => {
+test('a proposal from the agent is previewed on the board with an added-course diff marker and enabled apply/reject controls', async () => {
   await renderReady()
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
+  await askAgent()
   await waitFor(() => expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument())
   // The proposal is previewed ON the board, the changed card carries the marker...
   const board = screen.getByRole('region', { name: 'התוכנית הנוכחית' })
@@ -146,12 +122,12 @@ test('the proposal is shown with an added-course diff marker and apply/reject co
   expect(screen.getByRole('button', { name: /דחה/ })).toBeInTheDocument()
 })
 
-test('a proposal is previewed on the board with a label and marker; rejecting restores the committed board', async () => {
+test('rejecting a previewed proposal restores the committed board', async () => {
   await renderReady()
   const board = () => screen.getByRole('region', { name: 'התוכנית הנוכחית' })
   expect(board()).not.toHaveTextContent('תצוגה מקדימה של ההצעה')
 
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
+  await askAgent()
   await waitFor(() => expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument())
   expect(board()).toHaveTextContent('תצוגה מקדימה של ההצעה')
   expect(within(board()).getByText('חדש')).toBeInTheDocument()
@@ -163,33 +139,10 @@ test('a proposal is previewed on the board with a label and marker; rejecting re
   expect(within(board()).queryByText('קורס Y')).toBeNull()
 })
 
-test('reject discards the proposal and restores the current plan', async () => {
-  await renderReady()
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getAllByText('קורס Y').length).toBeGreaterThan(0))
-  fireEvent.click(screen.getByRole('button', { name: /דחה/ }))
-  await waitFor(() => expect(screen.queryByRole('region', { name: /טיוט/ })).toBeNull())
-  expect(screen.queryByText('קורס Y')).toBeNull() // added course gone
-  expect(screen.getByText('קורס בסיס X')).toBeInTheDocument() // current plan restored
-})
-
-test('applying a valid proposal makes it the visible current plan', async () => {
-  await renderReady()
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getAllByText('קורס Y').length).toBeGreaterThan(0))
-  fireEvent.click(screen.getByRole('button', { name: /החל/ }))
-  await waitFor(() => expect(screen.queryByRole('region', { name: /טיוט/ })).toBeNull())
-  // Y-1 is now on the CURRENT board (persisted into the applied plan), and a
-  // fresh Build would diff against it — the marker is gone.
-  expect(screen.getByText('קורס Y')).toBeInTheDocument()
-  expect(screen.queryByText('חדש')).toBeNull()
-})
-
-test('a blocked proposal cannot be applied and is shown as blocked with its error', async () => {
-  await renderReady({ generateFn: async () => BLOCKED() })
-  fireEvent.click(screen.getByRole('button', { name: /בנה תוכנית/ }))
-  await waitFor(() => expect(screen.getByText('הצעה חסומה — לא ניתן להחיל')).toBeInTheDocument())
-  expect(screen.getByText('סמסטר עמוס מדי — לא ניתן להחיל את התוכנית.')).toBeInTheDocument()
+test('a proposal the server marked not-applyable cannot be applied', async () => {
+  await renderReady({ sendConversationFn: async () => notApplyableResponse() })
+  await askAgent()
+  await waitFor(() => expect(screen.getByRole('region', { name: /טיוט/ })).toBeInTheDocument())
   const apply = screen.queryByRole('button', { name: /החל/ })
   expect(apply === null || (apply as HTMLButtonElement).disabled).toBe(true)
 })

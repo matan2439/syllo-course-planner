@@ -13,7 +13,6 @@ const fresh = (over: Partial<StaleInputs> = {}): StaleInputs => ({
   statusVersion: 2,
   capturedPreferenceVersion: 3,
   preferenceVersion: 3,
-  useAcademicDecisionAgent: false,
   proposal: null,
   convProfileVersion: undefined,
   capturedManualRevision: 1,
@@ -34,11 +33,9 @@ describe('computeStaleReason', () => {
     expect(computeStaleReason(fresh({ manualRevision: 2 }))).toBe('manual')
   })
 
-  it('treats an advanced typed-profile version as a preference change only on the agent path', () => {
+  it('treats an advanced typed-profile version as a preference change', () => {
     const proposal = { profileVersion: 1 } as GeneratedPlanModel
-    const stale = { proposal, convProfileVersion: 2 }
-    expect(computeStaleReason(fresh({ ...stale, useAcademicDecisionAgent: true }))).toBe('preferences')
-    expect(computeStaleReason(fresh({ ...stale, useAcademicDecisionAgent: false }))).toBeNull()
+    expect(computeStaleReason(fresh({ proposal, convProfileVersion: 2 }))).toBe('preferences')
   })
 
   it('reports the catalog first when several things changed', () => {

@@ -1,16 +1,13 @@
 /**
- * Slice 13/14 integration closure — the live NativePlannerJourney mounts the
- * real PreferenceConversation (typed conversation state machine) on the flagged
- * path, sends its typed profile+version through the real Generate contract, and
- * enforces profile-version staleness at the real Apply handler. Flag-off is
- * unchanged.
+ * The live NativePlannerJourney mounts the real PreferenceConversation (typed
+ * conversation state machine), sends its typed profile+version through the
+ * real conversation contract, and enforces profile-version staleness at the
+ * real Apply handler.
  */
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../../shared/planner/adapters'
-import type { GeneratePlanRequest } from '../../../../shared/planner/api-client'
 import { createServerApplyStub } from './serverApplyStub'
-import type { GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { ConversationResponse } from '../../../../shared/planner/conversation-wire'
 
 const BOARD = {
@@ -21,31 +18,6 @@ const BOARD = {
   ],
 }
 const board = () => boardResponseToModel(BOARD)
-
-/** An agent proposal that ECHOES the request's profile version (as the real server does). */
-function agentProposal(req: GeneratePlanRequest): GeneratedPlanModel {
-  const version = (req as any).preference_profile?.version
-  return {
-    semesters: [
-      { semesterId: 'year_3_semester_a', courseIds: ['X-1', 'Y-1'] },
-      { semesterId: 'year_3_semester_b', courseIds: [] },
-    ],
-    moves: [{ courseId: 'Y-1', from: null, to: 'year_3_semester_a' }],
-    warningsHe: [], errors: [], blocked: false,
-    agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
-    // S1 — the authoritative receipt. With no comparison to offer, the single
-    // recommendation is still a candidate the server holds and can commit.
-    proposal: {
-      proposalId: PROPOSAL_ID,
-      candidateIds: [SINGLE_CANDIDATE],
-      recommendedCandidateId: SINGLE_CANDIDATE,
-      baseBoardVersion: null,
-      profileVersion: version ?? 0,
-      academicStatusDigest: 'as_test',
-      expiresAt: Date.now() + 3_600_000,
-    },
-  }
-}
 
 const PROPOSAL_ID = 'prop_agent'
 const SINGLE_CANDIDATE = 'cand_agent'
@@ -58,15 +30,13 @@ const offerBuildResponse = (): ConversationResponse => ({
   events: [],
 })
 
-const deps = (over: Partial<{ getBoardFn: any; generateFn: any; useAcademicDecisionAgent: boolean; sendConversationFn: any }> = {}) => ({
+const deps = (over: Partial<{ getBoardFn: any; sendConversationFn: any }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
-  generateFn: over.generateFn ?? (async (req: GeneratePlanRequest) => agentProposal(req)),
   applyFn: server.applyFn,
   committedBoardFn: server.committedBoardFn,
   planningContextFn: async () => null,
   sendConversationFn: over.sendConversationFn ?? (async () => offerBuildResponse()),
-  useAcademicDecisionAgent: over.useAcademicDecisionAgent ?? false,
 })
 
 async function renderReady(over = {}) {
@@ -82,9 +52,7 @@ async function renderReady(over = {}) {
   })
   render(<NativePlannerJourney {...deps(over)} />)
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
-  if ((over as { useAcademicDecisionAgent?: boolean }).useAcademicDecisionAgent) {
-    await waitFor(() => expect(screen.getByTestId('academic-agent-conversation')).toBeInTheDocument())
-  }
+  await waitFor(() => expect(screen.getByTestId('academic-agent-conversation')).toBeInTheDocument())
 }
 
 async function askAgentToBuild() {
@@ -100,7 +68,7 @@ async function askAgentToBuild() {
   if (buildButton) fireEvent.click(buildButton)
 }
 
-describe('NativePlannerJourney — mounted preference conversation (flag on)', () => {
+describe('NativePlannerJourney — mounted preference conversation', () => {
   test('initial context loading preserves a completed-course edit made while it was pending', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     const stored = { academicStatusDigest: 'as_saved', preferenceDigest: 'pref_saved', personalStatus: {
@@ -109,7 +77,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     let finishInitialRead!: (value: typeof stored) => void
     const pendingRead = new Promise<typeof stored>((resolve) => { finishInitialRead = resolve })
     const send = jest.fn().mockResolvedValue({ outcome: 'conversation', message_he: 'קיבלתי את הבחירה', events: [] })
-    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+    render(<NativePlannerJourney {...deps({})}
       planningContextFn={() => pendingRead} sendConversationFn={send} />)
     await screen.findByText('קורס בסיס X')
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
@@ -150,7 +118,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
       .mockResolvedValueOnce({ outcome: 'conversation', message_he: 'התיקון שלך התקבל', events: [],
         context_update: { academic_status_digest: 'as_two', preference_digest: 'pref_two' } })
       .mockResolvedValue({ outcome: 'conversation', message_he: 'ממשיך מהמידע המעודכן', events: [] })
-    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+    render(<NativePlannerJourney {...deps({})}
       planningContextFn={context} sendConversationFn={send} />)
     await screen.findByText('קורס בסיס X')
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
@@ -177,7 +145,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
   test('refreshing an accepted chat answer also refreshes the completed-course panel', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     let stored = { academicStatusDigest: 'as_old', preferenceDigest: 'pref_old', personalStatus: {} as unknown, preferences: {} }
-    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+    render(<NativePlannerJourney {...deps({})}
       planningContextFn={async () => stored}
       sendConversationFn={async () => {
         stored = { ...stored, academicStatusDigest: 'as_new', personalStatus: {
@@ -197,7 +165,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     const establish = jest.fn(async () => ({ academicStatusDigest: 'overwritten' }))
     const edit = jest.fn(async () => ({ ok: false as const, code: 'PLAN_INVALID', messageHe: 'השרת דחה את ההעברה' }))
-    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+    render(<NativePlannerJourney {...deps({})}
       getBoardFn={async () => boardResponseToModel({ ...BOARD, semesters: [
         { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }] },
         BOARD.semesters[1],
@@ -217,7 +185,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
   test('a rejected manual edit does not poison the next edit with the same operation key', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     const edit = jest.fn(async (_req: { operation_id: string }) => ({ ok: false as const, code: 'PLAN_INVALID', messageHe: 'השרת דחה את ההעברה' }))
-    render(<NativePlannerJourney {...deps({ useAcademicDecisionAgent: true })}
+    render(<NativePlannerJourney {...deps({})}
       getBoardFn={async () => boardResponseToModel({ ...BOARD, semesters: [
         { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_semesters: ['year_3_semester_a', 'year_3_semester_b'] }] },
         BOARD.semesters[1],
@@ -242,7 +210,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
 
   test('sends confirmed panel completion with the next chat turn, only until accepted', async () => {
     const send = jest.fn().mockResolvedValue(offerBuildResponse())
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: send })
+    await renderReady({ sendConversationFn: send })
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
     fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
     fireEvent.click(within(screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })).getByRole('button', { name: /^השלמתי$/ }))
@@ -266,7 +234,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
       outcome: 'clarification_required', message_he: 'אילו קורסים כבר השלמת?', next_action: 'ask',
       events: [{ type: 'clarification', question_id: 'completed_courses', answer_type: 'course_id_list', question_he: 'אילו קורסים כבר השלמת?' }],
     } satisfies ConversationResponse))
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'אני רוצה לתכנן את שנה ג' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     const search = await screen.findByRole('searchbox', { name: 'חיפוש קורסים לתשובה' })
@@ -276,37 +244,31 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.getByRole('checkbox', { name: /קורס בסיס X/ })).toBeInTheDocument()
   })
 
-  test('flag OFF: no conversation is mounted (existing journey unchanged)', async () => {
-    await renderReady({ useAcademicDecisionAgent: false })
-    expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
-    expect(screen.getByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeInTheDocument()
-  })
-
-  test('flag ON: the real conversation is mounted (one question at a time)', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
+  test('the real conversation is mounted (one question at a time)', async () => {
+    await renderReady()
     expect(screen.queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
     expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeInTheDocument()
     expect(screen.queryByLabelText('שיחה')).toBeNull()
     expect(screen.queryByRole('textbox', { name: 'הודעה / בקשה / העדפה' })).toBeNull()
   })
 
-  test('flag ON: preference questions and free-form agent chat share one conversation surface', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
+  test('preference questions and free-form agent chat share one conversation surface', async () => {
+    await renderReady()
     const conversation = screen.getByTestId('academic-agent-conversation')
 
     expect(within(conversation).queryByText(/מה חשוב לך יותר כרגע/)).toBeNull()
     expect(within(conversation).getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeInTheDocument()
   })
 
-  test('flag ON starts with the agent composer, not a standalone workload question', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
+  test('starts with the agent composer, not a standalone workload question', async () => {
+    await renderReady()
 
     expect(screen.queryByRole('group', { name: /שאלה:.*מה חשוב לך יותר כרגע/ })).toBeNull()
     expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toHaveAttribute('placeholder', 'כתבו בקשה או שאלה…')
   })
 
-  test('flag ON keeps optional planning context collapsed so the conversation leads', async () => {
-    await renderReady({ useAcademicDecisionAgent: true })
+  test('keeps optional planning context collapsed so the conversation leads', async () => {
+    await renderReady()
 
     const context = screen.getByRole('region', { name: 'מידע שהעוזר צריך לדעת' })
     const details = within(context).getByText('מה חשוב לעוזר לדעת? (אופציונלי)').closest('details')
@@ -315,29 +277,26 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toBeVisible()
   })
 
-  test('answering a conversation choice does NOT Generate', async () => {
-    const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
+  test('answering a conversation choice does not fabricate a proposal', async () => {
     const sendConversation = jest.fn(async () => ({
       outcome: 'conversation', message_he: 'מה חשוב לך יותר?', next_action: 'ask',
       events: [{ type: 'clarification', question_he: 'מה חשוב לך יותר?', options_he: ['שבוע קל יותר'] }],
     } as unknown as ConversationResponse))
-    await renderReady({ useAcademicDecisionAgent: true, generateFn, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
     fireEvent.change(composer, { target: { value: 'אני רוצה עזרה' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'שבוע קל יותר' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'שבוע קל יותר' }))
-    expect(generateFn).not.toHaveBeenCalled()
+    expect(screen.queryByRole('region', { name: 'טיוטת תוכנית' })).toBeNull()
   })
 
-  test('the agent owns the build action after it has enough conversation context', async () => {
+  test('the agent owns the build action: it only creates a proposal through its own conversation turn', async () => {
     const sendConversation = jest.fn(async () => offerBuildResponse())
-    const generateFn = jest.fn(async (req: GeneratePlanRequest) => agentProposal(req))
-    await renderReady({ useAcademicDecisionAgent: true, generateFn, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     expect(screen.queryByRole('button', { name: 'בנה תוכנית' })).toBeNull()
     await askAgentToBuild()
     expect(sendConversation).toHaveBeenCalledTimes(2)
-    expect(generateFn).not.toHaveBeenCalled()
   })
 
   test('a matching-version proposal applies exactly once and updates the committed board', async () => {
@@ -355,7 +314,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
         }],
       },
     } as unknown as ConversationResponse))
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /החל/ }))
@@ -378,7 +337,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
           objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
       },
     } as unknown as ConversationResponse))
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
     // change an explicit preference → the proposal is stale
@@ -406,7 +365,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
           objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
       },
     } as unknown as ConversationResponse))
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     await askAgentToBuild()
     await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
 
@@ -425,7 +384,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
   test('the agent prevents duplicate requests while a conversation turn is pending', async () => {
     let resolve: ((value: ConversationResponse) => void) | undefined
     const sendConversation = jest.fn(() => new Promise<ConversationResponse>((done) => { resolve = done }))
-    await renderReady({ useAcademicDecisionAgent: true, sendConversationFn: sendConversation })
+    await renderReady({ sendConversationFn: sendConversation })
     const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
     fireEvent.change(composer, { target: { value: 'בדוק את הלוח' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
@@ -443,7 +402,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     } satisfies ConversationResponse))
     render(
       <NativePlannerJourney
-        {...deps({ useAcademicDecisionAgent: true })}
+        {...deps({})}
         planningContextFn={async () => ({
           academicStatusDigest: 'as_test',
           preferenceDigest: 'pref_test',
@@ -508,7 +467,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
 
     render(
       <NativePlannerJourney
-        {...deps({ useAcademicDecisionAgent: true })}
+        {...deps({})}
         planningContextFn={async () => ({
           academicStatusDigest: 'as_test',
           preferenceDigest: 'pref_test',
@@ -551,7 +510,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     } as unknown as ConversationResponse))
     render(
       <NativePlannerJourney
-        {...deps({ useAcademicDecisionAgent: true })}
+        {...deps({})}
         getBoardFn={async () => boardResponseToModel({
           ...BOARD, metadata: { ...BOARD.metadata, program_requirements_validation: requirements(3) },
         })}
@@ -583,7 +542,7 @@ describe('NativePlannerJourney — mounted preference conversation (flag on)', (
     try {
       render(
         <NativePlannerJourney
-          {...deps({ useAcademicDecisionAgent: true })}
+          {...deps({})}
           getBoardFn={async () => boardResponseToModel({
             ...BOARD,
             metadata: { ...BOARD.metadata, program_requirements_validation: {

@@ -17,7 +17,6 @@ test('topic preference is not rendered as a second journey questionnaire', async
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
       planningContextFn={async () => null}
-      useAcademicDecisionAgent
       sendConversationFn={jest.fn()}
     />,
   )
