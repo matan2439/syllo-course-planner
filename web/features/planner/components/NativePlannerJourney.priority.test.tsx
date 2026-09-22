@@ -25,7 +25,6 @@ test('the flagged journey keeps priority clarification inside the agent and hide
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
       planningContextFn={async () => null}
-      useAcademicDecisionAgent
       sendConversationFn={jest.fn()}
     />,
   )

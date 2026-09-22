@@ -26,7 +26,6 @@ test('onSemestersChange receives semesterId + courseIds for every board semester
       programId="mechanical_engineering_2027"
       getBoardFn={jest.fn().mockResolvedValue(CATALOG)}
       committedBoardFn={jest.fn().mockResolvedValue(null)}
-      serverApply={false}
       onSemestersChange={onSemestersChange}
     />,
   );

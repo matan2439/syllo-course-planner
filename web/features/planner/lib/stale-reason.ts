@@ -10,7 +10,6 @@ export interface StaleInputs {
   statusVersion: number
   capturedPreferenceVersion: number | null
   preferenceVersion: number
-  useAcademicDecisionAgent: boolean
   proposal: GeneratedPlanModel | null
   convProfileVersion: number | undefined
   capturedManualRevision: number | null
@@ -23,7 +22,7 @@ export interface StaleInputs {
 // blaming the catalog for a preference edit.
 export function computeStaleReason({
   genPhase, capturedRev, current, capturedStatusVersion, statusVersion, capturedPreferenceVersion,
-  preferenceVersion, useAcademicDecisionAgent, proposal, convProfileVersion, capturedManualRevision, manualRevision,
+  preferenceVersion, proposal, convProfileVersion, capturedManualRevision, manualRevision,
 }: StaleInputs): StaleReason | null {
   return (
     genPhase !== 'done'
@@ -40,7 +39,7 @@ export function computeStaleReason({
           // REFUSED to apply in this case, but that guard is silent — it only
           // greys the button out. Surfacing it here can only make MORE proposals
           // stale, never fewer, so no guard is loosened.
-          : useAcademicDecisionAgent && proposal?.profileVersion != null && convProfileVersion != null &&
+          : proposal?.profileVersion != null && convProfileVersion != null &&
             proposal.profileVersion !== convProfileVersion
             ? 'preferences'
             : capturedManualRevision != null && capturedManualRevision !== manualRevision

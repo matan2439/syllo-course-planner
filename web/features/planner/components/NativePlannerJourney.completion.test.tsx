@@ -29,7 +29,6 @@ async function renderAgent(over: Partial<React.ComponentProps<typeof NativePlann
     getBoardFn={async () => board()}
     planningContextFn={async () => null}
     committedBoardFn={async () => null}
-    useAcademicDecisionAgent
     sendConversationFn={sendConversationFn}
     {...over}
   />)

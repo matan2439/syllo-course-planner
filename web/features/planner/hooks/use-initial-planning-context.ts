@@ -11,11 +11,10 @@ import type { defaultEstablishPlanningContext } from '../lib/api-defaults'
  * planning context (once), so the assistant has something to converse against.
  */
 export function useInitialPlanningContext({
-  enabled, useAcademicDecisionAgent, current, academicContextPhase, loadedAcademicContext, buildRequest,
+  enabled, current, academicContextPhase, loadedAcademicContext, buildRequest,
   convProfileRef, establishPlanningContextFn, programId, refreshAcademicContext,
 }: {
   enabled: boolean
-  useAcademicDecisionAgent: boolean
   current: BoardModel | null
   academicContextPhase: 'loading' | 'ready' | 'error'
   loadedAcademicContext: LoadedPlanningContext | null
@@ -27,7 +26,7 @@ export function useInitialPlanningContext({
 }) {
   const initializedPlanningContextRef = useRef(false)
   useEffect(() => {
-    if (!enabled || !useAcademicDecisionAgent || !current
+    if (!enabled || !current
       || academicContextPhase !== 'ready' || loadedAcademicContext || initializedPlanningContextRef.current) return
     initializedPlanningContextRef.current = true
     const contextRequest = buildRequest(current, convProfileRef.current ?? undefined)
@@ -39,5 +38,5 @@ export function useInitialPlanningContext({
       console.error('[NativePlannerJourney] initial academic context setup failed:', error)
     })
   }, [academicContextPhase, buildRequest, current, establishPlanningContextFn, enabled,
-    loadedAcademicContext, programId, refreshAcademicContext, useAcademicDecisionAgent])
+    loadedAcademicContext, programId, refreshAcademicContext])
 }

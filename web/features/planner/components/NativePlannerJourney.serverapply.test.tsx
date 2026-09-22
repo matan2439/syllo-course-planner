@@ -1,17 +1,18 @@
 /**
  * S5 — the journey's Apply is a SERVER action.
  *
- * The properties that matter are the ones the old client-only Apply could not
- * have: the committed board changes only after the server says so, a refusal
- * leaves it untouched, a refresh reads the server's board back, and the request
- * carries a candidate NAME rather than a plan.
+ * The properties that matter are the ones a client-only Apply could not have:
+ * the committed board changes only after the server says so, a refusal
+ * leaves it untouched, a refresh reads the server's board back, and the
+ * request carries a candidate NAME rather than a plan. Proposals arrive from
+ * the assistant conversation, exactly as in production.
  */
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import NativePlannerJourney from './NativePlannerJourney'
 import { boardResponseToModel } from '../../../../shared/planner/adapters'
 import { createServerApplyStub } from './serverApplyStub'
-import type { GeneratePlanRequest, CommittedBoardState, ManualBoardEditResult } from '../../../../shared/planner/api-client'
-import type { GeneratedPlanModel } from '../../../../shared/planner/model'
+import type { CommittedBoardState, ManualBoardEditResult } from '../../../../shared/planner/api-client'
+import type { ConversationResponse } from '../../../../shared/planner/conversation-wire'
 import { writeRepositoryDrag } from '../../../lib/planner/drag-payload'
 
 const SEM_A = 'year_3_semester_a'
@@ -38,29 +39,24 @@ const PLAN_REC = [{ semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B
 const PLAN_OTHER = [{ semesterId: SEM_A, courseIds: ['X-1'] }, { semesterId: SEM_B, courseIds: ['Z-1'] }]
 
 const alt = (candidateId: string, semesters: typeof PLAN_REC, recommended: boolean, labelHe: string) => ({
-  candidateId, normalizedIdentity: `id_${candidateId}`, recommended, applyable: true, semesters,
-  constraintFingerprint: 'cf_same', profileVersion: 1, snapshotId: 'snap_same', nonDominated: true,
-  composedUtility: 0.5, objectiveScores: [{ objectiveId: 'prefer_project_courses', normalized: 0.5 }],
-  labelHe, differencesHe: [], workload: { peakHours: 4, totalHours: 8, activePeriods: 2 },
+  candidate_id: candidateId, normalized_identity: `id_${candidateId}`, recommended, applyable: true,
+  semesters: semesters.map((s) => ({ semester_id: s.semesterId, course_ids: s.courseIds })),
+  constraint_fingerprint: 'cf_same', profile_version: 1, snapshot_id: 'snap_same', non_dominated: true,
+  composed_utility: 0.5, objective_scores: [{ objective_id: 'prefer_project_courses', normalized: 0.5 }],
+  label_he: labelHe, differences_he: [], workload: { peak_hours: 4, total_hours: 8, active_periods: 2 },
 })
 
-function proposal(req: GeneratePlanRequest): GeneratedPlanModel {
-  const version = (req as unknown as { preference_profile?: { version: number } }).preference_profile?.version
+/** The agent's proposal: two alternatives, echoing whatever the board looks like when asked. */
+function conversationProposal(): ConversationResponse {
   return {
-    semesters: PLAN_REC,
-    moves: [], warningsHe: [], errors: [], blocked: false,
-    agentOutcome: 'proposal', applyEligible: true, profileVersion: version,
-    alternatives: [alt(REC, PLAN_REC, true, 'המומלצת'), alt(OTHER, PLAN_OTHER, false, 'החלופה השנייה')],
+    outcome: 'proposal', message_he: 'הכנתי חלופות.', events: [],
     proposal: {
-      proposalId: PROPOSAL_ID,
-      candidateIds: [REC, OTHER],
-      recommendedCandidateId: REC,
-      baseBoardVersion: null,
-      profileVersion: version ?? 0,
-      academicStatusDigest: 'as_test',
-      expiresAt: Date.now() + 3_600_000,
+      proposal_id: PROPOSAL_ID, candidate_ids: [REC, OTHER], recommended_candidate_id: REC,
+      base_board_version: null, profile_version: 1, academic_status_digest: 'as_test',
+      expires_at: Date.now() + 3_600_000,
+      alternatives: [alt(REC, PLAN_REC, true, 'המומלצת'), alt(OTHER, PLAN_OTHER, false, 'החלופה השנייה')],
     },
-  }
+  } as unknown as ConversationResponse
 }
 
 type Stub = ReturnType<typeof createServerApplyStub>
@@ -73,7 +69,7 @@ async function renderReady(over: {
   editBoardFn?: (request: any) => Promise<ManualBoardEditResult>
   establishPlanningContextFn?: (request: any) => Promise<{ academicStatusDigest: string }>
   planningContextFn?: (programId: string) => Promise<any>
-  generateFn?: (request: GeneratePlanRequest) => Promise<GeneratedPlanModel>
+  sendConversationFn?: (request: any) => Promise<ConversationResponse>
 } = {}) {
   const server = over.stub ?? createServerApplyStub({
     proposalId: PROPOSAL_ID,
@@ -86,24 +82,25 @@ async function renderReady(over: {
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
-      generateFn={over.generateFn ?? (async (req: GeneratePlanRequest) => proposal(req))}
       applyFn={server.applyFn}
       committedBoardFn={over.committedBoardFn ?? server.committedBoardFn}
-      useAcademicDecisionAgent={false}
-      serverApply
       manualAddIntent={over.manualAddIntent}
       onManualAddCancelled={over.onManualAddCancelled}
       editBoardFn={over.editBoardFn}
       establishPlanningContextFn={over.establishPlanningContextFn}
       planningContextFn={over.planningContextFn ?? (async () => null)}
+      sendConversationFn={over.sendConversationFn ?? (async () => conversationProposal())}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
   return server
 }
 
+/** Asks the agent for a plan and waits for the proposal it returns. */
 const build = async () => {
-  fireEvent.click(screen.getByRole('button', { name: /^בנה תוכנית$/ }))
+  const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+  fireEvent.change(composer, { target: { value: 'בנה לי תוכנית' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
   await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeInTheDocument())
 }
 const applyBtn = () => screen.getByRole('button', { name: /החל/ })
@@ -159,8 +156,8 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     await waitFor(() => expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y'))
   })
 
-  test('manual add before the first Build syncs context but never Generates', async () => {
-    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+  test('manual add before any proposal syncs context but never asks the agent', async () => {
+    const sendConversationFn = jest.fn(async () => conversationProposal())
     const establishPlanningContextFn = jest.fn(async () => ({ academicStatusDigest: 'as_synced' }))
     const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
       ok: true, replayed: false, operationId: 'edit_prebuild',
@@ -170,13 +167,13 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     }))
     await renderReady({
       manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
-      generateFn, establishPlanningContextFn, editBoardFn,
+      sendConversationFn, establishPlanningContextFn, editBoardFn,
     })
 
     fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
     await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
     expect(establishPlanningContextFn).toHaveBeenCalledTimes(1)
-    expect(generateFn).not.toHaveBeenCalled()
+    expect(sendConversationFn).not.toHaveBeenCalled()
     expect(editBoardFn.mock.calls[0][0].academic_status_digest).toBe('as_synced')
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })
@@ -203,19 +200,19 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('הקורס אינו עומד בתנאי הסמסטר הזה')
   })
 
-  test('manual add commits the server board, sends no Generate, and stales the visible proposal', async () => {
-    const generateFn = jest.fn(async (request: GeneratePlanRequest) => proposal(request))
+  test('manual add commits the server board, asks the agent no more than needed, and stales the visible proposal', async () => {
+    const sendConversationFn = jest.fn(async (_request: { board_version: string | null }) => conversationProposal())
     const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
       ok: true as const, replayed: false, operationId: 'edit_test',
       board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
         { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
       ] },
     }))
-    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] }, editBoardFn, generateFn })
+    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] }, editBoardFn, sendConversationFn })
     await build()
     fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
     await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
-    expect(generateFn).toHaveBeenCalledTimes(1)
+    expect(sendConversationFn).toHaveBeenCalledTimes(1) // the manual edit itself did not ask the agent
     expect(editBoardFn.mock.calls[0][0]).toEqual(expect.objectContaining({
       course_id: 'Y-1', semester_id: SEM_A, academic_status_digest: 'as_test',
       expected_board_version: null,
@@ -223,11 +220,12 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(JSON.stringify(editBoardFn.mock.calls[0][0])).not.toMatch(/semesters|owner/)
     await waitFor(() => expect(screen.getByText(/הלוח השתנה בעריכה ידנית.*לבנות מחדש/)).toBeInTheDocument())
     expect(applyBtn()).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'בנה מחדש' }))
-    await waitFor(() => expect(generateFn).toHaveBeenCalledTimes(2))
-    const rebuiltContext = generateFn.mock.calls[1][0].plan_context as any
-    expect(rebuiltContext.semesters.find((semester: any) => semester.id === SEM_A).courses)
-      .toEqual(expect.arrayContaining([{ course_id: 'Y-1' }]))
+
+    // Asking again grounds the next proposal in the edited board.
+    await build()
+    await waitFor(() => expect(sendConversationFn).toHaveBeenCalledTimes(2))
+    expect(sendConversationFn.mock.calls[1][0].board_version).toBe('bv_1')
+
     fireEvent.click(screen.getByRole('button', { name: 'דחה' }))
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })

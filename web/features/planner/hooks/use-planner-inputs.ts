@@ -1,13 +1,9 @@
 import { useCallback, useState } from 'react'
 import type { ChatMsg } from '../types'
 
-/**
- * What the student has typed or picked so far. It is only RECORDED here:
- * nothing in this hook ever triggers a build.
- */
+/** What the student has picked so far. It is only RECORDED here; the assistant conversation owns generation. */
 export function usePlannerInputs() {
   const [messages, setMessages] = useState<ChatMsg[]>([])
-  const [draftText, setDraftText] = useState('')
   const [maxHours, setMaxHours] = useState('')
   const [priorHours, setPriorHours] = useState('')
   const [wantIds, setWantIds] = useState<string[]>([])
@@ -21,19 +17,8 @@ export function usePlannerInputs() {
     setPreferenceVersion((v) => v + 1) // preference edits invalidate old proposals
   }, [])
 
-  const sendMessage = () => {
-    const text = draftText.trim()
-    if (!text) return
-    setMessages((m) => [
-      ...m,
-      { role: 'user', text },
-      { role: 'system', text: 'ההודעה נשמרה. לחצו "בנה תוכנית" כדי לייצר הצעה מהשיחה וההעדפות.' },
-    ])
-    setDraftText('')
-  }
-
   return {
-    messages, setMessages, draftText, setDraftText, sendMessage,
+    messages, setMessages,
     maxHours, setMaxHours, priorHours, setPriorHours,
     wantIds, setWantIds, excludeIds, setExcludeIds,
     exclusionsNoneConfirmed, setExclusionsNoneConfirmed,

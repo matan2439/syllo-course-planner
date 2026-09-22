@@ -1,7 +1,6 @@
 import {
-  applyPlan, editBoard, establishPlanningContext, generatePlan, getBoard, getCommittedBoard, getPlanningContext,
+  applyPlan, editBoard, establishPlanningContext, getBoard, getCommittedBoard, getPlanningContext,
   sendConversation,
-  type GeneratePlanRequest,
 } from '../../../../shared/planner/api-client'
 
 // Wrap fetch so calling it as `deps.fetchImpl(...)` doesn't rebind `this` to the
@@ -9,8 +8,6 @@ import {
 const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as never
 export const defaultGetBoard = (programId: string) =>
   getBoard({ fetchImpl: browserFetch, baseUrl: '' }, programId)
-export const defaultGenerate = (req: GeneratePlanRequest) =>
-  generatePlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
 export const defaultApply = (req: Parameters<typeof applyPlan>[1]) =>
   applyPlan({ fetchImpl: browserFetch, baseUrl: '' }, req)
 export const defaultCommittedBoard = (programId: string) =>

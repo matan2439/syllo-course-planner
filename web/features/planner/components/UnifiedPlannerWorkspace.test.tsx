@@ -6,13 +6,13 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, useAcademicDecisionAgent, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget }: any) => {
+  default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget }: any) => {
     useEffect(() => {
       onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
     }, [onSemestersChange])
     const agent = <aside className="planner-agent-region" aria-label="עוזר אקדמי">עוזר פעיל</aside>
     return (
-      <div data-testid="agent-journey" data-program={programId} data-agent={String(useAcademicDecisionAgent)}
+      <div data-testid="agent-journey" data-program={programId}
         data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
         <div className="planner-board-region">לוח פעיל</div>
         {manualAddIntent && (
@@ -70,7 +70,6 @@ describe('UnifiedPlannerWorkspace', () => {
 
     expect(screen.getAllByRole('heading', { name: 'מרחב התכנון' })).toHaveLength(1)
     expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
-    expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-agent', 'true')
     expect(screen.getAllByTestId('course-repository')).toHaveLength(1)
     expect(container.querySelectorAll('.planner-rail')).toHaveLength(1)
     expect(screen.getByRole('region', { name: 'מרחב תכנון מאוחד' })).toHaveAttribute('dir', 'rtl')

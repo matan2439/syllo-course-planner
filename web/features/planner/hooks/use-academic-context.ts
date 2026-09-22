@@ -16,17 +16,14 @@ import type { defaultSendConversation } from '../lib/api-defaults'
  * (academic_status_knowledge.ts).
  */
 export function useAcademicContext({
-  programId, useAcademicDecisionAgent, planningContextFn, sendConversationFn,
+  programId, planningContextFn, sendConversationFn,
 }: {
   programId: string
-  useAcademicDecisionAgent: boolean
   planningContextFn: (programId: string) => Promise<LoadedPlanningContext | null>
   sendConversationFn: typeof defaultSendConversation
 }) {
   const [academicStatus, setAcademicStatus] = useState<AcademicStatusDraft>(EMPTY_ACADEMIC_STATUS)
-  const [academicContextPhase, setAcademicContextPhase] = useState<'loading' | 'ready' | 'error'>(
-    useAcademicDecisionAgent ? 'loading' : 'ready',
-  )
+  const [academicContextPhase, setAcademicContextPhase] = useState<'loading' | 'ready' | 'error'>('loading')
   const [loadedAcademicContext, setLoadedAcademicContext] = useState<LoadedPlanningContext | null>(null)
   const academicContextReadVersionRef = useRef(0)
   const [statusVersion, setStatusVersion] = useState(0)
@@ -54,7 +51,6 @@ export function useAcademicContext({
   }
 
   useEffect(() => {
-    if (!useAcademicDecisionAgent) return
     let live = true
     setAcademicContextPhase('loading')
     planningContextFn(programId).then(
@@ -75,7 +71,7 @@ export function useAcademicContext({
       },
     )
     return () => { live = false }
-  }, [programId, planningContextFn, useAcademicDecisionAgent])
+  }, [programId, planningContextFn])
 
   /**
    * The ACADEMIC STATUS both Generate and Apply describe.
@@ -86,19 +82,18 @@ export function useAcademicContext({
    * describe the same state differently and produce a spurious mismatch.
    */
   const applyAcademicStatus = useCallback((): Record<string, unknown> => {
-    const completedIds = useAcademicDecisionAgent ? completedCourseIdsOf(academicStatus) : []
+    const completedIds = completedCourseIdsOf(academicStatus)
     const status: Record<string, unknown> = {
       completed: completedIds.map((course_id) => ({ course_id })),
       currently_taking: [],
     }
-    if (useAcademicDecisionAgent && academicStatus.confirmed) {
+    if (academicStatus.confirmed) {
       status.completed_knowledge = { status: 'known', provenance: 'explicit_user' }
     }
     return status
-  }, [useAcademicDecisionAgent, academicStatus])
+  }, [academicStatus])
 
   const refreshAcademicContext = useCallback(() => {
-    if (!useAcademicDecisionAgent) return
     const readVersion = ++academicContextReadVersionRef.current
     planningContextFn(programId).then((stored) => {
       // A slower read from an earlier turn must not rewind accepted answers or digests.
@@ -112,7 +107,7 @@ export function useAcademicContext({
     }).catch((error) => {
       console.error('[NativePlannerJourney] academic context refresh failed:', error)
     })
-  }, [planningContextFn, programId, useAcademicDecisionAgent])
+  }, [planningContextFn, programId])
 
   const handleAcademicContextUpdated = useCallback((update: {
     academic_status_digest: string

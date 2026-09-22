@@ -193,7 +193,6 @@ export default function UnifiedPlannerWorkspace({
           )}
           <NativePlannerJourney
             programId={programId}
-            useAcademicDecisionAgent
             initializePlanningContext
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
