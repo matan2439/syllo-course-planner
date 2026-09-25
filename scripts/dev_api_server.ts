@@ -18,7 +18,24 @@ import generatePlanHandler from '../api/ai/generate-plan'
 import applyPlanHandler from '../api/ai/apply-plan'
 import editBoardHandler from '../api/ai/edit-board'
 import planningContextHandler from '../api/ai/planning-context'
+import conversationHandler from '../api/ai/conversation'
+import coursePlannerHandler from '../api/ai/course-planner'
 import { loadLocalBoardJson } from '../api/ai/board_loader'
+
+// Local secrets (OPENAI_API_KEY, DATABASE_URL…) from the git-ignored .env.local;
+// variables already set in the shell win.
+try { process.loadEnvFile('.env.local') } catch { /* no .env.local — fine */ }
+
+type Handler = (req: never, res: never) => unknown
+// POST/GET handlers that take a parsed JSON body + query string, like Vercel gives them.
+const ROUTES: Record<string, Handler> = {
+  '/api/ai/apply-plan': applyPlanHandler as Handler,
+  '/api/ai/edit-board': editBoardHandler as Handler,
+  '/api/ai/planning-context': planningContextHandler as Handler,
+  '/api/ai/generate-plan': generatePlanHandler as Handler,
+  '/api/ai/conversation': conversationHandler as Handler,
+  '/api/ai/course-planner': coursePlannerHandler as Handler,
+}
 
 const PORT = Number(process.env.DEV_API_PORT ?? 3002)
 
@@ -46,43 +63,14 @@ const server = createServer(async (req, res) => {
       r.status(200).json(board)
       return
     }
-    // S2 — the authoritative Apply (POST) and the session's committed board (GET).
-    if (path === '/api/ai/apply-plan') {
+    const handler = ROUTES[path]
+    if (handler) {
       const chunks: Buffer[] = []
       for await (const c of req) chunks.push(c as Buffer)
       const raw = Buffer.concat(chunks).toString('utf8')
       ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
-      const url = new URL(req.url ?? '/', 'http://localhost')
-      ;(req as unknown as { query: unknown }).query = Object.fromEntries(url.searchParams)
-      await applyPlanHandler(req as never, r as never)
-      return
-    }
-    if (path === '/api/ai/edit-board') {
-      const chunks: Buffer[] = []
-      for await (const c of req) chunks.push(c as Buffer)
-      const raw = Buffer.concat(chunks).toString('utf8')
-      ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
-      ;(req as unknown as { query: unknown }).query = {}
-      await editBoardHandler(req as never, r as never)
-      return
-    }
-    if (path === '/api/ai/planning-context') {
-      const chunks: Buffer[] = []
-      for await (const c of req) chunks.push(c as Buffer)
-      const raw = Buffer.concat(chunks).toString('utf8')
-      ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
-      // GET /api/ai/planning-context?program_id=… reads its program from the query string.
       ;(req as unknown as { query: unknown }).query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
-      await planningContextHandler(req as never, r as never)
-      return
-    }
-    if (path === '/api/ai/generate-plan') {
-      const chunks: Buffer[] = []
-      for await (const c of req) chunks.push(c as Buffer)
-      const raw = Buffer.concat(chunks).toString('utf8')
-      ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
-      ;(req as unknown as { query: unknown }).query = {}
-      await generatePlanHandler(req as never, r as never)
+      await handler(req as never, r as never)
       return
     }
     r.status(404).json({ error: `No dev route for ${req.method} ${path}` })
@@ -94,5 +82,5 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[dev-api] real handlers on http://localhost:${PORT}`)
-  console.log(`[dev-api] AI_DEV_MODE=${process.env.AI_DEV_MODE} AI_DEV_BYPASS_QUOTA=${process.env.AI_DEV_BYPASS_QUOTA} DATABASE_URL=${process.env.DATABASE_URL ? 'set' : 'unset'}`)
+  console.log(`[dev-api] AI_DEV_MODE=${process.env.AI_DEV_MODE} AI_DEV_BYPASS_QUOTA=${process.env.AI_DEV_BYPASS_QUOTA} DATABASE_URL=${process.env.DATABASE_URL ? 'set' : 'unset'} OPENAI_API_KEY=${process.env.OPENAI_API_KEY ? 'set' : 'unset'}`)
 })

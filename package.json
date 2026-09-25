@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev:web": "cd web && npm run dev",
+    "dev:api": "tsx scripts/dev_api_server.ts",
+    "agent:smoke": "tsx scripts/agent_smoke.ts",
+    "agent:ping": "tsx scripts/agent_ping.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest --testPathPattern=tests/api",
     "build:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --build",

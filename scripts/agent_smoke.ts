@@ -3,7 +3,7 @@
  * mechanical_engineering_2027 board. Plays three student turns, carrying the
  * agent's recorded preferences between turns like /api/ai/conversation does.
  *
- *   OPENAI_API_KEY=sk-... npx tsx scripts/agent_smoke.ts
+ *   npm run agent:smoke     (reads OPENAI_API_KEY from .env.local)
  */
 import { loadLocalBoardJson } from '../api/ai/board_loader';
 import { clarifyForAcademicDecision, extractClarificationContext } from '../api/ai/academic_decision_runtime';
@@ -13,8 +13,10 @@ import type { ConversationTurn } from '../shared/planner/conversation-wire';
 
 const PROGRAM_ID = 'mechanical_engineering_2027';
 
+try { process.loadEnvFile('.env.local') } catch { /* rely on the shell env */ }
+
 async function main() {
-  if (!process.env.OPENAI_API_KEY) throw new Error('Set OPENAI_API_KEY');
+  if (!process.env.OPENAI_API_KEY) throw new Error('Set OPENAI_API_KEY in .env.local (repo root)');
   const board = loadLocalBoardJson(PROGRAM_ID);
   // The board holds years 3–4 only; years 1–2 arrive as prior credit (~90h), like the UI sends.
   const planContext = {
