@@ -211,6 +211,17 @@ describe('courses to leave out: asked at most twice, silence then counts as none
     expect(session.excludedCoursesKnown()).toBe(true)
   })
 
+  test('moving a course between the wanted and avoided lists persists both lists', async () => {
+    const session = await newSession({ wanted_course_ids: ['ALPHA'], disallowed_course_ids: ['BETA'] })
+    await callTool(session, 'update_preferences', { ...noPrefs, add_avoided_course_ids: ['ALPHA'], excluded_courses_answered: null })
+    expect(session.preferences.wanted_course_ids).toEqual([])
+    expect(session.preferences.disallowed_course_ids).toEqual(['BETA', 'ALPHA'])
+
+    await callTool(session, 'update_preferences', { ...noPrefs, add_wanted_course_ids: ['BETA'], excluded_courses_answered: null })
+    expect(session.preferences.wanted_course_ids).toEqual(['BETA'])
+    expect(session.preferences.disallowed_course_ids).toEqual(['ALPHA'])
+  })
+
   test('one unanswered ask is not enough to assume none', async () => {
     const session = await newSession({ __excluded_courses_asked: 1 })
     expect(session.excludedCoursesKnown()).toBe(false)

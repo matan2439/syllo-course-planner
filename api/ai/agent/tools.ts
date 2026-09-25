@@ -312,11 +312,13 @@ export function buildAgentTools() {
         for (const id of args.add_wanted_course_ids ?? []) { wanted.add(id); avoided.delete(id); }
         for (const id of args.add_avoided_course_ids ?? []) { avoided.add(id); wanted.delete(id); }
 
-        // Only touched lists are written: an untouched, unanswered leave-out list must
-        // stay unknown rather than silently become "none".
+        // Only changed lists are written (a move between lists changes both): an
+        // untouched, unanswered leave-out list must stay unknown, not become "none".
+        const changed = (key: string, next: Set<string>) =>
+          JSON.stringify([...setOf(key)].sort()) !== JSON.stringify([...next].sort());
         const patch: Record<string, unknown> = {};
-        if (args.add_wanted_course_ids || args.remove_wanted_course_ids) patch.wanted_course_ids = [...wanted];
-        if (args.add_avoided_course_ids || args.remove_avoided_course_ids || args.excluded_courses_answered) {
+        if (changed('wanted_course_ids', wanted)) patch.wanted_course_ids = [...wanted];
+        if (changed('disallowed_course_ids', avoided) || args.excluded_courses_answered) {
           patch.disallowed_course_ids = [...avoided];
         }
         if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
