@@ -53,6 +53,30 @@ test('names the course pairs that can never be scheduled together', () => {
   expect(result.conflictingCoursePairs).toEqual([['A', 'B']])
 })
 
+test('a primary and a secondary group of the same mode are both required', () => {
+  const result = checkTimetable([
+    course('A',
+      group('01', 'שיעור', 'ב 10:00-12:00'),
+      { ...group('51', 'שיעור', 'ב 11:00-12:00'), kind: 'משנית' }, // clashes with the only primary
+    ),
+  ])
+  expect(result.feasible).toBe(false)
+})
+
+test('a group without meeting times is never picked; a choice with only such groups makes the course unknown', () => {
+  const partial = checkTimetable([
+    course('A', group('01', 'שיעור'), group('02', 'שיעור', 'ג 10:00-12:00')),
+    course('B', group('01', 'שיעור', 'ג 10:00-12:00')),
+  ])
+  expect(partial.feasible).toBe(false) // the untimed group 01 must not stand in for A's lecture
+
+  const untimedChoice = checkTimetable([
+    course('A', group('01', 'שיעור', 'ב 10:00-12:00'), group('11', 'תרגיל')),
+  ])
+  expect(untimedChoice.unknownCourseIds).toEqual(['A'])
+  expect(untimedChoice.selection).toEqual([])
+})
+
 test('courses without timetable data are reported, not guessed', () => {
   const result = checkTimetable([
     course('A', group('01', 'שיעור', 'ב 10:00-12:00')),

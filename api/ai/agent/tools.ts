@@ -462,7 +462,7 @@ export function buildAgentTools() {
           days_used: result.daysUsed,
           free_days_kept: result.feasible ? WEEK_DAYS.filter((day) => !result.daysUsed.includes(day)) : [],
           selection: result.selection.map((item) => ({
-            course: label(item.courseId), mode: item.mode, group: item.groupId,
+            course: label(item.courseId), kind: item.kind, mode: item.mode, group: item.groupId,
             meetings: item.slots.map((slot) => `${slot.day} ${slot.start}-${slot.end}`),
           })),
           courses_without_timetable_data: result.unknownCourseIds.map(label),

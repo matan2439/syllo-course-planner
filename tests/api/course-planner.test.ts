@@ -472,6 +472,8 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     expect(body.code).toBe('AI_EMPTY_RESPONSE');
     // Should NOT call res.write (no content committed before error)
     expect(res.write).not.toHaveBeenCalled();
+    // A run that completed but delivered nothing is not charged.
+    expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
   });
 
   it('returns 503 AI_BILLING_ERROR when stream throws with billing message', async () => {

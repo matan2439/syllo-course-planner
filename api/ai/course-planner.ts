@@ -279,11 +279,12 @@ function classifyAndSendProviderError(res: VercelResponse, err: unknown, provide
  * handled inside the SDK), we can still return a proper JSON error instead of
  * a 200 with an empty body that the browser shows as "תשובה ריקה".
  */
+/** Returns true once content was delivered (a 200 stream was committed). */
 async function pipeTextStream(
   res: VercelResponse,
   textStream: ReadableStream<string>,
   provider: AiProvider,
-): Promise<void> {
+): Promise<boolean> {
   const reader = textStream.getReader();
 
   // ── Peek at the first chunk ──────────────────────────────────────────────
@@ -293,7 +294,7 @@ async function pipeTextStream(
   } catch (err) {
     // Provider threw on first read — classify and return JSON error
     classifyAndSendProviderError(res, err, provider);
-    return;
+    return false;
   }
 
   if (first.done) {
@@ -306,7 +307,7 @@ async function pipeTextStream(
       `שירות ה-AI לא החזיר תוכן. בדוק חיוב/קרדיטים בקונסולה של ${PROVIDER_LABEL[provider]}.`,
       'AI_EMPTY_RESPONSE',
     );
-    return;
+    return false;
   }
 
   // ── First chunk received — commit the streaming response ─────────────────
@@ -327,6 +328,7 @@ async function pipeTextStream(
   } finally {
     res.end();
   }
+  return true;
 }
 
 // ── Quota helper ──────────────────────────────────────────────────────────────
@@ -482,16 +484,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     classifyAndSendProviderError(res, err, 'openai');
     return;
   }
-  // One credit per completed answer; a failed run is not charged.
-  advisor.completed.then(
-    () => Promise.allSettled([
-      incrementCreditsUsed(session_token, dbUrl),
-      logUsageEvent(session_token, modelName, dbUrl),
-    ]),
-    (err) => console.error('[ai] course advisor run failed:', err instanceof Error ? err.message : String(err)),
+  const completed = advisor.completed.then(
+    () => true,
+    (err) => {
+      console.error('[ai] course advisor run failed:', err instanceof Error ? err.message : String(err));
+      return false;
+    },
   );
 
   console.log('[ai] stream started');
-  await pipeTextStream(res, advisor.textStream, 'openai');
-  await advisor.completed.catch(() => undefined);
+  const delivered = await pipeTextStream(res, advisor.textStream, 'openai');
+  // One credit per delivered, completed answer; an empty or failed run is not charged.
+  if (delivered && await completed) {
+    await Promise.allSettled([
+      incrementCreditsUsed(session_token, dbUrl),
+      logUsageEvent(session_token, modelName, dbUrl),
+    ]);
+  }
 }

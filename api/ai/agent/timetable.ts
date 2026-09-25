@@ -9,10 +9,10 @@ import { hasOverlap, type ScheduleCourse, type ScheduleGroup, type TimeSlot } fr
 export const WEEK_DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו'] as const;
 export type WeekDay = (typeof WEEK_DAYS)[number];
 
-/** One choice to make: which group of `mode` to take for `courseId`. */
-interface Slot { courseId: string; mode: string; options: ScheduleGroup[] }
+/** One choice to make: which group of this kind + mode to take for `courseId`. */
+interface Slot { courseId: string; kind: string; mode: string; options: ScheduleGroup[] }
 
-export interface TimetableSelection { courseId: string; mode: string; groupId: string; slots: TimeSlot[] }
+export interface TimetableSelection { courseId: string; kind: string; mode: string; groupId: string; slots: TimeSlot[] }
 
 export interface TimetableResult {
   /** null when the search budget ran out before an answer. */
@@ -33,21 +33,32 @@ function clashes(a: ScheduleGroup, b: ScheduleGroup): boolean {
   return a.slots.some((x) => b.slots.some((y) => hasOverlap(x, y)));
 }
 
+/**
+ * A course's required choices: a primary and a secondary group of the same mode
+ * are separate choices (same key as the timetable drawer's choiceKey). Only
+ * groups with meeting times are options; `null` when some required choice has
+ * no timed group at all, so the course cannot be checked.
+ */
+function choicesOf(course: ScheduleCourse): Slot[] | null {
+  const byChoice = new Map<string, ScheduleGroup[]>();
+  for (const group of course.groups) {
+    const key = `${group.kind}\u0000${group.teachingMode}`;
+    byChoice.set(key, [...(byChoice.get(key) ?? []), group]);
+  }
+  const slots: Slot[] = [];
+  for (const groups of byChoice.values()) {
+    const timed = groups.filter((group) => group.slots.length > 0);
+    if (!timed.length) return null;
+    slots.push({ courseId: course.courseId, kind: groups[0].kind, mode: groups[0].teachingMode, options: timed });
+  }
+  return slots.length ? slots : null;
+}
+
 function slotsFor(courses: readonly ScheduleCourse[], avoidDays: ReadonlySet<string>): Slot[] {
   const out: Slot[] = [];
   for (const course of courses) {
-    const byMode = new Map<string, ScheduleGroup[]>();
-    for (const group of course.groups) {
-      const list = byMode.get(group.teachingMode) ?? [];
-      list.push(group);
-      byMode.set(group.teachingMode, list);
-    }
-    for (const [mode, groups] of byMode) {
-      out.push({
-        courseId: course.courseId,
-        mode,
-        options: groups.filter((group) => !group.slots.some((slot) => avoidDays.has(slot.day))),
-      });
+    for (const slot of choicesOf(course) ?? []) {
+      out.push({ ...slot, options: slot.options.filter((group) => !group.slots.some((meeting) => avoidDays.has(meeting.day))) });
     }
   }
   // Most constrained first keeps the search small.
@@ -76,7 +87,7 @@ function solve(slots: Slot[]): ScheduleGroup[] | null | 'budget' {
 }
 
 export function checkTimetable(courses: readonly ScheduleCourse[], avoidDays: readonly string[] = []): TimetableResult {
-  const usable = courses.filter((course) => course.found && course.groups.some((group) => group.slots.length > 0));
+  const usable = courses.filter((course) => course.found && choicesOf(course) !== null);
   const unknownCourseIds = courses.filter((course) => !usable.includes(course)).map((course) => course.courseId);
   const avoid = new Set(avoidDays);
   const slots = slotsFor(usable, avoid);
@@ -86,7 +97,7 @@ export function checkTimetable(courses: readonly ScheduleCourse[], avoidDays: re
   if (solution === 'budget') return { feasible: null, selection: [], daysUsed: [], ...base };
   if (solution) {
     const selection = slots.map((slot, index) => ({
-      courseId: slot.courseId, mode: slot.mode, groupId: solution[index].groupId, slots: solution[index].slots,
+      courseId: slot.courseId, kind: slot.kind, mode: slot.mode, groupId: solution[index].groupId, slots: solution[index].slots,
     }));
     const used = new Set(selection.flatMap((item) => item.slots.map((slot) => slot.day)));
     return { feasible: true, selection, daysUsed: WEEK_DAYS.filter((day) => used.has(day)), ...base };
