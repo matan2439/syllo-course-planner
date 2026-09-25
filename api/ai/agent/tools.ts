@@ -131,9 +131,9 @@ export function buildAgentTools() {
             focus_areas: session.preferences.focus_areas ?? [],
             free_days: session.preferences.free_days ?? [],
           },
-          missing_critical_inputs: session.input.clarification.missingInputs
-            .filter((input) => input.critical)
+          missing_critical_inputs: session.missingCriticalInputs()
             .map((input) => ({ field: input.field, message: input.message })),
+          excluded_courses_asked_count: session.excludedCoursesAsked(),
         });
       }),
     }),
@@ -285,6 +285,8 @@ export function buildAgentTools() {
           .describe('Academic interests used to prefer matching electives (replaces the stored list)'),
         free_days: z.array(z.enum(WEEK_DAYS)).max(5).nullable()
           .describe('Weekdays the student wants free of classes (א=Sunday … ו=Friday); checked with check_timetable'),
+        excluded_courses_answered: z.boolean().nullable()
+          .describe('true when the student answered the courses-to-leave-out question, including "none"'),
       }),
       execute: observed('update_preferences', (session, args: {
         max_weekly_hours: number | null;
@@ -293,6 +295,7 @@ export function buildAgentTools() {
         semester_distribution: 'balanced' | 'compact' | 'neutral' | null;
         focus_areas: string[] | null;
         free_days: string[] | null;
+        excluded_courses_answered: boolean | null;
       }) => {
         const known = (id: string) => session.model.profiles.has(id);
         const all = [...(args.add_wanted_course_ids ?? []), ...(args.add_avoided_course_ids ?? [])];
@@ -309,10 +312,13 @@ export function buildAgentTools() {
         for (const id of args.add_wanted_course_ids ?? []) { wanted.add(id); avoided.delete(id); }
         for (const id of args.add_avoided_course_ids ?? []) { avoided.add(id); wanted.delete(id); }
 
-        const patch: Record<string, unknown> = {
-          wanted_course_ids: [...wanted],
-          disallowed_course_ids: [...avoided],
-        };
+        // Only touched lists are written: an untouched, unanswered leave-out list must
+        // stay unknown rather than silently become "none".
+        const patch: Record<string, unknown> = {};
+        if (args.add_wanted_course_ids || args.remove_wanted_course_ids) patch.wanted_course_ids = [...wanted];
+        if (args.add_avoided_course_ids || args.remove_avoided_course_ids || args.excluded_courses_answered) {
+          patch.disallowed_course_ids = [...avoided];
+        }
         if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
         if (args.focus_areas !== null) patch.focus_areas = args.focus_areas;
         if (args.free_days !== null) patch.free_days = args.free_days;
@@ -481,6 +487,10 @@ export function buildAgentTools() {
         question_id: z.enum(['completed_courses', 'current_courses', 'excluded_courses', 'max_weekly_hours', 'track_or_focus']).nullable(),
       }),
       execute: observed('ask_student', (session, args: { question_he: string; options_he: string[]; question_id: 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus' | null }) => {
+        if (args.question_id === 'excluded_courses' && session.excludedCoursesKnown()) {
+          return { accepted: false, reason: 'Courses to leave out are already known (recorded, or taken as none after two unanswered asks). Do not ask again.' };
+        }
+        session.recordAsked(args.question_id ?? undefined);
         session.question = {
           questionHe: args.question_he,
           optionsHe: args.options_he,

@@ -281,7 +281,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           .filter((courseId): courseId is string => typeof courseId === 'string' && courseId.trim().length > 0)
         : [];
       const clarificationContext = extractClarificationContext(contextWithStatus, preferences, undefined);
-      const clarification = await clarifyForAcademicDecision(clarificationContext);
+      let clarification = await clarifyForAcademicDecision(clarificationContext);
       const committedContext = board
         ? {
             ...context,
@@ -341,6 +341,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           academic_status_digest: effectiveAcademicStatusDigest,
           preference_digest: preferenceDigest(preferences),
         };
+        // Answers recorded this turn (e.g. no courses to leave out) count for the gate below.
+        clarification = await clarifyForAcademicDecision(extractClarificationContext(contextWithStatus, preferences, undefined));
       }
       const model = session.model;
       const buildModelOptions: BuildModelOptions = {

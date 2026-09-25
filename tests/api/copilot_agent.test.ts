@@ -77,7 +77,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
     [{ tool: 'update_preferences', args: {
       max_weekly_hours: null, add_wanted_course_ids: null, remove_wanted_course_ids: null,
       add_avoided_course_ids: ['ALPHA'], remove_avoided_course_ids: null,
-      semester_distribution: null, focus_areas: null, free_days: null,
+      semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: null,
     } }],
     [{ tool: 'build_plan' }],
     [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [] } }],
@@ -129,7 +129,7 @@ test('update_preferences refuses unknown course ids instead of guessing', async 
   const session = await newSession()
   const output = await callTool(session, 'update_preferences', {
     max_weekly_hours: null, add_wanted_course_ids: ['NOPE'], remove_wanted_course_ids: null,
-    add_avoided_course_ids: null, remove_avoided_course_ids: null, semester_distribution: null, focus_areas: null, free_days: null,
+    add_avoided_course_ids: null, remove_avoided_course_ids: null, semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: null,
   })
   expect(output).toEqual(expect.objectContaining({ accepted: false, unknown_course_ids: ['NOPE'] }))
   expect(session.preferencesChanged).toBe(false)
@@ -173,4 +173,47 @@ test('the course advisor verifies with read-only tools and streams its answer', 
   const toolNames = (model.requests[0].tools ?? []).map((tool: any) => tool.name).sort()
   expect(toolNames).toEqual(['explain_constraint', 'get_course_details', 'get_requirements_gap', 'search_courses'])
   expect(JSON.stringify(model.requests[0].input)).toContain('קוד קורס: BETA')
+})
+
+describe('courses to leave out: asked at most twice, silence then counts as none', () => {
+  const noPrefs = {
+    max_weekly_hours: null, add_wanted_course_ids: null, remove_wanted_course_ids: null,
+    add_avoided_course_ids: null, remove_avoided_course_ids: null,
+    semester_distribution: null, focus_areas: null, free_days: null,
+  }
+  const askLeaveOut = { question_he: 'יש קורסים שתרצה להוציא?', options_he: [], question_id: 'excluded_courses' }
+
+  test('each ask is counted; after two unanswered asks the next turn records none', async () => {
+    let preferences: Record<string, unknown> = {}
+    for (const expected of [1, 2]) {
+      const session = await newSession(preferences)
+      expect(session.excludedCoursesKnown()).toBe(false)
+      const output = await callTool(session, 'ask_student', askLeaveOut)
+      expect(output).toEqual({ asked: true })
+      expect(session.excludedCoursesAsked()).toBe(expected)
+      preferences = session.preferences
+    }
+    const third = await newSession(preferences)
+    expect(third.preferences.disallowed_course_ids).toEqual([])
+    expect(third.preferencesChanged).toBe(true)
+    expect(third.missingCriticalInputs().map((input) => input.field)).not.toContain('excludedCourses')
+    expect(await callTool(third, 'ask_student', askLeaveOut)).toEqual(expect.objectContaining({ accepted: false }))
+  })
+
+  test('an explicit "none" answer is recorded; untouched lists never answer the question silently', async () => {
+    const session = await newSession()
+    await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 20, excluded_courses_answered: null })
+    expect(session.preferences).not.toHaveProperty('disallowed_course_ids')
+    expect(session.excludedCoursesKnown()).toBe(false)
+
+    await callTool(session, 'update_preferences', { ...noPrefs, excluded_courses_answered: true })
+    expect(session.preferences.disallowed_course_ids).toEqual([])
+    expect(session.excludedCoursesKnown()).toBe(true)
+  })
+
+  test('one unanswered ask is not enough to assume none', async () => {
+    const session = await newSession({ __excluded_courses_asked: 1 })
+    expect(session.excludedCoursesKnown()).toBe(false)
+    expect(session.preferencesChanged).toBe(false)
+  })
 })

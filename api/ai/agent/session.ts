@@ -15,6 +15,12 @@ import type { ClarificationResult } from '../academic_decision_types';
 import type { CandidateSet } from '../candidate_set';
 import type { ScheduleCourse } from '../../../shared/planner/schedule';
 import { fetchGroupsFromBidit, normalizeGroupsResponse } from '../schedule-groups';
+import { resolveHardExcludedCourseIds } from '../academic_decision_runtime';
+
+/** How many times the leave-out question was asked; stored with the preferences. */
+export const EXCLUDED_ASKED_KEY = '__excluded_courses_asked';
+/** Asked this many times without an answer ⇒ silence counts as "none". */
+export const MAX_EXCLUDED_ASKS = 2;
 
 export type ClarificationQuestionId =
   | 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus';
@@ -61,7 +67,33 @@ export class PlanningSession {
 
   constructor(readonly input: PlanningSessionInput) {
     this.preferences = { ...input.preferences };
+    // The leave-out question was asked twice and never answered: silence means none.
+    if (!this.excludedCoursesKnown() && this.excludedCoursesAsked() >= MAX_EXCLUDED_ASKS) {
+      this.preferences.disallowed_course_ids = [];
+      this.preferencesChanged = true;
+    }
     this.rebuild();
+  }
+
+  excludedCoursesKnown(): boolean {
+    return resolveHardExcludedCourseIds(this.preferences as { disallowed_course_ids?: string[] }) !== undefined;
+  }
+
+  excludedCoursesAsked(): number {
+    return Number(this.preferences[EXCLUDED_ASKED_KEY] ?? 0) || 0;
+  }
+
+  /** Critical inputs still missing — reflects answers recorded during this turn. */
+  missingCriticalInputs() {
+    return this.input.clarification.missingInputs.filter((input) =>
+      input.critical && !(input.field === 'excludedCourses' && this.excludedCoursesKnown()));
+  }
+
+  /** Count an asked leave-out question (persisted like any preference). */
+  recordAsked(questionId: ClarificationQuestionId | undefined): void {
+    if (questionId !== 'excluded_courses') return;
+    this.preferences = { ...this.preferences, [EXCLUDED_ASKED_KEY]: this.excludedCoursesAsked() + 1 };
+    this.preferencesChanged = true;
   }
 
   /** Rebuild model + draft from the current preferences. Resets the draft to the committed board. */
