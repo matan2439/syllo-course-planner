@@ -5,6 +5,7 @@ import { PlanningSession } from '../../api/ai/agent/session'
 import { runPlannerAgent } from '../../api/ai/agent/planner_agent'
 import { buildAgentTools } from '../../api/ai/agent/tools'
 import { placedCourseIds } from '../../api/ai/planner_types'
+import { streamCourseAdvisor } from '../../api/ai/agent/course_advisor'
 import { FailingAgentModel, FakeAgentModel } from './helpers/fake_agent_model'
 
 // Fixture: mandatory MAND ("מבוא") + interchangeable core electives ALPHA ("אלפא") / BETA ("בטא");
@@ -150,4 +151,24 @@ test('simulate_changes answers "what if" on a copy and never touches the draft',
   expect(output.data.validation.valid).toBe(false)
   expect(output.data.validation.evidence.disallowedCourseIds).toEqual(['ALPHA'])
   expect(JSON.stringify(session.worker.getPlan())).toBe(before)
+})
+
+test('the course advisor verifies with read-only tools and streams its answer', async () => {
+  const model = new FakeAgentModel([
+    [{ tool: 'get_course_details', args: { course_id: 'BETA', target_semester: null } }],
+    [{ text: 'בטא הוא קורס ליבה של 4 שעות ' }, { text: 'ללא דרישות קדם.' }],
+  ])
+  const advisor = await streamCourseAdvisor(
+    { message: 'מה צריך לפני בטא?', programId: PROGRAM_ID, planContext, courseContext: 'קוד קורס: BETA' },
+    { model },
+  )
+  let text = ''
+  const reader = advisor.textStream.getReader()
+  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) text += chunk.value
+  await advisor.completed
+
+  expect(text).toBe('בטא הוא קורס ליבה של 4 שעות ללא דרישות קדם.')
+  const toolNames = (model.requests[0].tools ?? []).map((tool: any) => tool.name).sort()
+  expect(toolNames).toEqual(['explain_constraint', 'get_course_details', 'get_requirements_gap', 'search_courses'])
+  expect(JSON.stringify(model.requests[0].input)).toContain('קוד קורס: BETA')
 })

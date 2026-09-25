@@ -1,9 +1,9 @@
 /**
  * POST /api/ai/course-planner
  *
- * Streaming AI endpoint for TAU course-planner assistant.
- * Supports OpenAI, Anthropic, and Google (Gemini) via Vercel AI SDK.
- * Provider is selected by AI_PROVIDER env var (defaults to OpenAI).
+ * Per-course chat ("ask about this course"). Streams a plain-text answer from
+ * the read-only course advisor (OpenAI Agents SDK, api/ai/agent/course_advisor.ts),
+ * which verifies facts with the planner's read-only tools.
  *
  * Runtime: Node.js (quota check requires TCP connection to Postgres).
  *
@@ -18,18 +18,18 @@
  *   res.write(...) / res.end() for streaming
  *
  * ── STREAMING ─────────────────────────────────────────────────────────────────
- * Uses result.textStream (ReadableStream<string>) instead of
- * result.toTextStreamResponse() so there is exactly ONE stream reader and no
- * dual-reader conflict that caused the previous hang.
+ * The advisor's text stream has exactly ONE reader (pipeTextStream), which
+ * peeks the first chunk so provider failures still return a JSON error.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText, type LanguageModel } from 'ai';
+import type { LanguageModel } from 'ai';
 import { z } from 'zod';
-import { buildSystemPrompt, type PlanContext } from './_context';
+import { streamCourseAdvisor } from './agent/course_advisor';
+import { agentModelName } from './agent/planner_agent';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent, FREE_LIMIT } from './_quota';
 
 // ── Input schema ──────────────────────────────────────────────────────────────
@@ -447,22 +447,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   // ── Production / real AI path ─────────────────────────────────────────────
+  // The course chat runs the read-only course advisor (OpenAI Agents SDK).
 
-  const modelConfig = resolveModel();
-  if (!modelConfig) {
-    console.log('[ai] no API key configured');
-    const requested = (process.env.AI_PROVIDER ?? '').trim().toLowerCase();
-    const provider: AiProvider =
-      requested === 'anthropic' || requested === 'openai' || requested === 'google'
-        ? requested : 'openai';
-    const keyEnv = PROVIDER_KEY_ENV[provider];
+  if (!(process.env.OPENAI_API_KEY ?? '').trim()) {
+    console.log('[ai] no OpenAI API key configured');
     sendError(res, 503,
-      `לא הוגדר מפתח AI עבור ${PROVIDER_LABEL[provider]}. בסביבת Vercel — הוסף ${keyEnv} בלוח הבקרה. מקומית — הגדר בקובץ .env.`,
+      'לא הוגדר מפתח AI עבור OpenAI. בסביבת Vercel — הוסף OPENAI_API_KEY בלוח הבקרה. מקומית — הגדר בקובץ .env.local.',
       'NO_API_KEY');
     return;
   }
-
-  console.log('[ai] model selected:', modelConfig.name);
+  const modelName = agentModelName();
+  console.log('[ai] course advisor model:', modelName);
 
   const dbUrl = (process.env.DATABASE_URL ?? '').trim();
   if (!dbUrl) {
@@ -475,34 +470,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const allowed = await runQuotaCheck(session_token, dbUrl, res);
   if (!allowed) return;
 
-  const systemPrompt = buildSystemPrompt({
-    program_id,
-    plan_context: plan_context as PlanContext,
-    course_context,
-  });
-
-  let result;
+  let advisor;
   try {
-    result = streamText({
-      model: modelConfig.model,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
-      maxTokens: 1024,
-      onFinish: async ({ usage }) => {
-        console.log('[ai] stream completed — tokens:', usage?.totalTokens ?? '?');
-        await Promise.allSettled([
-          incrementCreditsUsed(session_token, dbUrl),
-          logUsageEvent(session_token, modelConfig.name, dbUrl),
-        ]);
-      },
+    advisor = await streamCourseAdvisor({
+      message,
+      programId: program_id,
+      planContext: plan_context as Record<string, unknown>,
+      courseContext: course_context,
     });
   } catch (err) {
-    console.error('[ai] streamText() threw:', err instanceof Error ? err.message : String(err));
-    sendError(res, 503, 'לא ניתן ליצור חיבור לספק ה-AI. נסה שוב.',
-      'AI_PROVIDER_ERROR', { detail: err instanceof Error ? err.message : String(err) });
+    classifyAndSendProviderError(res, err, 'openai');
     return;
   }
+  // One credit per completed answer; a failed run is not charged.
+  advisor.completed.then(
+    () => Promise.allSettled([
+      incrementCreditsUsed(session_token, dbUrl),
+      logUsageEvent(session_token, modelName, dbUrl),
+    ]),
+    (err) => console.error('[ai] course advisor run failed:', err instanceof Error ? err.message : String(err)),
+  );
 
   console.log('[ai] stream started');
-  await pipeTextStream(res, result.textStream, modelConfig.provider);
+  await pipeTextStream(res, advisor.textStream, 'openai');
+  await advisor.completed.catch(() => undefined);
 }

@@ -17,28 +17,39 @@ export class FakeAgentModel implements Model {
     this.requests.push(request)
     const step = this.steps.shift()
     if (!step) throw new Error('FakeAgentModel: no scripted step left')
-    return {
-      usage: new Usage(),
-      output: step.map((item) => 'text' in item
-        ? {
-            type: 'message' as const,
-            role: 'assistant' as const,
-            status: 'completed' as const,
-            content: [{ type: 'output_text' as const, text: item.text }],
-          }
-        : {
-            type: 'function_call' as const,
-            callId: `call_${++this.calls}`,
-            name: item.tool,
-            status: 'completed' as const,
-            arguments: JSON.stringify(item.args ?? {}),
-          }),
+    return { usage: new Usage(), output: step.map((item) => this.toOutput(item)) }
+  }
+
+  /** Streams each scripted text as a delta, then the full response. */
+  async *getStreamedResponse(request: ModelRequest): AsyncIterable<any> {
+    const response = await this.getResponse(request)
+    yield { type: 'response_started' }
+    for (const item of response.output) {
+      if (item.type === 'message') {
+        for (const part of (item as any).content) yield { type: 'output_text_delta', delta: part.text }
+      }
+    }
+    yield {
+      type: 'response_done',
+      response: { id: `resp_${this.calls}`, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 }, output: response.output },
     }
   }
 
-  // eslint-disable-next-line require-yield
-  async *getStreamedResponse(): AsyncIterable<never> {
-    throw new Error('FakeAgentModel does not stream')
+  private toOutput(item: FakeStep[number]) {
+    return 'text' in item
+      ? {
+          type: 'message' as const,
+          role: 'assistant' as const,
+          status: 'completed' as const,
+          content: [{ type: 'output_text' as const, text: item.text }],
+        }
+      : {
+          type: 'function_call' as const,
+          callId: `call_${++this.calls}`,
+          name: item.tool,
+          status: 'completed' as const,
+          arguments: JSON.stringify(item.args ?? {}),
+        }
   }
 }
 

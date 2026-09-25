@@ -1,44 +1,33 @@
 /**
  * Tests for POST /api/ai/course-planner (VercelRequest / VercelResponse pattern)
  *
- * AI SDK and quota module are mocked — no real DB or AI calls.
+ * The course advisor agent and quota module are mocked — no real DB or AI calls.
  * Assertions check res.status(), res.json(), res.write(), res.end()
  * — never check for a returned Response object.
  */
 
-// ── AI SDK mocks ──────────────────────────────────────────────────────────────
+// ── Course advisor mock (no real model calls) ─────────────────────────────────
 
-jest.mock('ai', () => ({
-  streamText: jest.fn().mockImplementation(({ onFinish }: { onFinish?: Function }) => {
-    // Simulate stream completion via onFinish (fires after a microtask)
-    if (onFinish) {
-      Promise.resolve().then(() =>
-        onFinish({ usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-                   finishReason: 'stop', text: 'מדובר בתוכנית לימודים מאוזנת.' }),
-      );
-    }
-    // textStream: single-chunk string ReadableStream
-    const textStream = new ReadableStream<string>({
+jest.mock('../../api/ai/agent/course_advisor', () => ({
+  streamCourseAdvisor: jest.fn().mockImplementation(async () => ({
+    textStream: new ReadableStream<string>({
       start(controller) {
         controller.enqueue('מדובר בתוכנית לימודים מאוזנת.');
         controller.close();
       },
-    });
-    return { textStream };
-  }),
+    }),
+    completed: Promise.resolve(),
+  })),
 }));
 
-jest.mock('@ai-sdk/anthropic', () => ({
-  createAnthropic: jest.fn().mockReturnValue(jest.fn().mockReturnValue('mock-anthropic-model')),
-}));
-
-jest.mock('@ai-sdk/openai', () => ({
-  createOpenAI: jest.fn().mockReturnValue(jest.fn().mockReturnValue('mock-openai-model')),
-}));
-
-jest.mock('@ai-sdk/google', () => ({
-  createGoogleGenerativeAI: jest.fn().mockReturnValue(jest.fn().mockReturnValue('mock-google-model')),
-}));
+/** A mocked advisor run whose stream behaves as given. */
+function mockAdvisorOnce(start: (controller: ReadableStreamDefaultController<string>) => void, completed: Promise<void> = Promise.resolve()) {
+  completed.catch(() => undefined);
+  jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor.mockImplementationOnce(async () => ({
+    textStream: new ReadableStream<string>({ start }),
+    completed,
+  }));
+}
 
 // ── Quota module mock ─────────────────────────────────────────────────────────
 
@@ -112,14 +101,14 @@ function makeRes() {
 describe('POST /api/ai/course-planner — input validation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
     mockCheckAndEnsureSession.mockResolvedValue({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
   });
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     delete process.env.DATABASE_URL;
   });
 
@@ -275,11 +264,11 @@ describe('POST /api/ai/course-planner — input validation', () => {
 
 describe('POST /api/ai/course-planner — session_token validation', () => {
   beforeEach(() => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
   });
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     delete process.env.DATABASE_URL;
     jest.clearAllMocks();
   });
@@ -304,103 +293,32 @@ describe('POST /api/ai/course-planner — session_token validation', () => {
 
 describe('POST /api/ai/course-planner — API key handling', () => {
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
     delete process.env.DATABASE_URL;
     jest.clearAllMocks();
   });
 
-  it('returns 503 NO_API_KEY JSON when no AI key is set', async () => {
+  it('returns 503 NO_API_KEY JSON when no OpenAI key is set', async () => {
     process.env.DATABASE_URL = 'postgresql://test@localhost/test';
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.status).toHaveBeenCalledWith(503);
     const body = res.json.mock.calls[0][0];
     expect(body.code).toBe('NO_API_KEY');
+    expect(body.error).toContain('OPENAI_API_KEY');
   });
 
-  it('uses Anthropic when ANTHROPIC_API_KEY is set', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
-    process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
-    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createAnthropic).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-ant-test' }));
-  });
-
-  it('uses OpenAI when only OPENAI_API_KEY is set', async () => {
-    delete process.env.ANTHROPIC_API_KEY;
+  it('runs the course advisor when OPENAI_API_KEY is set', async () => {
     process.env.OPENAI_API_KEY = 'sk-openai-test';
     process.env.DATABASE_URL   = 'postgresql://test@localhost/test';
     mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
-    const { createOpenAI } = jest.requireMock('@ai-sdk/openai');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-openai-test' }));
-  });
-});
-
-// ── AI_PROVIDER selection ─────────────────────────────────────────────────────
-
-describe('POST /api/ai/course-planner — AI_PROVIDER selection', () => {
-  beforeEach(() => {
-    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValue({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
-  });
-  afterEach(() => {
-    delete process.env.AI_PROVIDER;
-    delete process.env.ANTHROPIC_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    delete process.env.DATABASE_URL;
-    jest.clearAllMocks();
-  });
-
-  it('AI_PROVIDER=openai selects OpenAI', async () => {
-    process.env.AI_PROVIDER    = 'openai';
-    process.env.OPENAI_API_KEY = 'sk-openai-test';
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test'; // present but must NOT be used
-    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
-    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-openai-test' }));
-    expect(createAnthropic).not.toHaveBeenCalled();
-  });
-
-  it('AI_PROVIDER=anthropic selects Anthropic', async () => {
-    process.env.AI_PROVIDER       = 'anthropic';
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
-    process.env.OPENAI_API_KEY    = 'sk-openai-test'; // present but must NOT be used
-    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
-    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createAnthropic).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-ant-test' }));
-    expect(createOpenAI).not.toHaveBeenCalled();
-  });
-
-  it('AI_PROVIDER=google selects Google Gemini', async () => {
-    process.env.AI_PROVIDER = 'google';
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'goog-test-key';
-    const { createGoogleGenerativeAI } = jest.requireMock('@ai-sdk/google');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createGoogleGenerativeAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'goog-test-key' }));
-  });
-
-  it('missing AI_PROVIDER defaults safely (uses OpenAI when its key is present)', async () => {
-    process.env.OPENAI_API_KEY = 'sk-openai-test';
-    const { createOpenAI } = jest.requireMock('@ai-sdk/openai');
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'sk-openai-test' }));
-  });
-
-  it('returns NO_API_KEY for the selected provider when AI_PROVIDER=google but key missing', async () => {
-    process.env.AI_PROVIDER = 'google';
-    process.env.OPENAI_API_KEY = 'sk-openai-test'; // other keys present — must not be used as fallback
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
-    expect(res.status).toHaveBeenCalledWith(503);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('NO_API_KEY');
-    expect(body.error).toContain('GOOGLE_GENERATIVE_AI_API_KEY');
+    const { streamCourseAdvisor } = jest.requireMock('../../api/ai/agent/course_advisor');
+    expect(streamCourseAdvisor).toHaveBeenCalledWith(expect.objectContaining({
+      message: VALID_BODY.message, programId: VALID_BODY.program_id,
+    }));
+    expect(res.write).toHaveBeenCalledWith('מדובר בתוכנית לימודים מאוזנת.');
   });
 });
 
@@ -408,12 +326,12 @@ describe('POST /api/ai/course-planner — AI_PROVIDER selection', () => {
 
 describe('POST /api/ai/course-planner — quota enforcement', () => {
   beforeEach(() => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
     jest.clearAllMocks();
   });
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     delete process.env.DATABASE_URL;
     jest.clearAllMocks();
   });
@@ -498,7 +416,7 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     delete process.env.AI_TEST_MODE;
   });
 
-  it('calls incrementCreditsUsed via onFinish after stream', async () => {
+  it('calls incrementCreditsUsed after a completed answer', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
@@ -507,7 +425,7 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     expect(mockIncrementCreditsUsed).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
   });
 
-  it('calls logUsageEvent via onFinish after stream', async () => {
+  it('calls logUsageEvent after a completed answer', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
@@ -516,25 +434,22 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     expect(mockLogUsageEvent).toHaveBeenCalled();
   });
 
-  it('does not call incrementCreditsUsed when onFinish is not invoked', async () => {
+  it('does not charge a credit when the advisor run fails', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
-    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
-      textStream: new ReadableStream<string>({ start(c) { c.close(); } }),
-      // onFinish never called
-    }));
+    mockAdvisorOnce((c) => c.close(), Promise.reject(new Error('run failed')));
     await handler(makeReq(VALID_BODY), makeRes() as any);
     await new Promise(resolve => setTimeout(resolve, 30));
     expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
   });
 
-  it('returns 503 AI_PROVIDER_ERROR JSON when streamText() throws', async () => {
+  it('returns 503 AI_PROVIDER_ERROR JSON when the advisor cannot start', async () => {
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
-    jest.requireMock('ai').streamText.mockImplementationOnce(() => {
-      throw new Error('invalid api key');
+    jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor.mockImplementationOnce(async () => {
+      throw new Error('connection reset');
     });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
@@ -544,17 +459,12 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
   });
 
   it('returns 503 AI_EMPTY_RESPONSE when stream closes immediately with no chunks', async () => {
-    // This is the real production failure mode: Anthropic rejects the request
-    // silently (billing/auth error) and the Vercel AI SDK returns an empty stream
-    // rather than throwing, causing a 200 with empty body.
+    // A provider can end the stream with no text and no exception; that must be a
+    // JSON error, not a 200 with an empty body.
     mockCheckAndEnsureSession.mockResolvedValueOnce({
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
-    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
-      textStream: new ReadableStream<string>({
-        start(controller) { controller.close(); } // immediately done, no chunks
-      }),
-    }));
+    mockAdvisorOnce((controller) => controller.close()); // immediately done, no chunks
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.status).toHaveBeenCalledWith(503);
@@ -569,11 +479,7 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
     const billingErr = Object.assign(new Error('Your credit balance is too low'), { status: 403 });
-    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
-      textStream: new ReadableStream<string>({
-        start(controller) { controller.error(billingErr); }
-      }),
-    }));
+    mockAdvisorOnce((controller) => controller.error(billingErr), Promise.reject(billingErr));
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.status).toHaveBeenCalledWith(503);
@@ -587,11 +493,7 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
       allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
     });
     const authErr = Object.assign(new Error('Invalid authentication credentials'), { status: 401 });
-    jest.requireMock('ai').streamText.mockImplementationOnce(() => ({
-      textStream: new ReadableStream<string>({
-        start(controller) { controller.error(authErr); }
-      }),
-    }));
+    mockAdvisorOnce((controller) => controller.error(authErr), Promise.reject(authErr));
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.status).toHaveBeenCalledWith(503);
@@ -608,7 +510,7 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
     delete process.env.AI_DEV_BYPASS_QUOTA;
     delete process.env.VERCEL_ENV;
     delete process.env.DATABASE_URL;
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     jest.clearAllMocks();
   });
 
@@ -628,17 +530,12 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
     expect(res.setHeader).toHaveBeenCalledWith('X-AI-Dev-Mode', 'true');
   });
 
-  it('does not call Anthropic or OpenAI in AI_DEV_MODE', async () => {
+  it('does not call the model in AI_DEV_MODE', async () => {
     process.env.AI_DEV_MODE  = 'true';
     process.env.DATABASE_URL = 'postgresql://test@localhost/test';
     mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
-    const { createAnthropic } = jest.requireMock('@ai-sdk/anthropic');
-    const { createOpenAI }    = jest.requireMock('@ai-sdk/openai');
-    const { createGoogleGenerativeAI } = jest.requireMock('@ai-sdk/google');
     await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(createAnthropic).not.toHaveBeenCalled();
-    expect(createOpenAI).not.toHaveBeenCalled();
-    expect(createGoogleGenerativeAI).not.toHaveBeenCalled();
+    expect(jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor).not.toHaveBeenCalled();
   });
 
   it('returns 503 NO_API_KEY JSON when AI_DEV_MODE is false and no key', async () => {
@@ -717,27 +614,25 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
 
 describe('POST /api/ai/course-planner — context forwarding', () => {
   beforeEach(() => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
     mockCheckAndEnsureSession.mockResolvedValue({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
   });
   afterEach(() => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     delete process.env.DATABASE_URL;
     jest.clearAllMocks();
   });
 
-  it('passes course_context to streamText system prompt', async () => {
-    const { streamText } = jest.requireMock('ai');
+  it('passes course_context to the course advisor', async () => {
+    const { streamCourseAdvisor } = jest.requireMock('../../api/ai/agent/course_advisor');
     await handler(makeReq({ ...VALID_BODY, course_context: 'קורס ייחודי עם מעבדה שבועית' }), makeRes() as any);
-    const callArgs = streamText.mock.calls[0][0];
-    expect(callArgs.system).toContain('קורס ייחודי עם מעבדה שבועית');
+    expect(streamCourseAdvisor.mock.calls[0][0].courseContext).toContain('קורס ייחודי עם מעבדה שבועית');
   });
 
-  it('does not include API key in the system prompt', async () => {
-    const { streamText } = jest.requireMock('ai');
+  it('never passes the API key to the advisor', async () => {
+    const { streamCourseAdvisor } = jest.requireMock('../../api/ai/agent/course_advisor');
     await handler(makeReq(VALID_BODY), makeRes() as any);
-    const callArgs = streamText.mock.calls[0][0];
-    expect(callArgs.system).not.toContain('sk-ant-test-key');
+    expect(JSON.stringify(streamCourseAdvisor.mock.calls[0][0])).not.toContain('sk-openai-test-key');
   });
 });
