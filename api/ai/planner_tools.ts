@@ -23,7 +23,7 @@ export type PlannerToolObserver = (event: { tool: PlannerToolName; status: Plann
 export type PlannerClarificationObserver = (event: { questionHe: string; optionsHe: string[] }) => void;
 
 /** Compact, model-readable snapshot after an action. */
-function snapshot(worker: PlannerWorker) {
+export function snapshot(worker: PlannerWorker) {
   const st = worker.getState();
   return {
     phase: st.phase,
@@ -44,7 +44,7 @@ function mutationResult(worker: PlannerWorker, r: MutationResult) {
   };
 }
 
-function safeMutation(worker: PlannerWorker, mutate: () => MutationResult) {
+export function safeMutation(worker: PlannerWorker, mutate: () => MutationResult) {
   try {
     return mutationResult(worker, mutate());
   } catch {
@@ -64,7 +64,7 @@ type FactMeta = {
   source_url?: string | null;
 };
 
-function fact(source = 'planner_model', confidence = 1, sourceUrl?: string | null): FactMeta {
+export function fact(source = 'planner_model', confidence = 1, sourceUrl?: string | null): FactMeta {
   return {
     source,
     freshness: 'request_snapshot',
@@ -73,7 +73,7 @@ function fact(source = 'planner_model', confidence = 1, sourceUrl?: string | nul
   };
 }
 
-function grounded<T>(data: T, meta: FactMeta = fact()) {
+export function grounded<T>(data: T, meta: FactMeta = fact()) {
   return { data, fact: meta };
 }
 
@@ -82,7 +82,7 @@ function grounded<T>(data: T, meta: FactMeta = fact()) {
  * capability contract. It copies already-computed findings only: this layer
  * neither adds rules nor parses error text to infer academic facts.
  */
-function simulationValidationFromCandidateReport(
+export function simulationValidationFromCandidateReport(
   report: CandidateReport,
   degreeHoursRequired: number,
 ): ValidationResult {
@@ -113,11 +113,11 @@ function simulationValidationFromCandidateReport(
   };
 }
 
-function profileFor(worker: PlannerWorker, courseId: string) {
+export function profileFor(worker: PlannerWorker, courseId: string) {
   return worker.getModel().profiles.get(courseId);
 }
 
-function allowedSemesters(profile: NonNullable<ReturnType<typeof profileFor>>): string[] | null {
+export function allowedSemesters(profile: NonNullable<ReturnType<typeof profileFor>>): string[] | null {
   return profile.effective_allowed_semesters
     ?? profile.offered_semesters
     ?? profile.allowed_semesters
@@ -128,7 +128,7 @@ function semesterIndex(worker: PlannerWorker, semesterId: string): number {
   return worker.getModel().knownSemesterIds.indexOf(semesterId);
 }
 
-function prerequisiteStatus(worker: PlannerWorker, courseId: string, targetSemester?: string) {
+export function prerequisiteStatus(worker: PlannerWorker, courseId: string, targetSemester?: string) {
   const profile = profileFor(worker, courseId);
   if (!profile) return { course_id: courseId, known: false, missing_course_ids: [] as string[] };
   const model = worker.getModel();

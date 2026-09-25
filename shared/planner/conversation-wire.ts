@@ -84,6 +84,13 @@ const toolStatusEventSchema = z.object({
     'move_course',
     'replace_course',
     'finalize_plan',
+    // OpenAI Agents SDK co-pilot (api/ai/agent/tools.ts)
+    'get_student_context',
+    'search_courses',
+    'update_preferences',
+    'build_plan',
+    'ask_student',
+    'submit_proposal',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()

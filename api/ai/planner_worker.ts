@@ -296,6 +296,9 @@ export class PlannerWorker {
   // ── deterministic tools ───────────────────────────────────────────────────
 
   addCourse(courseId: string, semesterId?: string, by: Actor = 'worker'): MutationResult {
+    if (!this.model.profiles.has(courseId)) {
+      return this.recordReject(courseId, 'הקורס אינו מוכר בתוכנית הלימודים.', by);
+    }
     if (this.isExcluded(courseId)) {
       return this.recordReject(courseId, 'הקורס סומן כלא-זמין (חריגה מפורשת) ולכן לא ישובץ.', by);
     }
@@ -352,6 +355,9 @@ export class PlannerWorker {
   }
 
   replaceCourse(outId: string, inId: string, semesterId?: string, by: Actor = 'worker'): MutationResult {
+    if (!this.model.profiles.has(inId)) {
+      return this.recordReject(inId, 'הקורס המוצע אינו מוכר בתוכנית הלימודים.', by);
+    }
     if (this.isExcluded(inId)) {
       return this.recordReject(inId, 'הקורס המוצע סומן כלא-זמין.', by);
     }

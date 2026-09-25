@@ -69,6 +69,12 @@ const TOOL_LABELS: Record<string, string> = {
   move_course: 'בדיקת העברת קורס',
   replace_course: 'בדיקת החלפת קורס',
   finalize_plan: 'אימות התוכנית',
+  get_student_context: 'קריאת הסטטוס וההעדפות שלך',
+  search_courses: 'חיפוש קורסים בקטלוג',
+  update_preferences: 'עדכון העדפות התכנון',
+  build_plan: 'בניית טיוטה לפי כללי התואר',
+  ask_student: 'שאלת המשך',
+  submit_proposal: 'אימות והגשת ההצעה',
 }
 
 const TOOL_STATUS_LABELS: Record<string, string> = {

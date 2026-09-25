@@ -315,39 +315,88 @@ test('conversation blocks an early proposal until critical academic facts are kn
   expect(runDecisionPipeline).not.toHaveBeenCalled()
 })
 
-test('conversation never offers Build while critical academic facts are unknown', async () => {
+test('conversation refuses a turn once the AI quota is exhausted, before running the agent', async () => {
+  const runAgent = jest.fn()
   const handler = createConversationHandler({
-    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+    checkQuota: async () => ({ allowed: false }),
+    runAgent: runAgent as any,
+  })
+  const res = response()
+  await handler({ method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` }, body: validBody } as any, res)
+
+  expect(res.statusCode).toBe(429)
+  expect(res.body).toEqual(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }))
+  expect(runAgent).not.toHaveBeenCalled()
+})
+
+test('preferences the agent records are persisted and returned as a context update', async () => {
+  const preferences = { max_weekly_hours: 22 }
+  const personalStatus = { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } }
+  const putAcademicContext = jest.fn(async (input: any) => ({ ...input, updatedAt: 2 }))
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
     loadBoard: async () => null,
     loadAcademicContext: async () => ({
       ownerId: 'server-owner', programId: validBody.program_id,
-      digest: validBody.academic_status_digest, personalStatus: {}, planContext: {},
-      preferences: { max_weekly_hours: 22 }, updatedAt: 1,
+      digest: validBody.academic_status_digest, personalStatus, planContext: {}, preferences, updatedAt: 1,
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
-    runAgent: async () => ({
-      outcome: 'conversation',
-      nextAction: 'offer_build',
-      messageHe: 'אפשר כבר לבנות מערכת.',
-      events: [{ type: 'assistant_message', text_he: 'אפשר כבר לבנות מערכת.' }],
-    } as any),
+    runAgent: async ({ session }) => {
+      session.updatePreferences({ max_weekly_hours: 18 })
+      return { outcome: 'conversation', messageHe: 'עדכנתי את מגבלת השעות.', events: [] }
+    },
+    putAcademicContext,
   })
   const res = response()
-
   await handler({
     method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
-    body: { ...validBody, preference_digest: preferenceDigest({ max_weekly_hours: 22 }) },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
   } as any, res)
 
   expect(res.statusCode).toBe(200)
-  expect(res.body).toEqual(expect.objectContaining({
-    outcome: 'clarification_required',
-    next_action: 'ask',
-    academic_decision: expect.objectContaining({ ready_to_plan: false }),
-  }))
-  expect(res.body.events).toEqual(expect.arrayContaining([
-    expect.objectContaining({ type: 'clarification' }),
-  ]))
+  expect(putAcademicContext).toHaveBeenCalledWith(expect.objectContaining({ preferences: { max_weekly_hours: 18 } }))
+  expect(res.body.context_update).toEqual({
+    academic_status_digest: validBody.academic_status_digest,
+    preference_digest: preferenceDigest({ max_weekly_hours: 18 }),
+  })
+})
+
+test('the plan the agent submitted is stored as the recommended, apply-checkable candidate', async () => {
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const putProposal = jest.fn(async (record: any) => record)
+  const recordUsage = jest.fn(async () => undefined)
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+    recordUsage,
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
+    } as any),
+    putProposal,
+  })
+  const res = response()
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+
+  expect(res.statusCode).toBe(200)
+  const record = putProposal.mock.calls[0][0]
+  const recommended = record.candidates.find((candidate: any) => candidate.recommended)
+  expect(recommended.semesters).toEqual([{ semesterId: 'semester_a', courseIds: ['COURSE-1'] }])
+  // Same identity + fingerprint format the apply path re-checks.
+  expect(recommended.normalizedIdentity).toBe(JSON.stringify([['COURSE-1', 'semester_a']]))
+  expect(record.constraintFingerprint).toMatch(/^cf_[0-9a-f]{16}$/)
+  expect(record.recommendedCandidateId).toBe(recommended.candidateId)
+  expect(recordUsage).toHaveBeenCalledWith(validBody.session_token, 'test-model')
 })
 
 test('conversation persists a structured clarification answer and returns refreshed context digests', async () => {

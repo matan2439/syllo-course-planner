@@ -1,6 +1,6 @@
 import type { DistributionPolicy } from './planner_types';
 
-const INTERNAL_DISTRIBUTION_POLICY = '__planner_distribution_policy';
+export const INTERNAL_DISTRIBUTION_POLICY = '__planner_distribution_policy';
 
 export function preferencesWithPlannerPolicy(
   preferences: unknown,
