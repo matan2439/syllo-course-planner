@@ -14,7 +14,6 @@ import { join } from 'path';
 import { buildConstraintModel, planContextToState } from '../../api/ai/planner_model';
 import { HARD_LOAD_CAP, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from '../../api/ai/load_constants';
 import { PlannerWorker } from '../../api/ai/planner_worker';
-import { GreedyOrchestrator } from '../../api/ai/planner_orchestrator';
 import { placedCourseIds, emptyState } from '../../api/ai/planner_types';
 import { degreeHours as computeDegreeHours, placedHours } from '../../api/ai/planner_goals';
 
@@ -216,7 +215,7 @@ describe('placedHours — real ME-2027 annual course (0542-3792) is deduplicated
 });
 
 describe('ME-2027 greedy oracle (real board, end-to-end)', () => {
-  it('GreedyOrchestrator builds a valid, complete plan satisfying all requirements', async () => {
+  it('the greedy worker builds a valid, complete plan satisfying all requirements', async () => {
     const m = buildConstraintModel(REAL_BOARD);
     const mandatoryHours = m.requiredMandatoryCourseIds.reduce(
       (s, id) => s + (m.profiles.get(id)?.hours ?? 0), 0,
@@ -225,7 +224,7 @@ describe('ME-2027 greedy oracle (real board, end-to-end)', () => {
     const model = { ...m, priorHours: m.degreeRequiredHours - mandatoryHours - 24 };
 
     const w = new PlannerWorker(model, undefined, { lookahead: false }); // fast deterministic pass
-    await new GreedyOrchestrator().run(w);
+    w.run(500, 'greedy');
 
     const report = w.validateCandidate();
     expect(report.valid).toBe(true);

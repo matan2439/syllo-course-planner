@@ -19,7 +19,6 @@ import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
 import { buildConstraintModel } from './planner_model';
 import { PlannerWorker } from './planner_worker';
-import { LlmOrchestrator } from './planner_orchestrator';
 import { createRun, markRunFinal, type PlannerRunStatus } from './_planner_runs';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import {
@@ -31,6 +30,8 @@ import { placedCourseIds } from './planner_types';
 const requestSchema = z.object({
   program_id: z.string().min(1, 'program_id is required'),
   session_token: z.string().uuid('session_token must be a valid UUID'),
+  // 'llm' is accepted for old clients but runs greedy: the LLM planner is the
+  // conversation co-pilot (api/ai/agent), not this endpoint.
   orchestrator: z.enum(['llm', 'greedy']).optional(),
   completed_course_ids: z.array(z.string()).optional(),
   prior_hours: z.number().optional(),
@@ -136,7 +137,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   const model = buildModelFromRequest(boardJson, body);
-  const useLlm = body.orchestrator === 'llm' && !!resolveModel();
 
   // ── begin streaming ─────────────────────────────────────────────────────────
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -144,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const emit = (obj: unknown) => res.write(JSON.stringify(obj) + '\n');
 
   const run_id = persist
-    ? await createRun(dbUrl, { session_token: body.session_token, program_id: body.program_id, orchestrator: useLlm ? 'llm' : 'greedy' })
+    ? await createRun(dbUrl, { session_token: body.session_token, program_id: body.program_id, orchestrator: 'greedy' })
     : `dev-${randomUUID()}`;
 
   emit({ type: 'run_started', run_id, program_id: body.program_id, ts: Date.now() });
@@ -153,18 +153,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let status: PlannerRunStatus = 'running';
 
   try {
-    if (useLlm) {
-      // LLM drives the worker via tools; replay the resulting trace as events.
-      await new LlmOrchestrator(resolveModel()!.model, { maxSteps: 24 }).run(worker);
-      for (const a of worker.getTrace()) emit({ type: 'action', action: a });
-    } else {
-      // Greedy: drive the worker step-by-step, streaming each action live.
-      for (;;) {
-        const a = worker.step('greedy');
-        if (!a) break;
-        emit({ type: 'action', action: a });
-        if (a.action === 'STOP') break;
-      }
+    // Drive the worker step-by-step, streaming each action live.
+    for (;;) {
+      const a = worker.step('greedy');
+      if (!a) break;
+      emit({ type: 'action', action: a });
+      if (a.action === 'STOP') break;
     }
 
     const report = worker.validateCandidate();
@@ -183,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       });
       await Promise.allSettled([
         incrementCreditsUsed(body.session_token, dbUrl),
-        logUsageEvent(body.session_token, useLlm ? (resolveModel()?.name ?? 'llm') : 'greedy', dbUrl),
+        logUsageEvent(body.session_token, 'greedy', dbUrl),
       ]);
     }
 

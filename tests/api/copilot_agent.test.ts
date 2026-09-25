@@ -136,3 +136,18 @@ test('an illegal edit is rejected by the planner', async () => {
   const output = await callTool(await newSession(), 'add_course', { course_id: 'NOPE', semester_id: null })
   expect(output.accepted).toBe(false)
 })
+
+test('simulate_changes answers "what if" on a copy and never touches the draft', async () => {
+  const session = await newSession({ disallowed_course_ids: ['ALPHA'] })
+  const before = JSON.stringify(session.worker.getPlan())
+  const output = await callTool(session, 'simulate_changes', {
+    changes: [{ kind: 'add_course', course_id: 'ALPHA', semester_id: 'year_3_semester_b' }],
+  })
+
+  expect(output.data.status).toBe('simulated')
+  expect(output.data.candidate.semesters.year_3_semester_b).toContain('ALPHA')
+  // An avoided course is flagged by the authoritative validator, with evidence.
+  expect(output.data.validation.valid).toBe(false)
+  expect(output.data.validation.evidence.disallowedCourseIds).toEqual(['ALPHA'])
+  expect(JSON.stringify(session.worker.getPlan())).toBe(before)
+})

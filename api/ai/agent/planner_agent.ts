@@ -20,7 +20,9 @@ import type { PlannerWorker } from '../planner_worker';
 import { buildAgentTools } from './tools';
 import { PLANNER_AGENT_INSTRUCTIONS } from './instructions';
 
-export const DEFAULT_AGENT_MODEL = 'gpt-5-mini';
+// GPT-6 Sol: OpenAI's model for agentic, multi-step tool workflows ($2/$10 per MTok).
+// Astra is 5x the price; Luna is tuned for simple high-volume work, not planning.
+export const DEFAULT_AGENT_MODEL = 'gpt-6-sol';
 const MAX_TURNS = 20;
 
 export type PlannerAgentResult =
@@ -64,6 +66,9 @@ function createPlannerAgent(model: string | Model) {
     name: 'TAU planning co-pilot',
     instructions: PLANNER_AGENT_INSTRUCTIONS,
     model,
+    // Medium reasoning: enough to weigh degree rules against preferences without
+    // blowing the 300s function budget across ~10 tool round-trips.
+    modelSettings: { reasoning: { effort: 'medium' } },
     tools: buildAgentTools(),
     // Stop as soon as the agent asked something or a proposal passed validation;
     // a rejected submit_proposal returns its errors and the loop continues.
@@ -90,13 +95,17 @@ function toInputItems(transcript: readonly ConversationTurn[], profile?: Prefere
   return items;
 }
 
-export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAgentDeps = {}): Promise<PlannerAgentResult> {
-  const { session } = input;
-  const runner = new Runner({
-    // Tracing would send student data to OpenAI's trace store; opt-in only.
+/** Tracing would send student data to OpenAI's trace store; opt-in only. */
+export function createAgentRunner(): Runner {
+  return new Runner({
     tracingDisabled: process.env.AI_AGENT_TRACING !== 'true',
     traceIncludeSensitiveData: false,
   });
+}
+
+export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAgentDeps = {}): Promise<PlannerAgentResult> {
+  const { session } = input;
+  const runner = createAgentRunner();
   try {
     const result = await runner.run(
       createPlannerAgent(deps.model ?? agentModelName()),
