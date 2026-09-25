@@ -55,6 +55,8 @@ export interface PlannerAgentInput {
 export interface PlannerAgentDeps {
   /** Model name (OpenAI) or a custom SDK Model — tests inject a scripted one. */
   model?: string | Model;
+  /** Receives the assistant's text as the model streams it. */
+  onTextDelta?: (text: string) => void;
 }
 
 export function agentModelName(): string {
@@ -110,8 +112,14 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
     const result = await runner.run(
       createPlannerAgent(deps.model ?? agentModelName()),
       toInputItems(input.transcript, input.preferenceProfile),
-      { context: session, maxTurns: MAX_TURNS },
+      { context: session, maxTurns: MAX_TURNS, stream: true },
     );
+    for await (const event of result) {
+      if (event.type === 'raw_model_stream_event' && event.data.type === 'output_text_delta') {
+        deps.onTextDelta?.(event.data.delta);
+      }
+    }
+    await result.completed;
     const spoken = extractAllTextOutput(result.newItems).trim();
     const events = [...session.events];
 

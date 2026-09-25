@@ -17,6 +17,7 @@ import {
   type ConversationRequest,
   type ConversationResponse,
   type ConversationContextConflictResponse,
+  type ConversationEvent,
 } from './conversation-wire';
 import { ContractError } from './model';
 import type { BoardModel, BoardRequirementsModel, GeneratedPlanModel } from './model';
@@ -26,6 +27,9 @@ export interface FetchResponseLike {
   ok: boolean;
   status: number;
   json(): Promise<unknown>;
+  /** Present on real fetch responses; used only by streamed endpoints. */
+  headers?: { get(name: string): string | null };
+  body?: ReadableStream<Uint8Array> | null;
 }
 export interface FetchLike {
   (url: string, init?: unknown): Promise<FetchResponseLike>;
@@ -198,20 +202,59 @@ export class ConversationContextConflictError extends ContractError {
   }
 }
 
+/** Live progress of a streamed conversation turn. */
+export type ConversationProgress =
+  | { type: 'event'; event: ConversationEvent }
+  | { type: 'text_delta'; text: string };
+
+/** Reads an NDJSON body, reporting progress lines, and returns the final result line. */
+async function readConversationStream(
+  body: ReadableStream<Uint8Array>,
+  onProgress: (progress: ConversationProgress) => void,
+): Promise<{ status: number; body: unknown }> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = '';
+  let result: { status: number; body: unknown } | undefined;
+  const handle = (line: string) => {
+    if (!line.trim()) return;
+    const parsed = JSON.parse(line) as { type?: string; status?: number; body?: unknown; event?: unknown; text?: unknown };
+    if (parsed.type === 'result') result = { status: Number(parsed.status), body: parsed.body };
+    else if (parsed.type === 'text_delta' && typeof parsed.text === 'string') onProgress({ type: 'text_delta', text: parsed.text });
+    else if (parsed.type === 'event') onProgress({ type: 'event', event: parsed.event as ConversationEvent });
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    buffered += decoder.decode(value, { stream: !done });
+    const lines = buffered.split('\n');
+    buffered = lines.pop() ?? '';
+    lines.forEach(handle);
+    if (done) break;
+  }
+  handle(buffered);
+  if (!result) throw new ContractError('conversation stream ended without a result');
+  return result;
+}
+
 /**
  * Send one bounded transcript turn to the conversational Academic Agent.
  * Typed assistant unavailability is a normal response (including HTTP 503),
  * while every other non-success status remains a transport/contract error.
+ * With `onProgress`, the turn is streamed: tool steps and reply text arrive live.
  */
 export async function sendConversation(
   deps: ClientDeps,
   req: ConversationRequest,
+  onProgress?: (progress: ConversationProgress) => void,
 ): Promise<ConversationResponse> {
   let res: FetchResponseLike;
   try {
     res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/conversation`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(onProgress ? { Accept: 'application/x-ndjson, application/json' } : {}),
+      },
       credentials: 'same-origin',
       body: JSON.stringify(req),
     });
@@ -219,20 +262,26 @@ export async function sendConversation(
     throw new ContractError('conversation request failed', error);
   }
 
+  let status = res.status;
   let body: unknown;
   try {
-    body = await res.json();
+    if (onProgress && res.body && res.headers?.get('content-type')?.includes('application/x-ndjson')) {
+      ({ status, body } = await readConversationStream(res.body, onProgress));
+    } else {
+      body = await res.json();
+    }
   } catch (error) {
     throw asContractError(error, 'conversation');
   }
-  if (!res.ok) {
+  const ok = status >= 200 && status < 300;
+  if (!ok) {
     const conflict = conversationContextConflictResponseSchema.safeParse(body);
     if (conflict.success) throw new ConversationContextConflictError(conflict.data);
   }
   const parsed = conversationResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed conversation response', parsed.error);
-  if (!res.ok && parsed.data.outcome !== 'assistant_unavailable') {
-    throw new ContractError(`conversation request failed with HTTP ${res.status}`);
+  if (!ok && parsed.data.outcome !== 'assistant_unavailable') {
+    throw new ContractError(`conversation request failed with HTTP ${status}`);
   }
   return parsed.data;
 }

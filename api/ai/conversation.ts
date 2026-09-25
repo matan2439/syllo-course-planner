@@ -118,6 +118,20 @@ function clarificationEvent(question: { id: string; question: string; options?: 
   };
 }
 
+/** A status/json pair that writes the final NDJSON line of a streamed turn. */
+function ndjsonResult(res: VercelResponse): Pick<VercelResponse, 'status' | 'json'> {
+  let status = 200;
+  const result = {
+    status(code: number) { status = code; return result; },
+    json(body: unknown) {
+      res.write(`${JSON.stringify({ type: 'result', status, body })}\n`);
+      res.end();
+      return result;
+    },
+  };
+  return result as unknown as Pick<VercelResponse, 'status' | 'json'>;
+}
+
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
   const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
@@ -162,6 +176,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
+    // NDJSON streaming (opt-in via Accept): once the agent starts, tool events and
+    // reply text are written live, and the usual JSON body arrives as the final
+    // {"type":"result","status","body"} line. Earlier errors stay plain JSON.
+    const streaming = String(req.headers?.accept ?? '').includes('application/x-ndjson');
+    const writeLine = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
+    let out: Pick<VercelResponse, 'status' | 'json'> = res;
     try {
       const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
@@ -279,6 +299,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         preferences,
         clarification,
       });
+      if (streaming) {
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.status(200);
+        out = ndjsonResult(res);
+        session.onEvent = (event) => writeLine({ type: 'event', event });
+      }
       const agent = await runAgent(
         {
           transcript: parsed.data.transcript,
@@ -288,11 +314,14 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           // `z.any()` object properties more narrowly than the local build.
           preferenceProfile: parsed.data.preference_profile as PreferenceProfile | undefined,
         },
-        { model: modelConfig.model },
+        {
+          model: modelConfig.model,
+          ...(streaming ? { onTextDelta: (text: string) => writeLine({ type: 'text_delta', text }) } : {}),
+        },
       );
 
       if (agent.outcome === 'assistant_unavailable') {
-        res.status(503).json(unavailable());
+        out.status(503).json(unavailable());
         return;
       }
 
@@ -325,7 +354,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const events = question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events;
-        res.status(200).json({
+        out.status(200).json({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
@@ -360,7 +389,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           const events = question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events;
-          res.status(200).json({
+          out.status(200).json({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
             events,
@@ -379,7 +408,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       if (agent.outcome !== 'proposal' || !agent.validation.valid) {
-        res.status(200).json({
+        out.status(200).json({
           outcome: 'conversation',
           message_he: messageHe,
           events: agent.events,
@@ -554,7 +583,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
       ];
-      res.status(200).json({
+      out.status(200).json({
         outcome: 'proposal',
         message_he: messageHe,
         events,
@@ -597,7 +626,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     } catch (error) {
       const code = plannerStorageErrorCode(error);
       if (code) {
-        res.status(503).json({
+        out.status(503).json({
           ok: false,
           code,
           message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
@@ -605,7 +634,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
       console.error('[ai/conversation] unexpected error');
-      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+      out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
     }
   };
 }

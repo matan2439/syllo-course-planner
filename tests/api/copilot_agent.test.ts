@@ -94,6 +94,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
 
 test('the transcript reaches the model as separate messages, and a plain answer ends the run', async () => {
   const model = new FakeAgentModel([[{ text: 'בשמחה, ספר לי קודם מה חשוב לך.' }]])
+  const deltas: string[] = []
   const result = await runPlannerAgent({
     transcript: [
       { role: 'user', text: 'שלום' },
@@ -101,8 +102,9 @@ test('the transcript reaches the model as separate messages, and a plain answer 
       { role: 'user', text: 'אני רוצה לתכנן את התואר' },
     ],
     session: await newSession(),
-  }, { model })
+  }, { model, onTextDelta: (text) => deltas.push(text) })
 
+  expect(deltas.join('')).toBe('בשמחה, ספר לי קודם מה חשוב לך.')
   expect(Array.isArray(model.requests[0].input) && model.requests[0].input).toHaveLength(3)
   expect(result).toEqual(expect.objectContaining({ outcome: 'conversation', messageHe: 'בשמחה, ספר לי קודם מה חשוב לך.' }))
 })

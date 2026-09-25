@@ -49,6 +49,8 @@ export class PlanningSession {
   submission?: AgentSubmission;
   /** The last build_plan search, reused for the proposal's extra alternatives. */
   candidateSet?: CandidateSet;
+  /** Live listener (streaming responses); every event is also kept in `events`. */
+  onEvent?: (event: ConversationEvent) => void;
 
   constructor(readonly input: PlanningSessionInput) {
     this.preferences = { ...input.preferences };
@@ -75,6 +77,11 @@ export class PlanningSession {
       planContextToState(this.input.committedContext, this.model),
       { topN: 6, rolloutSteps: 80 },
     );
+  }
+
+  emit(event: ConversationEvent): void {
+    this.events.push(event);
+    this.onEvent?.(event);
   }
 
   updatePreferences(patch: Record<string, unknown>): void {

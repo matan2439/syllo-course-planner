@@ -46,11 +46,11 @@ const sessionOf = (context?: Ctx): PlanningSession => {
 function observed<A>(name: AgentToolName, body: (session: PlanningSession, args: A) => unknown) {
   return async (args: A, context?: Ctx) => {
     const session = sessionOf(context);
-    session.events.push({ type: 'tool_status', tool: name, status: 'started' });
+    session.emit({ type: 'tool_status', tool: name, status: 'started' });
     const result = await body(session, args);
     const rejected = typeof result === 'object' && result !== null && 'accepted' in result
       && (result as { accepted: unknown }).accepted === false;
-    session.events.push({ type: 'tool_status', tool: name, status: rejected ? 'rejected' : 'completed' });
+    session.emit({ type: 'tool_status', tool: name, status: rejected ? 'rejected' : 'completed' });
     return result;
   };
 }

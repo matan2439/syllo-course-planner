@@ -509,3 +509,39 @@ test('each proposal alternative carries the degree requirements it would leave, 
   expect(withoutSnapshot.statusCode).toBe(200)
   expect(withoutSnapshot.body.proposal.alternatives[0]).not.toHaveProperty('requirements_validation')
 })
+
+test('with Accept: application/x-ndjson, tool events and reply text stream live before the result line', async () => {
+  const preferences = { max_weekly_hours: 22 }
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async ({ session }, { onTextDelta }) => {
+      session.emit({ type: 'tool_status', tool: 'get_student_context', status: 'completed' })
+      onTextDelta?.('שלום, ')
+      onTextDelta?.('מה חשוב לך?')
+      return { outcome: 'conversation', messageHe: 'שלום, מה חשוב לך?', events: [...session.events] }
+    },
+  })
+  const res = response()
+  const lines: string[] = []
+  res.write = (chunk: string) => { lines.push(...chunk.split('\n').filter(Boolean)); return true }
+  res.end = jest.fn()
+  await handler({
+    method: 'POST',
+    headers: { cookie: `syllo_owner=${'x'.repeat(43)}`, accept: 'application/x-ndjson' },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+
+  const parsed = lines.map((line) => JSON.parse(line))
+  expect(res.headers['Content-Type']).toBe('application/x-ndjson; charset=utf-8')
+  expect(parsed.map((line) => line.type)).toEqual(['event', 'text_delta', 'text_delta', 'result'])
+  expect(parsed[0].event).toEqual({ type: 'tool_status', tool: 'get_student_context', status: 'completed' })
+  expect(parsed[3]).toEqual({ type: 'result', status: 200, body: expect.objectContaining({ outcome: 'conversation', message_he: 'שלום, מה חשוב לך?' }) })
+  expect(res.end).toHaveBeenCalled()
+})

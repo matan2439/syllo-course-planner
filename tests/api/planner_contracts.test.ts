@@ -249,6 +249,45 @@ describe('api client (runtime-neutral, injected fetch)', () => {
     expect(JSON.parse(requestInit.body).transcript).toHaveLength(1);
   });
 
+  test('sendConversation streams progress lines, even split across chunks, and returns the result line', async () => {
+    const lines = [
+      { type: 'event', event: { type: 'tool_status', tool: 'build_plan', status: 'started' } },
+      { type: 'text_delta', text: 'בונה ' },
+      { type: 'text_delta', text: 'טיוטה' },
+      { type: 'result', status: 200, body: { outcome: 'conversation', message_he: 'בונה טיוטה', events: [] } },
+    ].map((line) => JSON.stringify(line) + '\n').join('');
+    const bytes = new TextEncoder().encode(lines);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, 37)); // cut mid-line
+        controller.enqueue(bytes.slice(37));
+        controller.close();
+      },
+    });
+    const fetchImpl = jest.fn(async () => ({
+      ok: true, status: 200, json: async () => { throw new Error('not json'); },
+      headers: { get: () => 'application/x-ndjson; charset=utf-8' }, body,
+    }));
+    const progress: unknown[] = [];
+    const result = await sendConversation({ fetchImpl, baseUrl: '' }, {
+      program_id: 'mechanical_engineering_2027',
+      session_token: '00000000-0000-4000-8000-000000000000',
+      board_version: null,
+      academic_status_digest: 'as_1',
+      preference_digest: 'pref_1',
+      transcript: [{ role: 'user', text: 'בנה לי חלופות' }],
+    }, (item) => progress.push(item));
+
+    expect(result).toEqual(expect.objectContaining({ outcome: 'conversation', message_he: 'בונה טיוטה' }));
+    expect(progress).toEqual([
+      { type: 'event', event: { type: 'tool_status', tool: 'build_plan', status: 'started' } },
+      { type: 'text_delta', text: 'בונה ' },
+      { type: 'text_delta', text: 'טיוטה' },
+    ]);
+    const init = (fetchImpl as jest.Mock).mock.calls[0][1] as { headers: Record<string, string> };
+    expect(init.headers.Accept).toContain('application/x-ndjson');
+  });
+
   test('sendConversation preserves a typed unavailable response from HTTP 503', async () => {
     const result = await sendConversation({ fetchImpl: makeFetch(503, {
       outcome: 'assistant_unavailable', message_he: 'העוזר האקדמי אינו זמין כרגע.',
