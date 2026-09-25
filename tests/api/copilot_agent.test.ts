@@ -77,7 +77,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
     [{ tool: 'update_preferences', args: {
       max_weekly_hours: null, add_wanted_course_ids: null, remove_wanted_course_ids: null,
       add_avoided_course_ids: ['ALPHA'], remove_avoided_course_ids: null,
-      semester_distribution: null, focus_areas: null,
+      semester_distribution: null, focus_areas: null, free_days: null,
     } }],
     [{ tool: 'build_plan' }],
     [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [] } }],
@@ -129,7 +129,7 @@ test('update_preferences refuses unknown course ids instead of guessing', async 
   const session = await newSession()
   const output = await callTool(session, 'update_preferences', {
     max_weekly_hours: null, add_wanted_course_ids: ['NOPE'], remove_wanted_course_ids: null,
-    add_avoided_course_ids: null, remove_avoided_course_ids: null, semester_distribution: null, focus_areas: null,
+    add_avoided_course_ids: null, remove_avoided_course_ids: null, semester_distribution: null, focus_areas: null, free_days: null,
   })
   expect(output).toEqual(expect.objectContaining({ accepted: false, unknown_course_ids: ['NOPE'] }))
   expect(session.preferencesChanged).toBe(false)

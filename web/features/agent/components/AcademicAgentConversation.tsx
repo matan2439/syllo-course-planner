@@ -81,6 +81,7 @@ const TOOL_LABELS: Record<string, string> = {
   build_plan: 'בניית טיוטה לפי כללי התואר',
   ask_student: 'שאלת המשך',
   submit_proposal: 'אימות והגשת ההצעה',
+  check_timetable: 'בדיקת מערכת שעות וימים פנויים',
 }
 
 const TOOL_STATUS_LABELS: Record<string, string> = {

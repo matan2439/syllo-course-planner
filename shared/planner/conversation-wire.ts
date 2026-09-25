@@ -91,6 +91,7 @@ const toolStatusEventSchema = z.object({
     'build_plan',
     'ask_student',
     'submit_proposal',
+    'check_timetable',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()

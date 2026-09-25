@@ -27,11 +27,15 @@ import { analyzeHardConstraints } from '../hard_constraints';
 import { normalizeHebrew } from '../planning_intent';
 import { ACADEMIC_FOCUS_AREAS } from '../academic_interest_profile';
 import { INTERNAL_DISTRIBUTION_POLICY } from '../planner_policy_context';
+import { defaultTermMapping } from '../../../shared/planner/schedule';
+import { checkTimetable, WEEK_DAYS } from './timetable';
+import { fetchScheduleFromBidit } from './session';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
-  'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'ask_student', 'submit_proposal',
+  'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
+  'ask_student', 'submit_proposal',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
 
@@ -125,6 +129,7 @@ export function buildAgentTools() {
             avoided_course_ids: [...model.disallowedCourseIds],
             semester_distribution: model.distributionPolicy ?? 'neutral',
             focus_areas: session.preferences.focus_areas ?? [],
+            free_days: session.preferences.free_days ?? [],
           },
           missing_critical_inputs: session.input.clarification.missingInputs
             .filter((input) => input.critical)
@@ -278,6 +283,8 @@ export function buildAgentTools() {
           .describe('balanced = spread load evenly; compact = fewer active semesters'),
         focus_areas: z.array(z.enum(ACADEMIC_FOCUS_AREAS)).max(5).nullable()
           .describe('Academic interests used to prefer matching electives (replaces the stored list)'),
+        free_days: z.array(z.enum(WEEK_DAYS)).max(5).nullable()
+          .describe('Weekdays the student wants free of classes (א=Sunday … ו=Friday); checked with check_timetable'),
       }),
       execute: observed('update_preferences', (session, args: {
         max_weekly_hours: number | null;
@@ -285,6 +292,7 @@ export function buildAgentTools() {
         add_avoided_course_ids: string[] | null; remove_avoided_course_ids: string[] | null;
         semester_distribution: 'balanced' | 'compact' | 'neutral' | null;
         focus_areas: string[] | null;
+        free_days: string[] | null;
       }) => {
         const known = (id: string) => session.model.profiles.has(id);
         const all = [...(args.add_wanted_course_ids ?? []), ...(args.add_avoided_course_ids ?? [])];
@@ -307,6 +315,7 @@ export function buildAgentTools() {
         };
         if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
         if (args.focus_areas !== null) patch.focus_areas = args.focus_areas;
+        if (args.free_days !== null) patch.free_days = args.free_days;
         if (args.semester_distribution !== null) {
           patch[INTERNAL_DISTRIBUTION_POLICY] = args.semester_distribution === 'neutral' ? undefined : args.semester_distribution;
         }
@@ -320,6 +329,7 @@ export function buildAgentTools() {
             avoided_course_ids: [...avoided],
             semester_distribution: session.model.distributionPolicy ?? 'neutral',
             focus_areas: session.preferences.focus_areas ?? [],
+            free_days: session.preferences.free_days ?? [],
           },
           feasible: hard.outcome === 'feasible',
           conflicts: hard.reasons.map((reason) => ({ code: reason.code, course_ids: reason.courseIds, message_he: reason.messageHe })),
@@ -421,6 +431,45 @@ export function buildAgentTools() {
       description: 'Validate the current draft against every degree rule and the student caps. Read-only.',
       parameters: z.object({}),
       execute: observed('validate_plan', (session) => ({ ...validationSummary(session), ...snapshot(session.worker) })),
+    }),
+
+    tool({
+      name: 'check_timetable',
+      description: 'Check the weekly timetable of one draft semester (use it for the upcoming semester): can one group per lecture/recitation/lab be chosen for every course with no overlap and nothing on the free days? Source: bid-it (unofficial, only currently published timetables). Read-only.',
+      parameters: z.object({
+        semester_id: z.string().max(128),
+        free_days: z.array(z.enum(WEEK_DAYS)).max(5).nullable().describe('Override; null = the stored free_days preference'),
+      }),
+      execute: observed('check_timetable', async (session, args: { semester_id: string; free_days: string[] | null }) => {
+        const courseIds = session.worker.getPlan().semesters[args.semester_id];
+        if (!courseIds) return { accepted: false, reason: `Unknown semester_id. Known: ${session.model.knownSemesterIds.join(', ')}` };
+        const term = defaultTermMapping(session.model.knownSemesterIds, new Date())[args.semester_id];
+        const freeDays = args.free_days ?? (Array.isArray(session.preferences.free_days) ? session.preferences.free_days as string[] : []);
+        let courses;
+        try {
+          courses = courseIds.length ? await (session.input.fetchSchedule ?? fetchScheduleFromBidit)(courseIds, term.semester) : [];
+        } catch {
+          return { accepted: false, reason: 'The timetable source (bid-it) is unavailable right now; say the timetable could not be checked.' };
+        }
+        const result = checkTimetable(courses, freeDays);
+        const label = (id: string) => `${nameOf(session, id) ?? id} (${id})`;
+        return {
+          semester_id: args.semester_id,
+          term,
+          source: 'bid-it (unofficial; currently published timetables only)',
+          free_days_requested: freeDays,
+          feasible: result.feasible,
+          days_used: result.daysUsed,
+          free_days_kept: result.feasible ? WEEK_DAYS.filter((day) => !result.daysUsed.includes(day)) : [],
+          selection: result.selection.map((item) => ({
+            course: label(item.courseId), mode: item.mode, group: item.groupId,
+            meetings: item.slots.map((slot) => `${slot.day} ${slot.start}-${slot.end}`),
+          })),
+          courses_without_timetable_data: result.unknownCourseIds.map(label),
+          conflicting_course_pairs: result.conflictingCoursePairs.map(([a, b]) => [label(a), label(b)]),
+          courses_blocking_free_days: result.coursesBlockingFreeDays.map(label),
+        };
+      }),
     }),
 
     tool({

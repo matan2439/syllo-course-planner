@@ -13,6 +13,8 @@ import { storedDistributionPolicy } from '../planner_policy_context';
 import type { AcademicFocusArea } from '../academic_interest_profile';
 import type { ClarificationResult } from '../academic_decision_types';
 import type { CandidateSet } from '../candidate_set';
+import type { ScheduleCourse } from '../../../shared/planner/schedule';
+import { fetchGroupsFromBidit, normalizeGroupsResponse } from '../schedule-groups';
 
 export type ClarificationQuestionId =
   | 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus';
@@ -37,7 +39,12 @@ export interface PlanningSessionInput {
   committedContext: Record<string, unknown>;
   preferences: Record<string, unknown>;
   clarification: ClarificationResult;
+  /** Weekly timetable source (tests inject one). Defaults to bid-it (unofficial). */
+  fetchSchedule?: (courseIds: string[], semester: 1 | 2) => Promise<ScheduleCourse[]>;
 }
+
+export const fetchScheduleFromBidit = async (courseIds: string[], semester: 1 | 2): Promise<ScheduleCourse[]> =>
+  normalizeGroupsResponse(await fetchGroupsFromBidit(courseIds, semester), courseIds, semester, new Date().toISOString()).courses;
 
 export class PlanningSession {
   readonly events: ConversationEvent[] = [];
