@@ -130,6 +130,7 @@ export default function NativePlannerJourney({
   const {
     academicStatus, updateAcademicStatus, academicContextPhase, loadedAcademicContext, statusVersion,
     applyAcademicStatus, refreshAcademicContext, handleAcademicContextUpdated, sendConversationWithPanelStatus,
+    markAcademicStatusChangedByAssistant,
   } = useAcademicContext({ programId, planningContextFn, sendConversationFn })
   const { convProfileVersion, convProfileRef, onProfileChange } = useConversationProfile()
 
@@ -371,7 +372,23 @@ export default function NativePlannerJourney({
             { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
             { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },
           ].filter((scope) => scope.courseIds.length > 0)}
-          onAcademicContextUpdated={handleAcademicContextUpdated}
+          onAcademicContextUpdated={(update, info) => {
+            // The assistant changed stored preferences or status without delivering a new
+            // proposal: a proposal already on the board was built with the old ones.
+            if (!info?.withProposal && proposal) {
+              // Stale for the right reason: preferences and academic status are separate revisions.
+              if (update.preference_digest !== loadedAcademicContext?.preferenceDigest) {
+                const panelClean = preferenceVersion === acceptedPreferenceVersionRef.current
+                updatePreferenceVersion()
+                // Not a panel edit: keep hydration from the stored copy working.
+                if (panelClean) acceptedPreferenceVersionRef.current += 1
+              }
+              if (update.academic_status_digest !== loadedAcademicContext?.academicStatusDigest) {
+                markAcademicStatusChangedByAssistant()
+              }
+            }
+            handleAcademicContextUpdated(update)
+          }}
           onProposalReady={acceptConversationProposal}
           onShowProposal={() => {
             // The rail floats over the board below 1280px; get it out of the way first.

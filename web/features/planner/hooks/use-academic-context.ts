@@ -36,6 +36,18 @@ export function useAcademicContext({
     setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
   }, [])
 
+  /**
+   * The assistant changed the stored academic status (not a panel edit): advance the
+   * status revision so an existing proposal is stale for that reason, without making
+   * the panel look dirty (which would resend its old status over the assistant's).
+   */
+  const markAcademicStatusChangedByAssistant = useCallback(() => {
+    const clean = statusVersionRef.current === acceptedStatusVersionRef.current
+    statusVersionRef.current += 1
+    if (clean) acceptedStatusVersionRef.current = statusVersionRef.current
+    setStatusVersion(statusVersionRef.current)
+  }, [])
+
   const sendConversationWithPanelStatus: typeof defaultSendConversation = async (request, onProgress) => {
     const panelChanged = statusVersion > acceptedStatusVersionRef.current && academicStatus.confirmed
     const answers = new Map((request.clarification_answers ?? []).map((answer) => [answer.question_id, answer]))
@@ -46,7 +58,7 @@ export function useAcademicContext({
       ...request,
       ...(answers.size ? { clarification_answers: [...answers.values()] } : {}),
     }, onProgress)
-    if (panelChanged && response.outcome !== 'assistant_unavailable') acceptedStatusVersionRef.current = statusVersion
+    if (panelChanged && response.outcome !== 'assistant_unavailable') acceptedStatusVersionRef.current = Math.max(acceptedStatusVersionRef.current, statusVersion)
     return response
   }
 
@@ -126,5 +138,6 @@ export function useAcademicContext({
   return {
     academicStatus, updateAcademicStatus, academicContextPhase, loadedAcademicContext, statusVersion,
     applyAcademicStatus, refreshAcademicContext, handleAcademicContextUpdated, sendConversationWithPanelStatus,
+    markAcademicStatusChangedByAssistant,
   }
 }
