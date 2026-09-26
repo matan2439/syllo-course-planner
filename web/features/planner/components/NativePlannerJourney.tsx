@@ -130,6 +130,7 @@ export default function NativePlannerJourney({
   const {
     academicStatus, updateAcademicStatus, academicContextPhase, loadedAcademicContext, statusVersion,
     applyAcademicStatus, refreshAcademicContext, handleAcademicContextUpdated, sendConversationWithPanelStatus,
+    markAcademicStatusChangedByAssistant,
   } = useAcademicContext({ programId, planningContextFn, sendConversationFn })
   const { convProfileVersion, convProfileRef, onProfileChange } = useConversationProfile()
 
@@ -374,13 +375,17 @@ export default function NativePlannerJourney({
           onAcademicContextUpdated={(update, info) => {
             // The assistant changed stored preferences or status without delivering a new
             // proposal: a proposal already on the board was built with the old ones.
-            const changed = update.preference_digest !== loadedAcademicContext?.preferenceDigest
-              || update.academic_status_digest !== loadedAcademicContext?.academicStatusDigest
-            if (changed && !info?.withProposal && proposal) {
-              const panelClean = preferenceVersion === acceptedPreferenceVersionRef.current
-              updatePreferenceVersion()
-              // Not a panel edit: keep hydration from the stored copy working.
-              if (panelClean) acceptedPreferenceVersionRef.current += 1
+            if (!info?.withProposal && proposal) {
+              // Stale for the right reason: preferences and academic status are separate revisions.
+              if (update.preference_digest !== loadedAcademicContext?.preferenceDigest) {
+                const panelClean = preferenceVersion === acceptedPreferenceVersionRef.current
+                updatePreferenceVersion()
+                // Not a panel edit: keep hydration from the stored copy working.
+                if (panelClean) acceptedPreferenceVersionRef.current += 1
+              }
+              if (update.academic_status_digest !== loadedAcademicContext?.academicStatusDigest) {
+                markAcademicStatusChangedByAssistant()
+              }
             }
             handleAcademicContextUpdated(update)
           }}

@@ -415,6 +415,33 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     expect(screen.getByRole('button', { name: /החל/ })).toBeDisabled()
   })
 
+  test('the assistant changing only the academic status stales the proposal for THAT reason', async () => {
+    const proposal = {
+      proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+      base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+      alternatives: [{ candidate_id: SINGLE_CANDIDATE, normalized_identity: 'identity', recommended: true, applyable: true,
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+        constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+        objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
+    }
+    const sendConversation = jest.fn()
+      .mockResolvedValueOnce({ outcome: 'proposal', message_he: 'מצאתי חלופה חוקית.', events: [], proposal_id: PROPOSAL_ID, proposal })
+    await renderReady({ sendConversationFn: sendConversation })
+    await askAgentToBuild()
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeEnabled())
+    const preferenceDigestNow = sendConversation.mock.calls[0][0].preference_digest
+    sendConversation.mockReset().mockResolvedValueOnce({ outcome: 'conversation', message_he: 'הסרתי את הקורס מהרשימה.', events: [],
+      context_update: { academic_status_digest: 'as_course_removed', preference_digest: preferenceDigestNow } })
+
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'עוד לא סיימתי את אנליזה נומרית' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('הסרתי את הקורס מהרשימה.')
+    expect(screen.getByRole('button', { name: /החל/ })).toBeDisabled()
+    expect(screen.getByText(/סטטוס הקורסים שהשלמת השתנה מאז הבנייה/)).toBeInTheDocument()
+    expect(screen.queryByText(/ההעדפות שלך השתנו/)).toBeNull()
+  })
+
   test('a profile-version-stale proposal is VISIBLY marked stale, not just disabled', async () => {
     // Browser acceptance (check 4B) found the guard working but silent: editing a
     // preference disabled Apply while rendering no explanation, so the state was

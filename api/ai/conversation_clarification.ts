@@ -40,6 +40,8 @@ export function withCompletedCredit(
   planContext: Record<string, unknown>,
   programId: string,
   board: unknown,
+  /** The completed ids BEFORE this change — for contexts saved before the credit marker existed. */
+  previousCompletedIds?: readonly string[],
 ): Record<string, unknown> {
   const personal = (planContext.personal_status ?? {}) as { completed?: Array<{ course_id?: unknown } | string> };
   const ids = (personal.completed ?? [])
@@ -52,7 +54,10 @@ export function withCompletedCredit(
   // course must lower the credit, or a short plan could validate.
   const known = typeof progress.known_completed_hours === 'number' ? progress.known_completed_hours : 0;
   const previouslyDerived = typeof progress.completed_courses_credit_hours === 'number'
-    ? progress.completed_courses_credit_hours : undefined;
+    ? progress.completed_courses_credit_hours
+    // No marker yet (saved before it existed): the credit the previous list carried is
+    // what the client/server derived then, not hand-entered credit.
+    : previousCompletedIds ? completedCreditHours(programId, board, previousCompletedIds) : undefined;
   const entered = previouslyDerived !== undefined && known <= previouslyDerived ? 0 : known;
   return {
     ...planContext,

@@ -125,6 +125,13 @@ function clarificationEvent(question: { id: string; question: string; options?: 
   };
 }
 
+function completedIdsOf(personalStatus: Record<string, unknown>): string[] {
+  const completed = Array.isArray(personalStatus.completed) ? personalStatus.completed : [];
+  return completed
+    .map((course) => typeof course === 'string' ? course : (course as { course_id?: unknown })?.course_id)
+    .filter((id): id is string => typeof id === 'string');
+}
+
 /** A status/json pair that writes the final NDJSON line of a streamed turn. */
 function ndjsonResult(res: VercelResponse): Pick<VercelResponse, 'status' | 'json'> {
   let status = 200;
@@ -260,7 +267,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           // Completed courses carry their degree credit (Years 1–2 are not on the board).
           const answeredCompleted = parsed.data.clarification_answers.some((answer) => answer.question_id === 'completed_courses');
           const mergedPlanContext = answeredCompleted
-            ? withCompletedCredit(merged.planContext, parsed.data.program_id, programBoard)
+            ? withCompletedCredit(merged.planContext, parsed.data.program_id, programBoard, completedIdsOf(personalStatus))
             : merged.planContext;
           await putAcademicContext({
             ownerId: owner.ownerId,

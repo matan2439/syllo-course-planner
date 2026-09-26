@@ -109,7 +109,8 @@ export class PlanningSession {
       completed_knowledge: { status: 'known', provenance: 'explicit_user' },
     };
     this.input.planContext = withCompletedCredit(
-      { ...this.input.planContext, personal_status: personal }, this.input.programId, this.input.programBoard);
+      { ...this.input.planContext, personal_status: personal }, this.input.programId, this.input.programBoard,
+      this.completedCourseIds());
     this.academicStatusChanged = true;
     this.rebuild();
   }
