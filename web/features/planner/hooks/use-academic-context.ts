@@ -36,7 +36,7 @@ export function useAcademicContext({
     setStatusVersion((v) => v + 1) // any edit invalidates a proposal built from the old status
   }, [])
 
-  const sendConversationWithPanelStatus: typeof defaultSendConversation = async (request) => {
+  const sendConversationWithPanelStatus: typeof defaultSendConversation = async (request, onProgress) => {
     const panelChanged = statusVersion > acceptedStatusVersionRef.current && academicStatus.confirmed
     const answers = new Map((request.clarification_answers ?? []).map((answer) => [answer.question_id, answer]))
     if (panelChanged && !answers.has('completed_courses')) {
@@ -45,7 +45,7 @@ export function useAcademicContext({
     const response = await sendConversationFn({
       ...request,
       ...(answers.size ? { clarification_answers: [...answers.values()] } : {}),
-    })
+    }, onProgress)
     if (panelChanged && response.outcome !== 'assistant_unavailable') acceptedStatusVersionRef.current = statusVersion
     return response
   }

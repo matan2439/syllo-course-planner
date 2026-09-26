@@ -12,13 +12,25 @@
       "port": 8765
     },
     {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:api"
+      ],
+      "port": 3002
+    },
+    {
       "name": "web",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
         "dev:web"
       ],
-      "port": 3001
+      "port": 3001,
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=4096"
+      }
     },
     {
       "name": "api-topic-preview",

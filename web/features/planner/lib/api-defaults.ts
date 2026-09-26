@@ -18,5 +18,7 @@ export const defaultEstablishPlanningContext = (req: Parameters<typeof establish
   establishPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, req)
 export const defaultPlanningContext = (programId: string) =>
   getPlanningContext({ fetchImpl: browserFetch, baseUrl: '' }, programId)
-export const defaultSendConversation = (req: Parameters<typeof sendConversation>[1]) =>
-  sendConversation({ fetchImpl: browserFetch, baseUrl: '' }, req)
+export const defaultSendConversation = (
+  req: Parameters<typeof sendConversation>[1],
+  onProgress?: Parameters<typeof sendConversation>[2],
+) => sendConversation({ fetchImpl: browserFetch, baseUrl: '' }, req, onProgress)
