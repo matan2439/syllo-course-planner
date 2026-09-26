@@ -25,6 +25,26 @@ test('an edited academic context retires an old Build offer without losing the t
   expect(screen.getByText('תכנן לי')).toBeInTheDocument()
 })
 
+test('shows the co-pilot working live: tool steps and streamed reply text, cleared when the turn ends', async () => {
+  let finish!: (response: ConversationResponse) => void
+  const send = (_request: unknown, onProgress?: (progress: any) => void) => {
+    onProgress?.({ type: 'event', event: { type: 'tool_status', tool: 'build_plan', status: 'started' } })
+    onProgress?.({ type: 'text_delta', text: 'בונה טיוטה' })
+    return new Promise<ConversationResponse>((resolve) => { finish = resolve })
+  }
+  render(<AcademicAgentConversation {...requestContext} sendConversationFn={send} />)
+  fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'תבנה לי תוכנית' } })
+  fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+
+  const live = await screen.findByTestId('academic-agent-live')
+  expect(within(live).getByText(/בונה טיוטה/)).toBeInTheDocument()
+  expect(within(live).getByText(/בניית טיוטה לפי כללי התואר/)).toBeInTheDocument()
+
+  finish({ outcome: 'conversation', message_he: 'הנה מה שמצאתי.', events: [] })
+  await screen.findByText('הנה מה שמצאתי.')
+  expect(screen.queryByTestId('academic-agent-live')).toBeNull()
+})
+
 test('answers a course clarification by selecting Hebrew names without sending until confirmation', async () => {
   const sendConversation = jest.fn()
     .mockResolvedValueOnce({

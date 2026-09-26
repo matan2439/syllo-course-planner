@@ -5,6 +5,7 @@ import {
   ConversationContextConflictError,
   sendConversation,
   type ClientDeps,
+  type ConversationProgress,
 } from '../../../../shared/planner/api-client'
 import type {
   ConversationProposal,
@@ -17,7 +18,11 @@ import { Card } from '../../../components/ui'
 import CourseClarificationAnswer, { isCourseQuestion } from './CourseClarificationAnswer'
 import CourseAnswerReview, { reviewCourseText, type CourseScope, type CourseTextReview } from './CourseAnswerReview'
 
-type SendConversation = (request: ConversationRequest) => Promise<ConversationResponse>
+type SendConversation = (
+  request: ConversationRequest,
+  onProgress?: (progress: ConversationProgress) => void,
+) => Promise<ConversationResponse>
+type LiveTurn = { steps: Array<{ tool: string; status: string }>; text: string }
 type ClarificationAnswer = NonNullable<ConversationRequest['clarification_answers']>[number]
 type ActiveClarification = {
   question_id: NonNullable<ClarificationAnswer['question_id']>
@@ -45,9 +50,10 @@ export function formatAssistantMessage(
 }
 
 const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as ClientDeps['fetchImpl']
-const defaultSendConversation: SendConversation = (request) => sendConversation(
+const defaultSendConversation: SendConversation = (request, onProgress) => sendConversation(
   { fetchImpl: browserFetch, baseUrl: '' },
   request,
+  onProgress,
 )
 
 const TOOL_LABELS: Record<string, string> = {
@@ -69,6 +75,13 @@ const TOOL_LABELS: Record<string, string> = {
   move_course: 'בדיקת העברת קורס',
   replace_course: 'בדיקת החלפת קורס',
   finalize_plan: 'אימות התוכנית',
+  get_student_context: 'קריאת הסטטוס וההעדפות שלך',
+  search_courses: 'חיפוש קורסים בקטלוג',
+  update_preferences: 'עדכון העדפות התכנון',
+  build_plan: 'בניית טיוטה לפי כללי התואר',
+  ask_student: 'שאלת המשך',
+  submit_proposal: 'אימות והגשת ההצעה',
+  check_timetable: 'בדיקת מערכת שעות וימים פנויים',
 }
 
 const TOOL_STATUS_LABELS: Record<string, string> = {
@@ -117,6 +130,8 @@ export default function AcademicAgentConversation({
   const [draft, setDraft] = useState('')
   const [lastResponse, setLastResponse] = useState<ConversationResponse | null>(null)
   const [pending, setPending] = useState(false)
+  // What the co-pilot is doing right now (streamed), cleared when the turn ends.
+  const [live, setLive] = useState<LiveTurn | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [contextConflict, setContextConflict] = useState(false)
   const [activeClarification, setActiveClarification] = useState<ActiveClarification | null>(null)
@@ -158,6 +173,7 @@ export default function AcademicAgentConversation({
     setTranscript(nextTranscript)
     setDraft('')
     setPending(true)
+    setLive({ steps: [], text: '' })
     setError(null)
     setContextConflict(false)
 
@@ -173,7 +189,16 @@ export default function AcademicAgentConversation({
           ? { clarification_answers: [answer] }
           : {}),
         transcript: nextTranscript,
-      })
+      }, (progress) => setLive((current) => {
+        const turn = current ?? { steps: [], text: '' }
+        if (progress.type === 'text_delta') return { ...turn, text: turn.text + progress.text }
+        if (progress.event.type !== 'tool_status') return turn
+        const { tool, status } = progress.event
+        // A finished step replaces its own "started" line.
+        const steps = status === 'started' ? [...turn.steps, { tool, status }]
+          : [...turn.steps.filter((step) => !(step.tool === tool && step.status === 'started')), { tool, status }]
+        return { ...turn, steps }
+      }))
       setLastResponse(response)
       setCourseReview(null)
       setResponseContextVersion(localContextVersion)
@@ -203,6 +228,7 @@ export default function AcademicAgentConversation({
       }
     } finally {
       setPending(false)
+      setLive(null)
     }
   }
 
@@ -401,7 +427,24 @@ export default function AcademicAgentConversation({
         </p>
       )}
 
-      {pending && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">בודק את התוכנית…</p>}
+      {pending && (
+        <div role="status" aria-live="polite" data-testid="academic-agent-live" className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+          {live?.text ? (
+            <p className="whitespace-pre-line"><span className="font-semibold">העוזר: </span>{formatAssistantMessage(live.text, courseNameById)}</p>
+          ) : (
+            <p>בודק את התוכנית…</p>
+          )}
+          {live && live.steps.length > 0 && (
+            <ol aria-label="מה העוזר עושה עכשיו" className="flex flex-col gap-0.5 text-xs">
+              {live.steps.slice(-4).map((step, index) => (
+                <li key={`${step.tool}-${index}`}>
+                  {step.status === 'started' ? '⏳' : step.status === 'rejected' ? '⚠️' : '✓'} {TOOL_LABELS[step.tool] ?? 'בדיקה אקדמית'}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
       {unavailable && <p role="alert" className="rounded-lg border border-amber-500/40 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">{lastResponse.message_he}</p>}
       {error && <p role="alert" className="rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">{error}</p>}
 

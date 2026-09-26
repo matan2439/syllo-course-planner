@@ -4,7 +4,7 @@
  * Generates a personalized semester-plan proposal. Supports two code paths:
  *
  * DEFAULT (AI_USE_AGENTIC_PLANNER unset):
- *   PlannerWorker + GreedyOrchestrator / LlmOrchestrator (unchanged).
+ *   PlannerWorker, greedy (deterministic). The LLM co-pilot lives in api/ai/agent.
  *
  * AGENTIC (AI_USE_AGENTIC_PLANNER=true):
  *   PlannerAgent + BeamSearchStrategy. LlmExplainer is injected as an
@@ -34,7 +34,6 @@ import { parseProgramVersionId, queryBoardJson } from '../board';
 import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
-import { LlmOrchestrator } from './planner_orchestrator';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
 import { LlmExplainer } from './llm_explainer';
@@ -2014,14 +2013,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   } else {
     // ── PlannerWorker path (default) ─────────────────────────────────────────
     const worker = new PlannerWorker(model, initialState, { topN: 6, rolloutSteps: 80 });
-    useLlm = !isDevMode() && !!modelCfg;
-    try {
-      if (useLlm) await new LlmOrchestrator(modelCfg!.model, { maxSteps: 24 }).run(worker);
-      else worker.run(500, 'greedy');
-    } catch (err) {
-      console.error('[ai/generate-plan] orchestrator error, finishing greedily:', err instanceof Error ? err.message : String(err));
-      worker.run(500, 'greedy');
-    }
+    // Deterministic only: the LLM planner is the conversation co-pilot (api/ai/agent).
+    worker.run(500, 'greedy');
 
     proposal = toProposal(worker.getPlan(), model, initialState, pinnedHome, worker.explain().summary_he);
     traceForResponse = worker.getTrace();

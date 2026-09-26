@@ -2,14 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   conversationRequestSchema,
   type ConversationProposal,
-  type ConversationTurn,
 } from '../../shared/planner/conversation-wire';
-import { resolveModel as defaultResolveModel, type ModelConfig } from './course-planner';
-import { buildModel } from './generate-plan';
-import { planContextToState } from './planner_model';
-import { PlannerWorker } from './planner_worker';
-import { runConversationalAgent, type ConversationalAgentResult } from './conversational_agent';
-import { generateCandidateSet, selectCandidate } from './candidate_set';
+import type { Model } from '@openai/agents';
+import { isBypassQuota, isTestModeBypass } from './course-planner';
+import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
+import { PlanningSession } from './agent/session';
+import {
+  agentModelName,
+  runPlannerAgent,
+  type PlannerAgentDeps,
+  type PlannerAgentInput,
+  type PlannerAgentResult,
+} from './agent/planner_agent';
+import { candidateIdentity } from './postgres/postgres_authoritative_apply_store';
+import { storedDistributionPolicy } from './planner_policy_context';
+import { selectCandidate } from './candidate_set';
 import { buildPlanAlternatives, constraintFingerprint as planConstraintFingerprint, type PlanAlternative } from './plan_alternatives';
 import {
   clarifyForAcademicDecision,
@@ -41,15 +48,41 @@ import { applyConversationClarificationAnswers } from './conversation_clarificat
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
 import { DeterministicCandidateDecisionCapability } from './candidate_decision';
 
+type AgentModelConfig = { model: string | Model; name: string };
+
+/** The OpenAI Agents SDK co-pilot needs an OpenAI key; without one the assistant is unavailable. */
+function defaultResolveModel(): AgentModelConfig | null {
+  if (!(process.env.OPENAI_API_KEY ?? '').trim()) return null;
+  const name = agentModelName();
+  return { model: name, name };
+}
+
+/** Quota gate. ponytail: no DATABASE_URL (local/dev) means no quota tracking. */
+async function defaultCheckQuota(sessionToken: string): Promise<{ allowed: boolean }> {
+  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
+  if (!dbUrl || isBypassQuota()) return { allowed: true };
+  const quota = await checkAndEnsureSession(sessionToken, dbUrl);
+  return { allowed: quota.allowed || isTestModeBypass() };
+}
+
+/** One credit per delivered proposal — a chat turn that only asks or answers is free. */
+async function defaultRecordUsage(sessionToken: string, modelName: string): Promise<void> {
+  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
+  if (!dbUrl || isBypassQuota()) return;
+  await Promise.allSettled([
+    incrementCreditsUsed(sessionToken, dbUrl),
+    logUsageEvent(sessionToken, modelName, dbUrl),
+  ]);
+}
+
 type ConversationEndpointDeps = {
-  resolveModel?: () => ModelConfig | null;
+  resolveModel?: () => AgentModelConfig | null;
+  checkQuota?: (sessionToken: string) => Promise<{ allowed: boolean }>;
+  recordUsage?: (sessionToken: string, modelName: string) => Promise<void>;
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
   loadProgramBoard?: (programId: string) => unknown | null;
-  runAgent?: (
-    input: { transcript: readonly ConversationTurn[]; createWorker: () => PlannerWorker; preferenceProfile?: PreferenceProfile },
-    deps: { model: ModelConfig['model'] },
-  ) => Promise<ConversationalAgentResult>;
+  runAgent?: (input: PlannerAgentInput, deps: PlannerAgentDeps) => Promise<PlannerAgentResult>;
   runAcademicDecisionAgent?: (
     input: Parameters<typeof runAcademicDecisionAgentDefault>[0],
   ) => Promise<AcademicDecisionAgentRun>;
@@ -85,13 +118,29 @@ function clarificationEvent(question: { id: string; question: string; options?: 
   };
 }
 
+/** A status/json pair that writes the final NDJSON line of a streamed turn. */
+function ndjsonResult(res: VercelResponse): Pick<VercelResponse, 'status' | 'json'> {
+  let status = 200;
+  const result = {
+    status(code: number) { status = code; return result; },
+    json(body: unknown) {
+      res.write(`${JSON.stringify({ type: 'result', status, body })}\n`);
+      res.end();
+      return result;
+    },
+  };
+  return result as unknown as Pick<VercelResponse, 'status' | 'json'>;
+}
+
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
   const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
   const loadAcademicContext = deps.loadAcademicContext
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
-  const runAgent = deps.runAgent ?? runConversationalAgent;
+  const runAgent = deps.runAgent ?? runPlannerAgent;
+  const checkQuota = deps.checkQuota ?? defaultCheckQuota;
+  const recordUsage = deps.recordUsage ?? defaultRecordUsage;
   const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
   const putAcademicContext = deps.putAcademicContext ?? ((input: Parameters<AcademicContextStore['put']>[0]) => getAcademicContextStore().put(input));
@@ -114,6 +163,25 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
+    let quota: { allowed: boolean };
+    try {
+      quota = await checkQuota(parsed.data.session_token);
+    } catch (error) {
+      console.error('[ai/conversation] quota check failed:', (error as Error)?.constructor?.name);
+      res.status(503).json({ ok: false, code: 'QUOTA_UNAVAILABLE', message_he: 'לא ניתן לבדוק מכסת AI כרגע. נא לנסות שוב.' });
+      return;
+    }
+    if (!quota.allowed) {
+      res.status(429).json({ ok: false, code: 'QUOTA_EXCEEDED', message_he: 'מכסת שאלות ה-AI החינמית נוצלה.' });
+      return;
+    }
+
+    // NDJSON streaming (opt-in via Accept): once the agent starts, tool events and
+    // reply text are written live, and the usual JSON body arrives as the final
+    // {"type":"result","status","body"} line. Earlier errors stay plain JSON.
+    const streaming = String(req.headers?.accept ?? '').includes('application/x-ndjson');
+    const writeLine = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
+    let out: Pick<VercelResponse, 'status' | 'json'> = res;
     try {
       const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
@@ -212,12 +280,6 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           .map((course) => typeof course === 'string' ? course : (course as { course_id?: unknown })?.course_id)
           .filter((courseId): courseId is string => typeof courseId === 'string' && courseId.trim().length > 0)
         : [];
-      const buildModelOptions: BuildModelOptions = {
-        completedCourseIds,
-        currentlyPlannedCourseIds: currentCourseIds,
-        disallowedCourseIds: resolveHardExcludedCourseIds(preferences as { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] }),
-        maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
-      };
       const clarificationContext = extractClarificationContext(contextWithStatus, preferences, undefined);
       const clarification = await clarifyForAcademicDecision(clarificationContext);
       const committedContext = board
@@ -229,61 +291,70 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
             })),
           }
         : context;
-      const model = buildModel(programBoard, context, preferences as any, parsed.data.program_id);
-      const createWorker = () => new PlannerWorker(
-        model,
-        planContextToState(committedContext, model),
-        { topN: 6, rolloutSteps: 80 },
-      );
+      const session = new PlanningSession({
+        programId: parsed.data.program_id,
+        programBoard,
+        planContext: context,
+        committedContext,
+        preferences,
+        clarification,
+      });
+      if (streaming) {
+        res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+        res.status(200);
+        out = ndjsonResult(res);
+        session.onEvent = (event) => writeLine({ type: 'event', event });
+      }
       const agent = await runAgent(
         {
           transcript: parsed.data.transcript,
-          createWorker,
+          session,
           // The HTTP schema has already validated this exact shape. Keep the
           // domain boundary explicit because the remote Zod version infers
           // `z.any()` object properties more narrowly than the local build.
           preferenceProfile: parsed.data.preference_profile as PreferenceProfile | undefined,
-          // Confirmed panel state, not conversational text — stops the agent
-          // (fallback and LLM prompt alike) from re-asking what's already known.
-          knownFacts: { completedCoursesConfirmed: clarificationContext.completedCoursesKnown },
         },
-        { model: modelConfig.model },
+        {
+          model: modelConfig.model,
+          ...(streaming ? { onTextDelta: (text: string) => writeLine({ type: 'text_delta', text }) } : {}),
+        },
       );
 
       if (agent.outcome === 'assistant_unavailable') {
-        res.status(503).json(unavailable());
+        out.status(503).json(unavailable());
         return;
       }
 
-      if (agent.outcome === 'conversation'
-        && agent.nextAction === 'offer_build'
-        && hasCriticalMissingInput(clarification)) {
-        const question = clarification.questions[0];
-        const events = question
-          ? [...agent.events, clarificationEvent(question)]
-          : agent.events;
-        res.status(200).json({
-          outcome: 'clarification_required',
-          message_he: 'לפני בניית מערכת אני צריך להשלים כמה פרטים אקדמיים חשובים.',
-          events,
-          next_action: 'ask',
-          ...(contextUpdate ? { context_update: contextUpdate } : {}),
-          academic_decision: {
-            engine: 'AcademicDecisionAgent',
-            ready_to_plan: false,
-            planned: false,
-            clarification_required: true,
-          },
+      // Preferences the agent recorded are persisted, so apply-time validation
+      // (and the next turn) builds the same constraint model.
+      if (session.preferencesChanged) {
+        preferences = session.preferences;
+        await putAcademicContext({
+          ownerId: owner.ownerId,
+          programId: parsed.data.program_id,
+          digest: effectiveAcademicStatusDigest,
+          personalStatus,
+          planContext: context,
+          preferences,
         });
-        return;
+        contextUpdate = {
+          academic_status_digest: effectiveAcademicStatusDigest,
+          preference_digest: preferenceDigest(preferences),
+        };
       }
-
+      const model = session.model;
+      const buildModelOptions: BuildModelOptions = {
+        completedCourseIds,
+        currentlyPlannedCourseIds: currentCourseIds,
+        disallowedCourseIds: resolveHardExcludedCourseIds(preferences as { disallowed_course_ids?: string[]; strongly_avoided_course_ids?: string[] }),
+        maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
+      };
       if (agent.outcome === 'proposal' && hasCriticalMissingInput(clarification)) {
         const question = clarification.questions[0];
         const events = question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events;
-        res.status(200).json({
+        out.status(200).json({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
@@ -318,7 +389,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           const events = question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events;
-          res.status(200).json({
+          out.status(200).json({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
             events,
@@ -337,7 +408,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       if (agent.outcome !== 'proposal' || !agent.validation.valid) {
-        res.status(200).json({
+        out.status(200).json({
           outcome: 'conversation',
           message_he: messageHe,
           events: agent.events,
@@ -355,9 +426,18 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       const profileVersion = parsed.data.preference_profile?.version
         ?? Number(preferences.profile_version ?? preferences.version ?? 0);
       const snapshotId = `conversation_${currentBoardVersion ?? 'empty'}`;
-      const conversationConstraintFingerprint = `conversation_${parsed.data.program_id}`;
-      const fallbackSemesters = Object.entries(agent.draftPlan.semesters)
+      // Same fingerprint the apply path recomputes (authoritative_candidate_validation.ts),
+      // so a stored candidate passes the apply-time constraint check.
+      const distributionPolicy = storedDistributionPolicy(preferences);
+      const fingerprint = planConstraintFingerprint({
+        model,
+        completedCourseIds: [...model.completedCourseIds],
+        ...(distributionPolicy ? { distributionPolicy } : {}),
+        profileVersion,
+      });
+      const agentSemesters = Object.entries(agent.draftPlan.semesters)
         .map(([semesterId, courseIds]) => ({ semesterId, courseIds: [...courseIds] }));
+      const agentIdentity = candidateIdentity(agentSemesters);
       const hoursFor = (courseId: string) => model.profiles.get(courseId)?.hours ?? 0;
       const workloadFor = (semesters: Array<{ semesterId: string; courseIds: string[] }>) => {
         const loads = semesters.map((semester) =>
@@ -368,16 +448,17 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           active_periods: loads.filter((value) => value > 0).length,
         };
       };
-      const fallbackAlternative: ConversationProposal['alternatives'][number] = {
+      // The plan the student discussed with the agent is the recommendation.
+      const agentAlternative: ConversationProposal['alternatives'][number] = {
         candidate_id: `${proposalId}_candidate_1`,
-        normalized_identity: JSON.stringify(fallbackSemesters),
+        normalized_identity: agentIdentity,
         recommended: true,
         applyable: true,
-        semesters: fallbackSemesters.map((semester) => ({
+        semesters: agentSemesters.map((semester) => ({
           semester_id: semester.semesterId,
           course_ids: [...semester.courseIds],
         })),
-        constraint_fingerprint: conversationConstraintFingerprint,
+        constraint_fingerprint: fingerprint,
         profile_version: profileVersion,
         snapshot_id: snapshotId,
         non_dominated: true,
@@ -385,70 +466,62 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         objective_scores: [],
         label_he: 'הצעת העוזר',
         differences_he: [],
-        workload: workloadFor(fallbackSemesters),
+        workload: workloadFor(agentSemesters),
       };
-      let wireAlternatives: ConversationProposal['alternatives'] = [fallbackAlternative];
+      let wireAlternatives: ConversationProposal['alternatives'] = [agentAlternative];
       try {
-        const pinnedHome: Record<string, string> = {};
-        for (const courseId of model.pinnedCourseIds) {
-          const semester = Object.entries(agent.draftPlan.semesters)
-            .find(([, courseIds]) => courseIds.includes(courseId));
-          if (semester) pinnedHome[courseId] = semester[0];
-        }
-        const candidateSet = generateCandidateSet({
-          buildModel: () => model,
-          policy: 'neutral',
-          initialState: agent.draftPlan,
-          profileVersion,
-          pinnedHome,
-        });
-        const selected = selectCandidate(candidateSet);
-        if (selected) {
+        // Planner alternatives from the agent's last build_plan search, offered
+        // as extra (never recommended) options.
+        const candidateSet = session.candidateSet;
+        const selected = candidateSet && selectCandidate(candidateSet);
+        if (candidateSet && selected) {
           const exposed = buildPlanAlternatives({
             candidates: candidateSet.candidates,
             selectedId: selected.id,
             model,
-            constraintFingerprint: planConstraintFingerprint({
-              model,
-              completedCourseIds: [...model.completedCourseIds],
-              profileVersion,
-            }),
+            constraintFingerprint: fingerprint,
             snapshotId,
             profileVersion,
             objectiveIds: [],
           });
-          if (exposed.length) {
-            wireAlternatives = exposed.map((alternative: PlanAlternative) => ({
-              candidate_id: alternative.candidateId,
-              normalized_identity: alternative.normalizedIdentity,
-              recommended: alternative.recommended,
-              applyable: alternative.applyable,
-              semesters: alternative.semesters.map((semester) => ({
-                semester_id: semester.semesterId,
-                course_ids: [...semester.courseIds],
-              })),
-              constraint_fingerprint: alternative.constraintFingerprint,
-              profile_version: alternative.profileVersion,
-              snapshot_id: alternative.snapshotId,
-              non_dominated: alternative.nonDominated,
-              composed_utility: alternative.composedUtility,
-              objective_scores: alternative.objectiveScores.map((score) => ({
-                objective_id: score.objectiveId,
-                normalized: score.normalized,
-              })),
-              label_he: alternative.labelHe,
-              differences_he: [...alternative.differencesHe],
-              workload: {
-                peak_hours: alternative.workload.peakHours,
-                total_hours: alternative.workload.totalHours,
-                active_periods: alternative.workload.activePeriods,
-              },
-            }));
-          }
+          const extras = exposed
+            .map((alternative: PlanAlternative) => {
+              const semesters = alternative.semesters.map((semester) => ({
+                semesterId: semester.semesterId, courseIds: [...semester.courseIds],
+              }));
+              return {
+                candidate_id: alternative.candidateId,
+                normalized_identity: candidateIdentity(semesters),
+                recommended: false,
+                applyable: alternative.applyable,
+                semesters: semesters.map((semester) => ({
+                  semester_id: semester.semesterId,
+                  course_ids: semester.courseIds,
+                })),
+                constraint_fingerprint: alternative.constraintFingerprint,
+                profile_version: alternative.profileVersion,
+                snapshot_id: alternative.snapshotId,
+                non_dominated: alternative.nonDominated,
+                composed_utility: alternative.composedUtility,
+                objective_scores: alternative.objectiveScores.map((score) => ({
+                  objective_id: score.objectiveId,
+                  normalized: score.normalized,
+                })),
+                label_he: alternative.labelHe,
+                differences_he: [...alternative.differencesHe],
+                workload: {
+                  peak_hours: alternative.workload.peakHours,
+                  total_hours: alternative.workload.totalHours,
+                  active_periods: alternative.workload.activePeriods,
+                },
+              };
+            })
+            .filter((alternative) => alternative.normalized_identity !== agentIdentity)
+            .slice(0, 2);
+          wireAlternatives = [agentAlternative, ...extras];
         }
       } catch {
-        // Keep the LLM's validated draft usable as one server-owned proposal
-        // when an injected or partial model cannot produce comparisons.
+        // Planner alternatives are optional; the agent's validated draft stands alone.
       }
       // Each alternative carries the degree requirements it would leave the student with, so the board
       // preview shows real progress instead of the base board's numbers.
@@ -504,12 +577,13 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         applyEligible: true,
       };
       await putProposal(record);
+      await recordUsage(parsed.data.session_token, modelConfig.name);
       const receipt = toReceipt(record);
       const events = [
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
       ];
-      res.status(200).json({
+      out.status(200).json({
         outcome: 'proposal',
         message_he: messageHe,
         events,
@@ -552,7 +626,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     } catch (error) {
       const code = plannerStorageErrorCode(error);
       if (code) {
-        res.status(503).json({
+        out.status(503).json({
           ok: false,
           code,
           message_he: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
@@ -560,7 +634,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
       console.error('[ai/conversation] unexpected error');
-      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+      out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
     }
   };
 }

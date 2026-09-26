@@ -163,10 +163,20 @@ function effectiveHardCap(model: ConstraintModel): number {
  * and is only safe to use once a caller has already established `id` itself
  * is reachable.
  */
+// A built model's profiles and semester ids never change during planning, and
+// this lookup is the planner's hottest path (called per course per search step).
+const rawLegalSemestersCache = new WeakMap<ConstraintModel, Map<string, string[]>>();
+
 function rawLegalSemesters(model: ConstraintModel, id: string): string[] {
-  const p = model.profiles.get(id);
-  if (!p) return [];
-  return getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds).semesters;
+  let byId = rawLegalSemestersCache.get(model);
+  if (!byId) rawLegalSemestersCache.set(model, byId = new Map());
+  let semesters = byId.get(id);
+  if (!semesters) {
+    const p = model.profiles.get(id);
+    semesters = p ? getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds).semesters : [];
+    byId.set(id, semesters);
+  }
+  return semesters;
 }
 
 /** `id`'s legal semesters, defaulted (no data → every known semester) and filtered to `model.knownSemesterIds`. */
@@ -716,20 +726,28 @@ function remainingCategoryHoursLowerBound(state: PlanState, model: ConstraintMod
     const remaining = Math.max(0, cat.required - got);
     if (remaining === 0) continue;
 
-    const options = cat.candidateIds
+    // Sort first, then check the (expensive) reachability lazily: the first
+    // `remaining` reachable ids in this total order are exactly what filtering
+    // everything first would pick, without testing a whole elective pool.
+    const sorted = cat.candidateIds
       .filter(id => !placed.has(id))
       .filter(id => !model.completedCourseIds.has(id))
       .filter(id => !model.currentlyPlannedCourseIds?.has(id))
-      .filter(id => model.profiles.has(id) && isMandatoryCourseReachable(state, model, id))
+      .filter(id => model.profiles.has(id))
       .sort((a, b) => {
         const ah = alreadyReserved.has(a) ? 0 : (model.profiles.get(a)?.hours ?? 0);
         const bh = alreadyReserved.has(b) ? 0 : (model.profiles.get(b)?.hours ?? 0);
         return ah - bh || (a < b ? -1 : a > b ? 1 : 0);
       });
+    const options: string[] = [];
+    for (const id of sorted) {
+      if (options.length === remaining) break;
+      if (isMandatoryCourseReachable(state, model, id)) options.push(id);
+    }
     // An impossible category must not reserve the degree budget forever; its
     // authoritative validator/gate reports the actual incompleteness.
     if (options.length < remaining) continue;
-    chosen.push(...options.slice(0, remaining));
+    chosen.push(...options);
   }
 
   const countedRoots = new Set<string>();

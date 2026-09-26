@@ -8,7 +8,7 @@
  * the legal candidate actions it forward-checks feasibility and re-ranks the top
  * ones by the best plan reachable from each (estimateFinalScore), so an action
  * that temporarily looks worse but leads to a better final schedule wins over a
- * myopic one. An Orchestrator (greedy or LLM) chooses among the worker's ranked
+ * myopic one. A driver (the greedy loop or the co-pilot agent) chooses among the worker's ranked
  * legal actions; the worker executes and validates each.
  *
  * Deterministic facts (hours, prerequisites, offering legality, category
@@ -296,13 +296,16 @@ export class PlannerWorker {
   // ── deterministic tools ───────────────────────────────────────────────────
 
   addCourse(courseId: string, semesterId?: string, by: Actor = 'worker'): MutationResult {
+    if (!this.model.profiles.has(courseId)) {
+      return this.recordReject(courseId, 'הקורס אינו מוכר בתוכנית הלימודים.', by);
+    }
     if (this.isExcluded(courseId)) {
       return this.recordReject(courseId, 'הקורס סומן כלא-זמין (חריגה מפורשת) ולכן לא ישובץ.', by);
     }
     // Annual (year-long) courses must be placed in every spanned semester
     // atomically, never split into a single semester — the same rule
     // enumerateActions applies for the search, reused here so a direct
-    // add_course tool call (the production LlmOrchestrator path) can't place
+    // add_course tool call (the co-pilot agent, api/ai/agent/tools.ts) can't place
     // one half of the pair only. When spans_semesters/legal data is
     // confident, addCourseActionsFor returns exactly one atomic bundle and
     // any explicit semesterId is intentionally ignored (splitting is never
@@ -352,6 +355,9 @@ export class PlannerWorker {
   }
 
   replaceCourse(outId: string, inId: string, semesterId?: string, by: Actor = 'worker'): MutationResult {
+    if (!this.model.profiles.has(inId)) {
+      return this.recordReject(inId, 'הקורס המוצע אינו מוכר בתוכנית הלימודים.', by);
+    }
     if (this.isExcluded(inId)) {
       return this.recordReject(inId, 'הקורס המוצע סומן כלא-זמין.', by);
     }

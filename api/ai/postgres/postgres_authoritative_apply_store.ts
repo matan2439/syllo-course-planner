@@ -36,7 +36,7 @@ function normalizeSemesters(value: unknown): CommittedBoard['semesters'] {
     .sort((a, b) => a.semesterId.localeCompare(b.semesterId));
 }
 
-function candidateIdentity(value: unknown): string {
+export function candidateIdentity(value: unknown): string {
   const semesters = value as CommittedBoard['semesters'];
   const pairs: Array<[string, string]> = [];
   for (const semester of semesters) {

@@ -1,10 +1,8 @@
 /**
- * Tests for api/ai/planner_tools.ts — rank_candidates sort order.
- * Also covers PlannerWorker.rankActions() which backs the tool.
+ * PlannerWorker.rankActions() — ranked next actions, best first.
  */
 
 import { PlannerWorker } from '../../api/ai/planner_worker';
-import { buildPlannerTools } from '../../api/ai/planner_tools';
 import { compareScore } from '../../api/ai/planner_goals';
 import { type ConstraintModel, emptyState } from '../../api/ai/planner_types';
 import type { CourseProfile } from '../../api/ai/course_profile';
@@ -46,71 +44,6 @@ function buildModel(): ConstraintModel {
 }
 
 describe('PlannerWorker.rankActions', () => {
-  it('returns the current plan validation evidence without mutating the worker', async () => {
-    const worker = new PlannerWorker(buildModel(), {
-      semesters: {
-        year_3_semester_a: ['MAND'], year_3_semester_b: [],
-        year_4_semester_a: [], year_4_semester_b: [],
-      },
-    });
-    const before = JSON.parse(JSON.stringify(worker.getPlan()));
-    const tools = buildPlannerTools(worker) as unknown as {
-      validate_plan?: { execute: (args: object, options: unknown) => Promise<{ data: unknown; fact: unknown }> };
-    };
-
-    expect(tools.validate_plan).toBeDefined();
-    const result = await tools.validate_plan!.execute({}, undefined);
-
-    expect(result.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 1 }));
-    expect(result.data).toEqual(expect.objectContaining({
-      valid: false,
-      legal: true,
-      complete: false,
-      degreeHours: 5,
-      degreeMet: false,
-      missingMandatory: [],
-      constraintsChecked: expect.arrayContaining(['degree_hours', 'prerequisites', 'offering']),
-    }));
-    expect(worker.getPlan()).toEqual(before);
-  });
-
-  it('reports excluded hypothetical courses as invalid', async () => {
-    const model = buildModel();
-    model.disallowedCourseIds.add('E0');
-    const worker = new PlannerWorker(model);
-    const result = await buildPlannerTools(worker).simulate_changes.execute({ changes: [
-      { kind: 'add_course', courseId: 'E0', semesterId: SEMS[1] },
-    ] }, undefined as any);
-    if (result.data.status !== 'simulated') throw new Error('expected hypothetical candidate');
-    expect(result.data.validation.valid).toBe(false);
-    expect(result.data.validation.violations.map((violation) => violation.message).join('\n')).toContain('E0');
-    expect(result.data.validation.violations).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'CANDIDATE_VALIDATION_REJECTED', severity: 'error' }),
-    ]));
-    expect(result.data.validation.evidence).toEqual(expect.objectContaining({
-      legal: true,
-      complete: false,
-      degreeHours: 4,
-      degreeHoursRequired: 20,
-      degreeMet: false,
-      missingMandatoryCourseIds: ['MAND'],
-      disallowedCourseIds: ['E0'],
-      constraintsChecked: expect.arrayContaining(['degree_hours', 'disallowed']),
-    }));
-    expect(Object.values(worker.getPlan().semesters).flat()).not.toContain('E0');
-  });
-  it('exposes hypothetical edits to the conversation without changing its worker', async () => {
-    const worker = new PlannerWorker(buildModel());
-    const before = JSON.parse(JSON.stringify(worker.getPlan()));
-    const tools = buildPlannerTools(worker);
-    const result = await tools.simulate_changes.execute({ changes: [
-      { kind: 'add_course', courseId: 'E0', semesterId: SEMS[1] },
-    ] }, undefined as any);
-    expect(result.data.status).toBe('simulated');
-    if (result.data.status === 'simulated') expect(result.data.candidate.semesters[SEMS[1]]).toContain('E0');
-    expect(worker.getPlan()).toEqual(before);
-    expect(tools.simulate_changes.parameters.safeParse({ changes: [] }).success).toBe(false);
-  });
   it('returns actions sorted by resulting plan score descending', () => {
     const w = new PlannerWorker(buildModel());
     const ranked = w.rankActions();
@@ -128,69 +61,5 @@ describe('PlannerWorker.rankActions', () => {
     for (let i = 0; i < ranked.length - 1; i++) {
       expect(compareScore(ranked[i].score, ranked[i + 1].score)).toBeGreaterThanOrEqual(0);
     }
-  });
-
-  it('rank_candidates tool returns sorted, scored actions', async () => {
-    const w = new PlannerWorker(buildModel());
-    const tools = buildPlannerTools(w);
-    const result = await tools.rank_candidates.execute({}, undefined as any);
-
-    expect(Array.isArray(result.actions)).toBe(true);
-    expect(result.actions.length).toBeLessThanOrEqual(20);
-
-    for (let i = 0; i < result.actions.length - 1; i++) {
-      expect(
-        compareScore(result.actions[i].score, result.actions[i + 1].score),
-      ).toBeGreaterThanOrEqual(0);
-    }
-  });
-
-  it('exposes grounded read-only academic tools without mutating the worker', async () => {
-    const w = new PlannerWorker(buildModel(), {
-      semesters: {
-        year_3_semester_a: ['MAND'], year_3_semester_b: [],
-        year_4_semester_a: [], year_4_semester_b: [],
-      },
-    });
-    const tools = buildPlannerTools(w);
-
-    const status = await tools.get_academic_status.execute({}, undefined as any);
-    expect(status.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 1 }));
-    expect(status.data).toEqual(expect.objectContaining({
-      completed_course_ids: [], currently_taking_course_ids: [],
-      planned_course_ids: ['MAND'],
-    }));
-
-    const requirements = await tools.get_requirements_gap.execute({}, undefined as any);
-    expect(requirements.fact).toEqual(expect.objectContaining({ source: 'planner_model' }));
-    expect(requirements.data).toEqual(expect.objectContaining({
-      degree_hours_required: 20, degree_hours_current: 5, degree_hours_remaining: 15,
-      mandatory_remaining: 0,
-    }));
-
-    const details = await tools.get_course_details.execute({ courseId: 'MAND' }, undefined as any);
-    expect(details.fact).toEqual(expect.objectContaining({ source: 'planner_model', confidence: 0.5 }));
-    expect(details.data).toEqual(expect.objectContaining({ course_id: 'MAND', hours: 5, name_he: 'MAND' }));
-
-    const offerings = await tools.get_offerings.execute({ courseId: 'MAND' }, undefined as any);
-    expect(offerings.data).toEqual(expect.objectContaining({
-      course_id: 'MAND', allowed_semesters: ['year_3_semester_a'], known: true,
-    }));
-
-    const prereqs = await tools.check_prerequisites.execute({ courseId: 'MAND' }, undefined as any);
-    expect(prereqs.data).toEqual(expect.objectContaining({ course_id: 'MAND', missing_course_ids: [] }));
-
-    const simulated = await tools.simulate_move.execute({ courseId: 'MAND', toSemester: 'year_3_semester_b' }, undefined as any);
-    expect(simulated.data).toEqual(expect.objectContaining({ accepted: false, course_id: 'MAND' }));
-    expect(w.getPlan().semesters.year_3_semester_a).toEqual(['MAND']);
-
-    const compared = await tools.compare_candidates.execute({ courseIds: ['E0', 'E1'] }, undefined as any);
-    expect(compared.fact).toEqual(expect.objectContaining({ source: 'planner_model' }));
-    expect(compared.data.candidates).toHaveLength(2);
-
-    const explanation = await tools.explain_constraint.execute({ courseId: 'MAND', constraint: 'offering' }, undefined as any);
-    expect(explanation.data).toEqual(expect.objectContaining({
-      course_id: 'MAND', constraint: 'offering', allowed_semesters: ['year_3_semester_a'],
-    }));
   });
 });
