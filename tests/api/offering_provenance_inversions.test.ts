@@ -2,12 +2,12 @@
  * Offering-data remediation — authoritative correction of inverted electives and
  * downgrade of self-referential "high" confidence.
  *
- * Authoritative TAU multi-group listing (year תשפ"ו 2025/2026):
- *   0542-4220 תורת התנודות  → group 01, Semester ב' → B-ONLY (board wrongly had A)
- *   0542-4224 מכניקת המוצקים → group 01, Semester א' → A-ONLY (board wrongly had B)
- * Both inversions are independently corroborated by the course's own exam/prereq
- * URL semester code (sem=2025X: 4220→B, 4224→A), which conflicts with the old
- * board.offered_semesters half-code.
+ * Authoritative TAU listing for the planning year תשפ"ז (2026/2027), via
+ * scripts/refresh_course_data.py (IMS search_l.aspx?year=2026):
+ *   0542-4220 תורת התנודות  → Semester א' → A-ONLY
+ *   0542-4224 מכניקת המוצקים → Semester ב' → B-ONLY
+ * (In תשפ"ו 2025/2026 the two were the other way round — B and A — which is
+ * exactly why offerings must be refreshed every year, not pinned.)
  *
  * Provenance: 15 repository electives had offering_source_url "board.offered_semesters"
  * (a self-reference) at confidence "high" — a self-reference cannot justify high
@@ -29,28 +29,28 @@ function find(id: string): any {
 const isA = (s: string) => s.endsWith('_semester_a');
 const isB = (s: string) => s.endsWith('_semester_b');
 
-test('0542-4220 תורת התנודות is corrected to B-only (authoritative)', () => {
+test('0542-4220 תורת התנודות is A-only in 2026/2027 (authoritative)', () => {
   const c = find('0542-4220');
-  expect(c.offered_semesters).toEqual(['B']);
-  expect(c.effective_allowed_semesters.every(isB)).toBe(true);
-  expect(c.effective_allowed_semesters.some(isA)).toBe(false);
-});
-
-test('0542-4224 is corrected to A-only (authoritative)', () => {
-  const c = find('0542-4224');
   expect(c.offered_semesters).toEqual(['A']);
   expect(c.effective_allowed_semesters.every(isA)).toBe(true);
   expect(c.effective_allowed_semesters.some(isB)).toBe(false);
 });
 
-test('the planner receives ONLY B semesters for 0542-4220 and ONLY A for 0542-4224', () => {
+test('0542-4224 is B-only in 2026/2027 (authoritative)', () => {
+  const c = find('0542-4224');
+  expect(c.offered_semesters).toEqual(['B']);
+  expect(c.effective_allowed_semesters.every(isB)).toBe(true);
+  expect(c.effective_allowed_semesters.some(isA)).toBe(false);
+});
+
+test('the planner receives ONLY A semesters for 0542-4220 and ONLY B for 0542-4224', () => {
   const model = buildConstraintModel(BOARD, {});
   const l4220 = legalSemestersFor(model, '0542-4220');
   const l4224 = legalSemestersFor(model, '0542-4224');
   expect(l4220.length).toBeGreaterThan(0);
-  expect(l4220.every(isB)).toBe(true);        // never legal in Semester A
+  expect(l4220.every(isA)).toBe(true);        // never legal in Semester B
   expect(l4224.length).toBeGreaterThan(0);
-  expect(l4224.every(isA)).toBe(true);        // never legal in Semester B
+  expect(l4224.every(isB)).toBe(true);        // never legal in Semester A
 });
 
 test('no offering record cites a self-referential source ("board.offered_semesters") at high confidence', () => {

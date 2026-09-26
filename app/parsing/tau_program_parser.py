@@ -25,7 +25,7 @@ from typing import Optional
 _COURSE_SEARCH_BASE = "https://ims.tau.ac.il/tal/kr/search_l.aspx"
 
 
-def build_course_details_url(course_id: str, year: int | str = 2025) -> str | None:
+def build_course_details_url(course_id: str, year: int | str = 2026) -> str | None:
     """Return the stable TAU course search URL for *course_id* and *year*.
 
     *course_id* may contain hyphens (0542-4120) or be raw digits (05424120).
@@ -116,7 +116,7 @@ def _build_teaching_format(kurs: dict) -> list[dict]:
     return fmt
 
 
-def _parse_kurs(kurs: dict, shana: int | str = 2025) -> dict:
+def _parse_kurs(kurs: dict, shana: int | str = 2026) -> dict:
     """Parse a single kurs dict into a normalised course record."""
     raw_id = kurs.get("kursshow") or kurs.get("kursid") or ""
     course_id = normalize_course_id(raw_id)

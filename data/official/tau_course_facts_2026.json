@@ -1,0 +1,2514 @@
+{
+  "0509-4010": {
+    "ims": {
+      "name_he": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05094010&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0512-1202": {
+    "ims": {
+      "name_he": "אלקטרוניקה בסיסית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120208&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121202&year=2026"
+    },
+    "program": {
+      "credits": 5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        },
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 6
+    }
+  },
+  "0512-1203": {
+    "ims": {
+      "name_he": "מבוא לעיבוד אותות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121203&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0512-1204": {
+    "ims": {
+      "name_he": "המרת אנרגיה והנע חשמלי",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121204&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        },
+        {
+          "hours": 0.5,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 3.5
+    }
+  },
+  "0512-2508": {
+    "ims": {
+      "name_he": "התקנים אלקטרוניים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122508&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0512-4200": {
+    "ims": {
+      "name_he": "מבוא לעיבוד ספרתי של אותות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124200&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0512-4362": {
+    "ims": {
+      "name_he": "מערכות משוב שימושיות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124362&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0512-4700": {
+    "ims": {
+      "name_he": "טכנולוגיות מיקרו וננו אלקטרוניקה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124700&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0512-4702": {
+    "ims": {
+      "name_he": "מערכות ממוזערות לבישות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124702&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-2400": {
+    "ims": {
+      "name_he": "תכן מכני (1)",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542240001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422400&year=2026"
+    },
+    "program": {
+      "credits": 3.5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-2500": {
+    "ims": {
+      "name_he": "מכניקת הזורמים (1)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542250001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422500&year=2026"
+    },
+    "program": {
+      "credits": 5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 5
+    }
+  },
+  "0542-3112": {
+    "ims": {
+      "name_he": "פרויקט יישומי בהנדסה מכנית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423112&year=2026"
+    },
+    "program": {
+      "credits": 2,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "פרוייקט"
+        }
+      ],
+      "weekly_hours": 2
+    }
+  },
+  "0542-3243": {
+    "ims": {
+      "name_he": "מבוא לבקרה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542324301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423243&year=2026"
+    },
+    "program": {
+      "credits": 5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        },
+        {
+          "hours": 0.5,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 5.5
+    }
+  },
+  "0542-3620": {
+    "ims": {
+      "name_he": "מעבר חם",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-3780": {
+    "ims": {
+      "name_he": "תהליכי עיבוד (1)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378002&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423780&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-3791": {
+    "ims": {
+      "name_he": "תהליכי עיבוד - מעבדה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423791&year=2026"
+    },
+    "program": {
+      "credits": 1,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 2
+    }
+  },
+  "0542-3792": {
+    "ims": {
+      "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423792&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4010": {
+    "ims": {
+      "name_he": "תיכון ופרוייקט (1)",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424010&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "פרוייקט"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4011": {
+    "ims": {
+      "name_he": "פרוייקט מחקר למצטיינים (1)",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424011&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "פרוייקט"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4012": {
+    "ims": {
+      "name_he": "פרויקט מחקר למצטיינים (2)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424012&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "פרוייקט"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4020": {
+    "ims": {
+      "name_he": "תיכון ופרוייקט (2)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "פרוייקט"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4091": {
+    "ims": {
+      "name_he": "מעבדה במכניקת המוצקים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2026"
+    },
+    "program": {
+      "credits": 1.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 2
+    }
+  },
+  "0542-4092": {
+    "ims": {
+      "name_he": "מעבדת זרימה ומעבר חום",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424092&year=2026"
+    },
+    "program": {
+      "credits": 1.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 2
+    }
+  },
+  "0542-4093": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424093&year=2026"
+    },
+    "program": {
+      "credits": 0.5,
+      "teaching_format": [
+        {
+          "hours": 1,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 1
+    }
+  },
+  "0542-4094": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בזרימה ומערכות אנרגיה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424094&year=2026"
+    },
+    "program": {
+      "credits": 0.5,
+      "teaching_format": [
+        {
+          "hours": 1,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 1
+    }
+  },
+  "0542-4120": {
+    "ims": {
+      "name_he": "תרמודינמיקה (2)",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424120&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4123": {
+    "ims": {
+      "name_he": "תהליכי מעבר חום וחומר",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424123&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4124": {
+    "ims": {
+      "name_he": "תהליכי ייצור ועיבוד ביולוגיים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424124&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4125": {
+    "ims": {
+      "name_he": "מבוא להנדסת סביבה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424125&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4131": {
+    "ims": {
+      "name_he": "מנועי שריפה פנימית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424131&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4132": {
+    "ims": {
+      "name_he": "אנרגיה מתחדשת",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424132&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4135": {
+    "ims": {
+      "name_he": "תכן תרמי מתקדם בעזרת כלי תוכנה הנדסיים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424135&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4179": {
+    "ims": {
+      "name_he": "מתקנים לייצור כח וניצול אנרגיה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542417901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424179&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4191": {
+    "ims": {
+      "name_he": "מבוא לתהליכי עיבוד פלסטי במתכות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542419101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424191&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4220": {
+    "ims": {
+      "name_he": "תורת התנודות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424220&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4221": {
+    "ims": {
+      "name_he": "מבוא לתורת האלסטיות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424221&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4223": {
+    "ims": {
+      "name_he": "מבוא לאלמנטים סופיים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424223&year=2026"
+    },
+    "program": {
+      "credits": 3.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4224": {
+    "ims": {
+      "name_he": "מכניקת המוצקים (2)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424224&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4226": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4275": {
+    "ims": {
+      "name_he": "אווירודינמיקה של טורבינות רוח",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542427501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424275&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4320": {
+    "ims": {
+      "name_he": "מכניקת הזורמים (2)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424320&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4321": {
+    "ims": {
+      "name_he": "הידראוליקה הנדסית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424321&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4322": {
+    "ims": {
+      "name_he": "תכנון תרמי של ציוד אלקטרוני",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424322&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4351": {
+    "ims": {
+      "name_he": "הנדסה ימית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424351&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4352": {
+    "ims": {
+      "name_he": "דינמיקת הגזים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424352&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4391": {
+    "ims": {
+      "name_he": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542439101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424391&year=2026"
+    },
+    "program": {
+      "credits": 3.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 3,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 5
+    }
+  },
+  "0542-4420": {
+    "ims": {
+      "name_he": "תורת המכונות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424420&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4422": {
+    "ims": {
+      "name_he": "תכן הנדסי: מבוא ושיטות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424422&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4425": {
+    "ims": {
+      "name_he": "הדפסת תלת מימד ותכן חלקי פלסטיקה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424425&year=2026"
+    },
+    "program": {
+      "credits": 2.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4455": {
+    "ims": {
+      "name_he": "בינה חישובית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542445501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424455&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4524": {
+    "ims": {
+      "name_he": "מבוא להנדסת חלל",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424524&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4527": {
+    "ims": {
+      "name_he": "מכניקת המסלולים של לוויינים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424527&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4559": {
+    "ims": {
+      "name_he": "מעבדה במכאטרוניקה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542455901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424559&year=2026"
+    },
+    "program": {
+      "credits": 2.5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4621": {
+    "ims": {
+      "name_he": "מבוא לרובוטיקה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2026"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4622": {
+    "ims": {
+      "name_he": "דינמיקה ובקרה של מערכות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424622&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0542-4624": {
+    "ims": {
+      "name_he": "מעבדה ברובוטיקה ובקרה של מערכות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424624&year=2026"
+    },
+    "program": {
+      "credits": 2.5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 3
+    }
+  },
+  "0542-4722": {
+    "ims": {
+      "name_he": "מבוא להנדסת מערכות זעירות (Mems)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424722&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        },
+        {
+          "hours": 1,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 5
+    }
+  },
+  "0555-3160": {
+    "ims": {
+      "name_he": "הנדסת תאים ורקמות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555316001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553160&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4000": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4432": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4550": {
+    "ims": {
+      "name_he": "מבוא לביופיזיקה של התא",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4555": {
+    "ims": {
+      "name_he": "ננוחומרים: יסודות פיזיקליים ושימושים בביורפואה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554555&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4562": {
+    "ims": {
+      "name_he": "מבוא לאולטרסאונד: הדמיה וטיפול",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555456201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554562&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0555-4630": {
+    "ims": {
+      "name_he": "ביו-חומרים פולימרים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555463001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554630&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0571-1818": {
+    "ims": {
+      "name_he": "מבני נתונים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05711818&year=2026"
+    },
+    "program": {
+      "credits": 3.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0571-3802": {
+    "ims": {
+      "name_he": "מודלים דטרמיניסטיים בחקר ביצועים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05713802&year=2026"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    }
+  },
+  "0571-4174": {
+    "ims": {
+      "name_he": "תיכון וחשיבה המצאתית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05714174&year=2026"
+    },
+    "program": {
+      "credits": 2,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        }
+      ],
+      "weekly_hours": 2
+    }
+  },
+  "0581-4131": {
+    "ims": {
+      "name_he": "מעבדה בחומרים הנדסיים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05814131&year=2026"
+    },
+    "program": {
+      "credits": 0.5,
+      "teaching_format": [
+        {
+          "hours": 1,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 1
+    }
+  },
+  "0608-1010": {
+    "ims": {
+      "name_he": "מבוא לתיאוריה קווירית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608101001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
+    },
+    "program": null
+  },
+  "0608-1110": {
+    "ims": {
+      "name_he": "מבוא לפילוסופיה פמיניסטית: מחשבות נשים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608111001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
+    },
+    "program": null
+  },
+  "0608-1152": {
+    "ims": {
+      "name_he": "תלמה ולואיז באקדמיה: כשקרימינולוגיה פוגשת מגדר",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608115201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
+    },
+    "program": null
+  },
+  "0608-1153": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
+    },
+    "program": null
+  },
+  "0608-1177": {
+    "ims": {
+      "name_he": "כסף מסובב את העולם - אי שוויון מגדרי בעולם קפיטליסטי",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608117701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
+    },
+    "program": null
+  },
+  "0609-1002": {
+    "ims": {
+      "name_he": "מבוא לפילוסופיה של המדע",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
+    },
+    "program": null
+  },
+  "0609-1003": {
+    "ims": {
+      "name_he": "מהי תרבות? בין מערב למזרח",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
+    },
+    "program": null
+  },
+  "0609-1004": {
+    "ims": {
+      "name_he": "הוראה וטכנולוגיה בעידן הידע",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
+    },
+    "program": null
+  },
+  "0609-1005": {
+    "ims": {
+      "name_he": "תולדות האנושות - 3,000 השנים הראשונות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
+    },
+    "program": null
+  },
+  "0609-1006": {
+    "ims": {
+      "name_he": "ישן וחדש במגילות במדבר יהודה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
+    },
+    "program": null
+  },
+  "0609-1007": {
+    "ims": {
+      "name_he": "תעלומת הבלש: מה מסתירים מאיתנו ומה יכולים לגלות לנו בלשים ספרותיים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
+    },
+    "program": null
+  },
+  "0609-1008": {
+    "ims": {
+      "name_he": "מיינדפולנס ובודהיזם: פרקטיקה ותיאוריה אז והיום",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
+    },
+    "program": null
+  },
+  "0609-1009": {
+    "ims": {
+      "name_he": "עניין של חיים ומוות: רפואה ובריאות בתקופה הטרום מודרנית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
+    },
+    "program": null
+  },
+  "0609-1010": {
+    "ims": {
+      "name_he": "חברה דמוקרטית, תרבות וחינוך",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
+    },
+    "program": null
+  },
+  "0609-1011": {
+    "ims": {
+      "name_he": "להיות פלסטיני: ספרות, היסטוריה ושאלת הזהות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
+    },
+    "program": null
+  },
+  "0609-1013": {
+    "ims": {
+      "name_he": "מהי יהדות? מבוא למחשבת ישראל לדורותיה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
+    },
+    "program": null
+  },
+  "0609-1014": {
+    "ims": {
+      "name_he": "הבית והמשפחה בספרות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
+    },
+    "program": null
+  },
+  "0609-1015": {
+    "ims": {
+      "name_he": "מבוא לבלשנות: בונים תיאוריה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
+    },
+    "program": null
+  },
+  "0609-1017": {
+    "ims": {
+      "name_he": "הארכאולוגיה מהי?",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
+    },
+    "program": null
+  },
+  "0609-1018": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
+    },
+    "program": null
+  },
+  "0609-1019": {
+    "ims": {
+      "name_he": "מטמורפוזות: גלגולים ומוטציות בספרות עולם",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
+    },
+    "program": null
+  },
+  "0609-1020": {
+    "ims": {
+      "name_he": "מהי גזענות? היסטוריה, תאוריה ומאבק",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609102001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
+    },
+    "program": null
+  },
+  "0609-1021": {
+    "ims": {
+      "name_he": "חידת הדרך : מבוא לפילוסופיה סינית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609102101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
+    },
+    "program": null
+  },
+  "0609-1201": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
+    },
+    "program": null
+  },
+  "0609-1209": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
+    },
+    "program": null
+  },
+  "0609-1211": {
+    "ims": {
+      "name_he": "החייתי והאמנותי: בעלי חיים בספרות ובקולנוע לילדים ולנוער",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609121101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
+    },
+    "program": null
+  },
+  "0609-1212": {
+    "ims": {
+      "name_he": "קורס חירום :  מהי דמוקרטיה ?",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609121201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
+    },
+    "program": null
+  },
+  "0609-1225": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
+    },
+    "program": null
+  },
+  "0609-1226": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
+    },
+    "program": null
+  },
+  "0609-1303": {
+    "ims": {
+      "name_he": "אלוהים מחפש משמעות: חקר הדת, מושג האל ותפיסת האדם במדעי הרוח והחברה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609130301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
+    },
+    "program": null
+  },
+  "0612-6041": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
+    },
+    "program": null
+  },
+  "0612-6044": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
+    },
+    "program": null
+  },
+  "0616-1311": {
+    "ims": {
+      "name_he": "ארבעה נכנסו לפרדס: מבוא למיסטיקה יהודית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0616131101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
+    },
+    "program": null
+  },
+  "0618-1016": {
+    "ims": {
+      "name_he": "מבוא לפילוסופיה של הדת",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618101601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
+    },
+    "program": null
+  },
+  "0618-1042": {
+    "ims": {
+      "name_he": "מבוא לפילוסופיה הודית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618104201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
+    },
+    "program": null
+  },
+  "0618-1059": {
+    "ims": {
+      "name_he": "מבוא לאסתטיקה ולפילוסופיה של האמנות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618105901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
+    },
+    "program": null
+  },
+  "0621-1101": {
+    "ims": {
+      "name_he": "מרומא לביזנטיון: העולם היווני מדיוקלטיאנוס ועד תום המחלוקת האיקונוקלאסטית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621110101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
+    },
+    "program": null
+  },
+  "0621-1194": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
+    },
+    "program": null
+  },
+  "0621-1219": {
+    "ims": {
+      "name_he": "מבוא לאירופה הקדם מודרנית 1500-400",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621121901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
+    },
+    "program": null
+  },
+  "0621-1220": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
+    },
+    "program": null
+  },
+  "0622-1001": {
+    "ims": {
+      "name_he": "מבוא לתולדות המזה\"ת בעת החדשה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622100101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
+    },
+    "program": null
+  },
+  "0622-1004": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
+    },
+    "program": null
+  },
+  "0622-2001": {
+    "ims": {
+      "name_he": "מבוא להיסטוריה חברתית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622200101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
+    },
+    "program": null
+  },
+  "0627-1010": {
+    "ims": {
+      "name_he": "מבוא לבלשנות: מבט פנורמי",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0627101001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
+    },
+    "program": null
+  },
+  "0631-1130": {
+    "ims": {
+      "name_he": "מבוא לדת האסלאם",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631113001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
+    },
+    "program": null
+  },
+  "0631-2468": {
+    "ims": {
+      "name_he": "מבוא לפילוסופיה אסלאמית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631246801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
+    },
+    "program": null
+  },
+  "0631-2503": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
+    },
+    "program": null
+  },
+  "0631-3496": {
+    "ims": {
+      "name_he": "מבוא לספרות הערבית הקלאסית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631349601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
+    },
+    "program": null
+  },
+  "0662-1011": {
+    "ims": {
+      "name_he": "מבוא למחשבה הומאניסטית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662101101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
+    },
+    "program": null
+  },
+  "0662-1180": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
+    },
+    "program": null
+  },
+  "0662-1757": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
+    },
+    "program": null
+  },
+  "0662-2253": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
+    },
+    "program": null
+  },
+  "0662-2615": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
+    },
+    "program": null
+  },
+  "0662-2620": {
+    "ims": {
+      "name_he": "הבניית דימוי של אישי ציבור בתקשורת- צרפת, ארצות הברית וישראל",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662262001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
+    },
+    "program": null
+  },
+  "0662-2642": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
+    },
+    "program": null
+  },
+  "0662-2649": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
+    },
+    "program": null
+  },
+  "0662-2653": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
+    },
+    "program": null
+  },
+  "0662-2656": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
+    },
+    "program": null
+  },
+  "0669-6175": {
+    "ims": {
+      "name_he": "מבוא ללימודי אדם-חיה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669617501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
+    },
+    "program": null
+  },
+  "0669-6198": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
+    },
+    "program": null
+  },
+  "0669-6203": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
+    },
+    "program": null
+  },
+  "0671-1031": {
+    "ims": {
+      "name_he": "מבוא לתרבות אנטוליה: היסטוריה וארכיאולוגיה של אנטוליה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671103101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
+    },
+    "program": null
+  },
+  "0671-1045": {
+    "ims": {
+      "name_he": "מבוא לתרבות מצרים הפרעונית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671104501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
+    },
+    "program": null
+  },
+  "0671-1091": {
+    "ims": {
+      "name_he": "שפה חזותית בדרום-מערב אסיה: 3,500 - 500 לפני הספירה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671109101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
+    },
+    "program": null
+  },
+  "0671-1130": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
+    },
+    "program": null
+  },
+  "0671-1238": {
+    "ims": {
+      "name_he": "טקסט והקשר",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671123801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
+    },
+    "program": null
+  },
+  "0671-2215": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
+    },
+    "program": null
+  },
+  "0671-2331": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
+    },
+    "program": null
+  },
+  "0671-2383": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
+    },
+    "program": null
+  },
+  "0671-2649": {
+    "ims": {
+      "name_he": "עולמות הצבא הרומי",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671264901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
+    },
+    "program": null
+  },
+  "0671-2668": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
+    },
+    "program": null
+  },
+  "0671-2669": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
+    },
+    "program": null
+  },
+  "0671-2670": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
+    },
+    "program": null
+  },
+  "0671-4389": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
+    },
+    "program": null
+  },
+  "0672-1102": {
+    "ims": {
+      "name_he": "המצאת הספרות: מבוא לספרות היוונית העתיקה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
+    },
+    "program": null
+  },
+  "0672-1109": {
+    "ims": {
+      "name_he": "מבוא למיתולוגיה יוונית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
+    },
+    "program": null
+  },
+  "0672-1202": {
+    "ims": {
+      "name_he": "המצאת הספרות: מבוא לספרות רומית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672120201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
+    },
+    "program": null
+  },
+  "0672-1557": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
+    },
+    "program": null
+  },
+  "0677-1283": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
+    },
+    "program": null
+  },
+  "0677-1514": {
+    "ims": {
+      "name_he": "משפט אייכמן: הרקע ההיסטורי, המשפטי, הפוליטי והמדיני",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677151401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
+    },
+    "program": null
+  },
+  "0687-1113": {
+    "ims": {
+      "name_he": "מבוא יפן א'-מהעת העתיקה ועד לעת החדשה המוקדמת",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
+    },
+    "program": null
+  },
+  "0687-1115": {
+    "ims": {
+      "name_he": "מבוא הודו א'-מהעת העתיקה ועד העת החדשה המוקדמת",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
+    },
+    "program": null
+  },
+  "0723-2022": {
+    "ims": {
+      "name_he": "התפתחות זהות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723202201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
+    },
+    "program": null
+  },
+  "0723-2047": {
+    "ims": {
+      "name_he": "הצטיינות ושינוי בחינוך",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723204701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
+    },
+    "program": null
+  },
+  "0723-2052": {
+    "ims": {
+      "name_he": "בין השתתפות אזרחית להפרטה: ארגוני מגזר שלישי במערכת החינוך בישראל",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723205201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
+    },
+    "program": null
+  },
+  "1673-4026": {
+    "ims": {
+      "offered_semesters": [],
+      "status": "not_offered",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
+    },
+    "program": null
+  },
+  "1880-0710": {
+    "ims": {
+      "name_he": "ללמוד איך ללמוד",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880071001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
+    },
+    "program": null
+  },
+  "1880-0901": {
+    "ims": {
+      "name_he": "משבר האקלים וקיימות: מבט רב תחומי",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880090101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
+    },
+    "program": null
+  }
+}

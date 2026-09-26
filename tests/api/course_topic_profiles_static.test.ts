@@ -90,7 +90,7 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     // intentionally left as default-source profiles until a syllabus supplies
     // structured topic evidence; that is an honest data-quality signal, not a
     // reason to drop them from the catalog.
-    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 49, default: 107 });
+    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 51, default: 105 });
     expect(summary.inferred + summary.default).toBe(156);
   });
 

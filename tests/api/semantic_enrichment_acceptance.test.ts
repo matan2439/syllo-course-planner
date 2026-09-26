@@ -27,7 +27,7 @@ const DESIGN_EXPLICIT = '0542-4425';
 const NO_DESIGN = '0542-4420'; // machine theory — validated absence
 // Isolate semantic ranking from the separate, satisfied three-course שער רוח
 // requirement.
-const PRIOR = 92;
+const PRIOR = 90;
 const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
 function planContext() {

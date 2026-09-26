@@ -22,10 +22,9 @@
       "name_he": "תולדות האנושות - 3,000 השנים הראשונות",
       "teacher_he": "פרופ' יורם כהן",
       "credits": 2,
-      "semester": "A,B",
+      "semester": "A",
       "offered_semesters": [
-        "A",
-        "B"
+        "A"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -61,7 +60,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.530Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1003",
@@ -103,7 +103,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.344Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1008",
@@ -113,9 +114,9 @@
       "name_he": "מיינדפולנס ובודהיזם: פרקטיקה ותיאוריה אז והיום",
       "teacher_he": "פרופ' ריקרדו טרש וד\"ר רועי צהר",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -151,7 +152,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.331Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1007",
@@ -213,7 +215,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.556Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1013",
@@ -255,7 +258,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.389Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1014",
@@ -297,7 +301,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.426Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "1880-0901",
@@ -307,9 +312,10 @@
       "name_he": "משבר האקלים וקיימות: מבט רב תחומי",
       "teacher_he": "פרופ' רות רונן",
       "credits": 2,
-      "semester": "A",
+      "semester": "A,B",
       "offered_semesters": [
-        "A"
+        "A",
+        "B"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -370,7 +376,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.833Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "1880-0710",
@@ -444,7 +451,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:37.904Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1002",
@@ -493,7 +501,8 @@
       "bidit_checked_at": "2026-09-14T13:11:37.897Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1011",
@@ -503,9 +512,9 @@
       "name_he": "להיות פלסטיני: ספרות, היסטוריה ושאלת הזהות",
       "teacher_he": "ד\"ר מנאר מח'ול",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -536,7 +545,8 @@
       "bidit_checked_at": "2026-09-14T13:11:37.962Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1018",
@@ -547,16 +557,15 @@
       "teacher_he": "פרופ' לילך שלו",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1017",
@@ -631,7 +640,8 @@
       "bidit_checked_at": "2026-09-14T13:11:38.031Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1201",
@@ -642,16 +652,15 @@
       "teacher_he": "ד\"ר ג'רמי פוגל",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1225",
@@ -662,16 +671,15 @@
       "teacher_he": "דר' גילי שלום",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1226",
@@ -682,16 +690,15 @@
       "teacher_he": "ד\"ר אשר אלבו",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1303",
@@ -734,7 +741,8 @@
       "bidit_checked_at": "2026-09-14T13:11:38.554Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0612-6041",
@@ -745,16 +753,15 @@
       "teacher_he": "ד\"ר סוצקובר טליה",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0612604101&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0612-6044",
@@ -765,16 +772,15 @@
       "teacher_he": "פרופ פוליאק מאירה",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0612604401&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0618-1059",
@@ -823,7 +829,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.206Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0622-1001",
@@ -866,7 +873,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.197Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0627-1010",
@@ -915,7 +923,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.714Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0631-1130",
@@ -925,9 +934,9 @@
       "name_he": "מושגי יסוד באסלאם",
       "teacher_he": "ד\"ר טל אבי, ד\"ר יולנדה יבור",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631113001&year=2025",
       "category": "קורסי שער רוח",
@@ -964,7 +973,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.312Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0631-2468",
@@ -1013,7 +1023,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.319Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0631-3496",
@@ -1062,7 +1073,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.911Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-1045",
@@ -1111,7 +1123,8 @@
       "bidit_checked_at": "2026-09-14T13:11:39.627Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-2215",
@@ -1122,16 +1135,15 @@
       "teacher_he": "ד\"ר זאב סרגי עומר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671221501&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-2331",
@@ -1142,16 +1154,15 @@
       "teacher_he": "פרופ' דפנה לנגוט",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671233101&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-2669",
@@ -1162,16 +1173,15 @@
       "teacher_he": "ד\"ר אלה אסף שפייר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671266901&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-2670",
@@ -1182,16 +1192,15 @@
       "teacher_he": "ד\"ר זאב סרגי עומר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671267001&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0672-1102",
@@ -1201,9 +1210,9 @@
       "name_he": "המצאת הספרות: מבוא לספרות היוונית העתיקה",
       "teacher_he": "ד\"ר טדי פסטברג",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110201&year=2025",
       "category": "קורסי שער רוח",
@@ -1234,7 +1243,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.081Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0677-1514",
@@ -1283,7 +1293,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.453Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0687-1113",
@@ -1332,7 +1343,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.454Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0687-1115",
@@ -1381,7 +1393,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.451Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0616-1311",
@@ -1424,7 +1437,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.662Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0672-1109",
@@ -1473,7 +1487,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.771Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0723-2047",
@@ -1516,7 +1531,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.693Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0723-2022",
@@ -1565,7 +1581,8 @@
       "bidit_checked_at": "2026-09-14T13:11:40.883Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0621-1194",
@@ -1576,16 +1593,15 @@
       "teacher_he": "פרופ' חררדו ליבגר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621119401&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0621-1219",
@@ -1634,7 +1650,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.057Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0669-6175",
@@ -1644,9 +1661,9 @@
       "name_he": "מבוא לימודי אדם-חיה",
       "teacher_he": "ד\"ר טל קוגמן",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669617501&year=2025",
       "category": "קורסי שער רוח",
@@ -1677,7 +1694,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.243Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0662-1011",
@@ -1720,7 +1738,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.144Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0662-1757",
@@ -1731,16 +1750,15 @@
       "teacher_he": "ד\"ר שניר איתי",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662175701&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2642",
@@ -1751,16 +1769,15 @@
       "teacher_he": "ד\"ר גדי נועה",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662264201&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2649",
@@ -1771,16 +1788,15 @@
       "teacher_he": "ד\"ר חרש אמיר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662264901&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0608-1110",
@@ -1829,7 +1845,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.701Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0608-1177",
@@ -1839,9 +1856,9 @@
       "name_he": "כסף מסובב את העולם - אי שוויון מגדרי בעולם קפיטליסטי",
       "teacher_he": "ד\"ר טליה פפרמן",
       "credits": 2,
-      "semester": "A",
+      "semester": "B",
       "offered_semesters": [
-        "A"
+        "B"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608117701&year=2025",
       "category": "קורסי שער רוח",
@@ -1878,7 +1895,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.743Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0608-1152",
@@ -1921,7 +1939,8 @@
       "bidit_checked_at": "2026-09-14T13:11:41.742Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0608-1153",
@@ -1932,16 +1951,15 @@
       "teacher_he": "ד\"ר חן אדלסבורג",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608115301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0669-6198",
@@ -1952,16 +1970,15 @@
       "teacher_he": "פרופ' יעל דר",
       "credits": 2,
       "semester": "A",
-      "offered_semesters": [
-        "A"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669619801&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1006",
@@ -1971,9 +1988,9 @@
       "name_he": "ישן וחדש במגילות במדבר יהודה",
       "teacher_he": "פרופ' יונתן בן דב",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -2009,7 +2026,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:42.130Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1021",
@@ -2019,9 +2037,9 @@
       "name_he": "חידה בדרך: מבוא לפילוסופיה סינית",
       "teacher_he": "פרופ' גליה פת-שמיר",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -2057,7 +2075,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:42.197Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1004",
@@ -2100,7 +2119,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.241Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1009",
@@ -2110,9 +2130,9 @@
       "name_he": "עניין של חיים ומוות : רפואה ובריאות בתקופת הטרום מודרנית",
       "teacher_he": "פרופ' מירי שפר-מוסנזון",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -2149,7 +2169,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.410Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1015",
@@ -2192,7 +2213,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.348Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1010",
@@ -2202,9 +2224,9 @@
       "name_he": "חברה דמוקרטית, תרבות וחינוך",
       "teacher_he": "ד\"ר דן מקסים ממלוק",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
@@ -2241,7 +2263,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.525Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1019",
@@ -2290,7 +2313,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.596Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1020",
@@ -2332,7 +2356,8 @@
       },
       "bidit_checked_at": "2026-09-14T13:11:42.714Z",
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1209",
@@ -2343,16 +2368,15 @@
       "teacher_he": "פרופ' לידר ספיר-חן",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0609-1211",
@@ -2395,7 +2419,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.895Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0609-1212",
@@ -2444,7 +2469,8 @@
       "bidit_checked_at": "2026-09-14T13:11:42.915Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0618-1016",
@@ -2493,7 +2519,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.040Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0618-1042",
@@ -2542,7 +2569,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.107Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0622-1004",
@@ -2553,16 +2581,15 @@
       "teacher_he": "פרופ שפר מוסנזון מרים",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622100401&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0622-2001",
@@ -2572,8 +2599,9 @@
       "name_he": "מבוא להיסטוריה חברתית",
       "teacher_he": "פרופ ברק און",
       "credits": 2,
-      "semester": "B",
+      "semester": "A,B",
       "offered_semesters": [
+        "A",
         "B"
       ],
       "syllabus_url": null,
@@ -2624,7 +2652,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.225Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0631-2503",
@@ -2635,16 +2664,15 @@
       "teacher_he": "ד\"ר וינטר אופיר",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631250301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-1031",
@@ -2693,7 +2721,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.356Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-1091",
@@ -2703,9 +2732,9 @@
       "name_he": "שפה חזותית בדרום-מערב אסיה: 3,500 - 500 לפני הספירה",
       "teacher_he": "פרופ' עידו קוך",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671109101&year=2025",
       "category": "קורסי שער רוח",
@@ -2742,7 +2771,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.509Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-1130",
@@ -2753,16 +2783,15 @@
       "teacher_he": "ד\"ר גיא שטיבל",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671113001&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-1238",
@@ -2811,7 +2840,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.632Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-2383",
@@ -2822,16 +2852,15 @@
       "teacher_he": "פרופ' יורם כהן",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-2649",
@@ -2841,9 +2870,9 @@
       "name_he": "עולמות הצבא הרומי",
       "teacher_he": "ד\"ר גיא שטיבל",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671264901&year=2025",
       "category": "קורסי שער רוח",
@@ -2874,7 +2903,8 @@
       "bidit_checked_at": "2026-09-14T13:11:43.891Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0671-2668",
@@ -2885,16 +2915,15 @@
       "teacher_he": "פרופ' עודד ליפשיץ",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671266801&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0671-4389",
@@ -2905,16 +2934,15 @@
       "teacher_he": "ד\"ר לידר חן ספיר",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671438901&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0672-1202",
@@ -2957,7 +2985,8 @@
       "bidit_checked_at": "2026-09-14T13:11:44.028Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0672-1557",
@@ -2968,16 +2997,15 @@
       "teacher_he": "פרופ' יזרעלוביץ עדו",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672155701&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0677-1283",
@@ -2988,16 +3016,15 @@
       "teacher_he": "ד\"ר יפעת מונקנדם",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677128301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "1673-4026",
@@ -3008,16 +3035,15 @@
       "teacher_he": "ד\"ר קרן קובלו פראן",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": null,
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0723-2052",
@@ -3060,7 +3086,8 @@
       "bidit_checked_at": "2026-09-14T13:11:44.428Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0621-1101",
@@ -3109,7 +3136,8 @@
       "bidit_checked_at": "2026-09-14T13:11:44.453Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0621-1220",
@@ -3120,16 +3148,15 @@
       "teacher_he": "פרופ' עודד רבינוביץ",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621122001&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-1180",
@@ -3140,16 +3167,15 @@
       "teacher_he": "ד\"ר גדי נועה",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662118001&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2253",
@@ -3160,16 +3186,15 @@
       "teacher_he": "ד\"ר גוז'נסקי יובל",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662225301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2615",
@@ -3180,16 +3205,15 @@
       "teacher_he": "ד\"ר לבנת חנה",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662261501&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2620",
@@ -3199,9 +3223,9 @@
       "name_he": "הבניית דימוי של אישי ציבור בתקשורת: צרפת, ארצות הברית וישראל",
       "teacher_he": "ד\"ר סדון קרן",
       "credits": 2,
-      "semester": "B",
+      "semester": "A",
       "offered_semesters": [
-        "B"
+        "A"
       ],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662262001&year=2025",
       "category": "קורסי שער רוח",
@@ -3232,7 +3256,8 @@
       "bidit_checked_at": "2026-09-14T13:11:44.895Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0662-2653",
@@ -3243,16 +3268,15 @@
       "teacher_he": "ד\"ר לבנת אביב",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0662-2656",
@@ -3263,16 +3287,15 @@
       "teacher_he": "ד\"ר מזור מעין",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662265601&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     },
     {
       "course_id": "0608-1010",
@@ -3321,7 +3344,8 @@
       "bidit_checked_at": "2026-09-14T13:11:45.040Z",
       "weekly_hours": 2,
       "weekly_hours_verified_from_bidit": true,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": true
     },
     {
       "course_id": "0669-6203",
@@ -3332,16 +3356,15 @@
       "teacher_he": "ד\"ר רותם לשם",
       "credits": 2,
       "semester": "B",
-      "offered_semesters": [
-        "B"
-      ],
+      "offered_semesters": [],
       "syllabus_url": "https://www.ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669620301&year=2025",
       "category": "קורסי שער רוח",
       "is_general_requirement": true,
       "counts_toward_degree_hours": true,
       "does_not_count_as_engineering_elective": true,
       "weekly_hours": 2,
-      "weekly_hours_source": "program_requirement"
+      "weekly_hours_source": "program_requirement",
+      "offered_in_year": false
     }
   ],
   "bidit_schedule_source": "http://www.bid-it.appspot.com/ajax/chosen-courses-info/",

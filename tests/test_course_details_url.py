@@ -49,7 +49,7 @@ def test_build_course_details_url_digits_only():
 
 def test_build_course_details_url_default_year():
     url = build_course_details_url("0542-4120")
-    assert "year=2025" in url
+    assert "year=2026" in url  # TAU year code for תשפ"ז
 
 
 def test_build_course_details_url_short_id_returns_none():
@@ -145,7 +145,7 @@ def test_course_details_url_format(repo):
         assert url.startswith("https://ims.tau.ac.il/tal/kr/search_l.aspx"), \
             f"{rc['course_id']}: unexpected URL format: {url}"
         assert "course_num=" in url
-        assert "year=2025" in url
+        assert "year=2026" in url  # TAU year code for תשפ"ז
 
 
 def test_elective_courses_detail_source_is_tau_program(repo, pdf_prog):

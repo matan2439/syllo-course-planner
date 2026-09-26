@@ -75,13 +75,21 @@ serverless function cache to refresh) and re-run `verify:live`.
   (warning) for any course with a `syllabus_parse_error` field.
 - These are warnings, not errors — they do not block `sync:board`. Use the report
   to prioritize which courses still need manual syllabus review/enrichment.
-- Offered-semester data for flexible mandatory courses currently comes from the
-  `OFFERED_SEMESTERS_OVERRIDES` dict in `app/analysis/semester_board.py`
-  (mirrored in `scripts/add_offered_semester_fields.py`), each entry carrying its
-  own `offering_source_url` and `offering_source_confidence`. A course is only
-  restricted to a subset of `program_allowed_semesters` when
-  `offering_source_confidence == "high"`; otherwise `effective_allowed_semesters`
-  falls back to the full `program_allowed_semesters`.
+- Offered semesters, weekly hours, credits and syllabus links come from TAU's
+  official sources for the current academic year (TAU year code `2026` = תשפ"ז):
+
+  ```bash
+  python scripts/refresh_course_data.py            # fetch + review report (boards untouched)
+  python scripts/refresh_course_data.py --apply --syllabi   # patch boards + rebuild stale summaries
+  npm run build:board && npm run audit:board
+  ```
+
+  It writes `data/official/tau_course_facts_2026.json` (the snapshot
+  `semester_board.py` also reads) and `data/import_reports/course_data_review_2026.md`
+  (one row per mismatch). Courses IMS lists as not offered get
+  `offered_in_year: false` and are excluded from planning. Bump `ACADEMIC_YEAR`
+  in the script each year. `tests/test_board_data_integrity.py` fails when the
+  committed boards drift from the snapshot.
 
 ## Avoiding committing secrets
 
