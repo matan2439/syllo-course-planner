@@ -80,3 +80,30 @@ test('successive answers retain earlier course answers for the next planning tur
   expect(current.planContext).not.toHaveProperty('track');
   expect(focus.preferences).not.toHaveProperty('disallowed_course_ids');
 });
+
+test('a category count from the profile panel is stored as plan context, not as completed ids', () => {
+  const personalStatus = { completed: [{ course_id: '0542-2400' }] };
+  const result = applyConversationClarificationAnswers({
+    programId: 'mechanical_engineering_2027',
+    personalStatus,
+    planContext: { personal_status: personalStatus },
+    preferences: {},
+    answers: [{ questionId: 'completed_category_counts', value: { shaar_ruach: 2 } }],
+  });
+  expect(result.changed).toBe(true);
+  expect(result.invalidAnswers).toEqual([]);
+  expect(result.planContext.completed_category_counts).toEqual({ shaar_ruach: 2 });
+  expect(result.personalStatus).toEqual(personalStatus);
+});
+
+test('a malformed category count is rejected', () => {
+  const result = applyConversationClarificationAnswers({
+    programId: 'mechanical_engineering_2027',
+    personalStatus: {},
+    planContext: {},
+    preferences: {},
+    answers: [{ questionId: 'completed_category_counts', value: ['shaar_ruach'] }],
+  });
+  expect(result.invalidAnswers).toHaveLength(1);
+  expect(result.planContext.completed_category_counts).toBeUndefined();
+});

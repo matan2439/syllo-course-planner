@@ -277,3 +277,15 @@ describe('A2 — regression against the REAL TAU Mechanical program data', () =>
     }]);
   });
 });
+
+describe('completed courses the student counted but did not name', () => {
+  test('reduce what the plan still owes without claiming any course ids', () => {
+    const p = computeAcademicProgress({
+      completedCourseIds: ['SOL1'], catalogHours: CATALOG, requirements: REQS,
+      unidentifiedCompletedByCategory: { solids: 1, fluids: 5 },
+    });
+    expect(p.categories.find((c) => c.categoryId === 'solids')).toMatchObject({ satisfiedBy: ['SOL1'], remainingRequired: 0 });
+    expect(p.categories.find((c) => c.categoryId === 'fluids')).toMatchObject({ satisfiedBy: [], remainingRequired: 0 });
+    expect(p.digest).not.toBe(run(['SOL1']).digest);
+  });
+});

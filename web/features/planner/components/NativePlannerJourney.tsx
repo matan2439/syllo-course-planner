@@ -38,6 +38,8 @@ import CurrentPlanSection from './CurrentPlanSection'
 import { BoardError, BoardLoading } from './BoardStatus'
 import ManualAddPrompt from './ManualAddPrompt'
 import AgentPreferencePanel from './AgentPreferencePanel'
+import { adaptRequirementsFromModel } from '../../../lib/requirements'
+import { GATEWAY_CATEGORY_ID } from '../../courses/components/course-category'
 import { buildGeneratePlanRequest } from '../lib/build-plan-request'
 import { useCommittedBoard } from '../hooks/use-committed-board'
 import { useDropHighlights } from '../hooks/use-drop-highlights'
@@ -121,6 +123,7 @@ export default function NativePlannerJourney({
   // ── what the student entered (recorded; never auto-generate) ───────────────
   const {
     messages, setMessages, maxHours, setMaxHours, priorHours, setPriorHours,
+    completedCategoryCounts, setCompletedCategoryCounts,
     wantIds, setWantIds, excludeIds, setExcludeIds, exclusionsNoneConfirmed, setExclusionsNoneConfirmed,
     preferenceVersion, updatePreferenceVersion,
   } = usePlannerInputs()
@@ -150,6 +153,9 @@ export default function NativePlannerJourney({
         answers.set('excluded_courses', { question_id: 'excluded_courses', value: excludeIds })
       }
       if (!answers.has('wanted_courses')) answers.set('wanted_courses', { question_id: 'wanted_courses', value: wantIds })
+      if (!answers.has('completed_category_counts')) {
+        answers.set('completed_category_counts', { question_id: 'completed_category_counts', value: completedCategoryCounts })
+      }
     }
     const response = await sendConversationWithPanelStatus({
       ...request,
@@ -175,10 +181,10 @@ export default function NativePlannerJourney({
   const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest =>
     buildGeneratePlanRequest(base, profile, {
       maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
-      academicStatus, catalogHoursById, applyAcademicStatus,
+      academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts,
     }),
   [maxHours, priorHours, wantIds, excludeIds, programId, academicStatus, catalogHoursById,
-    applyAcademicStatus, exclusionsNoneConfirmed])
+    applyAcademicStatus, exclusionsNoneConfirmed, completedCategoryCounts])
 
   // ── proposals, and manual edits that make them stale ──────────────────────
   // The revision counter lives here because both hooks need it: a manual edit moves it,
@@ -256,6 +262,8 @@ export default function NativePlannerJourney({
       updateAcademicStatus={updateAcademicStatus}
       maxHours={maxHours} setMaxHours={setMaxHours}
       priorHours={priorHours} setPriorHours={setPriorHours}
+      gatewayCategory={adaptRequirementsFromModel(current)?.categories.find((c) => c.id === GATEWAY_CATEGORY_ID) ?? null}
+      completedCategoryCounts={completedCategoryCounts} setCompletedCategoryCounts={setCompletedCategoryCounts}
       wantIds={wantIds} setWantIds={setWantIds}
       excludeIds={excludeIds} setExcludeIds={setExcludeIds}
       exclusionsNoneConfirmed={exclusionsNoneConfirmed} setExclusionsNoneConfirmed={setExclusionsNoneConfirmed}
@@ -309,6 +317,7 @@ export default function NativePlannerJourney({
           rejectedDrop={rejectedDrop}
           justPlaced={justPlaced}
           onDragStateChange={onDragStateChange}
+          completedCategoryCounts={completedCategoryCounts}
           completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
             // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
             const hours = earlyYearHoursById(programId)[id] ?? catalogHoursById[id]

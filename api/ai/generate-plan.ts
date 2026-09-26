@@ -31,6 +31,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
+import { completedCategoryCountsFromContext } from './requirements_recompute';
 import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
@@ -285,6 +286,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
       .filter((id: unknown): id is string => typeof id === 'string');
   const model = buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+    completedCountByCategory: completedCategoryCountsFromContext(ctx),
     currentlyPlannedCourseIds: effectiveCurrentlyTakingIds,
     // Slice 18A — current product policy: the user-facing "wanted" picker is a
     // HARD `must_include` constraint, and the "avoided" picker a HARD

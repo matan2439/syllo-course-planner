@@ -85,3 +85,19 @@ describe('recomputeRequirements inputs', () => {
     expect(normalizeCourseIdLikePython('ELEC-1')).toBe('ELEC-1');
   });
 });
+
+describe('unnamed completed courses', () => {
+  test('count toward a category without being listed as selected courses', () => {
+    const base = parity.cases[0];
+    const cat = (parity.block.categories as Array<{ category_id: string; min_courses?: number }>)
+      .find((c) => (c.min_courses ?? 1) > 0)!;
+    const min = cat.min_courses ?? 1;
+    const before = recomputeRequirements(boardJsonFor(base), planFor(base))!
+      .category_results.find((c) => c.category_id === cat.category_id)!;
+    const after = recomputeRequirements(boardJsonFor(base), planFor(base), { [cat.category_id]: min })!
+      .category_results.find((c) => c.category_id === cat.category_id)!;
+    expect(after.selected_count).toBe(before.selected_count + min);
+    expect(after.selected_courses).toEqual(before.selected_courses);
+    expect(after).toMatchObject({ satisfied: true, missing_count: 0 });
+  });
+});

@@ -7,14 +7,14 @@ test('adaptRequirementsFromModel maps BoardModel.requirementsValidation into the
     requirementsValidation: {
       valid: false, totalRequiredHours: 185, plannedHours: 128.5, remainingHours: 56.5,
       coreCoursesTotalMin: 6, coreCoursesSelected: 0, coreCoursesSatisfied: false,
-      categories: [{ categoryId: 'fluids', nameHe: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1 }],
+      categories: [{ categoryId: 'fluids', nameHe: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1, selectedCourseIds: ['0542-4120'] }],
       warnings: ['שעות חסרות: 56.5'],
     },
   } satisfies BoardModel
   expect(adaptRequirementsFromModel(model)).toEqual({
     valid: false, plannedHours: 128.5, totalRequiredHours: 185, remainingHours: 56.5,
     core: { selected: 0, min: 6, satisfied: false },
-    categories: [{ id: 'fluids', title: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1 }],
+    categories: [{ id: 'fluids', title: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1, selectedCourseIds: ['0542-4120'] }],
     warnings: ['שעות חסרות: 56.5'], explanation: null,
   })
 })

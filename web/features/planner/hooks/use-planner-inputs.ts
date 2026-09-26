@@ -6,6 +6,8 @@ export function usePlannerInputs() {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [maxHours, setMaxHours] = useState('')
   const [priorHours, setPriorHours] = useState('')
+  // Category id → courses completed there that the student counted but did not name (e.g. שער רוח).
+  const [completedCategoryCounts, setCompletedCategoryCounts] = useState<Record<string, number>>({})
   const [wantIds, setWantIds] = useState<string[]>([])
   const [excludeIds, setExcludeIds] = useState<string[]>([])
   // Exclusions: a non-empty selection is inherently explicit; an empty one is
@@ -20,6 +22,7 @@ export function usePlannerInputs() {
   return {
     messages, setMessages,
     maxHours, setMaxHours, priorHours, setPriorHours,
+    completedCategoryCounts, setCompletedCategoryCounts,
     wantIds, setWantIds, excludeIds, setExcludeIds,
     exclusionsNoneConfirmed, setExclusionsNoneConfirmed,
     preferenceVersion, updatePreferenceVersion,

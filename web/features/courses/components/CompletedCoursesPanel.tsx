@@ -127,11 +127,16 @@ export default function CompletedCoursesPanel({
     onChange({ ...value, statuses, confirmed: false })
   }
 
-  const markAllNotCompleted = () => {
+  const setMany = (courseIds: readonly string[], next: CompletionAnswer) => {
     const statuses: Record<string, CompletionAnswer> = { ...value.statuses }
-    for (const c of standard) statuses[c.courseId] = 'not_completed'
+    for (const id of courseIds) {
+      if (next === 'unknown') delete statuses[id]
+      else statuses[id] = next
+    }
     onChange({ ...value, statuses, confirmed: false })
   }
+
+  const markAllNotCompleted = () => setMany(standard.map((c) => c.courseId), 'not_completed')
 
   const nameOf = (id: string) =>
     standard.find((c) => c.courseId === id)?.nameHe
@@ -174,6 +179,21 @@ export default function CompletedCoursesPanel({
                 return (
                   <fieldset key={sem.id} className="rounded-xl border border-[var(--border)] p-3">
                     <legend className="px-1 text-xs font-semibold">{sem.titleHe}</legend>
+                    {(() => {
+                      const ids = courses.map((c) => c.courseId)
+                      const allDone = ids.every((id) => value.statuses[id] === 'completed')
+                      return (
+                        <button
+                          type="button"
+                          aria-pressed={allDone}
+                          aria-label={allDone ? `נקה סימון: ${sem.titleHe}` : `סמן את כל ${sem.titleHe} כהושלם`}
+                          onClick={() => setMany(ids, allDone ? 'unknown' : 'completed')}
+                          className="mb-2 rounded-full border border-dashed border-[var(--border)] px-3 py-1 text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
+                        >
+                          {allDone ? 'נקה סמסטר' : 'השלמתי את כל הסמסטר'}
+                        </button>
+                      )
+                    })()}
                     <ul className="flex flex-col gap-2">
                       {courses.map((c) => {
                         const status = value.statuses[c.courseId] ?? 'unknown'

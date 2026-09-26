@@ -43,7 +43,6 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   INTERNAL_ERROR: 'אירעה שגיאה פנימית.',
 };
 
-const boardView = committedBoardView;
 
 function reject(res: VercelResponse, code: FailureCode, currentBoardVersion?: string | null): void {
   const body: ManualBoardEditResponse = {
@@ -69,6 +68,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const owner = resolveOwner(req as any, res);
     const repo = getBoardRepository();
     const currentBoard = await repo.load(owner.ownerId, request.program_id);
+    const context = await getAcademicContextStore().load(owner.ownerId, request.program_id);
+    // Unnamed completions in the stored context count toward the board's categories.
+    const boardView = (board: CommittedBoard) => committedBoardView(board, context?.planContext);
     const candidateId = request.operation === 'add_course'
       ? `add:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
       : request.operation === 'move_course'
@@ -91,7 +93,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (!replay.ok) { reject(res, replay.reason, replay.board?.version ?? null); return; }
     }
 
-    const context = await getAcademicContextStore().load(owner.ownerId, request.program_id);
     if (!context) { reject(res, 'ACADEMIC_CONTEXT_NOT_FOUND'); return; }
     const boardJson = loadLocalBoardJson(request.program_id);
     if (!boardJson) { reject(res, 'PROGRAM_NOT_FOUND'); return; }

@@ -14,6 +14,7 @@ type RawCategoryResult = {
   selected_count: number
   satisfied: boolean
   missing_count: number
+  selected_courses?: string[]
 }
 
 type RawRequirementsValidation = {
@@ -36,6 +37,8 @@ export type RequirementCategoryVM = {
   selectedCount: number
   satisfied: boolean
   missingCount: number
+  /** Course ids the server counted toward this category. */
+  selectedCourseIds: string[]
 }
 
 export type RequirementsVM = {
@@ -72,6 +75,7 @@ export function adaptRequirements(raw: RawBoard): RequirementsVM | null {
       selectedCount: c.selected_count,
       satisfied: c.satisfied,
       missingCount: c.missing_count,
+      selectedCourseIds: c.selected_courses ?? [],
     })),
     warnings: v.warnings ?? [],
     explanation: v.explanation ?? null,
@@ -95,6 +99,7 @@ export function adaptRequirementsFromModel(model: BoardModel): RequirementsVM | 
     categories: v.categories.map((c) => ({
       id: c.categoryId, title: c.nameHe, minCourses: c.minCourses,
       selectedCount: c.selectedCount, satisfied: c.satisfied, missingCount: c.missingCount,
+      selectedCourseIds: c.selectedCourseIds ?? [],
     })),
     warnings: v.warnings,
     explanation: null,

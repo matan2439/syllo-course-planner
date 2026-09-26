@@ -16,10 +16,10 @@ const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string }> = [
   { id: 'schedule', label: 'מערכת שעות' },
 ]
 
-const TABS: ReadonlyArray<{ id: RailTab; label: string; icon: string; noun: string }> = [
-  { id: 'courses', label: 'קורסים', icon: '☰', noun: 'מאגר קורסים' },
-  { id: 'agent', label: 'עוזר AI', icon: '✦', noun: 'עוזר AI' },
-  { id: 'profile', label: 'הפרופיל שלי', icon: '◎', noun: 'הפרופיל שלי' },
+const TABS: ReadonlyArray<{ id: RailTab; label: string }> = [
+  { id: 'courses', label: 'קורסים' },
+  { id: 'agent', label: 'עוזר AI' },
+  { id: 'profile', label: 'הפרופיל שלי' },
 ]
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
@@ -66,7 +66,7 @@ export default function UnifiedPlannerWorkspace({
   // The assistant lives in the journey (it owns the planning state) and renders into this slot.
   const [agentSlot, setAgentSlot] = useState<HTMLDivElement | null>(null)
   const [profileSlot, setProfileSlot] = useState<HTMLDivElement | null>(null)
-  const toggleRefs = useRef<Record<RailTab, HTMLButtonElement | null>>({ courses: null, agent: null, profile: null })
+  const toggleRef = useRef<HTMLButtonElement | null>(null)
   const railCloseRef = useRef<HTMLButtonElement | null>(null)
   const lastTab = useRef<RailTab>('courses')
   const railWasOpen = useRef(false)
@@ -85,10 +85,8 @@ export default function UnifiedPlannerWorkspace({
 
   const closeRail = () => {
     setRailTab(null)
-    toggleRefs.current[lastTab.current]?.focus()
+    toggleRef.current?.focus()
   }
-
-  const toggleTab = (tab: RailTab) => (railTab === tab ? closeRail() : setRailTab(tab))
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -119,22 +117,20 @@ export default function UnifiedPlannerWorkspace({
         </p>
       </div>
 
-      <div className="planner-drawer-controls" aria-label="כלי תכנון">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            ref={(el) => { toggleRefs.current[tab.id] = el }}
-            type="button"
-            aria-controls="workspace-rail"
-            aria-expanded={railTab === tab.id}
-            aria-label={`${railTab === tab.id ? 'סגור' : 'פתח'} ${tab.noun}`}
-            onClick={() => toggleTab(tab.id)}
-            className={`planner-drawer-toggle planner-drawer-toggle-${tab.id}`}
-          >
-            <span aria-hidden="true">{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+      {/* One toggle: the rail's own tabs switch between courses, assistant and profile. */}
+      <div className="planner-drawer-controls">
+        <button
+          ref={toggleRef}
+          type="button"
+          aria-controls="workspace-rail"
+          aria-expanded={railTab !== null}
+          aria-label={`${railTab ? 'סגור' : 'פתח'} כלי תכנון`}
+          onClick={() => (railTab ? closeRail() : setRailTab(lastTab.current))}
+          className="planner-drawer-toggle"
+        >
+          <span aria-hidden="true">☰</span>
+          <span>כלי תכנון</span>
+        </button>
       </div>
 
       <div

@@ -44,6 +44,7 @@ export const conversationRequestSchema = z.object({
   clarification_answers: z.array(z.object({
     question_id: z.enum([
       'wanted_courses',
+      'completed_category_counts',
       'completed_courses',
       'current_courses',
       'excluded_courses',
@@ -54,6 +55,8 @@ export const conversationRequestSchema = z.object({
       z.array(z.string().trim().min(1).max(128)).max(64),
       boundedText,
       z.number().finite(),
+      // completed_category_counts: category id → courses completed there without naming them.
+      z.record(z.string().trim().min(1).max(64), z.number().int().min(0).max(50)),
     ]),
   }).strict()).max(8).optional(),
   transcript: z.array(conversationTurnSchema).min(1).max(40),

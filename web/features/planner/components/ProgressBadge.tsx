@@ -2,16 +2,21 @@ import { useState } from 'react'
 import type { RequirementsVM } from '../../../lib/requirements'
 import { Badge } from '../../../components/ui'
 
+/** Hours and course count toward one requirement category, including completed courses. */
+export type CategoryProgress = { hours: number; count: number }
+
 /**
  * Small always-visible header badge showing degree-progress at a glance
  * (hours placed/required + per-category coverage), expandable for detail.
- * Renders the RequirementsVM the server computed (see lib/requirements.ts) —
- * never a second computation here.
+ * Renders the RequirementsVM the server computed (see lib/requirements.ts);
+ * `categoryProgress` only adds completed courses the board does not hold.
  */
-export default function ProgressBadge({ requirements, completedHours = 0 }: {
+export default function ProgressBadge({ requirements, completedHours = 0, categoryProgress = {} }: {
   requirements: RequirementsVM | null
   /** Credit already earned outside the board (e.g. Years 1–2), counted toward the degree. */
   completedHours?: number
+  /** Category id → hours and courses counted there (board + completed). */
+  categoryProgress?: Readonly<Record<string, CategoryProgress>>
 }) {
   const [open, setOpen] = useState(false)
   if (!requirements) return null
@@ -43,14 +48,24 @@ export default function ProgressBadge({ requirements, completedHours = 0 }: {
             <p className="mt-1 text-[11px] text-[var(--text-muted)]">כולל {completedHours} ש״ש שכבר הושלמו</p>
           )}
           <div className="mt-2 flex flex-col gap-1.5">
-            {requirements.categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between text-xs">
-                <span>{c.title}</span>
-                {c.satisfied
-                  ? <Badge variant="success">הושלם</Badge>
-                  : <Badge variant="warn">{c.selectedCount}/{c.minCourses}</Badge>}
-              </div>
-            ))}
+            {requirements.categories.map((c) => {
+              const progress = categoryProgress[c.id]
+              const count = progress?.count ?? c.selectedCount
+              const satisfied = c.satisfied || (c.minCourses > 0 && count >= c.minCourses)
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0">
+                    {c.title}
+                    {progress && <span className="text-[var(--text-muted)]"> · {progress.hours} ש״ש</span>}
+                  </span>
+                  {c.minCourses === 0
+                    ? <Badge>{count} קורסים</Badge>
+                    : satisfied
+                      ? <Badge variant="success">הושלם · {count}/{c.minCourses}</Badge>
+                      : <Badge variant="warn">{count}/{c.minCourses}</Badge>}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

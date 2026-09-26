@@ -7,6 +7,7 @@ const legacyProposalGet = jest.fn();
 jest.mock('../../api/ai/apply_runtime', () => ({
   academicStatusDigest: jest.fn(() => 'as_expected'),
   ensurePlannerStorageReady,
+  getAcademicContextStore: jest.fn(() => ({ load: jest.fn(async () => null) })),
   getAuthoritativeApplyStore: jest.fn(() => ({ apply: atomicApply })),
   getBoardRepository: jest.fn(() => ({ load: legacyLoad, commit: legacyCommit })),
   getProposalStore: jest.fn(() => ({ get: legacyProposalGet })),

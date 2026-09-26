@@ -196,7 +196,7 @@ test('program_requirements_validation passes through to BoardModel.requirementsV
     coreCoursesSelected: 0,
     coreCoursesSatisfied: false,
     categories: [
-      { categoryId: 'fluids', nameHe: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1 },
+      { categoryId: 'fluids', nameHe: 'זורמים', minCourses: 1, selectedCount: 0, satisfied: false, missingCount: 1, selectedCourseIds: [] },
     ],
     warnings: ['שעות חסרות: 56.5'],
   })
