@@ -120,6 +120,8 @@ export interface AcademicProgress {
   /** Recognized courses whose authoritative hours are unknown — disclosure. */
   unknownHoursCourseIds: string[];
   categories: CategoryProgress[];
+  /** Unnamed completed courses per requiring category that reduced `remainingRequired` (positive counts only). */
+  unidentifiedCompletedByCategory: Record<string, number>;
   perCourse: CompletedCourseRecognition[];
   prerequisiteContributions: PrerequisiteContribution[];
   /** Dependents with incompatible authoritative prerequisite definitions. */
@@ -290,6 +292,11 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
     recognizedHours,
     unknownHoursCourseIds: unknownHoursCourseIds.slice().sort(),
     categories,
+    unidentifiedCompletedByCategory: Object.fromEntries(
+      requiring
+        .map((cat) => [cat.categoryId, input.unidentifiedCompletedByCategory?.[cat.categoryId] ?? 0] as const)
+        .filter(([, n]) => n > 0),
+    ),
     perCourse,
     prerequisiteContributions,
     conflictingPrerequisiteCourseIds,

@@ -31,6 +31,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
+import { completedCategoryCountsFromContext } from './requirements_recompute';
 import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
 import { PlannerWorker } from './planner_worker';
@@ -271,16 +272,6 @@ export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focus
     }
   }
   return fitById.size ? { fitById, evidenceById } : undefined;
-}
-
-/** plan_context.completed_category_counts, keeping only non-negative whole counts. */
-export function completedCategoryCountsFromContext(ctx: any): Record<string, number> | undefined {
-  const raw = ctx?.completed_category_counts;
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
-  const counts = Object.fromEntries(
-    Object.entries(raw).filter(([, n]) => Number.isInteger(n) && (n as number) > 0),
-  ) as Record<string, number>;
-  return Object.keys(counts).length ? counts : undefined;
 }
 
 /** Build the model from board_json (full universe). board is always non-null here. */

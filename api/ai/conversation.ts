@@ -43,7 +43,7 @@ import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
 import type { AcademicContextStore } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
-import { recomputeRequirements } from './requirements_recompute';
+import { completedCategoryCountsFromContext, recomputeRequirements } from './requirements_recompute';
 import type { PreferenceProfile } from './preference_model';
 import { applyConversationClarificationAnswers, withCompletedCredit } from './conversation_clarification';
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
@@ -569,7 +569,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       wireAlternatives = wireAlternatives.map((alternative) => {
         const requirements = recomputeRequirements(programBoard, alternative.semesters.map((semester) => ({
           semesterId: semester.semester_id, courseIds: semester.course_ids,
-        })));
+        })), completedCategoryCountsFromContext(context));
         // Per-semester load and the server's cap verdicts (the student's own cap and the hard cap).
         const semesterLoads = alternative.semesters.map((semester) => {
           const hours = [...new Set(semester.course_ids)].reduce((sum, courseId) => sum + hoursFor(courseId), 0);

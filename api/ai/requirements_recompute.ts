@@ -55,9 +55,24 @@ export function normalizeCourseIdLikePython(courseId: string): string {
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
 
+/**
+ * plan_context.completed_category_counts — courses the student completed in a category without
+ * naming them (e.g. how many שער רוח courses) — keeping only positive whole counts.
+ */
+export function completedCategoryCountsFromContext(planContext: unknown): Record<string, number> | undefined {
+  const raw = (planContext as { completed_category_counts?: unknown } | null | undefined)?.completed_category_counts;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const counts = Object.fromEntries(
+    Object.entries(raw).filter(([, n]) => Number.isInteger(n) && (n as number) > 0),
+  ) as Record<string, number>;
+  return Object.keys(counts).length ? counts : undefined;
+}
+
 export function recomputeRequirements(
   boardJson: any,
   semesters: ReadonlyArray<{ semesterId: string; courseIds: readonly string[] }>,
+  /** Unnamed completed courses per category (see completedCategoryCountsFromContext). Counted, never listed. */
+  unidentifiedCompletedByCategory: Readonly<Record<string, number>> = {},
 ): RecomputedRequirements | null {
   const meta = boardJson?.metadata;
   const block = meta?.program_requirements_categories;
@@ -109,7 +124,7 @@ export function recomputeRequirements(
     const needsReview = Boolean(cat.needs_review);
     const pool = new Set(cat.course_ids.map((c) => normalizeCourseIdLikePython(String(c))));
     const selected = [...allCourseIds].filter((id) => pool.has(id)).sort();
-    const count = selected.length;
+    const count = selected.length + (unidentifiedCompletedByCategory[cat.category_id] ?? 0);
     const satisfied = count >= minCourses;
     if (cat.is_core) coreSelected += count;
     if (minCourses > 0 && !needsReview && !satisfied) missingRequiredCategories.push(cat.category_id);

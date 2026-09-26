@@ -77,6 +77,12 @@ export function constraintFingerprint(input: {
     completed: [...input.completedCourseIds].sort(),
     policy: input.distributionPolicy ?? 'neutral',
     profileVersion: input.profileVersion,
+    // Unnamed completions (e.g. how many שער רוח courses) change hard category requirements, so a
+    // proposal built on another count must not apply. Added only when present: fingerprints of plans
+    // without them are unchanged.
+    ...(Object.keys(m.academicProgress?.unidentifiedCompletedByCategory ?? {}).length
+      ? { unnamedCompleted: Object.entries(m.academicProgress!.unidentifiedCompletedByCategory).sort() }
+      : {}),
   };
   return `cf_${createHash('sha256').update(JSON.stringify(parts), 'utf8').digest('hex').slice(0, 16)}`;
 }

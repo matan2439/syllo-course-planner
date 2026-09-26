@@ -20,6 +20,7 @@ import { resolveOwner } from './session_owner';
 import {
   academicStatusDigest,
   ensurePlannerStorageReady,
+  getAcademicContextStore,
   getAuthoritativeApplyStore,
   getBoardRepository,
   getProposalStore,
@@ -123,7 +124,10 @@ export interface ApplyPlanFailure {
   currentBoardVersion?: string | null;
 }
 
-const boardView = committedBoardView;
+/** The owner's stored planning context: its unnamed completions count toward the board's categories. */
+async function storedPlanContext(ownerId: string, programId: string): Promise<unknown> {
+  return (await getAcademicContextStore().load(ownerId, programId))?.planContext;
+}
 
 function reject(res: VercelResponse, code: ApplyRejectionCode, extra: Partial<ApplyPlanFailure> = {}): void {
   const body: ApplyPlanFailure = { ok: false, code, message_he: REASON_HE[code], ...extra };
@@ -221,7 +225,7 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     const board = await getBoardRepository().load(owner.ownerId, programId);
     res.status(200).json({
       ok: true,
-      board: board ? boardView(board) : null,
+      board: board ? committedBoardView(board, await storedPlanContext(owner.ownerId, programId)) : null,
       // Truthful disclosure of what this deployment can actually promise.
       storage: storageKind(),
     });
@@ -236,6 +240,8 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   const parsed = applyPlanRequestSchema.safeParse(req.body);
   if (!parsed.success) { reject(res, 'INVALID_REQUEST'); return; }
   const request = parsed.data;
+  const planContext = await storedPlanContext(owner.ownerId, request.program_id);
+  const boardView = (board: CommittedBoard) => committedBoardView(board, planContext);
 
   const atomicStore = getAuthoritativeApplyStore();
   if (atomicStore) {
@@ -285,7 +291,7 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     // which is the only component that knows whether this exact request already
     // succeeded.
     if (verdict.code === 'BOARD_VERSION_CONFLICT' && record) {
-      const replay = await replayIfKnown(request, owner.ownerId, record, currentBoard);
+      const replay = await replayIfKnown(request, owner.ownerId, record, currentBoard, boardView);
       if (replay) { res.status(200).json(replay); return; }
     }
     reject(res, verdict.code, {
@@ -339,6 +345,7 @@ async function replayIfKnown(
   ownerId: string,
   record: ProposalRecord,
   currentBoard: CommittedBoard | null,
+  boardView: (board: CommittedBoard) => ReturnType<typeof committedBoardView>,
 ): Promise<ApplyPlanSuccess | null> {
   const candidate = record.candidates.find((c) => c.candidateId === request.candidate_id);
   if (!candidate || !currentBoard) return null;
