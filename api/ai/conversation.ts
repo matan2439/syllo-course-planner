@@ -36,6 +36,7 @@ import {
   getProposalStore,
   plannerStorageErrorCode,
   preferenceDigest,
+  academicStatusDigest,
 } from './apply_runtime';
 import { resolveOwner } from './session_owner';
 import type { CommittedBoard } from './board_repository';
@@ -44,7 +45,7 @@ import type { AcademicContextStore } from './academic_context_store';
 import { loadLocalBoardJson } from './board_loader';
 import { recomputeRequirements } from './requirements_recompute';
 import type { PreferenceProfile } from './preference_model';
-import { applyConversationClarificationAnswers } from './conversation_clarification';
+import { applyConversationClarificationAnswers, withCompletedCredit } from './conversation_clarification';
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
 import { DeterministicCandidateDecisionCapability } from './candidate_decision';
 
@@ -256,15 +257,20 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           return;
         }
         if (merged.changed) {
+          // Completed courses carry their degree credit (Years 1–2 are not on the board).
+          const answeredCompleted = parsed.data.clarification_answers.some((answer) => answer.question_id === 'completed_courses');
+          const mergedPlanContext = answeredCompleted
+            ? withCompletedCredit(merged.planContext, parsed.data.program_id, programBoard)
+            : merged.planContext;
           await putAcademicContext({
             ownerId: owner.ownerId,
             programId: parsed.data.program_id,
             digest: merged.academicStatusDigest,
             personalStatus: merged.personalStatus,
-            planContext: merged.planContext,
+            planContext: mergedPlanContext,
             preferences: merged.preferences,
           });
-          context = merged.planContext;
+          context = mergedPlanContext;
           personalStatus = merged.personalStatus;
           preferences = merged.preferences;
           contextUpdate = {
@@ -274,7 +280,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         }
       }
 
-      const effectiveAcademicStatusDigest = contextUpdate?.academic_status_digest ?? academicContext.digest;
+      let effectiveAcademicStatusDigest = contextUpdate?.academic_status_digest ?? academicContext.digest;
       const contextWithStatus = context.personal_status ? context : { ...context, personal_status: personalStatus };
       const completedCourseIds = Array.isArray(personalStatus.completed)
         ? personalStatus.completed
@@ -300,7 +306,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       const session = new PlanningSession({
         programId: parsed.data.program_id,
         programBoard,
-        planContext: context,
+        // The model must see the student's completed courses even when the stored
+        // plan context keeps them only in personal status.
+        planContext: contextWithStatus,
         committedContext,
         preferences,
         clarification,
@@ -335,6 +343,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       // (and the next turn) builds the same constraint model.
       const persistSessionPreferences = async () => {
         preferences = session.preferences;
+        if (session.academicStatusChanged) {
+          context = session.input.planContext;
+          personalStatus = (context.personal_status ?? {}) as Record<string, unknown>;
+          effectiveAcademicStatusDigest = academicStatusDigest(personalStatus);
+        }
         await putAcademicContext({
           ownerId: owner.ownerId,
           programId: parsed.data.program_id,
@@ -355,10 +368,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         session.recordAsked('excluded_courses');
         await persistSessionPreferences();
       };
-      if (session.preferencesChanged) {
+      if (session.preferencesChanged || session.academicStatusChanged) {
         await persistSessionPreferences();
         // Answers recorded this turn (e.g. no courses to leave out) count for the gate below.
-        clarification = await clarifyForAcademicDecision(extractClarificationContext(contextWithStatus, preferences, undefined));
+        clarification = await clarifyForAcademicDecision(extractClarificationContext(
+          session.input.planContext, preferences, undefined));
       }
       const model = session.model;
       const buildModelOptions: BuildModelOptions = {

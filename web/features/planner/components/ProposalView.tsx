@@ -28,7 +28,7 @@ export default function ProposalView({
   const changes = draft.semesters.flatMap((semester) =>
     semester.courses.filter((course) => course.marker !== 'unchanged').map((course) => ({ ...course, semester: semester.title })))
   return (
-    <section aria-label="טיוטת תוכנית" className="flex flex-col gap-3">
+    <section id="plan-proposal" aria-label="טיוטת תוכנית" className="flex scroll-mt-24 flex-col gap-3">
       <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm backdrop-blur">
         <h2 className="text-sm font-bold tracking-tight">הצעת תוכנית</h2>
         <div className="flex items-center gap-2">

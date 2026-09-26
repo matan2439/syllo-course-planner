@@ -43,6 +43,7 @@ export const conversationRequestSchema = z.object({
   /** Answers to the current server-issued clarification question. */
   clarification_answers: z.array(z.object({
     question_id: z.enum([
+      'wanted_courses',
       'completed_courses',
       'current_courses',
       'excluded_courses',
@@ -92,6 +93,7 @@ const toolStatusEventSchema = z.object({
     'ask_student',
     'submit_proposal',
     'check_timetable',
+    'record_completed_courses',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()

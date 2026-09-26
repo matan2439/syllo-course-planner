@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
       ['../data/boards/**', '../data/parsed_json/**'],
     ]),
   ),
+  experimental: {
+    // Local dev proxies /api/* to the real handlers; match Vercel's 300s function limit
+    // so a long co-pilot turn is not cut off mid-stream (default is 30s).
+    proxyTimeout: 300_000,
+  },
   eslint: {
     // Lint is run separately; don't block builds on lint warnings
     ignoreDuringBuilds: true,

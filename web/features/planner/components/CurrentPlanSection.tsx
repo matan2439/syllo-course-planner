@@ -33,7 +33,7 @@ function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Rea
 export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
-  activeDrag, rejectedDrop, justPlaced, onDragStateChange,
+  activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit,
 }: {
   current: BoardModel
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
@@ -53,11 +53,17 @@ export default function CurrentPlanSection({
   rejectedDrop: Highlight
   justPlaced: Highlight
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
+  /** Completed course → credit hours; those not on the shown board count toward progress. */
+  completedCredit?: Readonly<Record<string, number>>
 }) {
   // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
   const [progressSlot, setProgressSlot] = useState<HTMLElement | null>(null)
   useEffect(() => { setProgressSlot(document.getElementById('shell-progress-slot')) }, [])
-  const badge = <ProgressBadge requirements={adaptRequirementsFromModel(previewBoard ?? current)} />
+  const shown = previewBoard ?? current
+  const onBoard = new Set(shown.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))
+  const completedHours = Object.entries(completedCredit ?? {})
+    .reduce((sum, [id, hours]) => sum + (onBoard.has(id) ? 0 : hours), 0)
+  const badge = <ProgressBadge requirements={adaptRequirementsFromModel(shown)} completedHours={completedHours} />
   return (
     <section aria-label="התוכנית הנוכחית">
       <div className="mb-3 flex items-baseline justify-between gap-2">

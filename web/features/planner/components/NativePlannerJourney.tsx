@@ -15,7 +15,7 @@
  * profilePortalTarget) while their state stays here. Transport is injected so the journey is fully
  * testable without a backend; browser defaults hit the real routes.
  */
-import { useCallback, useState, type ReactElement, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import {
@@ -29,7 +29,8 @@ import CourseDetailsPanel from '../../courses/components/CourseDetailsPanel'
 import { buildDraftVM } from '../../../lib/planner/draft-vm'
 import { applyGeneratedToBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
-import { earlyYearCoursesFor } from '../../../../shared/planner/early_year_courses'
+import { earlyYearCoursesFor, earlyYearHoursById } from '../../../../shared/planner/early_year_courses'
+import { completedCourseIdsOf } from '../../courses/components/CompletedCoursesPanel'
 import AcademicAgentConversation from '../../agent/components/AcademicAgentConversation'
 import ProposalView from './ProposalView'
 import AgentContextStatus from './AgentContextStatus'
@@ -131,6 +132,44 @@ export default function NativePlannerJourney({
     applyAcademicStatus, refreshAcademicContext, handleAcademicContextUpdated, sendConversationWithPanelStatus,
   } = useAcademicContext({ programId, planningContextFn, sendConversationFn })
   const { convProfileVersion, convProfileRef, onProfileChange } = useConversationProfile()
+
+  // ── one source of truth for the profile panel and the assistant ───────────
+  // Panel edits reach the assistant as answers on the next turn (so it never asks
+  // again), and what the assistant stored is shown back in the panel.
+  const acceptedPreferenceVersionRef = useRef(0)
+  const sendConversationWithPanel: typeof defaultSendConversation = async (request, onProgress) => {
+    const changed = preferenceVersion > acceptedPreferenceVersionRef.current
+    const answers = new Map((request.clarification_answers ?? []).map((answer) => [answer.question_id, answer]))
+    if (changed) {
+      const hours = Number(maxHours)
+      if (maxHours.trim() && Number.isFinite(hours) && !answers.has('max_weekly_hours')) {
+        answers.set('max_weekly_hours', { question_id: 'max_weekly_hours', value: hours })
+      }
+      if ((excludeIds.length > 0 || exclusionsNoneConfirmed) && !answers.has('excluded_courses')) {
+        answers.set('excluded_courses', { question_id: 'excluded_courses', value: excludeIds })
+      }
+      if (!answers.has('wanted_courses')) answers.set('wanted_courses', { question_id: 'wanted_courses', value: wantIds })
+    }
+    const response = await sendConversationWithPanelStatus({
+      ...request,
+      ...(answers.size ? { clarification_answers: [...answers.values()] } : {}),
+    }, onProgress)
+    if (changed && response.outcome !== 'assistant_unavailable') acceptedPreferenceVersionRef.current = preferenceVersion
+    return response
+  }
+  const storedPreferences = loadedAcademicContext?.preferences
+  useEffect(() => {
+    // Never overwrite panel edits the assistant has not received yet.
+    if (!storedPreferences || preferenceVersion !== acceptedPreferenceVersionRef.current) return
+    const ids = (value: unknown) => Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []
+    if (typeof storedPreferences.max_weekly_hours === 'number') setMaxHours(String(storedPreferences.max_weekly_hours))
+    if (Array.isArray(storedPreferences.wanted_course_ids)) setWantIds(ids(storedPreferences.wanted_course_ids))
+    if (Array.isArray(storedPreferences.disallowed_course_ids)) {
+      const excluded = ids(storedPreferences.disallowed_course_ids)
+      setExcludeIds(excluded)
+      setExclusionsNoneConfirmed(excluded.length === 0)
+    }
+  }, [storedPreferences]) // eslint-disable-line react-hooks/exhaustive-deps -- hydrate only when the stored copy changes
 
   const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest =>
     buildGeneratePlanRequest(base, profile, {
@@ -269,6 +308,11 @@ export default function NativePlannerJourney({
           rejectedDrop={rejectedDrop}
           justPlaced={justPlaced}
           onDragStateChange={onDragStateChange}
+          completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
+            // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
+            const hours = earlyYearHoursById(programId)[id] ?? catalogHoursById[id]
+            return typeof hours === 'number' && Number.isFinite(hours) ? [[id, hours]] : []
+          })) : undefined}
         />
         <CourseDetailsPanel course={selectedBoardCourse} onClose={() => setSelectedBoardCourse(null)} programId={programId} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
@@ -321,7 +365,7 @@ export default function NativePlannerJourney({
           preferenceDigest={loadedAcademicContext?.preferenceDigest ?? 'preference_context_loading'}
           preferenceProfile={convProfileRef.current}
           conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
-          sendConversationFn={sendConversationWithPanelStatus}
+          sendConversationFn={sendConversationWithPanel}
           localContextVersion={statusVersion + preferenceVersion}
           courseScopes={[
             { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
@@ -329,6 +373,11 @@ export default function NativePlannerJourney({
           ].filter((scope) => scope.courseIds.length > 0)}
           onAcademicContextUpdated={handleAcademicContextUpdated}
           onProposalReady={acceptConversationProposal}
+          onShowProposal={() => {
+            // The rail floats over the board below 1280px; get it out of the way first.
+            if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1279px)').matches) onCloseAgent?.()
+            document.getElementById('plan-proposal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
           courseNameById={Object.fromEntries([
             ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
             ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),

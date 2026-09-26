@@ -20,6 +20,7 @@ import editBoardHandler from '../api/ai/edit-board'
 import planningContextHandler from '../api/ai/planning-context'
 import conversationHandler from '../api/ai/conversation'
 import coursePlannerHandler from '../api/ai/course-planner'
+import scheduleGroupsHandler from '../api/ai/schedule-groups'
 import { loadLocalBoardJson } from '../api/ai/board_loader'
 
 // Local secrets (OPENAI_API_KEY, DATABASE_URL…) from the git-ignored .env.local;
@@ -35,6 +36,7 @@ const ROUTES: Record<string, Handler> = {
   '/api/ai/generate-plan': generatePlanHandler as Handler,
   '/api/ai/conversation': conversationHandler as Handler,
   '/api/ai/course-planner': coursePlannerHandler as Handler,
+  '/api/ai/schedule-groups': scheduleGroupsHandler as Handler,
 }
 
 const PORT = Number(process.env.DEV_API_PORT ?? 3002)

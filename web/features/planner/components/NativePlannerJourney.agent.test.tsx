@@ -69,6 +69,44 @@ async function askAgentToBuild() {
 }
 
 describe('NativePlannerJourney — mounted preference conversation', () => {
+  test('profile-panel preferences reach the assistant once, and progress callbacks reach the transport', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const send = jest.fn().mockResolvedValue({ outcome: 'conversation', message_he: 'קיבלתי', events: [] })
+    render(<NativePlannerJourney {...deps({})} sendConversationFn={send} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    fireEvent.change(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' }), { target: { value: '20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'אין קורסים שאני רוצה להימנע מהם' }))
+
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'תבנה לי תוכנית' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('קיבלתי')
+    expect(send.mock.calls[0][0].clarification_answers).toEqual(expect.arrayContaining([
+      { question_id: 'max_weekly_hours', value: 20 },
+      { question_id: 'excluded_courses', value: [] },
+      { question_id: 'wanted_courses', value: [] },
+    ]))
+    expect(typeof send.mock.calls[0][1]).toBe('function')
+
+    // Accepted once: the next turn does not resend unchanged panel answers.
+    fireEvent.change(composer, { target: { value: 'ועוד שאלה' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
+    expect(send.mock.calls[1][0].clarification_answers).toBeUndefined()
+  })
+
+  test('preferences the assistant stored are shown back in the profile panel', async () => {
+    server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
+    const stored = { academicStatusDigest: 'as_saved', preferenceDigest: 'pref_saved', personalStatus: {},
+      preferences: { max_weekly_hours: 18, disallowed_course_ids: [] } }
+    render(<NativePlannerJourney {...deps({})} planningContextFn={async () => stored} />)
+    await screen.findByText('קורס בסיס X')
+    fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toHaveValue('18'))
+    expect(screen.getByRole('button', { name: 'אין קורסים שאני רוצה להימנע מהם' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   test('initial context loading preserves a completed-course edit made while it was pending', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     const stored = { academicStatusDigest: 'as_saved', preferenceDigest: 'pref_saved', personalStatus: {
@@ -264,7 +302,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     await renderReady()
 
     expect(screen.queryByRole('group', { name: /שאלה:.*מה חשוב לך יותר כרגע/ })).toBeNull()
-    expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toHaveAttribute('placeholder', 'כתבו בקשה או שאלה…')
+    expect(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })).toHaveAttribute('placeholder', 'כתבו הודעה… (Shift+Enter לשורה חדשה)')
   })
 
   test('keeps optional planning context collapsed so the conversation leads', async () => {
