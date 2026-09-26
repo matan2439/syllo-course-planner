@@ -105,6 +105,12 @@ const CLARIFICATION_QUESTIONS_HE: Record<string, string> = {
   track_or_focus: 'באיזה מסלול או תחום מיקוד את או אתה מתכנן/ת להתמקד?',
 };
 
+/** The question for the first CRITICAL missing input (questions align 1:1 with missingInputs). */
+function firstCriticalQuestion<Q>(clarification: { missingInputs: Array<{ critical: boolean }>; questions: Q[] }): Q | undefined {
+  const index = clarification.missingInputs.findIndex((input) => input.critical);
+  return index >= 0 ? clarification.questions[index] : clarification.questions[0];
+}
+
 function clarificationEvent(question: { id: string; question: string; options?: Array<{ label: string }> }) {
   return {
     type: 'clarification' as const,
@@ -281,7 +287,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           .filter((courseId): courseId is string => typeof courseId === 'string' && courseId.trim().length > 0)
         : [];
       const clarificationContext = extractClarificationContext(contextWithStatus, preferences, undefined);
-      const clarification = await clarifyForAcademicDecision(clarificationContext);
+      let clarification = await clarifyForAcademicDecision(clarificationContext);
       const committedContext = board
         ? {
             ...context,
@@ -327,7 +333,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       // Preferences the agent recorded are persisted, so apply-time validation
       // (and the next turn) builds the same constraint model.
-      if (session.preferencesChanged) {
+      const persistSessionPreferences = async () => {
         preferences = session.preferences;
         await putAcademicContext({
           ownerId: owner.ownerId,
@@ -341,6 +347,18 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           academic_status_digest: effectiveAcademicStatusDigest,
           preference_digest: preferenceDigest(preferences),
         };
+      };
+      // A fallback question asked by the gates below counts toward the
+      // leave-out limit exactly like the agent's own ask_student.
+      const askedByGate = async (question: { id: string } | undefined) => {
+        if (question?.id !== 'excluded_courses') return;
+        session.recordAsked('excluded_courses');
+        await persistSessionPreferences();
+      };
+      if (session.preferencesChanged) {
+        await persistSessionPreferences();
+        // Answers recorded this turn (e.g. no courses to leave out) count for the gate below.
+        clarification = await clarifyForAcademicDecision(extractClarificationContext(contextWithStatus, preferences, undefined));
       }
       const model = session.model;
       const buildModelOptions: BuildModelOptions = {
@@ -350,7 +368,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         maxHoursPerSemester: typeof preferences.max_weekly_hours === 'number' ? preferences.max_weekly_hours : undefined,
       };
       if (agent.outcome === 'proposal' && hasCriticalMissingInput(clarification)) {
-        const question = clarification.questions[0];
+        const question = firstCriticalQuestion(clarification);
+        await askedByGate(question);
         const events = question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events;
@@ -385,7 +404,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           && academicDecision.orchestration.planned
           && !academicDecision.structuredClarification.applyBlocked;
         if (!readyToPlan) {
-          const question = academicDecision.clarification.questions[0];
+          const question = firstCriticalQuestion(academicDecision.clarification);
+          await askedByGate(question);
           const events = question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events;

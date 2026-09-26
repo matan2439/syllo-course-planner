@@ -545,3 +545,69 @@ test('with Accept: application/x-ndjson, tool events and reply text stream live 
   expect(parsed[3]).toEqual({ type: 'result', status: 200, body: expect.objectContaining({ outcome: 'conversation', message_he: 'שלום, מה חשוב לך?' }) })
   expect(res.end).toHaveBeenCalled()
 })
+
+test('a leave-out question asked by the endpoint gate is counted toward the two-ask limit', async () => {
+  let stored: Record<string, unknown> = { max_weekly_hours: 22 }
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences: stored, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async () => ({
+      outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
+    } as any),
+    putProposal: async (record: any) => record,
+    putAcademicContext: async (input: any) => { stored = input.preferences; return { ...input, updatedAt: 2 } },
+  })
+  const outcomes: string[] = []
+  for (let turn = 0; turn < 3; turn++) {
+    const res = response()
+    await handler({
+      method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+      body: { ...validBody, preference_digest: preferenceDigest(stored) },
+    } as any, res)
+    outcomes.push(res.body.outcome)
+    if (turn < 2) expect(res.body.events.at(-1)).toEqual(expect.objectContaining({ question_id: 'excluded_courses' }))
+  }
+  // Asked by the gate twice, then silence counts as none and the proposal goes through.
+  expect(outcomes).toEqual(['clarification_required', 'clarification_required', 'proposal'])
+  expect(stored).toEqual(expect.objectContaining({ __excluded_courses_asked: 2, disallowed_course_ids: [] }))
+})
+
+test('a leave-out answer recorded during the turn unblocks the proposal in that same turn', async () => {
+  const preferences = { max_weekly_hours: 22 } // leave-out question still unanswered
+  const run = async (answerNone: boolean) => {
+    const handler = createConversationHandler({
+      resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+      loadBoard: async () => null,
+      loadAcademicContext: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+        personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+        planContext: {}, preferences, updatedAt: 1,
+      }),
+      loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+      runAgent: async ({ session }) => {
+        if (answerNone) session.updatePreferences({ disallowed_course_ids: [] })
+        return {
+          outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+          draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
+        } as any
+      },
+      putProposal: async (record: any) => record,
+      putAcademicContext: async (input: any) => ({ ...input, updatedAt: 2 }),
+    })
+    const res = response()
+    await handler({
+      method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+      body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+    } as any, res)
+    return res.body.outcome
+  }
+  expect(await run(false)).toBe('clarification_required')
+  expect(await run(true)).toBe('proposal')
+})
