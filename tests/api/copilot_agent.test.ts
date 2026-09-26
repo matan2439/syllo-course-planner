@@ -6,6 +6,7 @@ import { runPlannerAgent } from '../../api/ai/agent/planner_agent'
 import { buildAgentTools } from '../../api/ai/agent/tools'
 import { placedCourseIds } from '../../api/ai/planner_types'
 import { streamCourseAdvisor } from '../../api/ai/agent/course_advisor'
+import { withCompletedCredit } from '../../api/ai/conversation_clarification'
 import { FailingAgentModel, FakeAgentModel } from './helpers/fake_agent_model'
 
 // Fixture: mandatory MAND ("מבוא") + interchangeable core electives ALPHA ("אלפא") / BETA ("בטא");
@@ -226,5 +227,45 @@ describe('courses to leave out: asked at most twice, silence then counts as none
     const session = await newSession({ __excluded_courses_asked: 1 })
     expect(session.excludedCoursesKnown()).toBe(false)
     expect(session.preferencesChanged).toBe(false)
+  })
+})
+
+describe('completed courses carry their degree credit', () => {
+  const ME = 'mechanical_engineering_2027'
+  const meSession = async () => {
+    const context = { semesters: [], personal_status: { completed: [], currently_taking: [], planned: [] } }
+    return new PlanningSession({
+      programId: ME, programBoard: loadLocalBoardJson(ME), planContext: context, committedContext: context,
+      preferences: {}, clarification: await clarifyForAcademicDecision(extractClarificationContext(context, {}, undefined)),
+    })
+  }
+
+  test('"I finished years 1–2" records every Years 1–2 course and ~90h of credit (was 5h)', async () => {
+    const session = await meSession()
+    expect(session.missingCriticalInputs().map((input) => input.field)).toContain('completedCourses')
+    const output = await callTool(session, 'record_completed_courses', { include_early_years: true, add_course_ids: null, remove_course_ids: null })
+
+    expect(output).toEqual(expect.objectContaining({ accepted: true, completed_count: 24 }))
+    expect(output.completed_credit_hours).toBeGreaterThan(85)
+    expect(output.degree_hours_counted).toBeGreaterThan(85)
+    expect(session.academicStatusChanged).toBe(true)
+    expect(session.missingCriticalInputs().map((input) => input.field)).not.toContain('completedCourses')
+  })
+
+  test('a course the student has not finished can be taken out, and unknown ids are refused', async () => {
+    const session = await meSession()
+    await callTool(session, 'record_completed_courses', { include_early_years: true, add_course_ids: null, remove_course_ids: null })
+    const output = await callTool(session, 'record_completed_courses', { include_early_years: null, add_course_ids: null, remove_course_ids: ['0509-2846'] })
+    expect(output.completed_count).toBe(23)
+    expect(session.completedCourseIds()).not.toContain('0509-2846')
+    expect(await callTool(session, 'record_completed_courses', { include_early_years: null, add_course_ids: ['NOPE'], remove_course_ids: null }))
+      .toEqual(expect.objectContaining({ accepted: false, unknown_course_ids: ['NOPE'] }))
+  })
+
+  test('withCompletedCredit keeps larger hand-entered credit', () => {
+    const base = { personal_status: { completed: [{ course_id: '0509-1510' }] } }
+    expect(withCompletedCredit(base, ME, null).total_hours_progress).toEqual({ known_completed_hours: 4 })
+    expect(withCompletedCredit({ ...base, total_hours_progress: { known_completed_hours: 100 } }, ME, null).total_hours_progress)
+      .toEqual({ known_completed_hours: 100 })
   })
 })

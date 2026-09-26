@@ -708,41 +708,77 @@ function remainingMandatoryHours(state: PlanState, model: ConstraintModel): numb
  * here. Courses already reserved as mandatory/hard-included contribute zero
  * additional hours, preventing double reservation.
  */
-function remainingCategoryHoursLowerBound(state: PlanState, model: ConstraintModel): number {
+interface CategoryOrderCache {
+  /** A course in two requiring categories: allocation is unresolved, so the bound is 0. */
+  overlapping: boolean;
+  /** Each requiring category's open candidates in static (hours, id) order. */
+  requiring: Array<{ cat: ConstraintModel['categories'][number]; sorted: string[] }>;
+}
+// Model-static part of the bound (profiles, completion and categories never change
+// during planning), computed once instead of on every scorePlan call in rollouts.
+const categoryOrderCache = new WeakMap<ConstraintModel, CategoryOrderCache>();
+const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+function categoryOrder(model: ConstraintModel): CategoryOrderCache {
+  let cached = categoryOrderCache.get(model);
+  if (cached) return cached;
   const requiring = model.categories.filter(cat => cat.required > 0);
   const claimed = new Set<string>();
+  let overlapping = false;
   for (const cat of requiring) {
     for (const id of cat.candidateIds) {
-      if (claimed.has(id)) return 0; // unresolved allocation policy: fail safe
+      if (claimed.has(id)) overlapping = true;
       claimed.add(id);
     }
   }
+  const hoursOf = (id: string) => model.profiles.get(id)?.hours ?? 0;
+  cached = {
+    overlapping,
+    requiring: requiring.map((cat) => ({
+      cat,
+      sorted: cat.candidateIds
+        .filter(id => !model.completedCourseIds.has(id))
+        .filter(id => !model.currentlyPlannedCourseIds?.has(id))
+        .filter(id => model.profiles.has(id))
+        .sort((a, b) => hoursOf(a) - hoursOf(b) || byId(a, b)),
+    })),
+  };
+  categoryOrderCache.set(model, cached);
+  return cached;
+}
+
+function remainingCategoryHoursLowerBound(state: PlanState, model: ConstraintModel): number {
+  const order = categoryOrder(model);
+  if (order.overlapping) return 0; // unresolved allocation policy: fail safe
 
   const placed = new Set(placedCourseIds(state));
   const alreadyReserved = requiredButUnplacedCourseIds(state, model);
+  const hoursOf = (id: string) => model.profiles.get(id)?.hours ?? 0;
   const chosen: string[] = [];
-  for (const cat of requiring) {
+  for (const { cat, sorted } of order.requiring) {
     const got = cat.candidateIds.filter(id => isFullyPlaced(state, model, placed, id)).length;
     const remaining = Math.max(0, cat.required - got);
     if (remaining === 0) continue;
 
-    // Sort first, then check the (expensive) reachability lazily: the first
-    // `remaining` reachable ids in this total order are exactly what filtering
-    // everything first would pick, without testing a whole elective pool.
-    const sorted = cat.candidateIds
-      .filter(id => !placed.has(id))
-      .filter(id => !model.completedCourseIds.has(id))
-      .filter(id => !model.currentlyPlannedCourseIds?.has(id))
-      .filter(id => model.profiles.has(id))
-      .sort((a, b) => {
-        const ah = alreadyReserved.has(a) ? 0 : (model.profiles.get(a)?.hours ?? 0);
-        const bh = alreadyReserved.has(b) ? 0 : (model.profiles.get(b)?.hours ?? 0);
-        return ah - bh || (a < b ? -1 : a > b ? 1 : 0);
-      });
+    // Candidate order is (reserved ? 0 : hours, id): reserved and zero-hour courses
+    // first by id, then the rest in the cached (hours, id) order. Reachability is
+    // checked lazily — the first `remaining` reachable ids in this total order are
+    // exactly what filtering everything first would pick.
+    const zeroKey = sorted
+      .filter(id => !placed.has(id) && (alreadyReserved.has(id) || hoursOf(id) === 0))
+      .sort(byId);
     const options: string[] = [];
+    const consider = (id: string) => {
+      if (isMandatoryCourseReachable(state, model, id)) options.push(id);
+    };
+    for (const id of zeroKey) {
+      if (options.length === remaining) break;
+      consider(id);
+    }
     for (const id of sorted) {
       if (options.length === remaining) break;
-      if (isMandatoryCourseReachable(state, model, id)) options.push(id);
+      if (placed.has(id) || alreadyReserved.has(id) || hoursOf(id) === 0) continue;
+      consider(id);
     }
     // An impossible category must not reserve the degree budget forever; its
     // authoritative validator/gate reports the actual incompleteness.

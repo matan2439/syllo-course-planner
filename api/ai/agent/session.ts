@@ -16,6 +16,7 @@ import type { CandidateSet } from '../candidate_set';
 import type { ScheduleCourse } from '../../../shared/planner/schedule';
 import { fetchGroupsFromBidit, normalizeGroupsResponse } from '../schedule-groups';
 import { resolveHardExcludedCourseIds } from '../academic_decision_runtime';
+import { withCompletedCredit } from '../conversation_clarification';
 
 /** How many times the leave-out question was asked; stored with the preferences. */
 export const EXCLUDED_ASKED_KEY = '__excluded_courses_asked';
@@ -56,6 +57,8 @@ export class PlanningSession {
   readonly events: ConversationEvent[] = [];
   preferences: Record<string, unknown>;
   preferencesChanged = false;
+  /** The agent recorded the student's completed courses this turn. */
+  academicStatusChanged = false;
   model!: ConstraintModel;
   worker!: PlannerWorker;
   question?: AgentQuestion;
@@ -86,7 +89,29 @@ export class PlanningSession {
   /** Critical inputs still missing — reflects answers recorded during this turn. */
   missingCriticalInputs() {
     return this.input.clarification.missingInputs.filter((input) =>
-      input.critical && !(input.field === 'excludedCourses' && this.excludedCoursesKnown()));
+      input.critical
+      && !(input.field === 'excludedCourses' && this.excludedCoursesKnown())
+      && !(input.field === 'completedCourses' && this.academicStatusChanged));
+  }
+
+  completedCourseIds(): string[] {
+    const personal = (this.input.planContext.personal_status ?? {}) as { completed?: Array<{ course_id?: unknown } | string> };
+    return (personal.completed ?? [])
+      .map((course) => typeof course === 'string' ? course : course?.course_id)
+      .filter((id): id is string => typeof id === 'string');
+  }
+
+  /** Record what the student completed (a known list) and the degree credit it carries. */
+  setCompletedCourses(courseIds: readonly string[]): void {
+    const personal = {
+      ...(this.input.planContext.personal_status as Record<string, unknown> | undefined),
+      completed: [...new Set(courseIds)].map((course_id) => ({ course_id })),
+      completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+    };
+    this.input.planContext = withCompletedCredit(
+      { ...this.input.planContext, personal_status: personal }, this.input.programId, this.input.programBoard);
+    this.academicStatusChanged = true;
+    this.rebuild();
   }
 
   /** Count an asked leave-out question (persisted like any preference). */

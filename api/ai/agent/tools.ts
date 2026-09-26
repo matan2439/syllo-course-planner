@@ -30,9 +30,11 @@ import { INTERNAL_DISTRIBUTION_POLICY } from '../planner_policy_context';
 import { defaultTermMapping } from '../../../shared/planner/schedule';
 import { checkTimetable, WEEK_DAYS } from './timetable';
 import { fetchScheduleFromBidit } from './session';
+import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
+import { completedCreditHours } from '../conversation_clarification';
 
 export const AGENT_TOOL_NAMES = [
-  'get_student_context', 'get_requirements_gap', 'search_courses', 'get_course_details',
+  'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
   'ask_student', 'submit_proposal',
@@ -51,6 +53,9 @@ function observed<A>(name: AgentToolName, body: (session: PlanningSession, args:
   return async (args: A, context?: Ctx) => {
     const session = sessionOf(context);
     session.emit({ type: 'tool_status', tool: name, status: 'started' });
+    // Let a streamed "started" line flush before a long synchronous step (build_plan
+    // blocks the event loop for tens of seconds), so the student sees what is running.
+    await new Promise((resolve) => setImmediate(resolve));
     const result = await body(session, args);
     const rejected = typeof result === 'object' && result !== null && 'accepted' in result
       && (result as { accepted: unknown }).accepted === false;
@@ -135,6 +140,41 @@ export function buildAgentTools() {
             .map((input) => ({ field: input.field, message: input.message })),
           excluded_courses_asked_count: session.excludedCoursesAsked(),
         });
+      }),
+    }),
+
+    tool({
+      name: 'record_completed_courses',
+      description: 'Record the courses the student says they completed, so they are never planned again and count toward degree hours. include_early_years adds every Years 1–2 course of the program (for "I finished years 1–2"). Resolve other names with search_courses first. Tell the student what was recorded so they can correct it.',
+      parameters: z.object({
+        include_early_years: z.boolean().nullable().describe('Add all of the program\'s Years 1–2 courses'),
+        add_course_ids: listOrNull(courseId),
+        remove_course_ids: listOrNull(courseId).describe('e.g. a Years 1–2 course the student has NOT completed yet'),
+      }),
+      execute: observed('record_completed_courses', (session, args: {
+        include_early_years: boolean | null; add_course_ids: string[] | null; remove_course_ids: string[] | null;
+      }) => {
+        const early = earlyYearCoursesFor(session.input.programId);
+        const known = (id: string) => session.model.profiles.has(id) || early.some((course) => course.courseId === id);
+        const unknown = [...(args.add_course_ids ?? []), ...(args.remove_course_ids ?? [])].filter((id) => !known(id));
+        if (unknown.length) {
+          return { accepted: false, reason: 'Unknown course ids — resolve them with search_courses first.', unknown_course_ids: unknown };
+        }
+        const ids = new Set(session.completedCourseIds());
+        if (args.include_early_years) for (const course of early) ids.add(course.courseId);
+        for (const id of args.add_course_ids ?? []) ids.add(id);
+        for (const id of args.remove_course_ids ?? []) ids.delete(id);
+        session.setCompletedCourses([...ids]);
+        const nameOfAny = (id: string) => early.find((course) => course.courseId === id)?.nameHe ?? nameOf(session, id) ?? id;
+        return {
+          accepted: true,
+          completed_count: ids.size,
+          completed_credit_hours: completedCreditHours(session.input.programId, session.input.programBoard, [...ids]),
+          degree_hours_counted: session.worker.getState().degreeHours,
+          removed: (args.remove_course_ids ?? []).map(nameOfAny),
+          added: (args.add_course_ids ?? []).map(nameOfAny),
+          note: 'Draft was reset to the committed board. Call build_plan to plan with this.',
+        };
       }),
     }),
 
@@ -358,9 +398,10 @@ export function buildAgentTools() {
           policy: model.distributionPolicy ?? 'neutral',
           initialState,
           profileVersion: 0,
-          // ponytail: half the default search budget — the agent may build more than
-          // once per turn inside Vercel's 300s limit (~35s per build on the real board).
-          maxRuns: 4,
+          // ponytail: a quarter of the default search budget (best plan + one alternative):
+          // a chat turn must stay responsive and inside Vercel's 300s limit even if the
+          // agent builds twice. Raise it when the planner gets faster.
+          maxRuns: 2,
         });
         const selected = selectCandidate(set);
         session.candidateSet = set;
