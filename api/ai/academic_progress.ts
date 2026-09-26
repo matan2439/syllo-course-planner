@@ -85,7 +85,7 @@ export interface CategoryProgress {
   required: number;
   /** Completed course ids authoritatively recognized for this category. */
   satisfiedBy: string[];
-  /** What the plan must still supply: `max(0, required - satisfiedBy.length)`. */
+  /** What the plan must still supply: `max(0, required - satisfiedBy.length - unidentified count)`. */
   remainingRequired: number;
 }
 
@@ -147,6 +147,12 @@ export interface ComputeAcademicProgressInput {
   requirements: readonly ProgramCategoryRequirement[];
   /** Optional for generic accounting callers; planner models always supply it. */
   prerequisiteFacts?: readonly ProgramCoursePrerequisiteFact[];
+  /**
+   * Courses the student reports completing in a category without naming them
+   * (e.g. "3 שער רוח courses"). They reduce what the plan must still supply but
+   * never appear in `satisfiedBy`, which stays identified-courses only.
+   */
+  unidentifiedCompletedByCategory?: Readonly<Record<string, number>>;
 }
 
 const sha16 = (value: string) => createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 16);
@@ -229,7 +235,10 @@ export function computeAcademicProgress(input: ComputeAcademicProgressInput): Ac
       required: cat.minCourses,
       satisfiedBy,
       // A student cannot "over-satisfy" a category into negative work.
-      remainingRequired: Math.max(0, cat.minCourses - satisfiedBy.length),
+      remainingRequired: Math.max(
+        0,
+        cat.minCourses - satisfiedBy.length - (input.unidentifiedCompletedByCategory?.[cat.categoryId] ?? 0),
+      ),
     };
   });
 

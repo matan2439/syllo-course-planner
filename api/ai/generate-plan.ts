@@ -273,6 +273,16 @@ export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focus
   return fitById.size ? { fitById, evidenceById } : undefined;
 }
 
+/** plan_context.completed_category_counts, keeping only non-negative whole counts. */
+export function completedCategoryCountsFromContext(ctx: any): Record<string, number> | undefined {
+  const raw = ctx?.completed_category_counts;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const counts = Object.fromEntries(
+    Object.entries(raw).filter(([, n]) => Number.isInteger(n) && (n as number) > 0),
+  ) as Record<string, number>;
+  return Object.keys(counts).length ? counts : undefined;
+}
+
 /** Build the model from board_json (full universe). board is always non-null here. */
 export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>, distributionPolicy?: DistributionPolicy): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
@@ -285,6 +295,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
       .filter((id: unknown): id is string => typeof id === 'string');
   const model = buildConstraintModel(board, {
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
+    completedCountByCategory: completedCategoryCountsFromContext(ctx),
     currentlyPlannedCourseIds: effectiveCurrentlyTakingIds,
     // Slice 18A — current product policy: the user-facing "wanted" picker is a
     // HARD `must_include` constraint, and the "avoided" picker a HARD

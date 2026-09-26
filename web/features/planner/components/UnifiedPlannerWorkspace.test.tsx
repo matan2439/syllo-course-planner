@@ -54,10 +54,11 @@ const renderWorkspace = (props: Partial<Parameters<typeof UnifiedPlannerWorkspac
 beforeEach(() => localStorage.clear())
 
 describe('UnifiedPlannerWorkspace', () => {
-  test('has one opening control per tool and returns focus on Escape', () => {
+  test('has one opening control for the rail and returns focus on Escape', () => {
     renderWorkspace()
     expect(screen.queryByRole('tab', { name: 'עוזר אקדמי' })).toBeNull()
-    const toggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    expect(screen.queryByRole('button', { name: 'פתח עוזר AI' })).toBeNull()
+    const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -79,43 +80,44 @@ describe('UnifiedPlannerWorkspace', () => {
   test('opens one tool at a time in the same rail without hiding the board', () => {
     const { container } = renderWorkspace()
     const workbench = container.querySelector('.planner-workbench')
-    const repoToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
-    const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
+    const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
 
-    fireEvent.click(repoToggle)
-    expect(repoToggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
     expect(screen.getByRole('tab', { name: 'קורסים' })).toHaveAttribute('aria-selected', 'true')
 
-    fireEvent.click(agentToggle)
-    expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(repoToggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
     expect(screen.getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
     expect(screen.getAllByTestId('agent-journey')).toHaveLength(1)
     expect(screen.getByRole('region', { name: 'לוח סמסטרים פעיל' })).toBeVisible()
 
-    fireEvent.click(agentToggle)
+    fireEvent.click(toggle)
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
+    // Reopening returns to the last tab used.
+    fireEvent.click(toggle)
+    expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
   })
 
   test('tabs inside the rail switch tools', () => {
     renderWorkspace()
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
 
     fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
     expect(screen.getByRole('tab', { name: 'עוזר AI' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('button', { name: 'סגור עוזר AI' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'קורסים' }))
-    expect(screen.getByRole('button', { name: 'סגור מאגר קורסים' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'קורסים' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: 'סגור כלי תכנון' })).toBeInTheDocument()
   })
 
   test('keeps a stable board shell and active drop surface beside the open rail', () => {
     const { container } = renderWorkspace()
 
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
 
     const boardCanvas = container.querySelector('.planner-board-canvas')
     expect(boardCanvas).toHaveClass('planner-board-canvas-stable')
@@ -130,7 +132,7 @@ describe('UnifiedPlannerWorkspace', () => {
   test('explains that the visible board accepts a repository drag while courses are open', () => {
     renderWorkspace()
 
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('גררו קורס מהמאגר אל עמודת סמסטר')
     expect(screen.getByRole('status')).toHaveTextContent('לחלופין, השתמשו ב״הוסף לסמסטר״')
@@ -138,7 +140,7 @@ describe('UnifiedPlannerWorkspace', () => {
 
   test('passes through a floating rail while a drag is heading for the board', () => {
     const { container } = renderWorkspace()
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
 
     const workbench = container.querySelector('.planner-workbench')
     expect(workbench).toHaveAttribute('data-drag-active', 'false')
@@ -155,11 +157,11 @@ describe('UnifiedPlannerWorkspace', () => {
   test('closes from inside the rail and moves focus into it when it opens', () => {
     renderWorkspace()
 
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
     expect(screen.getByRole('button', { name: 'סגור סרגל כלים' })).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: 'סגור סרגל כלים' }))
-    const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(toggle).toHaveFocus()
   })
@@ -167,10 +169,10 @@ describe('UnifiedPlannerWorkspace', () => {
   test('closes with Escape without unmounting the board', () => {
     const { container } = renderWorkspace()
 
-    fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    expect(screen.getByRole('button', { name: 'פתח מאגר קורסים' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'פתח כלי תכנון' })).toHaveAttribute('aria-expanded', 'false')
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
@@ -232,7 +234,8 @@ describe('UnifiedPlannerWorkspace — weekly schedule tab', () => {
   test('the tools rail can be open beside either view', () => {
     renderWorkspace()
     fireEvent.click(screen.getByRole('tab', { name: 'מערכת שעות' }))
-    fireEvent.click(screen.getByRole('button', { name: 'פתח עוזר AI' }))
+fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
     expect(screen.getByText('עוזר פעיל')).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'בחירת סמסטר' })).toBeVisible()
   })

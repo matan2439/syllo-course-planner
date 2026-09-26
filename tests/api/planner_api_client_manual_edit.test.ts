@@ -76,7 +76,7 @@ describe('R2 — manual edit API client', () => {
     expect(result.board.requirementsValidation).toEqual({
       valid: true, totalRequiredHours: 10, plannedHours: 3, remainingHours: 7,
       coreCoursesTotalMin: 1, coreCoursesSelected: 1, coreCoursesSatisfied: true,
-      categories: [{ categoryId: 'core_a', nameHe: 'ליבה', minCourses: 1, selectedCount: 1, satisfied: true, missingCount: 0 }],
+      categories: [{ categoryId: 'core_a', nameHe: 'ליבה', minCourses: 1, selectedCount: 1, satisfied: true, missingCount: 0, selectedCourseIds: [] }],
       warnings: [],
     });
     expect(result.board).not.toHaveProperty('requirements_validation');

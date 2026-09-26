@@ -69,7 +69,10 @@ export function withCompletedCredit(
   };
 }
 
-export type ConversationClarificationAnswer = ClarificationLoopAnswer;
+export type ConversationClarificationAnswer = {
+  questionId: string;
+  value: ClarificationLoopAnswer['value'] | Record<string, number>;
+};
 
 export interface ConversationClarificationContextInput {
   programId: string;
@@ -91,6 +94,7 @@ export interface ConversationClarificationContextResult {
 
 const ANSWERABLE_QUESTION_IDS = new Set([
   'wanted_courses',
+  'completed_category_counts',
   'completed_courses',
   'current_courses',
   'excluded_courses',
@@ -108,8 +112,17 @@ export function applyConversationClarificationAnswers(
   const wantedInvalid = wanted
     .filter((answer) => !(Array.isArray(answer.value) && answer.value.every((id) => typeof id === 'string')))
     .map((answer) => ({ questionId: answer.questionId, reason: "'wanted_courses' expects a list of strings" }));
-  const answers = allAnswers.filter((answer) => answer.questionId !== 'wanted_courses');
-  if (answers.length === 0 && wanted.length === 0) {
+  // Category counts (e.g. how many שער רוח courses) come from the profile panel only; they are
+  // plan context, never course ids.
+  const isCounts = (value: unknown) => typeof value === 'object' && value !== null && !Array.isArray(value)
+    && Object.values(value).every((n) => Number.isInteger(n) && (n as number) >= 0)
+  const counts = allAnswers.filter((answer) => answer.questionId === 'completed_category_counts');
+  const countsInvalid = counts
+    .filter((answer) => !isCounts(answer.value))
+    .map((answer) => ({ questionId: answer.questionId, reason: "'completed_category_counts' expects category id → count" }));
+  const validCounts = counts.filter((answer) => isCounts(answer.value));
+  const answers = allAnswers.filter((answer) => answer.questionId !== 'wanted_courses' && answer.questionId !== 'completed_category_counts');
+  if (answers.length === 0 && wanted.length === 0 && counts.length === 0) {
     return {
       planContext: input.planContext,
       personalStatus: input.personalStatus,
@@ -126,7 +139,8 @@ export function applyConversationClarificationAnswers(
   // personal status through planner ID lists loses course metadata and can
   // turn an unanswered completion question into an explicit "none" answer.
   const baseRequest: AcademicDecisionRequest = { programId: input.programId };
-  const merged = applyClarificationLoopAnswers(baseRequest, answers);
+  // Only panel-only answers (wanted, counts) carry non-loop values, and both were filtered out above.
+  const merged = applyClarificationLoopAnswers(baseRequest, answers as ClarificationLoopAnswer[]);
   const nextPersonalStatus: Record<string, unknown> = { ...personal };
   const nextPreferences: Record<string, unknown> = { ...input.preferences };
   const validWanted = wanted.filter((answer) => Array.isArray(answer.value) && answer.value.every((id) => typeof id === 'string'));
@@ -148,6 +162,7 @@ export function applyConversationClarificationAnswers(
     nextPreferences.max_weekly_hours = nextOptions.maxHoursPerSemester;
   }
   if (merged.request.track !== undefined) nextPlanContext.track = merged.request.track;
+  if (validCounts.length) nextPlanContext.completed_category_counts = validCounts[validCounts.length - 1].value;
   nextPlanContext.personal_status = nextPersonalStatus;
 
   return {
@@ -156,7 +171,8 @@ export function applyConversationClarificationAnswers(
     preferences: nextPreferences,
     academicStatusDigest: academicStatusDigest(nextPersonalStatus),
     preferenceDigest: preferenceDigest(nextPreferences),
-    invalidAnswers: [...merged.invalidAnswers, ...wantedInvalid],
-    changed: validWanted.length > 0 || (answers.length > 0 && merged.invalidAnswers.length < answers.length),
+    invalidAnswers: [...merged.invalidAnswers, ...wantedInvalid, ...countsInvalid],
+    changed: validWanted.length > 0 || validCounts.length > 0
+      || (answers.length > 0 && merged.invalidAnswers.length < answers.length),
   };
 }

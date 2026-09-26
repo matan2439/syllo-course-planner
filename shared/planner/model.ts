@@ -106,6 +106,8 @@ export interface BoardRequirementCategoryModel {
   selectedCount: number;
   satisfied: boolean;
   missingCount: number;
+  /** The planned/completed course ids the server counted for this category. */
+  selectedCourseIds: string[];
 }
 
 /** Pass-through of shipped numbers only — never recomputed client-side. */

@@ -59,6 +59,7 @@ test('maps categories with shipped Hebrew labels and statuses', () => {
       selectedCount: 0,
       satisfied: false,
       missingCount: 1,
+      selectedCourseIds: [],
     },
     {
       id: 'other_specialization',
@@ -67,6 +68,7 @@ test('maps categories with shipped Hebrew labels and statuses', () => {
       selectedCount: 0,
       satisfied: true,
       missingCount: 0,
+      selectedCourseIds: [],
     },
   ]);
 });

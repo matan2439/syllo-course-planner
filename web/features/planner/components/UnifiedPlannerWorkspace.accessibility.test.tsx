@@ -35,7 +35,7 @@ const emptyRepo = { categories: [], totalCourses: 0 }
 test('course details escapes the scrolling rail so its backdrop covers the workspace', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
-  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
   const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
   trigger.focus()
   fireEvent.click(trigger)
@@ -53,7 +53,7 @@ test('course details escapes the scrolling rail so its backdrop covers the works
 test('an Escape already handled by a nested surface does not close the rail', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
-  const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  const repositoryToggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
   fireEvent.click(repositoryToggle)
   const close = screen.getByRole('button', { name: 'סגור סרגל כלים' })
   // Next's document-root event delegation can deliver an already-handled event
@@ -70,7 +70,7 @@ test('an Escape already handled by a nested surface does not close the rail', as
 test.each([false, true])('course details wraps Tab inside the dialog (shift=%s)', async (shiftKey) => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
   await screen.findByText('תכן מכני (1)')
-  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
   fireEvent.click(screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' }))
   const closeButtons = within(screen.getByRole('dialog', { name: 'פרטי קורס' }))
     .getAllByRole('button', { name: 'סגור' })
@@ -90,7 +90,7 @@ test.each(['Escape', 'close button', 'backdrop'] as const)(
   async (method) => {
     render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={repositoryWithDetails} />)
     await screen.findByText('תכן מכני (1)')
-    const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+    const repositoryToggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
     fireEvent.click(repositoryToggle)
     const trigger = screen.getByRole('button', { name: 'פרטים על בקרה מודרנית' })
     trigger.focus()
@@ -113,7 +113,7 @@ test.each(['Escape', 'close button', 'backdrop'] as const)(
 test('switching tabs keeps both panels mounted, so search text survives', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  fireEvent.click(screen.getByRole('button', { name: 'פתח מאגר קורסים' }))
+  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
   const search = within(screen.getByRole('complementary', RAIL)).getByRole('searchbox')
   fireEvent.change(search, { target: { value: 'תכן' } })
 
@@ -128,7 +128,7 @@ test('switching tabs keeps both panels mounted, so search text survives', async 
 test('Escape closes the rail without also invoking the native search clear action', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
   fireEvent.click(toggle)
   const search = within(screen.getByRole('complementary', RAIL)).getByRole('searchbox')
   fireEvent.change(search, { target: { value: 'תכן' } })
@@ -144,32 +144,30 @@ test('Escape closes the rail without also invoking the native search clear actio
   expect(search).toHaveValue('תכן')
 })
 
-test('both toggles control the one rail, and the assistant renders inside it', async () => {
+test('one toggle controls the rail, and the assistant renders inside it', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  const agentToggle = screen.getByRole('button', { name: 'פתח עוזר AI' })
-  const repositoryToggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
 
-  fireEvent.click(agentToggle)
+  fireEvent.click(toggle)
+  expect(screen.getByRole('button', { name: 'סגור סרגל כלים' })).toHaveFocus()
+  fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
 
   const rail = screen.getByRole('complementary', RAIL)
-  expect(document.getElementById(agentToggle.getAttribute('aria-controls')!)).toBe(rail)
-  expect(document.getElementById(repositoryToggle.getAttribute('aria-controls')!)).toBe(rail)
+  expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBe(rail)
   expect(within(rail).getByRole('complementary', { name: 'עוזר אקדמי' })).toBeInTheDocument()
-  expect(agentToggle).toHaveAttribute('aria-expanded', 'true')
-  expect(repositoryToggle).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.getByRole('button', { name: 'סגור סרגל כלים' })).toHaveFocus()
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
   fireEvent.keyDown(document, { key: 'Escape' })
 
-  expect(agentToggle).toHaveAttribute('aria-expanded', 'false')
-  expect(agentToggle).toHaveFocus()
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(toggle).toHaveFocus()
 })
 
 test('the rail is inert and absent from accessible navigation while closed', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
-  const toggle = screen.getByRole('button', { name: 'פתח מאגר קורסים' })
+  const toggle = screen.getByRole('button', { name: 'פתח כלי תכנון' })
   const rail = document.getElementById(toggle.getAttribute('aria-controls')!)!
 
   expect(rail).toHaveAttribute('inert')
@@ -191,7 +189,8 @@ test('the profile tab shows the student inputs open, and the chat no longer nest
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
 
-  fireEvent.click(screen.getByRole('button', { name: 'פתח הפרופיל שלי' }))
+  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'הפרופיל שלי' }))
 
   const profile = screen.getByRole('region', { name: 'הפרופיל שלי' })
   expect(within(profile).getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()

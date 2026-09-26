@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
+import { fromHalfHours, type BoardModel, type GeneratedPlanModel } from '../../../../shared/planner/model'
 import { boardModelToVM } from '../../../lib/planner/board-vm'
 import type { CourseVM } from '../../../lib/board'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { adaptRequirementsFromModel } from '../../../lib/requirements'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import NativePlannerBoard from './NativePlannerBoard'
-import ProgressBadge from './ProgressBadge'
+import ProgressBadge, { type CategoryProgress } from './ProgressBadge'
 
 type Highlight = { semesterId: string; key: number } | null
 
@@ -33,7 +33,7 @@ function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Rea
 export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
-  activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit,
+  activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit, completedCategoryCounts = {},
 }: {
   current: BoardModel
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
@@ -55,6 +55,8 @@ export default function CurrentPlanSection({
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /** Completed course → credit hours; those not on the shown board count toward progress. */
   completedCredit?: Readonly<Record<string, number>>
+  /** Category id → completed courses the student counted without naming them (e.g. שער רוח). */
+  completedCategoryCounts?: Readonly<Record<string, number>>
 }) {
   // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
   const [progressSlot, setProgressSlot] = useState<HTMLElement | null>(null)
@@ -63,7 +65,23 @@ export default function CurrentPlanSection({
   const onBoard = new Set(shown.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))
   const completedHours = Object.entries(completedCredit ?? {})
     .reduce((sum, [id, hours]) => sum + (onBoard.has(id) ? 0 : hours), 0)
-  const badge = <ProgressBadge requirements={adaptRequirementsFromModel(shown)} completedHours={completedHours} />
+  const requirements = adaptRequirementsFromModel(shown)
+  // Per category: the courses the server counted on the board, plus completed courses the catalog files
+  // under that category, plus unnamed completed ones. Only display sums; the rules stay server-side.
+  const hoursOf = (id: string) => {
+    const half = shown.courseCatalog[id]?.halfHours
+    return completedCredit?.[id] ?? (half == null ? 0 : fromHalfHours(half))
+  }
+  const completedIds = Object.keys(completedCredit ?? {})
+  const categoryProgress: Record<string, CategoryProgress> = Object.fromEntries((requirements?.categories ?? []).map((c) => {
+    const ids = new Set([
+      ...c.selectedCourseIds,
+      ...completedIds.filter((id) => shown.courseCatalog[id]?.programCategoryId === c.id),
+    ])
+    const hours = [...ids].reduce((sum, id) => sum + hoursOf(id), 0)
+    return [c.id, { hours: Math.round(hours * 10) / 10, count: ids.size + (completedCategoryCounts[c.id] ?? 0) }]
+  }))
+  const badge = <ProgressBadge requirements={requirements} completedHours={completedHours} categoryProgress={categoryProgress} />
   return (
     <section aria-label="התוכנית הנוכחית">
       <div className="mb-3 flex items-baseline justify-between gap-2">

@@ -9,6 +9,8 @@ import { completedCourseIdsOf, type AcademicStatusDraft } from '../../courses/co
 export interface BuildRequestInputs {
   maxHours: string
   priorHours: string
+  /** Category id → completed-but-unnamed course count (see usePlannerInputs). */
+  completedCategoryCounts?: Record<string, number>
   wantIds: string[]
   excludeIds: string[]
   exclusionsNoneConfirmed: boolean
@@ -25,7 +27,7 @@ export function buildGeneratePlanRequest(
   profile: PreferenceProfile | undefined,
   {
     maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
-    academicStatus, catalogHoursById, applyAcademicStatus,
+    academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts = {},
   }: BuildRequestInputs,
 ): GeneratePlanRequest {
   const preferences: Record<string, unknown> = {}
@@ -47,6 +49,8 @@ export function buildGeneratePlanRequest(
     })),
     personal_status: personalStatus,
   }
+  const counts = Object.fromEntries(Object.entries(completedCategoryCounts).filter(([, n]) => n > 0))
+  if (Object.keys(counts).length) planContext.completed_category_counts = counts
   const completedIds = completedCourseIdsOf(academicStatus)
   const earlyYearHours = earlyYearHoursById(programId)
   const identifiedCompletedHours = completedIds.reduce((sum, id) => {

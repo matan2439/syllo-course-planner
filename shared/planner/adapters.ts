@@ -105,6 +105,7 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
       selected_count: number;
       satisfied: boolean;
       missing_count: number;
+      selected_courses?: string[];
     }) => ({
       categoryId: c.category_id,
       nameHe: c.name_he,
@@ -112,6 +113,7 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
       selectedCount: c.selected_count,
       satisfied: c.satisfied,
       missingCount: c.missing_count,
+      selectedCourseIds: c.selected_courses ?? [],
     })),
     warnings: v.warnings ?? [],
   };

@@ -30,6 +30,8 @@ import { computeAcademicProgress, type AcademicProgress } from './academic_progr
 export interface BuildModelOptions {
   /** course_ids the user has completed (merged with board metadata.completed_course_ids). */
   completedCourseIds?: string[];
+  /** Per category id: completed courses the student counted but did not identify (e.g. שער רוח). */
+  completedCountByCategory?: Readonly<Record<string, number>>;
   /** course_ids the user is currently taking/in-progress (must not be re-proposed by the planner). */
   currentlyPlannedCourseIds?: string[];
   /**
@@ -139,6 +141,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
       name: profile.name_he ?? profile.course_id,
       prerequisiteCourseIds: profile.prerequisites,
     })),
+    unidentifiedCompletedByCategory: opts.completedCountByCategory,
   });
   // Only server-recognized catalog identities may carry course-specific hard
   // consequences (prerequisites, mandatory completion, or exclusion from a
