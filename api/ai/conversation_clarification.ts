@@ -46,11 +46,21 @@ export function withCompletedCredit(
     .map((course) => typeof course === 'string' ? course : course?.course_id)
     .filter((id): id is string => typeof id === 'string');
   const progress = (planContext.total_hours_progress ?? {}) as Record<string, unknown>;
-  // Same rule as the web client: keep extra credit the student entered by hand (e.g. transfer credit).
-  const entered = typeof progress.known_completed_hours === 'number' ? progress.known_completed_hours : 0;
+  const derived = completedCreditHours(programId, board, ids);
+  // Keep credit the student entered by hand (e.g. transfer credit, the web client's
+  // max rule), but never a value this function derived earlier: removing a completed
+  // course must lower the credit, or a short plan could validate.
+  const known = typeof progress.known_completed_hours === 'number' ? progress.known_completed_hours : 0;
+  const previouslyDerived = typeof progress.completed_courses_credit_hours === 'number'
+    ? progress.completed_courses_credit_hours : undefined;
+  const entered = previouslyDerived !== undefined && known <= previouslyDerived ? 0 : known;
   return {
     ...planContext,
-    total_hours_progress: { ...progress, known_completed_hours: Math.max(entered, completedCreditHours(programId, board, ids)) },
+    total_hours_progress: {
+      ...progress,
+      completed_courses_credit_hours: derived,
+      known_completed_hours: Math.max(entered, derived),
+    },
   };
 }
 

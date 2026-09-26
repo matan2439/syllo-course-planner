@@ -388,6 +388,33 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('לא נשמר עד לאישור מפורש')
   })
 
+  test('the assistant changing stored preferences without a new proposal stales the one on the board', async () => {
+    const proposal = {
+      proposal_id: PROPOSAL_ID, candidate_ids: [SINGLE_CANDIDATE], recommended_candidate_id: SINGLE_CANDIDATE,
+      base_board_version: null, profile_version: 1, academic_status_digest: 'as_test', expires_at: Date.now() + 3_600_000,
+      alternatives: [{ candidate_id: SINGLE_CANDIDATE, normalized_identity: 'identity', recommended: true, applyable: true,
+        semesters: [{ semester_id: 'year_3_semester_a', course_ids: ['X-1', 'Y-1'] }, { semester_id: 'year_3_semester_b', course_ids: [] }],
+        constraint_fingerprint: 'cf', profile_version: 1, snapshot_id: 'snap', non_dominated: true, composed_utility: 0,
+        objective_scores: [], label_he: 'חלופה', differences_he: [], workload: { peak_hours: 4, total_hours: 4, active_periods: 1 } }],
+    }
+    const sendConversation = jest.fn()
+      // Built WITH the new preferences it records: must stay applyable.
+      .mockResolvedValueOnce({ outcome: 'proposal', message_he: 'מצאתי חלופה חוקית.', events: [], proposal_id: PROPOSAL_ID, proposal,
+        context_update: { academic_status_digest: 'as_test', preference_digest: 'pref_after_build' } })
+      // Only lowers the cap; no rebuild.
+      .mockResolvedValueOnce({ outcome: 'conversation', message_he: 'עדכנתי את מגבלת השעות.', events: [],
+        context_update: { academic_status_digest: 'as_test', preference_digest: 'pref_lower_cap' } })
+    await renderReady({ sendConversationFn: sendConversation })
+    await askAgentToBuild()
+    await waitFor(() => expect(screen.getByRole('button', { name: /החל/ })).toBeEnabled())
+
+    const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(composer, { target: { value: 'תוריד את המגבלה ל-18 שעות' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('עדכנתי את מגבלת השעות.')
+    expect(screen.getByRole('button', { name: /החל/ })).toBeDisabled()
+  })
+
   test('a profile-version-stale proposal is VISIBLY marked stale, not just disabled', async () => {
     // Browser acceptance (check 4B) found the guard working but silent: editing a
     // preference disabled Apply while rendering no explanation, so the state was

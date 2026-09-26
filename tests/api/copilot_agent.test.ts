@@ -262,10 +262,21 @@ describe('completed courses carry their degree credit', () => {
       .toEqual(expect.objectContaining({ accepted: false, unknown_course_ids: ['NOPE'] }))
   })
 
+  test('removing a completed course lowers the credit, while hand-entered extra credit is kept', () => {
+    const withTwo = withCompletedCredit({ personal_status: { completed: [{ course_id: '0509-1510' }, { course_id: '0509-1624' }] } }, ME, null)
+    expect(withTwo.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 10.5 }))
+    const withOne = withCompletedCredit({ ...withTwo, personal_status: { completed: [{ course_id: '0509-1510' }] } }, ME, null)
+    expect(withOne.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 4 }))
+
+    const manual = { ...withTwo, total_hours_progress: { ...(withTwo.total_hours_progress as object), known_completed_hours: 120 } }
+    const stillManual = withCompletedCredit({ ...manual, personal_status: { completed: [{ course_id: '0509-1510' }] } }, ME, null)
+    expect(stillManual.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 120 }))
+  })
+
   test('withCompletedCredit keeps larger hand-entered credit', () => {
     const base = { personal_status: { completed: [{ course_id: '0509-1510' }] } }
-    expect(withCompletedCredit(base, ME, null).total_hours_progress).toEqual({ known_completed_hours: 4 })
+    expect(withCompletedCredit(base, ME, null).total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 4 }))
     expect(withCompletedCredit({ ...base, total_hours_progress: { known_completed_hours: 100 } }, ME, null).total_hours_progress)
-      .toEqual({ known_completed_hours: 100 })
+      .toEqual(expect.objectContaining({ known_completed_hours: 100 }))
   })
 })

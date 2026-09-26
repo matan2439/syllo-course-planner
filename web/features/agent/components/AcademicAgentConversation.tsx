@@ -114,7 +114,11 @@ export default function AcademicAgentConversation({
   /** The server-owned, read-only materialization used to show the draft. */
   onProposalReady?: (proposal: ConversationProposal) => void
   /** Refreshes the parent's academic-context digests after a stored answer. */
-  onAcademicContextUpdated?: (update: { academic_status_digest: string; preference_digest: string }) => void
+  onAcademicContextUpdated?: (
+    update: { academic_status_digest: string; preference_digest: string },
+    /** Whether the same reply delivered a proposal (built with the updated context). */
+    info?: { withProposal: boolean },
+  ) => void
   /** Optional preference questions rendered inside this same conversation card. */
   preferenceContent?: ReactNode
   /** Names come only from the authoritative board/catalog view model. */
@@ -222,7 +226,7 @@ export default function AcademicAgentConversation({
         ? { question_id: nextClarification.question_id!, answer_type: nextClarification.answer_type! }
         : null)
       if (response.outcome !== 'assistant_unavailable' && response.context_update) {
-        onAcademicContextUpdated?.(response.context_update)
+        onAcademicContextUpdated?.(response.context_update, { withProposal: Boolean(response.proposal) })
       }
       if (response.outcome !== 'assistant_unavailable') {
         const steps = [...new Set(response.events.flatMap((event) =>

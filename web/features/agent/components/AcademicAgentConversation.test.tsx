@@ -501,7 +501,7 @@ test('sends a structured answer for the active clarification and accepts refresh
   expect((sendConversation as jest.Mock).mock.calls[1][0]).toEqual(expect.objectContaining({
     clarification_answers: [{ question_id: 'excluded_courses', value: [] }],
   }))
-  expect(onAcademicContextUpdated).toHaveBeenCalledWith({ academic_status_digest: 'as_2', preference_digest: 'pref_2' })
+  expect(onAcademicContextUpdated).toHaveBeenCalledWith({ academic_status_digest: 'as_2', preference_digest: 'pref_2' }, { withProposal: false })
 })
 
 test('makes the authoritative board context and non-mutating boundary visible', () => {
