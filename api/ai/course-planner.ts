@@ -2,8 +2,9 @@
  * POST /api/ai/course-planner
  *
  * Per-course chat ("ask about this course"). Streams a plain-text answer from
- * the read-only course advisor (OpenAI Agents SDK, api/ai/agent/course_advisor.ts),
- * which verifies facts with the planner's read-only tools.
+ * the co-pilot engine in course mode (api/ai/agent/course_advisor.ts): the
+ * planner's read-only tools plus live grades and the official syllabus, with the
+ * panel's conversation history and the student's real plan context.
  *
  * Runtime: Node.js (quota check requires TCP connection to Postgres).
  *
@@ -60,11 +61,12 @@ const courseInPlanSchema = z.object({
   has_syllabus_summary:        z.boolean().optional(),
 });
 
+// The planner board sends only ids (label/total_hours are optional).
 const semesterPlanSchema = z.object({
   id: z.string(),
-  label: z.string(),
+  label: z.string().nullish(),
   courses: z.array(courseInPlanSchema),
-  total_hours: z.number(),
+  total_hours: z.number().nullish(),
 });
 
 const planContextSchema = z.object({
@@ -97,6 +99,7 @@ const planContextSchema = z.object({
       currently_taking: z.array(z.object({ course_id: z.string(), name_he: z.string().nullish(), semester_label: z.string().nullish() })).optional(),
       planned:          z.array(z.object({ course_id: z.string(), name_he: z.string().nullish(), semester_label: z.string().nullish() })).optional(),
     })
+    .passthrough()
     .optional(),
   personal_prerequisite_issues: z
     .array(z.object({
@@ -121,13 +124,25 @@ const planContextSchema = z.object({
       extra_request_he:    z.string().max(1000).optional(),
     })
     .optional(),
-});
+})
+  // The planner's own context keys (total_hours_progress, completed_category_counts, …)
+  // reach the co-pilot engine unchanged.
+  .passthrough();
 
 const requestSchema = z.object({
   message:        z.string().min(1, 'message is required').max(2000, 'message too long'),
   program_id:     z.string().min(1, 'program_id is required'),
   plan_context:   planContextSchema,
   course_context: z.string().max(4000).optional(),
+  /** The course the panel shows; the engine starts its lookups there. */
+  course_id:      z.string().max(64).optional(),
+  /** Earlier turns of this panel conversation, oldest first. */
+  history:        z.array(z.object({
+    role:    z.enum(['user', 'assistant']),
+    content: z.string().min(1).max(4000),
+  })).max(20).optional(),
+  /** Stored planner preferences, so answers respect the student's choices. */
+  preferences:    z.record(z.unknown()).optional(),
   session_token:  z.string().uuid('session_token must be a valid UUID'),
 });
 
@@ -414,7 +429,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const { message, program_id, plan_context, course_context, session_token } = parsed.data;
+  const { message, program_id, plan_context, course_context, course_id, history, preferences, session_token } = parsed.data;
 
   console.log('[ai] request started — program_id:', program_id,
     '— session_token present:', !!session_token);
@@ -479,6 +494,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       programId: program_id,
       planContext: plan_context as Record<string, unknown>,
       courseContext: course_context,
+      courseId: course_id,
+      history,
+      preferences,
     });
   } catch (err) {
     classifyAndSendProviderError(res, err, 'openai');

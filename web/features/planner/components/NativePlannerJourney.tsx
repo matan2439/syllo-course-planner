@@ -186,6 +186,16 @@ export default function NativePlannerJourney({
   [maxHours, priorHours, wantIds, excludeIds, programId, academicStatus, catalogHoursById,
     applyAcademicStatus, exclusionsNoneConfirmed, completedCategoryCounts])
 
+  // The course panel's co-pilot sees the same student context the planning co-pilot does.
+  const courseChatContext = useCallback(() => {
+    if (!current) return undefined
+    const request = buildRequest(current, convProfileRef.current ?? undefined)
+    return {
+      plan_context: request.plan_context as Record<string, unknown>,
+      preferences: request.preferences as Record<string, unknown>,
+    }
+  }, [current, buildRequest])
+
   // ── proposals, and manual edits that make them stale ──────────────────────
   // The revision counter lives here because both hooks need it: a manual edit moves it,
   // and a proposal built before that move is stale.
@@ -324,7 +334,12 @@ export default function NativePlannerJourney({
             return typeof hours === 'number' && Number.isFinite(hours) ? [[id, hours]] : []
           })) : undefined}
         />
-        <CourseDetailsPanel course={selectedBoardCourse} onClose={() => setSelectedBoardCourse(null)} programId={programId} />
+        <CourseDetailsPanel
+          course={selectedBoardCourse}
+          onClose={() => setSelectedBoardCourse(null)}
+          programId={programId}
+          getStudentContext={courseChatContext}
+        />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
         {genPhase === 'done' && proposal && (
           <>

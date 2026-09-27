@@ -17,8 +17,8 @@ import type { ConversationEvent, ConversationTurn } from '../../../shared/planne
 import type { PreferenceProfile } from '../preference_model';
 import type { PlanningSession } from './session';
 import type { PlannerWorker } from '../planner_worker';
-import { buildAgentTools } from './tools';
-import { PLANNER_AGENT_INSTRUCTIONS } from './instructions';
+import { buildAgentTools, READ_ONLY_AGENT_TOOLS, type AgentToolName } from './tools';
+import { COURSE_FOCUS_INSTRUCTIONS, PLANNER_AGENT_INSTRUCTIONS } from './instructions';
 
 // GPT-6 Sol: OpenAI's model for agentic, multi-step tool workflows ($2/$10 per MTok).
 // Astra is 5x the price; Luna is tuned for simple high-volume work, not planning.
@@ -63,7 +63,24 @@ export function agentModelName(): string {
   return (process.env.AI_AGENT_MODEL ?? '').trim() || DEFAULT_AGENT_MODEL;
 }
 
-function createPlannerAgent(model: string | Model) {
+export type CopilotMode = 'plan' | 'course';
+
+/**
+ * The one co-pilot engine. 'plan' is the planning co-pilot (every tool, proposal
+ * workflow); 'course' is the same engine focused on one course in the course
+ * panel: the same model and tool implementations, restricted to read-only tools.
+ */
+export function createCopilotAgent(mode: CopilotMode, model: string | Model): Agent<PlanningSession> {
+  if (mode === 'course') {
+    return new Agent<PlanningSession>({
+      name: 'TAU course co-pilot',
+      instructions: COURSE_FOCUS_INSTRUCTIONS,
+      model,
+      // Low reasoning: a panel answer is a few lookups, and the student is waiting on it.
+      modelSettings: { reasoning: { effort: 'low' } },
+      tools: buildAgentTools().filter((tool) => READ_ONLY_AGENT_TOOLS.includes(tool.name as AgentToolName)),
+    });
+  }
   return new Agent<PlanningSession>({
     name: 'TAU planning co-pilot',
     instructions: PLANNER_AGENT_INSTRUCTIONS,
@@ -88,7 +105,7 @@ function createPlannerAgent(model: string | Model) {
   });
 }
 
-function toInputItems(transcript: readonly ConversationTurn[], profile?: PreferenceProfile): AgentInputItem[] {
+export function toInputItems(transcript: readonly ConversationTurn[], profile?: PreferenceProfile): AgentInputItem[] {
   const items: AgentInputItem[] = transcript.map((turn) =>
     turn.role === 'user' ? user(turn.text) : assistant(turn.text));
   if (profile?.preferences.length) {
@@ -110,7 +127,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
   const runner = createAgentRunner();
   try {
     const result = await runner.run(
-      createPlannerAgent(deps.model ?? agentModelName()),
+      createCopilotAgent('plan', deps.model ?? agentModelName()),
       toInputItems(input.transcript, input.preferenceProfile),
       { context: session, maxTurns: MAX_TURNS, stream: true },
     );

@@ -17,6 +17,7 @@ import type { ScheduleCourse } from '../../../shared/planner/schedule';
 import { fetchGroupsFromBidit, normalizeGroupsResponse } from '../schedule-groups';
 import { resolveHardExcludedCourseIds } from '../academic_decision_runtime';
 import { withCompletedCredit } from '../conversation_clarification';
+import { defaultCourseInsights, type CourseInsightsProvider } from '../course_insights';
 
 /** How many times the leave-out question was asked; stored with the preferences. */
 export const EXCLUDED_ASKED_KEY = '__excluded_courses_asked';
@@ -48,6 +49,8 @@ export interface PlanningSessionInput {
   clarification: ClarificationResult;
   /** Weekly timetable source (tests inject one). Defaults to bid-it (unofficial). */
   fetchSchedule?: (courseIds: string[], semester: 1 | 2) => Promise<ScheduleCourse[]>;
+  /** Grade statistics + live syllabus (tests inject one). Defaults to the configured live sources. */
+  insights?: CourseInsightsProvider;
 }
 
 export const fetchScheduleFromBidit = async (courseIds: string[], semester: 1 | 2): Promise<ScheduleCourse[]> =>
@@ -142,6 +145,10 @@ export class PlanningSession {
       planContextToState(this.input.committedContext, this.model),
       { topN: 6, rolloutSteps: 80 },
     );
+  }
+
+  get insights(): CourseInsightsProvider {
+    return this.input.insights ?? defaultCourseInsights();
   }
 
   emit(event: ConversationEvent): void {

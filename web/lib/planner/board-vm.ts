@@ -58,7 +58,7 @@ export function boardModelToVM(model: BoardModel): BoardVM {
           weeklyHours: c.halfHours == null ? null : fromHalfHours(c.halfHours),
           type: c.courseType,
           difficulty: null, // deferred (D1)
-          syllabusUrl: null, // deferred (D1)
+          syllabusUrl: c.syllabusUrl ?? catalogCourse?.syllabusUrl ?? null,
           hasWarnings: false, // deferred (D1)
           ...(catalogCourse?.offeredSemesters !== undefined
             ? { offeredSemesters: [...catalogCourse.offeredSemesters] }

@@ -58,7 +58,7 @@ def fetch_arazim_grades(force_refresh: bool = False) -> dict:
     print(f"[arazim] Downloading {GRADES_URL} …")
     req = urllib.request.Request(
         GRADES_URL,
-        headers={"User-Agent": "tau-course-planner/1.0 (educational research)"},
+        headers={"User-Agent": "syllo-course-planner/1.0 (educational research)"},
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         raw = resp.read()

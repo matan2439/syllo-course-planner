@@ -32,14 +32,21 @@ import { checkTimetable, WEEK_DAYS } from './timetable';
 import { fetchScheduleFromBidit } from './session';
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
 import { completedCreditHours } from '../conversation_clarification';
+import type { CourseProfile } from '../course_profile';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
-  'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
+  'get_course_syllabus', 'get_course_grades', 'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
   'ask_student', 'submit_proposal',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
+
+/** Tools that never change the student's data or the draft — the course-panel engine uses only these. */
+export const READ_ONLY_AGENT_TOOLS: readonly AgentToolName[] = [
+  'get_student_context', 'get_requirements_gap', 'search_courses', 'get_course_details', 'get_course_syllabus',
+  'get_course_grades', 'explain_constraint', 'simulate_changes', 'validate_plan', 'check_timetable',
+];
 
 const courseId = z.string().trim().min(1).max(128);
 type Ctx = RunContext<PlanningSession>;
@@ -112,6 +119,42 @@ function courseStatus(session: PlanningSession, id: string) {
 }
 
 const listOrNull = (schema: z.ZodTypeAny) => z.array(schema).max(40).nullable();
+
+interface SearchField { text: string; weight: number; quotable: boolean }
+
+/** What search_courses matches, strongest evidence first. */
+function searchableFields(profile: CourseProfile): SearchField[] {
+  const details = profile.syllabus_details;
+  const field = (text: string | null | undefined, weight: number, quotable = false): SearchField[] =>
+    text ? [{ text, weight, quotable }] : [];
+  return [
+    ...field(profile.course_id, 3),
+    ...field(profile.name_he, 3),
+    ...field(profile.category_name_he, 1),
+    ...(details?.topics_he ?? profile.syllabus_topics_he).flatMap((topic) => field(topic, 2, true)),
+    ...field(details ? details.summary_he : profile.syllabus_summary_he, 1, true),
+    ...field(details?.assessment_he, 1, true),
+    ...field(details?.structure_he, 1, true),
+    ...(details?.complexity_notes_he ?? []).flatMap((note) => field(note, 1, true)),
+  ];
+}
+
+/** Per matched term, the weight of its strongest field; plus a snippet around the first syllabus match. */
+function scoreFields(fields: SearchField[], terms: string[]): { score: number; snippet: string | null } {
+  let score = 0;
+  let snippet: string | null = null;
+  const normalized = fields.map((field) => ({ ...field, norm: normalizeHebrew(field.text).toLowerCase() }));
+  for (const term of terms) {
+    const hits = normalized.filter((field) => field.norm.includes(term));
+    score += hits.length ? Math.max(...hits.map((field) => field.weight)) : 0;
+    const quote = hits.find((field) => field.quotable);
+    if (!snippet && quote) {
+      const at = Math.max(0, quote.norm.indexOf(term) - 60);
+      snippet = `${at > 0 ? '…' : ''}${quote.norm.slice(at, at + 160).trim()}${at + 160 < quote.norm.length ? '…' : ''}`;
+    }
+  }
+  return { score, snippet };
+}
 
 export function buildAgentTools() {
   return [
@@ -215,7 +258,7 @@ export function buildAgentTools() {
 
     tool({
       name: 'search_courses',
-      description: 'Search the program catalog by Hebrew name, course id, category or syllabus topic. Use it to turn anything the student names into real course ids.',
+      description: 'Search the program catalog by Hebrew name, course id, category or syllabus content (topics, description, assessment, structure). Name matches rank first, then syllabus matches; matched_in_syllabus_he quotes the syllabus text that matched. Use it to turn anything the student names — a course or an interest — into real course ids.',
       parameters: z.object({
         query: z.string().trim().max(200).describe('Hebrew/English words or a course id; empty string lists by filters only'),
         category_id: z.string().max(128).nullable(),
@@ -230,11 +273,9 @@ export function buildAgentTools() {
           if (args.category_id && profile.category_id !== args.category_id) continue;
           const allowed = allowedSemesters(profile);
           if (args.semester_id && allowed && !allowed.includes(args.semester_id)) continue;
-          const haystack = normalizeHebrew([
-            profile.course_id, profile.name_he, profile.category_name_he,
-            ...profile.syllabus_topics_he, profile.syllabus_summary_he,
-          ].filter(Boolean).join(' ')).toLowerCase();
-          const score = profile.course_id === rawQuery ? 100 : terms.filter((term) => haystack.includes(term)).length;
+          const { score, snippet } = rawQuery === profile.course_id
+            ? { score: 100, snippet: null }
+            : scoreFields(searchableFields(profile), terms);
           if (terms.length && score === 0) continue;
           results.push({
             score,
@@ -248,7 +289,8 @@ export function buildAgentTools() {
               course_type: profile.course_type,
               allowed_semesters: allowed,
               prerequisites: profile.prerequisites,
-              topics_he: profile.syllabus_topics_he.slice(0, 6),
+              topics_he: (profile.syllabus_details?.topics_he ?? profile.syllabus_topics_he).slice(0, 6),
+              matched_in_syllabus_he: snippet,
               status: courseStatus(session, profile.course_id),
             },
           });
@@ -278,11 +320,47 @@ export function buildAgentTools() {
           recommended_semester: profile.recommended_semester,
           prerequisites: prerequisiteStatus(session.worker, course_id, target_semester ?? undefined),
           corequisites: profile.corequisites,
-          syllabus_summary_he: profile.syllabus_summary_he,
+          syllabus_summary_he: profile.syllabus_details?.summary_he ?? null,
+          syllabus_assessment_he: profile.syllabus_details?.assessment_he ?? null,
+          syllabus_structure_he: profile.syllabus_details?.structure_he ?? null,
+          syllabus_url: profile.syllabus_url,
+          board_grade_average: profile.grade_average,
+          note: 'For the full syllabus call get_course_syllabus; for historical grades call get_course_grades.',
           workload_score: profile.workload_score,
           difficulty_score: profile.difficulty_score,
           status: courseStatus(session, course_id),
         }, fact('planner_model', profile.data_confidence, profile.provenance.name_source));
+      }),
+    }),
+
+    tool({
+      name: 'get_course_syllabus',
+      description: 'The course syllabus: what the program board carries plus the official syllabus page itself (content and aims, detailed syllabus, lecturers, teaching method, assignments). If the current year is not published yet, the latest published year comes back with from_earlier_year=true — say so. Read-only.',
+      parameters: z.object({ course_id: courseId }),
+      execute: observed('get_course_syllabus', async (session, { course_id }: { course_id: string }) => {
+        const profile = profileFor(session.worker, course_id);
+        if (!profile?.syllabus_details) return { course_id, known: false };
+        const syllabus = await session.insights.syllabus(course_id, profile.syllabus_details);
+        return { name_he: profile.name_he, ...syllabus };
+      }),
+    }),
+
+    tool({
+      name: 'get_course_grades',
+      description: 'Historical grade statistics of a course from community grade sources: overall and recent mean/median/pass rate, trend, per-lecturer means and per-semester rows. Years are as the sources label them. Use it for difficulty, grade or lecturer questions and name the sources. Read-only.',
+      parameters: z.object({
+        course_id: courseId,
+        max_terms: z.number().int().min(1).max(30).nullable().describe('Semester rows to return, newest first (default 8)'),
+      }),
+      execute: observed('get_course_grades', async (session, { course_id, max_terms }: { course_id: string; max_terms: number | null }) => {
+        const summary = await session.insights.grades(course_id);
+        return {
+          course_id,
+          name_he: nameOf(session, course_id),
+          ...summary,
+          // Distributions feed the panel's chart; the agent needs the headline numbers.
+          terms: summary.terms.slice(0, max_terms ?? 8).map(({ bins: _bins, ...term }) => term),
+        };
       }),
     }),
 

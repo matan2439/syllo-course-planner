@@ -31,7 +31,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from app.analysis.board_audit import audit_board, compute_board_hash, format_report  # noqa: E402
 
 DEFAULT_BOARD_DIR = REPO_ROOT / "data" / "parsed_json"
-DEFAULT_LIVE_BASE = "https://tau-course-planner.vercel.app"
+DEFAULT_LIVE_BASE = "https://syllo-course-planner.vercel.app"
 
 
 def board_path_for(program: str, year: int) -> Path:

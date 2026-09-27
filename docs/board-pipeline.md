@@ -58,7 +58,7 @@ npm run sync:board
 npm run verify:live
 ```
 
-- Fetches `https://tau-course-planner.vercel.app/api/board/mechanical_engineering_2027`.
+- Fetches `https://syllo-course-planner.vercel.app/api/board/mechanical_engineering_2027`.
 - Compares `metadata.board_data_version` between live and local; mismatch means
   Supabase hasn't been synced yet or the deployment is serving stale data.
 - Spot-checks that every locally placed course exists live, in the same semester,

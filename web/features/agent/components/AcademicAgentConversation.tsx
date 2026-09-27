@@ -83,6 +83,8 @@ const TOOL_LABELS: Record<string, string> = {
   submit_proposal: 'אימות והגשת ההצעה',
   check_timetable: 'בדיקת מערכת שעות וימים פנויים',
   record_completed_courses: 'רישום הקורסים שהשלמת',
+  get_course_syllabus: 'קריאת הסילבוס',
+  get_course_grades: 'בדיקת ציונים היסטוריים',
 }
 
 export default function AcademicAgentConversation({

@@ -281,7 +281,7 @@ def fetch_or_load(
     print(f"[grades] Downloading from {source_url} …")
     req = urllib.request.Request(
         source_url,
-        headers={"User-Agent": "tau-course-planner/1.0 (educational tool)"},
+        headers={"User-Agent": "syllo-course-planner/1.0 (educational tool)"},
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw_bytes = resp.read()
