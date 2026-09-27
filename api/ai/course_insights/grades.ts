@@ -142,44 +142,85 @@ export interface GradeSourceResult {
   source: GradeSourceConfig;
   status: GradeSourceStatus;
   records: GradeRecord[];
+  /** Why the live source failed (e.g. "HTTP 403"); absent when it answered live. */
+  detail?: string;
+  /** Set when the records came from the committed snapshot: when it was taken. */
+  snapshotAt?: string;
 }
 
+/** A committed per-program copy of a source, in the source's own payload format. */
+export interface GradeSnapshot {
+  source: string;
+  generated_at: string;
+  /** 8-digit course key → the source's native payload for that course. */
+  courses: Record<string, unknown>;
+}
+
+const parserFor = (source: GradeSourceConfig) =>
+  source.kind === 'tauplus_butterknife' ? parseTauPlus : parseArazim;
+
 export class GradeStore {
-  private readonly tauPlus = new TtlCache<GradeRecord[]>();
+  private readonly live = new TtlCache<unknown>();
   private readonly files = new TtlCache<Record<string, unknown>>();
+  private readonly snapshots = new Map<string, GradeSnapshot | null>();
 
-  constructor(private readonly fetcher: HttpFetcher) {}
+  constructor(private readonly fetcher: HttpFetcher, private readonly root: string = REPO_ROOT) {}
 
+  /**
+   * One course from one source. A source marked prefer_snapshot answers from its
+   * snapshot when the course is in it; otherwise live first, and the snapshot
+   * when the live source fails (e.g. a host that refuses server traffic).
+   */
   async fetchCourse(source: GradeSourceConfig, courseKey: string): Promise<GradeSourceResult> {
+    const parse = parserFor(source);
+    const snapshot = this.snapshot(source);
+    const fromSnapshot = (detail?: string): GradeSourceResult | null => {
+      if (!snapshot || !(courseKey in snapshot.courses)) return null;
+      const records = parse(source.id, courseKey, snapshot.courses[courseKey]);
+      return { source, status: records.length ? 'ok' : 'no_data', records, snapshotAt: snapshot.generated_at, ...(detail ? { detail } : {}) };
+    };
+    if (source.prefer_snapshot) {
+      const hit = fromSnapshot();
+      if (hit) return hit;
+    }
     try {
-      const records = source.kind === 'tauplus_butterknife'
-        ? await this.tauPlus.get(`${source.id}:${courseKey}`, source.ttl_seconds, () => this.loadTauPlus(source, courseKey))
-        : parseArazim(source.id, courseKey, (await this.files.get(source.id, source.ttl_seconds, () => this.loadFile(source)))[courseKey]);
+      const records = parse(source.id, courseKey, await this.fetchRaw(source, courseKey));
       return { source, status: records.length ? 'ok' : 'no_data', records };
     } catch (error) {
-      console.warn(`[course-insights] grade source ${source.id} failed:`, (error as Error)?.message);
-      return { source, status: 'error', records: [] };
+      const detail = String((error as Error)?.message ?? error).slice(0, 200);
+      console.warn(`[course-insights] grade source ${source.id} failed: ${detail}`);
+      return fromSnapshot(detail) ?? { source, status: 'error', records: [], detail };
     }
   }
 
-  private async loadTauPlus(source: GradeSourceConfig, courseKey: string): Promise<GradeRecord[]> {
-    const url = `${source.url.replace(/\/+$/, '')}/grades?courseNumber=${encodeURIComponent(courseKey)}`;
-    const res = await this.fetcher(url, { timeoutMs: source.timeout_ms });
-    if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
-    return parseTauPlus(source.id, courseKey, JSON.parse(res.body));
-  }
-
-  /** The whole-file source, live first; the configured local copy if the live fetch fails. */
-  private async loadFile(source: GradeSourceConfig): Promise<Record<string, unknown>> {
-    try {
+  /** The source's native payload for one course, fetched live (cached per TTL). */
+  async fetchRaw(source: GradeSourceConfig, courseKey: string): Promise<unknown> {
+    if (source.kind === 'tauplus_butterknife') {
+      return this.live.get(`${source.id}:${courseKey}`, source.ttl_seconds, async () => {
+        const url = `${source.url.replace(/\/+$/, '')}/grades?courseNumber=${encodeURIComponent(courseKey)}`;
+        const res = await this.fetcher(url, { timeoutMs: source.timeout_ms });
+        if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}: ${res.body.replace(/\s+/g, ' ').slice(0, 80)}`);
+        return JSON.parse(res.body);
+      });
+    }
+    const file = await this.files.get(source.id, source.ttl_seconds, async () => {
       const res = await this.fetcher(source.url, { timeoutMs: source.timeout_ms });
       if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
       return JSON.parse(res.body);
-    } catch (error) {
-      if (!source.fallback_path) throw error;
-      console.warn(`[course-insights] ${source.id} live fetch failed, using ${source.fallback_path}:`, (error as Error)?.message);
-      return JSON.parse(readFileSync(join(REPO_ROOT, source.fallback_path), 'utf8'));
+    });
+    return file[courseKey];
+  }
+
+  private snapshot(source: GradeSourceConfig): GradeSnapshot | null {
+    if (!source.snapshot_path) return null;
+    if (!this.snapshots.has(source.id)) {
+      try {
+        this.snapshots.set(source.id, JSON.parse(readFileSync(join(this.root, source.snapshot_path), 'utf8')));
+      } catch {
+        this.snapshots.set(source.id, null);
+      }
     }
+    return this.snapshots.get(source.id) ?? null;
   }
 }
 
@@ -297,7 +338,9 @@ export function summarizeCourseGrades(
     course_key: courseKey,
     has_data: terms.length > 0,
     passing_grade: opts.passingGrade,
-    sources: results.map(({ source, status }) => ({
+    sources: results.map(({ source, status, detail, snapshotAt }) => ({
+      ...(detail ? { detail } : {}),
+      ...(snapshotAt ? { snapshot_at: snapshotAt } : {}),
       id: source.id,
       label_he: source.label_he,
       attribution_url: source.attribution_url,

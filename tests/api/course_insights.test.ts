@@ -1,6 +1,6 @@
 import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join, relative } from 'path'
+import { join } from 'path'
 import {
   GradeStore,
   gradeCourseKey,
@@ -10,7 +10,7 @@ import {
   summarizeCourseGrades,
   type GradeSourceResult,
 } from '../../api/ai/course_insights/grades'
-import { applyEnvOverrides, REPO_ROOT, type CourseInsightConfig, type GradeSourceConfig } from '../../api/ai/course_insights/config'
+import { applyEnvOverrides, type CourseInsightConfig, type GradeSourceConfig } from '../../api/ai/course_insights/config'
 import { SyllabusReader, boardSyllabusOf } from '../../api/ai/course_insights/syllabus'
 import { buildCourseSuggestions, createCourseInsightsProvider } from '../../api/ai/course_insights'
 import type { HttpFetcher } from '../../api/ai/course_insights/http'
@@ -144,16 +144,43 @@ describe('GradeStore', () => {
     expect(calls.filter((url) => url.includes('up.example'))).toHaveLength(1)
   })
 
-  test('a whole-file source falls back to its configured local copy when the live fetch fails', async () => {
+  const snapshotDir = () => {
     const dir = mkdtempSync(join(tmpdir(), 'grades-'))
-    writeFileSync(join(dir, 'grades.json'), JSON.stringify({ '05424010': arazimEntry }))
-    const store = new GradeStore(async () => { throw new Error('offline') })
-    const result = await store.fetchCourse(source({
-      id: 'file', kind: 'arazim_grades_json', url: 'https://file.example/grades.json',
-      fallback_path: relative(REPO_ROOT, join(dir, 'grades.json')),
-    }), '05424010')
-    expect(result.status).toBe('ok')
-    expect(result.records.length).toBeGreaterThan(0)
+    writeFileSync(join(dir, 'tauplus.json'), JSON.stringify({
+      source: 'tauplus', generated_at: '2026-09-27T00:00:00Z',
+      courses: { '05424010': [tauPlusRow({})], '09999999': [] },
+    }))
+    writeFileSync(join(dir, 'arazim.json'), JSON.stringify({
+      source: 'arazim', generated_at: '2026-09-26T00:00:00Z', courses: { '05424010': arazimEntry, '09999999': null },
+    }))
+    return dir
+  }
+
+  test('a live source that refuses (e.g. a bot challenge) falls back to its snapshot and says why', async () => {
+    const dir = snapshotDir()
+    const store = new GradeStore(async (url) => ({ status: 403, finalUrl: url, contentType: 'text/html', body: '<title>Just a moment...</title>' }), dir)
+    const result = await store.fetchCourse(source({ id: 'tauplus', snapshot_path: 'tauplus.json' }), '05424010')
+    expect(result).toEqual(expect.objectContaining({ status: 'ok', snapshotAt: '2026-09-27T00:00:00Z' }))
+    expect(result.detail).toMatch(/^HTTP 403/)
+    expect(result.records).toHaveLength(1)
+    const summary = summarizeCourseGrades('05424010', [result], opts)
+    expect(summary.sources[0]).toEqual(expect.objectContaining({ snapshot_at: '2026-09-27T00:00:00Z', detail: expect.stringMatching(/403/) }))
+  })
+
+  test('a prefer_snapshot source never goes live for a course the snapshot knows, including "no data"', async () => {
+    const dir = snapshotDir()
+    const fetcher = jest.fn()
+    const store = new GradeStore(fetcher, dir)
+    const arazim = source({ id: 'arazim', kind: 'arazim_grades_json', snapshot_path: 'arazim.json', prefer_snapshot: true })
+    expect((await store.fetchCourse(arazim, '05424010')).records.length).toBeGreaterThan(0)
+    expect((await store.fetchCourse(arazim, '09999999')).status).toBe('no_data')
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  test('with no snapshot entry, a failing source is an error', async () => {
+    const store = new GradeStore(async () => { throw new Error('offline') }, snapshotDir())
+    const result = await store.fetchCourse(source({ id: 'tauplus', snapshot_path: 'tauplus.json' }), '01234567')
+    expect(result).toEqual(expect.objectContaining({ status: 'error', detail: 'offline' }))
   })
 })
 

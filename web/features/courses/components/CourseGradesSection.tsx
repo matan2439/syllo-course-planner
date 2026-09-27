@@ -128,6 +128,7 @@ function GradesBody({ summary }: { summary: CourseGradeSummary }) {
             {source.attribution_url
               ? <a href={source.attribution_url} target="_blank" rel="noreferrer noopener" className="underline decoration-dotted hover:text-[var(--purple)]">{source.label_he}</a>
               : source.label_he}
+            {source.snapshot_at && ` (נכון ל-${new Date(source.snapshot_at).toLocaleDateString('he-IL')})`}
           </span>
         ))}
         {' '}· נתוני סטודנטים, לא רשמיים

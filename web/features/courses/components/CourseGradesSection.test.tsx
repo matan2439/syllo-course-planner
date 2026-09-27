@@ -17,7 +17,7 @@ const summary: CourseGradeSummary = {
   has_data: true,
   passing_grade: 60,
   sources: [
-    { id: 'tauplus', label_he: 'TAU+', attribution_url: 'https://grades.example/compare', status: 'ok', terms: 2 },
+    { id: 'tauplus', label_he: 'TAU+', attribution_url: 'https://grades.example/compare', status: 'ok', terms: 2, snapshot_at: '2026-09-27T10:00:00Z' },
     { id: 'arazim', label_he: 'ארזים', attribution_url: null, status: 'error', terms: 0 },
   ],
   overall: { mean: 78.3, median: 80, pass_rate: 86.7, students: 300, terms: 2 },
@@ -39,6 +39,7 @@ test('all semesters: headline numbers, trend, lecturers and the sources that ans
   expect(screen.getByRole('img', { name: /התפלגות ציונים/ })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'TAU+' })).toHaveAttribute('href', 'https://grades.example/compare')
   expect(screen.getByText(/ארזים לא זמין כרגע/)).toBeInTheDocument()
+  expect(screen.getByText(/נכון ל-27.9.2026/)).toBeInTheDocument()
 })
 
 test('choosing a semester shows that semester and its lecturers', () => {

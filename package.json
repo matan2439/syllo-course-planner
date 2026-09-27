@@ -8,6 +8,7 @@
     "agent:smoke": "tsx scripts/agent_smoke.ts",
     "agent:ping": "tsx scripts/agent_ping.ts",
     "agent:course-smoke": "tsx scripts/course_copilot_smoke.ts",
+    "refresh:grades": "tsx scripts/refresh_grade_snapshots.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest --testPathPattern=tests/api",
     "build:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --build",

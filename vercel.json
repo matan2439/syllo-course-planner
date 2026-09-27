@@ -16,7 +16,8 @@
       "config": {
         "includeFiles": [
           "data/config/**",
-          "data/boards/**"
+          "data/boards/**",
+          "data/grades/snapshots/**"
         ]
       }
     },
@@ -42,7 +43,8 @@
       "config": {
         "includeFiles": [
           "data/config/**",
-          "data/boards/**"
+          "data/boards/**",
+          "data/grades/snapshots/**"
         ]
       }
     },
@@ -56,7 +58,8 @@
       "config": {
         "includeFiles": [
           "data/config/**",
-          "data/boards/**"
+          "data/boards/**",
+          "data/grades/snapshots/**"
         ]
       }
     },

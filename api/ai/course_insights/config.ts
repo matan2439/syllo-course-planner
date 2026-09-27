@@ -17,8 +17,10 @@ export interface GradeSourceConfig {
   enabled: boolean;
   ttl_seconds: number;
   timeout_ms: number;
-  /** Repo-relative local copy used when the live fetch fails. */
-  fallback_path?: string;
+  /** Repo-relative committed snapshot for the programs' courses (scripts/refresh_grade_snapshots.ts). */
+  snapshot_path?: string;
+  /** Answer from the snapshot when it has the course (historical sources); otherwise live first. */
+  prefer_snapshot?: boolean;
 }
 
 export interface CourseInsightConfig {

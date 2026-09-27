@@ -40,7 +40,7 @@ export interface CourseGradeSummary {
   has_data: boolean;
   /** Lowest passing grade (config); pass_rate counts bins starting at or above it. */
   passing_grade: number;
-  sources: Array<{ id: string; label_he: string; attribution_url: string | null; status: GradeSourceStatus; terms: number }>;
+  sources: Array<{ id: string; label_he: string; attribution_url: string | null; status: GradeSourceStatus; terms: number; detail?: string; snapshot_at?: string }>;
   overall: GradeAggregate | null;
   recent: GradeAggregate | null;
   trend: { direction: 'up' | 'down' | 'flat'; recent_mean: number; older_mean: number; delta: number } | null;

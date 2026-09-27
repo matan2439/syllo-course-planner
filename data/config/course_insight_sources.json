@@ -1,5 +1,5 @@
 {
-  "_note": "Live course-insight sources for the co-pilot and the course panel (api/ai/course_insights). Every URL, TTL and limit lives here; code carries none. Env overrides: COURSE_INSIGHT_<ID>_URL, COURSE_INSIGHT_DISABLED=<id,id>.",
+  "_note": "Live course-insight sources for the co-pilot and the course panel (api/ai/course_insights). Every URL, TTL and limit lives here; code carries none. Env overrides: COURSE_INSIGHT_<ID>_URL, COURSE_INSIGHT_DISABLED=<id,id>. Snapshots: `npm run refresh:grades` pulls every configured source for the courses of data/boards/* into snapshot_path; prefer_snapshot sources answer from it, the rest fall back to it when live fails (e.g. a host that blocks server traffic).",
   "grade_sources": [
     {
       "id": "tauplus",
@@ -9,18 +9,21 @@
       "attribution_url": "https://tau-plus.com/compare",
       "enabled": true,
       "ttl_seconds": 21600,
-      "timeout_ms": 8000
+      "timeout_ms": 8000,
+      "snapshot_path": "data/grades/snapshots/tauplus.json",
+      "prefer_snapshot": false
     },
     {
       "id": "arazim",
       "kind": "arazim_grades_json",
       "label_he": "ארזים — TAU Refactor",
       "url": "https://arazim-project.com/data/grades.json",
-      "fallback_path": "data/grades/arazim_grades.json",
       "attribution_url": "https://arazim-project.com/tau-refactor/",
       "enabled": true,
       "ttl_seconds": 86400,
-      "timeout_ms": 25000
+      "timeout_ms": 25000,
+      "snapshot_path": "data/grades/snapshots/arazim.json",
+      "prefer_snapshot": true
     }
   ],
   "syllabus": {
