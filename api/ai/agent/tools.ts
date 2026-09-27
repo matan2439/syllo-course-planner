@@ -71,6 +71,17 @@ function observed<A>(name: AgentToolName, body: (session: PlanningSession, args:
   };
 }
 
+/** Hebrew name of where allowed_semesters came from, so the model cites it instead of the syllabus. */
+export function offeringSourceHe(url: string | null): string | null {
+  if (!url) return null;
+  if (url.includes('study-program') && url.includes('tab=schedule')) return 'מערכת השעות הרשמית של התוכנית';
+  if (url.includes('search_l.aspx')) return 'חיפוש הקורסים של אוניברסיטת תל אביב';
+  return null;
+}
+
+const SYLLABUS_SEMESTER_NOTE =
+  'Not a source for semesters, days or hours. For which semester the course runs use get_course_details.allowed_semesters and cite its offering_source_he / offering_source_url.';
+
 const nameOf = (session: PlanningSession, id: string) => session.model.profiles.get(id)?.name_he ?? null;
 
 function semesterLoads(session: PlanningSession) {
@@ -318,6 +329,7 @@ export function buildAgentTools() {
           course_type: profile.course_type,
           allowed_semesters: allowedSemesters(profile),
           offering_source_url: profile.provenance.offering_source_url,
+          offering_source_he: offeringSourceHe(profile.provenance.offering_source_url),
           recommended_semester: profile.recommended_semester,
           prerequisites: prerequisiteStatus(session.worker, course_id, target_semester ?? undefined),
           corequisites: profile.corequisites,
@@ -336,13 +348,13 @@ export function buildAgentTools() {
 
     tool({
       name: 'get_course_syllabus',
-      description: 'The course syllabus: what the program board carries plus the official syllabus page itself (content and aims, detailed syllabus, lecturers, teaching method, assignments). If the current year is not published yet, the latest published year comes back with from_earlier_year=true — say so. Read-only.',
+      description: 'The course syllabus: what the program board carries plus the official syllabus page itself (content and aims, detailed syllabus, lecturers, teaching method, assignments). If the current year is not published yet, the latest published year comes back with from_earlier_year=true — say so. NOT a source for which semester the course runs: use get_course_details. Read-only.',
       parameters: z.object({ course_id: courseId }),
       execute: observed('get_course_syllabus', async (session, { course_id }: { course_id: string }) => {
         const profile = profileFor(session.worker, course_id);
         if (!profile?.syllabus_details) return { course_id, known: false };
         const syllabus = await session.insights.syllabus(course_id, profile.syllabus_details);
-        return { name_he: profile.name_he, ...syllabus };
+        return { name_he: profile.name_he, ...syllabus, semester_note: SYLLABUS_SEMESTER_NOTE };
       }),
     }),
 
