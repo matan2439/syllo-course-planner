@@ -86,7 +86,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121204&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 3,
@@ -175,7 +175,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422400&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 3.5,
@@ -265,7 +265,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422500&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 5,
@@ -371,7 +371,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423243&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 5,
@@ -461,7 +461,7 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 4,
@@ -573,7 +573,7 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423792&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "is_annual": true,
           "spans_semesters": [
@@ -706,7 +706,7 @@
             "year_3_semester_a",
             "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423792&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "is_annual": true,
           "spans_semesters": [
@@ -809,7 +809,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423780&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offering_correction_note": "Corrected to Semester B only: syllabus evidence (Friday class) shows this course is offered in Semester B; the parsed offered_semesters=['A'] was wrong. effective_allowed_semesters wins over recommended_semester.",
           "offered_in_year": true,
@@ -898,7 +898,7 @@
           "effective_allowed_semesters": [
             "year_3_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423791&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offering_correction_note": "Corrected to Semester B only: syllabus evidence (Friday class) shows this course is offered in Semester B; the parsed offered_semesters=['A'] was wrong. effective_allowed_semesters wins over recommended_semester.",
           "offered_in_year": true,
@@ -1001,7 +1001,7 @@
           "effective_allowed_semesters": [
             "year_4_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424010&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 4,
@@ -1106,7 +1106,7 @@
           "effective_allowed_semesters": [
             "year_4_semester_a"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424092&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 1.5,
@@ -1210,7 +1210,7 @@
           "effective_allowed_semesters": [
             "year_4_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offering_correction_note": "recommended_semester was stale and conflicted with the single effective_allowed_semesters; aligned to actual offering (effective wins).",
           "offered_in_year": true,
@@ -1313,7 +1313,7 @@
             "year_4_semester_a",
             "year_4_semester_b"
           ],
-          "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2026",
+          "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
           "offering_source_confidence": "high",
           "offered_in_year": true,
           "credits": 1.5,
@@ -1729,7 +1729,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424120&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -1821,7 +1821,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424123&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -1916,7 +1916,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424320&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2008,7 +2008,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424352&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2094,7 +2094,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424220&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2181,7 +2181,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424221&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2272,7 +2272,7 @@
         "offering_correction_note": "Corrected to Semester A only (year 4): offered_semesters=['A'] but effective_allowed_semesters was None, so legality fell back to the broader program set and the planner could place it in Semester B. Pinned effective_allowed_semesters=[year_4_semester_a]; effective wins over the nominal program-allowed set.",
         "credits": 3.5,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424223&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "official_data_year": 2026
       },
       {
@@ -2359,7 +2359,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424224&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2449,7 +2449,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424420&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2615,7 +2615,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424422&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2701,7 +2701,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424455&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2790,7 +2790,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424622&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -2898,7 +2898,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424391&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3.5,
         "weekly_hours_source": "tau_program_2026",
@@ -2990,7 +2990,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424624&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 2.5,
         "weekly_hours_source": "tau_program_2026",
@@ -3078,7 +3078,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05814131&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 0.5,
         "weekly_hours_source": "tau_program_2026",
@@ -3224,7 +3224,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424094&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from board.offered_semesters (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 0.5,
         "weekly_hours_source": "tau_program_2026",
@@ -3269,7 +3269,7 @@
         "name_source_confidence": "none",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424124&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3362,7 +3362,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424125&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424125_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -3423,7 +3423,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424131&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3499,7 +3499,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424132&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3557,7 +3557,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424135&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3645,7 +3645,7 @@
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424179&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3692,7 +3692,7 @@
         "name_source_confidence": "none",
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424191&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3819,7 +3819,7 @@
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424275&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3881,7 +3881,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424321&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -3954,7 +3954,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424322&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -4042,7 +4042,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424351&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -4121,7 +4121,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424425&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424425_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 2.5,
         "weekly_hours_source": "tau_program_2026",
@@ -4198,7 +4198,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424524&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424524_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -4258,7 +4258,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424527&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -4322,7 +4322,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424559&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from tau_syllabus:Syllabus_L.aspx?course=0542455902&year=2025 (סמסטר א') (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 2.5,
         "weekly_hours_source": "tau_program_2026",
@@ -4403,7 +4403,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from tau_syllabus:Syllabus_L.aspx?course=0542462101&year=2025 (סמסטר א') (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
@@ -4481,7 +4481,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424722&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424722_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -4554,7 +4554,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05094010&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05094010_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
@@ -4638,7 +4638,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121203&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05121203_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -4734,7 +4734,7 @@
         "credits": 5,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121202&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -4826,7 +4826,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122508&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05122508_2025.json (offered halves ['A', 'B']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a', 'year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -4912,7 +4912,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124200&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05124200_2025.json (offered halves ['A', 'B']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a', 'year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -4993,7 +4993,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124362&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05124362_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -5075,7 +5075,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124700&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05124700_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -5151,7 +5151,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124702&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05124702_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -5260,7 +5260,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05711818&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05711818_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3.5,
         "weekly_hours_source": "tau_program_2026",
@@ -5343,7 +5343,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05713802&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05713802_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
@@ -5420,7 +5420,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05714174&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05714174_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 2,
         "weekly_hours_source": "tau_program_2026",
@@ -5580,7 +5580,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554555&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -5656,7 +5656,7 @@
         "name_source_confidence": "high",
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554562&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -5734,7 +5734,7 @@
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553160&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -5812,7 +5812,7 @@
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554630&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -5889,7 +5889,7 @@
         "credits": 4,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [
@@ -5949,7 +5949,7 @@
           "year_4_semester_a"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424011&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424011_2025.json (offered halves ['A']); effective_allowed_semesters=['year_3_semester_a', 'year_4_semester_a']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
@@ -6007,7 +6007,7 @@
           "year_4_semester_b"
         ],
         "offering_source_confidence": "high",
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424012&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_correction_note": "Step 2 (mass-removal fix): populated offering from parsed_json/course_05424012_2025.json (offered halves ['B']); effective_allowed_semesters=['year_3_semester_b', 'year_4_semester_b']. Was previously missing, which blocked any plan placing it (missing_offering_data). program_allowed_semesters is NOT used for final legality.",
         "credits": 3,
         "weekly_hours_source": "tau_program_2026",
@@ -6065,7 +6065,7 @@
         "credits": 2,
         "weekly_hours_source": "tau_program_2026",
         "syllabus_summary_stale": true,
-        "offering_source_url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423112&year=2026",
+        "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
         "effective_allowed_semesters": [

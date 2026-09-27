@@ -5,8 +5,12 @@ links) from TAU's official sources for the current academic year, audit the
 committed boards against them, and optionally apply the corrections.
 
 Sources (TAU year code: 2026 == תשפ"ז / 2026-2027):
+  * tochniot GraphQL ydmaarechet (the program's "מערכת שעות" tab)
+      -> which semesters each program course has groups in. AUTHORITATIVE for
+         offerings; syllabus pages lag a year behind.
   * IMS course search  ims.tau.ac.il/tal/kr/search_l.aspx?course_num=..&year=..
-      -> which semesters have groups this year, syllabus link, "not offered"
+      -> syllabus link, and offerings for courses the program timetable doesn't
+         list (שער רוח / general courses)
   * tochniot GraphQL ydtochnit (tcid 8715, shana=year)
       -> weekly hours (shaotuni), credits (mishkal), teaching format
 
@@ -34,10 +38,11 @@ sys.path.insert(0, str(ROOT))
 
 from app.parsing.course_search_parser import parse_course_search_result  # noqa: E402
 from app.scraping.tau_client import build_course_search_url, fetch_url  # noqa: E402
-from app.scraping.tau_program_scraper import fetch_program_data  # noqa: E402
+from app.scraping.tau_program_scraper import fetch_program_data, fetch_schedule_data  # noqa: E402
 
 ACADEMIC_YEAR = 2026  # TAU year code for תשפ"ז (2026-2027) — verified against IMS page header
 PROGRAM_TCID = "8715"  # Mechanical Engineering
+SCHEDULE_URL = "https://www.tau.ac.il/study-program?safa=1&shana={year}&tab=schedule&tcid=" + PROGRAM_TCID
 
 BOARDS = [
     ROOT / "data" / "parsed_json" / "mechanical_semester_board_2027.json",
@@ -50,6 +55,7 @@ REPORT_DIR = ROOT / "data" / "import_reports"
 
 NOT_OFFERED_MARKER = "אין נתונים מתאימים"
 _SEM_LETTER = {"א": "A", "ב": "B"}
+_SEMKVUTZA = {"0": {"A", "B"}, "1": {"A"}, "2": {"B"}}  # last digit of ydmaarechet semkvutza
 _SUFFIX = {"A": "_semester_a", "B": "_semester_b"}
 
 
@@ -144,6 +150,51 @@ def read_program(year: int, offline: bool) -> dict[str, dict]:
     return out
 
 
+def timetable_semesters(kurs: dict) -> list[str]:
+    """A/B letters a ydmaarechet course has groups in (semkvutza <year>0=annual, 1=A, 2=B)."""
+    out: set[str] = set()
+    for g in kurs.get("kvutza") or []:
+        out |= _SEMKVUTZA.get((g.get("semkvutza") or "")[-1:], set())
+    return sorted(out)
+
+
+def read_timetable(year: int, offline: bool) -> dict[str, list[str]]:
+    """course_id -> offered semesters from the program's official timetable."""
+    cache = ROOT / "data" / "raw_html" / f"tau_schedule_{PROGRAM_TCID}_{year}.json"
+    if offline and not cache.exists():
+        return {}
+    body = fetch_schedule_data(PROGRAM_TCID, str(year), cache_path=cache)
+    if isinstance(body, str):
+        body = json.loads(body)
+
+    out: dict[str, list[str]] = {}
+
+    def walk(node: dict) -> None:
+        for k in node.get("kurs") or []:
+            sems = timetable_semesters(k)
+            if sems:
+                cid = dashed(k.get("kursshow") or k.get("kursid") or "")
+                out[cid] = sorted(set(out.get(cid, [])) | set(sems))
+        for child in node.get("rama") or []:
+            walk(child)
+
+    for prog in body or []:
+        walk(prog)
+    return out
+
+
+def resolve_offering(ims: dict, timetable: list[str] | None, year: int) -> dict:
+    """The program timetable wins; IMS only covers courses the timetable doesn't list."""
+    if timetable:
+        return {"status": "offered", "offered_semesters": timetable,
+                "url": SCHEDULE_URL.format(year=year), "source": "program_timetable"}
+    off = {"status": ims["status"], "offered_semesters": ims.get("offered_semesters", []),
+           "url": ims["url"], "source": "ims"}
+    if "reason" in ims:
+        off["reason"] = ims["reason"]
+    return off
+
+
 def _num(v) -> float | int | None:
     try:
         f = float(v)
@@ -167,27 +218,30 @@ def board_courses(board: dict):
 
 def official_facts(course_ids: list[str], year: int, offline: bool) -> dict[str, dict]:
     program = read_program(year, offline)
+    timetable = read_timetable(year, offline)
+    print(f"[timetable] {len(timetable)} program courses with groups in {year}")
     facts: dict[str, dict] = {}
     for i, cid in enumerate(sorted(course_ids), 1):
         print(f"[{i}/{len(course_ids)}] {cid}", flush=True)
         ims = read_ims(cid, year, offline)
-        facts[cid] = {"ims": ims, "program": program.get(cid)}
+        facts[cid] = {"ims": ims, "program": program.get(cid), "timetable": timetable.get(cid),
+                      "offering": resolve_offering(ims, timetable.get(cid), year)}
     return facts
 
 
 def expected_fields(course: dict, fact: dict, year: int) -> dict:
     """The official values a board record should hold. Only keys we can vouch for."""
-    ims, prog = fact["ims"], fact["program"]
+    ims, prog, off = fact["ims"], fact["program"], fact["offering"]
     exp: dict = {}
-    if ims["status"] == "not_offered":
+    if off["status"] == "not_offered":
         exp["offered_in_year"] = False
-    elif ims["status"] == "offered":
+    elif off["status"] == "offered":
         exp["offered_in_year"] = True
         # Annual courses list groups only in the semester they open; the span is program data.
         if not is_annual(course):
-            exp["offered_semesters"] = ims["offered_semesters"]
-        if ims.get("syllabus_url"):
-            exp["syllabus_url"] = ims["syllabus_url"]
+            exp["offered_semesters"] = off["offered_semesters"]
+    if ims["status"] == "offered" and ims.get("syllabus_url"):
+        exp["syllabus_url"] = ims["syllabus_url"]
     if not course.get("name_he") and ims.get("name_he"):
         exp["name_he"] = ims["name_he"]
     # ponytail: שער רוח weekly_hours is a program rule (2h each), not a timetable fact — never overwritten here.
@@ -218,23 +272,28 @@ def compare(board: dict, facts: dict, year: int) -> list[dict]:
         fact = facts.get(cid)
         if not fact:
             continue
-        ims = fact["ims"]
-        if ims["status"] == "unknown":
+        ims, off = fact["ims"], fact["offering"]
+        if off["status"] == "unknown":
             rows.append(_row(cid, c, loc, "offering", c.get("offered_semesters"), None,
-                             ims["url"], f"manual review: {ims.get('reason', 'no groups listed')}"))
+                             off["url"], f"manual review: {off.get('reason', 'no groups listed')}"))
+        if (off["source"] == "program_timetable" and ims["status"] != "unknown"
+                and ims.get("offered_semesters", []) != off["offered_semesters"]):
+            rows.append(_row(cid, c, loc, "timetable_vs_ims", ims.get("offered_semesters"),
+                             off["offered_semesters"], off["url"],
+                             "info only: IMS search disagrees with the program timetable (timetable wins)"))
         for field, official in expected_fields(c, fact, year).items():
             current = c.get(field)
             if field == "offered_semesters" and current is not None:
                 current = sorted(current)
             if current != official:
-                rows.append(_row(cid, c, loc, field, current, official, ims["url"]))
+                rows.append(_row(cid, c, loc, field, current, official, off["url"]))
         # A course already placed in a semester it isn't offered in this year.
-        offered = ims.get("offered_semesters")
-        if loc != "pool" and ims["status"] == "offered" and not is_annual(c) and loc[-1].upper() not in offered:
-            rows.append(_row(cid, c, loc, "placement", loc, offered, ims["url"],
+        offered = off["offered_semesters"]
+        if loc != "pool" and off["status"] == "offered" and not is_annual(c) and loc[-1].upper() not in offered:
+            rows.append(_row(cid, c, loc, "placement", loc, offered, off["url"],
                              "placed in a semester with no groups this year"))
-        if loc != "pool" and ims["status"] == "not_offered":
-            rows.append(_row(cid, c, loc, "placement", loc, None, ims["url"], "placed but not offered this year"))
+        if loc != "pool" and off["status"] == "not_offered":
+            rows.append(_row(cid, c, loc, "placement", loc, None, off["url"], "placed but not offered this year"))
     return rows
 
 
@@ -250,7 +309,7 @@ def apply(board: dict, facts: dict, year: int) -> int:
         fact = facts.get(c["course_id"])
         if not fact:
             continue
-        ims = fact["ims"]
+        ims, off = fact["ims"], fact["offering"]
         exp = expected_fields(c, fact, year)
         before = json.dumps(c, sort_keys=True, ensure_ascii=False)
 
@@ -269,21 +328,21 @@ def apply(board: dict, facts: dict, year: int) -> int:
 
         if c.get("course_details_url"):
             c["course_details_url"] = ims["url"]
-        if ims["status"] == "offered":
-            first = "1" if "A" in ims["offered_semesters"] else "2"
+        if off["status"] == "offered":
+            first = "1" if "A" in off["offered_semesters"] else "2"
             for key in ("exam_url", "prerequisites_url"):
                 if c.get(key):
                     c[key] = re.sub(r"sem=\d{5}", f"sem={year}{first}", c[key])
-            eff = effective_semesters(c, ims["offered_semesters"], board_semesters)
+            eff = effective_semesters(c, off["offered_semesters"], board_semesters)
             if c.get("placement_policy") not in ("fixed", "annual") and not is_annual(c):
                 c["effective_allowed_semesters"] = eff or None
-            c["offering_source_url"] = ims["url"]
+            c["offering_source_url"] = off["url"]
             c["offering_source_confidence"] = "high"
-        elif ims["status"] == "not_offered":
+        elif off["status"] == "not_offered":
             c["offered_semesters"] = []
             if c.get("placement_policy") not in ("fixed", "annual"):
                 c["effective_allowed_semesters"] = None
-            c["offering_source_url"] = ims["url"]
+            c["offering_source_url"] = off["url"]
             c["offering_source_confidence"] = "high"
         else:
             c["offering_source_confidence"] = "unverified"
@@ -298,13 +357,13 @@ def apply_shaar_ruach_source(facts: dict) -> None:
     """Keep the upstream שער רוח catalog in step so a board rebuild can't reintroduce stale offerings."""
     data = json.loads(SHAAR_RUACH_SOURCE.read_text(encoding="utf-8"))
     for c in data["courses"]:
-        ims = facts.get(c["course_id"], {}).get("ims", {})
-        if ims.get("status") == "offered":
-            c["offered_semesters"] = ims["offered_semesters"]
+        off = facts.get(c["course_id"], {}).get("offering", {})
+        if off.get("status") == "offered":
+            c["offered_semesters"] = off["offered_semesters"]
             c["offered_in_year"] = True
             if "semester" in c:
-                c["semester"] = ",".join(ims["offered_semesters"])
-        elif ims.get("status") == "not_offered":
+                c["semester"] = ",".join(off["offered_semesters"])
+        elif off.get("status") == "not_offered":
             c["offered_semesters"] = []
             c["offered_in_year"] = False
     SHAAR_RUACH_SOURCE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -335,7 +394,8 @@ def write_report(rows: list[dict], year: int, facts: dict) -> None:
         json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
     status = {}
     for f in facts.values():
-        status[f["ims"]["status"]] = status.get(f["ims"]["status"], 0) + 1
+        key = f"{f['offering']['source']}:{f['offering']['status']}"
+        status[key] = status.get(key, 0) + 1
     by_field: dict[str, int] = {}
     for r in rows:
         by_field[r["field"]] = by_field.get(r["field"], 0) + 1
