@@ -12,7 +12,13 @@
     },
     {
       "src": "api/ai/course-planner.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "data/config/**",
+          "data/boards/**"
+        ]
+      }
     },
     {
       "src": "api/ai/planner-run.ts",
@@ -32,7 +38,13 @@
     },
     {
       "src": "api/ai/conversation.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "data/config/**",
+          "data/boards/**"
+        ]
+      }
     },
     {
       "src": "api/ai/schedule-groups.ts",
@@ -40,7 +52,13 @@
     },
     {
       "src": "api/ai/course-insights.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "data/config/**",
+          "data/boards/**"
+        ]
+      }
     },
     {
       "src": "api/board.ts",
