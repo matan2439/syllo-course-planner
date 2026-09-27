@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -32,12 +33,15 @@ ROOT = Path(__file__).resolve().parents[2]
 RAW_HTML_DIR = ROOT / "data" / "raw_html" / "syllabus"
 
 
-def _cache_path(course_id: str) -> Path:
-    return RAW_HTML_DIR / f"syllabus_{course_id.replace('-', '')}.html"
+def _cache_path(course_id: str, url: str = "") -> Path:
+    # Keyed by year too: a course-only key silently reused last year's syllabus.
+    year = re.search(r"[?&]year=(\d{4})", url)
+    suffix = f"_{year.group(1)}" if year else ""
+    return RAW_HTML_DIR / f"syllabus_{course_id.replace('-', '')}{suffix}.html"
 
 
 def _fetch_html(url: str, course_id: str, force: bool = False) -> str | None:
-    cache = _cache_path(course_id)
+    cache = _cache_path(course_id, url)
     if cache.exists() and not force:
         return cache.read_text(encoding="utf-8")
     try:
@@ -59,7 +63,7 @@ def enrich_course(course: dict, force: bool = False) -> bool:
     if not syllabus_url:
         return False
 
-    cache = _cache_path(course_id)
+    cache = _cache_path(course_id, syllabus_url)
     was_cached = cache.exists() and not force
     html = _fetch_html(syllabus_url, course_id, force=force)
     syllabus = parse_syllabus(html, source_file=cache.name) if html else None

@@ -7,7 +7,7 @@
  * ("שיטות התכן"), while a title-only "machine" course (0542-4420 תורת המכונות, whose
  * syllabus is machine THEORY) is NOT pulled in.
  *
- * Fixed prior-credit state: 92h. At this real state the design elective (3h) completes
+ * Fixed prior-credit state: 90h (official 2026/2027 hours). At this real state the design elective (3h) completes
  * the plan with equal hours to the non-design alternative it displaces, so the soft
  * interest_fit goal legitimately decides — no surplus, no offering/prereq change.
  *
@@ -23,7 +23,7 @@ const BOARD = JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'board
 // This fixture verifies semantic ranking among engineering electives. Mark the
 // separate three-course שער רוח requirement complete so it cannot displace the
 // design comparison under test.
-const PRIOR = 92;
+const PRIOR = 90;
 const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 const FOCUS = 'אני רוצה להתמקד בתכן';
 const OSC_DESIGN = '0542-4425';     // הדפסת תלת מימד ותכן חלקי פלסטיקה — explicit official-syllabus design evidence

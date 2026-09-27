@@ -417,6 +417,7 @@ def audit_board(board: dict[str, Any]) -> list[AuditIssue]:
         and not c.get("is_mandatory")
         and not c.get("is_annual")
         and c.get("placement_policy") != "annual"
+        and c.get("offered_in_year") is not False  # verified not offered: nothing to resolve
         and not c.get("effective_allowed_semesters")
     ]
     if missing_offering_repo:

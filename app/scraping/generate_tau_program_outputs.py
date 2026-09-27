@@ -20,7 +20,7 @@ _OUT_2027_ENRICHED = Path("data/programs/mechanical_engineering_2027_enriched.js
 _PDF_2027 = Path("data/programs/mechanical_engineering_2027_from_pdf.json")
 
 TCID = "8715"
-SHANA = "2025"
+SHANA = "2026"  # TAU year code for תשפ"ז (2026-2027)
 SOURCE_URL = f"https://www.tau.ac.il/study-program?safa=1&shana={SHANA}&tab=programStudy&tcid={TCID}"
 PARSED_AT = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 

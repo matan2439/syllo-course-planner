@@ -16,6 +16,7 @@ type RawCourse = {
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
   effective_allowed_semesters?: string[] | null;
+  offered_in_year?: boolean | null;
   // See the matching field comment in wire.ts: repository entries ship
   // category_id, placed entries ship program_category_id — both accepted.
   category_id?: string | null;
@@ -66,6 +67,17 @@ function normalizeSemesterIds(raw: string[], knownSemesterIds: string[]): string
   return out;
 }
 
+/**
+ * An empty offering list means "unknown" (no movement restriction, matching the
+ * solver's getLegalSemesters) unless the course is verified as not offered this year.
+ */
+function offeredSemestersField(c: RawCourse, knownSemesterIds: string[]): { offeredSemesters?: string[] } {
+  const raw = c.effective_allowed_semesters ?? c.offered_semesters;
+  if (c.offered_in_year === false) return { offeredSemesters: [] };
+  if (raw == null || raw.length === 0) return {};
+  return { offeredSemesters: normalizeSemesterIds(raw, knownSemesterIds) };
+}
+
 /** Map one raw course (from either source) to the canonical model. Half-hour exact. */
 function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseModel {
   return {
@@ -78,9 +90,7 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
     // exact planning horizon. It must override a bare A/B offering code,
     // which otherwise means that half in every year and would advertise an
     // impossible cross-year move in the UI.
-    ...((c.effective_allowed_semesters ?? c.offered_semesters) != null
-      ? { offeredSemesters: normalizeSemesterIds(c.effective_allowed_semesters ?? c.offered_semesters!, knownSemesterIds) }
-      : {}),
+    ...offeredSemestersField(c, knownSemesterIds),
     ...((c.category_id ?? c.program_category_id) != null
       ? { programCategoryId: (c.category_id ?? c.program_category_id) as string }
       : {}),

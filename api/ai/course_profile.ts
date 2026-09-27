@@ -49,6 +49,8 @@ export interface CourseProfile {
   // ── offering / legal-semester inputs (consumed by getLegalSemesters) ──────
   offered_semesters: string[] | null;
   effective_allowed_semesters: string[] | null;
+  /** False when TAU lists no groups for the course this academic year. */
+  offered_in_year?: boolean | null;
   recommended_semester: string | null;
   allowed_semesters: string[] | null;
   program_allowed_semesters: string[] | null;
@@ -211,7 +213,10 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
     exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר שם קורס מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';
   } else if (!hasAuthoritativeHours) {
     excluded = true;
-    exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר ערך שעות/נקודות מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';
+    exclusion_reason = 'פרטי הקורס אינם זמינים בקטלוג (חסר ערך שעות/נקודות מאומת) — לא ניתן לשבצו בתוכנית ברת-החלה.';  } else if (raw.offered_in_year === false) {
+    // TAU's official listing for this academic year has no groups for the course.
+    excluded = true;
+    exclusion_reason = 'הקורס אינו נלמד בשנת הלימודים הנוכחית (לפי מערכת השעות הרשמית של האוניברסיטה).';
   }
 
   return {
@@ -229,6 +234,7 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
 
     offered_semesters: nullableStrArr(raw.offered_semesters),
     effective_allowed_semesters: nullableStrArr(raw.effective_allowed_semesters),
+    offered_in_year: typeof raw.offered_in_year === 'boolean' ? raw.offered_in_year : null,
     recommended_semester: typeof raw.recommended_semester === 'string' ? raw.recommended_semester : null,
     allowed_semesters: nullableStrArr(raw.allowed_semesters),
     program_allowed_semesters: nullableStrArr(raw.program_allowed_semesters),

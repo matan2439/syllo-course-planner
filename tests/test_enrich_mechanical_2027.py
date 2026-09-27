@@ -266,7 +266,7 @@ def test_enrich_links_adds_syllabus_from_fixture(tmp_path):
     digits = "".join(c for c in cid if c.isdigit())
     cache  = tmp_path / "course_details"
     cache.mkdir()
-    (cache / f"course_{digits}_2025.html").write_text(
+    (cache / f"course_{digits}_2026.html").write_text(
         _FIXTURE_HTML.read_text(encoding="utf-8"), encoding="utf-8"
     )
 
@@ -299,7 +299,7 @@ def test_enrich_links_adds_syllabus_to_mandatory_from_fixture(tmp_path):
     digits = "".join(c for c in cid if c.isdigit())
     cache  = tmp_path / "course_details"
     cache.mkdir()
-    (cache / f"course_{digits}_2025.html").write_text(
+    (cache / f"course_{digits}_2026.html").write_text(
         _FIXTURE_HTML.read_text(encoding="utf-8"), encoding="utf-8"
     )
 

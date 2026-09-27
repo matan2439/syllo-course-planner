@@ -29,7 +29,7 @@ from app.parsing.tau_course_details_parser import parse_course_details_links
 
 _BOARD_PATH   = Path("data/parsed_json/mechanical_semester_board_2027.json")
 _CACHE_DIR    = Path("data/raw_html/course_details")
-_YEAR         = 2025
+_YEAR         = 2026  # TAU year code for תשפ"ז (2026-2027)
 
 
 def enrich_board(

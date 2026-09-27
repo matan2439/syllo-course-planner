@@ -252,57 +252,30 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Actual yearly offering data (Layer 2) — overrides for "officially flexible"
-# mandatory courses whose real per-year offering was verified against the
-# live TAU syllabus pages. Courses not listed here have unknown
-# offered_semesters (low confidence; effective == program allowed semesters).
+# Actual yearly offering data (Layer 2) — the official facts snapshot written by
+# scripts/refresh_course_data.py from IMS for the current TAU academic year.
+# Courses missing from it have unknown offered_semesters (confidence
+# "unverified"; effective == program allowed semesters).
 # ---------------------------------------------------------------------------
-# offered_semesters uses the existing 'A'/'B' convention (see elective
-# courses' offered_semesters), so it stays compatible with isOfferedInSemester.
-OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] = {
-    "0542-3620": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-3780": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378001&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-3791": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-3792": {
-        # Yearly course (lectures in semester A, labs continue into semester B) —
-        # offered both semesters, so it does not narrow the program-level allowance.
-        "offered_semesters": ["A", "B"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-4010": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-4020": {
-        "offered_semesters": ["B"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-4091": {
-        "offered_semesters": ["B"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409110&year=2025",
-        "offering_source_confidence": "high",
-    },
-    "0542-4092": {
-        "offered_semesters": ["A"],
-        "offering_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409201&year=2025",
-        "offering_source_confidence": "high",
-    },
-}
+OFFICIAL_FACTS_PATH = Path(__file__).resolve().parents[2] / "data" / "official" / "tau_course_facts_2026.json"
+
+
+def _load_official_offerings() -> dict[str, dict[str, Any]]:
+    if not OFFICIAL_FACTS_PATH.exists():
+        return {}
+    facts = json.loads(OFFICIAL_FACTS_PATH.read_text(encoding="utf-8"))
+    return {
+        cid: {
+            "offered_semesters": f["ims"]["offered_semesters"],
+            "offering_source_url": f["ims"]["url"],
+            "offering_source_confidence": "high",
+        }
+        for cid, f in facts.items()
+        if f["ims"]["status"] == "offered"
+    }
+
+
+OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] = _load_official_offerings()
 
 _PART_TO_SUFFIX = {"A": "_semester_a", "B": "_semester_b"}
 
@@ -321,7 +294,7 @@ def _offering_fields(course_id: str, allowed_sems: list[str]) -> dict[str, Any]:
         offered = None
         effective = program_allowed
         source_url = None
-        confidence = "low"
+        confidence = "unverified"
     return {
         "program_allowed_semesters": program_allowed,
         "offered_semesters": offered,
@@ -951,7 +924,7 @@ def _format_course(
 # ---------------------------------------------------------------------------
 
 _COURSE_SEARCH_BASE = "https://ims.tau.ac.il/tal/kr/search_l.aspx"
-_COURSE_DETAILS_YEAR = 2025
+_COURSE_DETAILS_YEAR = 2026  # TAU year code for תשפ"ז (2026-2027)
 
 
 def _build_course_details_url(course_id: str, year: int = _COURSE_DETAILS_YEAR) -> str | None:
@@ -1159,7 +1132,7 @@ def _build_shaar_ruach_repository_courses(
             # meeting details, but do not alter this programme-wide workload.
             "weekly_hours":               2,
             "offered_semesters":          offered,
-            "offered_in_year":            len(offered) > 1,
+            "offered_in_year":            c.get("offered_in_year", bool(offered)),
             "category_id":                category_id,
             "program_category_name_he":   category_name_he,
             "source":                     "shaar_ruach_general_requirement",
@@ -1242,7 +1215,7 @@ def _build_program_repository_courses(
             "name_he":                      name,
             "weekly_hours":                 hours,
             "offered_semesters":            ec.get("offered_semesters", []),
-            "offered_in_year":              ec.get("offered_in_year", True),
+            "offered_in_year":              ec.get("offered_in_year"),  # None = unknown, never assume offered
             "category_id":                  cat_id,
             "program_category_name_he":     cat_name_map.get(cat_id) if cat_id else None,
             "source":                       "program_json",
@@ -1298,7 +1271,7 @@ def _build_program_repository_courses(
             "name_he":                      name,
             "weekly_hours":                 ec.get("hours") or ec.get("weekly_hours"),
             "offered_semesters":            ec.get("offered_semesters", []),
-            "offered_in_year":              ec.get("offered_in_year", True),
+            "offered_in_year":              ec.get("offered_in_year"),  # None = unknown, never assume offered
             "category_id":                  cat_id,
             "program_category_name_he":     cat_name_map.get(cat_id),
             "source":                       "program_json",

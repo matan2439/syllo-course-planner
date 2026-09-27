@@ -1913,7 +1913,11 @@ export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: 
     return { semesters: knownSemesterIds, confident: false };
   }
 
-  // elective
+  // elective — a stale effective list must never widen this year's offering.
+  if (effective && offered) {
+    const both = effective.filter((s) => offered.includes(s));
+    if (both.length) return { semesters: both, confident: true };
+  }
   if (effective) return { semesters: effective, confident: true };
   if (offered) return { semesters: offered, confident: false };
   return { semesters: knownSemesterIds, confident: false };

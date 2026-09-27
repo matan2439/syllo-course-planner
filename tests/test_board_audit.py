@@ -283,7 +283,7 @@ def test_real_board_models_three_target_courses_correctly():
         assert recs, f"{cid} not placed on board"
         for sem_id, c in recs:
             assert c["effective_allowed_semesters"] == ["year_3_semester_b"], cid
-            assert c["offered_semesters"] == ["B"], cid
+            assert "B" in c["offered_semesters"], cid  # IMS 2026 also lists A groups; the program fixes B
             assert sem_id == "year_3_semester_b", cid
 
     # 3792 -> annual spanning A+B, placed in both, hours counted once.

@@ -1,7 +1,7 @@
 /**
  * PRODUCT acceptance — the real Hebrew free-text POSITIVE preference
- * "שבץ לי את תורת התנודות" reliably makes the ACTUAL native plan PREFER and
- * INCLUDE course 0542-4220 ("תורת התנודות"), and — because its authoritative
+ * "שבץ לי את אנרגיה מתחדשת" reliably makes the ACTUAL native plan PREFER and
+ * INCLUDE course 0542-4132 ("אנרגיה מתחדשת"), and — because its authoritative
  * offering is Semester-B only — places it ONLY in a Semester-B slot.
  *
  * The planner mechanism already exists (planner honors wanted_course_ids via
@@ -13,7 +13,7 @@
  * No production logic is special-cased for this sentence or id; the id is a fixture.
  *
  * Non-vacuous by construction: the CONTROL (no preference) proposal does NOT
- * place 0542-4220, so any placement below is caused by the request, not by the
+ * place 0542-4132, so any placement below is caused by the request, not by the
  * planner placing it anyway.
  */
 import handler from '../../api/ai/generate-plan';
@@ -24,9 +24,9 @@ import { join } from 'path';
 const BOARD = JSON.parse(
   readFileSync(join(__dirname, '..', '..', 'data', 'boards', 'mechanical_engineering_2027.json'), 'utf8'),
 );
-const OSC = '0542-4220';    // תורת התנודות — authoritative offering: Semester B only
-const PREFER_SENTENCE = 'שבץ לי את תורת התנודות';
-const EXCLUDE_SENTENCE = 'אל תשבץ תורת התנודות';
+const OSC = '0542-4132';    // אנרגיה מתחדשת — authoritative 2026/2027 offering: Semester B only
+const PREFER_SENTENCE = 'שבץ לי את אנרגיה מתחדשת';
+const EXCLUDE_SENTENCE = 'אל תשבץ אנרגיה מתחדשת';
 const B_SEMESTER = /_semester_b$/i;
 const COMPLETED_SHAAR_RUACH = ['0609-1005', '0609-1003', '0609-1008'];
 
@@ -71,9 +71,9 @@ const semesterOf = (body: any, id: string): string | null => {
 beforeEach(() => { process.env.AI_DEV_MODE = 'true'; process.env.AI_DEV_BYPASS_QUOTA = 'true'; });
 afterEach(() => { delete process.env.AI_DEV_MODE; delete process.env.AI_DEV_BYPASS_QUOTA; });
 
-// (10) CONTROL — without the preference the planner does NOT place 0542-4220,
+// (10) CONTROL — without the preference the planner does NOT place 0542-4132,
 // and never falsely claims it was honored (proves the request below is non-vacuous).
-test('CONTROL: without the request, 0542-4220 is NOT placed and nothing is claimed honored', async () => {
+test('CONTROL: without the request, 0542-4132 is NOT placed and nothing is claimed honored', async () => {
   const res = await run({ plan_context: planContext(), preferences: {} });
   expect(res.statusCode).toBe(200);
   expect(placed(res._body)).not.toContain(OSC);
@@ -81,7 +81,7 @@ test('CONTROL: without the request, 0542-4220 is NOT placed and nothing is claim
 }, 60000);
 
 // (3) placed when legally feasible, (4)+(5) only in Semester B, (8)+(9) outcome/validation agree.
-test('the real sentence PREFERS and PLACES 0542-4220 — only in a Semester-B slot — and says so truthfully', async () => {
+test('the real sentence PREFERS and PLACES 0542-4132 — only in a Semester-B slot — and says so truthfully', async () => {
   const res = await run({
     plan_context: planContext(),
     preferences: { extra_request_he: PREFER_SENTENCE },
@@ -96,7 +96,7 @@ test('the real sentence PREFERS and PLACES 0542-4220 — only in a Semester-B sl
   // (4)+(5) placed ONLY in a Semester-B slot — authoritative B-only offering respected
   expect(sem).toMatch(B_SEMESTER);
   // (8) outcome derived from the ACTUAL proposal, (9) it agrees with the placement
-  expect(res._body.intentOutcome.honored.join(' ')).toContain('תורת התנודות');
+  expect(res._body.intentOutcome.honored.join(' ')).toContain('אנרגיה מתחדשת');
   expect(res._body.intentOutcome.unmet).toEqual([]);
 }, 60000);
 
@@ -114,7 +114,7 @@ test('free-text preference and structured wanted_course_ids converge on the same
 
 // (7) fill/repair/workload balancing must not silently discard the preference
 // when an equally valid preferred plan exists.
-test('workload balancing does not discard the preference — 0542-4220 still placed in Semester B', async () => {
+test('workload balancing does not discard the preference — 0542-4132 still placed in Semester B', async () => {
   const res = await run({
     plan_context: planContext(),
     preferences: { extra_request_he: PREFER_SENTENCE, balance_load: true },
@@ -123,11 +123,11 @@ test('workload balancing does not discard the preference — 0542-4220 still pla
   expect(res.statusCode).toBe(200);
   expect(res._body.blocked).toBe(false);
   expect(semesterOf(res._body, OSC)).toMatch(B_SEMESTER);
-  expect(res._body.intentOutcome.honored.join(' ')).toContain('תורת התנודות');
+  expect(res._body.intentOutcome.honored.join(' ')).toContain('אנרגיה מתחדשת');
 }, 60000);
 
 // (6) explicit exclusion wins over a positive preference for the same course.
-test('explicit exclusion wins: preferring AND disallowing 0542-4220 leaves it absent', async () => {
+test('explicit exclusion wins: preferring AND disallowing 0542-4132 leaves it absent', async () => {
   const res = await run({
     plan_context: planContext(),
     preferences: { extra_request_he: PREFER_SENTENCE, disallowed_course_ids: [OSC] },
@@ -139,7 +139,7 @@ test('explicit exclusion wins: preferring AND disallowing 0542-4220 leaves it ab
 
 // (6) same, expressed purely in free text: a negated schedule ("אל תשבץ") is an
 // exclusion and beats any positive reading of the same verb.
-test('free-text negated schedule "אל תשבץ תורת התנודות" excludes it, not places it', async () => {
+test('free-text negated schedule "אל תשבץ אנרגיה מתחדשת" excludes it, not places it', async () => {
   const res = await run({
     plan_context: planContext(),
     preferences: { extra_request_he: EXCLUDE_SENTENCE },
@@ -150,8 +150,8 @@ test('free-text negated schedule "אל תשבץ תורת התנודות" exclude
 }, 60000);
 
 // (1)+(5) authoritative availability is never overridden by the preference:
-// 0542-4220 is B-only, so it can never appear in a Semester-A slot.
-test('positive preference never forces 0542-4220 into a Semester-A slot', async () => {
+// 0542-4132 is B-only, so it can never appear in a Semester-A slot.
+test('positive preference never forces 0542-4132 into a Semester-A slot', async () => {
   const res = await run({
     plan_context: planContext(),
     preferences: { extra_request_he: PREFER_SENTENCE },

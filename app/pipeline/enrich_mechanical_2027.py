@@ -25,10 +25,10 @@ from app.scraping.tau_program_scraper import fetch_program_data
 
 _BOARD_PATH    = Path("data/parsed_json/mechanical_semester_board_2027.json")
 _ENRICHED_PATH = Path("data/programs/mechanical_engineering_2027_enriched.json")
-_GQL_CACHE     = Path("data/raw_html/tau_program_8715_2025.json")
+_GQL_CACHE     = Path("data/raw_html/tau_program_8715_2026.json")
 _DB_PATH       = Path("data/database.sqlite")
 _TCID          = "8715"
-_SHANA         = "2025"
+_SHANA         = "2026"  # TAU year code for תשפ"ז (2026-2027)
 
 
 # ---------------------------------------------------------------------------
