@@ -219,6 +219,29 @@ def fetch_program_data(
 
     Returns a list of body dicts (may be empty on error).
     """
+    return _fetch_body("ydtochnit", {"tcid": tcid, "shana": shana, "safa": safa},
+                       cache_path, force_refresh)
+
+
+def fetch_schedule_data(
+    tcid: str,
+    shana: str,
+    safa: str = "1",
+    cache_path: Optional[Path] = None,
+    force_refresh: bool = False,
+) -> list[dict]:
+    """The program's official timetable (tab "מערכת שעות", ydmaarechet): every course
+    with its groups; each group's ``semkvutza`` is <year><0=annual|1=A|2=B>."""
+    return _fetch_body("ydmaarechet", {"tcid": tcid, "shana": shana, "safa": safa},
+                       cache_path, force_refresh)
+
+
+def _fetch_body(
+    api_url: str,
+    filters: dict,
+    cache_path: Optional[Path],
+    force_refresh: bool,
+) -> list[dict]:
     if cache_path and not force_refresh:
         cached = _read_cache(cache_path)
         if cached is not None:
@@ -229,13 +252,10 @@ def fetch_program_data(
                     "Cache file %s has unexpected structure, re-fetching", cache_path
                 )
 
-    filters = {"tcid": tcid, "shana": shana, "safa": safa}
-    raw = _post_graphql("ydtochnit", filters)
+    raw = _post_graphql(api_url, filters)
 
     if not raw:
-        logger.warning(
-            "No data returned for tcid=%s shana=%s — returning empty body", tcid, shana
-        )
+        logger.warning("No %s data returned for %s — returning empty body", api_url, filters)
         return []
 
     if cache_path:

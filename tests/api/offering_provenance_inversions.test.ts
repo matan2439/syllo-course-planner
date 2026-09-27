@@ -67,7 +67,7 @@ test('corrected 4220/4224 cite an authoritative TAU listing source', () => {
   for (const id of ['0542-4220', '0542-4224']) {
     const c = find(id);
     expect(c.offering_source_url).not.toBe('board.offered_semesters');
-    expect(String(c.offering_source_url)).toMatch(/tau_listing|search_l\.aspx/);
+    expect(String(c.offering_source_url)).toMatch(/tau_listing|search_l\.aspx|study-program\?.*tab=schedule/);
     expect(c.offering_source_confidence).toBe('high'); // now justified by the listing
   }
 });

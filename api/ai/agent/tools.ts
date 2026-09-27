@@ -317,6 +317,7 @@ export function buildAgentTools() {
           is_mandatory: profile.is_mandatory,
           course_type: profile.course_type,
           allowed_semesters: allowedSemesters(profile),
+          offering_source_url: profile.provenance.offering_source_url,
           recommended_semester: profile.recommended_semester,
           prerequisites: prerequisiteStatus(session.worker, course_id, target_semester ?? undefined),
           corequisites: profile.corequisites,

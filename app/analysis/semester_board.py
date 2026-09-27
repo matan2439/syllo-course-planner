@@ -253,7 +253,8 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 
 # ---------------------------------------------------------------------------
 # Actual yearly offering data (Layer 2) — the official facts snapshot written by
-# scripts/refresh_course_data.py from IMS for the current TAU academic year.
+# scripts/refresh_course_data.py for the current TAU academic year: the
+# program's official timetable first, IMS course search for anything else.
 # Courses missing from it have unknown offered_semesters (confidence
 # "unverified"; effective == program allowed semesters).
 # ---------------------------------------------------------------------------
@@ -266,12 +267,12 @@ def _load_official_offerings() -> dict[str, dict[str, Any]]:
     facts = json.loads(OFFICIAL_FACTS_PATH.read_text(encoding="utf-8"))
     return {
         cid: {
-            "offered_semesters": f["ims"]["offered_semesters"],
-            "offering_source_url": f["ims"]["url"],
+            "offered_semesters": f["offering"]["offered_semesters"],
+            "offering_source_url": f["offering"]["url"],
             "offering_source_confidence": "high",
         }
         for cid, f in facts.items()
-        if f["ims"]["status"] == "offered"
+        if f["offering"]["status"] == "offered"
     }
 
 
