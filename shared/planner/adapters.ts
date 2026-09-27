@@ -23,6 +23,7 @@ type RawCourse = {
   program_category_id?: string | null;
   placement_policy?: string;
   is_annual?: boolean;
+  syllabus_url?: string | null;
 };
 
 type RawSemester = { semester_id: string; courses: RawCourse[] };
@@ -96,6 +97,7 @@ function courseToModel(c: RawCourse, knownSemesterIds: string[]): BoardCourseMod
       : {}),
     ...(c.placement_policy != null ? { placementPolicy: c.placement_policy } : {}),
     ...(c.is_annual != null ? { isAnnual: c.is_annual } : {}),
+    ...(c.syllabus_url ? { syllabusUrl: c.syllabus_url } : {}),
   };
 }
 

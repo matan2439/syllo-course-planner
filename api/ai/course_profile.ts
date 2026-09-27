@@ -14,6 +14,7 @@
  * an optional LLM syllabus-fill (a separate tool) may later refine low-
  * confidence fields, but never the deterministic facts the validators rely on.
  */
+import { boardSyllabusOf, type BoardSyllabus } from './course_insights/syllabus';
 
 export interface CourseProvenance {
   /** Where the course record came from ('program' | 'elective' | …). */
@@ -64,6 +65,8 @@ export interface CourseProfile {
   syllabus_available: boolean;
   syllabus_summary_he: string | null;
   syllabus_topics_he: string[];
+  /** Everything the board carries about the syllabus (content-bearing fields only). */
+  syllabus_details?: BoardSyllabus;
 
   // ── assessment / workload indicators ──────────────────────────────────────
   assessment_type: string | null;
@@ -246,6 +249,7 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
     syllabus_available: !!(raw.syllabus_text_available || raw.syllabus_summary_he),
     syllabus_summary_he: typeof raw.syllabus_summary_he === 'string' ? raw.syllabus_summary_he : null,
     syllabus_topics_he: strArr(raw.syllabus_topics_he ?? raw.syllabus_ai_topics),
+    syllabus_details: boardSyllabusOf(raw),
 
     assessment_type: typeof raw.assessment_type === 'string' ? raw.assessment_type : null,
     workload_score: num(raw.workload_score),

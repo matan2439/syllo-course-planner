@@ -3,7 +3,8 @@ import { loadLocalBoardJson } from '../../api/ai/board_loader'
 import { clarifyForAcademicDecision, extractClarificationContext } from '../../api/ai/academic_decision_runtime'
 import { PlanningSession } from '../../api/ai/agent/session'
 import { runPlannerAgent } from '../../api/ai/agent/planner_agent'
-import { buildAgentTools } from '../../api/ai/agent/tools'
+import { buildAgentTools, READ_ONLY_AGENT_TOOLS } from '../../api/ai/agent/tools'
+import type { CourseInsightsProvider } from '../../api/ai/course_insights'
 import { placedCourseIds } from '../../api/ai/planner_types'
 import { streamCourseAdvisor } from '../../api/ai/agent/course_advisor'
 import { withCompletedCredit } from '../../api/ai/conversation_clarification'
@@ -156,14 +157,29 @@ test('simulate_changes answers "what if" on a copy and never touches the draft',
   expect(JSON.stringify(session.worker.getPlan())).toBe(before)
 })
 
-test('the course advisor verifies with read-only tools and streams its answer', async () => {
+const fakeInsights: CourseInsightsProvider = {
+  grades: async (courseId) => ({
+    course_key: courseId, has_data: true, passing_grade: 60,
+    sources: [{ id: 'src', label_he: 'מקור', attribution_url: null, status: 'ok', terms: 1 }],
+    overall: { mean: 81.5, median: 83, pass_rate: 92, students: 120, terms: 1 },
+    recent: { mean: 81.5, median: 83, pass_rate: 92, students: 120, terms: 1 },
+    trend: null, lecturers: [],
+    terms: [{ year: 2026, term: 'a', mean: 81.5, median: 83, std: 9, students: 120, pass_rate: 92, lecturers: [], bins: [{ from: 0, to: 100, percent: 100 }], source: 'src' }],
+  }),
+  syllabus: async (courseId, board) => ({ course_id: courseId, board, live: null, live_unavailable_reason: 'no_syllabus_url' }),
+}
+
+test('the course panel runs the co-pilot engine in course mode: read-only tools, history and focus course forwarded', async () => {
   const model = new FakeAgentModel([
     [{ tool: 'get_course_details', args: { course_id: 'BETA', target_semester: null } }],
     [{ text: 'בטא הוא קורס ליבה של 4 שעות ' }, { text: 'ללא דרישות קדם.' }],
   ])
   const advisor = await streamCourseAdvisor(
-    { message: 'מה צריך לפני בטא?', programId: PROGRAM_ID, planContext, courseContext: 'קוד קורס: BETA' },
-    { model },
+    {
+      message: 'מה צריך לפני בטא?', programId: PROGRAM_ID, planContext, courseContext: 'קוד קורס: BETA', courseId: 'BETA',
+      history: [{ role: 'user', content: 'שאלה קודמת על בטא' }, { role: 'assistant', content: 'תשובה קודמת' }],
+    },
+    { model, insights: fakeInsights },
   )
   let text = ''
   const reader = advisor.textStream.getReader()
@@ -172,8 +188,28 @@ test('the course advisor verifies with read-only tools and streams its answer', 
 
   expect(text).toBe('בטא הוא קורס ליבה של 4 שעות ללא דרישות קדם.')
   const toolNames = (model.requests[0].tools ?? []).map((tool: any) => tool.name).sort()
-  expect(toolNames).toEqual(['explain_constraint', 'get_course_details', 'get_requirements_gap', 'search_courses'])
-  expect(JSON.stringify(model.requests[0].input)).toContain('קוד קורס: BETA')
+  expect(toolNames).toEqual([...READ_ONLY_AGENT_TOOLS].sort())
+  for (const mutating of ['build_plan', 'add_course', 'update_preferences', 'record_completed_courses', 'submit_proposal']) {
+    expect(toolNames).not.toContain(mutating)
+  }
+  const input = JSON.stringify(model.requests[0].input)
+  expect(input).toContain('קוד קורס: BETA')
+  expect(input).toContain('Course in focus: BETA')
+  expect(input.indexOf('שאלה קודמת על בטא')).toBeLessThan(input.indexOf('מה צריך לפני בטא?'))
+  expect(input).toContain('תשובה קודמת')
+})
+
+test('get_course_grades and get_course_syllabus answer from the insights provider', async () => {
+  const session = new PlanningSession({ ...(await newSession()).input, insights: fakeInsights })
+  const grades = await callTool(session, 'get_course_grades', { course_id: 'BETA', max_terms: null })
+  expect(grades).toEqual(expect.objectContaining({ course_id: 'BETA', name_he: 'בטא', has_data: true }))
+  expect(grades.overall.mean).toBe(81.5)
+  expect(grades.terms[0]).not.toHaveProperty('bins')
+
+  const syllabus = await callTool(session, 'get_course_syllabus', { course_id: 'BETA' })
+  expect(syllabus).toEqual(expect.objectContaining({ course_id: 'BETA', name_he: 'בטא', live: null }))
+  expect(syllabus.board).toEqual(expect.objectContaining({ topics_he: expect.any(Array) }))
+  expect(await callTool(session, 'get_course_syllabus', { course_id: 'NOPE' })).toEqual({ course_id: 'NOPE', known: false })
 })
 
 describe('courses to leave out: asked at most twice, silence then counts as none', () => {

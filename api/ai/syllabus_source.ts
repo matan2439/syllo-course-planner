@@ -216,6 +216,46 @@ function extractLabeledFields(html: string): Record<string, string[]> {
   return out;
 }
 
+export interface SyllabusSection {
+  title: string;
+  text: string;
+}
+
+/**
+ * The page's free-text content block (course content and aims, detailed
+ * syllabus): each heading with the text under it, read from the official
+ * template's `div_dataToc` container. Empty when the page has no such block.
+ */
+export function extractContentSections(html: string): SyllabusSection[] {
+  const start = html.search(/<div[^>]*id="div_dataToc"/i);
+  if (start < 0) return [];
+  const end = html.indexOf('</section>', start);
+  const block = html.slice(start, end < 0 ? undefined : end);
+  const sections: SyllabusSection[] = [];
+  const parts = block.split(/<h[2-4][^>]*>/i).slice(1);
+  for (const part of parts) {
+    const [title, ...rest] = part.split(/<\/h[2-4]>/i);
+    const text = stripTags(rest.join(' '))
+      .split('\n').map((line) => line.trim()).filter(Boolean).join('\n');
+    if (stripTags(title) && text) sections.push({ title: stripTags(title), text });
+  }
+  return sections;
+}
+
+/** Links inside the content block (e.g. a detailed-syllabus file). */
+export function extractContentLinks(html: string, baseUrl: string): string[] {
+  const start = html.search(/<div[^>]*id="div_dataToc"/i);
+  if (start < 0) return [];
+  const end = html.indexOf('</section>', start);
+  const block = html.slice(start, end < 0 ? undefined : end);
+  const links: string[] = [];
+  for (const match of block.matchAll(/<a[^>]*href\s*=\s*["']([^"']+)["']/gi)) {
+    if (/^(javascript:|#)/i.test(match[1])) continue;
+    try { links.push(new URL(match[1].replace(/&amp;/g, '&'), baseUrl).toString()); } catch { /* malformed href */ }
+  }
+  return [...new Set(links)];
+}
+
 function yearFromUrl(url: string): number | null {
   try {
     const y = new URL(url).searchParams.get('year');

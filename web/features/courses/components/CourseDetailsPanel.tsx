@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { CourseDetailsVM } from '../../../lib/course-details'
 import { Badge } from '../../../components/ui'
-import CourseAiChat from './CourseAiChat'
+import CourseAiChat, { type StudentContext } from './CourseAiChat'
+import CourseGradesSection from './CourseGradesSection'
+import { useCourseInsights, type CourseInsightsFetch } from '../hooks/use-course-insights'
 
 const SEMESTER_LABELS: Record<string, string> = {
   A: 'סמ׳ א׳',
@@ -25,13 +27,20 @@ export default function CourseDetailsPanel({
   course,
   onClose,
   programId,
+  getStudentContext,
+  insightsFetch,
 }: {
   course: CourseDetailsVM | null
   onClose: () => void
-  /** Required to ask the per-course AI chat; omit only where no AI context exists yet. */
+  /** Required for grades and the course co-pilot; omit only where no program context exists yet. */
   programId?: string
+  /** The student's planning context, so the co-pilot answers for this student (planner only). */
+  getStudentContext?: () => StudentContext | undefined
+  /** Test seam for the insights request. */
+  insightsFetch?: CourseInsightsFetch
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const insights = useCourseInsights(course?.id ?? null, programId, insightsFetch)
 
   // Keep focus changes tied to the dialog lifecycle, not callback identities.
   useEffect(() => {
@@ -146,7 +155,17 @@ export default function CourseDetailsPanel({
             )}
           </Field>
 
-          {programId && <CourseAiChat programId={programId} course={course} />}
+          {programId && <CourseGradesSection key={`grades-${course.id}`} insights={insights} />}
+
+          {programId && (
+            <CourseAiChat
+              key={`chat-${course.id}`}
+              programId={programId}
+              course={course}
+              suggestions={insights.status === 'ready' ? insights.data.suggestions_he : insights.status === 'loading' ? null : []}
+              getStudentContext={getStudentContext}
+            />
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3">

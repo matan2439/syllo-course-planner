@@ -1,0 +1,55 @@
+{
+  "_note": "Live course-insight sources for the co-pilot and the course panel (api/ai/course_insights). Every URL, TTL and limit lives here; code carries none. Env overrides: COURSE_INSIGHT_<ID>_URL, COURSE_INSIGHT_DISABLED=<id,id>. Snapshots: `npm run refresh:grades` pulls every configured source for the courses of data/boards/* into snapshot_path; prefer_snapshot sources answer from it, the rest fall back to it when live fails (e.g. a host that blocks server traffic).",
+  "grade_sources": [
+    {
+      "id": "tauplus",
+      "kind": "tauplus_butterknife",
+      "label_he": "TAU+",
+      "url": "https://tau-plus.com/api/butterknife",
+      "attribution_url": "https://tau-plus.com/compare",
+      "enabled": true,
+      "ttl_seconds": 21600,
+      "timeout_ms": 8000,
+      "snapshot_path": "data/grades/snapshots/tauplus.json",
+      "prefer_snapshot": false
+    },
+    {
+      "id": "arazim",
+      "kind": "arazim_grades_json",
+      "label_he": "ארזים — TAU Refactor",
+      "url": "https://arazim-project.com/data/grades.json",
+      "attribution_url": "https://arazim-project.com/tau-refactor/",
+      "enabled": true,
+      "ttl_seconds": 86400,
+      "timeout_ms": 25000,
+      "snapshot_path": "data/grades/snapshots/arazim.json",
+      "prefer_snapshot": true
+    }
+  ],
+  "syllabus": {
+    "enabled": true,
+    "lookback_years": 2,
+    "ttl_seconds": 86400,
+    "timeout_ms": 10000
+  },
+  "insights": {
+    "http_cache_max_age_seconds": 3600,
+    "recent_terms": 4,
+    "max_suggestions": 4,
+    "passing_grade": 60
+  },
+  "user_agent": "syllo-course-planner/1.0 (academic planning; read-only)",
+  "suggestion_templates_he": {
+    "_note": "Course-panel suggestion chips. A chip is shown only when its signal exists in the course's data; order = priority. {placeholders} are filled from that data.",
+    "grade_trend_up": "הממוצע ב{name} עלה מ-{older} ל-{recent} — מה השתנה?",
+    "grade_trend_down": "הממוצע ב{name} ירד מ-{older} ל-{recent} — כדאי לחשוש?",
+    "grades": "מה אומרים הציונים ב{name} (ממוצע {mean}) על רמת הקושי?",
+    "lecturers": "יש הבדל בציונים בין {lecturer_a} ל-{lecturer_b}?",
+    "syllabus_topic": "כמה {name} עוסק ב{topic}?",
+    "syllabus_content": "מה לומדים ב{name} לפי הסילבוס של {year}?",
+    "assignments": "איך נקבע הציון ב{name} ({assignment})?",
+    "prerequisites": "האם סיימתי את מה שצריך לפני {name}?",
+    "no_syllabus": "מה ידוע על {name} כשאין סילבוס מפורסם?",
+    "no_grades": "איך אפשר להעריך את העומס ב{name} בלי נתוני ציונים?"
+  }
+}

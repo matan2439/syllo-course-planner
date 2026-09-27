@@ -71,7 +71,7 @@ Never commit this file or print its contents.
 ## 3. Verify the live API
 
 ```bash
-curl -s "https://tau-course-planner.vercel.app/api/board/mechanical_engineering_2027" \
+curl -s "https://syllo-course-planner.vercel.app/api/board/mechanical_engineering_2027" \
   | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
@@ -88,7 +88,7 @@ Confirm each course with `syllabus_url` shows `available=True` and
 
 ## 4. Test the course AI chat
 
-Open https://tau-course-planner.vercel.app, open a course with a syllabus
+Open https://syllo-course-planner.vercel.app, open a course with a syllabus
 (e.g. **0542-3792 — הנדסת ניסויים ומדידות - מעבדה**) and ask in the AI chat:
 
 > מה דרישות הקדם של הקורס ומה עושים בו לפי הסילבוס?

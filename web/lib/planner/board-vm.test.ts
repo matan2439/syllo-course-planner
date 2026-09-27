@@ -46,13 +46,27 @@ test('identifier-agnostic: a synthetic program maps without any real catalog cla
   expect(vm.semesters[0].courses[0].weeklyHours).toBe(0.5)
 })
 
-test('display fields not in the canonical contract are deferred (D1): difficulty/syllabus/warnings/totals null', () => {
+test('display fields not in the canonical contract are deferred (D1): difficulty/warnings/totals null; no syllabus link → null', () => {
   const vm = boardModelToVM(boardResponseToModel(BOARD_UNORDERED))
   const course = vm.semesters[0].courses[0]
   expect(course.difficulty).toBeNull()
   expect(course.syllabusUrl).toBeNull()
   expect(course.hasWarnings).toBe(false)
   expect(vm.semesters[0].totalWeeklyHours).toBeNull()
+})
+
+test('a board course carries its official syllabus link to the card', () => {
+  const vm = boardModelToVM(boardResponseToModel({
+    metadata: { board_data_version: 'rev-1' },
+    semesters: [{
+      semester_id: 'year_4_semester_a',
+      courses: [{
+        course_id: 'S-1', name_he: 'עם סילבוס', weekly_hours: 3, course_type: 'mandatory',
+        syllabus_url: 'https://ims.example/Syllabus_L.aspx?course=S1&year=2026',
+      }],
+    }],
+  }))
+  expect(vm.semesters[0].courses[0].syllabusUrl).toBe('https://ims.example/Syllabus_L.aspx?course=S1&year=2026')
 })
 
 test('categoryId is copied from the catalog for every categorized course, including mandatory courses', () => {

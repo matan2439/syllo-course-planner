@@ -180,6 +180,40 @@ describe('POST /api/ai/course-planner — input validation', () => {
     expect(res.json).not.toHaveBeenCalled();
   });
 
+  it("accepts the planner board's own plan context and forwards history, focus course and preferences to the engine", async () => {
+    const advisor = jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor;
+    advisor.mockClear();
+    const body = {
+      ...VALID_BODY,
+      course_id: '0542-4010',
+      history: [{ role: 'user', content: 'מה לומדים?' }, { role: 'assistant', content: 'פרויקט תכן.' }],
+      preferences: { max_weekly_hours: 18 },
+      plan_context: {
+        semesters: [{ id: 'year_4_semester_a', courses: [{ course_id: '0542-4010' }] }],
+        personal_status: { completed: [{ course_id: '0509-1820' }], completed_knowledge: { status: 'known' } },
+        total_hours_progress: { known_completed_hours: 92 },
+      },
+    };
+    const res = makeRes();
+    await handler(makeReq(body), res as any);
+    expect(res.json).not.toHaveBeenCalled();
+    const input = advisor.mock.calls[0][0];
+    expect(input).toEqual(expect.objectContaining({
+      courseId: '0542-4010',
+      history: body.history,
+      preferences: { max_weekly_hours: 18 },
+    }));
+    expect(input.planContext.total_hours_progress).toEqual({ known_completed_hours: 92 });
+    expect(input.planContext.personal_status.completed_knowledge).toEqual({ status: 'known' });
+  });
+
+  it('rejects an oversized history', async () => {
+    const res = makeRes();
+    const history = Array.from({ length: 21 }, (_, i) => ({ role: 'user', content: `q${i}` }));
+    await handler(makeReq({ ...VALID_BODY, history }), res as any);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
   it('returns 400 INVALID_REQUEST with issue path for missing session_token', async () => {
     const { session_token: _, ...rest } = VALID_BODY;
     const res = makeRes();
