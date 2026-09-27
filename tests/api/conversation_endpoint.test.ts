@@ -1,4 +1,5 @@
 import { createConversationHandler } from '../../api/ai/conversation'
+import { conversationResponseSchema } from '../../shared/planner/conversation-wire'
 import { PlannerStorageError, academicStatusDigest, preferenceDigest } from '../../api/ai/apply_runtime'
 import type { AcademicDecisionAgentRun } from '../../api/ai/academic_decision_integration'
 
@@ -49,8 +50,9 @@ test('missing model fails closed with typed assistant unavailability', async () 
     outcome: 'assistant_unavailable',
     message_he: 'העוזר האקדמי אינו זמין כרגע.',
     events: [{ type: 'assistant_unavailable', message_he: 'העוזר האקדמי אינו זמין כרגע.' }],
-    code: 'ASSISTANT_UNAVAILABLE',
   })
+  // The client must read it as a typed outcome, not a failed send.
+  expect(conversationResponseSchema.safeParse(res.body).success).toBe(true)
 })
 
 test('configured conversation fails closed when the authoritative board version is stale', async () => {
