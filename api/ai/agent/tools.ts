@@ -360,21 +360,24 @@ export function buildAgentTools() {
 
     tool({
       name: 'get_course_grades',
-      description: 'Historical grade statistics of a course from community grade sources: overall and recent mean/median/pass rate, trend, per-lecturer means and per-semester rows. Years are as the sources label them. Use it for difficulty, grade or lecturer questions and name the sources. Read-only.',
+      description: 'Historical grade statistics of one or more courses from community grade sources: overall and recent mean/median/pass rate, trend, per-lecturer means and per-semester rows. Years are as the sources label them. Use it for difficulty, grade or lecturer questions and name the sources. Pass ALL the courses you need in one call. Read-only.',
       parameters: z.object({
-        course_id: courseId,
-        max_terms: z.number().int().min(1).max(30).nullable().describe('Semester rows to return, newest first (default 8)'),
+        course_ids: z.array(courseId).min(1).max(12),
+        max_terms: z.number().int().min(1).max(30).nullable().describe('Semester rows per course, newest first (default 8)'),
       }),
-      execute: observed('get_course_grades', async (session, { course_id, max_terms }: { course_id: string; max_terms: number | null }) => {
-        const summary = await session.insights.grades(course_id);
-        return {
-          course_id,
-          name_he: nameOf(session, course_id),
-          ...summary,
-          // Distributions feed the panel's chart; the agent needs the headline numbers.
-          terms: summary.terms.slice(0, max_terms ?? 8).map(({ bins: _bins, ...term }) => term),
-        };
-      }),
+      execute: observed('get_course_grades', async (session, { course_ids, max_terms }: { course_ids: string[]; max_terms: number | null }) => ({
+        // One call per question, not per course: a difficulty comparison used to burn the turn budget.
+        courses: await Promise.all([...new Set(course_ids)].map(async (course_id) => {
+          const summary = await session.insights.grades(course_id);
+          return {
+            course_id,
+            name_he: nameOf(session, course_id),
+            ...summary,
+            // Distributions feed the panel's chart; the agent needs the headline numbers.
+            terms: summary.terms.slice(0, max_terms ?? 8).map(({ bins: _bins, ...term }) => term),
+          };
+        })),
+      })),
     }),
 
     tool({

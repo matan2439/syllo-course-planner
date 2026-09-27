@@ -5,6 +5,7 @@
  */
 import {
   Agent,
+  MaxTurnsExceededError,
   Runner,
   assistant,
   extractAllTextOutput,
@@ -23,7 +24,8 @@ import { COURSE_FOCUS_INSTRUCTIONS, PLANNER_AGENT_INSTRUCTIONS } from './instruc
 // GPT-6 Sol: OpenAI's model for agentic, multi-step tool workflows ($2/$10 per MTok).
 // Astra is 5x the price; Luna is tuned for simple high-volume work, not planning.
 export const DEFAULT_AGENT_MODEL = 'gpt-6-sol';
-const MAX_TURNS = 20;
+// A difficulty-balance request reads grades, builds, checks and adjusts; 20 ran out.
+const MAX_TURNS = 30;
 
 export type PlannerAgentResult =
   | {
@@ -125,6 +127,7 @@ export function createAgentRunner(): Runner {
 export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAgentDeps = {}): Promise<PlannerAgentResult> {
   const { session } = input;
   const runner = createAgentRunner();
+  let streamed = '';
   try {
     const result = await runner.run(
       createCopilotAgent('plan', deps.model ?? agentModelName()),
@@ -133,6 +136,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
     );
     for await (const event of result) {
       if (event.type === 'raw_model_stream_event' && event.data.type === 'output_text_delta') {
+        streamed += event.data.delta;
         deps.onTextDelta?.(event.data.delta);
       }
     }
@@ -177,6 +181,14 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
     events.push({ type: 'assistant_message', text_he: messageHe.slice(0, 4_000) });
     return { outcome: 'conversation', messageHe, events };
   } catch (error) {
+    if (error instanceof MaxTurnsExceededError) {
+      // Out of steps is not an outage: keep what was said and let the student narrow it.
+      console.warn('[ai/planner-agent] max turns reached');
+      const note = 'עצרתי לפני שסיימתי — הבקשה דרשה יותר מדי בדיקות. נסו לצמצם אותה (למשל סמסטר אחד או כמה קורסים מסוימים). הלוח שלך לא השתנה.';
+      const messageHe = streamed.trim() ? `${streamed.trim()}\n\n${note}` : note;
+      const events = [...session.events, { type: 'assistant_message' as const, text_he: messageHe.slice(0, 4_000) }];
+      return { outcome: 'conversation', messageHe, events };
+    }
     console.error('[ai/planner-agent] run failed:', (error as Error)?.constructor?.name, (error as Error)?.message);
     const messageHe = 'העוזר האקדמי אינו זמין כרגע. הלוח שלך לא השתנה.';
     return {

@@ -94,8 +94,9 @@ type ConversationEndpointDeps = {
 const unavailable = () => ({
   outcome: 'assistant_unavailable' as const,
   message_he: 'העוזר האקדמי אינו זמין כרגע.',
+  // No extra fields: the client's wire schema is strict, and an unknown key turns
+  // this typed notice into a generic "send failed" error.
   events: [{ type: 'assistant_unavailable' as const, message_he: 'העוזר האקדמי אינו זמין כרגע.' }],
-  code: 'ASSISTANT_UNAVAILABLE' as const,
 });
 
 const CLARIFICATION_QUESTIONS_HE: Record<string, string> = {

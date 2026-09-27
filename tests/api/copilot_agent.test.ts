@@ -199,9 +199,22 @@ test('the course panel runs the co-pilot engine in course mode: read-only tools,
   expect(input).toContain('תשובה קודמת')
 })
 
+test('running out of turns is a conversation reply, not an unavailable assistant', async () => {
+  const model = new FakeAgentModel(Array.from({ length: 40 }, () => [{ tool: 'get_student_context' }]))
+  const result = await runPlannerAgent({ transcript, session: await newSession() }, { model })
+
+  expect(result.outcome).toBe('conversation')
+  expect(result.messageHe).toContain('עצרתי לפני שסיימתי')
+  expect(result.events).toEqual(expect.arrayContaining([
+    { type: 'tool_status', tool: 'get_student_context', status: 'completed' },
+  ]))
+})
+
 test('get_course_grades and get_course_syllabus answer from the insights provider', async () => {
   const session = new PlanningSession({ ...(await newSession()).input, insights: fakeInsights })
-  const grades = await callTool(session, 'get_course_grades', { course_id: 'BETA', max_terms: null })
+  const batch = await callTool(session, 'get_course_grades', { course_ids: ['BETA', 'ALPHA', 'BETA'], max_terms: null })
+  expect(batch.courses.map((course: { course_id: string }) => course.course_id)).toEqual(['BETA', 'ALPHA'])
+  const grades = batch.courses[0]
   expect(grades).toEqual(expect.objectContaining({ course_id: 'BETA', name_he: 'בטא', has_data: true }))
   expect(grades.overall.mean).toBe(81.5)
   expect(grades.terms[0]).not.toHaveProperty('bins')
