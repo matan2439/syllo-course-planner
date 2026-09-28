@@ -18,3 +18,18 @@ const CATEGORY_ACCENT_CLASS: Readonly<Record<string, string>> = {
 export function categoryAccentClass(categoryId: string | null | undefined): string {
   return categoryId ? CATEGORY_ACCENT_CLASS[categoryId] ?? '' : ''
 }
+
+const CATEGORY_ACCENT_VAR: Readonly<Record<string, string>> = {
+  fluids: '--cat-fluids-accent',
+  solids: '--cat-solids-accent',
+  systems: '--cat-systems-accent',
+  advanced_labs: '--cat-labs-accent',
+  other_specialization: '--cat-other-accent',
+  [GATEWAY_CATEGORY_ID]: '--cat-gateway-accent',
+}
+
+/** The same accent as a CSS color, for dots and swatches; unknown categories stay neutral. */
+export function categoryAccentColor(categoryId: string | null | undefined): string {
+  const accent = categoryId ? CATEGORY_ACCENT_VAR[categoryId] : undefined
+  return accent ? `var(${accent})` : 'var(--text-muted)'
+}

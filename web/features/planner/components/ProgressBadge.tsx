@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { RequirementsVM } from '../../../lib/requirements'
-import { Badge } from '../../../components/ui'
+import { categoryAccentColor } from '../../courses/components/course-category'
 
 /** Hours and course count toward one requirement category, including completed courses. */
 export type CategoryProgress = { hours: number; count: number }
@@ -39,34 +39,32 @@ export default function ProgressBadge({ requirements, completedHours = 0, catego
         {earned}/{requirements.totalRequiredHours} ש״ש
       </button>
       {open && (
-        <div className="absolute z-10 mt-2 w-72 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-premium)] backdrop-blur-sm">
-          <div className="flex items-center justify-between text-xs">
+        <div className="absolute end-0 z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-premium)] backdrop-blur-sm">
+          <div className="flex items-baseline justify-between gap-2 text-xs">
             <span className="font-semibold">נותרו {remaining} ש״ש</span>
-            <span className="text-[var(--text-muted)]">קורסי ליבה: {requirements.core.selected}/{requirements.core.min}</span>
+            <span className="text-[var(--text-muted)]">ליבה {requirements.core.selected}/{requirements.core.min}</span>
           </div>
           {completedHours > 0 && (
-            <p className="mt-1 text-[11px] text-[var(--text-muted)]">כולל {completedHours} ש״ש שכבר הושלמו</p>
+            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">כולל {completedHours} ש״ש שכבר הושלמו</p>
           )}
-          <div className="mt-2 flex flex-col gap-1.5">
+          <ul className="mt-2.5 flex flex-col gap-1.5 border-t border-[var(--border)] pt-2.5">
             {requirements.categories.map((c) => {
               const progress = categoryProgress[c.id]
               const count = progress?.count ?? c.selectedCount
-              const satisfied = c.satisfied || (c.minCourses > 0 && count >= c.minCourses)
+              const done = c.minCourses > 0 && (c.satisfied || count >= c.minCourses)
               return (
-                <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0">
-                    {c.title}
-                    {progress && <span className="text-[var(--text-muted)]"> · {progress.hours} ש״ש</span>}
+                <li key={c.id} className="flex items-center gap-2 text-xs">
+                  <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: categoryAccentColor(c.id) }} />
+                  <span className="min-w-0 flex-1 leading-snug">{c.title}</span>
+                  {progress && <span className="shrink-0 tabular-nums text-[var(--text-muted)]">{progress.hours} ש״ש</span>}
+                  <span className={`shrink-0 tabular-nums font-medium ${done ? 'text-emerald-500' : c.minCourses > 0 ? 'text-amber-500' : 'text-[var(--text-muted)]'}`}>
+                    {done && <span className="sr-only">הושלם </span>}
+                    {c.minCourses > 0 ? `${count}/${c.minCourses}` : count}
                   </span>
-                  {c.minCourses === 0
-                    ? <Badge>{count} קורסים</Badge>
-                    : satisfied
-                      ? <Badge variant="success">הושלם · {count}/{c.minCourses}</Badge>
-                      : <Badge variant="warn">{count}/{c.minCourses}</Badge>}
-                </div>
+                </li>
               )
             })}
-          </div>
+          </ul>
         </div>
       )}
     </div>

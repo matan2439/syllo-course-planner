@@ -83,7 +83,10 @@ export default function WeeklyScheduleDrawer({
     saveWeeklyScheduleState(programId, state)
   }, [programId, state])
 
-  const term: SemesterTerm = state.termMapping[activeSemesterId] ?? defaultMapping[activeSemesterId]
+  // The schedule shows the current academic year only, always in its real term.
+  const currentYear = defaultMapping[semesterDestinations[0]?.id ?? '']?.year
+  const yearDestinations = semesterDestinations.filter((d) => defaultMapping[d.id]?.year === currentYear)
+  const term: SemesterTerm = defaultMapping[activeSemesterId]
 
   const boardCourseIds = useMemo(
     () => semesterCourses.find((s) => s.semesterId === activeSemesterId)?.courseIds ?? [],
@@ -258,16 +261,6 @@ export default function WeeklyScheduleDrawer({
     }))
   }
 
-  const setTermField = (field: 'year' | 'semester', value: number) => {
-    setState((prev) => ({
-      ...prev,
-      termMapping: {
-        ...prev.termMapping,
-        [activeSemesterId]: { ...prev.termMapping[activeSemesterId], [field]: value },
-      },
-    }))
-  }
-
   const runSearch = async () => {
     if (!searchText.trim()) { setSearchResults([]); setSearchError(null); return }
     try {
@@ -299,32 +292,10 @@ export default function WeeklyScheduleDrawer({
           <h2 className="weekly-schedule-title">מערכת שעות שבועית</h2>
           <p className="weekly-schedule-description">קבוצות יחידות מהלוח נבחרות אוטומטית. בחלופות בוחרים את הקבוצה המתאימה.</p>
         </div>
-        <div className="weekly-term-controls" aria-label="מועד לימודים">
-          <label>
-            <span>שנת לימודים</span>
-            <input
-              aria-label="שנת לימודים"
-              type="number"
-              value={term?.year ?? ''}
-              onChange={(e) => setTermField('year', Number(e.target.value))}
-            />
-          </label>
-          <label>
-            <span>סמסטר</span>
-            <select
-              aria-label="סמסטר"
-              value={term?.semester ?? 1}
-              onChange={(e) => setTermField('semester', Number(e.target.value) as 1 | 2)}
-            >
-              <option value={1}>א׳</option>
-              <option value={2}>ב׳</option>
-            </select>
-          </label>
-        </div>
       </header>
 
       <div role="tablist" aria-label="בחירת סמסטר" className="weekly-semester-tabs">
-        {semesterDestinations.map((dest) => (
+        {yearDestinations.map((dest) => (
           <button
             key={dest.id}
             type="button"

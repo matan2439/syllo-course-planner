@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import ProgressBadge from './ProgressBadge'
+import { categoryAccentColor } from '../../courses/components/course-category'
 import type { RequirementsVM } from '../../../lib/requirements'
 
 const VM: RequirementsVM = {
@@ -28,7 +29,15 @@ test('renders nothing when there is no requirements data', () => {
 test('shows hours per category and counts completed courses toward the minimum', () => {
   render(<ProgressBadge requirements={VM} categoryProgress={{ fluids: { hours: 3.5, count: 1 }, shaar_ruach: { hours: 2, count: 3 } }} />)
   fireEvent.click(screen.getByRole('button', { name: /התקדמות בתוכנית/ }))
-  expect(screen.getByText('· 3.5 ש״ש', { exact: false })).toBeInTheDocument()
-  expect(screen.getByText('הושלם · 1/1')).toBeInTheDocument()
-  expect(screen.getByText('הושלם · 3/3')).toBeInTheDocument()
+  expect(screen.getByText('3.5 ש״ש')).toBeInTheDocument()
+  expect(screen.getByText('1/1', { exact: false })).toHaveTextContent('הושלם 1/1')
+  expect(screen.getByText('3/3', { exact: false })).toHaveTextContent('הושלם 3/3')
+})
+
+test('marks each category with a dot in its board color', () => {
+  const { container } = render(<ProgressBadge requirements={VM} />)
+  fireEvent.click(screen.getByRole('button', { name: /התקדמות בתוכנית/ }))
+  expect(container.querySelectorAll('li [aria-hidden="true"]')).toHaveLength(2)
+  expect(categoryAccentColor('fluids')).toBe('var(--cat-fluids-accent)')
+  expect(categoryAccentColor('unknown')).toBe('var(--text-muted)')
 })
