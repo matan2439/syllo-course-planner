@@ -83,9 +83,7 @@ export default function WeeklyScheduleDrawer({
     saveWeeklyScheduleState(programId, state)
   }, [programId, state])
 
-  // The schedule shows the current academic year only, always in its real term.
-  const currentYear = defaultMapping[semesterDestinations[0]?.id ?? '']?.year
-  const yearDestinations = semesterDestinations.filter((d) => defaultMapping[d.id]?.year === currentYear)
+  // Each board semester is shown in its real term.
   const term: SemesterTerm = defaultMapping[activeSemesterId]
 
   const boardCourseIds = useMemo(
@@ -295,7 +293,7 @@ export default function WeeklyScheduleDrawer({
       </header>
 
       <div role="tablist" aria-label="בחירת סמסטר" className="weekly-semester-tabs">
-        {yearDestinations.map((dest) => (
+        {semesterDestinations.map((dest) => (
           <button
             key={dest.id}
             type="button"

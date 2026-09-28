@@ -211,20 +211,32 @@ test('a stale alternative choice that newly conflicts after refetch is removed, 
   ).toBeInTheDocument()
 })
 
-test('covers the current academic year only, with no year/semester picker', async () => {
+const FOUR_DESTINATIONS = [
+  ...DESTINATIONS,
+  { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
+  { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
+]
+
+test('shows a tab for every board semester, Year 4 included, with no year/semester picker', async () => {
+  renderDrawer({ semesterDestinations: FOUR_DESTINATIONS })
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(FOUR_DESTINATIONS.map((d) => d.label))
+  expect(screen.queryByLabelText('שנת לימודים')).toBeNull()
+  expect(screen.queryByRole('combobox', { name: 'סמסטר' })).toBeNull()
+  expect(await screen.findByText(/מקור: bid-it/)).toBeInTheDocument()
+})
+
+test('a Year 4 tab selects that semester and renders its courses', async () => {
   jest.useFakeTimers({ advanceTimers: true, now: new Date('2026-09-28') })
   try {
-    renderDrawer({
-      semesterDestinations: [
-        ...DESTINATIONS,
-        { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
-        { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
-      ],
+    const { fetchScheduleGroupsFn } = renderDrawer({
+      semesterDestinations: FOUR_DESTINATIONS,
+      semesterCourses: [...SEMESTER_COURSES, { semesterId: 'year_4_semester_a', courseIds: ['0542-2400'] }],
     })
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(DESTINATIONS.map((d) => d.label))
-    expect(screen.queryByLabelText('שנת לימודים')).toBeNull()
-    expect(screen.queryByRole('combobox', { name: 'סמסטר' })).toBeNull()
-    expect(await screen.findByText(/מקור: bid-it/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'שנה ד׳ — סמסטר א׳' }))
+    expect(screen.getByRole('tab', { name: 'שנה ד׳ — סמסטר א׳' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'שנה ג׳ — סמסטר א׳' })).toHaveAttribute('aria-selected', 'false')
+    await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenLastCalledWith(['0542-2400'], 1))
+    expect(await screen.findByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeInTheDocument()
   } finally {
     jest.useRealTimers()
   }
