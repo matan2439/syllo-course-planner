@@ -124,6 +124,7 @@ import { getExternalContextEvidence } from './external_context_evidence';
 import { buildSyllabusSnapshot } from './syllabus_snapshot';
 import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache';
 import { preferencesWithPlannerPolicy } from './planner_policy_context';
+import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -133,6 +134,8 @@ export const preferencesSchema = z.object({
   preferred_categories:    z.array(z.string()).optional(),
   wanted_course_ids:       z.array(z.string()).optional(),
   unwanted_course_ids:     z.array(z.string()).optional(),
+  // שער רוח final-assessment types the student prefers (soft: others become unwanted).
+  gateway_assessment_types: z.array(z.enum(GATEWAY_ASSESSMENT_TYPES)).optional(),
   // Hard exclusions (additive, optional — older clients omit these).
   disallowed_course_ids:        z.array(z.string()).optional(),
   strongly_avoided_course_ids:  z.array(z.string()).optional(),
@@ -298,7 +301,9 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     ...(hardWantedConstraintsEnabled()
       ? { mustIncludeCourseIds: prefs.wanted_course_ids }
       : { wantedCourseIds: prefs.wanted_course_ids }),
-    unwantedCourseIds: prefs.unwanted_course_ids,
+    unwantedCourseIds: prefs.gateway_assessment_types?.length
+      ? [...(prefs.unwanted_course_ids ?? []), ...gatewayAssessmentMismatchIds(board, prefs.gateway_assessment_types)]
+      : prefs.unwanted_course_ids,
     courseFitById,
     disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
     pinnedCourseIds: ctx?.pinned_course_ids,

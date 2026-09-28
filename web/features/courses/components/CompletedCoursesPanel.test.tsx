@@ -19,13 +19,25 @@ test('one click marks, and then clears, every course of a semester', () => {
   expect(ids.length).toBeGreaterThan(1)
   let last = EMPTY_ACADEMIC_STATUS
   render(<Harness onChange={(next) => { last = next }} />)
-  fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
+  fireEvent.click(screen.getByText('קורסים שהשלמתי'))
 
-  fireEvent.click(screen.getByRole('button', { name: `סמן את כל ${first.titleHe} כהושלם` }))
+  fireEvent.click(screen.getByRole('checkbox', { name: `כל ${first.titleHe}` }))
   expect(ids.every((id) => last.statuses[id] === 'completed')).toBe(true)
   expect(Object.keys(last.statuses)).toHaveLength(ids.length) // other semesters untouched
   expect(last.confirmed).toBe(false)
 
-  fireEvent.click(screen.getByRole('button', { name: `נקה סימון: ${first.titleHe}` }))
+  fireEvent.click(screen.getByRole('checkbox', { name: `כל ${first.titleHe}` }))
   expect(last.statuses).toEqual({})
+})
+
+test('saving marks every unticked standard course not_completed and the set known', () => {
+  let last = EMPTY_ACADEMIC_STATUS
+  render(<Harness onChange={(next) => { last = next }} />)
+  const [first, ...rest] = earlyYearCoursesFor(PROGRAM)
+  fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(first.nameHe) }))
+  fireEvent.click(screen.getByRole('button', { name: 'שמירה' }))
+  expect(last.confirmed).toBe(true)
+  expect(last.statuses[first.courseId]).toBe('completed')
+  expect(rest.every((c) => last.statuses[c.courseId] === 'not_completed')).toBe(true)
+  expect(screen.getByRole('button', { name: 'נשמר' })).toBeDisabled()
 })

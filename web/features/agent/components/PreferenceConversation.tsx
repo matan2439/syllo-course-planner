@@ -205,7 +205,7 @@ export default function PreferenceConversation({
         </div>
       )}
 
-      {state.status === 'ready_to_plan' && (
+      {showBuild && state.status === 'ready_to_plan' && (
         <p className="text-[var(--text-muted)]">יש מספיק מידע כדי לבנות תוכנית טובה. אפשר לבנות עכשיו או להוסיף העדפות.</p>
       )}
 

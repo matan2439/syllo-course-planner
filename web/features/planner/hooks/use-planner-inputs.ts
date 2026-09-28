@@ -10,6 +10,8 @@ export function usePlannerInputs() {
   const [completedCategoryCounts, setCompletedCategoryCounts] = useState<Record<string, number>>({})
   const [wantIds, setWantIds] = useState<string[]>([])
   const [excludeIds, setExcludeIds] = useState<string[]>([])
+  // Preferred שער רוח final-assessment types (empty = no preference).
+  const [gatewayAssessments, setGatewayAssessments] = useState<string[]>([])
   // Exclusions: a non-empty selection is inherently explicit; an empty one is
   // only an answer once the student says so. Untouched stays UNKNOWN.
   const [exclusionsNoneConfirmed, setExclusionsNoneConfirmed] = useState(false)
@@ -23,7 +25,7 @@ export function usePlannerInputs() {
     messages, setMessages,
     maxHours, setMaxHours, priorHours, setPriorHours,
     completedCategoryCounts, setCompletedCategoryCounts,
-    wantIds, setWantIds, excludeIds, setExcludeIds,
+    wantIds, setWantIds, excludeIds, setExcludeIds, gatewayAssessments, setGatewayAssessments,
     exclusionsNoneConfirmed, setExclusionsNoneConfirmed,
     preferenceVersion, updatePreferenceVersion,
   }

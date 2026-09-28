@@ -76,7 +76,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     await screen.findByText('קורס בסיס X')
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
     fireEvent.change(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' }), { target: { value: '20' } })
-    fireEvent.click(screen.getByRole('button', { name: 'אין קורסים שאני רוצה להימנע מהם' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'אין כאלה' }))
 
     const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
     fireEvent.change(composer, { target: { value: 'תבנה לי תוכנית' } })
@@ -104,7 +104,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     await screen.findByText('קורס בסיס X')
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toHaveValue('18'))
-    expect(screen.getByRole('button', { name: 'אין קורסים שאני רוצה להימנע מהם' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('checkbox', { name: 'אין כאלה' })).toBeChecked()
   })
 
   test('initial context loading preserves a completed-course edit made while it was pending', async () => {
@@ -119,14 +119,14 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
       planningContextFn={() => pendingRead} sendConversationFn={send} />)
     await screen.findByText('קורס בסיס X')
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
-    fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
-    fireEvent.click(within(screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })).getByRole('button', { name: /^השלמתי$/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
-    expect(screen.getByText(/אושר בטיוטה: 1 קורסים/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('קורסים שהשלמתי'))
+    fireEvent.click(screen.getByRole('checkbox', { name: /גרפיקה הנדסית.*ש״ש/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'שמירה' }))
+    expect(screen.getByText(/^1 קורסים ·/)).toBeInTheDocument()
 
     await act(async () => { finishInitialRead(stored); await pendingRead })
 
-    expect(screen.getByText(/אושר בטיוטה: 1 קורסים/)).toBeInTheDocument()
+    expect(screen.getByText(/^1 קורסים ·/)).toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'נמשיך עם הבחירה שלי' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     await screen.findByText('קיבלתי את הבחירה')
@@ -167,11 +167,11 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     await waitFor(() => expect(context).toHaveBeenCalledTimes(2))
     fireEvent.change(composer, { target: { value: 'טעיתי, עדיין לא השלמתי אף קורס' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
-    await screen.findByText(/אושר בטיוטה: 0 קורסים/)
+    await screen.findByText(/^0 קורסים ·/)
 
     await act(async () => { finishEarlierRead(oldContext); await delayedRead })
 
-    expect(screen.getByText(/אושר בטיוטה: 0 קורסים/)).toBeInTheDocument()
+    expect(screen.getByText(/^0 קורסים ·/)).toBeInTheDocument()
     fireEvent.change(composer, { target: { value: 'נמשיך לתכנון' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     await screen.findByText('ממשיך מהמידע המעודכן')
@@ -196,7 +196,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
     fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'עדכן את הרשימה' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
-    await screen.findByText(/אושר בטיוטה: 1 קורסים/)
+    await screen.findByText(/^1 קורסים ·/)
   })
 
   test('manual moves reuse saved academic context instead of overwriting answers from chat', async () => {
@@ -250,9 +250,9 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     const send = jest.fn().mockResolvedValue(offerBuildResponse())
     await renderReady({ sendConversationFn: send })
     fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
-    fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
-    fireEvent.click(within(screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })).getByRole('button', { name: /^השלמתי$/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
+    fireEvent.click(screen.getByText('קורסים שהשלמתי'))
+    fireEvent.click(screen.getByRole('checkbox', { name: /גרפיקה הנדסית.*ש״ש/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'שמירה' }))
     expect(send).not.toHaveBeenCalled()
     const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
     fireEvent.change(composer, { target: { value: 'מילאתי את הקורסים שלי, נמשיך' } })
@@ -277,7 +277,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     const search = await screen.findByRole('searchbox', { name: 'חיפוש קורסים לתשובה' })
     fireEvent.change(search, { target: { value: 'גרפיקה הנדסית' } })
-    expect(screen.getByRole('checkbox', { name: /גרפיקה הנדסית/ })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /גרפיקה הנדסית.*ש״ש/ })).toBeInTheDocument()
     fireEvent.change(search, { target: { value: 'קורס בסיס X' } })
     expect(screen.getByRole('checkbox', { name: /קורס בסיס X/ })).toBeInTheDocument()
   })

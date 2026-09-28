@@ -50,10 +50,9 @@ test('waits for persisted academic context before enabling an agent turn', async
 test('confirmed completed courses are sent as the next structured agent answer', async () => {
   const { sendConversationFn } = await renderAgent()
   fireEvent.click(screen.getByText('מה חשוב לעוזר לדעת? (אופציונלי)'))
-  fireEvent.click(screen.getByRole('button', { name: 'פתח' }))
-  const row = screen.getByRole('group', { name: 'סטטוס: גרפיקה הנדסית' })
-  fireEvent.click(within(row).getByRole('button', { name: /^השלמתי$/ }))
-  fireEvent.click(screen.getByRole('button', { name: 'אשר את הסטטוס' }))
+  fireEvent.click(screen.getByText('קורסים שהשלמתי'))
+  fireEvent.click(screen.getByRole('checkbox', { name: /גרפיקה הנדסית.*ש״ש/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'שמירה' }))
   expect(sendConversationFn).not.toHaveBeenCalled()
 
   const composer = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
