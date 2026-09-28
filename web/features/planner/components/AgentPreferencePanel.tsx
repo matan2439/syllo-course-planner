@@ -74,15 +74,26 @@ export default function AgentPreferencePanel({
           <section aria-label="הלימודים שלי" className="flex flex-col gap-2.5">
             <h3 className={heading}>הלימודים שלי</h3>
             {onCurrentDegreeYearChange && (
-              <label className={row}>
-                השנה שלי בתואר
-                <select name="current-degree-year" aria-label="השנה שלי בתואר" value={currentDegreeYear ?? ''}
-                  onChange={(e) => onCurrentDegreeYearChange(Number(e.target.value) as DegreeYear)}
-                  className={input}>
-                  {currentDegreeYear === null && <option value="" disabled>—</option>}
-                  {DEGREE_YEARS.map((year) => <option key={year} value={year}>{DEGREE_YEAR_LABELS[year]}</option>)}
-                </select>
-              </label>
+              <div className="flex flex-col gap-1.5 text-xs">
+                <span id="current-degree-year-label">השנה שלי בתואר</span>
+                <div role="radiogroup" aria-labelledby="current-degree-year-label"
+                  className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border)] p-1">
+                  {DEGREE_YEARS.map((year) => {
+                    const checked = currentDegreeYear === year
+                    return (
+                      <button key={year} type="button" role="radio" aria-checked={checked}
+                        onClick={() => onCurrentDegreeYearChange(year)}
+                        className={`rounded-lg px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] ${
+                          checked
+                            ? 'bg-[var(--purple)]/20 text-[var(--purple-strong)]'
+                            : 'text-[var(--text-muted)] hover:bg-[var(--purple)]/10 hover:text-[var(--text)]'
+                        }`}>
+                        {DEGREE_YEAR_LABELS[year]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             )}
             <CompletedCoursesPanel
               programId={programId}

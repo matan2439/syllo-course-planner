@@ -16,6 +16,7 @@ jest.mock('postgres', () => jest.fn().mockReturnValue(mockSql));
 
 // ── imports ───────────────────────────────────────────────────────────────────
 
+import { boardResponseSchema } from '../../shared/planner/wire';
 import handler, {
   parseProgramVersionId,
   queryBoardJson,
@@ -196,11 +197,24 @@ describe('GET /api/board/[programId] handler', () => {
     expect(body.code).toBe('NOT_FOUND');
   });
 
-  it('returns 404 when board_json column is null', async () => {
+  it('returns 404 when board_json column is null and no board file is published', async () => {
     mockSql.mockResolvedValueOnce([{ board_json: null }]);
     const res = makeRes();
-    await handler(makeReq('mechanical_engineering_2027'), res);
+    await handler(makeReq('unknown_program_9999'), res);
     expect((res.status as jest.Mock).mock.calls[0][0]).toBe(404);
+  });
+
+  it('serves a file-only board (the Years 1–2 window board) when the DB has no row for it', async () => {
+    mockSql.mockResolvedValueOnce([]);
+    const res = makeRes();
+    await handler(makeReq('mechanical_engineering_years_1_2_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+    const body = (res.json as jest.Mock).mock.calls[0][0];
+    expect(body.semesters.map((s: any) => s.semester_id)).toEqual([
+      'year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a', 'year_2_semester_b',
+    ]);
+    // The client rejects a board that breaks the wire contract, so the published file must satisfy it.
+    expect(boardResponseSchema.safeParse(body).success).toBe(true);
   });
 
   // ── 200 happy path ───────────────────────────────────────────────────────
