@@ -55,7 +55,7 @@ export default function AgentPreferencePanel({
   const input = 'w-24 rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)]'
   const row = 'flex items-center justify-between gap-3 text-xs'
   const checkbox = 'size-4 shrink-0 accent-[var(--purple-strong)]'
-  const heading = 'text-xs font-bold text-[var(--text-muted)]'
+  const heading = 'text-sm font-semibold text-[var(--text)]'
   const toggleAssessment = (type: string, on: boolean) => {
     setGatewayAssessments(on ? [...gatewayAssessments, type] : gatewayAssessments.filter((t) => t !== type))
     updatePreferenceVersion()
@@ -96,7 +96,7 @@ export default function AgentPreferencePanel({
             )}
           </section>
 
-          <section aria-label="העדפות לתכנון" className="flex flex-col gap-3">
+          <section aria-label="העדפות לתכנון" className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
             <h3 className={heading}>העדפות לתכנון</h3>
             <label className={row}>
               מקסימום ש״ש בסמסטר
@@ -121,7 +121,7 @@ export default function AgentPreferencePanel({
             </div>
             {hasGateway && (
               <fieldset className="flex flex-col gap-1.5 text-xs">
-                <legend className="mb-1 text-[var(--text-muted)]">סוג מטלת סיום בשער רוח <span className="opacity-75">(בלי סימון — כל הסוגים)</span></legend>
+                <legend className="mb-1 text-[var(--text-muted)]">סוג מטלת סיום בשער רוח (בלי סימון — כל הסוגים)</legend>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                   {GATEWAY_ASSESSMENT_OPTIONS.map((o) => (
                     <label key={o.value} className="flex items-center gap-1.5">
