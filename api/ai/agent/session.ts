@@ -139,6 +139,9 @@ export class PlanningSession {
       undefined,
       fit?.fitById,
       storedDistributionPolicy(this.preferences),
+      // The committed board, not the stored context, decides which courses are already placed.
+      ((this.input.committedContext.semesters ?? []) as any[])
+        .flatMap((s) => (s?.courses ?? []).map((c: any) => c?.course_id)),
     );
     this.worker = new PlannerWorker(
       this.model,
