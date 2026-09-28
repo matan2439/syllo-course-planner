@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import AcademicAgentConversation from './AcademicAgentConversation'
-import type { ConversationResponse } from '../../../../shared/planner/conversation-wire'
-import { ConversationContextConflictError } from '../../../../shared/planner/api-client'
+import AcademicAgentConversation, { wireTranscript } from './AcademicAgentConversation'
+import { conversationRequestSchema, MAX_TRANSCRIPT_TURNS, type ConversationResponse } from '../../../../shared/planner/conversation-wire'
+import { ConversationContextConflictError, ConversationRefusedError } from '../../../../shared/planner/api-client'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 
 const requestContext = {
@@ -557,4 +557,51 @@ test('explains a stale planning context and offers a clean conversation restart'
   expect(screen.queryByRole('alert')).toBeNull()
   expect(screen.getByRole('log')).toHaveTextContent('איך אפשר לעזור')
   expect(screen.getByRole('button', { name: 'שלח לעוזר' })).toBeDisabled()
+})
+
+describe('long conversations stay sendable', () => {
+  const courseNames = { '0542-2400': 'תכן מכני (1) — קורס ארוך במיוחד עם שם מפורט' }
+  const replyWithIds = Array.from({ length: 360 }, () => '0542-2400').join(', ').slice(0, 3_990)
+
+  test('a reply that grows past the text limit after course names are expanded is still accepted next turn', async () => {
+    const send = jest.fn()
+      .mockResolvedValueOnce({ outcome: 'conversation', message_he: replyWithIds, events: [] } satisfies ConversationResponse)
+      .mockResolvedValueOnce({ outcome: 'conversation', message_he: 'בסדר.', events: [] } satisfies ConversationResponse)
+    render(<AcademicAgentConversation {...requestContext} sendConversationFn={send} courseNameById={courseNames} />)
+    const box = screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' })
+    fireEvent.change(box, { target: { value: 'אילו קורסים?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(box).not.toBeDisabled())
+    fireEvent.change(box, { target: { value: 'תודה' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    await screen.findByText('בסדר.')
+
+    const request = send.mock.calls[1][0]
+    expect(conversationRequestSchema.safeParse(request).success).toBe(true)
+  })
+
+  test('the transcript sent is the latest turns, opening on a student turn, each within the limit', () => {
+    const turns = Array.from({ length: 45 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' as const : 'assistant' as const,
+      text: i === 43 ? 'x'.repeat(9_000) : `turn ${i}`,
+    }))
+    const sent = wireTranscript(turns)
+    expect(sent.length).toBeLessThanOrEqual(MAX_TRANSCRIPT_TURNS)
+    expect(sent[0].role).toBe('user')
+    expect(sent.at(-1)).toEqual(turns.at(-1))
+    expect(conversationRequestSchema.safeParse({
+      program_id: requestContext.programId, session_token: requestContext.sessionToken, board_version: null,
+      academic_status_digest: 'as_1', preference_digest: 'pref_1', transcript: sent,
+    }).success).toBe(true)
+  })
+
+  test('a server refusal shows its own reason, not the generic failure', async () => {
+    const send = jest.fn().mockRejectedValue(new ConversationRefusedError(429, 'מכסת שאלות ה-AI החינמית נוצלה.'))
+    render(<AcademicAgentConversation {...requestContext} sendConversationFn={send} />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'הודעה לעוזר האקדמי' }), { target: { value: 'תכנן לי' } })
+    fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('מכסת שאלות ה-AI החינמית נוצלה.')
+    expect(screen.queryByText(/שליחת ההודעה נכשלה/)).toBeNull()
+  })
 })

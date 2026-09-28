@@ -58,3 +58,17 @@ export class FailingAgentModel implements Model {
   // eslint-disable-next-line require-yield
   async *getStreamedResponse(): AsyncIterable<never> { throw new Error('provider down') }
 }
+
+/** A provider that never answers until the run is aborted — a slow, overloaded model. */
+export class HangingAgentModel implements Model {
+  async getResponse(request: ModelRequest): Promise<ModelResponse> { return this.hang(request) }
+  // eslint-disable-next-line require-yield
+  async *getStreamedResponse(request: ModelRequest): AsyncIterable<never> { await this.hang(request) }
+  private hang(request: ModelRequest): Promise<never> {
+    return new Promise((_, reject) => {
+      const signal = request.signal
+      if (signal?.aborted) return reject(signal.reason)
+      signal?.addEventListener('abort', () => reject(signal.reason), { once: true })
+    })
+  }
+}

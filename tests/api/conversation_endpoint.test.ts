@@ -613,3 +613,75 @@ test('a leave-out answer recorded during the turn unblocks the proposal in that 
   expect(await run(false)).toBe('clarification_required')
   expect(await run(true)).toBe('proposal')
 })
+
+describe('a long agent run still fits the wire (many tool calls)', () => {
+  const tools = ['get_course_grades', 'search_courses', 'get_offerings', 'check_prerequisites', 'build_plan'] as const
+  const toolEvents = (calls: number) => Array.from({ length: calls }, (_, i) => [
+    { type: 'tool_status' as const, tool: tools[i % tools.length], status: 'started' as const },
+    { type: 'tool_status' as const, tool: tools[i % tools.length], status: i === calls - 1 ? 'rejected' as const : 'completed' as const },
+  ]).flat()
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const handlerWith = (runAgent: any) => createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    putProposal: async (record: any) => record,
+    runAgent,
+  })
+  const send = async (handler: any, streaming = false) => {
+    const res = response()
+    const lines: string[] = []
+    res.write = (chunk: string) => { lines.push(...chunk.split('\n').filter(Boolean)); return true }
+    res.end = jest.fn()
+    await handler({
+      method: 'POST',
+      headers: { cookie: `syllo_owner=${'x'.repeat(43)}`, ...(streaming ? { accept: 'application/x-ndjson' } : {}) },
+      body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+    } as any, res)
+    return streaming ? lines.map((line) => JSON.parse(line)).find((line) => line.type === 'result') : { status: res.statusCode, body: res.body }
+  }
+
+  test.each([10, 40, 150])('a conversation reply after %i tool calls parses and keeps the reply', async (calls) => {
+    const events = [...toolEvents(calls), { type: 'assistant_message', text_he: 'הנה ההמלצה שלי.' }]
+    const result = await send(handlerWith(async () => ({ outcome: 'conversation', messageHe: 'הנה ההמלצה שלי.', events })), true)
+    expect(result.status).toBe(200)
+    const parsed = conversationResponseSchema.safeParse(result.body)
+    expect(parsed.success).toBe(true)
+    // The bug: sending every raw event made the client reject the whole reply.
+    if (calls >= 40) expect(conversationResponseSchema.safeParse({ ...result.body, events }).success).toBe(false)
+    expect(result.body.events.some((event: any) => event.status === 'started')).toBe(false)
+    expect(result.body.events.at(-1)).toEqual({ type: 'assistant_message', text_he: 'הנה ההמלצה שלי.' })
+    // The latest step (the rejected one) survives trimming.
+    expect(result.body.events).toContainEqual(expect.objectContaining({ status: 'rejected' }))
+  })
+
+  test('a proposal after 150 tool calls parses and keeps alternatives_ready', async () => {
+    const result = await send(handlerWith(async () => ({
+      outcome: 'proposal',
+      messageHe: 'הכנתי חלופה חוקית.',
+      events: [...toolEvents(150), { type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
+      validation: { valid: true },
+    })))
+    expect(result.status).toBe(200)
+    expect(conversationResponseSchema.safeParse(result.body).success).toBe(true)
+    expect(result.body.events).toContainEqual(expect.objectContaining({ type: 'alternatives_ready' }))
+    expect(result.body.events).toContainEqual({ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' })
+  })
+
+  test('a question after 150 tool calls parses and keeps the clarification', async () => {
+    const events = [
+      ...toolEvents(150),
+      { type: 'assistant_message', text_he: 'כמה שעות בשבוע?' },
+      { type: 'clarification', question_he: 'כמה שעות בשבוע?', question_id: 'max_weekly_hours', answer_type: 'number' },
+    ]
+    const result = await send(handlerWith(async () => ({ outcome: 'conversation', nextAction: 'ask', messageHe: 'כמה שעות בשבוע?', events })))
+    expect(conversationResponseSchema.safeParse(result.body).success).toBe(true)
+    expect(result.body.events).toContainEqual(expect.objectContaining({ type: 'clarification', question_id: 'max_weekly_hours' }))
+  })
+})

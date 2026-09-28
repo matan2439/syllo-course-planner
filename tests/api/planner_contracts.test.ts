@@ -323,6 +323,21 @@ describe('api client (runtime-neutral, injected fetch)', () => {
       currentBoardVersion: 'bv_2',
     });
   });
+
+  test.each([
+    [429, 'QUOTA_EXCEEDED', 'מכסת שאלות ה-AI החינמית נוצלה.'],
+    [503, 'PLANNER_STORAGE_UNAVAILABLE', 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.'],
+    [500, 'INTERNAL_ERROR', 'אירעה שגיאה פנימית.'],
+  ])('sendConversation carries the server reason of an HTTP %i refusal', async (status, code, messageHe) => {
+    await expect(sendConversation({ fetchImpl: makeFetch(status, { ok: false, code, message_he: messageHe }), baseUrl: '' }, {
+      program_id: 'mechanical_engineering_2027',
+      session_token: '00000000-0000-4000-8000-000000000000',
+      board_version: null,
+      academic_status_digest: 'as_1',
+      preference_digest: 'pref_1',
+      transcript: [{ role: 'user', text: 'בדיקה' }],
+    })).rejects.toMatchObject({ name: 'ConversationRefusedError', status, messageHe });
+  });
 });
 
 // ── local workspace schema ────────────────────────────────────────────────────

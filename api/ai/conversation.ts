@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
+  MAX_CONVERSATION_EVENTS,
   conversationRequestSchema,
+  type ConversationEvent,
   type ConversationProposal,
 } from '../../shared/planner/conversation-wire';
 import type { Model } from '@openai/agents';
@@ -131,6 +133,26 @@ function completedIdsOf(personalStatus: Record<string, unknown>): string[] {
   return completed
     .map((course) => typeof course === 'string' ? course : (course as { course_id?: unknown })?.course_id)
     .filter((id): id is string => typeof id === 'string');
+}
+
+/**
+ * Fits a turn's events into the wire limit. A long run makes dozens of tool calls,
+ * each reporting started + finished; the live stream already showed the "started"
+ * lines, so the final body keeps finished steps, and if still too many, every
+ * non-tool event plus the latest steps.
+ */
+export function boundEvents<E extends ConversationEvent>(events: readonly E[]): E[] {
+  const finished = events.filter((event) => !(event.type === 'tool_status' && event.status === 'started'));
+  if (finished.length <= MAX_CONVERSATION_EVENTS) return finished;
+  const otherCount = finished.filter((event) => event.type !== 'tool_status').length;
+  let toolBudget = Math.max(0, MAX_CONVERSATION_EVENTS - otherCount);
+  const kept: E[] = [];
+  for (let i = finished.length - 1; i >= 0; i -= 1) {
+    const event = finished[i];
+    if (event.type !== 'tool_status') kept.push(event);
+    else if (toolBudget > 0) { kept.push(event); toolBudget -= 1; }
+  }
+  return kept.reverse().slice(-MAX_CONVERSATION_EVENTS);
 }
 
 /** A status/json pair that writes the final NDJSON line of a streamed turn. */
@@ -392,9 +414,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       if (agent.outcome === 'proposal' && hasCriticalMissingInput(clarification)) {
         const question = firstCriticalQuestion(clarification);
         await askedByGate(question);
-        const events = question
+        const events = boundEvents(question
           ? [...agent.events, clarificationEvent(question)]
-          : agent.events;
+          : agent.events);
         out.status(200).json({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
@@ -428,9 +450,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         if (!readyToPlan) {
           const question = firstCriticalQuestion(academicDecision.clarification);
           await askedByGate(question);
-          const events = question
+          const events = boundEvents(question
             ? [...agent.events, clarificationEvent(question)]
-            : agent.events;
+            : agent.events);
           out.status(200).json({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
@@ -453,7 +475,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         out.status(200).json({
           outcome: 'conversation',
           message_he: messageHe,
-          events: agent.events,
+          events: boundEvents(agent.events),
           next_action: agent.outcome === 'conversation' ? agent.nextAction : undefined,
           ...(contextUpdate ? { context_update: contextUpdate } : {}),
         });
@@ -621,10 +643,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       await putProposal(record);
       await recordUsage(parsed.data.session_token, modelConfig.name);
       const receipt = toReceipt(record);
-      const events = [
+      const events = boundEvents([
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
-      ];
+      ]);
       out.status(200).json({
         outcome: 'proposal',
         message_he: messageHe,
