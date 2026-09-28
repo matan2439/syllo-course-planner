@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import UnifiedCourseRepository, { type SemesterDestination } from '../../courses/components/UnifiedCourseRepository'
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
+import { DEFAULT_SEMESTER_WINDOW, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
 
 type RailTab = 'courses' | 'agent' | 'profile'
 type MainTab = 'board' | 'schedule'
@@ -22,12 +23,7 @@ const TABS: ReadonlyArray<{ id: RailTab; label: string }> = [
   { id: 'profile', label: 'הפרופיל שלי' },
 ]
 
-const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = [
-  { id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' },
-  { id: 'year_3_semester_b', label: 'שנה ג׳ — סמסטר ב׳' },
-  { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
-  { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
-]
+const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = semesterWindowSlots()
 
 export default function UnifiedPlannerWorkspace({
   programId,
@@ -35,13 +31,18 @@ export default function UnifiedPlannerWorkspace({
   selectedCourseIds = [],
   onRequestAdd = () => undefined,
   semesterDestinations = DEFAULT_SEMESTER_DESTINATIONS,
+  semesterWindow = DEFAULT_SEMESTER_WINDOW,
 }: {
   programId: string
   repo: RepositoryVM
   selectedCourseIds?: readonly string[]
   onRequestAdd?: (courseId: string) => void
+  /** The board's real columns — where a course can be placed. */
   semesterDestinations?: readonly SemesterDestination[]
+  /** Which two-year window the weekly schedule's four semester tabs show. */
+  semesterWindow?: SemesterWindow
 }) {
+  const scheduleSemesters = useMemo(() => semesterWindowSlots(semesterWindow), [semesterWindow])
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
   const [mainTab, setMainTab] = useState<MainTab>('board')
@@ -211,8 +212,9 @@ export default function UnifiedPlannerWorkspace({
           className="planner-weekly-panel w-full"
         >
           <WeeklyScheduleDrawer
+            key={semesterWindow}
             programId={programId}
-            semesterDestinations={semesterDestinations}
+            semesterDestinations={scheduleSemesters}
             semesterCourses={semesterCourses}
           />
         </section>

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import WeeklyScheduleDrawer from './WeeklyScheduleDrawer'
+import { semesterWindowSlots } from '../../../lib/planner/semester-window'
 import type { ScheduleGroupsResponse, CourseSearchResponse } from '../../../../shared/planner/schedule'
 
 const DESTINATIONS = [
@@ -211,11 +212,7 @@ test('a stale alternative choice that newly conflicts after refetch is removed, 
   ).toBeInTheDocument()
 })
 
-const FOUR_DESTINATIONS = [
-  ...DESTINATIONS,
-  { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
-  { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
-]
+const FOUR_DESTINATIONS = semesterWindowSlots('late')
 
 test('shows a tab for every board semester, Year 4 included, with no year/semester picker', async () => {
   renderDrawer({ semesterDestinations: FOUR_DESTINATIONS })
@@ -240,4 +237,19 @@ test('a Year 4 tab selects that semester and renders its courses', async () => {
   } finally {
     jest.useRealTimers()
   }
+})
+
+test('the early-degree window shows Year 1/2 tabs and a Year 2 tab renders its courses', async () => {
+  const early = semesterWindowSlots('early')
+  const { fetchScheduleGroupsFn } = renderDrawer({
+    semesterDestinations: early,
+    semesterCourses: [{ semesterId: 'year_2_semester_a', courseIds: ['0542-2400'] }],
+  })
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+    'שנה א׳ — סמסטר א׳', 'שנה א׳ — סמסטר ב׳', 'שנה ב׳ — סמסטר א׳', 'שנה ב׳ — סמסטר ב׳',
+  ])
+  expect(screen.getByRole('tab', { name: 'שנה א׳ — סמסטר א׳' })).toHaveAttribute('aria-selected', 'true')
+  fireEvent.click(screen.getByRole('tab', { name: 'שנה ב׳ — סמסטר א׳' }))
+  await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenLastCalledWith(['0542-2400'], expect.any(Number)))
+  expect(await screen.findByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeInTheDocument()
 })

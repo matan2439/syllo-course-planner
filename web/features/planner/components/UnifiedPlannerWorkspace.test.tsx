@@ -34,9 +34,11 @@ jest.mock('../../courses/components/UnifiedCourseRepository', () => ({
 
 jest.mock('../../schedule/components/WeeklyScheduleDrawer', () => ({
   __esModule: true,
-  default: () => (
+  default: ({ semesterDestinations }: any) => (
     <div>
-      <div role="tablist" aria-label="בחירת סמסטר" />
+      <div role="tablist" aria-label="בחירת סמסטר">
+        {semesterDestinations.map((d: any) => <button key={d.id} type="button" role="tab" data-semester-id={d.id}>{d.label}</button>)}
+      </div>
     </div>
   ),
 }))
@@ -206,6 +208,33 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByTestId('agent-journey')).toHaveAttribute(
       'data-manual-semesters', 'year_1_semester_a,year_3_semester_a',
     )
+  })
+})
+
+describe('UnifiedPlannerWorkspace — semester window', () => {
+  const scheduleTabs = () =>
+    Array.from(document.querySelectorAll('#workspace-panel-weekly [role="tab"]')).map((tab) => [
+      tab.getAttribute('data-semester-id'), tab.textContent,
+    ])
+
+  test('defaults to the late-degree window: the four Year 3/4 tabs, whatever columns the board has', () => {
+    renderWorkspace({ semesterDestinations: [{ id: 'year_3_semester_a', label: 'שנה ג׳ — סמסטר א׳' }] })
+    expect(scheduleTabs()).toEqual([
+      ['year_3_semester_a', 'שנה ג׳ — סמסטר א׳'],
+      ['year_3_semester_b', 'שנה ג׳ — סמסטר ב׳'],
+      ['year_4_semester_a', 'שנה ד׳ — סמסטר א׳'],
+      ['year_4_semester_b', 'שנה ד׳ — סמסטר ב׳'],
+    ])
+  })
+
+  test('the early-degree window shows the four Year 1/2 tabs', () => {
+    renderWorkspace({ semesterWindow: 'early' })
+    expect(scheduleTabs()).toEqual([
+      ['year_1_semester_a', 'שנה א׳ — סמסטר א׳'],
+      ['year_1_semester_b', 'שנה א׳ — סמסטר ב׳'],
+      ['year_2_semester_a', 'שנה ב׳ — סמסטר א׳'],
+      ['year_2_semester_b', 'שנה ב׳ — סמסטר ב׳'],
+    ])
   })
 })
 
