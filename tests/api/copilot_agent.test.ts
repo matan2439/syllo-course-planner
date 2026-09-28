@@ -8,7 +8,7 @@ import type { CourseInsightsProvider } from '../../api/ai/course_insights'
 import { placedCourseIds } from '../../api/ai/planner_types'
 import { streamCourseAdvisor } from '../../api/ai/agent/course_advisor'
 import { withCompletedCredit } from '../../api/ai/conversation_clarification'
-import { FailingAgentModel, FakeAgentModel } from './helpers/fake_agent_model'
+import { FailingAgentModel, FakeAgentModel, HangingAgentModel } from './helpers/fake_agent_model'
 
 // Fixture: mandatory MAND ("מבוא") + interchangeable core electives ALPHA ("אלפא") / BETA ("בטא");
 // 177 prior hours, so MAND + one elective closes the 185h degree.
@@ -341,4 +341,17 @@ describe('completed courses carry their degree credit', () => {
     expect(withCompletedCredit({ ...base, total_hours_progress: { known_completed_hours: 100 } }, ME, null).total_hours_progress)
       .toEqual(expect.objectContaining({ known_completed_hours: 100 }))
   })
+})
+
+test('a run past its deadline answers with what it has instead of cutting the stream', async () => {
+  const started = Date.now()
+  const result = await runPlannerAgent(
+    { transcript, session: await newSession() },
+    { model: new HangingAgentModel(), deadlineMs: 200 },
+  )
+
+  expect(Date.now() - started).toBeLessThan(5_000)
+  expect(result.outcome).toBe('conversation')
+  expect(result.messageHe).toContain('עצרתי לפני שסיימתי')
+  expect(result.events.at(-1)).toEqual(expect.objectContaining({ type: 'assistant_message' }))
 })

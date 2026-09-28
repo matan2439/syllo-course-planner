@@ -26,6 +26,10 @@ import { COURSE_FOCUS_INSTRUCTIONS, PLANNER_AGENT_INSTRUCTIONS } from './instruc
 export const DEFAULT_AGENT_MODEL = 'gpt-6-sol';
 // A difficulty-balance request reads grades, builds, checks and adjusts; 20 ran out.
 const MAX_TURNS = 30;
+// The function is killed at 300s, which cuts the stream before its result line
+// (the student sees a generic failure). Stop the agent early enough to still answer,
+// validate a proposal and persist.
+const AGENT_DEADLINE_MS = 240_000;
 
 export type PlannerAgentResult =
   | {
@@ -59,6 +63,8 @@ export interface PlannerAgentDeps {
   model?: string | Model;
   /** Receives the assistant's text as the model streams it. */
   onTextDelta?: (text: string) => void;
+  /** Wall-clock budget for the agent run; tests shorten it. */
+  deadlineMs?: number;
 }
 
 export function agentModelName(): string {
@@ -128,11 +134,19 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
   const { session } = input;
   const runner = createAgentRunner();
   let streamed = '';
+  const deadline = AbortSignal.timeout(deps.deadlineMs ?? AGENT_DEADLINE_MS);
+  // Out of steps or time is not an outage: keep what was said and let the student narrow it.
+  const stoppedEarly = (): PlannerAgentResult => {
+    const note = 'עצרתי לפני שסיימתי — הבקשה דרשה יותר מדי בדיקות. נסו לצמצם אותה (למשל סמסטר אחד או כמה קורסים מסוימים). הלוח שלך לא השתנה.';
+    const messageHe = streamed.trim() ? `${streamed.trim()}\n\n${note}` : note;
+    const events = [...session.events, { type: 'assistant_message' as const, text_he: messageHe.slice(0, 4_000) }];
+    return { outcome: 'conversation', messageHe, events };
+  };
   try {
     const result = await runner.run(
       createCopilotAgent('plan', deps.model ?? agentModelName()),
       toInputItems(input.transcript, input.preferenceProfile),
-      { context: session, maxTurns: MAX_TURNS, stream: true },
+      { context: session, maxTurns: MAX_TURNS, stream: true, signal: deadline },
     );
     for await (const event of result) {
       if (event.type === 'raw_model_stream_event' && event.data.type === 'output_text_delta') {
@@ -176,18 +190,18 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
       };
     }
 
+    if (deadline.aborted) {
+      console.warn('[ai/planner-agent] deadline reached');
+      return stoppedEarly();
+    }
     const messageHe = (typeof result.finalOutput === 'string' && result.finalOutput.trim()) || spoken
       || 'לא הצלחתי לנסח תשובה. אפשר לנסות לנסח את הבקשה אחרת?';
     events.push({ type: 'assistant_message', text_he: messageHe.slice(0, 4_000) });
     return { outcome: 'conversation', messageHe, events };
   } catch (error) {
-    if (error instanceof MaxTurnsExceededError) {
-      // Out of steps is not an outage: keep what was said and let the student narrow it.
-      console.warn('[ai/planner-agent] max turns reached');
-      const note = 'עצרתי לפני שסיימתי — הבקשה דרשה יותר מדי בדיקות. נסו לצמצם אותה (למשל סמסטר אחד או כמה קורסים מסוימים). הלוח שלך לא השתנה.';
-      const messageHe = streamed.trim() ? `${streamed.trim()}\n\n${note}` : note;
-      const events = [...session.events, { type: 'assistant_message' as const, text_he: messageHe.slice(0, 4_000) }];
-      return { outcome: 'conversation', messageHe, events };
+    if (error instanceof MaxTurnsExceededError || deadline.aborted) {
+      console.warn(`[ai/planner-agent] ${deadline.aborted ? 'deadline' : 'max turns'} reached`);
+      return stoppedEarly();
     }
     console.error('[ai/planner-agent] run failed:', (error as Error)?.constructor?.name, (error as Error)?.message);
     const messageHe = 'העוזר האקדמי אינו זמין כרגע. הלוח שלך לא השתנה.';

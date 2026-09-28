@@ -3,15 +3,18 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ConversationContextConflictError,
+  ConversationRefusedError,
   sendConversation,
   type ClientDeps,
   type ConversationProgress,
 } from '../../../../shared/planner/api-client'
-import type {
-  ConversationProposal,
-  ConversationRequest,
-  ConversationResponse,
-  ConversationTurn,
+import {
+  MAX_TEXT,
+  MAX_TRANSCRIPT_TURNS,
+  type ConversationProposal,
+  type ConversationRequest,
+  type ConversationResponse,
+  type ConversationTurn,
 } from '../../../../shared/planner/conversation-wire'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 import { Card } from '../../../components/ui'
@@ -49,7 +52,19 @@ export function formatAssistantMessage(
   }, message)
 }
 
-const browserFetch = ((url: string, init?: unknown) => fetch(url, init as RequestInit)) as ClientDeps['fetchImpl']
+/**
+ * The transcript the server accepts: the latest turns (opening on a student turn)
+ * with each text within the wire limit. Replies grow when course ids are expanded to
+ * names, and long chats grow past the turn cap; the screen keeps the full history.
+ */
+export function wireTranscript(transcript: readonly ConversationTurn[]): ConversationTurn[] {
+  let recent = transcript.slice(-MAX_TRANSCRIPT_TURNS)
+  const firstUser = recent.findIndex((turn) => turn.role === 'user')
+  if (firstUser > 0) recent = recent.slice(firstUser)
+  return recent.map((turn) => ({ ...turn, text: turn.text.trim().slice(0, MAX_TEXT) }))
+}
+
+const browserFetch =((url: string, init?: unknown) => fetch(url, init as RequestInit)) as ClientDeps['fetchImpl']
 const defaultSendConversation: SendConversation = (request, onProgress) => sendConversation(
   { fetchImpl: browserFetch, baseUrl: '' },
   request,
@@ -206,7 +221,7 @@ export default function AcademicAgentConversation({
         ...(answer
           ? { clarification_answers: [answer] }
           : {}),
-        transcript: nextTranscript,
+        transcript: wireTranscript(nextTranscript),
       }, (progress) => setLive((current) => {
         const turn = current ?? { steps: [], text: '' }
         if (progress.type === 'text_delta') return { ...turn, text: turn.text + progress.text }
@@ -247,6 +262,8 @@ export default function AcademicAgentConversation({
       if (caught instanceof ConversationContextConflictError) {
         setError(caught.messageHe)
         setContextConflict(true)
+      } else if (caught instanceof ConversationRefusedError) {
+        setError(`${caught.messageHe} הלוח הנוכחי לא השתנה.`)
       } else {
         setError('שליחת ההודעה נכשלה. הלוח הנוכחי לא השתנה.')
       }

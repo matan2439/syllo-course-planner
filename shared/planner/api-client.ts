@@ -202,6 +202,14 @@ export class ConversationContextConflictError extends ContractError {
   }
 }
 
+/** The server refused the turn with its own Hebrew reason (quota, storage, internal error). */
+export class ConversationRefusedError extends ContractError {
+  constructor(readonly status: number, readonly messageHe: string) {
+    super(`conversation refused with HTTP ${status}`);
+    this.name = 'ConversationRefusedError';
+  }
+}
+
 /** Live progress of a streamed conversation turn. */
 export type ConversationProgress =
   | { type: 'event'; event: ConversationEvent }
@@ -277,6 +285,10 @@ export async function sendConversation(
   if (!ok) {
     const conflict = conversationContextConflictResponseSchema.safeParse(body);
     if (conflict.success) throw new ConversationContextConflictError(conflict.data);
+    const refusal = body as { ok?: unknown; message_he?: unknown } | null;
+    if (refusal?.ok === false && typeof refusal.message_he === 'string' && refusal.message_he.trim()) {
+      throw new ConversationRefusedError(status, refusal.message_he.trim());
+    }
   }
   const parsed = conversationResponseSchema.safeParse(body);
   if (!parsed.success) throw new ContractError('malformed conversation response', parsed.error);

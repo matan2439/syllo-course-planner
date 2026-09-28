@@ -2,7 +2,12 @@ import { z } from 'zod'
 import { boardRequirementsValidationSchema } from './wire'
 import type { PreferenceProfile } from '../../api/ai/preference_model'
 
-const boundedText = z.string().trim().min(1).max(4_000)
+/** Wire limits shared by the server (which bounds its replies) and the client (which bounds its requests). */
+export const MAX_TEXT = 4_000
+export const MAX_TRANSCRIPT_TURNS = 40
+export const MAX_CONVERSATION_EVENTS = 64
+
+const boundedText = z.string().trim().min(1).max(MAX_TEXT)
 const digest = z.string().trim().min(1).max(256)
 
 const preferenceProfileSchema = z.object({
@@ -59,7 +64,7 @@ export const conversationRequestSchema = z.object({
       z.record(z.string().trim().min(1).max(64), z.number().int().min(0).max(50)),
     ]),
   }).strict()).max(8).optional(),
-  transcript: z.array(conversationTurnSchema).min(1).max(40),
+  transcript: z.array(conversationTurnSchema).min(1).max(MAX_TRANSCRIPT_TURNS),
 }).strict()
 
 const assistantMessageEventSchema = z.object({
@@ -219,7 +224,7 @@ export const conversationEventSchema = z.discriminatedUnion('type', [
 const availableResponseSchema = z.object({
   outcome: z.enum(['conversation', 'clarification_required', 'proposal']),
   message_he: boundedText,
-  events: z.array(conversationEventSchema).max(64),
+  events: z.array(conversationEventSchema).max(MAX_CONVERSATION_EVENTS),
   /** The agent, not the client, decides whether to ask or offer planning. */
   next_action: z.enum(['ask', 'offer_build']).optional(),
   academic_decision: academicDecisionSummarySchema.optional(),
