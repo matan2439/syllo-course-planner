@@ -7,7 +7,7 @@ import UnifiedCourseRepository, { type SemesterDestination } from '../../courses
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
-import { semesterWindowForDegreeYear, semesterWindowSlots } from '../../../lib/planner/semester-window'
+import { semesterWindowForDegreeYear, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
 
 type RailTab = 'courses' | 'agent' | 'profile'
@@ -26,12 +26,16 @@ const TABS: ReadonlyArray<{ id: RailTab; label: string }> = [
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = semesterWindowSlots()
 
+/** The board a two-year window plans over, with its course repository and columns. */
+export type WindowBoard = { boardId: string; repo: RepositoryVM; semesterDestinations: readonly SemesterDestination[] }
+
 export default function UnifiedPlannerWorkspace({
   programId,
   repo,
   selectedCourseIds = [],
   onRequestAdd = () => undefined,
-  semesterDestinations = DEFAULT_SEMESTER_DESTINATIONS,
+  semesterDestinations: programDestinations = DEFAULT_SEMESTER_DESTINATIONS,
+  windowBoards = {},
 }: {
   programId: string
   repo: RepositoryVM
@@ -39,13 +43,15 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd?: (courseId: string) => void
   /** The board's real columns — where a course can be placed. */
   semesterDestinations?: readonly SemesterDestination[]
+  /** The board each two-year window plans over; a window without one falls back to the program's board. */
+  windowBoards?: Partial<Record<SemesterWindow, WindowBoard>>
 }) {
-  // Profile fact → derived window → the weekly schedule's four semester tabs.
+  // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
   const [currentDegreeYear, setCurrentDegreeYear] = useCurrentDegreeYear()
-  const scheduleSemesters = useMemo(
-    () => semesterWindowSlots(semesterWindowForDegreeYear(currentDegreeYear)),
-    [currentDegreeYear],
-  )
+  const semesterWindow = semesterWindowForDegreeYear(currentDegreeYear)
+  const scheduleSemesters = useMemo(() => semesterWindowSlots(semesterWindow), [semesterWindow])
+  const { boardId, repo: boardRepo, semesterDestinations } =
+    windowBoards[semesterWindow] ?? { boardId: programId, repo, semesterDestinations: programDestinations }
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
   const [mainTab, setMainTab] = useState<MainTab>('board')
@@ -65,6 +71,7 @@ export default function UnifiedPlannerWorkspace({
   }
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
+  useEffect(() => setManualAddIntent(null), [boardId]) // a pending add targets the previous board's columns
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)
   const [activeDrag, setActiveDrag] = useState<PlannerDragPayload | null>(null)
   // The assistant lives in the journey (it owns the planning state) and renders into this slot.
@@ -77,7 +84,7 @@ export default function UnifiedPlannerWorkspace({
   if (railTab) lastTab.current = railTab
 
   const requestAdd = (courseId: string, semesterId?: string) => {
-    const course = repo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
+    const course = boardRepo.categories.flatMap((category) => category.courses).find((item) => item.id === courseId)
     const offered = new Set((course?.offered ?? []).map((value) => value.toLowerCase()))
     const semesterIds = semesterDestinations
       .map(({ id }) => id)
@@ -192,7 +199,8 @@ export default function UnifiedPlannerWorkspace({
             </p>
           )}
           <NativePlannerJourney
-            programId={programId}
+            key={boardId}
+            programId={boardId}
             initializePlanningContext
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
@@ -270,8 +278,8 @@ export default function UnifiedPlannerWorkspace({
             className="planner-rail-body"
           >
             <UnifiedCourseRepository
-              repo={repo}
-              programId={programId}
+              repo={boardRepo}
+              programId={boardId}
               selectedCourseIds={committedCourseIds}
               semesterDestinations={semesterDestinations}
               onRequestAdd={requestAdd}

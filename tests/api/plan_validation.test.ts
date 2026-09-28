@@ -69,6 +69,16 @@ describe('normalizeSemesterId', () => {
 
   it('returns null for unrecognizable input', () => {
     expect(normalizeSemesterId('סמסטר קיץ')).toBeNull();
+  })
+
+  test('maps any year the board knows, Hebrew or Latin, and nothing the board lacks', () => {
+    const early = ['year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a', 'year_2_semester_b']
+    expect(normalizeSemesterId('שנה א׳ — סמסטר ב׳', early)).toBe('year_1_semester_b')
+    expect(normalizeSemesterId('שנה ב׳ סמסטר א׳', early)).toBe('year_2_semester_a')
+    expect(normalizeSemesterId('Y2B', early)).toBe('year_2_semester_b')
+    expect(normalizeSemesterId('year_1_semester_a', early)).toBe('year_1_semester_a')
+    expect(normalizeSemesterId('שנה ג׳ — סמסטר א׳', early)).toBeNull()
+    expect(normalizeSemesterId('שנה א׳ — סמסטר א׳')).toBeNull()
     expect(normalizeSemesterId('')).toBeNull();
     expect(normalizeSemesterId(null)).toBeNull();
   });

@@ -203,6 +203,10 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   }
 
   if (!board) {
+    // A board published only as a committed file (e.g. a program's Years 1–2
+    // window board) is served from that file; anything else is a genuine 404.
+    const local = loadLocalBoardJson(rawId);
+    if (local) { res.status(200).json(local); return; }
     res.status(404).json({
       error: `Program "${rawId}" not found or board data not yet populated.`,
       code: 'NOT_FOUND',

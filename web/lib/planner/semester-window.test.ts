@@ -1,6 +1,8 @@
 import {
-  DEFAULT_SEMESTER_WINDOW, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots,
+  DEFAULT_SEMESTER_WINDOW, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots, windowBoardIdFor,
 } from './semester-window'
+import { programIdOfBoard } from '../../../shared/planner/window_board'
+import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
 import { semesterTitleHe } from './board-vm'
 
 test('the default window is the late-degree one: Years 3–4, unchanged', () => {
@@ -62,4 +64,13 @@ describe('resolveSelectedSemester', () => {
     expect(resolveSelectedSemester(late, '', null)).toBe('year_3_semester_a')
     expect(resolveSelectedSemester([], '', 3)).toBe('')
   })
+})
+
+test('each window resolves to the board that holds it; the published board keeps its own id', () => {
+  expect(windowBoardIdFor('mechanical_engineering_2027', 'late', 3)).toBe('mechanical_engineering_2027')
+  expect(windowBoardIdFor('mechanical_engineering_2027', 'early', 3)).toBe('mechanical_engineering_years_1_2_2027')
+  expect(programIdOfBoard('mechanical_engineering_years_1_2_2027')).toBe('mechanical_engineering_2027')
+  expect(programIdOfBoard('mechanical_engineering_2027')).toBe('mechanical_engineering_2027')
+  expect(earlyYearCoursesFor('mechanical_engineering_years_1_2_2027'))
+    .toEqual(earlyYearCoursesFor('mechanical_engineering_2027'))
 })

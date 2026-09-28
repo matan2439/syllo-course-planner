@@ -248,6 +248,20 @@ describe('UnifiedPlannerWorkspace — semester window', () => {
     expect(tabIds()).toEqual(LATE)
   })
 
+  test('the window picks the board: Years 1–2 plan on the program’s window board, Years 3–4 on its own', () => {
+    const early = {
+      boardId: 'mechanical_engineering_years_1_2_2027', repo,
+      semesterDestinations: [{ id: 'year_1_semester_a', label: 'שנה א׳ — סמסטר א׳' }],
+    }
+    renderWorkspace({ windowBoards: { early } })
+    const journey = () => screen.getByTestId('agent-journey')
+    expect(journey()).toHaveAttribute('data-program', 'mechanical_engineering_2027')
+    fireEvent.change(screen.getByRole('combobox', { name: 'השנה שלי בתואר' }), { target: { value: '2' } })
+    expect(journey()).toHaveAttribute('data-program', 'mechanical_engineering_years_1_2_2027')
+    fireEvent.change(screen.getByRole('combobox', { name: 'השנה שלי בתואר' }), { target: { value: '3' } })
+    expect(journey()).toHaveAttribute('data-program', 'mechanical_engineering_2027')
+  })
+
   test('changing the year in the profile switches early ↔ late and is remembered', () => {
     renderWorkspace()
     const year = screen.getByRole('combobox', { name: 'השנה שלי בתואר' })

@@ -3,6 +3,8 @@ import { readBoardForProgramId } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
 import { adaptRepository } from '../../lib/repository'
 import { semesterTitleHe } from '../../lib/planner/board-vm'
+import { SEMESTER_WINDOWS, windowBoardIdFor } from '../../lib/planner/semester-window'
+import type { RawBoard } from '../../lib/board'
 import ProductShell from '../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPlannerWorkspace'
 
@@ -22,6 +24,16 @@ export default async function PlannerPage({
   const raw = await readBoardForProgramId(program.id)
   if (!raw) notFound()
   const repo = adaptRepository(raw)
+  const destinationsOf = (board: RawBoard) => board.semesters.map((semester) => ({
+    id: semester.semester_id,
+    label: semesterTitleHe(semester.semester_id),
+  }))
+  // Each two-year window plans over its own published board; a window with no board is left out.
+  const windowBoards = Object.fromEntries((await Promise.all(SEMESTER_WINDOWS.map(async (window) => {
+    const boardId = windowBoardIdFor(program.id, window, raw.metadata?.start_year)
+    const board = boardId === program.id ? raw : await readBoardForProgramId(boardId)
+    return board ? [[window, { boardId, repo: adaptRepository(board), semesterDestinations: destinationsOf(board) }]] : []
+  }))).flat())
 
   return (
     <ProductShell
@@ -32,10 +44,8 @@ export default async function PlannerPage({
       <UnifiedPlannerWorkspace
         programId={program.id}
         repo={repo}
-        semesterDestinations={raw.semesters.map((semester) => ({
-          id: semester.semester_id,
-          label: semesterTitleHe(semester.semester_id),
-        }))}
+        semesterDestinations={destinationsOf(raw)}
+        windowBoards={windowBoards}
       />
     </ProductShell>
   )

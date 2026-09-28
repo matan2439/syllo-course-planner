@@ -66,7 +66,7 @@ export const planProposalSchema = z.object({
 
 export type PlanProposal = z.infer<typeof planProposalSchema>;
 
-/** Canonical semester ids used throughout the board (year_<3|4>_semester_<a|b>). */
+/** The default board's semester ids (year_<3|4>_semester_<a|b>); a board may carry other years. */
 export const KNOWN_SEMESTER_IDS = [
   'year_3_semester_a',
   'year_3_semester_b',
@@ -75,6 +75,7 @@ export const KNOWN_SEMESTER_IDS = [
 ] as const;
 
 const HEBREW_YEAR_LETTER: Record<string, string> = { 'ג': '3', 'ד': '4' };
+const HEBREW_NUMERALS = 'אבגדהוזחט'; // א=1, ב=2, …
 const HEBREW_SEM_LETTER:  Record<string, string> = { 'א': 'a', 'ב': 'b' };
 
 /**
@@ -87,33 +88,41 @@ const HEBREW_SEM_LETTER:  Record<string, string> = { 'א': 'a', 'ב': 'b' };
  * determined at all (caller should treat such placements as unplaced and
  * surface a warning).
  */
-export function normalizeSemesterId(raw: string | null | undefined): string | null {
+export function normalizeSemesterId(
+  raw: string | null | undefined,
+  knownIds: readonly string[] = KNOWN_SEMESTER_IDS,
+): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
-  if ((KNOWN_SEMESTER_IDS as readonly string[]).includes(trimmed)) return trimmed;
+  if (knownIds.includes(trimmed)) return trimmed;
 
-  // Hebrew labels: "שנה ג׳ — סמסטר א׳" etc. — find a year-letter (ג/ד) and a
-  // semester-letter (א/ב) anywhere in the string.
-  let year: string | null = null;
-  let half: string | null = null;
-  for (const ch of trimmed) {
-    if (HEBREW_YEAR_LETTER[ch]) year = HEBREW_YEAR_LETTER[ch];
-    if (HEBREW_SEM_LETTER[ch])  half = HEBREW_SEM_LETTER[ch];
+  // Hebrew labels: "שנה א׳ — סמסטר ב׳" — the letter after שנה is the year, after סמסטר the half.
+  const heYear = trimmed.match(/שנה\s*([א-ט])/);
+  const heHalf = trimmed.match(/סמסטר\s*([אב])/);
+  let year: string | null = heYear ? String(HEBREW_NUMERALS.indexOf(heYear[1]) + 1) : null;
+  let half: string | null = heHalf ? HEBREW_SEM_LETTER[heHalf[1]] : null;
+
+  // Looser Hebrew ("ג׳ א׳"): ג/ד can only be a year, א/ב is then the half.
+  if (!year || !half) {
+    for (const ch of trimmed) {
+      if (!year && HEBREW_YEAR_LETTER[ch]) year = HEBREW_YEAR_LETTER[ch];
+      if (!half && HEBREW_SEM_LETTER[ch])  half = HEBREW_SEM_LETTER[ch];
+    }
   }
 
-  // Latin/numeric variants: look for a 3/4 and an a/b (case-insensitive),
+  // Latin/numeric variants: a year digit and an a/b (case-insensitive),
   // ignoring separators/punctuation.
   if (!year || !half) {
     const lower = trimmed.toLowerCase();
-    const yearMatch = lower.match(/[34]/);
+    const yearMatch = lower.match(/(?:year|y)[_\- ]?([1-9])/) ?? lower.match(/([1-9])/);
     const halfMatch = lower.match(/[ab](?![a-z])|semester[_\- ]?([ab])\b/);
-    if (yearMatch) year = year ?? yearMatch[0];
+    if (yearMatch) year = year ?? yearMatch[1];
     if (halfMatch) half = half ?? (halfMatch[1] || halfMatch[0]);
   }
 
   if (!year || !half) return null;
   const candidate = `year_${year}_semester_${half}`;
-  return (KNOWN_SEMESTER_IDS as readonly string[]).includes(candidate) ? candidate : null;
+  return knownIds.includes(candidate) ? candidate : null;
 }
 
 /**
@@ -136,8 +145,7 @@ export function normalizePlanProposal(
 
   for (const sem of proposal.semesters) {
     // First try canonical normalization; if that fails, check if raw id is in knownIds directly.
-    const normalized = normalizeSemesterId(sem.semester_id) ??
-      (knownIds.includes(sem.semester_id.trim()) ? sem.semester_id.trim() : null);
+    const normalized = normalizeSemesterId(sem.semester_id, knownIds);
     if (!normalized) {
       for (const cid of sem.course_ids) dropped.push({ course_id: cid, raw_semester_id: sem.semester_id });
       continue;
@@ -151,7 +159,7 @@ export function normalizePlanProposal(
 
   const normalizeSide = (v: string | null | undefined): string | null | undefined => {
     if (v == null) return v;
-    return normalizeSemesterId(v) ?? v; // leave moves' from/to as-is if unrecognizable (display-only)
+    return normalizeSemesterId(v, knownIds) ?? v; // leave moves' from/to as-is if unrecognizable (display-only)
   };
 
   return {

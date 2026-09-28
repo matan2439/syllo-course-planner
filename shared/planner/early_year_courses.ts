@@ -16,6 +16,8 @@
  * completed one — never edit its credits, prerequisites, or category.
  */
 
+import { programIdOfBoard } from './window_board'
+
 export interface EarlyYearCourse {
   courseId: string
   nameHe: string
@@ -77,7 +79,8 @@ const EARLY_YEARS_BY_PROGRAM: Record<string, EarlyYearCourse[]> = {
 }
 
 export function earlyYearCoursesFor(programId: string): EarlyYearCourse[] {
-  return EARLY_YEARS_BY_PROGRAM[programId] ?? []
+  // A program's window board (e.g. its Years 1–2 board) shares the program's early years.
+  return EARLY_YEARS_BY_PROGRAM[programIdOfBoard(programId)] ?? []
 }
 
 /** Authoritative credit hours by course id for a program's early years. */

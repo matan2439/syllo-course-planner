@@ -5,6 +5,7 @@
  * by semesterTitleHe, never stored alongside it.
  */
 import { semesterTitleHe } from './board-vm'
+import { windowBoardId } from '../../../shared/planner/window_board'
 
 export type SemesterWindow = 'early' | 'late'
 
@@ -12,6 +13,15 @@ export type SemesterWindow = 'early' | 'late'
 export const DEFAULT_SEMESTER_WINDOW: SemesterWindow = 'late'
 
 const FIRST_YEAR: Record<SemesterWindow, number> = { early: 1, late: 3 }
+export const SEMESTER_WINDOWS = Object.keys(FIRST_YEAR) as SemesterWindow[]
+
+/**
+ * The board that plans a window: the program's published board when it starts at the
+ * window's first year (its metadata.start_year), otherwise the program's window board.
+ */
+export function windowBoardIdFor(programId: string, window: SemesterWindow, publishedStartYear: unknown): string {
+  return publishedStartYear === FIRST_YEAR[window] ? programId : windowBoardId(programId, FIRST_YEAR[window])
+}
 
 export function semesterWindowSlots(window: SemesterWindow = DEFAULT_SEMESTER_WINDOW): { id: string; label: string }[] {
   const first = FIRST_YEAR[window]
